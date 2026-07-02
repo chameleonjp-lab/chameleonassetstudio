@@ -93,6 +93,20 @@ export function layerLocalPoint(layer: Layer, textureSize: Size, worldPoint: Vec
   return { x: rotatedX / scaleX, y: rotatedY / scaleY };
 }
 
+/** layerLocalPoint の逆変換。ローカル座標（テクスチャ中心が原点）を world 座標へ戻す。 */
+export function layerWorldPoint(layer: Layer, textureSize: Size, localPoint: Vec2): Vec2 {
+  const transform = layer.transform;
+  const centerX = transform.position.x + textureSize.width / 2;
+  const centerY = transform.position.y + textureSize.height / 2;
+  const rad = transform.rotation * DEG_TO_RAD;
+  const scaledX = localPoint.x * transform.scale.x;
+  const scaledY = localPoint.y * transform.scale.y;
+  return {
+    x: centerX + scaledX * Math.cos(rad) - scaledY * Math.sin(rad),
+    y: centerY + scaledX * Math.sin(rad) + scaledY * Math.cos(rad),
+  };
+}
+
 export function hitTestLayer(layer: Layer, textureSize: Size, worldPoint: Vec2): boolean {
   const local = layerLocalPoint(layer, textureSize, worldPoint);
   return Math.abs(local.x) <= textureSize.width / 2 && Math.abs(local.y) <= textureSize.height / 2;

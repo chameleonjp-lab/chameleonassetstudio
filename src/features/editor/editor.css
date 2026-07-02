@@ -184,6 +184,41 @@
   gap: 0.4rem;
 }
 
+.image-edit-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.editor-fieldset {
+  border: 1px solid #8885;
+  border-radius: 6px;
+  padding: 0.5rem 0.6rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.editor-fieldset legend {
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0 0.25rem;
+}
+
+.editor-fieldset button {
+  align-self: flex-start;
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0.3rem 0.7rem;
+}
+
+.editor-field input[type='color'] {
+  width: 3.5rem;
+  height: 2rem;
+  padding: 0.1rem;
+}
+
 .layer-fields {
   display: flex;
   flex-direction: column;
