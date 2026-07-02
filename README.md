@@ -76,7 +76,8 @@ e2e/           … Playwright E2E テスト
 - [x] Phase 1: データ形式（型、JSON Schema、サンプル、migrate 入口、検証テスト）
 - [x] Phase 2: 保存・読み込み（IndexedDB、自動保存キュー、`.casproj` 読み書き基盤、ストレージ使用量）
 - [x] Phase 3: 最小 UI（ホーム画面、新規作成・一覧・削除、編集画面の枠、スマホ用下部ナビ）
-- [ ] Phase 4 以降: `docs/IMPLEMENTATION_PLAN.md` を参照
+- [x] Phase 4: 画像取り込み（PNG / JPG / WebP、D&D、元画像・編集用・サムネイル分離、サイズ制限）
+- [ ] Phase 5 以降: `docs/IMPLEMENTATION_PLAN.md` を参照
 
 ## 初期方針
 

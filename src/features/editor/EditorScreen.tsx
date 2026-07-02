@@ -1,6 +1,24 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import type { Project } from '../../core/model';
-import { AutosaveQueue, loadProject, saveProject, type SaveState } from '../../core/storage';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ChangeEvent,
+  type DragEvent,
+} from 'react';
+import { blobKeyFor, importImageFile } from '../../core/images/importImage';
+import type { Asset, Project } from '../../core/model';
+import {
+  AutosaveQueue,
+  listProjectAssets,
+  loadBlob,
+  loadProject,
+  saveAsset,
+  saveBlob,
+  saveProject,
+  type SaveState,
+} from '../../core/storage';
 import './editor.css';
 
 type MobileView = 'canvas' | 'properties' | 'timeline' | 'export';
@@ -28,6 +46,8 @@ function saveStatusText(state: SaveState): string {
   }
 }
 
+const IMPORT_ACCEPT = 'image/png,image/jpeg,image/webp';
+
 export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const autosaveRef = useRef<AutosaveQueue | null>(null);
   autosaveRef.current ??= new AutosaveQueue();
@@ -35,18 +55,27 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const saveState = useSaveState(autosave);
 
   const [project, setProject] = useState<Project | null>(null);
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const [mobileView, setMobileView] = useState<MobileView>('canvas');
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    loadProject(projectId)
-      .then(({ project: loaded }) => {
-        if (!cancelled) {
-          setProject(loaded);
+    Promise.all([loadProject(projectId), listProjectAssets(projectId)])
+      .then(([{ project: loaded }, loadedAssets]) => {
+        if (cancelled) {
+          return;
         }
+        setProject(loaded);
+        setAssets(loadedAssets);
+        setSelectedAssetId(loadedAssets[0]?.id ?? null);
       })
       .catch((error: unknown) => {
         if (!cancelled) {
@@ -57,6 +86,92 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       cancelled = true;
     };
   }, [projectId]);
+
+  const selectedAsset = assets.find((asset) => asset.id === selectedAssetId) ?? assets[0] ?? null;
+
+  // 選択中アセットの編集用画像を読み込み、Blob URL は不要になったら解放する
+  useEffect(() => {
+    if (!selectedAsset) {
+      setPreviewUrl(null);
+      return;
+    }
+    const editTexture = selectedAsset.textures.find((texture) => texture.kind === 'edit');
+    if (!editTexture) {
+      setPreviewUrl(null);
+      return;
+    }
+    let objectUrl: string | null = null;
+    let cancelled = false;
+    void loadBlob(blobKeyFor(selectedAsset.id, editTexture.path)).then((blob) => {
+      if (cancelled || !blob) {
+        return;
+      }
+      objectUrl = URL.createObjectURL(blob);
+      setPreviewUrl(objectUrl);
+    });
+    return () => {
+      cancelled = true;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [selectedAsset]);
+
+  const handleFiles = async (files: Iterable<File>) => {
+    if (!project) {
+      return;
+    }
+    setImportError(null);
+    setImporting(true);
+    try {
+      let currentProject = project;
+      for (const file of Array.from(files)) {
+        const result = await importImageFile(file);
+        for (const { key, blob } of result.blobs) {
+          await saveBlob(currentProject.id, key, blob);
+        }
+        await saveAsset(currentProject.id, result.asset);
+        currentProject = {
+          ...currentProject,
+          assets: [
+            ...currentProject.assets,
+            {
+              id: result.asset.id,
+              name: result.asset.name,
+              displayName: result.asset.displayName,
+              assetType: result.asset.assetType,
+            },
+          ],
+          updatedAt: new Date().toISOString(),
+        };
+        await saveProject(currentProject);
+        setAssets((prev) => [...prev, result.asset]);
+        setSelectedAssetId(result.asset.id);
+      }
+      setProject(currentProject);
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleFileInput = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      void handleFiles(files);
+    }
+    // 同じファイルをもう一度選べるようにする
+    event.target.value = '';
+  };
+
+  const handleDrop = (event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    setDragOver(false);
+    if (event.dataTransfer.files.length > 0) {
+      void handleFiles(event.dataTransfer.files);
+    }
+  };
 
   const handleRename = (name: string) => {
     if (!project) {
@@ -134,9 +249,40 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         <section
           className={`editor-canvas-area${mobileView === 'canvas' ? ' mobile-active' : ''}`}
           aria-label="キャンバス"
+          onDragOver={(event) => {
+            event.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
         >
-          <div className="canvas-placeholder">
-            <p>キャンバス（Phase 5 で実装）</p>
+          <div className={`canvas-placeholder${dragOver ? ' drag-over' : ''}`}>
+            {previewUrl && selectedAsset ? (
+              <img className="canvas-preview" src={previewUrl} alt={selectedAsset.displayName} />
+            ) : (
+              <div className="import-zone">
+                <p>画像をここへドラッグ&ドロップ</p>
+                <label className="import-button">
+                  画像を選ぶ
+                  <input
+                    type="file"
+                    accept={IMPORT_ACCEPT}
+                    multiple
+                    onChange={handleFileInput}
+                    className="visually-hidden-input"
+                  />
+                </label>
+                <p className="editor-note">
+                  PNG / JPG / WebP に対応。1 枚あたり 25MB、4096 x 4096 までです。
+                </p>
+              </div>
+            )}
+            {importing && <p className="import-status">取り込み中…</p>}
+            {importError && (
+              <p className="import-error" role="alert">
+                {importError}
+              </p>
+            )}
           </div>
         </section>
 
@@ -156,7 +302,38 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               onChange={(event) => handleRename(event.target.value)}
             />
           </label>
-          <p className="editor-note">アセットのプロパティは Phase 5 以降で実装します。</p>
+
+          <h3 className="editor-subheading">アセット</h3>
+          {assets.length === 0 ? (
+            <p className="editor-note">画像を取り込むとアセットとして追加されます。</p>
+          ) : (
+            <ul className="asset-list">
+              {assets.map((asset) => (
+                <li key={asset.id}>
+                  <button
+                    type="button"
+                    aria-pressed={asset.id === selectedAsset?.id}
+                    onClick={() => setSelectedAssetId(asset.id)}
+                  >
+                    {asset.displayName}
+                  </button>
+                  <span className="asset-meta">
+                    {asset.canvasSize.width} x {asset.canvasSize.height}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <label className="import-button">
+            画像を追加
+            <input
+              type="file"
+              accept={IMPORT_ACCEPT}
+              multiple
+              onChange={handleFileInput}
+              className="visually-hidden-input"
+            />
+          </label>
         </aside>
       </div>
 

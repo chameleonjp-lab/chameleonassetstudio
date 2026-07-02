@@ -14,7 +14,7 @@ test('新規プロジェクトを作成して編集画面へ移動できる', as
 
   // 編集画面の枠が揃っている
   await expect(page.getByRole('heading', { name: 'E2E テスト' })).toBeVisible();
-  await expect(page.getByText('キャンバス（Phase 5 で実装）')).toBeVisible();
+  await expect(page.getByText('画像をここへドラッグ&ドロップ')).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'ツール' })).toBeVisible();
   await expect(page.getByRole('complementary', { name: 'プロパティ' })).toBeVisible();
   await expect(page.getByRole('contentinfo', { name: 'タイムライン' })).toBeVisible();
@@ -73,7 +73,7 @@ test('スマホ幅で横スクロールが出ない', async ({ page }) => {
   // 編集画面でも横スクロールが出ず、下部ナビで画面を切り替えられる
   await page.getByLabel('プロジェクト名').fill('スマホテスト');
   await page.getByRole('button', { name: '作成' }).click();
-  await expect(page.getByText('キャンバス（Phase 5 で実装）')).toBeVisible();
+  await expect(page.getByText('画像をここへドラッグ&ドロップ')).toBeVisible();
 
   const editorOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
