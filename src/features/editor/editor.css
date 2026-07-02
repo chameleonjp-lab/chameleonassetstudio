@@ -1,0 +1,223 @@
+.editor {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.editor-load-error {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.editor-topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #8884;
+  flex-wrap: wrap;
+}
+
+.editor-title {
+  font-size: 1rem;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-save-status {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.85;
+  min-height: 1em;
+}
+
+.editor-panel-toggles {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.editor-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.editor-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-right: 1px solid #8884;
+  width: 6.5rem;
+  overflow-y: auto;
+}
+
+.editor-properties {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 16rem;
+  border-left: 1px solid #8884;
+  padding: 0.75rem;
+  overflow-y: auto;
+}
+
+.editor-properties h2,
+.editor-timeline h2,
+.editor-export h2 {
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.editor-field input {
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+}
+
+.editor-canvas-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  padding: 0.75rem;
+  overflow: auto;
+}
+
+/* 透明背景の市松模様（本実装は Phase 5） */
+.canvas-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #8888;
+  border-radius: 4px;
+  background-image:
+    linear-gradient(45deg, #8883 25%, transparent 25%),
+    linear-gradient(-45deg, #8883 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #8883 75%),
+    linear-gradient(-45deg, transparent 75%, #8883 75%);
+  background-size: 16px 16px;
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+}
+
+.editor-timeline {
+  border-top: 1px solid #8884;
+  padding: 0.5rem 0.75rem;
+  min-height: 5.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: flex-start;
+}
+
+.editor-export {
+  display: none;
+  padding: 0.75rem;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.editor-mobile-nav {
+  display: none;
+}
+
+.editor-note {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+/* iPad / PC: 折りたたみボタンで左右パネルを閉じられる */
+@media (min-width: 768px) {
+  .editor-side.collapsed {
+    display: none;
+  }
+}
+
+/* スマホ: 画面単位で切り替える（下部ナビ） */
+@media (max-width: 767px) {
+  .editor-panel-toggles {
+    display: none;
+  }
+
+  .editor-body {
+    display: contents;
+  }
+
+  .editor-toolbar {
+    display: none;
+  }
+
+  .editor-canvas-area:not(.mobile-active) {
+    display: none;
+  }
+
+  .editor-canvas-area.mobile-active {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .editor-properties:not(.mobile-active) {
+    display: none;
+  }
+
+  .editor-properties.mobile-active {
+    flex: 1;
+    width: auto;
+    border-left: none;
+    min-height: 0;
+  }
+
+  .editor-timeline:not(.mobile-active) {
+    display: none;
+  }
+
+  .editor-timeline.mobile-active {
+    flex: 1;
+    border-top: none;
+  }
+
+  .editor-export.mobile-active {
+    display: flex;
+    flex: 1;
+  }
+
+  .editor-mobile-nav {
+    display: flex;
+    border-top: 1px solid #8884;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .editor-mobile-nav button {
+    flex: 1;
+    padding: 0.65rem 0.25rem;
+    font-size: 0.78rem;
+    font-family: inherit;
+    background: none;
+    border: none;
+  }
+
+  .editor-mobile-nav button[aria-pressed='true'] {
+    font-weight: 700;
+    text-decoration: underline;
+  }
+}
