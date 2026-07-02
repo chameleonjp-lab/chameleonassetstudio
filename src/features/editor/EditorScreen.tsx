@@ -24,6 +24,7 @@ import {
 import {
   addAnchor,
   addGuideLayer,
+  applyFrameToAsset,
   renameLayer,
   type AnchorRole,
   type Asset,
@@ -46,6 +47,7 @@ import { LAYER_TOOLS, type CanvasTool } from './canvasTools';
 import { GameDataPanel } from './GameDataPanel';
 import { LayerPanel } from './LayerPanel';
 import { PartPanel } from './PartPanel';
+import { TimelinePanel } from './TimelinePanel';
 import './editor.css';
 
 type MobileView = 'canvas' | 'properties' | 'timeline' | 'export';
@@ -117,6 +119,12 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [rightOpen, setRightOpen] = useState(true);
   const layerEditBeforeRef = useRef<Asset | null>(null);
 
+  // タイムライン（Phase 9）
+  const [selectedAnimationId, setSelectedAnimationId] = useState<string | null>(null);
+  const [previewFrameId, setPreviewFrameId] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const playbackIndexRef = useRef(0);
+
   // 画像編集パラメータ
   const [eraserSize, setEraserSize] = useState(16);
   const [bgTolerance, setBgTolerance] = useState(30);
@@ -150,6 +158,13 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
   const selectedAsset = assets.find((asset) => asset.id === selectedAssetId) ?? assets[0] ?? null;
   const selectedLayer = selectedAsset?.layers.find((layer) => layer.id === selectedLayerId) ?? null;
+  const selectedAnimation =
+    selectedAsset?.animations.find((animation) => animation.id === selectedAnimationId) ?? null;
+  /** タイムラインでプレビュー中のフレームをレイヤーへ適用したアセット（キャンバス表示用）。 */
+  const previewAsset =
+    selectedAsset && previewFrameId
+      ? applyFrameToAsset(selectedAsset, previewFrameId)
+      : selectedAsset;
 
   /** アセットのスナップショットを適用して自動保存する（Undo / Redo からも使う）。 */
   const applyAssetSnapshot = useCallback(
@@ -195,6 +210,70 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [history]);
+
+  // アセットを切り替えたらタイムラインの選択・再生状態をリセットする
+  useEffect(() => {
+    setSelectedAnimationId(null);
+    setPreviewFrameId(null);
+    setIsPlaying(false);
+    playbackIndexRef.current = 0;
+  }, [selectedAssetId]);
+
+  // アニメーションの再生ループ（fps に従いフレームを順送りする）
+  useEffect(() => {
+    if (!isPlaying || !selectedAnimation || selectedAnimation.frameIds.length === 0) {
+      return;
+    }
+    const { fps, loop, frameIds } = selectedAnimation;
+    const intervalMs = 1000 / Math.max(1, fps);
+    const interval = window.setInterval(() => {
+      const nextIndex = playbackIndexRef.current + 1;
+      if (nextIndex >= frameIds.length) {
+        if (!loop) {
+          setIsPlaying(false);
+          return;
+        }
+        playbackIndexRef.current = 0;
+      } else {
+        playbackIndexRef.current = nextIndex;
+      }
+      setPreviewFrameId(frameIds[playbackIndexRef.current]);
+    }, intervalMs);
+    return () => window.clearInterval(interval);
+  }, [isPlaying, selectedAnimation]);
+
+  const handleSelectAnimation = (id: string | null) => {
+    setSelectedAnimationId(id);
+    setIsPlaying(false);
+    playbackIndexRef.current = 0;
+  };
+
+  const handleSelectFrame = (frameId: string) => {
+    setIsPlaying(false);
+    setPreviewFrameId(frameId);
+  };
+
+  const handlePlayAnimation = () => {
+    if (!selectedAnimation || selectedAnimation.frameIds.length === 0) {
+      return;
+    }
+    playbackIndexRef.current = 0;
+    setPreviewFrameId(selectedAnimation.frameIds[0]);
+    setIsPlaying(true);
+  };
+
+  const handleStopAnimation = () => {
+    setIsPlaying(false);
+    setPreviewFrameId(null);
+  };
+
+  const handleRewindAnimation = () => {
+    if (!selectedAnimation || selectedAnimation.frameIds.length === 0) {
+      return;
+    }
+    playbackIndexRef.current = 0;
+    setPreviewFrameId(selectedAnimation.frameIds[0]);
+  };
 
   /** レイヤー上で使うツールは、レイヤー未選択なら先頭レイヤーを選ぶ。 */
   const activateTool = (nextTool: CanvasTool) => {
@@ -676,7 +755,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           {selectedAsset ? (
             <div className={`canvas-editor-frame${dragOver ? ' drag-over' : ''}`}>
               <CanvasEditor
-                asset={selectedAsset}
+                asset={previewAsset ?? selectedAsset}
                 tool={tool}
                 selectedLayerId={selectedLayerId}
                 eraserRadius={eraserSize}
@@ -1056,10 +1135,25 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         aria-label="タイムライン"
       >
         <h2>タイムライン</h2>
-        <button type="button" disabled>
-          フレーム追加
-        </button>
-        <p className="editor-note">フレームとアニメーションは Phase 9 で実装します。</p>
+        {selectedAsset ? (
+          <TimelinePanel
+            asset={selectedAsset}
+            playingFrameId={previewFrameId}
+            isPlaying={isPlaying}
+            selectedAnimationId={selectedAnimationId}
+            onSelectAnimation={handleSelectAnimation}
+            onSelectFrame={handleSelectFrame}
+            onPlay={handlePlayAnimation}
+            onStop={handleStopAnimation}
+            onRewind={handleRewindAnimation}
+            onCommit={commitPanelChange}
+            onLiveChange={applyAssetSnapshot}
+            onBeginFieldEdit={beginLayerEdit}
+            onCommitFieldEdit={commitLayerEdit}
+          />
+        ) : (
+          <p className="editor-note">アセットを選ぶとフレームとアニメーションを編集できます。</p>
+        )}
       </footer>
 
       <section

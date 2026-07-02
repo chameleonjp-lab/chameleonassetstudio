@@ -170,3 +170,115 @@ describe('原点、アンカー、当たり判定（Phase 8）', () => {
     expect(removed.colliders).toHaveLength(baseAsset.colliders.length - 1);
   });
 });
+
+describe('フレームとアニメーション（Phase 9）', () => {
+  it('captureFrame は全レイヤーの状態を取り込む', async () => {
+    const { captureFrame } = await import('./assetOps');
+    const next = captureFrame(baseAsset, 'my_frame');
+    const frame = next.frames!.at(-1)!;
+    expect(frame.name).toBe('my_frame');
+    expect(frame.layerStates).toHaveLength(baseAsset.layers.length);
+    expect(frame.layerStates.map((s) => s.layerId)).toEqual(baseAsset.layers.map((l) => l.id));
+    const bodyState = frame.layerStates.find((s) => s.layerId === 'layer_body')!;
+    expect(bodyState.visible).toBe(true);
+    expect(bodyState.opacity).toBe(1);
+    expect(bodyState.transform).toEqual(
+      baseAsset.layers.find((l) => l.id === 'layer_body')!.transform,
+    );
+    expect(validateAsset(next).valid).toBe(true);
+  });
+
+  it('captureFrame は名前省略時に連番の名前を付け、frames が無いアセットでも動く', async () => {
+    const { captureFrame } = await import('./assetOps');
+    const withoutFrames: Asset = { ...baseAsset, frames: undefined };
+    const next = captureFrame(withoutFrames);
+    expect(next.frames).toHaveLength(1);
+    expect(next.frames![0].name).toBe('frame_1');
+    expect(validateAsset(next).valid).toBe(true);
+  });
+
+  it('renameFrame は対象フレームだけ名前を変える', async () => {
+    const { renameFrame } = await import('./assetOps');
+    const next = renameFrame(baseAsset, 'frame_idle_0', 'idle_a');
+    expect(next.frames!.find((f) => f.id === 'frame_idle_0')?.name).toBe('idle_a');
+    expect(next.frames!.find((f) => f.id === 'frame_idle_1')?.name).toBe('idle_1');
+    expect(validateAsset(next).valid).toBe(true);
+  });
+
+  it('moveFrameOrder で前後に動かせる', async () => {
+    const { moveFrameOrder } = await import('./assetOps');
+    const forward = moveFrameOrder(baseAsset, 'frame_idle_0', 'forward');
+    expect(forward.frames!.map((f) => f.id)).toEqual(['frame_idle_1', 'frame_idle_0']);
+    // 端にある場合は何もしない
+    const noop = moveFrameOrder(forward, 'frame_idle_0', 'forward');
+    expect(noop.frames!.map((f) => f.id)).toEqual(['frame_idle_1', 'frame_idle_0']);
+    const backward = moveFrameOrder(forward, 'frame_idle_0', 'backward');
+    expect(backward.frames!.map((f) => f.id)).toEqual(['frame_idle_0', 'frame_idle_1']);
+    expect(validateAsset(backward).valid).toBe(true);
+  });
+
+  it('duplicateFrame は直後に複製を挿入する', async () => {
+    const { duplicateFrame } = await import('./assetOps');
+    const next = duplicateFrame(baseAsset, 'frame_idle_0');
+    expect(next.frames).toHaveLength(3);
+    expect(next.frames![1].name).toBe('idle_0_copy');
+    expect(next.frames![1].id).not.toBe('frame_idle_0');
+    expect(next.frames![1].layerStates).toEqual(baseAsset.frames![0].layerStates);
+    expect(validateAsset(next).valid).toBe(true);
+  });
+
+  it('removeFrame はアニメーションの frameIds からも除去する', async () => {
+    const { removeFrame } = await import('./assetOps');
+    const next = removeFrame(baseAsset, 'frame_idle_0');
+    expect(next.frames!.some((f) => f.id === 'frame_idle_0')).toBe(false);
+    expect(next.animations[0].frameIds).toEqual(['frame_idle_1']);
+    expect(validateAsset(next).valid).toBe(true);
+  });
+
+  it('addAnimation は既定 fps / loop を持ち、存在しない frameId を除外する', async () => {
+    const { addAnimation } = await import('./assetOps');
+    const next = addAnimation(baseAsset, {
+      name: 'walk',
+      frameIds: ['frame_idle_0', 'frame_missing'],
+    });
+    const animation = next.animations.at(-1)!;
+    expect(animation.name).toBe('walk');
+    expect(animation.fps).toBe(8);
+    expect(animation.loop).toBe(true);
+    expect(animation.frameIds).toEqual(['frame_idle_0']);
+    expect(validateAsset(next).valid).toBe(true);
+  });
+
+  it('updateAnimation は fps を 1〜240 にクランプし、存在しない frameId を除外する', async () => {
+    const { updateAnimation } = await import('./assetOps');
+    const tooHigh = updateAnimation(baseAsset, 'anim_idle', { fps: 999 });
+    expect(tooHigh.animations[0].fps).toBe(240);
+    const tooLow = updateAnimation(baseAsset, 'anim_idle', { fps: -5 });
+    expect(tooLow.animations[0].fps).toBe(1);
+    const filtered = updateAnimation(baseAsset, 'anim_idle', {
+      frameIds: ['frame_idle_0', 'frame_missing'],
+      loop: false,
+    });
+    expect(filtered.animations[0].frameIds).toEqual(['frame_idle_0']);
+    expect(filtered.animations[0].loop).toBe(false);
+    expect(validateAsset(filtered).valid).toBe(true);
+  });
+
+  it('removeAnimation でアニメーションが消える', async () => {
+    const { removeAnimation } = await import('./assetOps');
+    const next = removeAnimation(baseAsset, 'anim_idle');
+    expect(next.animations).toHaveLength(0);
+    expect(validateAsset(next).valid).toBe(true);
+  });
+
+  it('applyFrameToAsset はレイヤーへ transform を適用し、updatedAt を変えない', async () => {
+    const { applyFrameToAsset } = await import('./assetOps');
+    const next = applyFrameToAsset(baseAsset, 'frame_idle_1');
+    const body = next.layers.find((l) => l.id === 'layer_body')!;
+    expect(body.transform.position).toEqual({ x: 0, y: -4 });
+    expect(next.updatedAt).toBe(baseAsset.updatedAt);
+    expect(next.frames).toBe(baseAsset.frames);
+    // 存在しないフレーム id では元のアセットをそのまま返す
+    expect(applyFrameToAsset(baseAsset, 'missing')).toBe(baseAsset);
+  });
+});
