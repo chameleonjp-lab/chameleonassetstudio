@@ -1,0 +1,26 @@
+{
+  "format": "chameleon-export-presets",
+  "version": "0.1.0",
+  "presets": [
+    {
+      "id": "preset_generic",
+      "name": "汎用 ZIP",
+      "target": "generic",
+      "imageFormats": ["png", "webp"],
+      "includeAssetJson": true,
+      "includeSpriteSheet": true,
+      "includeSampleHtml": false,
+      "scale": 1
+    },
+    {
+      "id": "preset_phaser",
+      "name": "Phaser 用",
+      "target": "phaser",
+      "imageFormats": ["png"],
+      "includeAssetJson": true,
+      "includeSpriteSheet": true,
+      "includeSampleHtml": true,
+      "scale": 1
+    }
+  ]
+}

@@ -1,0 +1,225 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://chameleonjp-lab.github.io/chameleonassetstudio/schema/asset.schema.json",
+  "title": "Chameleon Asset",
+  "description": "ゲームに組み込む 1 つの素材（asset.json）。未対応の追加プロパティは検証エラーにせず保持する。",
+  "type": "object",
+  "required": [
+    "format",
+    "version",
+    "id",
+    "assetType",
+    "name",
+    "displayName",
+    "canvasSize",
+    "origin",
+    "textures",
+    "layers",
+    "parts",
+    "anchors",
+    "colliders",
+    "animations",
+    "tags",
+    "gameAttributes",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "format": { "const": "chameleon-asset" },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "id": { "type": "string", "minLength": 1 },
+    "assetType": {
+      "enum": ["character", "item", "background", "tile", "gimmick", "effect"]
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "displayName": { "type": "string" },
+    "canvasSize": { "$ref": "#/definitions/size" },
+    "origin": { "$ref": "#/definitions/vec2" },
+    "textures": { "type": "array", "items": { "$ref": "#/definitions/texture" } },
+    "layers": { "type": "array", "items": { "$ref": "#/definitions/layer" } },
+    "parts": { "type": "array", "items": { "$ref": "#/definitions/part" } },
+    "anchors": { "type": "array", "items": { "$ref": "#/definitions/anchor" } },
+    "colliders": { "type": "array", "items": { "$ref": "#/definitions/collider" } },
+    "frames": { "type": "array", "items": { "$ref": "#/definitions/frame" } },
+    "animations": { "type": "array", "items": { "$ref": "#/definitions/animation" } },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "gameAttributes": { "type": "object" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  },
+  "definitions": {
+    "vec2": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    },
+    "size": {
+      "type": "object",
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "transform": {
+      "type": "object",
+      "required": ["position", "scale", "rotation"],
+      "properties": {
+        "position": { "$ref": "#/definitions/vec2" },
+        "scale": { "$ref": "#/definitions/vec2" },
+        "rotation": { "type": "number" }
+      }
+    },
+    "texture": {
+      "type": "object",
+      "required": ["id", "kind", "name", "mimeType", "size", "path"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["source", "edit", "thumbnail"] },
+        "name": { "type": "string" },
+        "mimeType": { "enum": ["image/png", "image/webp", "image/jpeg"] },
+        "size": { "$ref": "#/definitions/size" },
+        "path": { "type": "string", "minLength": 1 }
+      }
+    },
+    "layer": {
+      "type": "object",
+      "required": ["id", "name", "layerType", "visible", "locked", "opacity", "transform"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "layerType": { "enum": ["image", "shape", "guide"] },
+        "visible": { "type": "boolean" },
+        "locked": { "type": "boolean" },
+        "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "transform": { "$ref": "#/definitions/transform" },
+        "textureId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "part": {
+      "type": "object",
+      "required": ["id", "name", "partType", "layerIds"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "partType": {
+          "enum": [
+            "head",
+            "body",
+            "arm_left",
+            "arm_right",
+            "leg_left",
+            "leg_right",
+            "weapon",
+            "eye",
+            "mouth",
+            "shadow",
+            "accessory",
+            "other"
+          ]
+        },
+        "layerIds": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "anchor": {
+      "type": "object",
+      "required": ["id", "name", "role", "position"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "role": {
+          "enum": [
+            "foot",
+            "center",
+            "head",
+            "hand_left",
+            "hand_right",
+            "weapon",
+            "projectile_spawn",
+            "damage_effect",
+            "shadow_center",
+            "custom"
+          ]
+        },
+        "position": { "$ref": "#/definitions/vec2" }
+      }
+    },
+    "collider": {
+      "type": "object",
+      "required": ["id", "name", "purpose", "shape", "visible"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "purpose": { "enum": ["body", "attack", "pickup", "sensor", "custom"] },
+        "shape": { "enum": ["rect", "circle"] },
+        "visible": { "type": "boolean" },
+        "rect": {
+          "type": "object",
+          "required": ["x", "y", "width", "height"],
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "width": { "type": "number", "exclusiveMinimum": 0 },
+            "height": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        "circle": {
+          "type": "object",
+          "required": ["x", "y", "radius"],
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "radius": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "shape": { "const": "rect" } } },
+          "then": { "required": ["rect"] }
+        },
+        {
+          "if": { "properties": { "shape": { "const": "circle" } } },
+          "then": { "required": ["circle"] }
+        }
+      ]
+    },
+    "frameLayerState": {
+      "type": "object",
+      "required": ["layerId"],
+      "properties": {
+        "layerId": { "type": "string", "minLength": 1 },
+        "visible": { "type": "boolean" },
+        "transform": { "$ref": "#/definitions/transform" },
+        "opacity": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "frame": {
+      "type": "object",
+      "required": ["id", "name", "layerStates"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "layerStates": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/frameLayerState" }
+        }
+      }
+    },
+    "animation": {
+      "type": "object",
+      "required": ["id", "name", "fps", "loop", "frameIds"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "fps": { "type": "number", "exclusiveMinimum": 0, "maximum": 240 },
+        "loop": { "type": "boolean" },
+        "frameIds": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "durationMs": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}

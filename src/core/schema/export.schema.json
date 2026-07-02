@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://chameleonjp-lab.github.io/chameleonassetstudio/schema/export.schema.json",
+  "title": "Chameleon Export Presets",
+  "description": "書き出し設定ファイル（settings/export-presets.json）。",
+  "type": "object",
+  "required": ["format", "version", "presets"],
+  "properties": {
+    "format": { "const": "chameleon-export-presets" },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "presets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "target",
+          "imageFormats",
+          "includeAssetJson",
+          "includeSpriteSheet",
+          "includeSampleHtml",
+          "scale"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "target": { "enum": ["generic", "canvas2d", "pixijs", "phaser"] },
+          "imageFormats": {
+            "type": "array",
+            "items": { "enum": ["png", "webp"] }
+          },
+          "includeAssetJson": { "type": "boolean" },
+          "includeSpriteSheet": { "type": "boolean" },
+          "includeSampleHtml": { "type": "boolean" },
+          "scale": { "type": "number", "exclusiveMinimum": 0 }
+        }
+      }
+    }
+  }
+}

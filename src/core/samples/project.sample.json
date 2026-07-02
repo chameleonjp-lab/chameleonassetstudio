@@ -1,0 +1,16 @@
+{
+  "format": "chameleon-project",
+  "version": "0.1.0",
+  "id": "project_001",
+  "name": "サンプルプロジェクト",
+  "assets": [
+    {
+      "id": "asset_001",
+      "name": "tomato_player",
+      "displayName": "トマトプレイヤー",
+      "assetType": "character"
+    }
+  ],
+  "createdAt": "2026-07-02T00:00:00.000Z",
+  "updatedAt": "2026-07-02T00:00:00.000Z"
+}
