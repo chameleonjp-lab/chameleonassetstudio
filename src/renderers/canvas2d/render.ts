@@ -142,3 +142,116 @@ export function renderScene(ctx: CanvasRenderingContext2D, options: RenderSceneO
     }
   }
 }
+
+// ---- ゲーム用情報のオーバーレイ（Phase 8） ----
+
+import type { Anchor, Collider, Vec2 } from '../../core/model';
+
+const ORIGIN_COLOR = '#1f9d3a';
+const ANCHOR_COLOR = '#ff8800';
+
+/** 判定用途ごとの表示色。色だけに頼らないよう用途名も併記する。 */
+export const COLLIDER_COLORS: Record<string, string> = {
+  body: '#e63946',
+  attack: '#ff9f1c',
+  pickup: '#2ec4b6',
+  sensor: '#8338ec',
+  custom: '#6c757d',
+};
+
+export interface GameOverlayOptions {
+  view: ViewTransform;
+  origin: Vec2;
+  anchors: Anchor[];
+  colliders: Collider[];
+  /** 判定の一括表示（要件 11.6「判定だけを表示・非表示にできる」）。 */
+  showColliders: boolean;
+}
+
+function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: number): void {
+  ctx.font = '10px sans-serif';
+  const metrics = ctx.measureText(text);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+  ctx.fillRect(x - 1, y - 9, metrics.width + 2, 11);
+  ctx.fillStyle = '#222222';
+  ctx.fillText(text, x, y);
+}
+
+/** 原点・アンカー・当たり判定を screen 座標で描く。ズームに依存しない見た目にする。 */
+export function drawGameOverlays(ctx: CanvasRenderingContext2D, options: GameOverlayOptions): void {
+  const { view, origin, anchors, colliders, showColliders } = options;
+
+  if (showColliders) {
+    for (const collider of colliders) {
+      if (!collider.visible) {
+        continue;
+      }
+      const color = COLLIDER_COLORS[collider.purpose] ?? COLLIDER_COLORS.custom;
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = `${color}26`; // 15% 程度の透明塗り
+      ctx.lineWidth = 1.5;
+      if (collider.shape === 'rect') {
+        const topLeft = worldToScreen(view, { x: collider.rect.x, y: collider.rect.y });
+        const width = collider.rect.width * view.scale;
+        const height = collider.rect.height * view.scale;
+        ctx.fillRect(topLeft.x, topLeft.y, width, height);
+        ctx.strokeRect(topLeft.x, topLeft.y, width, height);
+        drawLabel(ctx, collider.purpose, topLeft.x + 2, topLeft.y + 11);
+      } else {
+        const center = worldToScreen(view, { x: collider.circle.x, y: collider.circle.y });
+        const radius = collider.circle.radius * view.scale;
+        ctx.beginPath();
+        ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        drawLabel(ctx, collider.purpose, center.x - radius + 2, center.y - radius + 11);
+      }
+      ctx.restore();
+    }
+  }
+
+  // アンカー（ひし形マーカー + 名前）
+  for (const anchor of anchors) {
+    const point = worldToScreen(view, anchor.position);
+    ctx.save();
+    ctx.fillStyle = ANCHOR_COLOR;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(point.x, point.y - 6);
+    ctx.lineTo(point.x + 6, point.y);
+    ctx.lineTo(point.x, point.y + 6);
+    ctx.lineTo(point.x - 6, point.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    drawLabel(ctx, anchor.name, point.x + 8, point.y + 4);
+    ctx.restore();
+  }
+
+  // 原点（十字 + 円のガイド。接地感の基準として常に見えるようにする）
+  const originScreen = worldToScreen(view, origin);
+  ctx.save();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(originScreen.x - 10, originScreen.y);
+  ctx.lineTo(originScreen.x + 10, originScreen.y);
+  ctx.moveTo(originScreen.x, originScreen.y - 10);
+  ctx.lineTo(originScreen.x, originScreen.y + 10);
+  ctx.stroke();
+  ctx.strokeStyle = ORIGIN_COLOR;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(originScreen.x - 10, originScreen.y);
+  ctx.lineTo(originScreen.x + 10, originScreen.y);
+  ctx.moveTo(originScreen.x, originScreen.y - 10);
+  ctx.lineTo(originScreen.x, originScreen.y + 10);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(originScreen.x, originScreen.y, 5, 0, Math.PI * 2);
+  ctx.stroke();
+  drawLabel(ctx, '原点', originScreen.x + 8, originScreen.y - 8);
+  ctx.restore();
+}

@@ -95,3 +95,78 @@ describe('パーツ操作', () => {
     expect(next.layers).toHaveLength(baseAsset.layers.length);
   });
 });
+
+describe('原点、アンカー、当たり判定（Phase 8）', () => {
+  it('setOrigin と resetOriginToBottomCenter が働く', async () => {
+    const { setOrigin, resetOriginToBottomCenter } = await import('./assetOps');
+    const moved = setOrigin(baseAsset, { x: 10, y: 20 });
+    expect(moved.origin).toEqual({ x: 10, y: 20 });
+    const reset = resetOriginToBottomCenter(moved);
+    expect(reset.origin).toEqual({ x: 256, y: 512 });
+    expect(validateAsset(reset).valid).toBe(true);
+  });
+
+  it('アンカーを追加・更新・削除できる', async () => {
+    const { addAnchor, updateAnchor, removeAnchor } = await import('./assetOps');
+    const added = addAnchor(baseAsset, { role: 'weapon', position: { x: 5, y: 6 } });
+    const anchor = added.anchors.at(-1)!;
+    expect(anchor.role).toBe('weapon');
+    expect(anchor.name).toBe('weapon');
+    expect(anchor.position).toEqual({ x: 5, y: 6 });
+    expect(validateAsset(added).valid).toBe(true);
+
+    const updated = updateAnchor(added, anchor.id, {
+      name: '剣先',
+      role: 'projectile_spawn',
+      position: { x: 7, y: 8 },
+    });
+    const after = updated.anchors.find((a) => a.id === anchor.id)!;
+    expect(after.name).toBe('剣先');
+    expect(after.role).toBe('projectile_spawn');
+    expect(validateAsset(updated).valid).toBe(true);
+
+    const removed = removeAnchor(updated, anchor.id);
+    expect(removed.anchors.some((a) => a.id === anchor.id)).toBe(false);
+  });
+
+  it('矩形と円の当たり判定を追加でき、schema 検証を通る', async () => {
+    const { addRectCollider, addCircleCollider } = await import('./assetOps');
+    const withRect = addRectCollider(baseAsset, 'attack');
+    const rect = withRect.colliders.at(-1)!;
+    expect(rect.shape).toBe('rect');
+    expect(rect.purpose).toBe('attack');
+    expect(validateAsset(withRect).valid).toBe(true);
+
+    const withCircle = addCircleCollider(withRect, 'sensor');
+    const circle = withCircle.colliders.at(-1)!;
+    expect(circle.shape).toBe('circle');
+    if (circle.shape === 'circle') {
+      expect(circle.circle.radius).toBeGreaterThan(0);
+    }
+    expect(validateAsset(withCircle).valid).toBe(true);
+  });
+
+  it('updateCollider は形状に応じたフィールドを更新し、表示も切り替えられる', async () => {
+    const { updateCollider } = await import('./assetOps');
+    const updated = updateCollider(baseAsset, 'col_body', {
+      purpose: 'sensor',
+      visible: false,
+      rect: { width: 10 },
+    });
+    const collider = updated.colliders.find((c) => c.id === 'col_body')!;
+    expect(collider.purpose).toBe('sensor');
+    expect(collider.visible).toBe(false);
+    if (collider.shape === 'rect') {
+      expect(collider.rect.width).toBe(10);
+      expect(collider.rect.x).toBe(192); // 他のフィールドは維持
+    }
+    expect(validateAsset(updated).valid).toBe(true);
+  });
+
+  it('removeCollider で判定が消える', async () => {
+    const { removeCollider } = await import('./assetOps');
+    const removed = removeCollider(baseAsset, 'col_body');
+    expect(removed.colliders.some((c) => c.id === 'col_body')).toBe(false);
+    expect(removed.colliders).toHaveLength(baseAsset.colliders.length - 1);
+  });
+});

@@ -3,7 +3,7 @@ import { blobKeyFor } from '../../core/images/importImage';
 import type { Rect } from '../../core/images/operations';
 import type { Asset, Layer, Size, Vec2 } from '../../core/model';
 import { loadBlob } from '../../core/storage';
-import { renderScene, type RenderLayer } from '../../renderers/canvas2d/render';
+import { drawGameOverlays, renderScene, type RenderLayer } from '../../renderers/canvas2d/render';
 import {
   ZOOM_PRESETS,
   clampZoom,
@@ -12,6 +12,7 @@ import {
   layerLocalPoint,
   panBy,
   screenToWorld,
+  worldToScreen,
   zoomAt,
   type ViewTransform,
   type Viewport,
@@ -34,14 +35,19 @@ interface CanvasEditorProps {
   onCropCommit: (layerId: string, rect: Rect) => void;
   /** 消しゴムストロークの確定。points はテクスチャ座標。 */
   onEraseCommit: (layerId: string, points: Vec2[]) => void;
+  /** 当たり判定オーバーレイの一括表示。 */
+  showColliders: boolean;
+  /** アンカーツールで空き場所をクリックしたときの追加。point は world 座標。 */
+  onAddAnchor: (point: Vec2) => void;
 }
 
 interface DragState {
-  mode: 'move' | 'pan' | 'pinch' | 'crop' | 'erase';
+  mode: 'move' | 'pan' | 'pinch' | 'crop' | 'erase' | 'origin' | 'anchor-move';
   pointerId: number;
   startScreen: Vec2;
   startView: ViewTransform;
   layerId?: string;
+  anchorId?: string;
   before?: Asset;
   secondPointerId?: number;
   startDistance?: number;
@@ -86,6 +92,8 @@ export function CanvasEditor({
   onPickColor,
   onCropCommit,
   onEraseCommit,
+  showColliders,
+  onAddAnchor,
 }: CanvasEditorProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -212,6 +220,15 @@ export function CanvasEditor({
       selectedLayerId,
     });
 
+    // ゲーム用情報（原点・アンカー・当たり判定）のオーバーレイ
+    drawGameOverlays(ctx, {
+      view,
+      origin: displayAsset.origin,
+      anchors: displayAsset.anchors,
+      colliders: displayAsset.colliders,
+      showColliders,
+    });
+
     // ツールのオーバーレイ
     if (cropRectScreen) {
       const x = Math.min(cropRectScreen.start.x, cropRectScreen.end.x);
@@ -248,6 +265,7 @@ export function CanvasEditor({
     eraserStrokeScreen,
     eraserRadius,
     selectedLayer,
+    showColliders,
   ]);
 
   // ホイールズーム（passive: false で登録する必要がある）
@@ -315,6 +333,44 @@ export function CanvasEditor({
         startScreen: point,
         startView: view,
       };
+      return;
+    }
+
+    if (tool === 'origin') {
+      const world = screenToWorld(view, point);
+      dragRef.current = {
+        mode: 'origin',
+        pointerId: event.pointerId,
+        startScreen: point,
+        startView: view,
+        before: asset,
+      };
+      setDraftAsset({
+        ...asset,
+        updatedAt: new Date().toISOString(),
+        origin: { x: Math.round(world.x), y: Math.round(world.y) },
+      });
+      return;
+    }
+
+    if (tool === 'anchor') {
+      // 既存アンカーの近く（10px 以内）ならドラッグ移動、そうでなければ追加
+      const near = asset.anchors.find((anchor) => {
+        const screen = worldToScreen(view, anchor.position);
+        return Math.hypot(screen.x - point.x, screen.y - point.y) <= 10;
+      });
+      if (near) {
+        dragRef.current = {
+          mode: 'anchor-move',
+          pointerId: event.pointerId,
+          startScreen: point,
+          startView: view,
+          before: asset,
+          anchorId: near.id,
+        };
+      } else {
+        onAddAnchor(screenToWorld(view, point));
+      }
       return;
     }
 
@@ -443,6 +499,30 @@ export function CanvasEditor({
       return;
     }
 
+    if (drag.mode === 'origin' && drag.before) {
+      const world = screenToWorld(view, point);
+      setDraftAsset({
+        ...drag.before,
+        updatedAt: new Date().toISOString(),
+        origin: { x: Math.round(world.x), y: Math.round(world.y) },
+      });
+      return;
+    }
+
+    if (drag.mode === 'anchor-move' && drag.before && drag.anchorId) {
+      const world = screenToWorld(view, point);
+      setDraftAsset({
+        ...drag.before,
+        updatedAt: new Date().toISOString(),
+        anchors: drag.before.anchors.map((anchor) =>
+          anchor.id === drag.anchorId
+            ? { ...anchor, position: { x: Math.round(world.x), y: Math.round(world.y) } }
+            : anchor,
+        ),
+      });
+      return;
+    }
+
     if (drag.mode === 'move' && drag.layerId && drag.before) {
       const worldDeltaX = deltaX / drag.startView.scale;
       const worldDeltaY = deltaY / drag.startView.scale;
@@ -491,6 +571,27 @@ export function CanvasEditor({
       if (points.length > 0) {
         onEraseCommit(drag.layerId, points);
       }
+      return;
+    }
+
+    if (drag.mode === 'origin' && drag.before && draftAsset) {
+      if (
+        draftAsset.origin.x !== drag.before.origin.x ||
+        draftAsset.origin.y !== drag.before.origin.y
+      ) {
+        onCommitAsset('原点変更', drag.before, draftAsset);
+      }
+      setDraftAsset(null);
+      dragRef.current = null;
+      return;
+    }
+
+    if (drag.mode === 'anchor-move' && drag.before && draftAsset) {
+      if (JSON.stringify(draftAsset.anchors) !== JSON.stringify(drag.before.anchors)) {
+        onCommitAsset('アンカー移動', drag.before, draftAsset);
+      }
+      setDraftAsset(null);
+      dragRef.current = null;
       return;
     }
 
