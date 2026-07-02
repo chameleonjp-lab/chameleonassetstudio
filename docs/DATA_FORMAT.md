@@ -148,6 +148,8 @@ project.casproj
 | transform        | LayerTransform                | position / scale / rotation        |
 | textureId        | string（任意）                | image レイヤーが参照するテクスチャ |
 
+LayerTransform の意味は次の通りとする。`position` はテクスチャ左上のアセット座標（キャンバス座標系）。`scale` と `rotation` はテクスチャ中心を基準に適用する。描画・当たり判定・書き出しはこの解釈で統一する（実装: `src/renderers/canvas2d/view.ts`）。
+
 ### 6.3 Part
 
 `partType` は `head` / `body` / `arm_left` / `arm_right` / `leg_left` / `leg_right` / `weapon` / `eye` / `mouth` / `shadow` / `accessory` / `other`。`layerIds` で複数レイヤーをまとめる。
