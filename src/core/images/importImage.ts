@@ -1,4 +1,4 @@
-import { createImageAsset, type Asset } from '../model';
+import { createImageAsset, generateId, type Asset, type Layer, type TextureRef } from '../model';
 import { formatBytes } from '../storage/storageUsage';
 
 /** 1 枚あたりの最大ファイルサイズ（要件 11.2）。 */
@@ -244,6 +244,80 @@ export async function importImageFile(file: File): Promise<ImportImageResult> {
         { key: blobKeyFor(asset.id, thumbTexture.path), blob: thumbBlob },
       ],
       editBlob,
+    };
+  } finally {
+    decoded.close();
+  }
+}
+
+export interface ImportLayerResult {
+  /** アセットへ追加するテクスチャ（source と edit）。 */
+  textures: TextureRef[];
+  /** アセットの最前面へ追加するレイヤー。 */
+  layer: Layer;
+  /** 保存すべき Blob 一式。 */
+  blobs: Array<{ key: string; blob: Blob }>;
+}
+
+/**
+ * 画像ファイル 1 枚を、既存アセットへ追加する画像レイヤーとして取り込む（Phase 7）。
+ * 元画像はそのまま保持し、編集用画像は PNG に正規化する。
+ */
+export async function importImageAsLayer(file: File, asset: Asset): Promise<ImportLayerResult> {
+  const fileError = checkImportFile(file);
+  if (fileError) {
+    throw new ImageImportError(fileError);
+  }
+  const mimeType = file.type as SupportedImportMimeType;
+  const extension = extensionForMimeType(mimeType);
+
+  const decoded = await decodeImage(file);
+  try {
+    const dimensionError = checkImageDimensions(decoded.width, decoded.height);
+    if (dimensionError) {
+      throw new ImageImportError(dimensionError);
+    }
+
+    const editTarget = createDrawTarget(decoded.width, decoded.height);
+    editTarget.context.drawImage(decoded.source, 0, 0);
+    const editBlob = await encodeWithFallback(editTarget, ['image/png']);
+
+    const name = assetNameFromFileName(file.name);
+    const layerId = generateId('layer');
+    const size = { width: decoded.width, height: decoded.height };
+    const sourceTexture: TextureRef = {
+      id: generateId('tex'),
+      kind: 'source',
+      name: `${name}_original`,
+      mimeType,
+      size,
+      path: `source/${layerId}.${extension}`,
+    };
+    const editTexture: TextureRef = {
+      id: generateId('tex'),
+      kind: 'edit',
+      name,
+      mimeType: 'image/png',
+      size,
+      path: `textures/${layerId}.png`,
+    };
+    const layer: Layer = {
+      id: layerId,
+      name,
+      layerType: 'image',
+      visible: true,
+      locked: false,
+      opacity: 1,
+      transform: { position: { x: 0, y: 0 }, scale: { x: 1, y: 1 }, rotation: 0 },
+      textureId: editTexture.id,
+    };
+    return {
+      textures: [sourceTexture, editTexture],
+      layer,
+      blobs: [
+        { key: blobKeyFor(asset.id, sourceTexture.path), blob: file },
+        { key: blobKeyFor(asset.id, editTexture.path), blob: editBlob },
+      ],
     };
   } finally {
     decoded.close();

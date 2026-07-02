@@ -1,4 +1,5 @@
 export * from './anchor';
+export * from './assetOps';
 export * from './animation';
 export * from './asset';
 export * from './collider';

@@ -1,3 +1,5 @@
+import type { Vec2 } from './common';
+
 export const PART_TYPES = [
   'head',
   'body',
@@ -21,4 +23,6 @@ export interface Part {
   name: string;
   partType: PartType;
   layerIds: string[];
+  /** パーツの基準点（キャンバス座標）。回転や取り付けの基準に使う。 */
+  pivot?: Vec2;
 }

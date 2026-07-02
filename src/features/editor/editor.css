@@ -184,6 +184,138 @@
   gap: 0.4rem;
 }
 
+.layer-panel,
+.part-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.layer-list,
+.part-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.layer-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  border: 1px solid #8884;
+  border-radius: 6px;
+  padding: 0.3rem 0.4rem;
+}
+
+.layer-row.selected {
+  border-color: #3a86ff;
+}
+
+.layer-row-name {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.15rem 0.4rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.layer-row-name[aria-pressed='true'] {
+  font-weight: 700;
+}
+
+.layer-row-type {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.layer-row-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.layer-row-actions button {
+  font: inherit;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.35rem;
+}
+
+.layer-row-actions button[aria-pressed='false'] {
+  opacity: 0.6;
+}
+
+.layer-add-buttons {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.layer-add-buttons button {
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.7rem;
+}
+
+.part-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  border: 1px solid #8884;
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
+}
+
+.part-row-header {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+}
+
+.part-row-header .editor-field {
+  flex: 1;
+}
+
+.part-row-header button,
+.part-create button {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.6rem;
+}
+
+.part-pivot-fields {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.part-pivot-fields .editor-field {
+  flex: 1;
+}
+
+.part-row-meta {
+  margin: 0;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.part-create {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  border-top: 1px dashed #8885;
+  padding-top: 0.5rem;
+}
+
+.editor-field select {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.4rem;
+}
+
 .image-edit-fields {
   display: flex;
   flex-direction: column;
