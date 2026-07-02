@@ -310,6 +310,86 @@
   padding-top: 0.5rem;
 }
 
+.gamedata-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.gamedata-heading {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+}
+
+.gamedata-inline-fields {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.gamedata-inline-fields .editor-field {
+  flex: 1;
+  min-width: 4.5rem;
+}
+
+.gamedata-buttons {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.gamedata-buttons button,
+.gamedata-panel > button {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.6rem;
+  align-self: flex-start;
+}
+
+.gamedata-buttons button[aria-pressed='false'] {
+  opacity: 0.6;
+}
+
+.gamedata-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.gamedata-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  border: 1px solid #8884;
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
+}
+
+.gamedata-row-header {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+}
+
+.gamedata-row-header .editor-field {
+  flex: 1;
+}
+
+.gamedata-row-header button {
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.gamedata-shape {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.2rem 0.4rem;
+}
+
 .editor-field select {
   font: inherit;
   font-size: 0.85rem;

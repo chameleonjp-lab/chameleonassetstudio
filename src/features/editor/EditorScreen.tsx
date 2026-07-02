@@ -21,7 +21,15 @@ import {
   pixelBufferToBlob,
   runImageOperation,
 } from '../../core/images/runOperation';
-import { addGuideLayer, renameLayer, type Asset, type Project, type Vec2 } from '../../core/model';
+import {
+  addAnchor,
+  addGuideLayer,
+  renameLayer,
+  type AnchorRole,
+  type Asset,
+  type Project,
+  type Vec2,
+} from '../../core/model';
 import {
   AutosaveQueue,
   listProjectAssets,
@@ -35,6 +43,7 @@ import {
 import { layerWorldPoint } from '../../renderers/canvas2d/view';
 import { CanvasEditor } from './CanvasEditor';
 import { LAYER_TOOLS, type CanvasTool } from './canvasTools';
+import { GameDataPanel } from './GameDataPanel';
 import { LayerPanel } from './LayerPanel';
 import { PartPanel } from './PartPanel';
 import './editor.css';
@@ -95,6 +104,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [checkedLayerIds, setCheckedLayerIds] = useState<string[]>([]);
+  const [showColliders, setShowColliders] = useState(true);
+  const [newAnchorRole, setNewAnchorRole] = useState<AnchorRole>('foot');
   const [tool, setTool] = useState<CanvasTool>('select');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editorError, setEditorError] = useState<string | null>(null);
@@ -526,6 +537,20 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     commitPanelChange('ガイドレイヤー追加', addGuideLayer(selectedAsset));
   };
 
+  /** アンカーツールでキャンバスをクリックしたときの追加。 */
+  const handleAddAnchor = (worldPoint: Vec2) => {
+    if (!selectedAsset) {
+      return;
+    }
+    commitPanelChange(
+      'アンカー追加',
+      addAnchor(selectedAsset, {
+        role: newAnchorRole,
+        position: { x: Math.round(worldPoint.x), y: Math.round(worldPoint.y) },
+      }),
+    );
+  };
+
   const handleToggleChecked = (layerId: string) => {
     setCheckedLayerIds((prev) =>
       prev.includes(layerId) ? prev.filter((id) => id !== layerId) : [...prev, layerId],
@@ -563,6 +588,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     { tool: 'eraser', label: '消しゴム' },
     { tool: 'bgpick', label: '背景透過' },
     { tool: 'picker', label: 'スポイト' },
+    { tool: 'origin', label: '原点' },
+    { tool: 'anchor', label: 'アンカー' },
   ];
 
   const statusMessages = (
@@ -658,6 +685,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 onPickColor={(layerId, point) => void handlePickColor(layerId, point)}
                 onCropCommit={handleCropCommit}
                 onEraseCommit={handleEraseCommit}
+                showColliders={showColliders}
+                onAddAnchor={handleAddAnchor}
               />
               {statusMessages}
             </div>
@@ -948,6 +977,25 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 </fieldset>
               </div>
             </>
+          )}
+
+          <h3 className="editor-subheading">ゲーム情報</h3>
+          {selectedAsset ? (
+            <GameDataPanel
+              asset={selectedAsset}
+              showColliders={showColliders}
+              newAnchorRole={newAnchorRole}
+              onNewAnchorRoleChange={setNewAnchorRole}
+              onToggleShowColliders={() => setShowColliders((v) => !v)}
+              onCommit={commitPanelChange}
+              onLiveChange={applyAssetSnapshot}
+              onBeginFieldEdit={beginLayerEdit}
+              onCommitFieldEdit={commitLayerEdit}
+            />
+          ) : (
+            <p className="editor-note">
+              アセットを選ぶと原点・アンカー・当たり判定を設定できます。
+            </p>
           )}
 
           <h3 className="editor-subheading">パーツ</h3>

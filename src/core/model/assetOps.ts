@@ -116,3 +116,126 @@ export function updatePart(
 export function removePart(asset: Asset, partId: string): Asset {
   return touch({ ...asset, parts: asset.parts.filter((part) => part.id !== partId) });
 }
+
+// ---- 原点、アンカー、当たり判定（Phase 8） ----
+
+import type { Anchor, AnchorRole } from './anchor';
+import type { Collider, ColliderCircle, ColliderPurpose, ColliderRect } from './collider';
+
+/** 原点を設定する（キャンバス座標）。 */
+export function setOrigin(asset: Asset, origin: Vec2): Asset {
+  return touch({ ...asset, origin: { x: origin.x, y: origin.y } });
+}
+
+/** キャラクターの基本位置（下中央）へ原点を戻す（要件 11.6）。 */
+export function resetOriginToBottomCenter(asset: Asset): Asset {
+  return setOrigin(asset, {
+    x: Math.round(asset.canvasSize.width / 2),
+    y: asset.canvasSize.height,
+  });
+}
+
+export interface AddAnchorOptions {
+  role: AnchorRole;
+  position: Vec2;
+  name?: string;
+}
+
+export function addAnchor(asset: Asset, options: AddAnchorOptions): Asset {
+  const anchor: Anchor = {
+    id: generateId('anchor'),
+    name: options.name ?? options.role,
+    role: options.role,
+    position: { x: options.position.x, y: options.position.y },
+  };
+  return touch({ ...asset, anchors: [...asset.anchors, anchor] });
+}
+
+export function updateAnchor(
+  asset: Asset,
+  anchorId: string,
+  patch: Partial<Pick<Anchor, 'name' | 'role' | 'position'>>,
+): Asset {
+  return touch({
+    ...asset,
+    anchors: asset.anchors.map((anchor) =>
+      anchor.id === anchorId ? { ...anchor, ...patch } : anchor,
+    ),
+  });
+}
+
+export function removeAnchor(asset: Asset, anchorId: string): Asset {
+  return touch({ ...asset, anchors: asset.anchors.filter((anchor) => anchor.id !== anchorId) });
+}
+
+/** キャンバス中央に既定サイズの矩形当たり判定を追加する。 */
+export function addRectCollider(asset: Asset, purpose: ColliderPurpose = 'body'): Asset {
+  const { width, height } = asset.canvasSize;
+  const collider: Collider = {
+    id: generateId('col'),
+    name: purpose,
+    purpose,
+    shape: 'rect',
+    visible: true,
+    rect: {
+      x: Math.round(width / 4),
+      y: Math.round(height / 4),
+      width: Math.round(width / 2),
+      height: Math.round(height / 2),
+    },
+  };
+  return touch({ ...asset, colliders: [...asset.colliders, collider] });
+}
+
+/** キャンバス中央に既定サイズの円当たり判定を追加する。 */
+export function addCircleCollider(asset: Asset, purpose: ColliderPurpose = 'body'): Asset {
+  const { width, height } = asset.canvasSize;
+  const collider: Collider = {
+    id: generateId('col'),
+    name: purpose,
+    purpose,
+    shape: 'circle',
+    visible: true,
+    circle: {
+      x: Math.round(width / 2),
+      y: Math.round(height / 2),
+      radius: Math.max(1, Math.round(Math.min(width, height) / 4)),
+    },
+  };
+  return touch({ ...asset, colliders: [...asset.colliders, collider] });
+}
+
+export interface ColliderPatch {
+  name?: string;
+  purpose?: ColliderPurpose;
+  visible?: boolean;
+  rect?: Partial<ColliderRect>;
+  circle?: Partial<ColliderCircle>;
+}
+
+export function updateCollider(asset: Asset, colliderId: string, patch: ColliderPatch): Asset {
+  return touch({
+    ...asset,
+    colliders: asset.colliders.map((collider) => {
+      if (collider.id !== colliderId) {
+        return collider;
+      }
+      const base = {
+        name: patch.name ?? collider.name,
+        purpose: patch.purpose ?? collider.purpose,
+        visible: patch.visible ?? collider.visible,
+      };
+      if (collider.shape === 'rect') {
+        return { ...collider, ...base, rect: { ...collider.rect, ...patch.rect } };
+      }
+      return { ...collider, ...base, circle: { ...collider.circle, ...patch.circle } };
+    }),
+  });
+}
+
+export function removeCollider(asset: Asset, colliderId: string): Asset {
+  return touch({
+    ...asset,
+    colliders: asset.colliders.filter((collider) => collider.id !== colliderId),
+  });
+}
