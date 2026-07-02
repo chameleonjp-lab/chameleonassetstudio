@@ -44,6 +44,7 @@ import {
 import { layerWorldPoint } from '../../renderers/canvas2d/view';
 import { CanvasEditor } from './CanvasEditor';
 import { LAYER_TOOLS, type CanvasTool } from './canvasTools';
+import { ExportPanel } from './ExportPanel';
 import { GameDataPanel } from './GameDataPanel';
 import { LayerPanel } from './LayerPanel';
 import { PartPanel } from './PartPanel';
@@ -1161,7 +1162,11 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         aria-label="書き出し"
       >
         <h2>書き出し</h2>
-        <p className="editor-note">書き出しは Phase 10 で実装します。</p>
+        {selectedAsset ? (
+          <ExportPanel asset={selectedAsset} />
+        ) : (
+          <p className="editor-note">アセットを選ぶと書き出せます。</p>
+        )}
       </section>
 
       <nav className="editor-mobile-nav" aria-label="画面切り替え">

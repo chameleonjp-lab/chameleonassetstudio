@@ -675,6 +675,24 @@
   gap: 0.5rem;
 }
 
+.export-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.export-buttons {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.export-buttons button {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.6rem;
+}
+
 .editor-mobile-nav {
   display: none;
 }
@@ -689,6 +707,13 @@
 @media (min-width: 768px) {
   .editor-side.collapsed {
     display: none;
+  }
+
+  /* デスクトップ / iPad ではタイムラインの下に書き出しパネルを常時表示する */
+  .editor-export {
+    display: flex;
+    border-top: 1px solid #8884;
+    padding: 0.5rem 0.75rem;
   }
 }
 

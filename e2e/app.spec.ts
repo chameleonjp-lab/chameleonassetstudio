@@ -87,7 +87,7 @@ test('スマホ幅で横スクロールが出ない', async ({ page }) => {
     page.getByRole('complementary', { name: 'プロパティ' }).getByLabel('プロジェクト名'),
   ).toBeVisible();
   await mobileNav.getByRole('button', { name: '書き出し' }).click();
-  await expect(page.getByText('書き出しは Phase 10 で実装します。')).toBeVisible();
+  await expect(page.getByText('アセットを選ぶと書き出せます。')).toBeVisible();
 });
 
 test('iPad 幅でキャンバス領域が確保される', async ({ page }) => {
