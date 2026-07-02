@@ -2,6 +2,7 @@
  * レイヤーとパーツの操作（Phase 7）。
  * すべて元のアセットを変更せず、新しいアセットを返す純関数として実装する。
  */
+import type { Animation, Frame } from './animation';
 import type { Asset } from './asset';
 import type { Vec2 } from './common';
 import { generateId } from './factories';
@@ -238,4 +239,177 @@ export function removeCollider(asset: Asset, colliderId: string): Asset {
     ...asset,
     colliders: asset.colliders.filter((collider) => collider.id !== colliderId),
   });
+}
+
+// ---- フレームとアニメーション（Phase 9） ----
+
+/** 現在のレイヤー状態をフレームとして取り込む。 */
+export function captureFrame(asset: Asset, name?: string): Asset {
+  const frames = asset.frames ?? [];
+  const frame: Frame = {
+    id: generateId('frame'),
+    name: name ?? `frame_${frames.length + 1}`,
+    layerStates: asset.layers.map((layer) => ({
+      layerId: layer.id,
+      visible: layer.visible,
+      transform: {
+        position: { ...layer.transform.position },
+        scale: { ...layer.transform.scale },
+        rotation: layer.transform.rotation,
+      },
+      opacity: layer.opacity,
+    })),
+  };
+  return touch({ ...asset, frames: [...frames, frame] });
+}
+
+export function renameFrame(asset: Asset, frameId: string, name: string): Asset {
+  return touch({
+    ...asset,
+    frames: (asset.frames ?? []).map((frame) =>
+      frame.id === frameId ? { ...frame, name } : frame,
+    ),
+  });
+}
+
+/**
+ * フレームの並び順を 1 段動かす。moveLayerOrder と同様に、配列の並び＝再生順とする。
+ */
+export function moveFrameOrder(
+  asset: Asset,
+  frameId: string,
+  direction: 'forward' | 'backward',
+): Asset {
+  const frames = asset.frames ?? [];
+  const index = frames.findIndex((frame) => frame.id === frameId);
+  if (index < 0) {
+    return asset;
+  }
+  const target = direction === 'forward' ? index + 1 : index - 1;
+  if (target < 0 || target >= frames.length) {
+    return asset;
+  }
+  const next = [...frames];
+  const [frame] = next.splice(index, 1);
+  next.splice(target, 0, frame);
+  return touch({ ...asset, frames: next });
+}
+
+/** フレームを複製して直後に挿入する。 */
+export function duplicateFrame(asset: Asset, frameId: string): Asset {
+  const frames = asset.frames ?? [];
+  const index = frames.findIndex((frame) => frame.id === frameId);
+  if (index < 0) {
+    return asset;
+  }
+  const source = frames[index];
+  const copy: Frame = {
+    id: generateId('frame'),
+    name: `${source.name}_copy`,
+    layerStates: source.layerStates.map((state) => ({
+      ...state,
+      transform: state.transform
+        ? {
+            position: { ...state.transform.position },
+            scale: { ...state.transform.scale },
+            rotation: state.transform.rotation,
+          }
+        : undefined,
+    })),
+  };
+  const next = [...frames];
+  next.splice(index + 1, 0, copy);
+  return touch({ ...asset, frames: next });
+}
+
+/** フレームを削除する。アニメーションの frameIds からも除去する。 */
+export function removeFrame(asset: Asset, frameId: string): Asset {
+  return touch({
+    ...asset,
+    frames: (asset.frames ?? []).filter((frame) => frame.id !== frameId),
+    animations: asset.animations.map((animation) =>
+      animation.frameIds.includes(frameId)
+        ? { ...animation, frameIds: animation.frameIds.filter((id) => id !== frameId) }
+        : animation,
+    ),
+  });
+}
+
+export interface AddAnimationOptions {
+  name: string;
+  fps?: number;
+  loop?: boolean;
+  frameIds?: string[];
+}
+
+/** アニメーションを追加する。存在しないフレーム id は除外する。 */
+export function addAnimation(asset: Asset, options: AddAnimationOptions): Asset {
+  const frames = asset.frames ?? [];
+  const frameIds = (options.frameIds ?? []).filter((id) => frames.some((frame) => frame.id === id));
+  const animation: Animation = {
+    id: generateId('anim'),
+    name: options.name,
+    fps: options.fps ?? 8,
+    loop: options.loop ?? true,
+    frameIds,
+  };
+  return touch({ ...asset, animations: [...asset.animations, animation] });
+}
+
+export function updateAnimation(
+  asset: Asset,
+  animationId: string,
+  patch: Partial<Pick<Animation, 'name' | 'fps' | 'loop' | 'frameIds'>>,
+): Asset {
+  const frames = asset.frames ?? [];
+  return touch({
+    ...asset,
+    animations: asset.animations.map((animation) => {
+      if (animation.id !== animationId) {
+        return animation;
+      }
+      const next = { ...animation, ...patch };
+      if (patch.fps !== undefined) {
+        next.fps = Math.min(240, Math.max(1, patch.fps));
+      }
+      if (patch.frameIds !== undefined) {
+        next.frameIds = patch.frameIds.filter((id) => frames.some((frame) => frame.id === id));
+      }
+      return next;
+    }),
+  });
+}
+
+export function removeAnimation(asset: Asset, animationId: string): Asset {
+  return touch({
+    ...asset,
+    animations: asset.animations.filter((animation) => animation.id !== animationId),
+  });
+}
+
+/**
+ * フレームの layerStates をレイヤーへ適用したアセットを返す（プレビュー用）。
+ * frames や updatedAt は変更しない。layerStates に無いレイヤーはそのまま残す。
+ */
+export function applyFrameToAsset(asset: Asset, frameId: string): Asset {
+  const frame = (asset.frames ?? []).find((f) => f.id === frameId);
+  if (!frame) {
+    return asset;
+  }
+  const stateByLayerId = new Map(frame.layerStates.map((state) => [state.layerId, state]));
+  return {
+    ...asset,
+    layers: asset.layers.map((layer) => {
+      const state = stateByLayerId.get(layer.id);
+      if (!state) {
+        return layer;
+      }
+      return {
+        ...layer,
+        visible: state.visible ?? layer.visible,
+        opacity: state.opacity ?? layer.opacity,
+        transform: state.transform ?? layer.transform,
+      };
+    }),
+  };
 }
