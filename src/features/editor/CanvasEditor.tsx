@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { blobKeyFor } from '../../core/images/importImage';
-import type { Asset, Size, Vec2 } from '../../core/model';
+import type { Rect } from '../../core/images/operations';
+import type { Asset, Layer, Size, Vec2 } from '../../core/model';
 import { loadBlob } from '../../core/storage';
 import { renderScene, type RenderLayer } from '../../renderers/canvas2d/render';
 import {
@@ -8,6 +9,7 @@ import {
   clampZoom,
   fitView,
   hitTestLayers,
+  layerLocalPoint,
   panBy,
   screenToWorld,
   zoomAt,
@@ -15,25 +17,32 @@ import {
   type Viewport,
 } from '../../renderers/canvas2d/view';
 
-export type CanvasTool = 'select' | 'pan';
+import { TOOL_CURSORS, type CanvasTool } from './canvasTools';
 
 interface CanvasEditorProps {
   asset: Asset;
   tool: CanvasTool;
   selectedLayerId: string | null;
+  /** 消しゴムの半径（テクスチャのピクセル単位）。 */
+  eraserRadius: number;
   onSelectLayer: (layerId: string | null) => void;
   /** ドラッグ移動の確定。before / next はアセットのスナップショット。 */
   onCommitAsset: (label: string, before: Asset, next: Asset) => void;
+  /** bgpick / picker ツールでの色拾い。point はテクスチャ座標（左上原点）。 */
+  onPickColor: (layerId: string, point: Vec2) => void;
+  /** トリミング範囲の確定。rect はテクスチャ座標。 */
+  onCropCommit: (layerId: string, rect: Rect) => void;
+  /** 消しゴムストロークの確定。points はテクスチャ座標。 */
+  onEraseCommit: (layerId: string, points: Vec2[]) => void;
 }
 
 interface DragState {
-  mode: 'move' | 'pan' | 'pinch';
+  mode: 'move' | 'pan' | 'pinch' | 'crop' | 'erase';
   pointerId: number;
   startScreen: Vec2;
   startView: ViewTransform;
   layerId?: string;
   before?: Asset;
-  /** ピンチ用: 2 本目のポインタ */
   secondPointerId?: number;
   startDistance?: number;
 }
@@ -71,8 +80,12 @@ export function CanvasEditor({
   asset,
   tool,
   selectedLayerId,
+  eraserRadius,
   onSelectLayer,
   onCommitAsset,
+  onPickColor,
+  onCropCommit,
+  onEraseCommit,
 }: CanvasEditorProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -80,12 +93,19 @@ export function CanvasEditor({
   const [view, setView] = useState<ViewTransform>({ scale: 1, offsetX: 0, offsetY: 0 });
   const [bitmaps, setBitmaps] = useState<Map<string, ImageBitmap>>(new Map());
   const [draftAsset, setDraftAsset] = useState<Asset | null>(null);
+  const [cropRectScreen, setCropRectScreen] = useState<{ start: Vec2; end: Vec2 } | null>(null);
+  const [eraserStrokeScreen, setEraserStrokeScreen] = useState<Vec2[] | null>(null);
   const dragRef = useRef<DragState | null>(null);
+  const cropTexturePointsRef = useRef<{ start: Vec2; end: Vec2 } | null>(null);
+  const eraseTexturePointsRef = useRef<Vec2[]>([]);
   const pointersRef = useRef<Map<number, Vec2>>(new Map());
   const fittedAssetRef = useRef<string | null>(null);
   const bitmapsRef = useRef<Map<string, ImageBitmap>>(new Map());
 
   const displayAsset = draftAsset ?? asset;
+  const selectedLayer: Layer | null =
+    asset.layers.find((layer) => layer.id === selectedLayerId) ?? null;
+  const selectedTextureSize = selectedLayer ? textureSizeFor(asset, selectedLayer.textureId) : null;
 
   // ビューポートサイズの追従
   useEffect(() => {
@@ -191,7 +211,44 @@ export function CanvasEditor({
       layers,
       selectedLayerId,
     });
-  }, [viewport, view, displayAsset, bitmaps, selectedLayerId]);
+
+    // ツールのオーバーレイ
+    if (cropRectScreen) {
+      const x = Math.min(cropRectScreen.start.x, cropRectScreen.end.x);
+      const y = Math.min(cropRectScreen.start.y, cropRectScreen.end.y);
+      const width = Math.abs(cropRectScreen.end.x - cropRectScreen.start.x);
+      const height = Math.abs(cropRectScreen.end.y - cropRectScreen.start.y);
+      ctx.save();
+      ctx.fillStyle = 'rgba(58, 134, 255, 0.12)';
+      ctx.fillRect(x, y, width, height);
+      ctx.strokeStyle = '#3a86ff';
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(x, y, width, height);
+      ctx.restore();
+    }
+    if (eraserStrokeScreen && selectedLayer) {
+      const radiusScreen =
+        eraserRadius * Math.abs(selectedLayer.transform.scale.x || 1) * view.scale;
+      ctx.save();
+      ctx.fillStyle = 'rgba(220, 60, 60, 0.35)';
+      for (const point of eraserStrokeScreen) {
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, Math.max(2, radiusScreen), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  }, [
+    viewport,
+    view,
+    displayAsset,
+    bitmaps,
+    selectedLayerId,
+    cropRectScreen,
+    eraserStrokeScreen,
+    eraserRadius,
+    selectedLayer,
+  ]);
 
   // ホイールズーム（passive: false で登録する必要がある）
   useEffect(() => {
@@ -216,6 +273,19 @@ export function CanvasEditor({
     return { x: event.clientX - rect.left, y: event.clientY - rect.top };
   };
 
+  /** 画面座標を選択レイヤーのテクスチャ座標（左上原点）へ変換する。 */
+  const toTexturePoint = (screenPoint: Vec2): Vec2 | null => {
+    if (!selectedLayer || !selectedTextureSize) {
+      return null;
+    }
+    const world = screenToWorld(view, screenPoint);
+    const local = layerLocalPoint(selectedLayer, selectedTextureSize, world);
+    return {
+      x: local.x + selectedTextureSize.width / 2,
+      y: local.y + selectedTextureSize.height / 2,
+    };
+  };
+
   const handlePointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     const point = toLocalPoint(event);
     pointersRef.current.set(event.pointerId, point);
@@ -233,6 +303,8 @@ export function CanvasEditor({
         startDistance: Math.hypot(second[1].x - first[1].x, second[1].y - first[1].y),
       };
       setDraftAsset(null);
+      setCropRectScreen(null);
+      setEraserStrokeScreen(null);
       return;
     }
 
@@ -246,6 +318,49 @@ export function CanvasEditor({
       return;
     }
 
+    if (tool === 'bgpick' || tool === 'picker') {
+      const texturePoint = toTexturePoint(point);
+      if (selectedLayer && texturePoint) {
+        onPickColor(selectedLayer.id, texturePoint);
+      }
+      return;
+    }
+
+    if (tool === 'crop') {
+      const texturePoint = toTexturePoint(point);
+      if (!selectedLayer || !texturePoint) {
+        return;
+      }
+      cropTexturePointsRef.current = { start: texturePoint, end: texturePoint };
+      setCropRectScreen({ start: point, end: point });
+      dragRef.current = {
+        mode: 'crop',
+        pointerId: event.pointerId,
+        startScreen: point,
+        startView: view,
+        layerId: selectedLayer.id,
+      };
+      return;
+    }
+
+    if (tool === 'eraser') {
+      const texturePoint = toTexturePoint(point);
+      if (!selectedLayer || !texturePoint) {
+        return;
+      }
+      eraseTexturePointsRef.current = [texturePoint];
+      setEraserStrokeScreen([point]);
+      dragRef.current = {
+        mode: 'erase',
+        pointerId: event.pointerId,
+        startScreen: point,
+        startView: view,
+        layerId: selectedLayer.id,
+      };
+      return;
+    }
+
+    // select ツール
     const worldPoint = screenToWorld(view, point);
     const targets = asset.layers.map((layer) => ({
       layer,
@@ -310,6 +425,24 @@ export function CanvasEditor({
       return;
     }
 
+    if (drag.mode === 'crop') {
+      const texturePoint = toTexturePoint(point);
+      if (texturePoint && cropTexturePointsRef.current) {
+        cropTexturePointsRef.current = { ...cropTexturePointsRef.current, end: texturePoint };
+      }
+      setCropRectScreen((current) => (current ? { ...current, end: point } : current));
+      return;
+    }
+
+    if (drag.mode === 'erase') {
+      const texturePoint = toTexturePoint(point);
+      if (texturePoint) {
+        eraseTexturePointsRef.current.push(texturePoint);
+      }
+      setEraserStrokeScreen((current) => (current ? [...current, point] : current));
+      return;
+    }
+
     if (drag.mode === 'move' && drag.layerId && drag.before) {
       const worldDeltaX = deltaX / drag.startView.scale;
       const worldDeltaY = deltaY / drag.startView.scale;
@@ -332,6 +465,35 @@ export function CanvasEditor({
     if (drag.pointerId !== event.pointerId) {
       return;
     }
+
+    if (drag.mode === 'crop' && drag.layerId) {
+      const points = cropTexturePointsRef.current;
+      cropTexturePointsRef.current = null;
+      setCropRectScreen(null);
+      dragRef.current = null;
+      if (points) {
+        const x = Math.min(points.start.x, points.end.x);
+        const y = Math.min(points.start.y, points.end.y);
+        const width = Math.abs(points.end.x - points.start.x);
+        const height = Math.abs(points.end.y - points.start.y);
+        if (width >= 2 && height >= 2) {
+          onCropCommit(drag.layerId, { x, y, width, height });
+        }
+      }
+      return;
+    }
+
+    if (drag.mode === 'erase' && drag.layerId) {
+      const points = eraseTexturePointsRef.current;
+      eraseTexturePointsRef.current = [];
+      setEraserStrokeScreen(null);
+      dragRef.current = null;
+      if (points.length > 0) {
+        onEraseCommit(drag.layerId, points);
+      }
+      return;
+    }
+
     if (drag.mode === 'move' && drag.before && draftAsset) {
       const moved = draftAsset.layers.find((layer) => layer.id === drag.layerId);
       const original = drag.before.layers.find((layer) => layer.id === drag.layerId);
@@ -359,7 +521,12 @@ export function CanvasEditor({
         ref={canvasRef}
         className="canvas-editor-canvas"
         aria-label="アセットキャンバス"
-        style={{ width: viewport.width, height: viewport.height, touchAction: 'none' }}
+        style={{
+          width: viewport.width,
+          height: viewport.height,
+          touchAction: 'none',
+          cursor: TOOL_CURSORS[tool],
+        }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={endPointer}
