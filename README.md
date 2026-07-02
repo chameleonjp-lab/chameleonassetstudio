@@ -79,7 +79,8 @@ e2e/           … Playwright E2E テスト
 - [x] Phase 4: 画像取り込み（PNG / JPG / WebP、D&D、元画像・編集用・サムネイル分離、サイズ制限）
 - [x] Phase 5: キャンバス編集（Canvas 2D 表示、市松模様、ズーム / パン、選択、ドラッグ移動、数値入力、Undo / Redo）
 - [x] Phase 6: 画像編集（トリミング、背景透過、消しゴム、HSL 色調整、パレット置換、輪郭線、Web Worker 実行）
-- [ ] Phase 7 以降: `docs/IMPLEMENTATION_PLAN.md` を参照
+- [x] Phase 7: レイヤーとパーツ（レイヤーパネル、並べ替え・表示・ロック・削除、画像/ガイドレイヤー追加、パーツ作成・種別・pivot）
+- [ ] Phase 8 以降: `docs/IMPLEMENTATION_PLAN.md` を参照
 
 ## 初期方針
 

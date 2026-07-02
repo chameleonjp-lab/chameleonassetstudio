@@ -121,7 +121,8 @@
             "other"
           ]
         },
-        "layerIds": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+        "layerIds": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "pivot": { "$ref": "#/definitions/vec2" }
       }
     },
     "anchor": {

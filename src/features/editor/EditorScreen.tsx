@@ -8,7 +8,7 @@ import {
   type DragEvent,
 } from 'react';
 import { History } from '../../core/history/history';
-import { blobKeyFor, importImageFile } from '../../core/images/importImage';
+import { blobKeyFor, importImageAsLayer, importImageFile } from '../../core/images/importImage';
 import {
   hexToRgb,
   operationLabel,
@@ -21,7 +21,7 @@ import {
   pixelBufferToBlob,
   runImageOperation,
 } from '../../core/images/runOperation';
-import type { Asset, Project, Vec2 } from '../../core/model';
+import { addGuideLayer, renameLayer, type Asset, type Project, type Vec2 } from '../../core/model';
 import {
   AutosaveQueue,
   listProjectAssets,
@@ -35,6 +35,8 @@ import {
 import { layerWorldPoint } from '../../renderers/canvas2d/view';
 import { CanvasEditor } from './CanvasEditor';
 import { LAYER_TOOLS, type CanvasTool } from './canvasTools';
+import { LayerPanel } from './LayerPanel';
+import { PartPanel } from './PartPanel';
 import './editor.css';
 
 type MobileView = 'canvas' | 'properties' | 'timeline' | 'export';
@@ -92,6 +94,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+  const [checkedLayerIds, setCheckedLayerIds] = useState<string[]>([]);
   const [tool, setTool] = useState<CanvasTool>('select');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editorError, setEditorError] = useState<string | null>(null);
@@ -464,7 +467,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     if (!before || !current || before === current) {
       return;
     }
-    if (JSON.stringify(before.layers) === JSON.stringify(current.layers)) {
+    if (JSON.stringify(before) === JSON.stringify(current)) {
       return;
     }
     history.push({
@@ -472,6 +475,61 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       undo: () => applyAssetSnapshot(before),
       redo: () => applyAssetSnapshot(current),
     });
+  };
+
+  /** パネルのボタン操作による変更を履歴付きで確定する。 */
+  const commitPanelChange = (label: string, next: Asset) => {
+    if (!selectedAsset || next === selectedAsset) {
+      return;
+    }
+    commitAssetChange(label, selectedAsset, next);
+  };
+
+  /** 画像ファイルを選択中アセットのレイヤーとして追加する（Phase 7）。 */
+  const handleAddImageLayer = async (event: ChangeEvent<HTMLInputElement>) => {
+    // value のリセットで FileList が空になる前に配列へ写す
+    const files = event.target.files ? Array.from(event.target.files) : [];
+    event.target.value = '';
+    if (files.length === 0 || !selectedAsset) {
+      return;
+    }
+    setEditorError(null);
+    setImporting(true);
+    try {
+      let current = selectedAsset;
+      for (const file of files) {
+        const result = await importImageAsLayer(file, current);
+        for (const { key, blob } of result.blobs) {
+          await saveBlob(projectId, key, blob);
+        }
+        const next: Asset = {
+          ...current,
+          updatedAt: new Date().toISOString(),
+          textures: [...current.textures, ...result.textures],
+          layers: [...current.layers, result.layer],
+        };
+        commitAssetChange('画像レイヤー追加', current, next);
+        setSelectedLayerId(result.layer.id);
+        current = next;
+      }
+    } catch (error) {
+      setEditorError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleAddGuideLayer = () => {
+    if (!selectedAsset) {
+      return;
+    }
+    commitPanelChange('ガイドレイヤー追加', addGuideLayer(selectedAsset));
+  };
+
+  const handleToggleChecked = (layerId: string) => {
+    setCheckedLayerIds((prev) =>
+      prev.includes(layerId) ? prev.filter((id) => id !== layerId) : [...prev, layerId],
+    );
   };
 
   const handleBack = async () => {
@@ -643,10 +701,42 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             />
           </label>
 
+          <h3 className="editor-subheading">レイヤー</h3>
+          {selectedAsset ? (
+            <LayerPanel
+              asset={selectedAsset}
+              selectedLayerId={selectedLayerId}
+              checkedLayerIds={checkedLayerIds}
+              importAccept={IMPORT_ACCEPT}
+              onSelectLayer={setSelectedLayerId}
+              onToggleChecked={handleToggleChecked}
+              onCommit={commitPanelChange}
+              onAddImageLayer={(event) => void handleAddImageLayer(event)}
+              onAddGuideLayer={handleAddGuideLayer}
+            />
+          ) : (
+            <p className="editor-note">アセットを選ぶとレイヤーを操作できます。</p>
+          )}
+
           <h3 className="editor-subheading">選択中レイヤー</h3>
           {selectedLayer ? (
             <div className="layer-fields">
-              <p className="layer-name">{selectedLayer.name}</p>
+              <label className="editor-field">
+                レイヤー名
+                <input
+                  type="text"
+                  value={selectedLayer.name}
+                  onFocus={beginLayerEdit}
+                  onBlur={commitLayerEdit}
+                  onChange={(event) => {
+                    if (selectedAsset) {
+                      applyAssetSnapshot(
+                        renameLayer(selectedAsset, selectedLayer.id, event.target.value),
+                      );
+                    }
+                  }}
+                />
+              </label>
               <label className="editor-field">
                 X
                 <input
@@ -860,6 +950,21 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             </>
           )}
 
+          <h3 className="editor-subheading">パーツ</h3>
+          {selectedAsset ? (
+            <PartPanel
+              asset={selectedAsset}
+              checkedLayerIds={checkedLayerIds}
+              onClearChecked={() => setCheckedLayerIds([])}
+              onCommit={commitPanelChange}
+              onLiveChange={applyAssetSnapshot}
+              onBeginFieldEdit={beginLayerEdit}
+              onCommitFieldEdit={commitLayerEdit}
+            />
+          ) : (
+            <p className="editor-note">アセットを選ぶとパーツを操作できます。</p>
+          )}
+
           <h3 className="editor-subheading">アセット</h3>
           {assets.length === 0 ? (
             <p className="editor-note">画像を取り込むとアセットとして追加されます。</p>
@@ -873,6 +978,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                     onClick={() => {
                       setSelectedAssetId(asset.id);
                       setSelectedLayerId(null);
+                      setCheckedLayerIds([]);
                     }}
                   >
                     {asset.displayName}

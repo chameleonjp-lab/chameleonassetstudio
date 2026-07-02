@@ -152,7 +152,7 @@ LayerTransform の意味は次の通りとする。`position` はテクスチャ
 
 ### 6.3 Part
 
-`partType` は `head` / `body` / `arm_left` / `arm_right` / `leg_left` / `leg_right` / `weapon` / `eye` / `mouth` / `shadow` / `accessory` / `other`。`layerIds` で複数レイヤーをまとめる。
+`partType` は `head` / `body` / `arm_left` / `arm_right` / `leg_left` / `leg_right` / `weapon` / `eye` / `mouth` / `shadow` / `accessory` / `other`。`layerIds` で複数レイヤーをまとめる。`pivot`（任意、Vec2）はパーツの基準点で、回転や取り付けの基準に使う。
 
 ### 6.4 Anchor
 
