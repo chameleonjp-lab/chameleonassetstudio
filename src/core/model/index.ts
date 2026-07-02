@@ -4,6 +4,7 @@ export * from './asset';
 export * from './collider';
 export * from './common';
 export * from './exportPreset';
+export * from './factories';
 export * from './layer';
 export * from './migrate';
 export * from './part';

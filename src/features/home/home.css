@@ -1,0 +1,104 @@
+.home {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.home-header h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.5rem;
+}
+
+.home-header p {
+  margin: 0;
+  opacity: 0.8;
+}
+
+.home-section h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+}
+
+.home-error {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #c0392b;
+  border-radius: 8px;
+}
+
+.home-create {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.home-create label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 12rem;
+}
+
+.home-create input {
+  padding: 0.4rem 0.5rem;
+  font: inherit;
+}
+
+.home-create button,
+.home-item-actions button {
+  padding: 0.4rem 0.9rem;
+  font: inherit;
+}
+
+.home-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.home-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  border: 1px solid #8884;
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+}
+
+.home-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.home-item-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.home-item-meta {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.home-item-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.home-storage p {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
