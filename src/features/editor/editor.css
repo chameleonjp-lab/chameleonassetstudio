@@ -119,9 +119,91 @@
     -8px 0;
 }
 
-.canvas-placeholder.drag-over {
+.canvas-placeholder.drag-over,
+.canvas-editor-frame.drag-over {
   border-color: #4a90d9;
   border-style: solid;
+}
+
+.canvas-editor-frame {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  border: 1px dashed transparent;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.canvas-editor {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.canvas-editor-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.canvas-zoombar {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid #8886;
+  border-radius: 6px;
+  background: color-mix(in srgb, Canvas 85%, transparent);
+  font-size: 0.8rem;
+}
+
+.canvas-zoombar button {
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.45rem;
+}
+
+.canvas-zoombar button[aria-pressed='true'] {
+  font-weight: 700;
+}
+
+.canvas-zoom-label {
+  padding: 0 0.25rem;
+  white-space: nowrap;
+}
+
+.editor-history-buttons {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.layer-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.layer-name {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.canvas-editor-frame .import-status,
+.canvas-editor-frame .import-error {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 0.5rem;
+  right: 0.5rem;
+  z-index: 1;
+  background: color-mix(in srgb, Canvas 92%, transparent);
 }
 
 .canvas-placeholder {

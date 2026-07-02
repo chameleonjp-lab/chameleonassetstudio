@@ -37,7 +37,7 @@ async function createProject(page: Page, name: string): Promise<void> {
   await expect(page.getByRole('heading', { name })).toBeVisible();
 }
 
-test('PNG を取り込むと表示され、透明部分が保持される', async ({ page }) => {
+test('PNG を取り込むとキャンバスに表示され、透明部分が保持される', async ({ page }) => {
   await createProject(page, '画像取り込み');
   const buffer = await makePngBuffer(page);
 
@@ -45,24 +45,38 @@ test('PNG を取り込むと表示され、透明部分が保持される', asyn
     .getByLabel('画像を選ぶ')
     .setInputFiles({ name: 'hero.png', mimeType: 'image/png', buffer });
 
-  const preview = page.getByRole('img', { name: 'hero' });
-  await expect(preview).toBeVisible();
-
-  // 右半分（透明で描いた領域）のアルファが 0 のまま維持されている
-  const alpha = await preview.evaluate((img: HTMLImageElement) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const context = canvas.getContext('2d')!;
-    context.drawImage(img, 0, 0);
-    return context.getImageData(img.naturalWidth - 4, 4, 1, 1).data[3];
-  });
-  expect(alpha).toBe(0);
-
-  // アセット一覧にも出る
+  await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
   await expect(
     page.getByRole('complementary', { name: 'プロパティ' }).getByRole('button', { name: 'hero' }),
   ).toBeVisible();
+
+  // 保存された編集用画像（PNG 正規化後）の右上ピクセルのアルファが 0 のまま維持されている
+  const alpha = await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('chameleon-asset-studio');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const records = await new Promise<Array<{ key: string; mimeType: string; bytes: ArrayBuffer }>>(
+      (resolve, reject) => {
+        const request = db.transaction('blobs', 'readonly').objectStore('blobs').getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      },
+    );
+    const record = records.find((row) => row.key.endsWith('textures/main.png'));
+    if (!record) {
+      return -1;
+    }
+    const bitmap = await createImageBitmap(new Blob([record.bytes], { type: record.mimeType }));
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext('2d')!;
+    context.drawImage(bitmap, 0, 0);
+    return context.getImageData(bitmap.width - 4, 4, 1, 1).data[3];
+  });
+  expect(alpha).toBe(0);
 });
 
 test('再読み込み後も取り込んだ画像が残る', async ({ page }) => {
@@ -71,11 +85,14 @@ test('再読み込み後も取り込んだ画像が残る', async ({ page }) => 
   await page
     .getByLabel('画像を選ぶ')
     .setInputFiles({ name: 'keeper.png', mimeType: 'image/png', buffer });
-  await expect(page.getByRole('img', { name: 'keeper' })).toBeVisible();
+  await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
 
   await page.reload();
   await page.getByRole('button', { name: '「画像永続化」を開く' }).click();
-  await expect(page.getByRole('img', { name: 'keeper' })).toBeVisible();
+  await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
+  await expect(
+    page.getByRole('complementary', { name: 'プロパティ' }).getByRole('button', { name: 'keeper' }),
+  ).toBeVisible();
 });
 
 test('JPG と WebP も取り込める', async ({ page }) => {
@@ -85,13 +102,12 @@ test('JPG と WebP も取り込める', async ({ page }) => {
   await page
     .getByLabel('画像を選ぶ')
     .setInputFiles({ name: 'photo.jpg', mimeType: 'image/jpeg', buffer: jpegBuffer });
-  await expect(page.getByRole('img', { name: 'photo' })).toBeVisible();
+  await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
 
   const webpBuffer = await makeImageBuffer(page, 'image/webp');
   await page
     .getByLabel('画像を追加')
     .setInputFiles({ name: 'sticker.webp', mimeType: 'image/webp', buffer: webpBuffer });
-  await expect(page.getByRole('img', { name: 'sticker' })).toBeVisible();
 
   const properties = page.getByRole('complementary', { name: 'プロパティ' });
   await expect(properties.getByRole('button', { name: 'photo' })).toBeVisible();

@@ -7,18 +7,19 @@ import {
   type ChangeEvent,
   type DragEvent,
 } from 'react';
-import { blobKeyFor, importImageFile } from '../../core/images/importImage';
+import { History } from '../../core/history/history';
+import { importImageFile } from '../../core/images/importImage';
 import type { Asset, Project } from '../../core/model';
 import {
   AutosaveQueue,
   listProjectAssets,
-  loadBlob,
   loadProject,
   saveAsset,
   saveBlob,
   saveProject,
   type SaveState,
 } from '../../core/storage';
+import { CanvasEditor, type CanvasTool } from './CanvasEditor';
 import './editor.css';
 
 type MobileView = 'canvas' | 'properties' | 'timeline' | 'export';
@@ -46,6 +47,10 @@ function saveStatusText(state: SaveState): string {
   }
 }
 
+function roundValue(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 const IMPORT_ACCEPT = 'image/png,image/jpeg,image/webp';
 
 export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
@@ -54,10 +59,20 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const autosave = autosaveRef.current;
   const saveState = useSaveState(autosave);
 
+  const historyRef = useRef<History | null>(null);
+  historyRef.current ??= new History();
+  const history = historyRef.current;
+  const subscribeHistory = useCallback(
+    (onChange: () => void) => history.subscribe(onChange),
+    [history],
+  );
+  const historyState = useSyncExternalStore(subscribeHistory, () => history.getState());
+
   const [project, setProject] = useState<Project | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+  const [tool, setTool] = useState<CanvasTool>('select');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
@@ -65,6 +80,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [mobileView, setMobileView] = useState<MobileView>('canvas');
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
+  const layerEditBeforeRef = useRef<Asset | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,34 +104,52 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   }, [projectId]);
 
   const selectedAsset = assets.find((asset) => asset.id === selectedAssetId) ?? assets[0] ?? null;
+  const selectedLayer = selectedAsset?.layers.find((layer) => layer.id === selectedLayerId) ?? null;
 
-  // 選択中アセットの編集用画像を読み込み、Blob URL は不要になったら解放する
+  /** アセットのスナップショットを適用して自動保存する（Undo / Redo からも使う）。 */
+  const applyAssetSnapshot = useCallback(
+    (snapshot: Asset) => {
+      setAssets((prev) => prev.map((asset) => (asset.id === snapshot.id ? snapshot : asset)));
+      autosave.schedule(() => saveAsset(projectId, snapshot));
+    },
+    [autosave, projectId],
+  );
+
+  /** 変更を適用し、履歴へ積む。 */
+  const commitAssetChange = useCallback(
+    (label: string, before: Asset, next: Asset) => {
+      applyAssetSnapshot(next);
+      history.push({
+        label,
+        undo: () => applyAssetSnapshot(before),
+        redo: () => applyAssetSnapshot(next),
+      });
+    },
+    [applyAssetSnapshot, history],
+  );
+
+  // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y で Undo / Redo
   useEffect(() => {
-    if (!selectedAsset) {
-      setPreviewUrl(null);
-      return;
-    }
-    const editTexture = selectedAsset.textures.find((texture) => texture.kind === 'edit');
-    if (!editTexture) {
-      setPreviewUrl(null);
-      return;
-    }
-    let objectUrl: string | null = null;
-    let cancelled = false;
-    void loadBlob(blobKeyFor(selectedAsset.id, editTexture.path)).then((blob) => {
-      if (cancelled || !blob) {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey)) {
         return;
       }
-      objectUrl = URL.createObjectURL(blob);
-      setPreviewUrl(objectUrl);
-    });
-    return () => {
-      cancelled = true;
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
+      const target = event.target as HTMLElement | null;
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      const key = event.key.toLowerCase();
+      if (key === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        history.undo();
+      } else if (key === 'y' || (key === 'z' && event.shiftKey)) {
+        event.preventDefault();
+        history.redo();
       }
     };
-  }, [selectedAsset]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [history]);
 
   const handleFiles = async (files: Iterable<File>) => {
     if (!project) {
@@ -147,6 +181,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         await saveProject(currentProject);
         setAssets((prev) => [...prev, result.asset]);
         setSelectedAssetId(result.asset.id);
+        setSelectedLayerId(null);
       }
       setProject(currentProject);
     } catch (error) {
@@ -182,6 +217,63 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     autosave.schedule(() => saveProject(next));
   };
 
+  /** 数値入力によるレイヤー変形の更新（フォーカス中は履歴に積まず、blur で確定する）。 */
+  const handleLayerTransformChange = (
+    field: 'x' | 'y' | 'scale' | 'rotation',
+    rawValue: string,
+  ) => {
+    if (!selectedAsset || !selectedLayer) {
+      return;
+    }
+    const value = Number(rawValue);
+    if (!Number.isFinite(value)) {
+      return;
+    }
+    const next: Asset = {
+      ...selectedAsset,
+      updatedAt: new Date().toISOString(),
+      layers: selectedAsset.layers.map((layer) => {
+        if (layer.id !== selectedLayer.id) {
+          return layer;
+        }
+        const transform = { ...layer.transform };
+        if (field === 'x') {
+          transform.position = { ...transform.position, x: value };
+        } else if (field === 'y') {
+          transform.position = { ...transform.position, y: value };
+        } else if (field === 'scale') {
+          const scale = Math.max(0.01, value / 100);
+          transform.scale = { x: scale, y: scale };
+        } else {
+          transform.rotation = value;
+        }
+        return { ...layer, transform };
+      }),
+    };
+    applyAssetSnapshot(next);
+  };
+
+  const beginLayerEdit = () => {
+    layerEditBeforeRef.current = selectedAsset;
+  };
+
+  const commitLayerEdit = () => {
+    const before = layerEditBeforeRef.current;
+    layerEditBeforeRef.current = null;
+    const current = assets.find((asset) => asset.id === before?.id);
+    if (!before || !current || before === current) {
+      return;
+    }
+    if (JSON.stringify(before.layers) === JSON.stringify(current.layers)) {
+      return;
+    }
+    history.push({
+      label: '数値編集',
+      undo: () => applyAssetSnapshot(before),
+      redo: () => applyAssetSnapshot(current),
+    });
+  };
+
   const handleBack = async () => {
     await autosave.flush();
     onBackToHome();
@@ -213,6 +305,24 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           ← ホーム
         </button>
         <h1 className="editor-title">{project?.name ?? '読み込み中…'}</h1>
+        <div className="editor-history-buttons">
+          <button
+            type="button"
+            disabled={!historyState.canUndo}
+            onClick={() => history.undo()}
+            title={historyState.undoLabel ?? undefined}
+          >
+            元に戻す
+          </button>
+          <button
+            type="button"
+            disabled={!historyState.canRedo}
+            onClick={() => history.redo()}
+            title={historyState.redoLabel ?? undefined}
+          >
+            やり直す
+          </button>
+        </div>
         <p className="editor-save-status" role="status">
           {saveStatusText(saveState)}
         </p>
@@ -231,11 +341,11 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           className={`editor-toolbar editor-side${leftOpen ? '' : ' collapsed'}`}
           aria-label="ツール"
         >
-          <button type="button" disabled>
+          <button type="button" aria-pressed={tool === 'select'} onClick={() => setTool('select')}>
             選択
           </button>
-          <button type="button" disabled>
-            移動
+          <button type="button" aria-pressed={tool === 'pan'} onClick={() => setTool('pan')}>
+            パン
           </button>
           <button type="button" disabled>
             トリミング
@@ -243,7 +353,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           <button type="button" disabled>
             消しゴム
           </button>
-          <p className="editor-note">ツールは Phase 5 以降で実装します。</p>
+          <p className="editor-note">編集ツールは Phase 6 以降で実装します。</p>
         </nav>
 
         <section
@@ -256,10 +366,24 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
         >
-          <div className={`canvas-placeholder${dragOver ? ' drag-over' : ''}`}>
-            {previewUrl && selectedAsset ? (
-              <img className="canvas-preview" src={previewUrl} alt={selectedAsset.displayName} />
-            ) : (
+          {selectedAsset ? (
+            <div className={`canvas-editor-frame${dragOver ? ' drag-over' : ''}`}>
+              <CanvasEditor
+                asset={selectedAsset}
+                tool={tool}
+                selectedLayerId={selectedLayerId}
+                onSelectLayer={setSelectedLayerId}
+                onCommitAsset={commitAssetChange}
+              />
+              {importing && <p className="import-status">取り込み中…</p>}
+              {importError && (
+                <p className="import-error" role="alert">
+                  {importError}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className={`canvas-placeholder${dragOver ? ' drag-over' : ''}`}>
               <div className="import-zone">
                 <p>画像をここへドラッグ&ドロップ</p>
                 <label className="import-button">
@@ -276,14 +400,14 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   PNG / JPG / WebP に対応。1 枚あたり 25MB、4096 x 4096 までです。
                 </p>
               </div>
-            )}
-            {importing && <p className="import-status">取り込み中…</p>}
-            {importError && (
-              <p className="import-error" role="alert">
-                {importError}
-              </p>
-            )}
-          </div>
+              {importing && <p className="import-status">取り込み中…</p>}
+              {importError && (
+                <p className="import-error" role="alert">
+                  {importError}
+                </p>
+              )}
+            </div>
+          )}
         </section>
 
         <aside
@@ -303,6 +427,56 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             />
           </label>
 
+          <h3 className="editor-subheading">選択中レイヤー</h3>
+          {selectedLayer ? (
+            <div className="layer-fields">
+              <p className="layer-name">{selectedLayer.name}</p>
+              <label className="editor-field">
+                X
+                <input
+                  type="number"
+                  value={roundValue(selectedLayer.transform.position.x)}
+                  onFocus={beginLayerEdit}
+                  onBlur={commitLayerEdit}
+                  onChange={(event) => handleLayerTransformChange('x', event.target.value)}
+                />
+              </label>
+              <label className="editor-field">
+                Y
+                <input
+                  type="number"
+                  value={roundValue(selectedLayer.transform.position.y)}
+                  onFocus={beginLayerEdit}
+                  onBlur={commitLayerEdit}
+                  onChange={(event) => handleLayerTransformChange('y', event.target.value)}
+                />
+              </label>
+              <label className="editor-field">
+                拡大率（%）
+                <input
+                  type="number"
+                  min={1}
+                  value={roundValue(selectedLayer.transform.scale.x * 100)}
+                  onFocus={beginLayerEdit}
+                  onBlur={commitLayerEdit}
+                  onChange={(event) => handleLayerTransformChange('scale', event.target.value)}
+                />
+              </label>
+              <label className="editor-field">
+                回転（度）
+                <input
+                  type="number"
+                  value={roundValue(selectedLayer.transform.rotation)}
+                  onFocus={beginLayerEdit}
+                  onBlur={commitLayerEdit}
+                  onChange={(event) => handleLayerTransformChange('rotation', event.target.value)}
+                />
+              </label>
+            </div>
+          ) : (
+            <p className="editor-note">キャンバス上のレイヤーをクリックすると選択できます。</p>
+          )}
+
           <h3 className="editor-subheading">アセット</h3>
           {assets.length === 0 ? (
             <p className="editor-note">画像を取り込むとアセットとして追加されます。</p>
@@ -313,7 +487,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   <button
                     type="button"
                     aria-pressed={asset.id === selectedAsset?.id}
-                    onClick={() => setSelectedAssetId(asset.id)}
+                    onClick={() => {
+                      setSelectedAssetId(asset.id);
+                      setSelectedLayerId(null);
+                    }}
                   >
                     {asset.displayName}
                   </button>

@@ -77,7 +77,8 @@ e2e/           … Playwright E2E テスト
 - [x] Phase 2: 保存・読み込み（IndexedDB、自動保存キュー、`.casproj` 読み書き基盤、ストレージ使用量）
 - [x] Phase 3: 最小 UI（ホーム画面、新規作成・一覧・削除、編集画面の枠、スマホ用下部ナビ）
 - [x] Phase 4: 画像取り込み（PNG / JPG / WebP、D&D、元画像・編集用・サムネイル分離、サイズ制限）
-- [ ] Phase 5 以降: `docs/IMPLEMENTATION_PLAN.md` を参照
+- [x] Phase 5: キャンバス編集（Canvas 2D 表示、市松模様、ズーム / パン、選択、ドラッグ移動、数値入力、Undo / Redo）
+- [ ] Phase 6 以降: `docs/IMPLEMENTATION_PLAN.md` を参照
 
 ## 初期方針
 
