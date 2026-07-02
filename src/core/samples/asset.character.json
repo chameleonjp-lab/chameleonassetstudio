@@ -1,0 +1,143 @@
+{
+  "format": "chameleon-asset",
+  "version": "0.1.0",
+  "id": "asset_002",
+  "assetType": "character",
+  "name": "tomato_player_full",
+  "displayName": "トマトプレイヤー（フル）",
+  "canvasSize": { "width": 512, "height": 512 },
+  "origin": { "x": 256, "y": 448 },
+  "textures": [
+    {
+      "id": "tex_source",
+      "kind": "source",
+      "name": "original",
+      "mimeType": "image/png",
+      "size": { "width": 512, "height": 512 },
+      "path": "source/original.png"
+    },
+    {
+      "id": "tex_main",
+      "kind": "edit",
+      "name": "main",
+      "mimeType": "image/png",
+      "size": { "width": 512, "height": 512 },
+      "path": "textures/main.png"
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer_body",
+      "name": "body",
+      "layerType": "image",
+      "visible": true,
+      "locked": false,
+      "opacity": 1,
+      "transform": {
+        "position": { "x": 0, "y": 0 },
+        "scale": { "x": 1, "y": 1 },
+        "rotation": 0
+      },
+      "textureId": "tex_main"
+    },
+    {
+      "id": "layer_guide",
+      "name": "guide",
+      "layerType": "guide",
+      "visible": false,
+      "locked": true,
+      "opacity": 0.5,
+      "transform": {
+        "position": { "x": 0, "y": 0 },
+        "scale": { "x": 1, "y": 1 },
+        "rotation": 0
+      }
+    }
+  ],
+  "parts": [
+    {
+      "id": "part_body",
+      "name": "body",
+      "partType": "body",
+      "layerIds": ["layer_body"]
+    }
+  ],
+  "anchors": [
+    {
+      "id": "anchor_foot",
+      "name": "foot",
+      "role": "foot",
+      "position": { "x": 256, "y": 448 }
+    },
+    {
+      "id": "anchor_hand_right",
+      "name": "hand_right",
+      "role": "hand_right",
+      "position": { "x": 352, "y": 288 }
+    }
+  ],
+  "colliders": [
+    {
+      "id": "col_body",
+      "name": "body",
+      "purpose": "body",
+      "shape": "rect",
+      "visible": true,
+      "rect": { "x": 192, "y": 192, "width": 128, "height": 256 }
+    },
+    {
+      "id": "col_pickup",
+      "name": "pickup",
+      "purpose": "pickup",
+      "shape": "circle",
+      "visible": false,
+      "circle": { "x": 256, "y": 320, "radius": 96 }
+    }
+  ],
+  "frames": [
+    {
+      "id": "frame_idle_0",
+      "name": "idle_0",
+      "layerStates": [
+        {
+          "layerId": "layer_body",
+          "visible": true,
+          "transform": {
+            "position": { "x": 0, "y": 0 },
+            "scale": { "x": 1, "y": 1 },
+            "rotation": 0
+          },
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "frame_idle_1",
+      "name": "idle_1",
+      "layerStates": [
+        {
+          "layerId": "layer_body",
+          "visible": true,
+          "transform": {
+            "position": { "x": 0, "y": -4 },
+            "scale": { "x": 1, "y": 1 },
+            "rotation": 0
+          }
+        }
+      ]
+    }
+  ],
+  "animations": [
+    {
+      "id": "anim_idle",
+      "name": "idle",
+      "fps": 8,
+      "loop": true,
+      "frameIds": ["frame_idle_0", "frame_idle_1"]
+    }
+  ],
+  "tags": ["player"],
+  "gameAttributes": { "maxHp": 3 },
+  "createdAt": "2026-07-02T00:00:00.000Z",
+  "updatedAt": "2026-07-02T00:00:00.000Z"
+}

@@ -1,0 +1,147 @@
+import { describe, expect, it } from 'vitest';
+import characterAsset from '../samples/asset.character.json';
+import minimalAsset from '../samples/asset.minimal.json';
+import exportPresets from '../samples/export-presets.sample.json';
+import sampleProject from '../samples/project.sample.json';
+import {
+  validateAnimation,
+  validateAsset,
+  validateExportPresets,
+  validateProject,
+} from './validate';
+
+function clone<T>(value: T): T {
+  return structuredClone(value);
+}
+
+describe('validateAsset', () => {
+  it('最小サンプル asset が検証を通る', () => {
+    const result = validateAsset(minimalAsset);
+    expect(result.errors).toEqual([]);
+    expect(result.valid).toBe(true);
+  });
+
+  it('フルサンプル asset（レイヤー、アンカー、当たり判定、アニメーション付き）が検証を通る', () => {
+    const result = validateAsset(characterAsset);
+    expect(result.errors).toEqual([]);
+    expect(result.valid).toBe(true);
+  });
+
+  it('id が無い asset は検証で落ちる', () => {
+    const broken = clone(minimalAsset) as Record<string, unknown>;
+    delete broken.id;
+    const result = validateAsset(broken);
+    expect(result.valid).toBe(false);
+    expect(result.errors.join('\n')).toContain('id');
+  });
+
+  it('version が無い asset は検証で落ちる', () => {
+    const broken = clone(minimalAsset) as Record<string, unknown>;
+    delete broken.version;
+    const result = validateAsset(broken);
+    expect(result.valid).toBe(false);
+    expect(result.errors.join('\n')).toContain('version');
+  });
+
+  it('不正な assetType は検証で落ちる', () => {
+    const broken = clone(minimalAsset) as Record<string, unknown>;
+    broken.assetType = 'spaceship';
+    const result = validateAsset(broken);
+    expect(result.valid).toBe(false);
+    expect(result.errors.join('\n')).toContain('/assetType');
+  });
+
+  it('canvasSize の width が 0 以下なら検証で落ちる', () => {
+    const broken = clone(minimalAsset);
+    broken.canvasSize.width = 0;
+    const result = validateAsset(broken);
+    expect(result.valid).toBe(false);
+    expect(result.errors.join('\n')).toContain('/canvasSize/width');
+  });
+
+  it('rect 判定なのに rect が無い collider は検証で落ちる', () => {
+    const broken = clone(characterAsset) as {
+      colliders: Array<Record<string, unknown>>;
+    };
+    delete broken.colliders[0].rect;
+    const result = validateAsset(broken);
+    expect(result.valid).toBe(false);
+    expect(result.errors.join('\n')).toContain('/colliders/0');
+  });
+
+  it('opacity が 1 を超えるレイヤーは検証で落ちる', () => {
+    const broken = clone(characterAsset);
+    broken.layers[0].opacity = 2;
+    const result = validateAsset(broken);
+    expect(result.valid).toBe(false);
+    expect(result.errors.join('\n')).toContain('/layers/0/opacity');
+  });
+
+  it('未対応の追加プロパティがあっても検証エラーにしない', () => {
+    const extended = clone(minimalAsset) as Record<string, unknown>;
+    extended.futureFeature = { bones: [] };
+    const result = validateAsset(extended);
+    expect(result.valid).toBe(true);
+  });
+
+  it('オブジェクトでない値は検証で落ちる', () => {
+    expect(validateAsset(null).valid).toBe(false);
+    expect(validateAsset('asset').valid).toBe(false);
+  });
+});
+
+describe('validateAnimation', () => {
+  it('正しいアニメーションが検証を通る', () => {
+    const result = validateAnimation(characterAsset.animations[0]);
+    expect(result.errors).toEqual([]);
+    expect(result.valid).toBe(true);
+  });
+
+  it('fps が 0 のアニメーションは検証で落ちる', () => {
+    const broken = clone(characterAsset.animations[0]);
+    broken.fps = 0;
+    const result = validateAnimation(broken);
+    expect(result.valid).toBe(false);
+    expect(result.errors.join('\n')).toContain('/fps');
+  });
+
+  it('loop が無いアニメーションは検証で落ちる', () => {
+    const broken = clone(characterAsset.animations[0]) as Record<string, unknown>;
+    delete broken.loop;
+    const result = validateAnimation(broken);
+    expect(result.valid).toBe(false);
+    expect(result.errors.join('\n')).toContain('loop');
+  });
+});
+
+describe('validateProject', () => {
+  it('サンプル project が検証を通る', () => {
+    const result = validateProject(sampleProject);
+    expect(result.errors).toEqual([]);
+    expect(result.valid).toBe(true);
+  });
+
+  it('format が違う project は検証で落ちる', () => {
+    const broken = clone(sampleProject) as Record<string, unknown>;
+    broken.format = 'other-format';
+    const result = validateProject(broken);
+    expect(result.valid).toBe(false);
+    expect(result.errors.join('\n')).toContain('/format');
+  });
+});
+
+describe('validateExportPresets', () => {
+  it('サンプル export presets が検証を通る', () => {
+    const result = validateExportPresets(exportPresets);
+    expect(result.errors).toEqual([]);
+    expect(result.valid).toBe(true);
+  });
+
+  it('scale が 0 のプリセットは検証で落ちる', () => {
+    const broken = clone(exportPresets);
+    broken.presets[0].scale = 0;
+    const result = validateExportPresets(broken);
+    expect(result.valid).toBe(false);
+    expect(result.errors.join('\n')).toContain('scale');
+  });
+});

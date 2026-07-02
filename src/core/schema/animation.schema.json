@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://chameleonjp-lab.github.io/chameleonassetstudio/schema/animation.schema.json",
+  "title": "Chameleon Animation",
+  "description": "アニメーション 1 件。asset.schema.json 内の animation 定義と同じ形を単体検証する。",
+  "type": "object",
+  "required": ["id", "name", "fps", "loop", "frameIds"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "fps": { "type": "number", "exclusiveMinimum": 0, "maximum": 240 },
+    "loop": { "type": "boolean" },
+    "frameIds": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "durationMs": { "type": "number", "minimum": 0 }
+  }
+}

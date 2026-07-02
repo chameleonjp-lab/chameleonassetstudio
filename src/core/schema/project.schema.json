@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://chameleonjp-lab.github.io/chameleonassetstudio/schema/project.schema.json",
+  "title": "Chameleon Project",
+  "description": "1 つ以上のアセットをまとめる作業単位（project.json）。",
+  "type": "object",
+  "required": ["format", "version", "id", "name", "assets", "createdAt", "updatedAt"],
+  "properties": {
+    "format": { "const": "chameleon-project" },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "assetType"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "displayName": { "type": "string" },
+          "assetType": {
+            "enum": ["character", "item", "background", "tile", "gimmick", "effect"]
+          }
+        }
+      }
+    },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  }
+}
