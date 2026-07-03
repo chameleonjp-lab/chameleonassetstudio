@@ -8,6 +8,7 @@ import { applyFrameToAsset, type Asset } from '../model';
 import { validateAsset } from '../schema/validate';
 import { loadBlob } from '../storage';
 import { buildAtlas, computeSheetLayout, type AtlasJson } from './atlas';
+import { buildCanvasExample, buildPhaserExample, buildPixiExample } from './examples';
 
 export class ExportError extends Error {
   constructor(message: string, options?: ErrorOptions) {
@@ -220,6 +221,15 @@ export function buildExportReadme(asset: Asset): string {
     '- `textures/main.webp` … 同上の WebP 版（書き出し環境が対応している場合のみ同梱）',
     '- `atlas/spritesheet.png` … フレームを並べた Sprite Sheet',
     '- `atlas/atlas.json` … Sprite Sheet 内の各コマの位置とアニメーション定義',
+    '- `examples/example-canvas.html` … Canvas 2D でアセットを読み込む最小例（外部依存なし）',
+    '- `examples/example-pixi.html` … PixiJS でアセットを読み込む最小例（PixiJS を CDN から読み込む）',
+    '- `examples/example-phaser.html` … Phaser でアセットを読み込む最小例（Phaser を CDN から読み込む）',
+    '',
+    '## サンプルコード（examples/）',
+    '',
+    'いずれも完成したゲームではなく、atlas.json / spritesheet.png を読み込んで表示する最小例です。原点・アンカー・当たり判定のデバッグ表示と、アニメーション再生例を含みます。',
+    '',
+    '`fetch()` は `file://` では動作しないため、フォルダをローカルサーバーで開いてください（例: `npx serve .`）。PixiJS 版・Phaser 版はそれぞれのライブラリを CDN（jsdelivr）から読み込むため、インターネット接続が必要です。',
     '',
     '## 座標系',
     '',
@@ -300,6 +310,9 @@ export async function exportZip(asset: Asset): Promise<Blob> {
 
   const entries: Zippable = {
     'atlas/atlas.json': strToU8(`${JSON.stringify(atlas, null, 2)}\n`),
+    'examples/example-canvas.html': strToU8(buildCanvasExample(asset)),
+    'examples/example-pixi.html': strToU8(buildPixiExample(asset)),
+    'examples/example-phaser.html': strToU8(buildPhaserExample(asset)),
     'README.md': strToU8(buildExportReadme(asset)),
   };
   for (const file of files) {
