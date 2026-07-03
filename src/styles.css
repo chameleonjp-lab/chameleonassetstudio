@@ -23,3 +23,23 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* ダブルタップズームなどのブラウザ標準ジェスチャーによる誤操作を防ぐ（Phase 12） */
+button,
+[role='button'],
+a,
+label.import-button,
+input,
+select {
+  touch-action: manipulation;
+}
+
+/* スマホ幅では入力欄のフォントを 16px 以上にして iOS のフォーカス時オートズームを防ぐ（Phase 12）。
+   デスクトップ（min-width:768px）には影響しない。 */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
