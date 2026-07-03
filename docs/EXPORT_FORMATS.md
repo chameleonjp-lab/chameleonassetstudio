@@ -43,10 +43,12 @@
 ├─ atlas/
 │  ├─ spritesheet.png       … フレームを並べた Sprite Sheet（フレーム未使用なら 1 コマ）
 │  └─ atlas.json             … 下記「4. atlas.json」
-└─ README.md                 … アセット名、内容、座標系、原点・アンカー・当たり判定の説明
+├─ examples/
+│  ├─ example-canvas.html     … Canvas 2D 用サンプル（外部依存なし）
+│  ├─ example-pixi.html       … PixiJS 用サンプル（PixiJS を CDN から読み込む）
+│  └─ example-phaser.html     … Phaser 用サンプル（Phaser を CDN から読み込む）
+└─ README.md                 … アセット名、内容、座標系、原点・アンカー・当たり判定、examples の説明
 ```
-
-`examples/`（Canvas 2D / PixiJS / Phaser のサンプル HTML）は Phase 11 で追加する。
 
 ---
 
@@ -85,3 +87,28 @@ Sprite Sheet のセル配置は `computeSheetLayout`（`src/core/export/atlas.ts
 ## 7. 書き出し失敗時の表示
 
 `ExportPanel`（`src/features/editor/ExportPanel.tsx`）は、書き出し中は全ボタンを disabled にして「書き出し中…」を表示する。失敗時は `書き出しに失敗しました: {理由}` を `role="alert"` で表示する。`{理由}` には schema 検証エラーの内容がそのまま入る。
+
+---
+
+## 8. examples/（サンプルコード、Phase 11）
+
+生成は `src/core/export/examples.ts`（純関数、ブラウザ API に依存しない）が行い、`exportZip` が `examples/` 配下へ同梱する。
+
+| ファイル                  | 生成関数              | 内容                                                                 |
+| -------------------------- | ---------------------- | -------------------------------------------------------------------- |
+| `example-canvas.html`       | `buildCanvasExample`   | Canvas 2D（外部依存なし）で表示する最小例                            |
+| `example-pixi.html`         | `buildPixiExample`     | PixiJS（CDN: jsdelivr の `pixi.js@8`）で表示する最小例                |
+| `example-phaser.html`       | `buildPhaserExample`   | Phaser（CDN: jsdelivr の `phaser@4.2.0`）で表示する最小例             |
+
+いずれのサンプルも共通して次を行う。
+
+1. `../atlas/atlas.json` を `fetch` で読み込む。
+2. `../atlas/spritesheet.png` からフレームを切り出して表示する。アニメーションがあれば先頭のアニメーションを `fps` / `loop` に従い再生し、無ければ先頭フレームを表示する。
+3. チェックボックスで、原点（十字）、アンカー（点+名前）、当たり判定（rect は矩形、circle は円。用途名を添える）の重ね描画を切り替えられる。
+4. 原点を基準に画面内の任意座標へ置く例（描画位置 = 配置座標 - 原点）をコード中のコメントで説明する。
+
+`cellSize` や先頭アニメーションの `name` / `fps` / `loop` は生成時に asset から埋め込むが、`atlas.json` の実行時読み込みも必ず行う（サンプルの目的は読み込み方法を示すことのため）。
+
+`fetch` は `file://` では動作しないため、各 HTML の冒頭コメントと ZIP 内 README にローカルサーバー（例: `npx serve .`）で開く旨を明記する。PixiJS 版・Phaser 版はそれぞれのライブラリを CDN から読み込むため、インターネット接続が必要になる。
+
+サンプルコードは完成したゲームではなく、アセットを読み込む最小例である。

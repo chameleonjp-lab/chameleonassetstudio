@@ -90,6 +90,9 @@ test('ZIP をダウンロードでき、中身一式が揃う', async ({ page })
       'textures/main.png',
       'atlas/spritesheet.png',
       'atlas/atlas.json',
+      'examples/example-canvas.html',
+      'examples/example-pixi.html',
+      'examples/example-phaser.html',
       'README.md',
     ]),
   );
@@ -97,4 +100,11 @@ test('ZIP をダウンロードでき、中身一式が揃う', async ({ page })
   const atlas = JSON.parse(Buffer.from(entries['atlas/atlas.json']).toString('utf-8'));
   expect(atlas.format).toBe('chameleon-atlas');
   expect(atlas.frames.length).toBeGreaterThanOrEqual(1);
+
+  const readme = Buffer.from(entries['README.md']).toString('utf-8');
+  expect(readme).toContain('examples');
+
+  // Phaser サンプルは Phaser 4.2.0 の CDN を使う
+  const phaserHtml = Buffer.from(entries['examples/example-phaser.html']).toString('utf-8');
+  expect(phaserHtml).toContain('https://cdn.jsdelivr.net/npm/phaser@4.2.0/dist/phaser.min.js');
 });
