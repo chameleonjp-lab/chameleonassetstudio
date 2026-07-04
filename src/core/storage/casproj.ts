@@ -112,6 +112,20 @@ export async function exportCasproj(bundle: CasprojBundle): Promise<Blob> {
     }
   }
 
+  // 画像欠けの .casproj は復元不能になるため、全 TextureRef に対応するファイルが
+  // 揃っていることを書き出し時点で保証する（Phase 15.5-A）。
+  const filePaths = new Set(bundle.files.map((file) => file.path));
+  for (const asset of bundle.assets) {
+    for (const texture of asset.textures) {
+      const expectedPath = `assets/${asset.id}/${texture.path}`;
+      if (!filePaths.has(expectedPath)) {
+        throw new CasprojError(
+          `画像 Blob が見つかりません: asset=${asset.id} texture=${texture.id} path=${texture.path}（.casproj 書き出し）`,
+        );
+      }
+    }
+  }
+
   const entries: Zippable = {
     [PROJECT_JSON_PATH]: toJsonBytes(bundle.project),
     [README_PATH]: strToU8(bundle.readme ?? DEFAULT_README),

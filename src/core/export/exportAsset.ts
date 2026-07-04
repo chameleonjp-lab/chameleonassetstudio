@@ -79,11 +79,16 @@ async function loadAssetBitmaps(asset: Asset): Promise<Map<string, ImageBitmap>>
   for (const textureId of textureIds) {
     const texture = asset.textures.find((tex) => tex.id === textureId);
     if (!texture) {
-      continue;
+      // 透明な空画像を正常な書き出しとして扱わない（Phase 15.5-A）
+      throw new ExportError(
+        `画像テクスチャ定義が見つかりません: asset=${asset.id} texture=${textureId}（書き出し合成）`,
+      );
     }
     const blob = await loadBlob(blobKeyFor(asset.id, texture.path));
     if (!blob) {
-      continue;
+      throw new ExportError(
+        `画像 Blob が見つかりません: asset=${asset.id} texture=${texture.id} path=${texture.path}（書き出し合成）`,
+      );
     }
     bitmaps.set(textureId, await createImageBitmap(blob));
   }

@@ -108,3 +108,29 @@ test('ZIP をダウンロードでき、中身一式が揃う', async ({ page })
   const phaserHtml = Buffer.from(entries['examples/example-phaser.html']).toString('utf-8');
   expect(phaserHtml).toContain('https://cdn.jsdelivr.net/npm/phaser@4.2.0/dist/phaser.min.js');
 });
+
+test('画像 Blob が欠落していると ZIP 書き出しは理由を表示して失敗する', async ({ page }) => {
+  await setupProjectWithImage(page, 'Blob欠落テスト');
+
+  // IndexedDB の blobs ストアを空にして画像 Blob 欠落状態を作る（Phase 15.5-A）
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const open = indexedDB.open('chameleon-asset-studio');
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const db = open.result;
+          const tx = db.transaction('blobs', 'readwrite');
+          tx.objectStore('blobs').clear();
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          tx.onerror = () => reject(tx.error);
+        };
+      }),
+  );
+
+  await page.getByRole('button', { name: 'ZIP をダウンロード' }).click();
+  await expect(page.getByRole('alert')).toContainText('画像 Blob が見つかりません');
+});
