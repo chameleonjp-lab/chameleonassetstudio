@@ -42,9 +42,11 @@ import {
   type SaveState,
 } from '../../core/storage';
 import { layerWorldPoint } from '../../renderers/canvas2d/view';
+import { AssetTypePanel, BackgroundLayerFields } from './AssetTypePanel';
 import { CanvasEditor } from './CanvasEditor';
 import { LAYER_TOOLS, type CanvasTool } from './canvasTools';
 import { ExportPanel } from './ExportPanel';
+import { GameAttributesPanel } from './GameAttributesPanel';
 import { GameDataPanel } from './GameDataPanel';
 import { LayerPanel } from './LayerPanel';
 import { PartPanel } from './PartPanel';
@@ -810,6 +812,13 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             />
           </label>
 
+          <h3 className="editor-subheading">アセット</h3>
+          {selectedAsset ? (
+            <AssetTypePanel asset={selectedAsset} onCommit={commitPanelChange} />
+          ) : (
+            <p className="editor-note">アセットを選ぶと種別を設定できます。</p>
+          )}
+
           <h3 className="editor-subheading">レイヤー</h3>
           {selectedAsset ? (
             <LayerPanel
@@ -887,6 +896,13 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   onChange={(event) => handleLayerTransformChange('rotation', event.target.value)}
                 />
               </label>
+              {selectedAsset?.assetType === 'background' && (
+                <BackgroundLayerFields
+                  asset={selectedAsset}
+                  layer={selectedLayer}
+                  onCommit={commitPanelChange}
+                />
+              )}
             </div>
           ) : (
             <p className="editor-note">キャンバス上のレイヤーをクリックすると選択できます。</p>
@@ -1076,6 +1092,13 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             <p className="editor-note">
               アセットを選ぶと原点・アンカー・当たり判定を設定できます。
             </p>
+          )}
+
+          <h3 className="editor-subheading">ゲーム属性</h3>
+          {selectedAsset ? (
+            <GameAttributesPanel asset={selectedAsset} onCommit={commitPanelChange} />
+          ) : (
+            <p className="editor-note">アセットを選ぶとゲーム属性を編集できます。</p>
           )}
 
           <h3 className="editor-subheading">パーツ</h3>

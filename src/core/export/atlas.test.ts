@@ -84,4 +84,50 @@ describe('buildAtlas', () => {
       { name: 'idle', fps: 8, loop: true, frames: ['frame_idle_0', 'frame_idle_1'] },
     ]);
   });
+
+  it('tile アセットは tile 設定がそのまま atlas.json に入り、cellSize は実配置のまま', () => {
+    const tileAsset: Asset = {
+      ...baseAsset,
+      assetType: 'tile',
+      tile: {
+        tileSize: { width: 32, height: 32 },
+        collisionType: 'solid',
+        visualType: 'floor',
+      },
+    };
+    const layout = computeSheetLayout(
+      ['default'],
+      tileAsset.canvasSize.width,
+      tileAsset.canvasSize.height,
+    );
+    const atlas = buildAtlas(tileAsset, layout);
+    expect(atlas.tile).toEqual({
+      tileSize: { width: 32, height: 32 },
+      collisionType: 'solid',
+      visualType: 'floor',
+    });
+    // Sprite Sheet の実配置（canvasSize セル）と食い違わないこと
+    expect(atlas.cellSize).toEqual({ width: 512, height: 512 });
+  });
+
+  it('tile 設定が無ければ atlas.json に tile フィールドは入らない', () => {
+    const layout = computeSheetLayout(['default'], 512, 512);
+    const atlas = buildAtlas(baseAsset, layout);
+    expect('tile' in atlas).toBe(false);
+  });
+
+  it('非 tile アセットに tile 設定が残っていても atlas.json には出ない', () => {
+    const characterWithTile: Asset = {
+      ...baseAsset,
+      assetType: 'character',
+      tile: {
+        tileSize: { width: 32, height: 32 },
+        collisionType: 'solid',
+        visualType: 'floor',
+      },
+    };
+    const layout = computeSheetLayout(['default'], 512, 512);
+    const atlas = buildAtlas(characterWithTile, layout);
+    expect('tile' in atlas).toBe(false);
+  });
 });

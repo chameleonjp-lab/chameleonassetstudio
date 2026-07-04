@@ -65,6 +65,7 @@
 | origin     | `{ x, y }`                               | `Asset.origin` と同じ                                                        |
 | anchors    | `Array<{ name, role, x, y }>`            | `Asset.anchors` を平坦化したもの                                             |
 | colliders  | `Collider[]`                             | `Asset.colliders` をそのまま含める                                           |
+| tile       | `TileSettings`（任意）                   | tile アセットのみ。`Asset.tile`（tileSize / collisionType / visualType）をそのまま含める |
 
 Sprite Sheet のセル配置は `computeSheetLayout`（`src/core/export/atlas.ts`）が計算する。フレーム数を n としたとき、列数は `ceil(sqrt(n))`、行数は `ceil(n / 列数)` とし、左上から行優先で並べる。
 

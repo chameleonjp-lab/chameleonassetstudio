@@ -86,7 +86,8 @@ e2e/           … Playwright E2E テスト
 - [x] Phase 11: サンプルコード生成（Canvas 2D / PixiJS / Phaser の最小例、原点・アンカー・当たり判定のデバッグ表示、アニメーション再生例）
 - [x] Phase 12: モバイル最適化（スマホ縦横 / iPad レイアウト、下部ナビ、タッチ操作、iOS 入力ズーム防止、タップ対象サイズ確保）
 - [x] Phase 13: MVP 固定（`.casproj` の UI 読み書き、MVP チェックリスト消化、iPad 主要編集 E2E、docs 更新）
-- [ ] Phase 14 以降: `docs/IMPLEMENTATION_PLAN.md` を参照
+- [x] Phase 14: 背景・アイテム・タイル・ギミック（型別設定、ゲーム属性エディタ、背景パララックスプレビュー、tile 設定の atlas 同梱）
+- [ ] Phase 15 以降: `docs/IMPLEMENTATION_PLAN.md` を参照
 
 ## 初期方針
 

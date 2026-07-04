@@ -125,6 +125,8 @@ UI からの読み書き（Phase 13）:
 | animations            | Animation[]                                                              | ✔    | アニメーション設定                       |
 | tags                  | string[]                                                                 | ✔    | タグ                                     |
 | gameAttributes        | object                                                                   | ✔    | ゲーム側で自由に使う属性                 |
+| tile                  | TileSettings                                                             | 任意 | tile アセット用設定（6.7）               |
+| gimmick               | GimmickSettings                                                          | 任意 | gimmick アセット用設定（6.7）            |
 | createdAt / updatedAt | string (date-time)                                                       | ✔    | 作成・更新日時                           |
 
 座標系は、キャンバス左上を原点とし、右方向 x+、下方向 y+ とする。単位はピクセル。回転の単位は度。
@@ -152,6 +154,7 @@ UI からの読み書き（Phase 13）:
 | opacity          | number (0〜1)                 | 不透明度                           |
 | transform        | LayerTransform                | position / scale / rotation        |
 | textureId        | string（任意）                | image レイヤーが参照するテクスチャ |
+| background       | BackgroundLayerSettings（任意） | background アセットのレイヤー用設定（6.7） |
 
 LayerTransform の意味は次の通りとする。`position` はテクスチャ左上のアセット座標（キャンバス座標系）。`scale` と `rotation` はテクスチャ中心を基準に適用する。描画・当たり判定・書き出しはこの解釈で統一する（実装: `src/renderers/canvas2d/view.ts`）。
 
@@ -172,6 +175,38 @@ LayerTransform の意味は次の通りとする。`position` はテクスチャ
 - `Frame` は `id` / `name` / `layerStates` を持つ。`layerStates` の各要素は `layerId` 必須で、`visible` / `transform` / `opacity` を省略した場合はレイヤー本体の値を使う。
 - `Animation` は `id` / `name` / `fps` / `loop` / `frameIds` を必須で持ち、`durationMs` は任意（未指定時はフレーム数と fps から導出）。
 - name 候補は `idle` / `walk` / `run` / `jump` / `fall` / `attack` / `damage` / `dead` / `win` / `lose`（`ANIMATION_NAME_SUGGESTIONS`）。
+
+### 6.7 型別設定（Phase 14）
+
+キャラクター以外のアセット種別用の設定。すべて任意フィールドとして追加する（バージョンは 0.1.0 のまま。既存データはそのまま有効で、migrate は不要）。
+
+**BackgroundLayerSettings**（`Layer.background`。background アセットの各レイヤーに付ける）
+
+| フィールド    | 型                                       | 説明                                             |
+| ------------- | ---------------------------------------- | ------------------------------------------------ |
+| role          | `far` \| `mid` \| `near` \| `foreground` | 遠景・中景・近景・前景の役割                     |
+| parallaxSpeed | Vec2                                     | パララックス速度係数（1 がカメラと等速、0 が固定） |
+| loopX / loopY | boolean                                  | 各軸方向にループ描画するか                       |
+
+**TileSettings**（`Asset.tile`。tile アセットに付ける）
+
+| フィールド    | 型                                                        | 説明                                     |
+| ------------- | --------------------------------------------------------- | ---------------------------------------- |
+| tileSize      | Size                                                      | 1 タイルのピクセルサイズ                 |
+| collisionType | `none` \| `solid` \| `one_way` \| `hazard` \| `custom`    | 衝突タイプ（床・壁・穴・一方通行床など） |
+| visualType    | string                                                    | 見た目の分類（例: `floor` / `wall` / `hole`） |
+
+tile アセットの Atlas 出力では、`atlas.json` に `tile` フィールドとして TileSettings をそのまま含める（ゲーム側が各コマを `tileSize` で分割するために使う。`cellSize` と各コマの配置は従来どおり Sprite Sheet の実配置を表す）。
+
+**GimmickSettings**（`Asset.gimmick`。gimmick アセットに付ける）
+
+| フィールド     | 型     | 説明                                                                            |
+| -------------- | ------ | ------------------------------------------------------------------------------- |
+| movementPreset | string | 動きプリセットの入口（候補: `none` / `horizontal` / `vertical` / `rotate` / `pendulum`。Phase 15 以降で実装） |
+
+gimmick のタグ候補は `hazard` / `platform` / `obstacle` / `pickup_emitter`（UI 側の候補提示のみ。schema は string[] のまま）。
+
+**item アセット**は新規フィールドを持たない。取得判定は既存 Collider の `purpose: pickup`、属性は既存 `gameAttributes` を使う。標準属性キー候補は `score` / `hp` / `attack` / `defense` / `speed` / `duration` / `effectType` / `rarity`（UI 側の候補提示のみ）。
 
 ---
 
