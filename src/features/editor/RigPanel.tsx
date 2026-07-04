@@ -7,6 +7,11 @@ import {
   type RigAnimation,
   type RigKeyframe,
 } from '../../core/model';
+import {
+  buildMotionTemplate,
+  MOTION_TEMPLATES,
+  type MotionTemplateName,
+} from '../../core/rig/motionTemplates';
 import { bakeRigAnimation } from '../../core/rig/rig';
 
 interface RigPanelProps {
@@ -27,6 +32,8 @@ export function RigPanel({ asset, onCommit }: RigPanelProps) {
   const [selectedRigId, setSelectedRigId] = useState<string | null>(rigs[0]?.id ?? null);
   const [newRigName, setNewRigName] = useState('');
   const [newKeyframeTime, setNewKeyframeTime] = useState('0');
+  const [templateName, setTemplateName] = useState<MotionTemplateName>(MOTION_TEMPLATES[0]);
+  const [templateError, setTemplateError] = useState<string | null>(null);
 
   const selectedRig = rigs.find((rig) => rig.id === selectedRigId) ?? rigs[0] ?? null;
 
@@ -46,6 +53,17 @@ export function RigPanel({ asset, onCommit }: RigPanelProps) {
     commitRigs('リグ作成', [...rigs, rig]);
     setSelectedRigId(rig.id);
     setNewRigName('');
+  };
+
+  const handleApplyTemplate = () => {
+    const rig = buildMotionTemplate(asset, templateName);
+    if (!rig) {
+      setTemplateError('対象パーツがありません（body などのパーツ種別を設定してください）');
+      return;
+    }
+    setTemplateError(null);
+    commitRigs('テンプレート適用', [...rigs, rig]);
+    setSelectedRigId(rig.id);
   };
 
   const handleAddKeyframe = () => {
@@ -101,6 +119,27 @@ export function RigPanel({ asset, onCommit }: RigPanelProps) {
           リグを作成
         </button>
       </div>
+
+      <div className="gamedata-inline-fields">
+        <label className="editor-field">
+          モーションテンプレート
+          <select
+            aria-label="モーションテンプレート"
+            value={templateName}
+            onChange={(event) => setTemplateName(event.target.value as MotionTemplateName)}
+          >
+            {MOTION_TEMPLATES.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="button" onClick={handleApplyTemplate}>
+          テンプレートを適用
+        </button>
+      </div>
+      {templateError && <p role="alert">{templateError}</p>}
 
       {rigs.length > 0 && (
         <label className="editor-field">
@@ -340,7 +379,11 @@ function KeyframePoseEditor({
         <div className="gamedata-inline-fields">
           <label className="editor-field">
             パーツ
-            <select value={partToAdd} onChange={(event) => setPartToAdd(event.target.value)}>
+            <select
+              aria-label="ポーズ対象パーツ"
+              value={partToAdd}
+              onChange={(event) => setPartToAdd(event.target.value)}
+            >
               <option value="">選択…</option>
               {unusedParts.map((part) => (
                 <option key={part.id} value={part.id}>
