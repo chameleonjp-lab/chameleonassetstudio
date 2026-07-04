@@ -1,0 +1,286 @@
+import { describe, expect, it } from 'vitest';
+import { ASSET_FORMAT, CURRENT_ASSET_VERSION, type Asset } from '../model/asset';
+import type { Animation, Frame } from '../model/animation';
+import type { Layer } from '../model/layer';
+import type { Part, PartPose } from '../model/part';
+import type { RigAnimation } from '../model/rig';
+import type { TextureRef } from '../model/texture';
+import {
+  accumulatePartChain,
+  applyPoint,
+  bakeRigAnimation,
+  effectivePose,
+  interpolateRigPoses,
+  partLocalMatrix,
+  partWorldMatrix,
+} from './rig';
+
+const baseAsset: Asset = {
+  format: ASSET_FORMAT,
+  version: CURRENT_ASSET_VERSION,
+  id: 'asset_test',
+  assetType: 'character',
+  name: 'test_asset',
+  displayName: 'テスト',
+  canvasSize: { width: 64, height: 64 },
+  origin: { x: 32, y: 64 },
+  textures: [],
+  layers: [],
+  parts: [],
+  anchors: [],
+  colliders: [],
+  frames: [],
+  animations: [],
+  tags: [],
+  gameAttributes: {},
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
+
+describe('partLocalMatrix / applyPoint', () => {
+  it('pivot (10,0) を中心に localRotation 90° 回転すると (20,0) は (10,10) 付近になる', () => {
+    const part: Part = {
+      id: 'part_a',
+      name: 'a',
+      partType: 'other',
+      layerIds: [],
+      pivot: { x: 10, y: 0 },
+    };
+    const pose = effectivePose(part, { localRotation: 90 });
+    const matrix = partLocalMatrix(part, pose);
+    const result = applyPoint(matrix, { x: 20, y: 0 });
+
+    expect(result.x).toBeCloseTo(10, 6);
+    expect(result.y).toBeCloseTo(10, 6);
+  });
+});
+
+describe('partWorldMatrix', () => {
+  it('親 localPosition (5,0) と子 localRotation 90°（pivot 原点）の合成が期待どおりになる', () => {
+    const parent: Part = {
+      id: 'part_parent',
+      name: 'parent',
+      partType: 'body',
+      layerIds: [],
+      pivot: { x: 0, y: 0 },
+    };
+    const child: Part = {
+      id: 'part_child',
+      name: 'child',
+      partType: 'arm_left',
+      layerIds: [],
+      parentId: 'part_parent',
+      pivot: { x: 0, y: 0 },
+    };
+    const asset: Asset = { ...baseAsset, parts: [parent, child] };
+    const poses: Record<string, PartPose> = {
+      part_parent: { localPosition: { x: 5, y: 0 } },
+      part_child: { localRotation: 90 },
+    };
+
+    const world = partWorldMatrix(asset, 'part_child', poses);
+    const result = applyPoint(world, { x: 1, y: 0 });
+
+    // 子のローカル点 (1,0) は 90 度回転で (0,1) になり、
+    // 親の localPosition (5,0) だけ平行移動されて (5,1) になる。
+    expect(result.x).toBeCloseTo(5, 6);
+    expect(result.y).toBeCloseTo(1, 6);
+  });
+
+  it('循環する parentId（A → B → A）でも無限ループせず有限の行列を返す', () => {
+    const partA: Part = {
+      id: 'part_a',
+      name: 'a',
+      partType: 'other',
+      layerIds: [],
+      parentId: 'part_b',
+    };
+    const partB: Part = {
+      id: 'part_b',
+      name: 'b',
+      partType: 'other',
+      layerIds: [],
+      parentId: 'part_a',
+    };
+    const asset: Asset = { ...baseAsset, parts: [partA, partB] };
+
+    const world = partWorldMatrix(asset, 'part_a', {});
+
+    expect(Number.isFinite(world.a)).toBe(true);
+    expect(Number.isFinite(world.b)).toBe(true);
+    expect(Number.isFinite(world.c)).toBe(true);
+    expect(Number.isFinite(world.d)).toBe(true);
+    expect(Number.isFinite(world.e)).toBe(true);
+    expect(Number.isFinite(world.f)).toBe(true);
+  });
+});
+
+describe('interpolateRigPoses', () => {
+  it('2 keyframe（time 0: rotation 0 / time 1: rotation 90）の time 0.5 で 45 になる', () => {
+    const rig: RigAnimation = {
+      id: 'rig_1',
+      name: 'test_rig',
+      fps: 30,
+      loop: true,
+      durationMs: 1000,
+      keyframes: [
+        { time: 0, poses: { part_a: { localRotation: 0 } } },
+        { time: 1, poses: { part_a: { localRotation: 90 } } },
+      ],
+    };
+
+    const poses = interpolateRigPoses(rig, 0.5);
+
+    expect(poses.part_a?.localRotation).toBeCloseTo(45, 6);
+  });
+
+  it('keyframes が空なら {} を返す', () => {
+    const rig: RigAnimation = {
+      id: 'rig_empty',
+      name: 'empty',
+      fps: 30,
+      loop: false,
+      durationMs: 1000,
+      keyframes: [],
+    };
+
+    expect(interpolateRigPoses(rig, 0.5)).toEqual({});
+  });
+});
+
+describe('effectivePose / rotationLimit', () => {
+  it('rotationLimit（min -10 / max 10）で kf の localRotation 90 が 10 に clamp される', () => {
+    const part: Part = {
+      id: 'part_a',
+      name: 'a',
+      partType: 'other',
+      layerIds: [],
+      rotationLimit: { min: -10, max: 10 },
+    };
+
+    const pose = effectivePose(part, { localRotation: 90 });
+
+    expect(pose.localRotation).toBe(10);
+  });
+});
+
+describe('bakeRigAnimation', () => {
+  it('中心を保ったまま回転を焼き込み、フレームとアニメーションを追加する', () => {
+    const texture: TextureRef = {
+      id: 'tex_main',
+      kind: 'edit',
+      name: 'main',
+      mimeType: 'image/png',
+      size: { width: 64, height: 64 },
+      path: 'textures/main.png',
+    };
+    const layer: Layer = {
+      id: 'layer_main',
+      name: 'main',
+      layerType: 'image',
+      visible: true,
+      locked: false,
+      opacity: 1,
+      transform: { position: { x: 0, y: 0 }, scale: { x: 1, y: 1 }, rotation: 0 },
+      textureId: 'tex_main',
+    };
+    const part: Part = {
+      id: 'part_body',
+      name: 'body',
+      partType: 'body',
+      layerIds: ['layer_main'],
+      pivot: { x: 32, y: 32 },
+    };
+    const existingFrame: Frame = { id: 'frame_existing', name: 'existing', layerStates: [] };
+    const existingAnimation: Animation = {
+      id: 'anim_existing',
+      name: 'existing',
+      fps: 8,
+      loop: true,
+      frameIds: ['frame_existing'],
+    };
+    const asset: Asset = {
+      ...baseAsset,
+      textures: [texture],
+      layers: [layer],
+      parts: [part],
+      frames: [existingFrame],
+      animations: [existingAnimation],
+    };
+    const rig: RigAnimation = {
+      id: 'rig_1',
+      name: 'sway',
+      fps: 2,
+      loop: true,
+      durationMs: 1000,
+      keyframes: [
+        { time: 0, poses: { part_body: { localRotation: 0 } } },
+        { time: 1, poses: { part_body: { localRotation: 90 } } },
+      ],
+    };
+
+    const baked = bakeRigAnimation(asset, rig);
+
+    // 既存 frames/animations は保持される
+    expect(baked.frames).toHaveLength(3);
+    expect(baked.frames?.[0]).toBe(existingFrame);
+    expect(baked.animations).toHaveLength(2);
+    expect(baked.animations[0]).toBe(existingAnimation);
+
+    const bakedFrames = baked.frames?.slice(1) ?? [];
+    expect(bakedFrames).toHaveLength(2);
+
+    for (const frame of bakedFrames) {
+      const state = frame.layerStates.find((s) => s.layerId === 'layer_main');
+      expect(state?.transform).toBeDefined();
+      const t = state!.transform!;
+      const centerX = t.position.x + (texture.size.width * t.scale.x) / 2;
+      const centerY = t.position.y + (texture.size.height * t.scale.y) / 2;
+      // pivot がテクスチャ中心 (32,32) と一致するため、回転しても中心は不変。
+      expect(centerX).toBeCloseTo(32, 6);
+      expect(centerY).toBeCloseTo(32, 6);
+    }
+
+    const secondState = bakedFrames[1].layerStates.find((s) => s.layerId === 'layer_main');
+    expect(secondState?.transform?.rotation).toBe(90);
+
+    const newAnimation = baked.animations[1];
+    expect(newAnimation.name).toBe('sway');
+    expect(newAnimation.fps).toBe(2);
+    expect(newAnimation.loop).toBe(true);
+    expect(newAnimation.frameIds).toEqual(bakedFrames.map((f) => f.id));
+
+    // 元のアセットは変更しない
+    expect(asset.frames).toHaveLength(1);
+    expect(asset.animations).toHaveLength(1);
+  });
+});
+
+describe('accumulatePartChain', () => {
+  it('親子の localRotation を合計し、localScale を成分積で返す', () => {
+    const parent: Part = {
+      id: 'part_parent',
+      name: 'parent',
+      partType: 'body',
+      layerIds: [],
+    };
+    const child: Part = {
+      id: 'part_child',
+      name: 'child',
+      partType: 'arm_left',
+      layerIds: [],
+      parentId: 'part_parent',
+    };
+    const asset: Asset = { ...baseAsset, parts: [parent, child] };
+    const poses: Record<string, PartPose> = {
+      part_parent: { localRotation: 10, localScale: { x: 2, y: 1 } },
+      part_child: { localRotation: 20, localScale: { x: 1, y: 3 } },
+    };
+
+    const result = accumulatePartChain(asset, 'part_child', poses);
+
+    expect(result.rotation).toBeCloseTo(30, 6);
+    expect(result.scale.x).toBeCloseTo(2, 6);
+    expect(result.scale.y).toBeCloseTo(3, 6);
+  });
+});
