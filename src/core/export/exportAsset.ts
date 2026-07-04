@@ -3,6 +3,7 @@
  * Canvas 2D 合成、IndexedDB からの画像読み込み、Blob URL ダウンロードを使うためブラウザ専用。
  */
 import { strToU8, zip, type Zippable } from 'fflate';
+import { decodeImageSource, type DecodedImageSource } from '../images/decodeImageSource';
 import { blobKeyFor } from '../images/importImage';
 import { applyFrameToAsset, type Asset } from '../model';
 import { validateAsset } from '../schema/validate';
@@ -68,11 +69,11 @@ async function encodeCanvas(
 
 /**
  * アセットの編集用テクスチャ Blob 群を IndexedDB から読み、
- * ImageBitmap の Map（textureId → ImageBitmap）を作る。
- * 使い終わったら呼び出し側で ImageBitmap.close() を呼ぶこと。
+ * DecodedImageSource の Map（textureId → DecodedImageSource）を作る。
+ * 使い終わったら呼び出し側で close() を呼ぶこと。
  */
-async function loadAssetBitmaps(asset: Asset): Promise<Map<string, ImageBitmap>> {
-  const bitmaps = new Map<string, ImageBitmap>();
+async function loadAssetBitmaps(asset: Asset): Promise<Map<string, DecodedImageSource>> {
+  const bitmaps = new Map<string, DecodedImageSource>();
   const textureIds = new Set(
     asset.layers.map((layer) => layer.textureId).filter((id): id is string => Boolean(id)),
   );
@@ -90,7 +91,7 @@ async function loadAssetBitmaps(asset: Asset): Promise<Map<string, ImageBitmap>>
         `画像 Blob が見つかりません: asset=${asset.id} texture=${texture.id} path=${texture.path}（書き出し合成）`,
       );
     }
-    bitmaps.set(textureId, await createImageBitmap(blob));
+    bitmaps.set(textureId, await decodeImageSource(blob));
   }
   return bitmaps;
 }
@@ -104,7 +105,7 @@ async function loadAssetBitmaps(asset: Asset): Promise<Map<string, ImageBitmap>>
  */
 async function compositeAssetToCanvas(
   asset: Asset,
-  bitmaps: Map<string, ImageBitmap>,
+  bitmaps: Map<string, DecodedImageSource>,
   frameId?: string,
 ): Promise<OffscreenCanvas | HTMLCanvasElement> {
   const source = frameId ? applyFrameToAsset(asset, frameId) : asset;
@@ -114,9 +115,9 @@ async function compositeAssetToCanvas(
     if (!layer.visible || !layer.textureId) {
       continue;
     }
-    const bitmap = bitmaps.get(layer.textureId);
+    const decoded = bitmaps.get(layer.textureId);
     const texture = asset.textures.find((tex) => tex.id === layer.textureId);
-    if (!bitmap || !texture) {
+    if (!decoded || !texture) {
       continue;
     }
     const { transform } = layer;
@@ -128,7 +129,7 @@ async function compositeAssetToCanvas(
     ctx.rotate((transform.rotation * Math.PI) / 180);
     ctx.scale(transform.scale.x, transform.scale.y);
     ctx.drawImage(
-      bitmap,
+      decoded.source,
       -texture.size.width / 2,
       -texture.size.height / 2,
       texture.size.width,
@@ -163,8 +164,8 @@ export async function exportImage(asset: Asset, type: 'image/png' | 'image/webp'
     }
     return blob;
   } finally {
-    for (const bitmap of bitmaps.values()) {
-      bitmap.close();
+    for (const decoded of bitmaps.values()) {
+      decoded.close();
     }
   }
 }
@@ -203,8 +204,8 @@ export async function exportSpriteSheet(asset: Asset): Promise<{ sheet: Blob; at
     }
     return { sheet, atlas: buildAtlas(asset, layout) };
   } finally {
-    for (const bitmap of bitmaps.values()) {
-      bitmap.close();
+    for (const decoded of bitmaps.values()) {
+      decoded.close();
     }
   }
 }
