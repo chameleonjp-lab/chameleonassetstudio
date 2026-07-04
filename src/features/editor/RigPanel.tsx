@@ -364,6 +364,44 @@ function KeyframePoseEditor({
                 }
               />
             </label>
+            <label className="editor-field">
+              拡大 X
+              <input
+                type="number"
+                step={0.1}
+                min={0.01}
+                aria-label={`「${part?.name ?? partId}」のポーズ拡大X`}
+                value={pose.localScale?.x ?? 1}
+                onChange={(event) =>
+                  onChangePose(partId, (prev) => ({
+                    ...prev,
+                    localScale: {
+                      x: Math.max(0.01, Number(event.target.value) || 1),
+                      y: prev.localScale?.y ?? 1,
+                    },
+                  }))
+                }
+              />
+            </label>
+            <label className="editor-field">
+              拡大 Y
+              <input
+                type="number"
+                step={0.1}
+                min={0.01}
+                aria-label={`「${part?.name ?? partId}」のポーズ拡大Y`}
+                value={pose.localScale?.y ?? 1}
+                onChange={(event) =>
+                  onChangePose(partId, (prev) => ({
+                    ...prev,
+                    localScale: {
+                      x: prev.localScale?.x ?? 1,
+                      y: Math.max(0.01, Number(event.target.value) || 1),
+                    },
+                  }))
+                }
+              />
+            </label>
             <button
               type="button"
               aria-label={`「${part?.name ?? partId}」のポーズを削除`}

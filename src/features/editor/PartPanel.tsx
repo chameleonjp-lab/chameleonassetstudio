@@ -238,6 +238,50 @@ export function PartPanel({
                     }
                   />
                 </label>
+                <label className="editor-field">
+                  拡大 X
+                  <input
+                    type="number"
+                    step={0.1}
+                    min={0.01}
+                    value={part.bindPose?.localScale?.x ?? 1}
+                    onFocus={onBeginFieldEdit}
+                    onBlur={onCommitFieldEdit}
+                    onChange={(event) =>
+                      onLiveChange(
+                        setPartBindPose(asset, part.id, {
+                          ...part.bindPose,
+                          localScale: {
+                            x: Math.max(0.01, Number(event.target.value) || 1),
+                            y: part.bindPose?.localScale?.y ?? 1,
+                          },
+                        }),
+                      )
+                    }
+                  />
+                </label>
+                <label className="editor-field">
+                  拡大 Y
+                  <input
+                    type="number"
+                    step={0.1}
+                    min={0.01}
+                    value={part.bindPose?.localScale?.y ?? 1}
+                    onFocus={onBeginFieldEdit}
+                    onBlur={onCommitFieldEdit}
+                    onChange={(event) =>
+                      onLiveChange(
+                        setPartBindPose(asset, part.id, {
+                          ...part.bindPose,
+                          localScale: {
+                            x: part.bindPose?.localScale?.x ?? 1,
+                            y: Math.max(0.01, Number(event.target.value) || 1),
+                          },
+                        }),
+                      )
+                    }
+                  />
+                </label>
               </div>
               {part.rotationLimit ? (
                 <div className="gamedata-inline-fields">

@@ -337,5 +337,7 @@ export function downloadBlob(blob: Blob, filename: string): void {
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  // Safari / iOS はダウンロード開始が非同期のため、即時 revoke すると失敗することがある。
+  // 30 秒後の解放で「開始は確実に間に合い、URL も溜め込まない」バランスを取る（Phase 15.5-E）
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
