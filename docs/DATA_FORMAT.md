@@ -158,7 +158,7 @@ UI からの読み書き（Phase 13）:
 | visible / locked | boolean                       | 表示・ロック                       |
 | opacity          | number (0〜1)                 | 不透明度                           |
 | transform        | LayerTransform                | position / scale / rotation        |
-| textureId        | string（任意）                | image レイヤーが参照するテクスチャ |
+| textureId        | string（image は必須、他は任意） | image レイヤーが参照するテクスチャ。`layerType: "image"` では schema で必須（Phase 15.5-C） |
 | background       | BackgroundLayerSettings（任意） | background アセットのレイヤー用設定（6.7） |
 
 LayerTransform の意味は次の通りとする。`position` はテクスチャ左上のアセット座標（キャンバス座標系）。`scale` と `rotation` はテクスチャ中心を基準に適用する。描画・当たり判定・書き出しはこの解釈で統一する（実装: `src/renderers/canvas2d/view.ts`）。
