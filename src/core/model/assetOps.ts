@@ -7,7 +7,8 @@ import type { Asset, AssetType, GimmickSettings, TileSettings } from './asset';
 import type { Vec2 } from './common';
 import { generateId } from './factories';
 import type { BackgroundLayerSettings, Layer } from './layer';
-import type { Part, PartType } from './part';
+import type { Part, PartPose, PartType } from './part';
+import type { RigAnimation } from './rig';
 
 function touch(asset: Asset): Asset {
   return { ...asset, updatedAt: new Date().toISOString() };
@@ -473,4 +474,88 @@ export function removeGameAttribute(asset: Asset, key: string): Asset {
   const gameAttributes = { ...asset.gameAttributes };
   delete gameAttributes[key];
   return touch({ ...asset, gameAttributes });
+}
+
+// ---- 簡易リグ（Phase 15） ----
+
+/**
+ * parts の parentId を辿った祖先チェーン（startId 自身を含む）に targetId が
+ * 含まれるかどうかを調べる。訪問済みガードで循環データがあっても無限ループしない。
+ */
+function isPartAncestor(asset: Asset, startId: string, targetId: string): boolean {
+  const visited = new Set<string>();
+  let currentId: string | undefined = startId;
+  while (currentId !== undefined && !visited.has(currentId)) {
+    if (currentId === targetId) {
+      return true;
+    }
+    visited.add(currentId);
+    currentId = asset.parts.find((part) => part.id === currentId)?.parentId;
+  }
+  return false;
+}
+
+function mapPart(asset: Asset, partId: string, update: (part: Part) => Part): Asset {
+  return touch({
+    ...asset,
+    parts: asset.parts.map((part) => (part.id === partId ? update(part) : part)),
+  });
+}
+
+/**
+ * パーツの親を設定する。parentId が partId 自身、または parentId の祖先チェーンに
+ * partId が含まれる場合（循環になる場合）は変更せず asset をそのまま返す。
+ */
+export function setPartParent(asset: Asset, partId: string, parentId: string | undefined): Asset {
+  if (parentId !== undefined && (parentId === partId || isPartAncestor(asset, parentId, partId))) {
+    return asset;
+  }
+  return mapPart(asset, partId, (part) => {
+    const next = { ...part };
+    if (parentId !== undefined) {
+      next.parentId = parentId;
+    } else {
+      delete next.parentId;
+    }
+    return next;
+  });
+}
+
+/** パーツの基準ポーズ（バインドポーズ）を設定する。undefined を渡すと削除する。 */
+export function setPartBindPose(
+  asset: Asset,
+  partId: string,
+  bindPose: PartPose | undefined,
+): Asset {
+  return mapPart(asset, partId, (part) => {
+    const next = { ...part };
+    if (bindPose) {
+      next.bindPose = bindPose;
+    } else {
+      delete next.bindPose;
+    }
+    return next;
+  });
+}
+
+/** パーツの localRotation 可動域を設定する。undefined を渡すと削除する。 */
+export function setPartRotationLimit(
+  asset: Asset,
+  partId: string,
+  limit: { min: number; max: number } | undefined,
+): Asset {
+  return mapPart(asset, partId, (part) => {
+    const next = { ...part };
+    if (limit) {
+      next.rotationLimit = limit;
+    } else {
+      delete next.rotationLimit;
+    }
+    return next;
+  });
+}
+
+/** リグアニメーション一覧をまるごと置き換える。 */
+export function setRigAnimations(asset: Asset, rigAnimations: RigAnimation[]): Asset {
+  return touch({ ...asset, rigAnimations });
 }

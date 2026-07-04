@@ -3,6 +3,9 @@ import {
   PART_TYPES,
   createPart,
   removePart,
+  setPartBindPose,
+  setPartParent,
+  setPartRotationLimit,
   updatePart,
   type Asset,
   type PartType,
@@ -155,6 +158,147 @@ export function PartPanel({
                   />
                 </label>
               </div>
+              <label className="editor-field">
+                親パーツ
+                <select
+                  aria-label={`「${part.name}」の親パーツ`}
+                  value={part.parentId ?? ''}
+                  onChange={(event) =>
+                    onCommit(
+                      '親パーツ変更',
+                      setPartParent(asset, part.id, event.target.value || undefined),
+                    )
+                  }
+                >
+                  <option value="">なし</option>
+                  {asset.parts
+                    .filter((candidate) => candidate.id !== part.id)
+                    .map((candidate) => (
+                      <option key={candidate.id} value={candidate.id}>
+                        {candidate.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <div className="gamedata-inline-fields">
+                <label className="editor-field">
+                  ポーズ X
+                  <input
+                    type="number"
+                    value={part.bindPose?.localPosition?.x ?? 0}
+                    onFocus={onBeginFieldEdit}
+                    onBlur={onCommitFieldEdit}
+                    onChange={(event) =>
+                      onLiveChange(
+                        setPartBindPose(asset, part.id, {
+                          ...part.bindPose,
+                          localPosition: {
+                            x: Number(event.target.value) || 0,
+                            y: part.bindPose?.localPosition?.y ?? 0,
+                          },
+                        }),
+                      )
+                    }
+                  />
+                </label>
+                <label className="editor-field">
+                  ポーズ Y
+                  <input
+                    type="number"
+                    value={part.bindPose?.localPosition?.y ?? 0}
+                    onFocus={onBeginFieldEdit}
+                    onBlur={onCommitFieldEdit}
+                    onChange={(event) =>
+                      onLiveChange(
+                        setPartBindPose(asset, part.id, {
+                          ...part.bindPose,
+                          localPosition: {
+                            x: part.bindPose?.localPosition?.x ?? 0,
+                            y: Number(event.target.value) || 0,
+                          },
+                        }),
+                      )
+                    }
+                  />
+                </label>
+                <label className="editor-field">
+                  ポーズ回転
+                  <input
+                    type="number"
+                    value={part.bindPose?.localRotation ?? 0}
+                    onFocus={onBeginFieldEdit}
+                    onBlur={onCommitFieldEdit}
+                    onChange={(event) =>
+                      onLiveChange(
+                        setPartBindPose(asset, part.id, {
+                          ...part.bindPose,
+                          localRotation: Number(event.target.value) || 0,
+                        }),
+                      )
+                    }
+                  />
+                </label>
+              </div>
+              {part.rotationLimit ? (
+                <div className="gamedata-inline-fields">
+                  <label className="editor-field">
+                    可動域 min
+                    <input
+                      type="number"
+                      value={part.rotationLimit.min}
+                      onFocus={onBeginFieldEdit}
+                      onBlur={onCommitFieldEdit}
+                      onChange={(event) =>
+                        onLiveChange(
+                          setPartRotationLimit(asset, part.id, {
+                            min: Number(event.target.value) || 0,
+                            max: part.rotationLimit?.max ?? 180,
+                          }),
+                        )
+                      }
+                    />
+                  </label>
+                  <label className="editor-field">
+                    可動域 max
+                    <input
+                      type="number"
+                      value={part.rotationLimit.max}
+                      onFocus={onBeginFieldEdit}
+                      onBlur={onCommitFieldEdit}
+                      onChange={(event) =>
+                        onLiveChange(
+                          setPartRotationLimit(asset, part.id, {
+                            min: part.rotationLimit?.min ?? -180,
+                            max: Number(event.target.value) || 0,
+                          }),
+                        )
+                      }
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    aria-label={`「${part.name}」の可動域を解除`}
+                    onClick={() =>
+                      onCommit('可動域解除', setPartRotationLimit(asset, part.id, undefined))
+                    }
+                  >
+                    解除
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  aria-label={`「${part.name}」に可動域を追加`}
+                  onClick={() =>
+                    onCommit(
+                      '可動域追加',
+                      setPartRotationLimit(asset, part.id, { min: -180, max: 180 }),
+                    )
+                  }
+                >
+                  可動域を追加
+                </button>
+              )}
               <p className="part-row-meta">レイヤー {part.layerIds.length} 件</p>
             </li>
           ))}

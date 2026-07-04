@@ -208,6 +208,40 @@ gimmick のタグ候補は `hazard` / `platform` / `obstacle` / `pickup_emitter`
 
 **item アセット**は新規フィールドを持たない。取得判定は既存 Collider の `purpose: pickup`、属性は既存 `gameAttributes` を使う。標準属性キー候補は `score` / `hp` / `attack` / `defense` / `speed` / `duration` / `effectType` / `rarity`（UI 側の候補提示のみ）。
 
+### 6.8 簡易リグ（Phase 15）
+
+Spine / Rive の代替ではなく、パーツ単位の回転・平行移動をフレームアニメーションへ焼き込むための最小構造。すべて任意フィールドで追加する（version 0.1.0 のまま。migrate 不要）。
+
+**Part の拡張**（`Asset.parts[]` の各要素）
+
+| フィールド    | 型                             | 説明                                                                 |
+| ------------- | ------------------------------ | -------------------------------------------------------------------- |
+| parentId      | string（任意）                 | 親パーツ ID。未設定はルート。循環は禁止（UI とバリデーションで防ぐ） |
+| bindPose      | PartPose（任意）               | 基準ポーズ。未設定は `{ localPosition: {x:0,y:0}, localRotation: 0, localScale: {x:1,y:1} }` |
+| rotationLimit | `{ min, max }`（任意、度）     | localRotation の可動域。UI 入力時に clamp する                        |
+
+**PartPose**
+
+| フィールド    | 型             | 説明                                   |
+| ------------- | -------------- | -------------------------------------- |
+| localPosition | Vec2（任意）   | 親パーツ座標系での平行移動（px）       |
+| localRotation | number（任意） | 度。パーツ pivot を中心に回転する      |
+| localScale    | Vec2（任意）   | 拡縮（squash / stretch 用）            |
+
+**RigAnimation**（`Asset.rigAnimations?: RigAnimation[]`）
+
+| フィールド | 型                                              | 説明                                             |
+| ---------- | ----------------------------------------------- | ------------------------------------------------ |
+| id / name  | string                                          | 識別子と名前                                     |
+| fps        | number                                          | 焼き込み時のサンプリングレート                   |
+| loop       | boolean                                         | 焼き込み先 Animation の loop に引き継ぐ          |
+| keyframes  | `Array<{ time: number, poses: Record<partId, PartPose> }>` | time は 0〜1 の正規化時刻。keyframe 間は線形補間 |
+| durationMs | number                                          | アニメーション全体の長さ（ms）                   |
+
+**焼き込み（bake）**: `RigAnimation` を `fps` と `durationMs` からフレーム数 `ceil(durationMs / 1000 * fps)` でサンプリングし、各時刻のパーツワールド変換（親子合成: 親の変換 → 自分の pivot 中心回転・拡縮 → localPosition 平行移動）を、パーツに属する各レイヤーの `Frame.layerStates[].transform` に変換して `frames` へ追加し、対応する `Animation` を作る。レイヤー transform の rotation はテクスチャ中心基準（6.2）のため、pivot 中心回転はレイヤー中心の移動 + rotation 加算に分解して反映する。焼き込み後のフレームは通常のフレームとして編集・書き出しできる（リグ構造は書き出し JSON にそのまま残る）。
+
+**モーションテンプレート**: `idle_sway` / `walk_bounce` / `jump_squash` / `attack_swing` / `damage_shake` / `dead_collapse` を、パーツ種別（head / body / arm_* / leg_* / weapon）へのマッピングで `RigAnimation` として生成する。生成後は通常の keyframe として手動調整できる。
+
 ---
 
 ## 7. ExportPresetFile

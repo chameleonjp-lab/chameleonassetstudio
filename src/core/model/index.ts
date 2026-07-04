@@ -10,4 +10,5 @@ export * from './layer';
 export * from './migrate';
 export * from './part';
 export * from './project';
+export * from './rig';
 export * from './texture';

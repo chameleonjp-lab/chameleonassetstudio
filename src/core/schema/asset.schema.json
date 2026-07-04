@@ -46,6 +46,7 @@
     "gameAttributes": { "type": "object" },
     "tile": { "$ref": "#/definitions/tileSettings" },
     "gimmick": { "$ref": "#/definitions/gimmickSettings" },
+    "rigAnimations": { "type": "array", "items": { "$ref": "#/definitions/rigAnimation" } },
     "createdAt": { "type": "string", "format": "date-time" },
     "updatedAt": { "type": "string", "format": "date-time" }
   },
@@ -125,7 +126,17 @@
           ]
         },
         "layerIds": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "pivot": { "$ref": "#/definitions/vec2" }
+        "pivot": { "$ref": "#/definitions/vec2" },
+        "parentId": { "type": "string", "minLength": 1 },
+        "bindPose": { "$ref": "#/definitions/partPose" },
+        "rotationLimit": {
+          "type": "object",
+          "required": ["min", "max"],
+          "properties": {
+            "min": { "type": "number" },
+            "max": { "type": "number" }
+          }
+        }
       }
     },
     "anchor": {
@@ -249,6 +260,37 @@
       "required": ["movementPreset"],
       "properties": {
         "movementPreset": { "type": "string" }
+      }
+    },
+    "partPose": {
+      "type": "object",
+      "properties": {
+        "localPosition": { "$ref": "#/definitions/vec2" },
+        "localRotation": { "type": "number" },
+        "localScale": { "$ref": "#/definitions/vec2" }
+      }
+    },
+    "rigKeyframe": {
+      "type": "object",
+      "required": ["time", "poses"],
+      "properties": {
+        "time": { "type": "number", "minimum": 0, "maximum": 1 },
+        "poses": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/partPose" }
+        }
+      }
+    },
+    "rigAnimation": {
+      "type": "object",
+      "required": ["id", "name", "fps", "loop", "durationMs", "keyframes"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "fps": { "type": "number", "exclusiveMinimum": 0 },
+        "loop": { "type": "boolean" },
+        "durationMs": { "type": "number", "minimum": 0 },
+        "keyframes": { "type": "array", "items": { "$ref": "#/definitions/rigKeyframe" } }
       }
     }
   }
