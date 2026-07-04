@@ -216,7 +216,7 @@ export function createPixiAnimatedSprite(PIXI, atlas, textures, animationName) {
 /**
  * 原点を position 補正で適用する（sprite.position を origin 分ずらす）。
  * 別案: anchor を使う場合は cellSize から比率換算する（例:
- * `sprite.anchor.set(atlas.origin.x / atlas.cellSize.width, atlas.origin.y / atlas.cellSize.height);`）。
+ * \`sprite.anchor.set(atlas.origin.x / atlas.cellSize.width, atlas.origin.y / atlas.cellSize.height);\`）。
  * ただし anchor は回転・スケールの中心にも影響するため、当たり判定や原点表示との整合を
  * 取りやすい position 補正をデフォルトにしている。
  * @param {import('pixi.js').Sprite} sprite
