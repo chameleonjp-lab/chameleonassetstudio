@@ -11,9 +11,12 @@ interface GameAttributesPanelProps {
   onCommit: (label: string, next: Asset) => void;
 }
 
-/** 数値文字列であれば number に変換し、それ以外は文字列のまま返す。 */
+/**
+ * 数値文字列であれば number に変換し、それ以外は文字列のまま返す。
+ * Infinity は JSON 化で null になりデータが失われるため文字列のまま保持する。
+ */
 function parseAttributeValue(raw: string): unknown {
-  if (raw.trim() !== '' && !Number.isNaN(Number(raw))) {
+  if (raw.trim() !== '' && Number.isFinite(Number(raw))) {
     return Number(raw);
   }
   return raw;

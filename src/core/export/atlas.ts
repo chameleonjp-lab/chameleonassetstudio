@@ -107,7 +107,8 @@ export function buildAtlas(asset: Asset, layout: SheetLayout): AtlasJson {
       y: anchor.position.y,
     })),
     colliders: asset.colliders,
-    // tile アセットは tile 設定（tileSize / collisionType / visualType）をそのまま同梱する（Phase 14）
-    ...(asset.tile ? { tile: asset.tile } : {}),
+    // tile アセットのみ tile 設定（tileSize / collisionType / visualType）をそのまま同梱する（Phase 14）。
+    // 種別変更後に asset.tile が残っていても、非 tile アセットの atlas には出さない。
+    ...(asset.assetType === 'tile' && asset.tile ? { tile: asset.tile } : {}),
   };
 }

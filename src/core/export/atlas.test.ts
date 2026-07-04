@@ -115,4 +115,19 @@ describe('buildAtlas', () => {
     const atlas = buildAtlas(baseAsset, layout);
     expect('tile' in atlas).toBe(false);
   });
+
+  it('非 tile アセットに tile 設定が残っていても atlas.json には出ない', () => {
+    const characterWithTile: Asset = {
+      ...baseAsset,
+      assetType: 'character',
+      tile: {
+        tileSize: { width: 32, height: 32 },
+        collisionType: 'solid',
+        visualType: 'floor',
+      },
+    };
+    const layout = computeSheetLayout(['default'], 512, 512);
+    const atlas = buildAtlas(characterWithTile, layout);
+    expect('tile' in atlas).toBe(false);
+  });
 });
