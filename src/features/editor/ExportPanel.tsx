@@ -5,23 +5,51 @@ import {
   exportImage,
   exportZip,
 } from '../../core/export/exportAsset';
-import type { Asset } from '../../core/model';
+import { blobKeyFor } from '../../core/images/importImage';
+import type { Asset, Project } from '../../core/model';
+import {
+  exportCasproj,
+  loadBlob,
+  type CasprojBundle,
+  type CasprojFileEntry,
+} from '../../core/storage';
 
 interface ExportPanelProps {
   asset: Asset;
+  /** `.casproj` 書き出し（プロジェクト単位）に使う。 */
+  project: Project;
+  /** プロジェクト内の全アセット（`.casproj` に同梱する）。 */
+  projectAssets: Asset[];
 }
 
-type ExportKind = 'png' | 'webp' | 'json' | 'zip';
+type ExportKind = 'png' | 'webp' | 'json' | 'zip' | 'casproj';
 
 const EXPORT_BUTTONS: Array<{ kind: ExportKind; label: string }> = [
   { kind: 'png', label: 'PNG をダウンロード' },
   { kind: 'webp', label: 'WebP をダウンロード' },
   { kind: 'json', label: 'asset.json をダウンロード' },
   { kind: 'zip', label: 'ZIP をダウンロード' },
+  { kind: 'casproj', label: '.casproj をダウンロード' },
 ];
 
-/** アセットの書き出しパネル（Phase 10）。PNG / WebP / asset.json / ZIP をダウンロードする。 */
-export function ExportPanel({ asset }: ExportPanelProps) {
+/** プロジェクトとその全アセットが参照する画像 Blob から `.casproj` バンドルを組み立てる。 */
+async function buildCasprojBundle(project: Project, assets: Asset[]): Promise<CasprojBundle> {
+  const files: CasprojFileEntry[] = [];
+  for (const asset of assets) {
+    for (const texture of asset.textures) {
+      const blob = await loadBlob(blobKeyFor(asset.id, texture.path));
+      if (!blob) {
+        continue;
+      }
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      files.push({ path: `assets/${asset.id}/${texture.path}`, bytes });
+    }
+  }
+  return { project, assets, files };
+}
+
+/** アセットの書き出しパネル（Phase 10 / 13）。PNG / WebP / asset.json / ZIP / .casproj をダウンロードする。 */
+export function ExportPanel({ asset, project, projectAssets }: ExportPanelProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,6 +76,12 @@ export function ExportPanel({ asset }: ExportPanelProps) {
         case 'zip': {
           const blob = await exportZip(asset);
           downloadBlob(blob, `${asset.name}-export.zip`);
+          break;
+        }
+        case 'casproj': {
+          const bundle = await buildCasprojBundle(project, projectAssets);
+          const blob = await exportCasproj(bundle);
+          downloadBlob(blob, `${project.name}.casproj`);
           break;
         }
       }

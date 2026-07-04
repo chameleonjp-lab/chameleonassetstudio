@@ -1162,8 +1162,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         aria-label="書き出し"
       >
         <h2>書き出し</h2>
-        {selectedAsset ? (
-          <ExportPanel asset={selectedAsset} />
+        {selectedAsset && project ? (
+          <ExportPanel asset={selectedAsset} project={project} projectAssets={assets} />
         ) : (
           <p className="editor-note">アセットを選ぶと書き出せます。</p>
         )}

@@ -65,6 +65,11 @@ project.casproj
 └─ README.md
 ```
 
+UI からの読み書き（Phase 13）:
+
+- 書き出し: 編集画面の書き出しパネル「.casproj をダウンロード」。プロジェクトと全アセット、参照する画像 Blob を同梱する（`src/features/editor/ExportPanel.tsx`）。
+- 読み込み: ホーム画面「.casproj を読み込む」。既存プロジェクトや Blob キーとの衝突を避けるため、取り込み時に project / asset の ID を常に再採番して別プロジェクトとして保存する（`src/features/home/HomeScreen.tsx`）。
+
 ---
 
 ## 4. 文書一覧
