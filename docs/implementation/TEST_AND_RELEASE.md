@@ -35,6 +35,15 @@
 - Export JSON 生成
 - 色変換
 - トリミング計算
+- 型別設定（tile / gimmick / background layer settings / gameAttributes）（Phase 14）
+- atlas の tile 出力（tile アセット限定）（Phase 14）
+- `.casproj` の ID 再採番と Blob キー付け替え（Phase 13）
+- サンプルコード生成（examples）（Phase 11）
+- リグ model（PartPose / RigAnimation / 循環 parentId ガード）（Phase 15）
+- リグ焼き込み（bake の座標変換・補間・rotationLimit clamp）（Phase 15）
+- モーションテンプレート（Phase 15）
+- 画像デコードのフォールバック（decodeImageSource）（Phase 15.5）
+- 画像 Blob 欠落時の書き出しエラー（export / .casproj export）（Phase 15.5）
 
 完了条件:
 
@@ -85,6 +94,17 @@
 - ZIP が生成される。
 - ZIP に `asset.json` と画像が含まれる。
 - 再読み込み後に画像とメタデータが残る。
+
+追加で確認する通し操作（Phase 11〜15.5 で追加済み）:
+
+- `.casproj` の書き出し → 削除 → 読み込みの往復（Phase 13）
+- examples を含む ZIP の内容一式（Phase 11）
+- Phaser サンプルの CDN が `phaser@4.2.0` であること（Phase 11）
+- スマホ幅で書き出しボタンへ到達できること（Phase 12）
+- アセット種別ごとの設定（tile / background / item / gimmick）が書き出しに反映されること（Phase 14）
+- リグの焼き込みでフレームアニメーションが生成されること（Phase 15）
+- モーションテンプレート適用 → 手動調整 → 焼き込み（Phase 15 / 15.5）
+- 画像 Blob 欠落時に ZIP 書き出しが理由付きで失敗すること（Phase 15.5）
 
 ---
 
@@ -146,6 +166,17 @@
 | v0.5.0 | 簡易リグ。part hierarchy、keyframe transform、simple rig、motion bake |
 | v0.6.0 | エンジン連携強化。Phaser、PixiJS、Canvas、Godot guide、Unity guide |
 | v1.0.0 | 安定版。`.casproj`、schema、export、主要端末、移行保証、ドキュメント完備 |
+
+実装状況メモ（Phase 15.5 時点）: v0.5.0 相当（Phase 15: 簡易リグ・モーションテンプレート）までは実装済み。v0.6.0（Phase 16: エンジン連携補助）と v1.0.0（Phase 17: 品質化）は未実装。
+
+v1.0.0 が未完である理由（少なくとも以下が残っている）:
+
+- Phase 16（エンジン連携補助: helper code 生成、Godot / Unity 取り込みガイド）が未実装。
+- Phase 17（v1.0.0 品質化: 大画像・メモリ・最適化）が未実装。
+- Godot / Unity インポート補助が未実装。
+- 実機 Safari / iPad / iPhone での確認が未完（デコードのフォールバック実装のみ）。
+- 大画像（4096x4096）のメモリ確認が未完。
+- effect アセットの扱いが弱い（種別はあるが専用機能が無い）。
 
 ---
 

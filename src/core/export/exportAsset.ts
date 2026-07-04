@@ -3,6 +3,7 @@
  * Canvas 2D 合成、IndexedDB からの画像読み込み、Blob URL ダウンロードを使うためブラウザ専用。
  */
 import { strToU8, zip, type Zippable } from 'fflate';
+import { decodeImageSource, type DecodedImageSource } from '../images/decodeImageSource';
 import { blobKeyFor } from '../images/importImage';
 import { applyFrameToAsset, type Asset } from '../model';
 import { validateAsset } from '../schema/validate';
@@ -68,24 +69,29 @@ async function encodeCanvas(
 
 /**
  * アセットの編集用テクスチャ Blob 群を IndexedDB から読み、
- * ImageBitmap の Map（textureId → ImageBitmap）を作る。
- * 使い終わったら呼び出し側で ImageBitmap.close() を呼ぶこと。
+ * DecodedImageSource の Map（textureId → DecodedImageSource）を作る。
+ * 使い終わったら呼び出し側で close() を呼ぶこと。
  */
-async function loadAssetBitmaps(asset: Asset): Promise<Map<string, ImageBitmap>> {
-  const bitmaps = new Map<string, ImageBitmap>();
+async function loadAssetBitmaps(asset: Asset): Promise<Map<string, DecodedImageSource>> {
+  const bitmaps = new Map<string, DecodedImageSource>();
   const textureIds = new Set(
     asset.layers.map((layer) => layer.textureId).filter((id): id is string => Boolean(id)),
   );
   for (const textureId of textureIds) {
     const texture = asset.textures.find((tex) => tex.id === textureId);
     if (!texture) {
-      continue;
+      // 透明な空画像を正常な書き出しとして扱わない（Phase 15.5-A）
+      throw new ExportError(
+        `画像テクスチャ定義が見つかりません: asset=${asset.id} texture=${textureId}（書き出し合成）`,
+      );
     }
     const blob = await loadBlob(blobKeyFor(asset.id, texture.path));
     if (!blob) {
-      continue;
+      throw new ExportError(
+        `画像 Blob が見つかりません: asset=${asset.id} texture=${texture.id} path=${texture.path}（書き出し合成）`,
+      );
     }
-    bitmaps.set(textureId, await createImageBitmap(blob));
+    bitmaps.set(textureId, await decodeImageSource(blob));
   }
   return bitmaps;
 }
@@ -99,7 +105,7 @@ async function loadAssetBitmaps(asset: Asset): Promise<Map<string, ImageBitmap>>
  */
 async function compositeAssetToCanvas(
   asset: Asset,
-  bitmaps: Map<string, ImageBitmap>,
+  bitmaps: Map<string, DecodedImageSource>,
   frameId?: string,
 ): Promise<OffscreenCanvas | HTMLCanvasElement> {
   const source = frameId ? applyFrameToAsset(asset, frameId) : asset;
@@ -109,9 +115,9 @@ async function compositeAssetToCanvas(
     if (!layer.visible || !layer.textureId) {
       continue;
     }
-    const bitmap = bitmaps.get(layer.textureId);
+    const decoded = bitmaps.get(layer.textureId);
     const texture = asset.textures.find((tex) => tex.id === layer.textureId);
-    if (!bitmap || !texture) {
+    if (!decoded || !texture) {
       continue;
     }
     const { transform } = layer;
@@ -123,7 +129,7 @@ async function compositeAssetToCanvas(
     ctx.rotate((transform.rotation * Math.PI) / 180);
     ctx.scale(transform.scale.x, transform.scale.y);
     ctx.drawImage(
-      bitmap,
+      decoded.source,
       -texture.size.width / 2,
       -texture.size.height / 2,
       texture.size.width,
@@ -158,8 +164,8 @@ export async function exportImage(asset: Asset, type: 'image/png' | 'image/webp'
     }
     return blob;
   } finally {
-    for (const bitmap of bitmaps.values()) {
-      bitmap.close();
+    for (const decoded of bitmaps.values()) {
+      decoded.close();
     }
   }
 }
@@ -198,8 +204,8 @@ export async function exportSpriteSheet(asset: Asset): Promise<{ sheet: Blob; at
     }
     return { sheet, atlas: buildAtlas(asset, layout) };
   } finally {
-    for (const bitmap of bitmaps.values()) {
-      bitmap.close();
+    for (const decoded of bitmaps.values()) {
+      decoded.close();
     }
   }
 }
@@ -332,5 +338,7 @@ export function downloadBlob(blob: Blob, filename: string): void {
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  // Safari / iOS はダウンロード開始が非同期のため、即時 revoke すると失敗することがある。
+  // 30 秒後の解放で「開始は確実に間に合い、URL も溜め込まない」バランスを取る（Phase 15.5-E）
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }

@@ -96,6 +96,7 @@ describe('validateAsset', () => {
         id: 'layer_1',
         name: '遠景',
         layerType: 'image',
+        textureId: 'tex_1',
         visible: true,
         locked: false,
         opacity: 1,
@@ -123,6 +124,31 @@ describe('validateAsset', () => {
     gimmickAsset.assetType = 'gimmick';
     gimmickAsset.gimmick = { movementPreset: 'horizontal' };
     expect(validateAsset(gimmickAsset).valid).toBe(true);
+  });
+
+  it('image レイヤーは textureId 必須、guide / shape は不要（Phase 15.5-C）', () => {
+    const baseLayer = {
+      id: 'layer_1',
+      name: 'レイヤー',
+      visible: true,
+      locked: false,
+      opacity: 1,
+      transform: { position: { x: 0, y: 0 }, scale: { x: 1, y: 1 }, rotation: 0 },
+    };
+
+    const imageNoTexture = clone(minimalAsset) as Record<string, unknown>;
+    imageNoTexture.layers = [{ ...baseLayer, layerType: 'image' }];
+    const result = validateAsset(imageNoTexture);
+    expect(result.valid).toBe(false);
+    expect(result.errors.join('\n')).toContain('textureId');
+
+    const guideLayer = clone(minimalAsset) as Record<string, unknown>;
+    guideLayer.layers = [{ ...baseLayer, layerType: 'guide' }];
+    expect(validateAsset(guideLayer).valid).toBe(true);
+
+    const shapeLayer = clone(minimalAsset) as Record<string, unknown>;
+    shapeLayer.layers = [{ ...baseLayer, layerType: 'shape' }];
+    expect(validateAsset(shapeLayer).valid).toBe(true);
   });
 
   it('不正な background.role / tile.collisionType は検証で落ちる', () => {

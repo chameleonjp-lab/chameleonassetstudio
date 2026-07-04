@@ -136,83 +136,62 @@
 
 ---
 
-## Phase 16: エンジン連携
+## Phase 16: エンジン連携補助
 
 目的は、Chameleon Asset Studio で作ったデータを、主要なゲーム制作環境へ渡しやすくすることである。
 
-### Canvas 2D
+前提（Phase 11 で実装済みのもの。**再実装しない**）:
+
+- `examples/example-canvas.html`（Canvas 2D 最小例、外部依存なし）
+- `examples/example-pixi.html`（PixiJS 最小例、CDN）
+- `examples/example-phaser.html`（Phaser 4 最小例、CDN、anims 生成と判定デバッグ描画を含む）
+
+Phase 16 はサンプル HTML の再実装ではなく、**再利用しやすい部品の生成と、他エンジンへの取り込み補助**に絞る。
+
+### Canvas 2D / PixiJS / Phaser（helper code 生成）
 
 作業:
 
-- vanilla Canvas loader を作る。
-- sprite draw helper を作る。
-- frame animation helper を作る。
-- collider debug draw を作る。
-- 1 ファイル HTML サンプルを生成する。
+- サンプル HTML に埋め込まれているロジックを、コピーして使える helper snippet として書き出す。
+  - `loadChameleonAtlas(url)` … atlas.json + spritesheet の読み込み
+  - `applyOrigin(entity, atlas)` … 原点補正
+  - `drawColliderDebug(ctx, atlas)` … 判定のデバッグ描画
+  - PixiJS 用 / Phaser 用の対応 helper snippet
+- 既存の example HTML と重複させない（example は「動く見本」、helper は「組み込む部品」）。
 
 完了条件:
 
-- 外部ライブラリなしで画像を表示できる。
-- アニメーションを再生できる。
-- 原点と当たり判定の扱いが分かる。
+- helper がサンプル HTML と重複せず、単体でコピーして使える形で書き出される。
+- 原点・アンカー・当たり判定・アニメーションの読み方が helper 経由で分かる。
 
-### PixiJS
-
-作業:
-
-- Pixi asset loader code を生成する。
-- AnimatedSprite sample を生成する。
-- anchor / origin helper を生成する。
-- collider overlay helper を生成する。
-
-完了条件:
-
-- PixiJS v8 で画像が表示される。
-- フレームアニメーションを再生できる。
-- 原点、アンカー、当たり判定を参照できる。
-
-### Phaser
-
-作業:
-
-- Phaser preload code を生成する。
-- Phaser create code を生成する。
-- animation generation を作る。
-- collider data reader を作る。
-- example scene を生成する。
-
-完了条件:
-
-- Phaser で画像が表示される。
-- アニメーションを再生できる。
-- 当たり判定データを読める。
-
-### Godot / Unity
+### Godot / Unity（取り込みガイド生成）
 
 初期方針:
 
 - 完全な Godot Scene 生成はしない。
 - 完全な Unity Prefab 生成はしない。
-- まず PNG / JSON / 読み込み説明を生成する。
-- 次に import helper script を検討する。
+- まず PNG / JSON / Atlas の取り込みガイド（読み込み説明の Markdown）を生成する。
+- 次に import helper script は将来課題とし、設計メモまでに留める。
 
 完了条件:
 
-- Godot と Unity へ渡すためのファイル構成と説明が出る。
+- Godot と Unity へ渡すためのファイル構成と読み込み手順の説明が出る。
+- 座標系（左上原点・y 下向き・度）と原点 / pivot の換算方法が説明される。
 - 完全対応と誤解される表現をしない。
 
-### Rive / Spine
+### Rive / Spine（docs のみ）
 
 初期方針:
 
 - 完全互換を名乗らない。
-- まずは取り込み補助または参照補助から始める。
+- 取り込み補助または参照補助は将来課題とする。
 - 独自形式との差を docs に書く。
 
 完了条件:
 
-- Rive / Spine との関係が説明されている。
-- 独自形式が正本であることが明確になっている。
+- Rive / Spine との関係（用途の違い）が説明されている。
+- 独自形式（asset.json / .casproj）が正本であることが明確になっている。
+
 
 ---
 

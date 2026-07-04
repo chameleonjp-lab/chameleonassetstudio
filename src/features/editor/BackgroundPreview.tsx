@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { decodeImageSource, type DecodedImageSource } from '../../core/images/decodeImageSource';
 import { blobKeyFor } from '../../core/images/importImage';
 import type { Asset } from '../../core/model';
 import { loadBlob } from '../../core/storage';
@@ -17,15 +18,15 @@ const CAMERA_MAX = 1000;
  */
 export function BackgroundPreview({ asset }: BackgroundPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const bitmapsRef = useRef<Map<string, ImageBitmap>>(new Map());
-  const [bitmaps, setBitmaps] = useState<Map<string, ImageBitmap>>(new Map());
+  const bitmapsRef = useRef<Map<string, DecodedImageSource>>(new Map());
+  const [bitmaps, setBitmaps] = useState<Map<string, DecodedImageSource>>(new Map());
   const [camera, setCamera] = useState(0);
 
-  // 表示対象レイヤー（visible な image レイヤー）の ImageBitmap を読み込む
+  // 表示対象レイヤー（visible な image レイヤー）の画像を読み込む
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const map = new Map<string, ImageBitmap>();
+      const map = new Map<string, DecodedImageSource>();
       const visibleImageLayers = asset.layers.filter(
         (layer) => layer.layerType === 'image' && layer.visible && layer.textureId,
       );
@@ -39,19 +40,19 @@ export function BackgroundPreview({ asset }: BackgroundPreviewProps) {
           if (!blob) {
             continue;
           }
-          map.set(layer.id, await createImageBitmap(blob));
+          map.set(layer.id, await decodeImageSource(blob));
         } catch {
           // 読み込めないレイヤーはプレビューに描画しない
         }
       }
       if (cancelled) {
-        for (const bitmap of map.values()) {
-          bitmap.close();
+        for (const decoded of map.values()) {
+          decoded.close();
         }
         return;
       }
-      for (const bitmap of bitmapsRef.current.values()) {
-        bitmap.close();
+      for (const decoded of bitmapsRef.current.values()) {
+        decoded.close();
       }
       bitmapsRef.current = map;
       setBitmaps(map);
@@ -63,8 +64,8 @@ export function BackgroundPreview({ asset }: BackgroundPreviewProps) {
 
   useEffect(
     () => () => {
-      for (const bitmap of bitmapsRef.current.values()) {
-        bitmap.close();
+      for (const decoded of bitmapsRef.current.values()) {
+        decoded.close();
       }
       bitmapsRef.current = new Map();
     },
@@ -94,14 +95,14 @@ export function BackgroundPreview({ asset }: BackgroundPreviewProps) {
       if (layer.layerType !== 'image' || !layer.visible || !layer.textureId) {
         continue;
       }
-      const bitmap = bitmaps.get(layer.id);
-      if (!bitmap) {
+      const decoded = bitmaps.get(layer.id);
+      if (!decoded) {
         continue;
       }
       const parallaxX = layer.background?.parallaxSpeed.x ?? 0;
       const offsetX = layer.transform.position.x - camera * parallaxX;
-      const drawWidth = bitmap.width * scale;
-      const drawHeight = bitmap.height * scale;
+      const drawWidth = decoded.width * scale;
+      const drawHeight = decoded.height * scale;
       const y = layer.transform.position.y * scale;
 
       if (layer.background?.loopX && drawWidth > 0) {
@@ -109,10 +110,10 @@ export function BackgroundPreview({ asset }: BackgroundPreviewProps) {
         startX = ((startX % drawWidth) + drawWidth) % drawWidth;
         startX -= drawWidth;
         for (let x = startX; x < width; x += drawWidth) {
-          ctx.drawImage(bitmap, x, y, drawWidth, drawHeight);
+          ctx.drawImage(decoded.source, x, y, drawWidth, drawHeight);
         }
       } else {
-        ctx.drawImage(bitmap, offsetX * scale, y, drawWidth, drawHeight);
+        ctx.drawImage(decoded.source, offsetX * scale, y, drawWidth, drawHeight);
       }
     }
   }, [asset, bitmaps, camera]);

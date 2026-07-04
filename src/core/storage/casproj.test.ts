@@ -23,7 +23,10 @@ describe('casproj の書き出しと読み込み', () => {
       project,
       assets: [asset],
       exportPresets: presets,
-      files: [{ path: `assets/${asset.id}/textures/main.png`, bytes: imageBytes }],
+      files: [
+        { path: `assets/${asset.id}/source/original.png`, bytes: imageBytes },
+        { path: `assets/${asset.id}/textures/main.png`, bytes: imageBytes },
+      ],
     };
 
     const blob = await exportCasproj(bundle);
@@ -34,8 +37,11 @@ describe('casproj の書き出しと読み込み', () => {
     expect(imported.project).toEqual(project);
     expect(imported.assets).toEqual([asset]);
     expect(imported.exportPresets).toEqual(presets);
-    expect(imported.files).toHaveLength(1);
-    expect(imported.files[0].path).toBe(`assets/${asset.id}/textures/main.png`);
+    expect(imported.files).toHaveLength(2);
+    expect(imported.files.map((file) => file.path).sort()).toEqual([
+      `assets/${asset.id}/source/original.png`,
+      `assets/${asset.id}/textures/main.png`,
+    ]);
     expect(imported.files[0].bytes).toEqual(imageBytes);
     expect(imported.readme).toContain('Chameleon Asset Studio');
   });
@@ -81,6 +87,29 @@ describe('casproj の書き出しと読み込み', () => {
       '../evil.png': new Uint8Array([1, 2, 3]),
     });
     const { bundle } = await importCasproj(zipped);
+    expect(bundle.files).toEqual([]);
+  });
+
+  it('テクスチャの画像ファイルが欠けていると書き出しを拒否する（Phase 15.5-A）', async () => {
+    const bundle: CasprojBundle = {
+      project,
+      assets: [asset],
+      files: [{ path: `assets/${asset.id}/textures/main.png`, bytes: new Uint8Array([1]) }],
+    };
+    await expect(exportCasproj(bundle)).rejects.toThrow(
+      new RegExp(
+        `画像 Blob が見つかりません: asset=${asset.id} texture=.+ path=source/original\\.png`,
+      ),
+    );
+  });
+
+  it('読み込みは画像ファイル欠落を許容する（古い .casproj 互換。docs 参照）', async () => {
+    const zipped = await zipAsync({
+      'project.json': strToU8(JSON.stringify(project)),
+      [`assets/${asset.id}/asset.json`]: strToU8(JSON.stringify(asset)),
+    });
+    const { bundle } = await importCasproj(zipped);
+    expect(bundle.assets).toHaveLength(1);
     expect(bundle.files).toEqual([]);
   });
 });

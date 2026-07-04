@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { decodeImageSource, type DecodedImageSource } from '../../core/images/decodeImageSource';
 import { blobKeyFor } from '../../core/images/importImage';
 import type { Rect } from '../../core/images/operations';
 import type { Asset, Layer, Size, Vec2 } from '../../core/model';
@@ -99,7 +100,7 @@ export function CanvasEditor({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [viewport, setViewport] = useState<Viewport>({ width: 0, height: 0 });
   const [view, setView] = useState<ViewTransform>({ scale: 1, offsetX: 0, offsetY: 0 });
-  const [bitmaps, setBitmaps] = useState<Map<string, ImageBitmap>>(new Map());
+  const [bitmaps, setBitmaps] = useState<Map<string, DecodedImageSource>>(new Map());
   const [draftAsset, setDraftAsset] = useState<Asset | null>(null);
   const [cropRectScreen, setCropRectScreen] = useState<{ start: Vec2; end: Vec2 } | null>(null);
   const [eraserStrokeScreen, setEraserStrokeScreen] = useState<Vec2[] | null>(null);
@@ -108,7 +109,7 @@ export function CanvasEditor({
   const eraseTexturePointsRef = useRef<Vec2[]>([]);
   const pointersRef = useRef<Map<number, Vec2>>(new Map());
   const fittedAssetRef = useRef<string | null>(null);
-  const bitmapsRef = useRef<Map<string, ImageBitmap>>(new Map());
+  const bitmapsRef = useRef<Map<string, DecodedImageSource>>(new Map());
 
   const displayAsset = draftAsset ?? asset;
   const selectedLayer: Layer | null =
@@ -134,11 +135,11 @@ export function CanvasEditor({
     return () => observer.disconnect();
   }, []);
 
-  // レイヤーが参照するテクスチャの ImageBitmap を読み込む
+  // レイヤーが参照するテクスチャの画像を読み込む
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const map = new Map<string, ImageBitmap>();
+      const map = new Map<string, DecodedImageSource>();
       const textureIds = new Set(
         asset.layers.map((layer) => layer.textureId).filter((id): id is string => Boolean(id)),
       );
@@ -152,19 +153,19 @@ export function CanvasEditor({
           if (!blob) {
             continue;
           }
-          map.set(textureId, await createImageBitmap(blob));
+          map.set(textureId, await decodeImageSource(blob));
         } catch {
           // 読み込めないテクスチャは描画しない（枠だけ表示される）
         }
       }
       if (cancelled) {
-        for (const bitmap of map.values()) {
-          bitmap.close();
+        for (const decoded of map.values()) {
+          decoded.close();
         }
         return;
       }
-      for (const bitmap of bitmapsRef.current.values()) {
-        bitmap.close();
+      for (const decoded of bitmapsRef.current.values()) {
+        decoded.close();
       }
       bitmapsRef.current = map;
       setBitmaps(map);
@@ -176,8 +177,8 @@ export function CanvasEditor({
 
   useEffect(
     () => () => {
-      for (const bitmap of bitmapsRef.current.values()) {
-        bitmap.close();
+      for (const decoded of bitmapsRef.current.values()) {
+        decoded.close();
       }
       bitmapsRef.current = new Map();
     },
@@ -210,7 +211,7 @@ export function CanvasEditor({
     const layers: RenderLayer[] = displayAsset.layers.map((layer) => ({
       layer,
       textureSize: textureSizeFor(displayAsset, layer.textureId),
-      bitmap: layer.textureId ? (bitmaps.get(layer.textureId) ?? null) : null,
+      bitmap: layer.textureId ? (bitmaps.get(layer.textureId)?.source ?? null) : null,
     }));
     renderScene(ctx, {
       view,

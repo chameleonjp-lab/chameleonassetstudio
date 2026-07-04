@@ -78,3 +78,25 @@ test('モーションテンプレートを適用して焼き込める', async ({
   const data = await downloadAssetJson(page);
   expect(data.animations.map((animation) => animation.name)).toContain('idle_sway');
 });
+
+test('jump_squash の scale を手動調整して焼き込むと frame に反映される', async ({ page }) => {
+  await setupProjectWithImage(page, 'rig-scale-e2e');
+  await createBodyPart(page);
+
+  await page.getByLabel('モーションテンプレート').selectOption('jump_squash');
+  await page.getByRole('button', { name: 'テンプレートを適用' }).click();
+
+  // squash キーフレームの拡大 X を手動調整する（Phase 15.5-D）
+  await page.getByLabel('「胴体」のポーズ拡大X').nth(1).fill('1.3');
+  await page.getByRole('button', { name: 'フレームへ焼き込み' }).click();
+
+  const data = await downloadAssetJson(page);
+  const frames = (data.frames ?? []) as Array<{
+    layerStates: Array<{ transform?: { scale?: { x: number; y: number } } }>;
+  }>;
+  expect(frames.length).toBeGreaterThanOrEqual(2);
+  const scaleXs = frames.flatMap((frame) =>
+    frame.layerStates.map((state) => state.transform?.scale?.x ?? 1),
+  );
+  expect(scaleXs.some((x) => Math.abs(x - 1) > 0.05)).toBe(true);
+});

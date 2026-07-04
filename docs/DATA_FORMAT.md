@@ -70,6 +70,11 @@ UI からの読み書き（Phase 13）:
 - 書き出し: 編集画面の書き出しパネル「.casproj をダウンロード」。プロジェクトと全アセット、参照する画像 Blob を同梱する（`src/features/editor/ExportPanel.tsx`）。
 - 読み込み: ホーム画面「.casproj を読み込む」。既存プロジェクトや Blob キーとの衝突を避けるため、取り込み時に project / asset の ID を常に再採番して別プロジェクトとして保存する（`src/features/home/HomeScreen.tsx`）。
 
+画像欠落の扱い（Phase 15.5-A）:
+
+- 書き出し: 全アセットの全 `TextureRef` に対応する画像ファイルが揃っていない場合、`exportCasproj` は `.casproj` を作らず `CasprojError`（`画像 Blob が見つかりません: asset=… texture=… path=…`）を投げる。画像欠けの保存ファイルは復元不能になるため。
+- 読み込み: `asset.json` が参照する texture path のファイルが ZIP 内に無くてもエラーにしない（この検証強化以前に書き出された `.casproj` を読めなくしないための互換措置）。欠落画像のレイヤーは表示されない。読み込み時の警告表示は後続課題。
+
 ---
 
 ## 4. 文書一覧
@@ -153,7 +158,7 @@ UI からの読み書き（Phase 13）:
 | visible / locked | boolean                       | 表示・ロック                       |
 | opacity          | number (0〜1)                 | 不透明度                           |
 | transform        | LayerTransform                | position / scale / rotation        |
-| textureId        | string（任意）                | image レイヤーが参照するテクスチャ |
+| textureId        | string（image は必須、他は任意） | image レイヤーが参照するテクスチャ。`layerType: "image"` では schema で必須（Phase 15.5-C） |
 | background       | BackgroundLayerSettings（任意） | background アセットのレイヤー用設定（6.7） |
 
 LayerTransform の意味は次の通りとする。`position` はテクスチャ左上のアセット座標（キャンバス座標系）。`scale` と `rotation` はテクスチャ中心を基準に適用する。描画・当たり判定・書き出しはこの解釈で統一する（実装: `src/renderers/canvas2d/view.ts`）。
