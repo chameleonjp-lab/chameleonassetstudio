@@ -294,7 +294,11 @@ describe('型別設定（Phase 14）', () => {
 
   it('setTileSettings は設定を追加・削除できる', async () => {
     const { setTileSettings } = await import('./assetOps');
-    const tile = { tileSize: { width: 32, height: 32 }, collisionType: 'solid', visualType: 'floor' } as const;
+    const tile = {
+      tileSize: { width: 32, height: 32 },
+      collisionType: 'solid',
+      visualType: 'floor',
+    } as const;
     const withTile = setTileSettings({ ...baseAsset, assetType: 'tile' }, tile);
     expect(withTile.tile).toEqual(tile);
     expect(validateAsset(withTile).valid).toBe(true);
@@ -316,7 +320,12 @@ describe('型別設定（Phase 14）', () => {
 
   it('setLayerBackground は対象レイヤーへ設定し、無い場合はそのまま返す', async () => {
     const { setLayerBackground } = await import('./assetOps');
-    const background = { role: 'mid', parallaxSpeed: { x: 0.5, y: 0 }, loopX: true, loopY: false } as const;
+    const background = {
+      role: 'mid',
+      parallaxSpeed: { x: 0.5, y: 0 },
+      loopX: true,
+      loopY: false,
+    } as const;
     const withBackground = setLayerBackground(
       { ...baseAsset, assetType: 'background' },
       'layer_body',
