@@ -3,10 +3,10 @@
  * すべて元のアセットを変更せず、新しいアセットを返す純関数として実装する。
  */
 import type { Animation, Frame } from './animation';
-import type { Asset } from './asset';
+import type { Asset, AssetType, GimmickSettings, TileSettings } from './asset';
 import type { Vec2 } from './common';
 import { generateId } from './factories';
-import type { Layer } from './layer';
+import type { BackgroundLayerSettings, Layer } from './layer';
 import type { Part, PartType } from './part';
 
 function touch(asset: Asset): Asset {
@@ -412,4 +412,65 @@ export function applyFrameToAsset(asset: Asset, frameId: string): Asset {
       };
     }),
   };
+}
+
+// ---- 型別設定（Phase 14） ----
+
+/** アセット種別を変更する。 */
+export function setAssetType(asset: Asset, assetType: AssetType): Asset {
+  return touch({ ...asset, assetType });
+}
+
+/** tile アセット用設定を設定する。undefined を渡すと削除する。 */
+export function setTileSettings(asset: Asset, tile: TileSettings | undefined): Asset {
+  const next = { ...asset };
+  if (tile) {
+    next.tile = tile;
+  } else {
+    delete next.tile;
+  }
+  return touch(next);
+}
+
+/** gimmick アセット用設定を設定する。undefined を渡すと削除する。 */
+export function setGimmickSettings(asset: Asset, gimmick: GimmickSettings | undefined): Asset {
+  const next = { ...asset };
+  if (gimmick) {
+    next.gimmick = gimmick;
+  } else {
+    delete next.gimmick;
+  }
+  return touch(next);
+}
+
+/** background アセットのレイヤー用設定を設定する。対象レイヤーが無ければそのまま返す。 */
+export function setLayerBackground(
+  asset: Asset,
+  layerId: string,
+  background: BackgroundLayerSettings | undefined,
+): Asset {
+  if (!asset.layers.some((layer) => layer.id === layerId)) {
+    return asset;
+  }
+  return mapLayer(asset, layerId, (layer) => {
+    const next = { ...layer };
+    if (background) {
+      next.background = background;
+    } else {
+      delete next.background;
+    }
+    return next;
+  });
+}
+
+/** ゲーム属性を追加・更新する。 */
+export function setGameAttribute(asset: Asset, key: string, value: unknown): Asset {
+  return touch({ ...asset, gameAttributes: { ...asset.gameAttributes, [key]: value } });
+}
+
+/** ゲーム属性を削除する。 */
+export function removeGameAttribute(asset: Asset, key: string): Asset {
+  const gameAttributes = { ...asset.gameAttributes };
+  delete gameAttributes[key];
+  return touch({ ...asset, gameAttributes });
 }

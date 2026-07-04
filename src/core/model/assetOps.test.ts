@@ -282,3 +282,61 @@ describe('フレームとアニメーション（Phase 9）', () => {
     expect(applyFrameToAsset(baseAsset, 'missing')).toBe(baseAsset);
   });
 });
+
+describe('型別設定（Phase 14）', () => {
+  it('setAssetType はアセット種別を変える', async () => {
+    const { setAssetType } = await import('./assetOps');
+    const next = setAssetType(baseAsset, 'tile');
+    expect(next.assetType).toBe('tile');
+    expect(baseAsset.assetType).not.toBe('tile');
+    expect(validateAsset(next).valid).toBe(true);
+  });
+
+  it('setTileSettings は設定を追加・削除できる', async () => {
+    const { setTileSettings } = await import('./assetOps');
+    const tile = { tileSize: { width: 32, height: 32 }, collisionType: 'solid', visualType: 'floor' } as const;
+    const withTile = setTileSettings({ ...baseAsset, assetType: 'tile' }, tile);
+    expect(withTile.tile).toEqual(tile);
+    expect(validateAsset(withTile).valid).toBe(true);
+    const removed = setTileSettings(withTile, undefined);
+    expect(removed.tile).toBeUndefined();
+  });
+
+  it('setGimmickSettings は設定を追加・削除できる', async () => {
+    const { setGimmickSettings } = await import('./assetOps');
+    const withGimmick = setGimmickSettings(
+      { ...baseAsset, assetType: 'gimmick' },
+      { movementPreset: 'horizontal' },
+    );
+    expect(withGimmick.gimmick).toEqual({ movementPreset: 'horizontal' });
+    expect(validateAsset(withGimmick).valid).toBe(true);
+    const removed = setGimmickSettings(withGimmick, undefined);
+    expect(removed.gimmick).toBeUndefined();
+  });
+
+  it('setLayerBackground は対象レイヤーへ設定し、無い場合はそのまま返す', async () => {
+    const { setLayerBackground } = await import('./assetOps');
+    const background = { role: 'mid', parallaxSpeed: { x: 0.5, y: 0 }, loopX: true, loopY: false } as const;
+    const withBackground = setLayerBackground(
+      { ...baseAsset, assetType: 'background' },
+      'layer_body',
+      background,
+    );
+    expect(withBackground.layers.find((l) => l.id === 'layer_body')?.background).toEqual(
+      background,
+    );
+    expect(validateAsset(withBackground).valid).toBe(true);
+    const removed = setLayerBackground(withBackground, 'layer_body', undefined);
+    expect(removed.layers.find((l) => l.id === 'layer_body')?.background).toBeUndefined();
+    expect(setLayerBackground(baseAsset, 'missing', background)).toBe(baseAsset);
+  });
+
+  it('setGameAttribute / removeGameAttribute でゲーム属性を操作できる', async () => {
+    const { setGameAttribute, removeGameAttribute } = await import('./assetOps');
+    const withScore = setGameAttribute(baseAsset, 'score', 0);
+    expect(withScore.gameAttributes.score).toBe(0);
+    expect(validateAsset(withScore).valid).toBe(true);
+    const removed = removeGameAttribute(withScore, 'score');
+    expect(removed.gameAttributes.score).toBeUndefined();
+  });
+});
