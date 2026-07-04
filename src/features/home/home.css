@@ -102,3 +102,37 @@
   font-size: 0.85rem;
   opacity: 0.75;
 }
+
+.home-import {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.home-import-button {
+  display: inline-block;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid #8888;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.home-import-status {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.home .visually-hidden-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

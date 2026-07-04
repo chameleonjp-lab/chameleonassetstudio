@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useState } from 'react';
-import { createEmptyProject } from '../../core/model';
+import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
+import { blobKeyFor } from '../../core/images/importImage';
+import { createEmptyProject, generateId } from '../../core/model';
 import {
   deleteProject,
   formatBytes,
   getStorageUsage,
+  importCasproj,
   listProjects,
+  saveAsset,
+  saveBlob,
   saveProject,
   type ProjectSummary,
   type StorageUsage,
@@ -25,6 +29,7 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
   const [newName, setNewName] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const reload = useCallback(async () => {
     try {
@@ -50,6 +55,59 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
       setErrorMessage(`プロジェクトを作成できませんでした: ${toErrorMessage(error)}`);
       setCreating(false);
     }
+  };
+
+  const handleImportCasproj = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files ? Array.from(event.target.files) : [];
+    event.target.value = '';
+    const file = files[0];
+    if (!file) {
+      return;
+    }
+    setImporting(true);
+    setErrorMessage(null);
+    try {
+      const { bundle } = await importCasproj(file);
+      // 既存プロジェクトや Blob キーとの ID 衝突を避けるため、常に ID を再採番する
+      const assetIdMap = new Map(bundle.assets.map((asset) => [asset.id, generateId('asset')]));
+      const project = {
+        ...bundle.project,
+        // asset 本体（assets/*/asset.json）が無い entry は dangling になるため除外する
+        id: generateId('project'),
+        assets: bundle.project.assets
+          .filter((entry) => assetIdMap.has(entry.id))
+          .map((entry) => ({
+            ...entry,
+            id: assetIdMap.get(entry.id)!,
+          })),
+      };
+      await saveProject(project);
+      for (const asset of bundle.assets) {
+        await saveAsset(project.id, { ...asset, id: assetIdMap.get(asset.id)! });
+      }
+      for (const entry of bundle.files) {
+        const match = /^assets\/([^/]+)\/(.+)$/.exec(entry.path);
+        if (!match) {
+          continue;
+        }
+        const newAssetId = assetIdMap.get(match[1]);
+        if (!newAssetId) {
+          continue;
+        }
+        const mimeType = bundle.assets
+          .find((asset) => asset.id === match[1])
+          ?.textures.find((texture) => texture.path === match[2])?.mimeType;
+        await saveBlob(
+          project.id,
+          blobKeyFor(newAssetId, match[2]),
+          new Blob([entry.bytes.slice().buffer as ArrayBuffer], mimeType ? { type: mimeType } : {}),
+        );
+      }
+      await reload();
+    } catch (error) {
+      setErrorMessage(`.casproj を読み込めませんでした: ${toErrorMessage(error)}`);
+    }
+    setImporting(false);
   };
 
   const handleDelete = async (summary: ProjectSummary) => {
@@ -95,6 +153,23 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
           <button type="button" onClick={handleCreate} disabled={creating}>
             作成
           </button>
+        </div>
+      </section>
+
+      <section className="home-section" aria-label="プロジェクトの読み込み">
+        <h2>プロジェクトの読み込み</h2>
+        <div className="home-import">
+          <label className="home-import-button">
+            .casproj を読み込む
+            <input
+              type="file"
+              accept=".casproj,application/zip"
+              className="visually-hidden-input"
+              disabled={importing}
+              onChange={(event) => void handleImportCasproj(event)}
+            />
+          </label>
+          {importing && <p className="home-import-status">読み込み中…</p>}
         </div>
       </section>
 
