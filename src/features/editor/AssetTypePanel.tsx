@@ -16,6 +16,7 @@ import {
   type TileCollisionType,
   type TileSettings,
 } from '../../core/model';
+import { BackgroundPreview } from './BackgroundPreview';
 
 interface AssetTypePanelProps {
   asset: Asset;
@@ -230,6 +231,19 @@ function GimmickFields({ asset, onCommit }: AssetTypePanelProps) {
   );
 }
 
+/** 背景設定 UI（Phase 14）。パララックスプレビューを表示する。 */
+function BackgroundFields({ asset }: AssetTypePanelProps) {
+  return (
+    <fieldset className="editor-fieldset">
+      <legend>背景設定</legend>
+      <p className="editor-note">
+        各レイヤーの背景設定（役割・視差速度・ループ）はレイヤーを選択して編集します。
+      </p>
+      <BackgroundPreview asset={asset} />
+    </fieldset>
+  );
+}
+
 /** アイテム設定 UI（Phase 14）。 */
 function ItemFields({ asset, onCommit }: AssetTypePanelProps) {
   return (
@@ -270,6 +284,7 @@ export function AssetTypePanel({ asset, onCommit }: AssetTypePanelProps) {
       {asset.assetType === 'tile' && <TileFields asset={asset} onCommit={onCommit} />}
       {asset.assetType === 'gimmick' && <GimmickFields asset={asset} onCommit={onCommit} />}
       {asset.assetType === 'item' && <ItemFields asset={asset} onCommit={onCommit} />}
+      {asset.assetType === 'background' && <BackgroundFields asset={asset} onCommit={onCommit} />}
     </div>
   );
 }

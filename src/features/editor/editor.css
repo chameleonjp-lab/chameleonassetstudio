@@ -703,6 +703,19 @@
   opacity: 0.7;
 }
 
+.background-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.background-preview canvas {
+  width: 100%;
+  height: 160px;
+  border: 1px solid #8884;
+  border-radius: 4px;
+}
+
 /* iPad / PC: 折りたたみボタンで左右パネルを閉じられる */
 @media (min-width: 768px) {
   .editor-side.collapsed {
