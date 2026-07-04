@@ -50,6 +50,7 @@ import { GameAttributesPanel } from './GameAttributesPanel';
 import { GameDataPanel } from './GameDataPanel';
 import { LayerPanel } from './LayerPanel';
 import { PartPanel } from './PartPanel';
+import { RigPanel } from './RigPanel';
 import { TimelinePanel } from './TimelinePanel';
 import './editor.css';
 
@@ -1114,6 +1115,13 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             />
           ) : (
             <p className="editor-note">アセットを選ぶとパーツを操作できます。</p>
+          )}
+
+          <h3 className="editor-subheading">リグ</h3>
+          {selectedAsset ? (
+            <RigPanel asset={selectedAsset} onCommit={commitPanelChange} />
+          ) : (
+            <p className="editor-note">アセットを選ぶとリグを編集できます。</p>
           )}
 
           <h3 className="editor-subheading">アセット</h3>

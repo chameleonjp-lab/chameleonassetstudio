@@ -349,3 +349,71 @@ describe('型別設定（Phase 14）', () => {
     expect(removed.gameAttributes.score).toBeUndefined();
   });
 });
+
+describe('簡易リグ（Phase 15）', () => {
+  const rigAsset: Asset = {
+    ...baseAsset,
+    parts: [
+      { id: 'part_a', name: 'A', partType: 'body', layerIds: [] },
+      { id: 'part_b', name: 'B', partType: 'body', layerIds: [], parentId: 'part_a' },
+      { id: 'part_c', name: 'C', partType: 'body', layerIds: [], parentId: 'part_b' },
+    ],
+  };
+
+  it('setPartParent は自己参照や循環になる変更を無視して asset をそのまま返す', async () => {
+    const { setPartParent } = await import('./assetOps');
+    const selfParent = setPartParent(rigAsset, 'part_a', 'part_a');
+    expect(selfParent).toBe(rigAsset);
+    // part_c は part_a の子孫なので、part_a の親を part_c にすると循環になる
+    const cyclic = setPartParent(rigAsset, 'part_a', 'part_c');
+    expect(cyclic).toBe(rigAsset);
+  });
+
+  it('setPartParent は循環にならない変更を反映する', async () => {
+    const { setPartParent } = await import('./assetOps');
+    const next = setPartParent(rigAsset, 'part_c', 'part_a');
+    expect(next.parts.find((p) => p.id === 'part_c')?.parentId).toBe('part_a');
+    expect(validateAsset(next).valid).toBe(true);
+    const cleared = setPartParent(next, 'part_c', undefined);
+    expect(cleared.parts.find((p) => p.id === 'part_c')?.parentId).toBeUndefined();
+  });
+
+  it('setPartBindPose でバインドポーズを設定・解除できる', async () => {
+    const { setPartBindPose } = await import('./assetOps');
+    const withPose = setPartBindPose(rigAsset, 'part_a', {
+      localPosition: { x: 1, y: 2 },
+      localRotation: 10,
+    });
+    expect(withPose.parts.find((p) => p.id === 'part_a')?.bindPose).toEqual({
+      localPosition: { x: 1, y: 2 },
+      localRotation: 10,
+    });
+    const cleared = setPartBindPose(withPose, 'part_a', undefined);
+    expect(cleared.parts.find((p) => p.id === 'part_a')?.bindPose).toBeUndefined();
+  });
+
+  it('setPartRotationLimit で可動域を設定・解除できる', async () => {
+    const { setPartRotationLimit } = await import('./assetOps');
+    const withLimit = setPartRotationLimit(rigAsset, 'part_a', { min: -30, max: 30 });
+    expect(withLimit.parts.find((p) => p.id === 'part_a')?.rotationLimit).toEqual({
+      min: -30,
+      max: 30,
+    });
+    const cleared = setPartRotationLimit(withLimit, 'part_a', undefined);
+    expect(cleared.parts.find((p) => p.id === 'part_a')?.rotationLimit).toBeUndefined();
+  });
+
+  it('setRigAnimations は配列を丸ごと置き換える', async () => {
+    const { setRigAnimations } = await import('./assetOps');
+    const rig = {
+      id: 'rig_1',
+      name: 'test',
+      fps: 8,
+      loop: true,
+      durationMs: 1000,
+      keyframes: [],
+    };
+    const next = setRigAnimations(rigAsset, [rig]);
+    expect(next.rigAnimations).toEqual([rig]);
+  });
+});
