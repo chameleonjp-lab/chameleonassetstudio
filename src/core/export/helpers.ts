@@ -77,13 +77,14 @@ export function applyOrigin(position, atlas) {
 }
 
 /**
- * atlas.anchors から role 名に対応するアンカー座標を取得する。
+ * atlas.anchors から用途（role）に対応するアンカー座標を取得する。
+ * role（例: 'hand_left', 'head'）で照合し、見つからなければ name でも探す。
  * @param {object} atlas atlas.json をパースしたもの
- * @param {string} role アンカー名（例: 'hand', 'head'）
+ * @param {string} role アンカー用途または名前
  * @returns {{ x: number, y: number } | null}
  */
 export function getAnchor(atlas, role) {
-  const anchor = atlas.anchors.find((a) => a.name === role);
+  const anchor = atlas.anchors.find((a) => a.role === role) ?? atlas.anchors.find((a) => a.name === role);
   return anchor ? { x: anchor.x, y: anchor.y } : null;
 }
 
