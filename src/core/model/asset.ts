@@ -4,6 +4,7 @@ import type { Collider } from './collider';
 import type { IsoDateTimeString, Size, Vec2, VersionString } from './common';
 import type { Layer } from './layer';
 import type { Part } from './part';
+import type { RigAnimation } from './rig';
 import type { TextureRef } from './texture';
 
 export const ASSET_FORMAT = 'chameleon-asset' as const;
@@ -93,6 +94,8 @@ export interface Asset {
   tile?: TileSettings;
   /** gimmick アセット用設定（Phase 14）。 */
   gimmick?: GimmickSettings;
+  /** 簡易リグアニメーション（Phase 15）。焼き込み前の編集用データ。 */
+  rigAnimations?: RigAnimation[];
   createdAt: IsoDateTimeString;
   updatedAt: IsoDateTimeString;
 }
