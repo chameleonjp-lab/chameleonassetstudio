@@ -9,7 +9,9 @@ import { applyFrameToAsset, type Asset } from '../model';
 import { validateAsset } from '../schema/validate';
 import { loadBlob } from '../storage';
 import { buildAtlas, computeSheetLayout, type AtlasJson } from './atlas';
+import { buildGodotGuide, buildUnityGuide } from './engineGuides';
 import { buildCanvasExample, buildPhaserExample, buildPixiExample } from './examples';
+import { buildCanvasHelpers, buildPhaserHelpers, buildPixiHelpers } from './helpers';
 
 export class ExportError extends Error {
   constructor(message: string, options?: ErrorOptions) {
@@ -230,12 +232,21 @@ export function buildExportReadme(asset: Asset): string {
     '- `examples/example-canvas.html` … Canvas 2D でアセットを読み込む最小例（外部依存なし）',
     '- `examples/example-pixi.html` … PixiJS でアセットを読み込む最小例（PixiJS を CDN から読み込む）',
     '- `examples/example-phaser.html` … Phaser でアセットを読み込む最小例（Phaser を CDN から読み込む）',
+    '- `helpers/chameleon-helpers.js` … Canvas 2D / エンジン非依存の helper（コピーして組み込む部品）',
+    '- `helpers/chameleon-pixi.js` … PixiJS v8 用 helper',
+    '- `helpers/chameleon-phaser.js` … Phaser 4 用 helper',
+    '- `engines/README-godot.md` … Godot 4 への読み込み手順ガイド',
+    '- `engines/README-unity.md` … Unity への読み込み手順ガイド',
     '',
     '## サンプルコード（examples/）',
     '',
     'いずれも完成したゲームではなく、atlas.json / spritesheet.png を読み込んで表示する最小例です。原点・アンカー・当たり判定のデバッグ表示と、アニメーション再生例を含みます。',
     '',
     '`fetch()` は `file://` では動作しないため、フォルダをローカルサーバーで開いてください（例: `npx serve .`）。PixiJS 版・Phaser 版はそれぞれのライブラリを CDN（jsdelivr）から読み込むため、インターネット接続が必要です。',
+    '',
+    '## helper（helpers/）とエンジンガイド（engines/）',
+    '',
+    'examples は「動く見本」、helpers は自分のコードへコピーして使う「組み込む部品」です（ESM）。Godot / Unity へは engines/ の手順ガイドを参照してください（シーン / プレハブの自動生成には対応していません）。',
     '',
     '## 座標系',
     '',
@@ -319,6 +330,11 @@ export async function exportZip(asset: Asset): Promise<Blob> {
     'examples/example-canvas.html': strToU8(buildCanvasExample(asset)),
     'examples/example-pixi.html': strToU8(buildPixiExample(asset)),
     'examples/example-phaser.html': strToU8(buildPhaserExample(asset)),
+    'helpers/chameleon-helpers.js': strToU8(buildCanvasHelpers(asset)),
+    'helpers/chameleon-pixi.js': strToU8(buildPixiHelpers(asset)),
+    'helpers/chameleon-phaser.js': strToU8(buildPhaserHelpers(asset)),
+    'engines/README-godot.md': strToU8(buildGodotGuide(asset)),
+    'engines/README-unity.md': strToU8(buildUnityGuide(asset)),
     'README.md': strToU8(buildExportReadme(asset)),
   };
   for (const file of files) {

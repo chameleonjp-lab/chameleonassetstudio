@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 書き出し形式書
 
-最終更新日: 2026-07-02  
+最終更新日: 2026-07-04  
 対象バージョン: 0.1.0  
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`
 
@@ -47,6 +47,13 @@
 │  ├─ example-canvas.html     … Canvas 2D 用サンプル（外部依存なし）
 │  ├─ example-pixi.html       … PixiJS 用サンプル（PixiJS を CDN から読み込む）
 │  └─ example-phaser.html     … Phaser 用サンプル（Phaser を CDN から読み込む）
+├─ helpers/
+│  ├─ chameleon-helpers.js    … Canvas 2D / エンジン非依存 helper（ESM。下記「9. helpers/」）
+│  ├─ chameleon-pixi.js       … PixiJS v8 用 helper
+│  └─ chameleon-phaser.js     … Phaser 4 用 helper
+├─ engines/
+│  ├─ README-godot.md         … Godot 4 への読み込み手順ガイド（下記「10. engines/」）
+│  └─ README-unity.md         … Unity への読み込み手順ガイド
 └─ README.md                 … アセット名、内容、座標系、原点・アンカー・当たり判定、examples の説明
 ```
 
@@ -113,3 +120,25 @@ Sprite Sheet のセル配置は `computeSheetLayout`（`src/core/export/atlas.ts
 `fetch` は `file://` では動作しないため、各 HTML の冒頭コメントと ZIP 内 README にローカルサーバー（例: `npx serve .`）で開く旨を明記する。PixiJS 版・Phaser 版はそれぞれのライブラリを CDN から読み込むため、インターネット接続が必要になる。
 
 サンプルコードは完成したゲームではなく、アセットを読み込む最小例である。
+
+---
+
+## 9. helpers/（組み込み用 helper snippet、Phase 16）
+
+生成は `src/core/export/helpers.ts`（純関数）が行い、`exportZip` が `helpers/` 配下へ同梱する。examples が「動く見本」であるのに対し、helpers は自分のゲームコードへコピーして使う「組み込む部品」（ESM）で、両者を重複させない。
+
+| ファイル | 生成関数 | 主な内容 |
+| --- | --- | --- |
+| `chameleon-helpers.js` | `buildCanvasHelpers` | `loadChameleonAtlas` / `getFrameRect` / `applyOrigin` / `getAnchor` / `drawColliderDebug` / `createFrameAnimator`（エンジン非依存） |
+| `chameleon-pixi.js` | `buildPixiHelpers` | `loadChameleonPixi` / `createPixiFrameTextures` / `createPixiAnimatedSprite` / `applyPixiOrigin` / `drawPixiColliderDebug`（PixiJS v8） |
+| `chameleon-phaser.js` | `buildPhaserHelpers` | `preloadChameleonAsset` / `createChameleonAnims` / `readColliders` / `applyPhaserOrigin`（Phaser 4） |
+
+いずれも実行時に `atlas.json` を読み込んで使う設計とし、冒頭コメントに座標系（左上原点・右 x+・下 y+・px・度）と使い方を明記する。
+
+---
+
+## 10. engines/（エンジン取り込みガイド、Phase 16）
+
+生成は `src/core/export/engineGuides.ts`（純関数）が行う。Godot のシーン / Unity のプレハブは自動生成しない（誤解される表現をしない）。各ガイドには、使うファイル一覧、座標系、原点 / pivot の換算式（Godot: `offset = Vector2(cellSize.width/2 - origin.x, cellSize.height/2 - origin.y)`、Unity: `pivot = (origin.x / width, 1 - origin.y / height)` と v 軸反転の注意）、アニメーション・当たり判定・アンカーの対応先を記載する。import helper script は将来課題（設計メモは `docs/ENGINE_INTEGRATION.md`）。
+
+Rive / Spine との関係と、独自形式（`asset.json` / `.casproj`）が正本であることは `docs/ENGINE_INTEGRATION.md` に定義する。

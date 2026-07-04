@@ -93,9 +93,21 @@ test('ZIP をダウンロードでき、中身一式が揃う', async ({ page })
       'examples/example-canvas.html',
       'examples/example-pixi.html',
       'examples/example-phaser.html',
+      'helpers/chameleon-helpers.js',
+      'helpers/chameleon-pixi.js',
+      'helpers/chameleon-phaser.js',
+      'engines/README-godot.md',
+      'engines/README-unity.md',
       'README.md',
     ]),
   );
+
+  // helper は ESM の部品としてコピーして使える形（Phase 16）
+  const canvasHelpers = Buffer.from(entries['helpers/chameleon-helpers.js']).toString('utf-8');
+  expect(canvasHelpers).toContain('export async function loadChameleonAtlas');
+  expect(canvasHelpers).toContain('drawColliderDebug');
+  const godotGuide = Buffer.from(entries['engines/README-godot.md']).toString('utf-8');
+  expect(godotGuide).toContain('自動生成するものではありません');
 
   const atlas = JSON.parse(Buffer.from(entries['atlas/atlas.json']).toString('utf-8'));
   expect(atlas.format).toBe('chameleon-atlas');

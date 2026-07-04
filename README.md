@@ -88,7 +88,8 @@ e2e/           … Playwright E2E テスト
 - [x] Phase 13: MVP 固定（`.casproj` の UI 読み書き、MVP チェックリスト消化、iPad 主要編集 E2E、docs 更新）
 - [x] Phase 14: 背景・アイテム・タイル・ギミック（型別設定、ゲーム属性エディタ、背景パララックスプレビュー、tile 設定の atlas 同梱）
 - [x] Phase 15: 高度編集（簡易リグ: パーツ親子・バインドポーズ・可動域・キーフレーム・フレーム焼き込み、モーションテンプレート 6 種）
-- [ ] Phase 16 以降: `docs/IMPLEMENTATION_PLAN.md` を参照
+- [x] Phase 16: エンジン連携補助（helpers/ 組み込み用 snippet 3 種、engines/ Godot・Unity 取り込みガイド、Rive / Spine の関係を docs 化）
+- [ ] Phase 17 以降: `docs/IMPLEMENTATION_PLAN.md` を参照
 
 ## 初期方針
 
