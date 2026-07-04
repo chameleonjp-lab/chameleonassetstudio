@@ -88,6 +88,77 @@ describe('validateAsset', () => {
     expect(validateAsset(null).valid).toBe(false);
     expect(validateAsset('asset').valid).toBe(false);
   });
+
+  it('background 設定付き layer / tile 設定付き asset / gimmick 設定付き asset が検証を通る', () => {
+    const backgroundLayer = clone(minimalAsset) as Record<string, unknown>;
+    backgroundLayer.layers = [
+      {
+        id: 'layer_1',
+        name: '遠景',
+        layerType: 'image',
+        visible: true,
+        locked: false,
+        opacity: 1,
+        transform: { position: { x: 0, y: 0 }, scale: { x: 1, y: 1 }, rotation: 0 },
+        background: {
+          role: 'far',
+          parallaxSpeed: { x: 0.2, y: 0 },
+          loopX: true,
+          loopY: false,
+        },
+      },
+    ];
+    expect(validateAsset(backgroundLayer).valid).toBe(true);
+
+    const tileAsset = clone(minimalAsset) as Record<string, unknown>;
+    tileAsset.assetType = 'tile';
+    tileAsset.tile = {
+      tileSize: { width: 32, height: 32 },
+      collisionType: 'solid',
+      visualType: 'floor',
+    };
+    expect(validateAsset(tileAsset).valid).toBe(true);
+
+    const gimmickAsset = clone(minimalAsset) as Record<string, unknown>;
+    gimmickAsset.assetType = 'gimmick';
+    gimmickAsset.gimmick = { movementPreset: 'horizontal' };
+    expect(validateAsset(gimmickAsset).valid).toBe(true);
+  });
+
+  it('不正な background.role / tile.collisionType は検証で落ちる', () => {
+    const backgroundLayer = clone(minimalAsset) as Record<string, unknown>;
+    backgroundLayer.layers = [
+      {
+        id: 'layer_1',
+        name: '遠景',
+        layerType: 'image',
+        visible: true,
+        locked: false,
+        opacity: 1,
+        transform: { position: { x: 0, y: 0 }, scale: { x: 1, y: 1 }, rotation: 0 },
+        background: {
+          role: 'invalid_role',
+          parallaxSpeed: { x: 0.2, y: 0 },
+          loopX: true,
+          loopY: false,
+        },
+      },
+    ];
+    const backgroundResult = validateAsset(backgroundLayer);
+    expect(backgroundResult.valid).toBe(false);
+    expect(backgroundResult.errors.join('\n')).toContain('/layers/0/background/role');
+
+    const tileAsset = clone(minimalAsset) as Record<string, unknown>;
+    tileAsset.assetType = 'tile';
+    tileAsset.tile = {
+      tileSize: { width: 32, height: 32 },
+      collisionType: 'invalid_type',
+      visualType: 'floor',
+    };
+    const tileResult = validateAsset(tileAsset);
+    expect(tileResult.valid).toBe(false);
+    expect(tileResult.errors.join('\n')).toContain('/tile/collisionType');
+  });
 });
 
 describe('validateAnimation', () => {

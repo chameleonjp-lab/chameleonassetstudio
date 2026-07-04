@@ -22,6 +22,46 @@ export const ASSET_TYPES = [
 
 export type AssetType = (typeof ASSET_TYPES)[number];
 
+export const TILE_COLLISION_TYPES = ['none', 'solid', 'one_way', 'hazard', 'custom'] as const;
+export type TileCollisionType = (typeof TILE_COLLISION_TYPES)[number];
+
+/** tile アセット用設定（Phase 14）。 */
+export interface TileSettings {
+  tileSize: Size;
+  collisionType: TileCollisionType;
+  visualType: string;
+}
+
+export const GIMMICK_MOVEMENT_PRESETS = [
+  'none',
+  'horizontal',
+  'vertical',
+  'rotate',
+  'pendulum',
+] as const;
+
+/** gimmick アセット用設定（Phase 14）。movementPreset の実装は Phase 15 以降。 */
+export interface GimmickSettings {
+  movementPreset: string;
+}
+
+export const GIMMICK_TAG_SUGGESTIONS = [
+  'hazard',
+  'platform',
+  'obstacle',
+  'pickup_emitter',
+] as const;
+export const ITEM_ATTRIBUTE_KEYS = [
+  'score',
+  'hp',
+  'attack',
+  'defense',
+  'speed',
+  'duration',
+  'effectType',
+  'rarity',
+] as const;
+
 /**
  * ゲームに組み込む 1 つの素材。`asset.json` に対応する。
  * UI 状態（ズーム倍率、選択状態、開いているパネルなど）は含めない。
@@ -49,6 +89,10 @@ export interface Asset {
   tags: string[];
   /** ゲーム側で自由に使う属性（例: maxHp、rarity）。 */
   gameAttributes: Record<string, unknown>;
+  /** tile アセット用設定（Phase 14）。 */
+  tile?: TileSettings;
+  /** gimmick アセット用設定（Phase 14）。 */
+  gimmick?: GimmickSettings;
   createdAt: IsoDateTimeString;
   updatedAt: IsoDateTimeString;
 }

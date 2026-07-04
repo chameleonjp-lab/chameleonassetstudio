@@ -44,6 +44,8 @@
     "animations": { "type": "array", "items": { "$ref": "#/definitions/animation" } },
     "tags": { "type": "array", "items": { "type": "string" } },
     "gameAttributes": { "type": "object" },
+    "tile": { "$ref": "#/definitions/tileSettings" },
+    "gimmick": { "$ref": "#/definitions/gimmickSettings" },
     "createdAt": { "type": "string", "format": "date-time" },
     "updatedAt": { "type": "string", "format": "date-time" }
   },
@@ -96,7 +98,8 @@
         "locked": { "type": "boolean" },
         "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
         "transform": { "$ref": "#/definitions/transform" },
-        "textureId": { "type": "string", "minLength": 1 }
+        "textureId": { "type": "string", "minLength": 1 },
+        "background": { "$ref": "#/definitions/backgroundLayerSettings" }
       }
     },
     "part": {
@@ -220,6 +223,32 @@
         "loop": { "type": "boolean" },
         "frameIds": { "type": "array", "items": { "type": "string", "minLength": 1 } },
         "durationMs": { "type": "number", "minimum": 0 }
+      }
+    },
+    "backgroundLayerSettings": {
+      "type": "object",
+      "required": ["role", "parallaxSpeed", "loopX", "loopY"],
+      "properties": {
+        "role": { "enum": ["far", "mid", "near", "foreground"] },
+        "parallaxSpeed": { "$ref": "#/definitions/vec2" },
+        "loopX": { "type": "boolean" },
+        "loopY": { "type": "boolean" }
+      }
+    },
+    "tileSettings": {
+      "type": "object",
+      "required": ["tileSize", "collisionType", "visualType"],
+      "properties": {
+        "tileSize": { "$ref": "#/definitions/size" },
+        "collisionType": { "enum": ["none", "solid", "one_way", "hazard", "custom"] },
+        "visualType": { "type": "string" }
+      }
+    },
+    "gimmickSettings": {
+      "type": "object",
+      "required": ["movementPreset"],
+      "properties": {
+        "movementPreset": { "type": "string" }
       }
     }
   }

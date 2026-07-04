@@ -67,6 +67,8 @@ export interface AtlasJson {
   origin: { x: number; y: number };
   anchors: Array<{ name: string; role: string; x: number; y: number }>;
   colliders: Asset['colliders'];
+  /** tile アセットの設定をそのまま含める。ゲーム側が各コマを tileSize で分割するために使う。 */
+  tile?: Asset['tile'];
 }
 
 /**
@@ -105,5 +107,7 @@ export function buildAtlas(asset: Asset, layout: SheetLayout): AtlasJson {
       y: anchor.position.y,
     })),
     colliders: asset.colliders,
+    // tile アセットは tile 設定（tileSize / collisionType / visualType）をそのまま同梱する（Phase 14）
+    ...(asset.tile ? { tile: asset.tile } : {}),
   };
 }
