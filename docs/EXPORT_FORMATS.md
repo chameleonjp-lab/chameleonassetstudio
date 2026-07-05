@@ -134,7 +134,7 @@ Sprite Sheet のセル配置は `computeSheetLayout`（`src/core/export/atlas.ts
 | `chameleon-pixi.js` | `buildPixiHelpers` | `loadChameleonPixi` / `createPixiFrameTextures` / `createPixiAnimatedSprite` / `applyPixiOrigin` / `drawPixiDebug`（PixiJS v8） |
 | `chameleon-phaser.js` | `buildPhaserHelpers` | `preloadChameleonAsset` / `registerChameleonSpritesheet` / `createChameleonAnims` / `readColliders` / `applyPhaserOrigin` / `getAnchorByRole` / `getAnchorByName`（Phaser 4。生成コードは構造検証のみで、実 Phaser 実行の自動テストは行わない） |
 
-いずれも実行時に `atlas.json` を読み込んで使う設計とし、冒頭コメントに座標系（左上原点・右 x+・下 y+・px・度）と使い方を明記する。
+いずれも実行時に `atlas.json` を読み込んで使う設計とし、冒頭コメントに座標系（左上原点・右 x+・下 y+・px・度）と使い方を明記する。旧 `getAnchor(atlas, role)`（role 一致優先 + name フォールバックの単一関数）は名前と実体を一致させるため廃止し、`getAnchorByRole` / `getAnchorByName` の 2 系統に分離した（Phase 17）。
 
 ---
 
