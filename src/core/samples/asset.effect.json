@@ -1,0 +1,32 @@
+{
+  "format": "chameleon-asset",
+  "version": "0.1.0",
+  "id": "asset_effect_sample",
+  "assetType": "effect",
+  "name": "hit_spark",
+  "displayName": "ヒットスパーク",
+  "canvasSize": {
+    "width": 512,
+    "height": 512
+  },
+  "origin": {
+    "x": 256,
+    "y": 448
+  },
+  "textures": [],
+  "layers": [],
+  "parts": [],
+  "anchors": [],
+  "colliders": [],
+  "animations": [],
+  "tags": ["player"],
+  "gameAttributes": {},
+  "createdAt": "2026-07-02T00:00:00.000Z",
+  "updatedAt": "2026-07-02T00:00:00.000Z",
+  "effect": {
+    "effectType": "hit",
+    "durationMs": 400,
+    "loop": false,
+    "blendMode": "add"
+  }
+}

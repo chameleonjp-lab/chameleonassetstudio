@@ -17,8 +17,9 @@ describe('buildCanvasHelpers', () => {
     expect(source).toContain('loadChameleonAtlas');
     expect(source).toContain('getFrameRect');
     expect(source).toContain('applyOrigin');
-    expect(source).toContain('getAnchor');
-    expect(source).toContain('drawColliderDebug');
+    expect(source).toContain('getAnchorByRole');
+    expect(source).toContain('getAnchorByName');
+    expect(source).toContain('drawDebug');
     expect(source).toContain('createFrameAnimator');
   });
 
@@ -45,7 +46,7 @@ describe('buildPixiHelpers', () => {
     expect(source).toContain('createPixiFrameTextures');
     expect(source).toContain('createPixiAnimatedSprite');
     expect(source).toContain('applyPixiOrigin');
-    expect(source).toContain('drawPixiColliderDebug');
+    expect(source).toContain('drawPixiDebug');
   });
 
   it('座標系コメントを含む', () => {
@@ -67,7 +68,9 @@ describe('buildPhaserHelpers', () => {
 
   it('主要関数名を含む', () => {
     expect(source).toContain('preloadChameleonAsset');
+    expect(source).toContain('registerChameleonSpritesheet');
     expect(source).toContain('createChameleonAnims');
+    expect(source).toContain('getAnchorByRole');
     expect(source).toContain('readColliders');
     expect(source).toContain('applyPhaserOrigin');
   });

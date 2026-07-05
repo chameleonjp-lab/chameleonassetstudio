@@ -1,3 +1,4 @@
+import { decodeImageSource } from './decodeImageSource';
 import type { ImageOpsRequest, ImageOpsResponse } from '../../workers/imageOps.worker';
 import {
   applyOperation,
@@ -96,17 +97,17 @@ export function runImageOperation(
   });
 }
 
-/** Blob（PNG など）を PixelBuffer へ変換する。ブラウザ専用。 */
+/** Blob（PNG など）を PixelBuffer へ変換する。ブラウザ専用（Safari 系は Image フォールバック）。 */
 export async function blobToPixelBuffer(blob: Blob): Promise<PixelBuffer> {
-  const bitmap = await createImageBitmap(blob);
+  const decoded = await decodeImageSource(blob);
   try {
     const canvas =
       typeof OffscreenCanvas !== 'undefined'
-        ? new OffscreenCanvas(bitmap.width, bitmap.height)
+        ? new OffscreenCanvas(decoded.width, decoded.height)
         : (() => {
             const el = document.createElement('canvas');
-            el.width = bitmap.width;
-            el.height = bitmap.height;
+            el.width = decoded.width;
+            el.height = decoded.height;
             return el;
           })();
     const context = canvas.getContext('2d') as
@@ -114,11 +115,11 @@ export async function blobToPixelBuffer(blob: Blob): Promise<PixelBuffer> {
     if (!context) {
       throw new ImageOperationError('この環境では Canvas 2D が使えません。');
     }
-    context.drawImage(bitmap, 0, 0);
-    const imageData = context.getImageData(0, 0, bitmap.width, bitmap.height);
+    context.drawImage(decoded.source, 0, 0);
+    const imageData = context.getImageData(0, 0, decoded.width, decoded.height);
     return { width: imageData.width, height: imageData.height, data: imageData.data };
   } finally {
-    bitmap.close();
+    decoded.close();
   }
 }
 

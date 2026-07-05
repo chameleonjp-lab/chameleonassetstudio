@@ -109,6 +109,9 @@
     "gimmick": {
       "$ref": "#/definitions/gimmickSettings"
     },
+    "effect": {
+      "$ref": "#/definitions/effectSettings"
+    },
     "rigAnimations": {
       "type": "array",
       "items": {
@@ -523,6 +526,25 @@
       "properties": {
         "movementPreset": {
           "type": "string"
+        }
+      }
+    },
+    "effectSettings": {
+      "type": "object",
+      "required": ["effectType", "durationMs", "loop", "blendMode"],
+      "properties": {
+        "effectType": {
+          "enum": ["spark", "hit", "explosion", "aura", "trail", "custom"]
+        },
+        "durationMs": {
+          "type": "number",
+          "minimum": 1
+        },
+        "loop": {
+          "type": "boolean"
+        },
+        "blendMode": {
+          "enum": ["normal", "add", "screen"]
         }
       }
     },

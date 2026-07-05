@@ -89,9 +89,10 @@ e2e/           … Playwright E2E テスト
 - [x] Phase 12: モバイル最適化（スマホ縦横 / iPad レイアウト、下部ナビ、タッチ操作、iOS 入力ズーム防止、タップ対象サイズ確保）
 - [x] Phase 13: MVP 固定（`.casproj` の UI 読み書き、MVP チェックリスト消化、iPad 主要編集 E2E、docs 更新）
 - [x] Phase 14: 背景・アイテム・タイル・ギミック（型別設定、ゲーム属性エディタ、背景パララックスプレビュー、tile 設定の atlas 同梱）
-- [x] Phase 15: 高度編集（簡易リグ: パーツ親子・バインドポーズ・可動域・キーフレーム・フレーム焼き込み、モーションテンプレート 6 種）
+- [x] Phase 15: 高度編集（簡易リグ: パーツ親子・バインドポーズ・可動域・キーフレーム・拡大率・フレーム焼き込み、モーションテンプレート 6 種）
+- [x] Phase 15.5: 品質補修（画像 Blob 欠落の検出、image レイヤーの textureId 必須化、画像デコードの Safari 系フォールバック、Blob URL 解放の安全化）
 - [x] Phase 16: エンジン連携補助（helpers/ 組み込み用 snippet 3 種、engines/ Godot・Unity 取り込みガイド、Rive / Spine の関係を docs 化）
-- [ ] Phase 17: v1.0.0 品質化 — 文書整備（USER_GUIDE / TEST_PLAN / RELEASE_CHECKLIST）と自動テスト側は完了。**実機ブラウザ確認と性能・メモリ計測が未実施**のため未完（残項目は `docs/RELEASE_CHECKLIST.md` を参照）
+- [x] Phase 17: v1.0.0 品質化（文書整備、effect アセットの最小対応、`.casproj` 読み込み時の画像欠落警告、画像デコードの共通フォールバック統合。実機ブラウザ確認は `docs/RELEASE_CHECKLIST.md` の手動確認推奨項目）
 
 ## 初期方針
 

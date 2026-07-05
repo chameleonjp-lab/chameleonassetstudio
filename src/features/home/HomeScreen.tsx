@@ -30,6 +30,7 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importWarnings, setImportWarnings] = useState<string[]>([]);
 
   const reload = useCallback(async () => {
     try {
@@ -66,8 +67,9 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
     }
     setImporting(true);
     setErrorMessage(null);
+    setImportWarnings([]);
     try {
-      const { bundle } = await importCasproj(file);
+      const { bundle, warnings } = await importCasproj(file);
       // 既存プロジェクトや Blob キーとの ID 衝突を避けるため、常に ID を再採番する
       const assetIdMap = new Map(bundle.assets.map((asset) => [asset.id, generateId('asset')]));
       const project = {
@@ -104,6 +106,7 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
         );
       }
       await reload();
+      setImportWarnings(warnings);
     } catch (error) {
       setErrorMessage(`.casproj を読み込めませんでした: ${toErrorMessage(error)}`);
     }
@@ -171,6 +174,13 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
           </label>
           {importing && <p className="home-import-status">読み込み中…</p>}
         </div>
+        {importWarnings.length > 0 && (
+          <div className="home-import-warnings" role="status">
+            {importWarnings.map((warning) => (
+              <p key={warning}>{warning}</p>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="home-section" aria-label="プロジェクト一覧">

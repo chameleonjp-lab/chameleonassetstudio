@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import characterAsset from '../samples/asset.character.json';
+import effectAsset from '../samples/asset.effect.json';
 import minimalAsset from '../samples/asset.minimal.json';
 import exportPresets from '../samples/export-presets.sample.json';
 import sampleProject from '../samples/project.sample.json';
@@ -124,6 +125,16 @@ describe('validateAsset', () => {
     gimmickAsset.assetType = 'gimmick';
     gimmickAsset.gimmick = { movementPreset: 'horizontal' };
     expect(validateAsset(gimmickAsset).valid).toBe(true);
+  });
+
+  it('effect サンプルが検証を通り、不正な blendMode は落ちる（Phase 17-C）', () => {
+    expect(validateAsset(effectAsset).valid).toBe(true);
+
+    const broken = clone(effectAsset) as Record<string, unknown>;
+    (broken.effect as Record<string, unknown>).blendMode = 'multiply';
+    const result = validateAsset(broken);
+    expect(result.valid).toBe(false);
+    expect(result.errors.join('\n')).toContain('blendMode');
   });
 
   it('image レイヤーは textureId 必須、guide / shape は不要（Phase 15.5-C）', () => {

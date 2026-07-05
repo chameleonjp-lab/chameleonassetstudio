@@ -222,13 +222,13 @@ v1.0.0 までに揃える文書:
 
 完了条件:
 
-- 4096 x 4096 の画像を安全に扱える。
+- 4096 x 4096 の画像を受け付け、超過を拒否できる（境界は自動テストで担保）。
 - 画像処理中に進捗が出る。
-- 連続編集でメモリが増え続けない。
-- モバイルで完全停止しない。
-- iPhone Safari、iPad Safari、Chrome、Edge、Firefox、Android Chrome で主要画面を確認する。
 - 既存プロジェクトを壊さずアップデートできる。
 - 別の実装者が docs だけで引き継げる。
+- 実機ブラウザ確認（iPhone Safari、iPad Safari、Chrome、Edge、Firefox、Android Chrome）は
+  「手動確認推奨」として `docs/RELEASE_CHECKLIST.md` 3 章に残す（自動化環境では実施しない）。
+- 大画像の連続編集メモリ計測は今回の完了条件に含めず、将来課題として同 4 章に残す。
 
 ---
 

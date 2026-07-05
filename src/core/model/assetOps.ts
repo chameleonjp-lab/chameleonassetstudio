@@ -3,7 +3,7 @@
  * すべて元のアセットを変更せず、新しいアセットを返す純関数として実装する。
  */
 import type { Animation, Frame } from './animation';
-import type { Asset, AssetType, GimmickSettings, TileSettings } from './asset';
+import type { Asset, AssetType, EffectSettings, GimmickSettings, TileSettings } from './asset';
 import type { Vec2 } from './common';
 import { generateId } from './factories';
 import type { BackgroundLayerSettings, Layer } from './layer';
@@ -440,6 +440,17 @@ export function setGimmickSettings(asset: Asset, gimmick: GimmickSettings | unde
     next.gimmick = gimmick;
   } else {
     delete next.gimmick;
+  }
+  return touch(next);
+}
+
+/** effect アセット用設定を設定する。undefined を渡すと削除する。 */
+export function setEffectSettings(asset: Asset, effect: EffectSettings | undefined): Asset {
+  const next = { ...asset };
+  if (effect) {
+    next.effect = effect;
+  } else {
+    delete next.effect;
   }
   return touch(next);
 }

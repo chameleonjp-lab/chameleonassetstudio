@@ -1,16 +1,22 @@
 import {
   ASSET_TYPES,
   BACKGROUND_LAYER_ROLES,
+  EFFECT_BLEND_MODES,
+  EFFECT_TYPES,
   GIMMICK_MOVEMENT_PRESETS,
   GIMMICK_TAG_SUGGESTIONS,
   TILE_COLLISION_TYPES,
   setAssetType,
+  setEffectSettings,
   setGimmickSettings,
   setLayerBackground,
   setTileSettings,
   type Asset,
   type AssetType,
   type BackgroundLayerSettings,
+  type EffectBlendMode,
+  type EffectSettings,
+  type EffectType,
   type GimmickSettings,
   type Layer,
   type TileCollisionType,
@@ -30,6 +36,13 @@ const DEFAULT_TILE: TileSettings = {
 };
 
 const DEFAULT_GIMMICK: GimmickSettings = { movementPreset: 'none' };
+
+const DEFAULT_EFFECT: EffectSettings = {
+  effectType: 'spark',
+  durationMs: 500,
+  loop: false,
+  blendMode: 'normal',
+};
 
 const DEFAULT_BACKGROUND: BackgroundLayerSettings = {
   role: 'mid',
@@ -231,6 +244,114 @@ function GimmickFields({ asset, onCommit }: AssetTypePanelProps) {
   );
 }
 
+/** エフェクト設定 UI（Phase 17）。本格的なエフェクトエディタ / パーティクルは対象外で、ゲーム側で解釈するメタデータのみ扱う。 */
+function EffectFields({ asset, onCommit }: AssetTypePanelProps) {
+  const effect = asset.effect;
+  if (!effect) {
+    return (
+      <button
+        type="button"
+        onClick={() => onCommit('エフェクト設定を追加', setEffectSettings(asset, DEFAULT_EFFECT))}
+      >
+        エフェクト設定を追加
+      </button>
+    );
+  }
+  const hasAnimation = asset.animations.length > 0;
+  return (
+    <fieldset className="editor-fieldset">
+      <legend>エフェクト設定</legend>
+      <label className="editor-field">
+        エフェクト種類
+        <select
+          aria-label="エフェクト種類"
+          value={effect.effectType}
+          onChange={(event) =>
+            onCommit(
+              'エフェクト種類変更',
+              setEffectSettings(asset, {
+                ...effect,
+                effectType: event.target.value as EffectType,
+              }),
+            )
+          }
+        >
+          {EFFECT_TYPES.map((type) => (
+            <option key={type} value={type}>
+              {type}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="editor-field">
+        エフェクト長さ(ms)
+        <input
+          type="number"
+          aria-label="エフェクト長さ(ms)"
+          min={1}
+          value={effect.durationMs}
+          onChange={(event) =>
+            onCommit(
+              'エフェクト長さ変更',
+              setEffectSettings(asset, {
+                ...effect,
+                durationMs: Math.max(1, Number(event.target.value) || 1),
+              }),
+            )
+          }
+        />
+      </label>
+      <label className="editor-field editor-field-checkbox">
+        <input
+          type="checkbox"
+          aria-label="エフェクトループ"
+          checked={effect.loop}
+          onChange={(event) =>
+            onCommit(
+              'エフェクトループ切替',
+              setEffectSettings(asset, { ...effect, loop: event.target.checked }),
+            )
+          }
+        />
+        ループ再生
+      </label>
+      <label className="editor-field">
+        ブレンドモード
+        <select
+          aria-label="ブレンドモード"
+          value={effect.blendMode}
+          onChange={(event) =>
+            onCommit(
+              'ブレンドモード変更',
+              setEffectSettings(asset, {
+                ...effect,
+                blendMode: event.target.value as EffectBlendMode,
+              }),
+            )
+          }
+        >
+          {EFFECT_BLEND_MODES.map((mode) => (
+            <option key={mode} value={mode}>
+              {mode}
+            </option>
+          ))}
+        </select>
+      </label>
+      {hasAnimation && (
+        <p className="editor-note">
+          アニメーションの長さと durationMs が矛盾しないよう注意してください。
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={() => onCommit('エフェクト設定を削除', setEffectSettings(asset, undefined))}
+      >
+        エフェクト設定を削除
+      </button>
+    </fieldset>
+  );
+}
+
 /** 背景設定 UI（Phase 14）。パララックスプレビューを表示する。 */
 function BackgroundFields({ asset }: AssetTypePanelProps) {
   return (
@@ -285,6 +406,7 @@ export function AssetTypePanel({ asset, onCommit }: AssetTypePanelProps) {
       {asset.assetType === 'gimmick' && <GimmickFields asset={asset} onCommit={onCommit} />}
       {asset.assetType === 'item' && <ItemFields asset={asset} onCommit={onCommit} />}
       {asset.assetType === 'background' && <BackgroundFields asset={asset} onCommit={onCommit} />}
+      {asset.assetType === 'effect' && <EffectFields asset={asset} onCommit={onCommit} />}
     </div>
   );
 }

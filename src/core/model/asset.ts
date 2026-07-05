@@ -52,6 +52,21 @@ export const GIMMICK_TAG_SUGGESTIONS = [
   'obstacle',
   'pickup_emitter',
 ] as const;
+
+export const EFFECT_TYPES = ['spark', 'hit', 'explosion', 'aura', 'trail', 'custom'] as const;
+export type EffectType = (typeof EFFECT_TYPES)[number];
+
+export const EFFECT_BLEND_MODES = ['normal', 'add', 'screen'] as const;
+export type EffectBlendMode = (typeof EFFECT_BLEND_MODES)[number];
+
+/** effect アセット用設定（Phase 17）。本格パーティクルではなくゲーム側で解釈するメタデータ。 */
+export interface EffectSettings {
+  effectType: EffectType;
+  durationMs: number;
+  loop: boolean;
+  blendMode: EffectBlendMode;
+}
+
 export const ITEM_ATTRIBUTE_KEYS = [
   'score',
   'hp',
@@ -94,6 +109,8 @@ export interface Asset {
   tile?: TileSettings;
   /** gimmick アセット用設定（Phase 14）。 */
   gimmick?: GimmickSettings;
+  /** effect アセット用設定（Phase 17）。 */
+  effect?: EffectSettings;
   /** 簡易リグアニメーション（Phase 15）。焼き込み前の編集用データ。 */
   rigAnimations?: RigAnimation[];
   createdAt: IsoDateTimeString;

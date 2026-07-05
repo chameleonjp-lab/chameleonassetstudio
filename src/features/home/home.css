@@ -136,3 +136,16 @@
   white-space: nowrap;
   border: 0;
 }
+
+.home-import-warnings {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e2a600;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.home-import-warnings p {
+  margin: 0.15rem 0;
+  overflow-wrap: anywhere;
+}

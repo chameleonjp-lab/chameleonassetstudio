@@ -73,6 +73,7 @@
 | anchors    | `Array<{ name, role, x, y }>`            | `Asset.anchors` を平坦化したもの                                             |
 | colliders  | `Collider[]`                             | `Asset.colliders` をそのまま含める                                           |
 | tile       | `TileSettings`（任意）                   | tile アセットのみ。`Asset.tile`（tileSize / collisionType / visualType）をそのまま含める |
+| effect     | `EffectSettings`（任意）                 | effect アセットのみ。`Asset.effect` をそのまま含める                         |
 
 Sprite Sheet のセル配置は `computeSheetLayout`（`src/core/export/atlas.ts`）が計算する。フレーム数を n としたとき、列数は `ceil(sqrt(n))`、行数は `ceil(n / 列数)` とし、左上から行優先で並べる。
 
@@ -129,11 +130,11 @@ Sprite Sheet のセル配置は `computeSheetLayout`（`src/core/export/atlas.ts
 
 | ファイル | 生成関数 | 主な内容 |
 | --- | --- | --- |
-| `chameleon-helpers.js` | `buildCanvasHelpers` | `loadChameleonAtlas` / `getFrameRect` / `applyOrigin` / `getAnchor` / `drawColliderDebug` / `createFrameAnimator`（エンジン非依存） |
-| `chameleon-pixi.js` | `buildPixiHelpers` | `loadChameleonPixi` / `createPixiFrameTextures` / `createPixiAnimatedSprite` / `applyPixiOrigin` / `drawPixiColliderDebug`（PixiJS v8） |
-| `chameleon-phaser.js` | `buildPhaserHelpers` | `preloadChameleonAsset` / `createChameleonAnims` / `readColliders` / `applyPhaserOrigin`（Phaser 4） |
+| `chameleon-helpers.js` | `buildCanvasHelpers` | `loadChameleonAtlas` / `getFrameRect` / `applyOrigin` / `getAnchorByRole` / `getAnchorByName` / `drawDebug`（原点+アンカー+判定） / `createFrameAnimator`（エンジン非依存） |
+| `chameleon-pixi.js` | `buildPixiHelpers` | `loadChameleonPixi` / `createPixiFrameTextures` / `createPixiAnimatedSprite` / `applyPixiOrigin` / `drawPixiDebug`（PixiJS v8） |
+| `chameleon-phaser.js` | `buildPhaserHelpers` | `preloadChameleonAsset` / `registerChameleonSpritesheet` / `createChameleonAnims` / `readColliders` / `applyPhaserOrigin` / `getAnchorByRole` / `getAnchorByName`（Phaser 4。生成コードは構造検証のみで、実 Phaser 実行の自動テストは行わない） |
 
-いずれも実行時に `atlas.json` を読み込んで使う設計とし、冒頭コメントに座標系（左上原点・右 x+・下 y+・px・度）と使い方を明記する。
+いずれも実行時に `atlas.json` を読み込んで使う設計とし、冒頭コメントに座標系（左上原点・右 x+・下 y+・px・度）と使い方を明記する。旧 `getAnchor(atlas, role)`（role 一致優先 + name フォールバックの単一関数）は名前と実体を一致させるため廃止し、`getAnchorByRole` / `getAnchorByName` の 2 系統に分離した（Phase 17）。
 
 ---
 

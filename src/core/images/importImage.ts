@@ -1,3 +1,4 @@
+import { decodeImageSource } from './decodeImageSource';
 import { createImageAsset, generateId, type Asset, type Layer, type TextureRef } from '../model';
 import { formatBytes } from '../storage/storageUsage';
 
@@ -69,49 +70,18 @@ interface DecodedImage {
   close(): void;
 }
 
-/** createImageBitmap でデコードする。非対応環境では HTMLImageElement へフォールバックする。 */
+/**
+ * 共通の decodeImageSource（createImageBitmap → HTMLImageElement フォールバック、Phase 15.5-B）
+ * に委譲し、失敗時は取り込み向けのエラーメッセージに変換する（Phase 17-A で統合）。
+ */
 async function decodeImage(blob: Blob): Promise<DecodedImage> {
-  if (typeof createImageBitmap === 'function') {
-    try {
-      const bitmap = await createImageBitmap(blob);
-      return {
-        source: bitmap,
-        width: bitmap.width,
-        height: bitmap.height,
-        close: () => bitmap.close(),
-      };
-    } catch (error) {
-      throw new ImageImportError(
-        '画像をデコードできませんでした。ファイルが壊れている可能性があります。',
-        {
-          cause: error,
-        },
-      );
-    }
-  }
-
-  const url = URL.createObjectURL(blob);
   try {
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const el = new Image();
-      el.onload = () => resolve(el);
-      el.onerror = () =>
-        reject(
-          new ImageImportError(
-            '画像をデコードできませんでした。ファイルが壊れている可能性があります。',
-          ),
-        );
-      el.src = url;
-    });
-    return {
-      source: image,
-      width: image.naturalWidth,
-      height: image.naturalHeight,
-      close: () => URL.revokeObjectURL(url),
-    };
+    return await decodeImageSource(blob);
   } catch (error) {
-    URL.revokeObjectURL(url);
-    throw error;
+    throw new ImageImportError(
+      '画像をデコードできませんでした。ファイルが壊れている可能性があります。',
+      { cause: error },
+    );
   }
 }
 
