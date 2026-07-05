@@ -69,6 +69,8 @@ export interface AtlasJson {
   colliders: Asset['colliders'];
   /** tile アセットの設定をそのまま含める。ゲーム側が各コマを tileSize で分割するために使う。 */
   tile?: Asset['tile'];
+  /** effect アセットの設定をそのまま含める。ゲーム側が再生時間・blendMode を atlas だけで読めるようにする（Phase 17）。 */
+  effect?: Asset['effect'];
 }
 
 /**
@@ -110,5 +112,8 @@ export function buildAtlas(asset: Asset, layout: SheetLayout): AtlasJson {
     // tile アセットのみ tile 設定（tileSize / collisionType / visualType）をそのまま同梱する（Phase 14）。
     // 種別変更後に asset.tile が残っていても、非 tile アセットの atlas には出さない。
     ...(asset.assetType === 'tile' && asset.tile ? { tile: asset.tile } : {}),
+    // effect アセットのみ effect 設定をそのまま同梱する（Phase 17）。
+    // 種別変更後に asset.effect が残っていても、非 effect アセットの atlas には出さない。
+    ...(asset.assetType === 'effect' && asset.effect ? { effect: asset.effect } : {}),
   };
 }

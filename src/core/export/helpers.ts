@@ -17,6 +17,10 @@ function commonHeader(asset: Asset, usageLine: string): string {
  * 使い方: ${usageLine}
  * 前提: このファイルと同じ構成で書き出された atlas.json / spritesheet.png を
  *       fetch できる場所（例: 同一フォルダの atlas/ 以下）に配置してください。
+ * 読み込み方法: ESM なので <script type="module"> から import するか、bundler
+ *       （Vite / esbuild 等）のソースにコピーして import してください。
+ *       fetch は file:// では動かないため、ローカル確認は npx serve . などで開くこと。
+ *       PixiJS / Phaser 本体は同梱しません（CDN か npm で各自導入し、引数で渡す設計）。
  */`;
 }
 
@@ -77,26 +81,37 @@ export function applyOrigin(position, atlas) {
 }
 
 /**
- * atlas.anchors から用途（role）に対応するアンカー座標を取得する。
- * role（例: 'hand_left', 'head'）で照合し、見つからなければ name でも探す。
+ * atlas.anchors から用途（role。例: 'hand_left', 'foot'）に対応するアンカー座標を取得する。
  * @param {object} atlas atlas.json をパースしたもの
- * @param {string} role アンカー用途または名前
+ * @param {string} role アンカー用途
  * @returns {{ x: number, y: number } | null}
  */
-export function getAnchor(atlas, role) {
-  const anchor = atlas.anchors.find((a) => a.role === role) ?? atlas.anchors.find((a) => a.name === role);
+export function getAnchorByRole(atlas, role) {
+  const anchor = atlas.anchors.find((a) => a.role === role);
   return anchor ? { x: anchor.x, y: anchor.y } : null;
 }
 
 /**
- * 原点（十字）、当たり判定（矩形・円 + 用途名）を Canvas 2D コンテキストへ重ね描きする。
+ * atlas.anchors から名前（name）に対応するアンカー座標を取得する。
+ * @param {object} atlas atlas.json をパースしたもの
+ * @param {string} name アンカー名
+ * @returns {{ x: number, y: number } | null}
+ */
+export function getAnchorByName(atlas, name) {
+  const anchor = atlas.anchors.find((a) => a.name === name);
+  return anchor ? { x: anchor.x, y: anchor.y } : null;
+}
+
+/**
+ * 原点（十字）、アンカー（点 + 名前）、当たり判定（矩形・円 + 用途名）を
+ * Canvas 2D コンテキストへ重ね描きする。
  * examples.ts が生成する Canvas サンプルと同じ座標解釈（offsetX/offsetY は描画位置の左上）。
  * @param {CanvasRenderingContext2D} ctx
  * @param {object} atlas atlas.json をパースしたもの
  * @param {number} [offsetX] 描画位置の x（drawImage に渡した値と同じにする）
  * @param {number} [offsetY] 描画位置の y（drawImage に渡した値と同じにする）
  */
-export function drawColliderDebug(ctx, atlas, offsetX = 0, offsetY = 0) {
+export function drawDebug(ctx, atlas, offsetX = 0, offsetY = 0) {
   ctx.save();
   ctx.lineWidth = 1;
   ctx.font = '10px sans-serif';
@@ -108,6 +123,14 @@ export function drawColliderDebug(ctx, atlas, offsetX = 0, offsetY = 0) {
   ctx.moveTo(offsetX + atlas.origin.x, offsetY + atlas.origin.y - 8);
   ctx.lineTo(offsetX + atlas.origin.x, offsetY + atlas.origin.y + 8);
   ctx.stroke();
+
+  ctx.fillStyle = '#3b82f6';
+  for (const anchor of atlas.anchors) {
+    ctx.beginPath();
+    ctx.arc(offsetX + anchor.x, offsetY + anchor.y, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillText(anchor.name, offsetX + anchor.x + 4, offsetY + anchor.y - 4);
+  }
 
   ctx.strokeStyle = '#22c55e';
   ctx.fillStyle = '#22c55e';
@@ -228,12 +251,22 @@ export function applyPixiOrigin(sprite, atlas) {
 }
 
 /**
- * 当たり判定（矩形・円）を Graphics に描く。
+ * 原点（十字）、アンカー（点）、当たり判定（矩形・円）を Graphics に描く。
+ * ラベル文字が必要な場合は PIXI.Text を別途重ねること。
  * @param {import('pixi.js').Graphics} graphics
  * @param {object} atlas atlas.json をパースしたもの
  */
-export function drawPixiColliderDebug(graphics, atlas) {
+export function drawPixiDebug(graphics, atlas) {
   graphics.clear();
+  graphics
+    .moveTo(atlas.origin.x - 8, atlas.origin.y)
+    .lineTo(atlas.origin.x + 8, atlas.origin.y)
+    .moveTo(atlas.origin.x, atlas.origin.y - 8)
+    .lineTo(atlas.origin.x, atlas.origin.y + 8)
+    .stroke({ width: 1, color: 0xff2d55 });
+  for (const anchor of atlas.anchors) {
+    graphics.circle(anchor.x, anchor.y, 2.5).fill(0x3b82f6);
+  }
   for (const collider of atlas.colliders) {
     if (collider.shape === 'rect') {
       const r = collider.rect;
@@ -257,9 +290,8 @@ export function buildPhaserHelpers(asset: Asset): string {
   return `${commonHeader(
     asset,
     "// preload(): preloadChameleonAsset(this, 'hero', './atlas'); " +
-      "// create(): const atlas = this.cache.json.get('hero-atlas'); " +
-      "this.textures.addSpriteSheet('hero', this.textures.get('hero-sheet').source[0].image, " +
-      '{ frameWidth: atlas.cellSize.width, frameHeight: atlas.cellSize.height });',
+      "// create(): const atlas = registerChameleonSpritesheet(this, 'hero'); " +
+      "createChameleonAnims(this, 'hero', atlas);",
   )}
 
 /**
@@ -273,6 +305,46 @@ export function buildPhaserHelpers(asset: Asset): string {
 export function preloadChameleonAsset(scene, key, baseUrl) {
   scene.load.json(key + '-atlas', baseUrl + '/atlas.json');
   scene.load.image(key + '-sheet', baseUrl + '/spritesheet.png');
+}
+
+/**
+ * create() 内で呼び出す。preloadChameleonAsset で読み込んだ画像を、atlas.json の
+ * cellSize でスプライトシートとしてテクスチャ登録し、atlas を返す。
+ * texture manager の addSpriteSheet は既存キーがあると警告になるため 1 回だけ呼ぶこと。
+ * @param {Phaser.Scene} scene
+ * @param {string} key preloadChameleonAsset と同じ名前
+ * @returns {object} パース済み atlas.json
+ */
+export function registerChameleonSpritesheet(scene, key) {
+  const atlas = scene.cache.json.get(key + '-atlas');
+  const image = scene.textures.get(key + '-sheet').getSourceImage();
+  scene.textures.addSpriteSheet(key, image, {
+    frameWidth: atlas.cellSize.width,
+    frameHeight: atlas.cellSize.height,
+  });
+  return atlas;
+}
+
+/**
+ * atlas.anchors から用途（role）に対応するアンカー座標を取得する。
+ * @param {object} atlas atlas.json をパースしたもの
+ * @param {string} role アンカー用途（例: 'hand_left', 'foot'）
+ * @returns {{ x: number, y: number } | null}
+ */
+export function getAnchorByRole(atlas, role) {
+  const anchor = atlas.anchors.find((a) => a.role === role);
+  return anchor ? { x: anchor.x, y: anchor.y } : null;
+}
+
+/**
+ * atlas.anchors から名前（name）に対応するアンカー座標を取得する。
+ * @param {object} atlas atlas.json をパースしたもの
+ * @param {string} name アンカー名
+ * @returns {{ x: number, y: number } | null}
+ */
+export function getAnchorByName(atlas, name) {
+  const anchor = atlas.anchors.find((a) => a.name === name);
+  return anchor ? { x: anchor.x, y: anchor.y } : null;
 }
 
 /**

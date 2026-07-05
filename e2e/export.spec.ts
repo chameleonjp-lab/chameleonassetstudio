@@ -105,7 +105,7 @@ test('ZIP をダウンロードでき、中身一式が揃う', async ({ page })
   // helper は ESM の部品としてコピーして使える形（Phase 16）
   const canvasHelpers = Buffer.from(entries['helpers/chameleon-helpers.js']).toString('utf-8');
   expect(canvasHelpers).toContain('export async function loadChameleonAtlas');
-  expect(canvasHelpers).toContain('drawColliderDebug');
+  expect(canvasHelpers).toContain('drawDebug');
   const godotGuide = Buffer.from(entries['engines/README-godot.md']).toString('utf-8');
   expect(godotGuide).toContain('自動生成するものではありません');
 

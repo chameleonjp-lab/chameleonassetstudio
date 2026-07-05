@@ -318,6 +318,21 @@ describe('型別設定（Phase 14）', () => {
     expect(removed.gimmick).toBeUndefined();
   });
 
+  it('setEffectSettings は設定を追加・削除できる', async () => {
+    const { setEffectSettings } = await import('./assetOps');
+    const effect = {
+      effectType: 'spark',
+      durationMs: 500,
+      loop: false,
+      blendMode: 'normal',
+    } as const;
+    const withEffect = setEffectSettings({ ...baseAsset, assetType: 'effect' }, effect);
+    expect(withEffect.effect).toEqual(effect);
+    expect(validateAsset(withEffect).valid).toBe(true);
+    const removed = setEffectSettings(withEffect, undefined);
+    expect(removed.effect).toBeUndefined();
+  });
+
   it('setLayerBackground は対象レイヤーへ設定し、無い場合はそのまま返す', async () => {
     const { setLayerBackground } = await import('./assetOps');
     const background = {

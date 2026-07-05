@@ -118,3 +118,23 @@ test('ギミック種別で movementPreset とタグを設定できる', async (
   expect(data.gimmick.movementPreset).toBe('horizontal');
   expect(data.tags).toContain('hazard');
 });
+
+test('エフェクト種別で種類を変更すると asset.json に反映される', async ({ page }) => {
+  await setupProjectWithImage(page, 'effect-e2e');
+
+  await page.getByLabel('アセット種別').selectOption('effect');
+  await page.getByRole('button', { name: 'エフェクト設定を追加' }).click();
+  await page.getByLabel('エフェクト種類').selectOption('explosion');
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'asset.json をダウンロード' }).click(),
+  ]);
+  const path = await download.path();
+  expect(path).not.toBeNull();
+  const content = await readFile(path!, 'utf-8');
+  const data = JSON.parse(content);
+
+  expect(data.effect.effectType).toBe('explosion');
+  expect(data.effect.durationMs).toBe(500);
+});

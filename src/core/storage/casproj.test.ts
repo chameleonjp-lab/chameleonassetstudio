@@ -103,13 +103,32 @@ describe('casproj の書き出しと読み込み', () => {
     );
   });
 
-  it('読み込みは画像ファイル欠落を許容する（古い .casproj 互換。docs 参照）', async () => {
+  it('読み込みは画像ファイル欠落を許容し、欠落一覧を warnings で返す（Phase 17-B）', async () => {
     const zipped = await zipAsync({
       'project.json': strToU8(JSON.stringify(project)),
       [`assets/${asset.id}/asset.json`]: strToU8(JSON.stringify(asset)),
     });
-    const { bundle } = await importCasproj(zipped);
+    const { bundle, warnings } = await importCasproj(zipped);
     expect(bundle.assets).toHaveLength(1);
     expect(bundle.files).toEqual([]);
+    expect(warnings).toHaveLength(asset.textures.length);
+    expect(warnings[0]).toMatch(
+      new RegExp(`一部の画像が見つかりませんでした: asset=${asset.id} texture=.+ path=.+`),
+    );
+  });
+
+  it('画像ファイルが揃った .casproj では warnings が空になる', async () => {
+    const imageBytes = new Uint8Array([1, 2, 3]);
+    const bundle: CasprojBundle = {
+      project,
+      assets: [asset],
+      files: asset.textures.map((texture) => ({
+        path: `assets/${asset.id}/${texture.path}`,
+        bytes: imageBytes,
+      })),
+    };
+    const blob = await exportCasproj(bundle);
+    const { warnings } = await importCasproj(blob);
+    expect(warnings).toEqual([]);
   });
 });

@@ -30,6 +30,11 @@ export interface CasprojImportResult {
   bundle: CasprojBundle;
   /** 古い形式から移行した場合の適用ログ。 */
   appliedMigrations: string[];
+  /**
+   * 読み込みは継続するがユーザーへ伝えるべき問題（Phase 17-B）。
+   * 現在は asset.json が参照する texture path のファイルが ZIP 内に無い場合の欠落一覧。
+   */
+  warnings: string[];
 }
 
 const PROJECT_JSON_PATH = 'project.json';
@@ -226,8 +231,23 @@ export async function importCasproj(
     files.push({ path, bytes: entryBytes });
   }
 
+  // 画像ファイル欠落は互換のためエラーにしないが、警告として返す（Phase 17-B）
+  const warnings: string[] = [];
+  const filePaths = new Set(files.map((file) => file.path));
+  for (const importedAsset of assets) {
+    for (const texture of importedAsset.textures) {
+      const expectedPath = `assets/${importedAsset.id}/${texture.path}`;
+      if (!filePaths.has(expectedPath)) {
+        warnings.push(
+          `一部の画像が見つかりませんでした: asset=${importedAsset.id} texture=${texture.id} path=${texture.path}`,
+        );
+      }
+    }
+  }
+
   return {
     bundle: { project, assets, exportPresets, files, readme },
     appliedMigrations,
+    warnings,
   };
 }

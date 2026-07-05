@@ -130,4 +130,41 @@ describe('buildAtlas', () => {
     const atlas = buildAtlas(characterWithTile, layout);
     expect('tile' in atlas).toBe(false);
   });
+
+  it('effect アセットは effect 設定がそのまま atlas.json に入る', () => {
+    const effectAsset: Asset = {
+      ...baseAsset,
+      assetType: 'effect',
+      effect: {
+        effectType: 'spark',
+        durationMs: 500,
+        loop: false,
+        blendMode: 'normal',
+      },
+    };
+    const layout = computeSheetLayout(['default'], 512, 512);
+    const atlas = buildAtlas(effectAsset, layout);
+    expect(atlas.effect).toEqual({
+      effectType: 'spark',
+      durationMs: 500,
+      loop: false,
+      blendMode: 'normal',
+    });
+  });
+
+  it('非 effect アセットに effect 設定が残っていても atlas.json には出ない', () => {
+    const characterWithEffect: Asset = {
+      ...baseAsset,
+      assetType: 'character',
+      effect: {
+        effectType: 'spark',
+        durationMs: 500,
+        loop: false,
+        blendMode: 'normal',
+      },
+    };
+    const layout = computeSheetLayout(['default'], 512, 512);
+    const atlas = buildAtlas(characterWithEffect, layout);
+    expect('effect' in atlas).toBe(false);
+  });
 });
