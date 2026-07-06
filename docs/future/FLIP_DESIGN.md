@@ -5,7 +5,9 @@
 上位文書: `docs/future/POST_PHASE17_IMPLEMENTATION_PLAN.md`（Phase 19-B）
 関連: `docs/DATA_FORMAT.md`, `docs/EXPORT_FORMATS.md`
 
-この文書は Phase 19「左右反転」の**設計方針を固定するため**のもの。本文書時点では実装しない（UI・`assetOps` 変更・schema 変更・E2E 追加はいずれも未実施）。
+この文書は Phase 19「左右反転」の**設計方針を固定するため**のもの。
+
+実装状況（2026-07-06 更新）: **通常の左右反転（transform 反映）は実装済み**（`flipLayerHorizontal` / 「選択中レイヤー」パネルの「左右反転」ボタン / Unit・E2E 追加済み。schema 変更なし）。**「左右反転コピー」は未実装**で、着手前に人間確認と `claude-opus-4-8` 設計レビューを挟む。
 
 ---
 
@@ -20,11 +22,12 @@
 ## 2. 通常の左右反転（基本操作）
 
 - 対象: 選択中レイヤー
-- 実装方針: `layer.transform.scale.x *= -1`
-- 反転基準: レイヤー中心
+- 実装方針: `layer.transform.scale.x *= -1`（`flipLayerHorizontal(asset, layerId)`）
+- 反転基準: レイヤー中心（描画・書き出しとも中心基準で `scale` を適用するため）
 - 画像ピクセルは変更しない（非破壊）
 - `asset.json` の version は上げない（既存 `LayerTransform` に乗るため追加フィールド不要）
-- Undo / Redo に自然に乗る
+- Undo / Redo に自然に乗る（`commitPanelChange('左右反転', …)` 経由）
+- 拡大率（%）入力は `Math.abs(scale.x)` を表示し、値編集時も符号（反転状態）を保持する
 
 ### この方式を基本にする理由
 

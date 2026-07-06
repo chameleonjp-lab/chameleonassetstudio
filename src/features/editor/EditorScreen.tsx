@@ -25,6 +25,7 @@ import {
   addAnchor,
   addGuideLayer,
   applyFrameToAsset,
+  flipLayerHorizontal,
   renameLayer,
   type AnchorRole,
   type Asset,
@@ -539,8 +540,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         } else if (field === 'y') {
           transform.position = { ...transform.position, y: value };
         } else if (field === 'scale') {
-          const scale = Math.max(0.01, value / 100);
-          transform.scale = { x: scale, y: scale };
+          const magnitude = Math.max(0.01, value / 100);
+          // 左右反転（scale.x が負）の状態を保つため、拡大率編集では符号を維持する。
+          const signX = layer.transform.scale.x < 0 ? -1 : 1;
+          transform.scale = { x: magnitude * signX, y: magnitude };
         } else {
           transform.rotation = value;
         }
@@ -881,7 +884,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 <input
                   type="number"
                   min={1}
-                  value={roundValue(selectedLayer.transform.scale.x * 100)}
+                  value={roundValue(Math.abs(selectedLayer.transform.scale.x) * 100)}
                   onFocus={beginLayerEdit}
                   onBlur={commitLayerEdit}
                   onChange={(event) => handleLayerTransformChange('scale', event.target.value)}
@@ -897,6 +900,21 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   onChange={(event) => handleLayerTransformChange('rotation', event.target.value)}
                 />
               </label>
+              <button
+                type="button"
+                className="layer-flip-button"
+                aria-pressed={selectedLayer.transform.scale.x < 0}
+                onClick={() => {
+                  if (selectedAsset) {
+                    commitPanelChange(
+                      '左右反転',
+                      flipLayerHorizontal(selectedAsset, selectedLayer.id),
+                    );
+                  }
+                }}
+              >
+                左右反転
+              </button>
               {selectedAsset?.assetType === 'background' && (
                 <BackgroundLayerFields
                   asset={selectedAsset}

@@ -34,6 +34,22 @@ export function setLayerLocked(asset: Asset, layerId: string, locked: boolean): 
 }
 
 /**
+ * レイヤーの左右反転（Phase 19-B, docs/future/FLIP_DESIGN.md）。
+ * LayerTransform.scale.x の符号を反転する非破壊操作。画像ピクセルは変更せず、
+ * 反転基準はレイヤー中心（描画側 render.ts / 書き出し側 exportAsset.ts が中心基準で
+ * scale を適用するため）。asset.json の version は上げない。
+ */
+export function flipLayerHorizontal(asset: Asset, layerId: string): Asset {
+  return mapLayer(asset, layerId, (layer) => ({
+    ...layer,
+    transform: {
+      ...layer.transform,
+      scale: { ...layer.transform.scale, x: layer.transform.scale.x * -1 },
+    },
+  }));
+}
+
+/**
  * 表示順を 1 段動かす。配列の先頭が最背面なので、
  * forward（前面へ）は index + 1、backward（背面へ）は index - 1。
  * 端にある場合は何もしない。
