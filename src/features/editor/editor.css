@@ -408,6 +408,33 @@
   padding: 0.2rem 0.4rem;
 }
 
+/* 判定用途のカラースワッチ（Phase 19-C）。キャンバス表示色とリストを対応づける。 */
+.gamedata-collider-swatch {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 2px;
+  border: 1px solid #8886;
+  flex: none;
+}
+
+.gamedata-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.6rem;
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.gamedata-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .editor-field select {
   font: inherit;
   font-size: 0.85rem;

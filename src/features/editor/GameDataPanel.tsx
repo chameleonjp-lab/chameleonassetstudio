@@ -13,6 +13,12 @@ import {
   type Asset,
   type ColliderPurpose,
 } from '../../core/model';
+import { COLLIDER_COLORS } from '../../renderers/canvas2d/render';
+
+/** 判定用途に対応するキャンバス表示色を返す（カラースワッチ・凡例で共用）。 */
+function purposeColor(purpose: ColliderPurpose): string {
+  return COLLIDER_COLORS[purpose] ?? COLLIDER_COLORS.custom;
+}
 
 interface GameDataPanelProps {
   asset: Asset;
@@ -202,11 +208,28 @@ export function GameDataPanel({
           円判定を追加
         </button>
       </div>
+      <ul className="gamedata-legend" aria-label="判定用途の色凡例">
+        {COLLIDER_PURPOSES.map((purpose) => (
+          <li key={purpose}>
+            <span
+              className="gamedata-collider-swatch"
+              style={{ backgroundColor: purposeColor(purpose) }}
+              aria-hidden="true"
+            />
+            {PURPOSE_LABELS[purpose]}
+          </li>
+        ))}
+      </ul>
       {asset.colliders.length > 0 && (
         <ul className="gamedata-list" aria-label="当たり判定一覧">
           {asset.colliders.map((collider) => (
             <li key={collider.id} className="gamedata-row">
               <div className="gamedata-row-header">
+                <span
+                  className="gamedata-collider-swatch"
+                  style={{ backgroundColor: purposeColor(collider.purpose) }}
+                  title={`${collider.purpose} の色`}
+                />
                 <span className="gamedata-shape">{collider.shape === 'rect' ? '矩形' : '円'}</span>
                 <button
                   type="button"
