@@ -167,16 +167,15 @@
 | v0.6.0 | エンジン連携強化。Phaser、PixiJS、Canvas、Godot guide、Unity guide |
 | v1.0.0 | 安定版。`.casproj`、schema、export、主要端末、移行保証、ドキュメント完備 |
 
-実装状況メモ（Phase 15.5 時点）: v0.5.0 相当（Phase 15: 簡易リグ・モーションテンプレート）までは実装済み。v0.6.0（Phase 16: エンジン連携補助）と v1.0.0（Phase 17: 品質化）は未実装。
+実装状況メモ（Phase 18 時点）: Phase 0〜17（+ Phase 15.5 品質補修）は実装済みで自動テストも通っている。v0.6.0 相当（Phase 16: エンジン連携補助 = helpers/ snippet + Godot / Unity ガイド）と Phase 17（品質化: 文書整備・effect 最小対応・`.casproj` 欠落警告・デコード共通化）まで完了。
 
-v1.0.0 が未完である理由（少なくとも以下が残っている）:
+v1.0.0 を正式に宣言するには、少なくとも以下が残っている（コード完了条件ではなく人手・実機の確認）:
 
-- Phase 16（エンジン連携補助: helper code 生成、Godot / Unity 取り込みガイド）が未実装。
-- Phase 17（v1.0.0 品質化: 大画像・メモリ・最適化）が未実装。
-- Godot / Unity インポート補助が未実装。
-- 実機 Safari / iPad / iPhone での確認が未完（デコードのフォールバック実装のみ）。
-- 大画像（4096x4096）のメモリ確認が未完。
-- effect アセットの扱いが弱い（種別はあるが専用機能が無い）。
+- 実機 Safari / iPad / iPhone / Chrome / Edge / Firefox / Android Chrome での確認が未完（自動テストは Chromium のみ。デコードは HTMLImageElement フォールバック実装済み）。詳細は `docs/RELEASE_CHECKLIST.md` 3 章。
+- 大画像（4096x4096）の連続編集メモリ計測が未完（`docs/RELEASE_CHECKLIST.md` 4 章。今回のリリース完了条件には含めない将来課題）。
+- Godot / Unity は取り込みガイド（Markdown）まで。import helper script は将来課題（`docs/ENGINE_INTEGRATION.md` 4 章）。
+- effect アセットは最小メタデータ対応（`EffectSettings`: effectType / durationMs / loop / blendMode）まで。本格的なエフェクトエディタ・パーティクルは対象外（`docs/DATA_FORMAT.md` 6.7）。
+- Phase 18 以降の拡張計画は `docs/future/`（Phase 19〜28）。着手前に人間確認を挟む。
 
 ---
 

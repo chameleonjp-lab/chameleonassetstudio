@@ -12,7 +12,7 @@
 
 - [x] Phase 0〜17（+ 15.5 品質補修）が main にマージ済み
 - [x] `npm run build` / `npm run lint` / `npm run format:check` が成功する
-- [x] Unit テスト（199 件）が成功する
+- [x] Unit テスト（200 件）が成功する
 - [x] E2E テスト（56 件、Chromium）が成功する
 - [x] 画像取り込み / 保存・再読み込み / `.casproj` roundtrip（欠落警告含む）
 - [x] PNG / WebP / ZIP export（examples / helpers / engines guide 同梱）

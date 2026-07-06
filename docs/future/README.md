@@ -23,10 +23,11 @@
 
 | ファイル | 目的 |
 |---|---|
-| `FABLELESS_DEVELOPMENT_GUIDE.md` | `claude-fable-5` が使えない場合の実装・レビュー運用ルール |
+| `FABLELESS_DEVELOPMENT_GUIDE.md` | `claude-fable-5` を使わない前提の実装・レビュー運用ルール |
 | `POST_PHASE17_REQUIREMENTS.md` | Phase 17 後に伸ばすべきローカル制作ツールとしての要件 |
 | `POST_PHASE17_IMPLEMENTATION_PLAN.md` | Phase 17 後の段階的な実装計画 |
 | `THREE_D_ASSET_PREPARATION_REQUIREMENTS.md` | 将来の 3D Asset Preparation Mode の要件 |
+| `OPEN_ITEMS.md` | 今すぐ実装しないが今後検討すべき項目の一覧（Phase 18 整合確認の成果物） |
 
 ---
 
