@@ -179,6 +179,24 @@
   white-space: nowrap;
 }
 
+.canvas-grid-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.canvas-zoombar select,
+.canvas-zoombar input[type='number'] {
+  font: inherit;
+  font-size: 0.78rem;
+}
+
+.canvas-zoombar input[type='number'] {
+  width: 4.5rem;
+}
+
 .editor-history-buttons {
   display: flex;
   gap: 0.4rem;

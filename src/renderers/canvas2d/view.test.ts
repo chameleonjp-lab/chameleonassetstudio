@@ -10,6 +10,7 @@ import {
   layerLocalPoint,
   panBy,
   screenToWorld,
+  snapToGrid,
   worldToScreen,
   zoomAt,
 } from './view';
@@ -73,6 +74,14 @@ describe('ビュー変換', () => {
   it('panBy はオフセットだけ動かす', () => {
     const panned = panBy(view, 10, -5);
     expect(panned).toEqual({ scale: 2, offsetX: 110, offsetY: 45 });
+  });
+
+  it('snapToGrid はグリッド（px）の最も近い倍数へ丸める', () => {
+    expect(snapToGrid(13, 16)).toBe(16);
+    expect(snapToGrid(23, 16)).toBe(16);
+    expect(snapToGrid(24, 16)).toBe(32);
+    expect(snapToGrid(13.4, 0)).toBe(13);
+    expect(snapToGrid(13.6, -5)).toBe(14);
   });
 });
 

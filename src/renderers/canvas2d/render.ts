@@ -110,6 +110,35 @@ function drawSelection(
   ctx.restore();
 }
 
+/** アセット座標系のグリッド線を描く（UI 補助のみ。データには影響しない）。 */
+export function drawGrid(
+  ctx: CanvasRenderingContext2D,
+  params: { view: ViewTransform; canvasSize: Size; gridSize: number },
+): void {
+  const { view, canvasSize, gridSize } = params;
+  if (!Number.isFinite(gridSize) || gridSize <= 0) {
+    return;
+  }
+  ctx.save();
+  ctx.strokeStyle = 'rgba(120,140,170,0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = 0; x <= canvasSize.width; x += gridSize) {
+    const top = worldToScreen(view, { x, y: 0 });
+    const bottom = worldToScreen(view, { x, y: canvasSize.height });
+    ctx.moveTo(top.x, top.y);
+    ctx.lineTo(bottom.x, bottom.y);
+  }
+  for (let y = 0; y <= canvasSize.height; y += gridSize) {
+    const left = worldToScreen(view, { x: 0, y });
+    const right = worldToScreen(view, { x: canvasSize.width, y });
+    ctx.moveTo(left.x, left.y);
+    ctx.lineTo(right.x, right.y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
 /** 1 フレーム分の描画。イベント駆動で呼ぶ（常時ループはしない）。 */
 export function renderScene(ctx: CanvasRenderingContext2D, options: RenderSceneOptions): void {
   const { view, viewport, canvasSize, layers, selectedLayerId } = options;
