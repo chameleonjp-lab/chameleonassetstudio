@@ -127,3 +127,16 @@ test('スマホ幅でもキャンバス編集画面が破綻しない', async ({
   expect(overflow).toBeLessThanOrEqual(0);
   await expect(page.getByText(/^ズーム \d+%$/)).toBeVisible();
 });
+
+test('グリッド表示とスナップを切り替えてもキャンバスが破綻しない', async ({ page }) => {
+  const canvas = await setupProjectWithImage(page, 'グリッドスナップ');
+
+  await page.getByLabel('グリッド表示').check();
+  await expect(canvas).toBeVisible();
+
+  await page.getByLabel('グリッドサイズ').selectOption('32');
+  await expect(canvas).toBeVisible();
+
+  await page.getByLabel('スナップ').check();
+  await expect(canvas).toBeVisible();
+});

@@ -4,7 +4,12 @@ import { blobKeyFor } from '../../core/images/importImage';
 import type { Rect } from '../../core/images/operations';
 import type { Asset, Layer, Size, Vec2 } from '../../core/model';
 import { loadBlob } from '../../core/storage';
-import { drawGameOverlays, renderScene, type RenderLayer } from '../../renderers/canvas2d/render';
+import {
+  drawGameOverlays,
+  drawGrid,
+  renderScene,
+  type RenderLayer,
+} from '../../renderers/canvas2d/render';
 import {
   ZOOM_PRESETS,
   clampZoom,
@@ -13,6 +18,7 @@ import {
   layerLocalPoint,
   panBy,
   screenToWorld,
+  snapToGrid,
   worldToScreen,
   zoomAt,
   type ViewTransform,
@@ -100,6 +106,10 @@ export function CanvasEditor({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [viewport, setViewport] = useState<Viewport>({ width: 0, height: 0 });
   const [view, setView] = useState<ViewTransform>({ scale: 1, offsetX: 0, offsetY: 0 });
+  const [gridEnabled, setGridEnabled] = useState(false);
+  const [gridSize, setGridSize] = useState(16);
+  const [gridSizeMode, setGridSizeMode] = useState<'8' | '16' | '32' | 'custom'>('16');
+  const [snapEnabled, setSnapEnabled] = useState(false);
   const [bitmaps, setBitmaps] = useState<Map<string, DecodedImageSource>>(new Map());
   const [draftAsset, setDraftAsset] = useState<Asset | null>(null);
   const [cropRectScreen, setCropRectScreen] = useState<{ start: Vec2; end: Vec2 } | null>(null);
@@ -221,6 +231,10 @@ export function CanvasEditor({
       selectedLayerId,
     });
 
+    if (gridEnabled) {
+      drawGrid(ctx, { view, canvasSize: displayAsset.canvasSize, gridSize });
+    }
+
     // ゲーム用情報（原点・アンカー・当たり判定）のオーバーレイ
     drawGameOverlays(ctx, {
       view,
@@ -267,6 +281,8 @@ export function CanvasEditor({
     eraserRadius,
     selectedLayer,
     showColliders,
+    gridEnabled,
+    gridSize,
   ]);
 
   // ホイールズーム（passive: false で登録する必要がある）
@@ -500,12 +516,14 @@ export function CanvasEditor({
       return;
     }
 
+    const snap = (v: number) => (snapEnabled ? snapToGrid(v, gridSize) : Math.round(v));
+
     if (drag.mode === 'origin' && drag.before) {
       const world = screenToWorld(view, point);
       setDraftAsset({
         ...drag.before,
         updatedAt: new Date().toISOString(),
-        origin: { x: Math.round(world.x), y: Math.round(world.y) },
+        origin: { x: snap(world.x), y: snap(world.y) },
       });
       return;
     }
@@ -517,7 +535,7 @@ export function CanvasEditor({
         updatedAt: new Date().toISOString(),
         anchors: drag.before.anchors.map((anchor) =>
           anchor.id === drag.anchorId
-            ? { ...anchor, position: { x: Math.round(world.x), y: Math.round(world.y) } }
+            ? { ...anchor, position: { x: snap(world.x), y: snap(world.y) } }
             : anchor,
         ),
       });
@@ -527,7 +545,28 @@ export function CanvasEditor({
     if (drag.mode === 'move' && drag.layerId && drag.before) {
       const worldDeltaX = deltaX / drag.startView.scale;
       const worldDeltaY = deltaY / drag.startView.scale;
-      setDraftAsset(moveLayer(drag.before, drag.layerId, worldDeltaX, worldDeltaY));
+      const next = moveLayer(drag.before, drag.layerId, worldDeltaX, worldDeltaY);
+      if (!snapEnabled) {
+        setDraftAsset(next);
+        return;
+      }
+      setDraftAsset({
+        ...next,
+        layers: next.layers.map((layer) =>
+          layer.id === drag.layerId
+            ? {
+                ...layer,
+                transform: {
+                  ...layer.transform,
+                  position: {
+                    x: snapToGrid(layer.transform.position.x, gridSize),
+                    y: snapToGrid(layer.transform.position.y, gridSize),
+                  },
+                },
+              }
+            : layer,
+        ),
+      });
     }
   };
 
@@ -649,6 +688,54 @@ export function CanvasEditor({
           全体表示
         </button>
         <span className="canvas-zoom-label">ズーム {zoomPercent}%</span>
+        <label className="canvas-grid-control">
+          <input
+            type="checkbox"
+            aria-label="グリッド表示"
+            checked={gridEnabled}
+            onChange={(event) => setGridEnabled(event.target.checked)}
+          />
+          グリッド
+        </label>
+        <select
+          aria-label="グリッドサイズ"
+          value={gridSizeMode}
+          onChange={(event) => {
+            const mode = event.target.value as '8' | '16' | '32' | 'custom';
+            setGridSizeMode(mode);
+            if (mode !== 'custom') {
+              setGridSize(Number(mode));
+            }
+          }}
+        >
+          <option value="8">8px</option>
+          <option value="16">16px</option>
+          <option value="32">32px</option>
+          <option value="custom">カスタム</option>
+        </select>
+        {gridSizeMode === 'custom' && (
+          <input
+            type="number"
+            aria-label="カスタムグリッドサイズ"
+            min={1}
+            value={gridSize}
+            onChange={(event) => {
+              const next = Number(event.target.value);
+              if (Number.isFinite(next) && next > 0) {
+                setGridSize(next);
+              }
+            }}
+          />
+        )}
+        <label className="canvas-grid-control">
+          <input
+            type="checkbox"
+            aria-label="スナップ"
+            checked={snapEnabled}
+            onChange={(event) => setSnapEnabled(event.target.checked)}
+          />
+          スナップ
+        </label>
       </div>
     </div>
   );

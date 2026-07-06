@@ -72,6 +72,12 @@ export function panBy(view: ViewTransform, deltaX: number, deltaY: number): View
   return { ...view, offsetX: view.offsetX + deltaX, offsetY: view.offsetY + deltaY };
 }
 
+/** 値をグリッド（px）の最も近い倍数へ丸める（UI スナップ補助。座標単位は px のまま）。 */
+export function snapToGrid(value: number, gridSize: number): number {
+  if (!Number.isFinite(gridSize) || gridSize <= 0) return Math.round(value);
+  return Math.round(value / gridSize) * gridSize;
+}
+
 const DEG_TO_RAD = Math.PI / 180;
 
 /**
