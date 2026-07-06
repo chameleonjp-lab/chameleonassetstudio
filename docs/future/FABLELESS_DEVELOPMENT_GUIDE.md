@@ -9,9 +9,9 @@
 
 ## 1. 目的
 
-この文書は、`claude-fable-5` が使えない、または使用量を節約しなければならない状況で、Chameleon Asset Studio の実装品質を落とさずに開発を進めるための運用ルールを定義する。
+この文書は、`claude-fable-5` を使わずに、Chameleon Asset Studio の実装品質を落とさずに開発を進めるための運用ルールを定義する。
 
-`claude-fable-5` は高難度の設計判断や最終レビューには有効だが、常に使える前提で計画してはいけない。今後は、`claude-sonnet-5`、`claude-opus-4-8`、`claude-haiku-4-5` を組み合わせ、設計判断を文書化しながら進める。
+`claude-fable-5` は今後使用しない。高難度の設計判断や最終レビューは `claude-opus-4-8` で行い、`claude-opus-4-8` でも判断が割れる場合は人間確認に戻す。実装は `claude-sonnet-5`、調査・軽微修正・docs・テスト分類は `claude-haiku-4-5` を使い、設計判断を文書化しながら進める。
 
 ---
 
@@ -19,7 +19,7 @@
 
 ### 2.1 モデルに判断を丸投げしない
 
-`claude-fable-5` が使えないとき、弱いモデルに高度な設計判断を代行させてはいけない。
+弱いモデルに高度な設計判断を代行させてはいけない。
 
 代わりに、次の順番で進める。
 
@@ -72,14 +72,14 @@
 | 中程度の実装 | `claude-sonnet-5` | `cas-implementation-worker` | 既存設計に沿う実装のみ |
 | テスト実行 | `claude-haiku-4-5` | `cas-test-runner` | 失敗原因の分類まで |
 | docs 更新 | `claude-haiku-4-5` | `cas-docs-maintainer` | 仕様変更判断は不可 |
-| 高難度レビュー | `claude-opus-4-8` | `cas-architect-reviewer` | `claude-fable-5` が使えないときの主レビュー |
-| 最重要判断 | 人間判断または `claude-fable-5` | `cas-architect-reviewer` | 使用可能な場合のみ |
+| 高難度レビュー | `claude-opus-4-8` | `cas-architect-reviewer` | 主レビュー。`claude-fable-5` は使わない |
+| 最重要判断 | 人間確認 | — | `claude-fable-5` は使わない |
 
 ---
 
-## 4. `claude-opus-4-8` で代替できる判断
+## 4. `claude-opus-4-8` が担う判断
 
-`claude-fable-5` が使えない場合、次は `claude-opus-4-8` でレビューしてよい。
+高難度レビューは `claude-opus-4-8` で行う。次はすべて `claude-opus-4-8` の担当とする。
 
 - docs と実装の差分確認
 - PR マージ前レビュー
@@ -89,13 +89,13 @@
 - ライブラリ候補の採用可否の一次判断
 - 大きすぎない JSON Schema の任意フィールド追加レビュー
 
-ただし、`claude-opus-4-8` の判断をそのまま確定扱いにしてはいけない場合がある。
+ただし、`claude-opus-4-8` でも判断が割れる場合や、下記「5. 人間確認に戻すべき判断」に該当する場合は、そのまま確定扱いにせず人間確認に戻す。
 
 ---
 
-## 5. `claude-fable-5` なしで止めるべき判断
+## 5. 人間確認に戻すべき判断
 
-次に該当する場合は、`claude-fable-5` が無いなら、実装を止めて人間確認に戻す。
+次に該当する場合は、実装を止めて人間確認に戻す（`claude-fable-5` は使わない）。
 
 - `asset.json` の version を上げる。
 - `.casproj` の構造を変える。
@@ -140,9 +140,9 @@
 - docs:
 - 最終レビュー:
 
-## `claude-fable-5` が必要か
+## 人間確認が必要か
 
-- 不要 / 必要 / 判断保留
+- 不要 / 必要（`claude-fable-5` は使わない。判断が割れる場合は人間確認）
 - 理由:
 
 ## 停止条件
@@ -198,7 +198,7 @@
 
 ## 8. レビューの段階化
 
-`claude-fable-5` が使えない場合、レビューは 3 段階に分ける。
+レビューは 3 段階に分ける。
 
 ### 8.1 機械的レビュー
 
@@ -312,8 +312,8 @@ CI が失敗している PR は ready にしない。
 
 ## 12. まとめ
 
-`claude-fable-5` が使えない場合でも、開発は止めない。だが、判断を粗くして進めてはいけない。
+`claude-fable-5` は今後使用しない。それでも開発は止めないが、判断を粗くして進めてはいけない。
 
-小さく実装し、docs を先に確認し、テストを通し、`claude-opus-4-8` で設計レビューを行い、迷ったら人間判断に戻す。
+小さく実装し、docs を先に確認し、テストを通し、`claude-opus-4-8` で設計レビューを行い、`claude-opus-4-8` でも判断が割れる場合や互換性に関わる重大判断は人間確認に戻す。
 
-これを守る限り、Chameleon Asset Studio は `claude-fable-5` 非依存でも継続開発できる。
+これを守る限り、Chameleon Asset Studio は `claude-fable-5` 非依存で継続開発できる。
