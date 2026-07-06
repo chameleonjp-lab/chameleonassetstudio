@@ -28,6 +28,7 @@
 | `POST_PHASE17_IMPLEMENTATION_PLAN.md` | Phase 17 後の段階的な実装計画 |
 | `THREE_D_ASSET_PREPARATION_REQUIREMENTS.md` | 将来の 3D Asset Preparation Mode の要件 |
 | `OPEN_ITEMS.md` | 今すぐ実装しないが今後検討すべき項目の一覧（Phase 18 整合確認の成果物） |
+| `FLIP_DESIGN.md` | Phase 19「左右反転」の設計方針（通常は transform 反映、反転コピーは別コマンド） |
 
 ---
 

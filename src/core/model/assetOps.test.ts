@@ -5,6 +5,7 @@ import type { Asset } from './asset';
 import {
   addGuideLayer,
   createPart,
+  flipLayerHorizontal,
   moveLayerOrder,
   removeLayer,
   removePart,
@@ -31,6 +32,26 @@ describe('レイヤー操作', () => {
     const locked = setLayerLocked(hidden, 'layer_body', true);
     expect(locked.layers[0].locked).toBe(true);
     expect(validateAsset(locked).valid).toBe(true);
+  });
+
+  it('flipLayerHorizontal は scale.x の符号だけを反転し、非破壊で二度反転すると戻る', () => {
+    const flipped = flipLayerHorizontal(baseAsset, 'layer_body');
+    const body = flipped.layers.find((l) => l.id === 'layer_body')!;
+    // scale.x のみ符号反転、他の変形フィールドは維持する
+    expect(body.transform.scale.x).toBe(-1);
+    expect(body.transform.scale.y).toBe(1);
+    expect(body.transform.position).toEqual({ x: 0, y: 0 });
+    expect(body.transform.rotation).toBe(0);
+    // 対象外レイヤーは変えない
+    expect(flipped.layers.find((l) => l.id === 'layer_guide')?.transform.scale.x).toBe(1);
+    // 元アセットは破壊しない
+    expect(baseAsset.layers.find((l) => l.id === 'layer_body')?.transform.scale.x).toBe(1);
+    // schema 検証を通る（version は上げない非破壊操作）
+    expect(validateAsset(flipped).valid).toBe(true);
+    expect(flipped.version).toBe(baseAsset.version);
+    // 二度反転すると元の向きへ戻る
+    const twice = flipLayerHorizontal(flipped, 'layer_body');
+    expect(twice.layers.find((l) => l.id === 'layer_body')?.transform.scale.x).toBe(1);
   });
 
   it('moveLayerOrder で前面・背面へ動かせる', () => {
