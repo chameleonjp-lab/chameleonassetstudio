@@ -251,6 +251,83 @@ export function updateCollider(asset: Asset, colliderId: string, patch: Collider
   });
 }
 
+export type ColliderMoveDirection = 'left' | 'right' | 'up' | 'down';
+
+export interface MoveColliderOptions {
+  direction: ColliderMoveDirection;
+  snapEnabled: boolean;
+  gridSize: number;
+}
+
+function colliderMoveDelta(direction: ColliderMoveDirection, distance: number): Vec2 {
+  switch (direction) {
+    case 'left':
+      return { x: -distance, y: 0 };
+    case 'right':
+      return { x: distance, y: 0 };
+    case 'up':
+      return { x: 0, y: -distance };
+    case 'down':
+      return { x: 0, y: distance };
+  }
+}
+
+function snapCoordinate(value: number, gridSize: number): number {
+  if (!Number.isFinite(gridSize) || gridSize <= 0) {
+    return Math.round(value);
+  }
+  return Math.round(value / gridSize) * gridSize;
+}
+
+function movedCoordinate(
+  value: number,
+  delta: number,
+  snapEnabled: boolean,
+  gridSize: number,
+): number {
+  const next = value + delta;
+  return snapEnabled ? snapCoordinate(next, gridSize) : next;
+}
+
+/**
+ * 当たり判定をパネル操作で 1 ステップ移動する。
+ * rect は x/y のみ、circle は x/y のみ更新し、非表示・存在しない判定は変更しない。
+ */
+export function moveCollider(
+  asset: Asset,
+  colliderId: string,
+  options: MoveColliderOptions,
+): Asset {
+  const distance = options.snapEnabled && options.gridSize > 0 ? options.gridSize : 1;
+  const delta = colliderMoveDelta(options.direction, distance);
+  let changed = false;
+  const colliders = asset.colliders.map((collider) => {
+    if (collider.id !== colliderId || !collider.visible) {
+      return collider;
+    }
+    changed = true;
+    if (collider.shape === 'rect') {
+      return {
+        ...collider,
+        rect: {
+          ...collider.rect,
+          x: movedCoordinate(collider.rect.x, delta.x, options.snapEnabled, options.gridSize),
+          y: movedCoordinate(collider.rect.y, delta.y, options.snapEnabled, options.gridSize),
+        },
+      };
+    }
+    return {
+      ...collider,
+      circle: {
+        ...collider.circle,
+        x: movedCoordinate(collider.circle.x, delta.x, options.snapEnabled, options.gridSize),
+        y: movedCoordinate(collider.circle.y, delta.y, options.snapEnabled, options.gridSize),
+      },
+    };
+  });
+  return changed ? touch({ ...asset, colliders }) : asset;
+}
+
 export function removeCollider(asset: Asset, colliderId: string): Asset {
   return touch({
     ...asset,

@@ -190,6 +190,73 @@ describe('原点、アンカー、当たり判定（Phase 8）', () => {
     expect(removed.colliders.some((c) => c.id === 'col_body')).toBe(false);
     expect(removed.colliders).toHaveLength(baseAsset.colliders.length - 1);
   });
+
+  it('moveCollider は snap OFF で rect の x/y だけを 1px 移動し、サイズを維持する', async () => {
+    const { moveCollider } = await import('./assetOps');
+    const moved = moveCollider(baseAsset, 'col_body', {
+      direction: 'right',
+      snapEnabled: false,
+      gridSize: 16,
+    });
+    const collider = moved.colliders.find((c) => c.id === 'col_body')!;
+    expect(collider.shape).toBe('rect');
+    if (collider.shape === 'rect') {
+      expect(collider.rect.x).toBe(193);
+      expect(collider.rect.y).toBe(192);
+      expect(collider.rect.width).toBe(128);
+      expect(collider.rect.height).toBe(256);
+    }
+    expect(validateAsset(moved).valid).toBe(true);
+  });
+
+  it('moveCollider は snap ON で grid size 分移動し、grid に揃える', async () => {
+    const { moveCollider, updateCollider } = await import('./assetOps');
+    const offGrid = updateCollider(baseAsset, 'col_body', { rect: { x: 193 } });
+    const moved = moveCollider(offGrid, 'col_body', {
+      direction: 'right',
+      snapEnabled: true,
+      gridSize: 16,
+    });
+    const collider = moved.colliders.find((c) => c.id === 'col_body')!;
+    expect(collider.shape).toBe('rect');
+    if (collider.shape === 'rect') {
+      expect(collider.rect.x).toBe(208);
+      expect(collider.rect.x % 16).toBe(0);
+      expect(collider.rect.width).toBe(128);
+      expect(collider.rect.height).toBe(256);
+    }
+    expect(validateAsset(moved).valid).toBe(true);
+  });
+
+  it('moveCollider は circle の x/y だけを移動し、radius を維持する', async () => {
+    const { addCircleCollider, moveCollider } = await import('./assetOps');
+    const withCircle = addCircleCollider(baseAsset);
+    const circle = withCircle.colliders.at(-1)!;
+    const moved = moveCollider(withCircle, circle.id, {
+      direction: 'up',
+      snapEnabled: false,
+      gridSize: 16,
+    });
+    const after = moved.colliders.find((c) => c.id === circle.id)!;
+    expect(after.shape).toBe('circle');
+    if (after.shape === 'circle' && circle.shape === 'circle') {
+      expect(after.circle.x).toBe(circle.circle.x);
+      expect(after.circle.y).toBe(circle.circle.y - 1);
+      expect(after.circle.radius).toBe(circle.circle.radius);
+    }
+    expect(validateAsset(moved).valid).toBe(true);
+  });
+
+  it('moveCollider は非表示または存在しない判定を変更しない', async () => {
+    const { moveCollider, updateCollider } = await import('./assetOps');
+    const hidden = updateCollider(baseAsset, 'col_body', { visible: false });
+    expect(
+      moveCollider(hidden, 'col_body', { direction: 'right', snapEnabled: false, gridSize: 16 }),
+    ).toBe(hidden);
+    expect(
+      moveCollider(baseAsset, 'missing', { direction: 'right', snapEnabled: false, gridSize: 16 }),
+    ).toBe(baseAsset);
+  });
 });
 
 describe('フレームとアニメーション（Phase 9）', () => {

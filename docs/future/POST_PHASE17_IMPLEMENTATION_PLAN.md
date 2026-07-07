@@ -430,4 +430,5 @@ CI が落ちている PR は ready にしない。
 - body / attack / pickup / sensor / custom の用途色を凡例・一覧スワッチ・キャンバス表示で対応付け、sensor は破線と縞スワッチで色以外でも区別できるようにした。
 - 当たり判定一覧の選択ボタンは `判定「${collider.name}」を選択` の aria-label を持ち、表示切替ボタンの `判定「${collider.name}」の表示を切り替え` と accessible name が衝突しない。
 - 選択状態は UI state のみで、asset.json / .casproj / export ZIP / schema / version には含めない。
+- 第2段階として、選択中の rect / circle 判定を GameDataPanel の上下左右ボタンで移動できるようにした。snap OFF は 1px、snap ON は現在の grid size 分を移動量とし、rect は x / y のみ、circle は x / y のみ更新する。
 - canvas drag、rect resize、circle radius のキャンバス操作、polygon collider、frame-specific collider、3D collider は今回の範囲外として残す。

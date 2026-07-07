@@ -3,6 +3,7 @@ import {
   COLLIDER_PURPOSES,
   addCircleCollider,
   addRectCollider,
+  moveCollider,
   removeAnchor,
   removeCollider,
   resetOriginToBottomCenter,
@@ -68,6 +69,12 @@ export function GameDataPanel({
   const snappedNumberValue = (raw: string): number => {
     const value = numberValue(raw);
     return applyEditSnap(value, snapEnabled, gridSize);
+  };
+  const commitColliderMove = (
+    colliderId: string,
+    direction: 'left' | 'right' | 'up' | 'down',
+  ): void => {
+    onCommit('判定移動', moveCollider(asset, colliderId, { direction, snapEnabled, gridSize }));
   };
 
   return (
@@ -286,6 +293,42 @@ export function GameDataPanel({
                     削除
                   </button>
                 </div>
+                {selected && (
+                  <div className="gamedata-buttons" aria-label={`判定「${collider.name}」の移動`}>
+                    <button
+                      type="button"
+                      aria-label={`判定「${collider.name}」を左へ移動`}
+                      disabled={!collider.visible}
+                      onClick={() => commitColliderMove(collider.id, 'left')}
+                    >
+                      ←
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`判定「${collider.name}」を右へ移動`}
+                      disabled={!collider.visible}
+                      onClick={() => commitColliderMove(collider.id, 'right')}
+                    >
+                      →
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`判定「${collider.name}」を上へ移動`}
+                      disabled={!collider.visible}
+                      onClick={() => commitColliderMove(collider.id, 'up')}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`判定「${collider.name}」を下へ移動`}
+                      disabled={!collider.visible}
+                      onClick={() => commitColliderMove(collider.id, 'down')}
+                    >
+                      ↓
+                    </button>
+                  </div>
+                )}
                 <label className="editor-field">
                   用途
                   <select
