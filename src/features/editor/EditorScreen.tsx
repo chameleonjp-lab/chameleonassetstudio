@@ -112,6 +112,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+  const [selectedColliderId, setSelectedColliderId] = useState<string | null>(null);
   const [checkedLayerIds, setCheckedLayerIds] = useState<string[]>([]);
   const [showColliders, setShowColliders] = useState(true);
   const [gridEnabled, setGridEnabled] = useState(false);
@@ -820,6 +821,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 selectedLayerId={selectedLayerId}
                 eraserRadius={eraserSize}
                 onSelectLayer={setSelectedLayerId}
+                selectedColliderId={selectedColliderId}
+                onSelectCollider={setSelectedColliderId}
                 onCommitAsset={commitAssetChange}
                 onPickColor={(layerId, point) => void handlePickColor(layerId, point)}
                 onCropCommit={handleCropCommit}
@@ -1172,6 +1175,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               showColliders={showColliders}
               newAnchorRole={newAnchorRole}
               onNewAnchorRoleChange={setNewAnchorRole}
+              selectedColliderId={selectedColliderId}
+              onSelectCollider={setSelectedColliderId}
               onToggleShowColliders={() => setShowColliders((v) => !v)}
               snapEnabled={snapEnabled}
               gridSize={gridSize}
