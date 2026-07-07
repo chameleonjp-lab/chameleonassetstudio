@@ -13,12 +13,12 @@ import {
   type Asset,
   type ColliderPurpose,
 } from '../../core/model';
-import { COLLIDER_COLORS } from '../../renderers/canvas2d/render';
+import { colliderPurposeColor, isSelectedCollider } from './colliderDisplay';
 import { applyEditSnap } from './snap';
 
 /** 判定用途に対応するキャンバス表示色を返す（カラースワッチ・凡例で共用）。 */
 function purposeColor(purpose: ColliderPurpose): string {
-  return COLLIDER_COLORS[purpose] ?? COLLIDER_COLORS.custom;
+  return colliderPurposeColor(purpose);
 }
 
 interface GameDataPanelProps {
@@ -36,6 +36,8 @@ interface GameDataPanelProps {
   onLiveChange: (next: Asset) => void;
   onBeginFieldEdit: () => void;
   onCommitFieldEdit: () => void;
+  selectedColliderId: string | null;
+  onSelectCollider: (colliderId: string) => void;
 }
 
 const PURPOSE_LABELS: Record<ColliderPurpose, string> = {
@@ -59,6 +61,8 @@ export function GameDataPanel({
   onLiveChange,
   onBeginFieldEdit,
   onCommitFieldEdit,
+  selectedColliderId,
+  onSelectCollider,
 }: GameDataPanelProps) {
   const numberValue = (raw: string): number => Number(raw) || 0;
   const snappedNumberValue = (raw: string): number => {
@@ -228,191 +232,206 @@ export function GameDataPanel({
         {COLLIDER_PURPOSES.map((purpose) => (
           <li key={purpose}>
             <span
-              className="gamedata-collider-swatch"
+              className={`gamedata-collider-swatch${purpose === 'sensor' ? ' sensor' : ''}`}
               style={{ backgroundColor: purposeColor(purpose) }}
               aria-hidden="true"
             />
-            {PURPOSE_LABELS[purpose]}
+            {purpose}（{PURPOSE_LABELS[purpose]}
+            {purpose === 'sensor' ? '・破線' : ''}）
           </li>
         ))}
       </ul>
       {asset.colliders.length > 0 && (
         <ul className="gamedata-list" aria-label="当たり判定一覧">
-          {asset.colliders.map((collider) => (
-            <li key={collider.id} className="gamedata-row">
-              <div className="gamedata-row-header">
-                <span
-                  className="gamedata-collider-swatch"
-                  style={{ backgroundColor: purposeColor(collider.purpose) }}
-                  title={`${collider.purpose} の色`}
-                />
-                <span className="gamedata-shape">{collider.shape === 'rect' ? '矩形' : '円'}</span>
-                <button
-                  type="button"
-                  aria-label={`判定「${collider.name}」の表示を切り替え`}
-                  aria-pressed={collider.visible}
-                  onClick={() =>
-                    onCommit(
-                      collider.visible ? '判定を非表示' : '判定を表示',
-                      updateCollider(asset, collider.id, { visible: !collider.visible }),
-                    )
-                  }
-                >
-                  {collider.visible ? '表示' : '非表示'}
-                </button>
-                <button
-                  type="button"
-                  aria-label={`判定「${collider.name}」を削除`}
-                  onClick={() => onCommit('判定削除', removeCollider(asset, collider.id))}
-                >
-                  削除
-                </button>
-              </div>
-              <label className="editor-field">
-                用途
-                <select
-                  value={collider.purpose}
-                  onChange={(event) =>
-                    onCommit(
-                      '判定用途変更',
-                      updateCollider(asset, collider.id, {
-                        purpose: event.target.value as ColliderPurpose,
-                        name: event.target.value,
-                      }),
-                    )
-                  }
-                >
-                  {COLLIDER_PURPOSES.map((purpose) => (
-                    <option key={purpose} value={purpose}>
-                      {purpose}（{PURPOSE_LABELS[purpose]}）
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {collider.shape === 'rect' ? (
-                <div className="gamedata-inline-fields">
-                  <label className="editor-field">
-                    X
-                    <input
-                      type="number"
-                      value={collider.rect.x}
-                      onFocus={onBeginFieldEdit}
-                      onBlur={onCommitFieldEdit}
-                      onChange={(event) =>
-                        onLiveChange(
-                          updateCollider(asset, collider.id, {
-                            rect: { x: snappedNumberValue(event.target.value) },
-                          }),
-                        )
-                      }
-                    />
-                  </label>
-                  <label className="editor-field">
-                    Y
-                    <input
-                      type="number"
-                      value={collider.rect.y}
-                      onFocus={onBeginFieldEdit}
-                      onBlur={onCommitFieldEdit}
-                      onChange={(event) =>
-                        onLiveChange(
-                          updateCollider(asset, collider.id, {
-                            rect: { y: snappedNumberValue(event.target.value) },
-                          }),
-                        )
-                      }
-                    />
-                  </label>
-                  <label className="editor-field">
-                    幅
-                    <input
-                      type="number"
-                      min={1}
-                      value={collider.rect.width}
-                      onFocus={onBeginFieldEdit}
-                      onBlur={onCommitFieldEdit}
-                      onChange={(event) =>
-                        onLiveChange(
-                          updateCollider(asset, collider.id, {
-                            rect: { width: Math.max(1, numberValue(event.target.value)) },
-                          }),
-                        )
-                      }
-                    />
-                  </label>
-                  <label className="editor-field">
-                    高さ
-                    <input
-                      type="number"
-                      min={1}
-                      value={collider.rect.height}
-                      onFocus={onBeginFieldEdit}
-                      onBlur={onCommitFieldEdit}
-                      onChange={(event) =>
-                        onLiveChange(
-                          updateCollider(asset, collider.id, {
-                            rect: { height: Math.max(1, numberValue(event.target.value)) },
-                          }),
-                        )
-                      }
-                    />
-                  </label>
+          {asset.colliders.map((collider) => {
+            const selected = isSelectedCollider(collider.id, selectedColliderId);
+            return (
+              <li key={collider.id} className={`gamedata-row${selected ? ' selected' : ''}`}>
+                <div className="gamedata-row-header">
+                  <span
+                    className={`gamedata-collider-swatch${collider.purpose === 'sensor' ? ' sensor' : ''}`}
+                    style={{ backgroundColor: purposeColor(collider.purpose) }}
+                    title={`${collider.purpose} の色`}
+                  />
+                  <span className="gamedata-shape">
+                    {collider.shape === 'rect' ? '矩形' : '円'}
+                  </span>
+                  <button
+                    type="button"
+                    className="gamedata-select-button"
+                    aria-label={`判定「${collider.name}」を選択`}
+                    aria-pressed={selected}
+                    onClick={() => onSelectCollider(collider.id)}
+                  >
+                    選択
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`判定「${collider.name}」の表示を切り替え`}
+                    aria-pressed={collider.visible}
+                    onClick={() =>
+                      onCommit(
+                        collider.visible ? '判定を非表示' : '判定を表示',
+                        updateCollider(asset, collider.id, { visible: !collider.visible }),
+                      )
+                    }
+                  >
+                    {collider.visible ? '表示' : '非表示'}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`判定「${collider.name}」を削除`}
+                    onClick={() => onCommit('判定削除', removeCollider(asset, collider.id))}
+                  >
+                    削除
+                  </button>
                 </div>
-              ) : (
-                <div className="gamedata-inline-fields">
-                  <label className="editor-field">
-                    X
-                    <input
-                      type="number"
-                      value={collider.circle.x}
-                      onFocus={onBeginFieldEdit}
-                      onBlur={onCommitFieldEdit}
-                      onChange={(event) =>
-                        onLiveChange(
-                          updateCollider(asset, collider.id, {
-                            circle: { x: snappedNumberValue(event.target.value) },
-                          }),
-                        )
-                      }
-                    />
-                  </label>
-                  <label className="editor-field">
-                    Y
-                    <input
-                      type="number"
-                      value={collider.circle.y}
-                      onFocus={onBeginFieldEdit}
-                      onBlur={onCommitFieldEdit}
-                      onChange={(event) =>
-                        onLiveChange(
-                          updateCollider(asset, collider.id, {
-                            circle: { y: snappedNumberValue(event.target.value) },
-                          }),
-                        )
-                      }
-                    />
-                  </label>
-                  <label className="editor-field">
-                    半径
-                    <input
-                      type="number"
-                      min={1}
-                      value={collider.circle.radius}
-                      onFocus={onBeginFieldEdit}
-                      onBlur={onCommitFieldEdit}
-                      onChange={(event) =>
-                        onLiveChange(
-                          updateCollider(asset, collider.id, {
-                            circle: { radius: Math.max(1, numberValue(event.target.value)) },
-                          }),
-                        )
-                      }
-                    />
-                  </label>
-                </div>
-              )}
-            </li>
-          ))}
+                <label className="editor-field">
+                  用途
+                  <select
+                    value={collider.purpose}
+                    onChange={(event) =>
+                      onCommit(
+                        '判定用途変更',
+                        updateCollider(asset, collider.id, {
+                          purpose: event.target.value as ColliderPurpose,
+                          name: event.target.value,
+                        }),
+                      )
+                    }
+                  >
+                    {COLLIDER_PURPOSES.map((purpose) => (
+                      <option key={purpose} value={purpose}>
+                        {purpose}（{PURPOSE_LABELS[purpose]}）
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {collider.shape === 'rect' ? (
+                  <div className="gamedata-inline-fields">
+                    <label className="editor-field">
+                      X
+                      <input
+                        type="number"
+                        value={collider.rect.x}
+                        onFocus={onBeginFieldEdit}
+                        onBlur={onCommitFieldEdit}
+                        onChange={(event) =>
+                          onLiveChange(
+                            updateCollider(asset, collider.id, {
+                              rect: { x: snappedNumberValue(event.target.value) },
+                            }),
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="editor-field">
+                      Y
+                      <input
+                        type="number"
+                        value={collider.rect.y}
+                        onFocus={onBeginFieldEdit}
+                        onBlur={onCommitFieldEdit}
+                        onChange={(event) =>
+                          onLiveChange(
+                            updateCollider(asset, collider.id, {
+                              rect: { y: snappedNumberValue(event.target.value) },
+                            }),
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="editor-field">
+                      幅
+                      <input
+                        type="number"
+                        min={1}
+                        value={collider.rect.width}
+                        onFocus={onBeginFieldEdit}
+                        onBlur={onCommitFieldEdit}
+                        onChange={(event) =>
+                          onLiveChange(
+                            updateCollider(asset, collider.id, {
+                              rect: { width: Math.max(1, numberValue(event.target.value)) },
+                            }),
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="editor-field">
+                      高さ
+                      <input
+                        type="number"
+                        min={1}
+                        value={collider.rect.height}
+                        onFocus={onBeginFieldEdit}
+                        onBlur={onCommitFieldEdit}
+                        onChange={(event) =>
+                          onLiveChange(
+                            updateCollider(asset, collider.id, {
+                              rect: { height: Math.max(1, numberValue(event.target.value)) },
+                            }),
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  <div className="gamedata-inline-fields">
+                    <label className="editor-field">
+                      X
+                      <input
+                        type="number"
+                        value={collider.circle.x}
+                        onFocus={onBeginFieldEdit}
+                        onBlur={onCommitFieldEdit}
+                        onChange={(event) =>
+                          onLiveChange(
+                            updateCollider(asset, collider.id, {
+                              circle: { x: snappedNumberValue(event.target.value) },
+                            }),
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="editor-field">
+                      Y
+                      <input
+                        type="number"
+                        value={collider.circle.y}
+                        onFocus={onBeginFieldEdit}
+                        onBlur={onCommitFieldEdit}
+                        onChange={(event) =>
+                          onLiveChange(
+                            updateCollider(asset, collider.id, {
+                              circle: { y: snappedNumberValue(event.target.value) },
+                            }),
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="editor-field">
+                      半径
+                      <input
+                        type="number"
+                        min={1}
+                        value={collider.circle.radius}
+                        onFocus={onBeginFieldEdit}
+                        onBlur={onCommitFieldEdit}
+                        onChange={(event) =>
+                          onLiveChange(
+                            updateCollider(asset, collider.id, {
+                              circle: { radius: Math.max(1, numberValue(event.target.value)) },
+                            }),
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

@@ -55,6 +55,7 @@ interface CanvasEditorProps {
   onSnapEnabledChange: (enabled: boolean) => void;
   /** アンカーツールで空き場所をクリックしたときの追加。point は world 座標。 */
   onAddAnchor: (point: Vec2) => void;
+  selectedColliderId: string | null;
 }
 
 interface DragState {
@@ -118,6 +119,7 @@ export function CanvasEditor({
   onGridSizeModeChange,
   onSnapEnabledChange,
   onAddAnchor,
+  selectedColliderId,
 }: CanvasEditorProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -255,6 +257,7 @@ export function CanvasEditor({
       anchors: displayAsset.anchors,
       colliders: displayAsset.colliders,
       showColliders,
+      selectedColliderId,
     });
 
     // ツールのオーバーレイ
@@ -294,6 +297,7 @@ export function CanvasEditor({
     eraserRadius,
     selectedLayer,
     showColliders,
+    selectedColliderId,
     gridEnabled,
     gridSize,
   ]);
