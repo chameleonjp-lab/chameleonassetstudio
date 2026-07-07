@@ -184,6 +184,51 @@ describe('原点、アンカー、当たり判定（Phase 8）', () => {
     expect(validateAsset(updated).valid).toBe(true);
   });
 
+  it('moveColliderBy は rect の x / y だけを移動し、width / height を維持する', async () => {
+    const { moveColliderBy } = await import('./assetOps');
+    const moved = moveColliderBy(baseAsset, 'col_body', { delta: { x: 5.5, y: -2.25 } });
+    const collider = moved.colliders.find((c) => c.id === 'col_body')!;
+    expect(collider.shape).toBe('rect');
+    if (collider.shape === 'rect') {
+      expect(collider.rect).toEqual({ x: 197.5, y: 189.75, width: 128, height: 256 });
+    }
+    expect(validateAsset(moved).valid).toBe(true);
+  });
+
+  it('moveColliderBy は circle の x / y だけを移動し、radius を維持する', async () => {
+    const { moveColliderBy, updateCollider } = await import('./assetOps');
+    const visibleCircleAsset = updateCollider(baseAsset, 'col_pickup', { visible: true });
+    const moved = moveColliderBy(visibleCircleAsset, 'col_pickup', { delta: { x: -4, y: 9 } });
+    const collider = moved.colliders.find((c) => c.id === 'col_pickup')!;
+    expect(collider.shape).toBe('circle');
+    if (collider.shape === 'circle') {
+      expect(collider.circle).toEqual({ x: 252, y: 329, radius: 96 });
+    }
+    expect(validateAsset(moved).valid).toBe(true);
+  });
+
+  it('moveColliderBy は snap 指定時に grid size へ丸める', async () => {
+    const { moveColliderBy } = await import('./assetOps');
+    const moved = moveColliderBy(baseAsset, 'col_body', {
+      delta: { x: 7, y: 9 },
+      snap: (value) => Math.round(value / 16) * 16,
+    });
+    const collider = moved.colliders.find((c) => c.id === 'col_body')!;
+    expect(collider.shape).toBe('rect');
+    if (collider.shape === 'rect') {
+      expect(collider.rect.x % 16).toBe(0);
+      expect(collider.rect.y % 16).toBe(0);
+      expect(collider.rect.width).toBe(128);
+      expect(collider.rect.height).toBe(256);
+    }
+  });
+
+  it('moveColliderBy は visible: false の判定を操作対象外にする', async () => {
+    const { moveColliderBy } = await import('./assetOps');
+    const moved = moveColliderBy(baseAsset, 'col_pickup', { delta: { x: 10, y: 10 } });
+    expect(moved).toBe(baseAsset);
+  });
+
   it('removeCollider で判定が消える', async () => {
     const { removeCollider } = await import('./assetOps');
     const removed = removeCollider(baseAsset, 'col_body');

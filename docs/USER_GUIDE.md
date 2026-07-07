@@ -74,3 +74,5 @@ ZIP の中身と使い方は `docs/EXPORT_FORMATS.md`、Godot / Unity / Rive / S
 当たり判定パネルには用途色の凡例が表示されます。body / attack / pickup / sensor / custom は用途名と色で確認でき、sensor はキャンバス上の破線と凡例・一覧の縞スワッチでも通常判定と区別できます。
 
 当たり判定一覧の各行には用途色スワッチと「選択」ボタンがあります。選択した判定行は強調表示され、キャンバス上の同じ判定も太線と halo で強調されます。選択状態は編集補助の UI 状態であり、asset.json などの保存データには含まれません。
+
+判定表示が ON のときは、選択中またはクリックした visible な rect / circle 判定をキャンバス上でドラッグ移動できます。rect は x / y のみ、circle は x / y のみを更新し、rect の width / height と circle の radius は変更しません。スナップ ON では x / y が grid size に丸められ、スナップ OFF では通常の自由移動に近い px 単位で移動します。判定とレイヤーが重なる場所では、判定表示 ON の間は判定のクリックを優先します。

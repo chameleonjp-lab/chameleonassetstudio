@@ -2,7 +2,14 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { decodeImageSource, type DecodedImageSource } from '../../core/images/decodeImageSource';
 import { blobKeyFor } from '../../core/images/importImage';
 import type { Rect } from '../../core/images/operations';
-import type { Asset, Layer, Size, Vec2 } from '../../core/model';
+import {
+  moveColliderBy,
+  type Asset,
+  type Collider,
+  type Layer,
+  type Size,
+  type Vec2,
+} from '../../core/model';
 import { loadBlob } from '../../core/storage';
 import {
   drawGameOverlays,
@@ -56,15 +63,17 @@ interface CanvasEditorProps {
   /** アンカーツールで空き場所をクリックしたときの追加。point は world 座標。 */
   onAddAnchor: (point: Vec2) => void;
   selectedColliderId: string | null;
+  onSelectCollider: (colliderId: string | null) => void;
 }
 
 interface DragState {
-  mode: 'move' | 'pan' | 'pinch' | 'crop' | 'erase' | 'origin' | 'anchor-move';
+  mode: 'move' | 'pan' | 'pinch' | 'crop' | 'erase' | 'origin' | 'anchor-move' | 'collider-move';
   pointerId: number;
   startScreen: Vec2;
   startView: ViewTransform;
   layerId?: string;
   anchorId?: string;
+  colliderId?: string;
   before?: Asset;
   secondPointerId?: number;
   startDistance?: number;
@@ -76,6 +85,41 @@ function textureSizeFor(asset: Asset, textureId: string | undefined): Size | nul
   }
   const texture = asset.textures.find((tex) => tex.id === textureId);
   return texture ? texture.size : null;
+}
+
+function hitTestColliders(
+  colliders: Collider[],
+  worldPoint: Vec2,
+  preferredColliderId: string | null,
+): string | null {
+  const visibleColliders = colliders.filter((collider) => collider.visible);
+  const ordered = [
+    ...visibleColliders.filter((collider) => collider.id === preferredColliderId),
+    ...visibleColliders.filter((collider) => collider.id !== preferredColliderId).reverse(),
+  ];
+  for (const collider of ordered) {
+    if (collider.shape === 'rect') {
+      const { x, y, width, height } = collider.rect;
+      if (
+        worldPoint.x >= x &&
+        worldPoint.x <= x + width &&
+        worldPoint.y >= y &&
+        worldPoint.y <= y + height
+      ) {
+        return collider.id;
+      }
+      continue;
+    }
+    const { x, y, radius } = collider.circle;
+    if (Math.hypot(worldPoint.x - x, worldPoint.y - y) <= radius) {
+      return collider.id;
+    }
+  }
+  return null;
+}
+
+function roundCanvasValue(value: number): number {
+  return Math.round(value);
 }
 
 function moveLayer(asset: Asset, layerId: string, deltaX: number, deltaY: number): Asset {
@@ -120,6 +164,7 @@ export function CanvasEditor({
   onSnapEnabledChange,
   onAddAnchor,
   selectedColliderId,
+  onSelectCollider,
 }: CanvasEditorProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -455,6 +500,21 @@ export function CanvasEditor({
 
     // select ツール
     const worldPoint = screenToWorld(view, point);
+    if (showColliders) {
+      const colliderHitId = hitTestColliders(asset.colliders, worldPoint, selectedColliderId);
+      if (colliderHitId) {
+        onSelectCollider(colliderHitId);
+        dragRef.current = {
+          mode: 'collider-move',
+          pointerId: event.pointerId,
+          startScreen: point,
+          startView: view,
+          colliderId: colliderHitId,
+          before: asset,
+        };
+        return;
+      }
+    }
     const targets = asset.layers.map((layer) => ({
       layer,
       textureSize: textureSizeFor(asset, layer.textureId) ?? { width: 0, height: 0 },
@@ -562,6 +622,18 @@ export function CanvasEditor({
       return;
     }
 
+    if (drag.mode === 'collider-move' && drag.colliderId && drag.before) {
+      const worldDeltaX = deltaX / drag.startView.scale;
+      const worldDeltaY = deltaY / drag.startView.scale;
+      setDraftAsset(
+        moveColliderBy(drag.before, drag.colliderId, {
+          delta: { x: worldDeltaX, y: worldDeltaY },
+          snap: (value) => (snapEnabled ? snapToGrid(value, gridSize) : roundCanvasValue(value)),
+        }),
+      );
+      return;
+    }
+
     if (drag.mode === 'move' && drag.layerId && drag.before) {
       const worldDeltaX = deltaX / drag.startView.scale;
       const worldDeltaY = deltaY / drag.startView.scale;
@@ -655,6 +727,14 @@ export function CanvasEditor({
       return;
     }
 
+    if (drag.mode === 'collider-move' && drag.before && draftAsset) {
+      const moved = draftAsset.colliders.find((collider) => collider.id === drag.colliderId);
+      const original = drag.before.colliders.find((collider) => collider.id === drag.colliderId);
+      if (moved && original && JSON.stringify(moved) !== JSON.stringify(original)) {
+        onCommitAsset('判定移動', drag.before, draftAsset);
+      }
+    }
+
     if (drag.mode === 'move' && drag.before && draftAsset) {
       const moved = draftAsset.layers.find((layer) => layer.id === drag.layerId);
       const original = drag.before.layers.find((layer) => layer.id === drag.layerId);
@@ -686,7 +766,7 @@ export function CanvasEditor({
           width: viewport.width,
           height: viewport.height,
           touchAction: 'none',
-          cursor: TOOL_CURSORS[tool],
+          cursor: dragRef.current?.mode === 'collider-move' ? 'move' : TOOL_CURSORS[tool],
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}

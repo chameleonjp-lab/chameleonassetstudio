@@ -251,6 +251,31 @@ export function updateCollider(asset: Asset, colliderId: string, patch: Collider
   });
 }
 
+export interface MoveColliderOptions {
+  delta: Vec2;
+  snap?: (value: number) => number;
+}
+
+/** 当たり判定を移動する。rect は x / y のみ、circle は x / y のみを更新し、サイズは変更しない。 */
+export function moveColliderBy(
+  asset: Asset,
+  colliderId: string,
+  { delta, snap = (value: number) => value }: MoveColliderOptions,
+): Asset {
+  const collider = asset.colliders.find((item) => item.id === colliderId);
+  if (!collider || !collider.visible) {
+    return asset;
+  }
+  if (collider.shape === 'rect') {
+    return updateCollider(asset, colliderId, {
+      rect: { x: snap(collider.rect.x + delta.x), y: snap(collider.rect.y + delta.y) },
+    });
+  }
+  return updateCollider(asset, colliderId, {
+    circle: { x: snap(collider.circle.x + delta.x), y: snap(collider.circle.y + delta.y) },
+  });
+}
+
 export function removeCollider(asset: Asset, colliderId: string): Asset {
   return touch({
     ...asset,

@@ -846,6 +846,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 onSnapEnabledChange={setSnapEnabled}
                 onAddAnchor={handleAddAnchor}
                 selectedColliderId={selectedColliderId}
+                onSelectCollider={setSelectedColliderId}
               />
               {statusMessages}
             </div>
