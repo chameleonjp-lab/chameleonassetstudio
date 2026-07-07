@@ -80,8 +80,13 @@ describe('ビュー変換', () => {
     expect(snapToGrid(13, 16)).toBe(16);
     expect(snapToGrid(23, 16)).toBe(16);
     expect(snapToGrid(24, 16)).toBe(32);
+    expect(snapToGrid(17, 8)).toBe(16);
+    expect(snapToGrid(20, 8)).toBe(24);
+    expect(snapToGrid(47, 16)).toBe(48);
+    expect(snapToGrid(-9, 8)).toBe(-8);
     expect(snapToGrid(13.4, 0)).toBe(13);
     expect(snapToGrid(13.6, -5)).toBe(14);
+    expect(snapToGrid(10.6, Number.NaN)).toBe(11);
   });
 });
 

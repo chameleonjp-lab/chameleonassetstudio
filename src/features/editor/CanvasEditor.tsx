@@ -44,6 +44,15 @@ interface CanvasEditorProps {
   onEraseCommit: (layerId: string, points: Vec2[]) => void;
   /** 当たり判定オーバーレイの一括表示。 */
   showColliders: boolean;
+  /** グリッド表示。UI 補助のみで保存形式には影響しない。 */
+  gridEnabled: boolean;
+  gridSize: number;
+  gridSizeMode: '8' | '16' | '32' | 'custom';
+  snapEnabled: boolean;
+  onGridEnabledChange: (enabled: boolean) => void;
+  onGridSizeChange: (size: number) => void;
+  onGridSizeModeChange: (mode: '8' | '16' | '32' | 'custom') => void;
+  onSnapEnabledChange: (enabled: boolean) => void;
   /** アンカーツールで空き場所をクリックしたときの追加。point は world 座標。 */
   onAddAnchor: (point: Vec2) => void;
 }
@@ -100,16 +109,20 @@ export function CanvasEditor({
   onCropCommit,
   onEraseCommit,
   showColliders,
+  gridEnabled,
+  gridSize,
+  gridSizeMode,
+  snapEnabled,
+  onGridEnabledChange,
+  onGridSizeChange,
+  onGridSizeModeChange,
+  onSnapEnabledChange,
   onAddAnchor,
 }: CanvasEditorProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [viewport, setViewport] = useState<Viewport>({ width: 0, height: 0 });
   const [view, setView] = useState<ViewTransform>({ scale: 1, offsetX: 0, offsetY: 0 });
-  const [gridEnabled, setGridEnabled] = useState(false);
-  const [gridSize, setGridSize] = useState(16);
-  const [gridSizeMode, setGridSizeMode] = useState<'8' | '16' | '32' | 'custom'>('16');
-  const [snapEnabled, setSnapEnabled] = useState(false);
   const [bitmaps, setBitmaps] = useState<Map<string, DecodedImageSource>>(new Map());
   const [draftAsset, setDraftAsset] = useState<Asset | null>(null);
   const [cropRectScreen, setCropRectScreen] = useState<{ start: Vec2; end: Vec2 } | null>(null);
@@ -309,6 +322,9 @@ export function CanvasEditor({
   };
 
   /** 画面座標を選択レイヤーのテクスチャ座標（左上原点）へ変換する。 */
+  const snapCoordinate = (value: number): number =>
+    snapEnabled ? snapToGrid(value, gridSize) : Math.round(value);
+
   const toTexturePoint = (screenPoint: Vec2): Vec2 | null => {
     if (!selectedLayer || !selectedTextureSize) {
       return null;
@@ -365,7 +381,7 @@ export function CanvasEditor({
       setDraftAsset({
         ...asset,
         updatedAt: new Date().toISOString(),
-        origin: { x: Math.round(world.x), y: Math.round(world.y) },
+        origin: { x: snapCoordinate(world.x), y: snapCoordinate(world.y) },
       });
       return;
     }
@@ -516,7 +532,7 @@ export function CanvasEditor({
       return;
     }
 
-    const snap = (v: number) => (snapEnabled ? snapToGrid(v, gridSize) : Math.round(v));
+    const snap = snapCoordinate;
 
     if (drag.mode === 'origin' && drag.before) {
       const world = screenToWorld(view, point);
@@ -693,7 +709,7 @@ export function CanvasEditor({
             type="checkbox"
             aria-label="グリッド表示"
             checked={gridEnabled}
-            onChange={(event) => setGridEnabled(event.target.checked)}
+            onChange={(event) => onGridEnabledChange(event.target.checked)}
           />
           グリッド
         </label>
@@ -702,9 +718,9 @@ export function CanvasEditor({
           value={gridSizeMode}
           onChange={(event) => {
             const mode = event.target.value as '8' | '16' | '32' | 'custom';
-            setGridSizeMode(mode);
+            onGridSizeModeChange(mode);
             if (mode !== 'custom') {
-              setGridSize(Number(mode));
+              onGridSizeChange(Number(mode));
             }
           }}
         >
@@ -717,12 +733,13 @@ export function CanvasEditor({
           <input
             type="number"
             aria-label="カスタムグリッドサイズ"
-            min={1}
+            min={2}
+            max={256}
             value={gridSize}
             onChange={(event) => {
               const next = Number(event.target.value);
-              if (Number.isFinite(next) && next > 0) {
-                setGridSize(next);
+              if (Number.isFinite(next)) {
+                onGridSizeChange(Math.min(256, Math.max(2, Math.round(next))));
               }
             }}
           />
@@ -732,7 +749,7 @@ export function CanvasEditor({
             type="checkbox"
             aria-label="スナップ"
             checked={snapEnabled}
-            onChange={(event) => setSnapEnabled(event.target.checked)}
+            onChange={(event) => onSnapEnabledChange(event.target.checked)}
           />
           スナップ
         </label>
