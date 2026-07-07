@@ -1,6 +1,6 @@
 # Fableless Development Guide
 
-最終更新日: 2026-07-05  
+最終更新日: 2026-07-07  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 文書種別: `claude-fable-5` 非依存の実装・レビュー運用書  
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
