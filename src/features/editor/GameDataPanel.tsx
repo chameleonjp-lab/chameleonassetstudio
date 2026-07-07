@@ -257,6 +257,7 @@ export function GameDataPanel({
                 <button
                   type="button"
                   className="gamedata-select-collider"
+                  aria-label={`判定「${collider.name}」を選択`}
                   aria-pressed={collider.id === selectedColliderId}
                   onClick={() => onSelectCollider(collider.id)}
                 >
