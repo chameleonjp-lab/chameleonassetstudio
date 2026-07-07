@@ -7,6 +7,8 @@
 
 ---
 
+> **現状:** この文書は PR 運用と GitHub Actions の設計案です。現時点では Opus 4.8 レビュー workflow は未実装であり、本文中の YAML は実装済み設定ではなく、今後 `.github/workflows/` に追加する場合の設計例です。
+
 ## 1. 目的
 
 この文書は、Chameleon Asset Studio の PR 運用を次の流れで半自動化するための設計を定義する。
@@ -141,7 +143,7 @@ Codex 自動修正ループは最大 2 回までとする。2 回修正しても
 
 ### 6.1 推奨構成
 
-既存の `CI` workflow はそのまま維持する。Opus 4.8 レビューは別 workflow とし、CI workflow の成功を条件に起動する。
+既存の `CI` workflow はそのまま維持する。Opus 4.8 レビューは別 workflow とし、CI workflow の成功を条件に起動する。現時点ではこの別 workflow は未実装であり、以下の YAML は設計案であって実際のリポジトリ設定ではない。
 
 推奨イベント:
 

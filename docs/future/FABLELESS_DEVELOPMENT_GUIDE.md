@@ -11,7 +11,7 @@
 
 この文書は、`claude-fable-5` を使わずに、Chameleon Asset Studio の実装品質を落とさずに開発を進めるための運用ルールを定義する。
 
-`claude-fable-5` は今後使用しない。高難度の設計判断や最終レビューは `claude-opus-4-8` で行い、`claude-opus-4-8` でも判断が割れる場合は人間確認に戻す。実装は `claude-sonnet-5`、調査・軽微修正・docs・テスト分類は `claude-haiku-4-5` を使い、設計判断を文書化しながら進める。
+`claude-fable-5` は今後使用しない。通常の主実装は Codex が担当し、高難度の設計判断や最終レビューは `claude-opus-4-8` で行い、`claude-opus-4-8` でも判断が割れる場合は人間確認に戻す。必要時の補助として `claude-sonnet-5` を実装レビューや既存設計に沿う中程度の実装に使い、調査・軽微修正・docs・テスト分類は `claude-haiku-4-5` も使える。いずれの場合も設計判断を文書化しながら進める。
 
 ---
 
@@ -69,7 +69,8 @@
 |---|---|---|---|
 | コード探索 | `claude-haiku-4-5` | `cas-codebase-explorer` | 編集禁止 |
 | 軽微修正 | `claude-haiku-4-5` | `cas-light-editor` | docs / CSS / lint |
-| 中程度の実装 | `claude-sonnet-5` | `cas-implementation-worker` | 既存設計に沿う実装のみ |
+| 通常の主実装 | Codex | — | 1 PR 1 目的で実装・docs・tests を更新する |
+| 中程度の実装補助 | `claude-sonnet-5` | `cas-implementation-worker` | 必要時のみ。既存設計に沿う実装や実装レビューを補助 |
 | テスト実行 | `claude-haiku-4-5` | `cas-test-runner` | 失敗原因の分類まで |
 | docs 更新 | `claude-haiku-4-5` | `cas-docs-maintainer` | 仕様変更判断は不可 |
 | 高難度レビュー | `claude-opus-4-8` | `cas-architect-reviewer` | 主レビュー。`claude-fable-5` は使わない |
@@ -214,11 +215,11 @@
 
 ### 8.2 実装レビュー
 
-担当: `claude-sonnet-5`
+担当: Codex、必要時の補助として `claude-sonnet-5`
 
 確認:
 
-- 関数が既存設計に沿っているか
+- Codex の実装が既存設計に沿っているか
 - テストがあるか
 - 既存機能を壊していないか
 - 変更範囲が大きすぎないか
@@ -300,9 +301,9 @@ CI が失敗している PR は ready にしない。
 |---|---|
 | format | `cas-light-editor` |
 | lint | `cas-light-editor` または `cas-implementation-worker` |
-| unit test | `cas-implementation-worker` |
-| e2e | `cas-implementation-worker` |
-| build / type | `cas-implementation-worker` |
+| unit test | Codex、必要時に `cas-implementation-worker` |
+| e2e | Codex、必要時に `cas-implementation-worker` |
+| build / type | Codex、必要時に `cas-implementation-worker` |
 | docs 矛盾 | `cas-docs-maintainer` + `cas-architect-reviewer` |
 | 設計矛盾 | `cas-architect-reviewer` |
 
@@ -314,6 +315,6 @@ CI が失敗している PR は ready にしない。
 
 `claude-fable-5` は今後使用しない。それでも開発は止めないが、判断を粗くして進めてはいけない。
 
-小さく実装し、docs を先に確認し、テストを通し、`claude-opus-4-8` で設計レビューを行い、`claude-opus-4-8` でも判断が割れる場合や互換性に関わる重大判断は人間確認に戻す。
+Codex を通常の主実装担当として小さく実装し、docs を先に確認し、テストを通し、`claude-opus-4-8` で設計レビューを行い、`claude-opus-4-8` でも判断が割れる場合や互換性に関わる重大判断は人間確認に戻す。`claude-sonnet-5` は必要時の補助として使い、主実装や最終判断の前提にしない。
 
-これを守る限り、Chameleon Asset Studio は `claude-fable-5` 非依存で継続開発できる。
+これを守る限り、Chameleon Asset Studio は Codex 主実装、Opus 4.8 レビュー、`claude-fable-5` 非依存で継続開発できる。
