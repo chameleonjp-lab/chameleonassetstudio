@@ -26,6 +26,15 @@ import {
 } from '../../renderers/canvas2d/view';
 
 import { TOOL_CURSORS, type CanvasTool } from './canvasTools';
+import {
+  hitTestColliders,
+  moveCircle,
+  moveRect,
+  resizeCircle,
+  resizeRect,
+  updateAssetCollider,
+  type ColliderHandle,
+} from './colliderEditing';
 
 interface CanvasEditorProps {
   asset: Asset;
@@ -34,6 +43,8 @@ interface CanvasEditorProps {
   /** 消しゴムの半径（テクスチャのピクセル単位）。 */
   eraserRadius: number;
   onSelectLayer: (layerId: string | null) => void;
+  selectedColliderId: string | null;
+  onSelectCollider: (colliderId: string | null) => void;
   /** ドラッグ移動の確定。before / next はアセットのスナップショット。 */
   onCommitAsset: (label: string, before: Asset, next: Asset) => void;
   /** bgpick / picker ツールでの色拾い。point はテクスチャ座標（左上原点）。 */
@@ -58,12 +69,14 @@ interface CanvasEditorProps {
 }
 
 interface DragState {
-  mode: 'move' | 'pan' | 'pinch' | 'crop' | 'erase' | 'origin' | 'anchor-move';
+  mode: 'move' | 'pan' | 'pinch' | 'crop' | 'erase' | 'origin' | 'anchor-move' | 'collider-edit';
   pointerId: number;
   startScreen: Vec2;
   startView: ViewTransform;
   layerId?: string;
   anchorId?: string;
+  colliderId?: string;
+  colliderHandle?: ColliderHandle;
   before?: Asset;
   secondPointerId?: number;
   startDistance?: number;
@@ -104,6 +117,8 @@ export function CanvasEditor({
   selectedLayerId,
   eraserRadius,
   onSelectLayer,
+  selectedColliderId,
+  onSelectCollider,
   onCommitAsset,
   onPickColor,
   onCropCommit,
@@ -125,6 +140,7 @@ export function CanvasEditor({
   const [view, setView] = useState<ViewTransform>({ scale: 1, offsetX: 0, offsetY: 0 });
   const [bitmaps, setBitmaps] = useState<Map<string, DecodedImageSource>>(new Map());
   const [draftAsset, setDraftAsset] = useState<Asset | null>(null);
+  const [hoveredColliderId, setHoveredColliderId] = useState<string | null>(null);
   const [cropRectScreen, setCropRectScreen] = useState<{ start: Vec2; end: Vec2 } | null>(null);
   const [eraserStrokeScreen, setEraserStrokeScreen] = useState<Vec2[] | null>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -255,6 +271,8 @@ export function CanvasEditor({
       anchors: displayAsset.anchors,
       colliders: displayAsset.colliders,
       showColliders,
+      selectedColliderId,
+      hoveredColliderId,
     });
 
     // ツールのオーバーレイ
@@ -296,6 +314,8 @@ export function CanvasEditor({
     showColliders,
     gridEnabled,
     gridSize,
+    selectedColliderId,
+    hoveredColliderId,
   ]);
 
   // ホイールズーム（passive: false で登録する必要がある）
@@ -451,12 +471,30 @@ export function CanvasEditor({
 
     // select ツール
     const worldPoint = screenToWorld(view, point);
+    if (showColliders) {
+      const hit = hitTestColliders(asset.colliders, worldPoint, 8 / view.scale);
+      if (hit) {
+        onSelectCollider(hit.colliderId);
+        onSelectLayer(null);
+        dragRef.current = {
+          mode: 'collider-edit',
+          pointerId: event.pointerId,
+          startScreen: point,
+          startView: view,
+          before: asset,
+          colliderId: hit.colliderId,
+          colliderHandle: hit.handle,
+        };
+        return;
+      }
+    }
     const targets = asset.layers.map((layer) => ({
       layer,
       textureSize: textureSizeFor(asset, layer.textureId) ?? { width: 0, height: 0 },
     }));
     const hitId = hitTestLayers(targets, worldPoint);
     if (hitId) {
+      onSelectCollider(null);
       onSelectLayer(hitId);
       dragRef.current = {
         mode: 'move',
@@ -468,6 +506,7 @@ export function CanvasEditor({
       };
     } else {
       onSelectLayer(null);
+      onSelectCollider(null);
       // 何もない場所のドラッグはパンとして扱う
       dragRef.current = {
         mode: 'pan',
@@ -485,6 +524,12 @@ export function CanvasEditor({
       pointersRef.current.set(event.pointerId, point);
     }
     if (!drag) {
+      if (showColliders) {
+        const world = screenToWorld(view, point);
+        setHoveredColliderId(
+          hitTestColliders(asset.colliders, world, 8 / view.scale)?.colliderId ?? null,
+        );
+      }
       return;
     }
 
@@ -555,6 +600,39 @@ export function CanvasEditor({
             : anchor,
         ),
       });
+      return;
+    }
+
+    if (drag.mode === 'collider-edit' && drag.before && drag.colliderId && drag.colliderHandle) {
+      const worldDeltaX = deltaX / drag.startView.scale;
+      const worldDeltaY = deltaY / drag.startView.scale;
+      const worldPoint = screenToWorld(view, point);
+      const next = updateAssetCollider(drag.before, drag.colliderId, (collider) => {
+        if (collider.shape === 'rect') {
+          return {
+            ...collider,
+            rect:
+              drag.colliderHandle === 'body'
+                ? moveRect(collider.rect, worldDeltaX, worldDeltaY, snapEnabled, gridSize)
+                : resizeRect(
+                    collider.rect,
+                    drag.colliderHandle as ColliderHandle,
+                    worldDeltaX,
+                    worldDeltaY,
+                    snapEnabled,
+                    gridSize,
+                  ),
+          };
+        }
+        return {
+          ...collider,
+          circle:
+            drag.colliderHandle === 'radius'
+              ? resizeCircle(collider.circle, worldPoint, snapEnabled, gridSize)
+              : moveCircle(collider.circle, worldDeltaX, worldDeltaY, snapEnabled, gridSize),
+        };
+      });
+      setDraftAsset(next);
       return;
     }
 
@@ -651,6 +729,15 @@ export function CanvasEditor({
       return;
     }
 
+    if (drag.mode === 'collider-edit' && drag.before && draftAsset) {
+      if (JSON.stringify(draftAsset.colliders) !== JSON.stringify(drag.before.colliders)) {
+        onCommitAsset('判定編集', drag.before, draftAsset);
+      }
+      setDraftAsset(null);
+      dragRef.current = null;
+      return;
+    }
+
     if (drag.mode === 'move' && drag.before && draftAsset) {
       const moved = draftAsset.layers.find((layer) => layer.id === drag.layerId);
       const original = drag.before.layers.find((layer) => layer.id === drag.layerId);
@@ -682,7 +769,12 @@ export function CanvasEditor({
           width: viewport.width,
           height: viewport.height,
           touchAction: 'none',
-          cursor: TOOL_CURSORS[tool],
+          cursor:
+            dragRef.current?.mode === 'collider-edit'
+              ? 'grabbing'
+              : hoveredColliderId
+                ? 'grab'
+                : TOOL_CURSORS[tool],
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}

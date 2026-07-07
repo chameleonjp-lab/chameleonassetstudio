@@ -8,7 +8,7 @@
 
 ---
 
-> **現状:** この文書は Phase 19-C の実装前に読む設計整理であり、実装済み機能一覧ではない。この PR ではアプリ本体、TypeScript 型、JSON Schema、`asset.json` version、`.casproj` 構造、export ZIP 構成、dependencies、GitHub Actions は変更しない。多角形判定、rect / circle 編集 UI、Export Preset、Unity / Godot / RPG Maker / Blender 向け出力、3D 関連は実装しない。
+> **現状:** この文書は Phase 19-C の docs-first 設計整理である。現行実装では、多角形判定は未実装のまま、既存 rect / circle のキャンバス選択、hover / selected 強調、rect 移動・リサイズ、circle 移動・radius 変更、purpose 凡例、sensor 破線表示までを UI 改善として実装している。TypeScript 型、JSON Schema、`asset.json` version、`.casproj` 構造、export ZIP 構成、dependencies、GitHub Actions は変更しない。
 
 ## 1. 結論
 
