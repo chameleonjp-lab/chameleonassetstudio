@@ -250,3 +250,39 @@
 - package 分離の単位。
 - 3D の外部処理を置く repo 名。
 - 3D CI の分離方式。
+
+---
+
+## ADR-2026-07-07-006: Phase 19-C は判定編集を docs-first で進め、多角形判定は別判断に分離する
+
+### 状態
+
+- accepted
+
+### 背景
+
+Phase 19-C「判定編集強化」では、多角形判定の追加検討と rect / circle 編集 UI 改善が同時に候補になっている。多角形判定をすぐ実装すると、`asset.json` schema、TypeScript 型、`.casproj`、export ZIP、Canvas / PixiJS / Phaser helper、Unity / Godot / RPG Maker import notes、migration、E2E に横断影響する。
+
+### 決定
+
+- Phase 19-C はまず docs-first で設計を整理する。
+- Phase 19-C の次実装 PR では、多角形判定を後続フェーズに回し、既存 rect / circle の編集 UI と用途別表示の改善を優先する。
+- 多角形判定を入れる場合は、別の docs / schema / DATA_FORMAT / EXPORT_FORMATS / migration / tests 設計 PR を作り、Opus 4.8 設計レビューと人間確認を通してから実装へ進む。
+
+### しないこと
+
+- この判断だけで `asset.json` version、JSON Schema、TypeScript 型、`.casproj` 構造、export ZIP 構成を変更しない。
+- Codex だけで多角形判定を実装まで進めない。
+- 既存 rect / circle の意味、座標系、`visible` の意味を変えない。
+
+### 影響する文書
+
+- `docs/future/COLLIDER_EDITING_DESIGN.md`
+- `docs/future/POST_PHASE17_IMPLEMENTATION_PLAN.md`
+- `docs/future/README.md`
+
+### 未確定事項
+
+- 多角形判定を正式に入れるか。
+- 入れる場合の schema、version、migration、helper API、engine import notes の範囲。
+
