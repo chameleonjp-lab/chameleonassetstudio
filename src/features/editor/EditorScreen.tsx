@@ -54,6 +54,7 @@ import { LayerPanel } from './LayerPanel';
 import { PartPanel } from './PartPanel';
 import { RigPanel } from './RigPanel';
 import { TimelinePanel } from './TimelinePanel';
+import { applyEditSnap } from './snap';
 import './editor.css';
 
 type MobileView = 'canvas' | 'properties' | 'timeline' | 'export';
@@ -113,6 +114,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [checkedLayerIds, setCheckedLayerIds] = useState<string[]>([]);
   const [showColliders, setShowColliders] = useState(true);
+  const [gridEnabled, setGridEnabled] = useState(false);
+  const [gridSize, setGridSize] = useState(16);
+  const [gridSizeMode, setGridSizeMode] = useState<'8' | '16' | '32' | 'custom'>('16');
+  const [snapEnabled, setSnapEnabled] = useState(false);
   const [newAnchorRole, setNewAnchorRole] = useState<AnchorRole>('foot');
   const [tool, setTool] = useState<CanvasTool>('select');
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -559,6 +564,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   };
 
   /** 数値入力によるレイヤー変形の更新（フォーカス中は履歴に積まず、blur で確定する）。 */
+  const snapCoordinate = (value: number): number => applyEditSnap(value, snapEnabled, gridSize);
+
   const handleLayerTransformChange = (
     field: 'x' | 'y' | 'scale' | 'rotation',
     rawValue: string,
@@ -579,9 +586,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         }
         const transform = { ...layer.transform };
         if (field === 'x') {
-          transform.position = { ...transform.position, x: value };
+          transform.position = { ...transform.position, x: snapCoordinate(value) };
         } else if (field === 'y') {
-          transform.position = { ...transform.position, y: value };
+          transform.position = { ...transform.position, y: snapCoordinate(value) };
         } else if (field === 'scale') {
           const magnitude = Math.max(0.01, value / 100);
           // 左右反転（scale.x が負）の状態を保つため、拡大率編集では符号を維持する。
@@ -675,7 +682,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       'アンカー追加',
       addAnchor(selectedAsset, {
         role: newAnchorRole,
-        position: { x: Math.round(worldPoint.x), y: Math.round(worldPoint.y) },
+        position: {
+          x: snapCoordinate(Math.round(worldPoint.x)),
+          y: snapCoordinate(Math.round(worldPoint.y)),
+        },
       }),
     );
   };
@@ -815,6 +825,14 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 onCropCommit={handleCropCommit}
                 onEraseCommit={handleEraseCommit}
                 showColliders={showColliders}
+                gridEnabled={gridEnabled}
+                gridSize={gridSize}
+                gridSizeMode={gridSizeMode}
+                snapEnabled={snapEnabled}
+                onGridEnabledChange={setGridEnabled}
+                onGridSizeChange={setGridSize}
+                onGridSizeModeChange={setGridSizeMode}
+                onSnapEnabledChange={setSnapEnabled}
                 onAddAnchor={handleAddAnchor}
               />
               {statusMessages}
@@ -1155,6 +1173,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               newAnchorRole={newAnchorRole}
               onNewAnchorRoleChange={setNewAnchorRole}
               onToggleShowColliders={() => setShowColliders((v) => !v)}
+              snapEnabled={snapEnabled}
+              gridSize={gridSize}
               onCommit={commitPanelChange}
               onLiveChange={applyAssetSnapshot}
               onBeginFieldEdit={beginLayerEdit}

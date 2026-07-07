@@ -14,6 +14,7 @@ import {
   type ColliderPurpose,
 } from '../../core/model';
 import { COLLIDER_COLORS } from '../../renderers/canvas2d/render';
+import { applyEditSnap } from './snap';
 
 /** 判定用途に対応するキャンバス表示色を返す（カラースワッチ・凡例で共用）。 */
 function purposeColor(purpose: ColliderPurpose): string {
@@ -26,6 +27,9 @@ interface GameDataPanelProps {
   newAnchorRole: AnchorRole;
   onNewAnchorRoleChange: (role: AnchorRole) => void;
   onToggleShowColliders: () => void;
+  /** スナップは UI 操作補助で、保存座標の px 単位の意味は変えない。 */
+  snapEnabled: boolean;
+  gridSize: number;
   /** 履歴に積む変更（ボタン・セレクト操作）。 */
   onCommit: (label: string, next: Asset) => void;
   /** 数値・文字入力の途中変更（履歴はフォーカス確定側で積む）。 */
@@ -49,12 +53,18 @@ export function GameDataPanel({
   newAnchorRole,
   onNewAnchorRoleChange,
   onToggleShowColliders,
+  snapEnabled,
+  gridSize,
   onCommit,
   onLiveChange,
   onBeginFieldEdit,
   onCommitFieldEdit,
 }: GameDataPanelProps) {
   const numberValue = (raw: string): number => Number(raw) || 0;
+  const snappedNumberValue = (raw: string): number => {
+    const value = numberValue(raw);
+    return applyEditSnap(value, snapEnabled, gridSize);
+  };
 
   return (
     <div className="gamedata-panel">
@@ -69,7 +79,7 @@ export function GameDataPanel({
             onBlur={onCommitFieldEdit}
             onChange={(event) =>
               onLiveChange(
-                setOrigin(asset, { x: numberValue(event.target.value), y: asset.origin.y }),
+                setOrigin(asset, { x: snappedNumberValue(event.target.value), y: asset.origin.y }),
               )
             }
           />
@@ -83,7 +93,7 @@ export function GameDataPanel({
             onBlur={onCommitFieldEdit}
             onChange={(event) =>
               onLiveChange(
-                setOrigin(asset, { x: asset.origin.x, y: numberValue(event.target.value) }),
+                setOrigin(asset, { x: asset.origin.x, y: snappedNumberValue(event.target.value) }),
               )
             }
           />
@@ -168,7 +178,10 @@ export function GameDataPanel({
                     onChange={(event) =>
                       onLiveChange(
                         updateAnchor(asset, anchor.id, {
-                          position: { x: numberValue(event.target.value), y: anchor.position.y },
+                          position: {
+                            x: snappedNumberValue(event.target.value),
+                            y: anchor.position.y,
+                          },
                         }),
                       )
                     }
@@ -184,7 +197,10 @@ export function GameDataPanel({
                     onChange={(event) =>
                       onLiveChange(
                         updateAnchor(asset, anchor.id, {
-                          position: { x: anchor.position.x, y: numberValue(event.target.value) },
+                          position: {
+                            x: anchor.position.x,
+                            y: snappedNumberValue(event.target.value),
+                          },
                         }),
                       )
                     }
@@ -285,7 +301,7 @@ export function GameDataPanel({
                       onChange={(event) =>
                         onLiveChange(
                           updateCollider(asset, collider.id, {
-                            rect: { x: numberValue(event.target.value) },
+                            rect: { x: snappedNumberValue(event.target.value) },
                           }),
                         )
                       }
@@ -301,7 +317,7 @@ export function GameDataPanel({
                       onChange={(event) =>
                         onLiveChange(
                           updateCollider(asset, collider.id, {
-                            rect: { y: numberValue(event.target.value) },
+                            rect: { y: snappedNumberValue(event.target.value) },
                           }),
                         )
                       }
@@ -354,7 +370,7 @@ export function GameDataPanel({
                       onChange={(event) =>
                         onLiveChange(
                           updateCollider(asset, collider.id, {
-                            circle: { x: numberValue(event.target.value) },
+                            circle: { x: snappedNumberValue(event.target.value) },
                           }),
                         )
                       }
@@ -370,7 +386,7 @@ export function GameDataPanel({
                       onChange={(event) =>
                         onLiveChange(
                           updateCollider(asset, collider.id, {
-                            circle: { y: numberValue(event.target.value) },
+                            circle: { y: snappedNumberValue(event.target.value) },
                           }),
                         )
                       }
