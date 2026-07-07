@@ -1,4 +1,9 @@
 import type { Layer, Size } from '../../core/model';
+import {
+  colliderLineDash,
+  colliderPurposeColor,
+  isSelectedCollider,
+} from '../../features/editor/colliderDisplay';
 import { layerScreenCorners, worldToScreen, type ViewTransform, type Viewport } from './view';
 
 export interface RenderLayer {
@@ -180,13 +185,6 @@ const ORIGIN_COLOR = '#1f9d3a';
 const ANCHOR_COLOR = '#ff8800';
 
 /** 判定用途ごとの表示色。色だけに頼らないよう用途名も併記する。 */
-export const COLLIDER_COLORS: Record<string, string> = {
-  body: '#e63946',
-  attack: '#ff9f1c',
-  pickup: '#2ec4b6',
-  sensor: '#8338ec',
-  custom: '#6c757d',
-};
 
 export interface GameOverlayOptions {
   view: ViewTransform;
@@ -195,6 +193,8 @@ export interface GameOverlayOptions {
   colliders: Collider[];
   /** 判定の一括表示（要件 11.6「判定だけを表示・非表示にできる」）。 */
   showColliders: boolean;
+  /** パネルで選択中の判定。保存形式には含めない UI 状態。 */
+  selectedColliderId: string | null;
 }
 
 function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: number): void {
@@ -208,28 +208,48 @@ function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: nu
 
 /** 原点・アンカー・当たり判定を screen 座標で描く。ズームに依存しない見た目にする。 */
 export function drawGameOverlays(ctx: CanvasRenderingContext2D, options: GameOverlayOptions): void {
-  const { view, origin, anchors, colliders, showColliders } = options;
+  const { view, origin, anchors, colliders, showColliders, selectedColliderId } = options;
 
   if (showColliders) {
     for (const collider of colliders) {
       if (!collider.visible) {
         continue;
       }
-      const color = COLLIDER_COLORS[collider.purpose] ?? COLLIDER_COLORS.custom;
+      const color = colliderPurposeColor(collider.purpose);
+      const selected = isSelectedCollider(collider.id, selectedColliderId);
       ctx.save();
       ctx.strokeStyle = color;
       ctx.fillStyle = `${color}26`; // 15% 程度の透明塗り
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = selected ? 3 : 1.5;
+      ctx.setLineDash(colliderLineDash(collider.purpose));
       if (collider.shape === 'rect') {
         const topLeft = worldToScreen(view, { x: collider.rect.x, y: collider.rect.y });
         const width = collider.rect.width * view.scale;
         const height = collider.rect.height * view.scale;
+        if (selected) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+          ctx.lineWidth = 5;
+          ctx.setLineDash([]);
+          ctx.strokeRect(topLeft.x - 2, topLeft.y - 2, width + 4, height + 4);
+          ctx.restore();
+        }
         ctx.fillRect(topLeft.x, topLeft.y, width, height);
         ctx.strokeRect(topLeft.x, topLeft.y, width, height);
         drawLabel(ctx, collider.purpose, topLeft.x + 2, topLeft.y + 11);
       } else {
         const center = worldToScreen(view, { x: collider.circle.x, y: collider.circle.y });
         const radius = collider.circle.radius * view.scale;
+        if (selected) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+          ctx.lineWidth = 5;
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.arc(center.x, center.y, radius + 3, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
         ctx.beginPath();
         ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
         ctx.fill();

@@ -878,3 +878,21 @@
     min-height: 44px;
   }
 }
+
+.gamedata-row.selected {
+  border-color: #3a86ff;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #3a86ff 35%, transparent);
+  background: color-mix(in srgb, #3a86ff 8%, Canvas);
+}
+
+.gamedata-select-button[aria-pressed='true'] {
+  font-weight: 700;
+}
+
+.gamedata-collider-swatch.sensor {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.9) 0 2px,
+    transparent 2px 4px
+  );
+}

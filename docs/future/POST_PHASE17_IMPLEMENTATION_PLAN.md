@@ -423,3 +423,11 @@ CI が落ちている PR は ready にしない。
 まずは Phase 18 で整合を取り、その後に 2D 制作体験を少しずつ良くする。3D 対応は、生成 AI ではなく GLB / glTF の読み込みと検品から始める。
 
 `claude-fable-5` が使えない場合は、1 Phase をさらに小さな PR に分ける。
+
+#### Phase 19-C 実装済み範囲（2026-07）
+
+- main から作り直した新規スコープとして、判定の表示・選択・凡例・GameDataPanel と Canvas の選択同期までを実装した。
+- body / attack / pickup / sensor / custom の用途色を凡例・一覧スワッチ・キャンバス表示で対応付け、sensor は破線と縞スワッチで色以外でも区別できるようにした。
+- 当たり判定一覧の選択ボタンは `判定「${collider.name}」を選択` の aria-label を持ち、表示切替ボタンの `判定「${collider.name}」の表示を切り替え` と accessible name が衝突しない。
+- 選択状態は UI state のみで、asset.json / .casproj / export ZIP / schema / version には含めない。
+- canvas drag、rect resize、circle radius のキャンバス操作、polygon collider、frame-specific collider、3D collider は今回の範囲外として残す。

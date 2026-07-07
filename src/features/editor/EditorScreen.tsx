@@ -114,6 +114,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [checkedLayerIds, setCheckedLayerIds] = useState<string[]>([]);
   const [showColliders, setShowColliders] = useState(true);
+  const [selectedColliderId, setSelectedColliderId] = useState<string | null>(null);
   const [gridEnabled, setGridEnabled] = useState(false);
   const [gridSize, setGridSize] = useState(16);
   const [gridSizeMode, setGridSizeMode] = useState<'8' | '16' | '32' | 'custom'>('16');
@@ -177,6 +178,15 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       ? applyFrameToAsset(selectedAsset, previewFrameId)
       : selectedAsset;
 
+  useEffect(() => {
+    if (
+      selectedColliderId &&
+      !selectedAsset?.colliders.some((collider) => collider.id === selectedColliderId)
+    ) {
+      setSelectedColliderId(null);
+    }
+  }, [selectedAsset, selectedColliderId]);
+
   /** アセットのスナップショットを適用して自動保存する（Undo / Redo からも使う）。 */
   const applyAssetSnapshot = useCallback(
     (snapshot: Asset) => {
@@ -227,6 +237,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setSelectedAnimationId(null);
     setPreviewFrameId(null);
     setIsPlaying(false);
+    setSelectedColliderId(null);
     playbackIndexRef.current = 0;
   }, [selectedAssetId]);
 
@@ -834,6 +845,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 onGridSizeModeChange={setGridSizeMode}
                 onSnapEnabledChange={setSnapEnabled}
                 onAddAnchor={handleAddAnchor}
+                selectedColliderId={selectedColliderId}
               />
               {statusMessages}
             </div>
@@ -1179,6 +1191,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               onLiveChange={applyAssetSnapshot}
               onBeginFieldEdit={beginLayerEdit}
               onCommitFieldEdit={commitLayerEdit}
+              selectedColliderId={selectedColliderId}
+              onSelectCollider={setSelectedColliderId}
             />
           ) : (
             <p className="editor-note">
