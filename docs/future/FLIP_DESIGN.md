@@ -7,7 +7,11 @@
 
 この文書は Phase 19「左右反転」の**設計方針を固定するため**のもの。
 
-実装状況（2026-07-06 更新）: **通常の左右反転（transform 反映）は実装済み**（`flipLayerHorizontal` / 「選択中レイヤー」パネルの「左右反転」ボタン / Unit・E2E 追加済み。schema 変更なし）。**「左右反転コピー」は未実装**で、着手前に人間確認と `claude-opus-4-8` 設計レビューを挟む。
+実装状況（2026-07-07 更新）:
+
+- **通常の左右反転（transform 反映）は実装済み**（`flipLayerHorizontal` / 「選択中レイヤー」パネルの「左右反転」ボタン / Unit・E2E。schema 変更なし）。
+- **左右反転コピー（アセット全体→新規アセット生成）は実装済み**（`flipCopyAsset` / 「アセット」欄の「左右反転コピーを作成」ボタン / Unit・E2E。schema 変更なし）。反転軸は `asset.origin.x`。layers・anchors・colliders・parts・frames・animations を反転し、左右 role / 名前を入れ替え、新規 id を採番、画像 Blob を新アセットのキーへ複製する。
+- **未対応（将来スライス）**: リグ編集データ（`rigAnimations`・part の `bindPose` / `rotationLimit`）の反転。焼き込み済み `frames` は反転して保持されるため表示・書き出しは正しく反転される。リグのワールド鏡映（スケルトン数式）は焼き込み整合の検証を伴うため別 PR とし、着手前に `claude-opus-4-8` 設計レビューと人間確認を挟む。
 
 ---
 
@@ -43,14 +47,19 @@
 
 ---
 
-## 3. 左右反転コピーを作成（将来コマンド）
+## 3. 左右反転コピーを作成（実装済み: アセット全体→新規アセット生成）
 
 右向き・左向きで別々に編集したい場面（左右で見た目を変える、武器を持つ手を変える、左向きだけ影や服を直す、攻撃判定やアンカーを左右別に微調整する、ゲーム側へ左右別データとして渡す）のために、通常の反転とは別コマンドとして用意する。
 
-- 対象: レイヤー、パーツ、フレーム、アニメーション
-- キャラクター全体の反転軸は `asset.origin.x` を基本とする
+第 1 スライスとして「アセット全体を反転した新規アセットの生成」を実装した（`flipCopyAsset`）。
+
+- 対象: レイヤー、パーツ、フレーム、アニメーション（+ アンカー・当たり判定）
+- キャラクター全体の反転軸は `asset.origin.x`（`origin` は軸なので座標不変 = 足元位置がズレない）
 - アンカー・当たり判定も反転対象にする
-- `hand_left` / `hand_right` など左右 role の入れ替えを検討する
+- `hand_left` / `hand_right`、`arm_left` / `arm_right`、`leg_left` / `leg_right` の左右 role と、名前中の left/right トークンを入れ替える
+- 新規 id を採番し、相互参照（part.layerIds / part.parentId / frame.layerStates.layerId / animation.frameIds）を張り替える
+- 画像 Blob は `blobKeyFor(newAssetId, path)` へ複製する（texture の id / path は保持）
+- 元アセットは非破壊。`asset.json` schema / version は変えない
 - 右向き / 左向きで別々に調整する用途に使う
 
 ---
