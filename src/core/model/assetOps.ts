@@ -223,6 +223,8 @@ export function addCircleCollider(asset: Asset, purpose: ColliderPurpose = 'body
   return touch({ ...asset, colliders: [...asset.colliders, collider] });
 }
 
+export type ColliderMoveDirection = 'left' | 'right' | 'up' | 'down';
+
 export interface ColliderPatch {
   name?: string;
   purpose?: ColliderPurpose;
@@ -249,6 +251,35 @@ export function updateCollider(asset: Asset, colliderId: string, patch: Collider
       return { ...collider, ...base, circle: { ...collider.circle, ...patch.circle } };
     }),
   });
+}
+
+export function moveCollider(
+  asset: Asset,
+  colliderId: string,
+  direction: ColliderMoveDirection,
+  step: number,
+): Asset {
+  const amount = Number.isFinite(step) && step > 0 ? Math.round(step) : 1;
+  let changed = false;
+  const colliders = asset.colliders.map((collider) => {
+    if (collider.id !== colliderId || !collider.visible) {
+      return collider;
+    }
+    changed = true;
+    const dx = direction === 'left' ? -amount : direction === 'right' ? amount : 0;
+    const dy = direction === 'up' ? -amount : direction === 'down' ? amount : 0;
+    if (collider.shape === 'rect') {
+      return {
+        ...collider,
+        rect: { ...collider.rect, x: collider.rect.x + dx, y: collider.rect.y + dy },
+      };
+    }
+    return {
+      ...collider,
+      circle: { ...collider.circle, x: collider.circle.x + dx, y: collider.circle.y + dy },
+    };
+  });
+  return changed ? touch({ ...asset, colliders }) : asset;
 }
 
 export function removeCollider(asset: Asset, colliderId: string): Asset {

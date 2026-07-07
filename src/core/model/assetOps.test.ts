@@ -184,6 +184,54 @@ describe('原点、アンカー、当たり判定（Phase 8）', () => {
     expect(validateAsset(updated).valid).toBe(true);
   });
 
+  it('moveCollider は矩形の x / y だけを移動し、サイズは維持する', async () => {
+    const { moveCollider } = await import('./assetOps');
+    const movedRight = moveCollider(baseAsset, 'col_body', 'right', 16);
+    const rect = movedRight.colliders.find((c) => c.id === 'col_body')!;
+    expect(rect.shape).toBe('rect');
+    if (rect.shape === 'rect') {
+      expect(rect.rect.x).toBe(208);
+      expect(rect.rect.y).toBe(192);
+      expect(rect.rect.width).toBe(128);
+      expect(rect.rect.height).toBe(256);
+    }
+
+    const movedUp = moveCollider(movedRight, 'col_body', 'up', 1);
+    const movedUpRect = movedUp.colliders.find((c) => c.id === 'col_body')!;
+    if (movedUpRect.shape === 'rect') {
+      expect(movedUpRect.rect.x).toBe(208);
+      expect(movedUpRect.rect.y).toBe(191);
+      expect(movedUpRect.rect.width).toBe(128);
+      expect(movedUpRect.rect.height).toBe(256);
+    }
+  });
+
+  it('moveCollider は円の x / y だけを移動し、半径は維持する', async () => {
+    const { addCircleCollider, moveCollider } = await import('./assetOps');
+    const withCircle = addCircleCollider(baseAsset, 'body');
+    const circleId = withCircle.colliders.at(-1)!.id;
+    const moved = moveCollider(withCircle, circleId, 'left', 16);
+    const circle = moved.colliders.find((c) => c.id === circleId)!;
+    expect(circle.shape).toBe('circle');
+    if (circle.shape === 'circle') {
+      expect(circle.circle.x).toBe(Math.round(baseAsset.canvasSize.width / 2) - 16);
+      expect(circle.circle.y).toBe(Math.round(baseAsset.canvasSize.height / 2));
+      expect(circle.circle.radius).toBe(
+        Math.max(
+          1,
+          Math.round(Math.min(baseAsset.canvasSize.width, baseAsset.canvasSize.height) / 4),
+        ),
+      );
+    }
+  });
+
+  it('moveCollider は非表示または存在しない id では asset を壊さない', async () => {
+    const { moveCollider, updateCollider } = await import('./assetOps');
+    const hidden = updateCollider(baseAsset, 'col_body', { visible: false });
+    expect(moveCollider(hidden, 'col_body', 'right', 16)).toBe(hidden);
+    expect(moveCollider(baseAsset, 'missing', 'right', 16)).toBe(baseAsset);
+  });
+
   it('removeCollider で判定が消える', async () => {
     const { removeCollider } = await import('./assetOps');
     const removed = removeCollider(baseAsset, 'col_body');

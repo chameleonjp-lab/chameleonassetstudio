@@ -3,6 +3,7 @@ import {
   COLLIDER_PURPOSES,
   addCircleCollider,
   addRectCollider,
+  moveCollider,
   removeAnchor,
   removeCollider,
   resetOriginToBottomCenter,
@@ -69,6 +70,7 @@ export function GameDataPanel({
     const value = numberValue(raw);
     return applyEditSnap(value, snapEnabled, gridSize);
   };
+  const colliderMoveStep = snapEnabled && Number.isFinite(gridSize) && gridSize > 0 ? gridSize : 1;
 
   return (
     <div className="gamedata-panel">
@@ -286,6 +288,62 @@ export function GameDataPanel({
                     削除
                   </button>
                 </div>
+                {selected && (
+                  <div className="gamedata-buttons" aria-label={`判定「${collider.name}」の移動`}>
+                    <button
+                      type="button"
+                      aria-label={`判定「${collider.name}」を左へ移動`}
+                      disabled={!collider.visible}
+                      onClick={() =>
+                        onCommit(
+                          '判定を左へ移動',
+                          moveCollider(asset, collider.id, 'left', colliderMoveStep),
+                        )
+                      }
+                    >
+                      ←
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`判定「${collider.name}」を右へ移動`}
+                      disabled={!collider.visible}
+                      onClick={() =>
+                        onCommit(
+                          '判定を右へ移動',
+                          moveCollider(asset, collider.id, 'right', colliderMoveStep),
+                        )
+                      }
+                    >
+                      →
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`判定「${collider.name}」を上へ移動`}
+                      disabled={!collider.visible}
+                      onClick={() =>
+                        onCommit(
+                          '判定を上へ移動',
+                          moveCollider(asset, collider.id, 'up', colliderMoveStep),
+                        )
+                      }
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`判定「${collider.name}」を下へ移動`}
+                      disabled={!collider.visible}
+                      onClick={() =>
+                        onCommit(
+                          '判定を下へ移動',
+                          moveCollider(asset, collider.id, 'down', colliderMoveStep),
+                        )
+                      }
+                    >
+                      ↓
+                    </button>
+                  </div>
+                )}
                 <label className="editor-field">
                   用途
                   <select
