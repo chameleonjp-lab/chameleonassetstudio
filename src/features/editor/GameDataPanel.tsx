@@ -24,6 +24,8 @@ function purposeColor(purpose: ColliderPurpose): string {
 interface GameDataPanelProps {
   asset: Asset;
   showColliders: boolean;
+  selectedColliderId: string | null;
+  onSelectCollider: (colliderId: string | null) => void;
   newAnchorRole: AnchorRole;
   onNewAnchorRoleChange: (role: AnchorRole) => void;
   onToggleShowColliders: () => void;
@@ -50,6 +52,8 @@ const PURPOSE_LABELS: Record<ColliderPurpose, string> = {
 export function GameDataPanel({
   asset,
   showColliders,
+  selectedColliderId,
+  onSelectCollider,
   newAnchorRole,
   onNewAnchorRoleChange,
   onToggleShowColliders,
@@ -228,25 +232,39 @@ export function GameDataPanel({
         {COLLIDER_PURPOSES.map((purpose) => (
           <li key={purpose}>
             <span
-              className="gamedata-collider-swatch"
+              className={`gamedata-collider-swatch${purpose === 'sensor' ? ' sensor' : ''}`}
               style={{ backgroundColor: purposeColor(purpose) }}
               aria-hidden="true"
             />
             {PURPOSE_LABELS[purpose]}
+            {purpose === 'sensor' ? '（破線）' : ''}
           </li>
         ))}
       </ul>
       {asset.colliders.length > 0 && (
         <ul className="gamedata-list" aria-label="当たり判定一覧">
           {asset.colliders.map((collider) => (
-            <li key={collider.id} className="gamedata-row">
+            <li
+              key={collider.id}
+              className={`gamedata-row${collider.id === selectedColliderId ? ' selected' : ''}`}
+            >
               <div className="gamedata-row-header">
                 <span
-                  className="gamedata-collider-swatch"
+                  className={`gamedata-collider-swatch${collider.purpose === 'sensor' ? ' sensor' : ''}`}
                   style={{ backgroundColor: purposeColor(collider.purpose) }}
                   title={`${collider.purpose} の色`}
                 />
-                <span className="gamedata-shape">{collider.shape === 'rect' ? '矩形' : '円'}</span>
+                <button
+                  type="button"
+                  className="gamedata-select-collider"
+                  aria-pressed={collider.id === selectedColliderId}
+                  onClick={() => onSelectCollider(collider.id)}
+                >
+                  <span className="gamedata-shape">
+                    {collider.shape === 'rect' ? '矩形' : '円'}
+                  </span>
+                  <span>{collider.name}</span>
+                </button>
                 <button
                   type="button"
                   aria-label={`判定「${collider.name}」の表示を切り替え`}

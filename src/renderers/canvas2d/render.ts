@@ -1,4 +1,4 @@
-import type { Layer, Size } from '../../core/model';
+import type { Anchor, Collider, Layer, Size, Vec2 } from '../../core/model';
 import { layerScreenCorners, worldToScreen, type ViewTransform, type Viewport } from './view';
 
 export interface RenderLayer {
@@ -174,8 +174,6 @@ export function renderScene(ctx: CanvasRenderingContext2D, options: RenderSceneO
 
 // ---- ゲーム用情報のオーバーレイ（Phase 8） ----
 
-import type { Anchor, Collider, Vec2 } from '../../core/model';
-
 const ORIGIN_COLOR = '#1f9d3a';
 const ANCHOR_COLOR = '#ff8800';
 
@@ -195,6 +193,8 @@ export interface GameOverlayOptions {
   colliders: Collider[];
   /** 判定の一括表示（要件 11.6「判定だけを表示・非表示にできる」）。 */
   showColliders: boolean;
+  selectedColliderId?: string | null;
+  hoveredColliderId?: string | null;
 }
 
 function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: number): void {
@@ -206,9 +206,46 @@ function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: nu
   ctx.fillText(text, x, y);
 }
 
+function drawHandle(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  ctx.save();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = '#111827';
+  ctx.lineWidth = 1;
+  ctx.fillRect(x - 4, y - 4, 8, 8);
+  ctx.strokeRect(x - 4, y - 4, 8, 8);
+  ctx.restore();
+}
+
+function drawRectHandles(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): void {
+  for (const point of [
+    [x, y],
+    [x + w / 2, y],
+    [x + w, y],
+    [x, y + h / 2],
+    [x + w, y + h / 2],
+    [x, y + h],
+    [x + w / 2, y + h],
+    [x + w, y + h],
+  ] as const)
+    drawHandle(ctx, point[0], point[1]);
+}
+
+function drawCircleHandles(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void {
+  drawHandle(ctx, x, y);
+  drawHandle(ctx, x + r, y);
+}
+
 /** 原点・アンカー・当たり判定を screen 座標で描く。ズームに依存しない見た目にする。 */
 export function drawGameOverlays(ctx: CanvasRenderingContext2D, options: GameOverlayOptions): void {
-  const { view, origin, anchors, colliders, showColliders } = options;
+  const { view, origin, anchors, colliders, showColliders, selectedColliderId, hoveredColliderId } =
+    options;
 
   if (showColliders) {
     for (const collider of colliders) {
@@ -219,7 +256,10 @@ export function drawGameOverlays(ctx: CanvasRenderingContext2D, options: GameOve
       ctx.save();
       ctx.strokeStyle = color;
       ctx.fillStyle = `${color}26`; // 15% 程度の透明塗り
-      ctx.lineWidth = 1.5;
+      const selected = collider.id === selectedColliderId;
+      const hovered = collider.id === hoveredColliderId;
+      ctx.lineWidth = selected ? 3 : hovered ? 2.25 : 1.5;
+      ctx.setLineDash(collider.purpose === 'sensor' ? [6, 4] : []);
       if (collider.shape === 'rect') {
         const topLeft = worldToScreen(view, { x: collider.rect.x, y: collider.rect.y });
         const width = collider.rect.width * view.scale;
@@ -227,6 +267,7 @@ export function drawGameOverlays(ctx: CanvasRenderingContext2D, options: GameOve
         ctx.fillRect(topLeft.x, topLeft.y, width, height);
         ctx.strokeRect(topLeft.x, topLeft.y, width, height);
         drawLabel(ctx, collider.purpose, topLeft.x + 2, topLeft.y + 11);
+        if (selected) drawRectHandles(ctx, topLeft.x, topLeft.y, width, height);
       } else {
         const center = worldToScreen(view, { x: collider.circle.x, y: collider.circle.y });
         const radius = collider.circle.radius * view.scale;
@@ -235,6 +276,7 @@ export function drawGameOverlays(ctx: CanvasRenderingContext2D, options: GameOve
         ctx.fill();
         ctx.stroke();
         drawLabel(ctx, collider.purpose, center.x - radius + 2, center.y - radius + 11);
+        if (selected) drawCircleHandles(ctx, center.x, center.y, radius);
       }
       ctx.restore();
     }
