@@ -25,6 +25,7 @@ import {
   addAnchor,
   addGuideLayer,
   applyFrameToAsset,
+  flipCopyAsset,
   flipLayerHorizontal,
   renameLayer,
   type AnchorRole,
@@ -489,6 +490,48 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     }
   };
 
+  /** 選択アセットを左右反転した新しいアセットを生成する（Phase 19-B, docs/future/FLIP_DESIGN.md）。 */
+  const handleFlipCopyAsset = async () => {
+    if (!project || !selectedAsset) {
+      return;
+    }
+    setEditorError(null);
+    setImporting(true);
+    try {
+      const flipped = flipCopyAsset(selectedAsset);
+      // 画像 Blob は asset id 単位で保存されるため、新アセットのキーへ複製する。
+      for (const texture of selectedAsset.textures) {
+        const blob = await loadBlob(blobKeyFor(selectedAsset.id, texture.path));
+        if (blob) {
+          await saveBlob(project.id, blobKeyFor(flipped.id, texture.path), blob);
+        }
+      }
+      await saveAsset(project.id, flipped);
+      const nextProject: Project = {
+        ...project,
+        assets: [
+          ...project.assets,
+          {
+            id: flipped.id,
+            name: flipped.name,
+            displayName: flipped.displayName,
+            assetType: flipped.assetType,
+          },
+        ],
+        updatedAt: new Date().toISOString(),
+      };
+      await saveProject(nextProject);
+      setProject(nextProject);
+      setAssets((prev) => [...prev, flipped]);
+      setSelectedAssetId(flipped.id);
+      setSelectedLayerId(null);
+    } catch (error) {
+      setEditorError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const handleFileInput = (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
@@ -818,7 +861,17 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
           <h3 className="editor-subheading">アセット</h3>
           {selectedAsset ? (
-            <AssetTypePanel asset={selectedAsset} onCommit={commitPanelChange} />
+            <>
+              <AssetTypePanel asset={selectedAsset} onCommit={commitPanelChange} />
+              <button
+                type="button"
+                className="asset-flip-copy-button"
+                disabled={importing}
+                onClick={() => void handleFlipCopyAsset()}
+              >
+                左右反転コピーを作成
+              </button>
+            </>
           ) : (
             <p className="editor-note">アセットを選ぶと種別を設定できます。</p>
           )}
