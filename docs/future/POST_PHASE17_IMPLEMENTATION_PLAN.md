@@ -430,4 +430,5 @@ CI が落ちている PR は ready にしない。
 - body / attack / pickup / sensor / custom の用途色を凡例・一覧スワッチ・キャンバス表示で対応付け、sensor は破線と縞スワッチで色以外でも区別できるようにした。
 - 当たり判定一覧の選択ボタンは `判定「${collider.name}」を選択` の aria-label を持ち、表示切替ボタンの `判定「${collider.name}」の表示を切り替え` と accessible name が衝突しない。
 - 選択状態は UI state のみで、asset.json / .casproj / export ZIP / schema / version には含めない。
-- canvas drag、rect resize、circle radius のキャンバス操作、polygon collider、frame-specific collider、3D collider は今回の範囲外として残す。
+- canvas 上で visible な rect / circle 判定をドラッグ移動できるようにした。rect は `rect.x` / `rect.y` のみ、circle は `circle.x` / `circle.y` のみを更新し、スナップ ON では grid size に丸める。pointer up の確定は React state だけに依存せず、pointer move 中の最新 draft asset を ref に保持して commit する。
+- rect resize、circle radius 変更、polygon collider、frame-specific collider、3D collider は今回の範囲外として残す。

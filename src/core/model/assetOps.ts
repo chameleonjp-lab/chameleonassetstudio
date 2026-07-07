@@ -258,6 +258,92 @@ export function removeCollider(asset: Asset, colliderId: string): Asset {
   });
 }
 
+export interface MoveColliderOptions {
+  snapEnabled?: boolean;
+  gridSize?: number;
+}
+
+function snapColliderCoordinate(value: number, options: MoveColliderOptions): number {
+  if (!options.snapEnabled) {
+    return value;
+  }
+  const gridSize = options.gridSize ?? 1;
+  if (!Number.isFinite(gridSize) || gridSize <= 0) {
+    return Math.round(value);
+  }
+  return Math.round(value / gridSize) * gridSize;
+}
+
+/**
+ * 当たり判定を移動する。rect は x / y のみ、circle は x / y のみを変更し、
+ * width / height / radius は維持する。非表示または存在しない id は変更しない。
+ */
+export function moveCollider(
+  asset: Asset,
+  colliderId: string,
+  delta: Vec2,
+  options: MoveColliderOptions = {},
+): Asset {
+  const collider = asset.colliders.find((entry) => entry.id === colliderId);
+  if (!collider || !collider.visible) {
+    return asset;
+  }
+  return touch({
+    ...asset,
+    colliders: asset.colliders.map((entry) => {
+      if (entry.id !== colliderId) {
+        return entry;
+      }
+      if (entry.shape === 'rect') {
+        return {
+          ...entry,
+          rect: {
+            ...entry.rect,
+            x: snapColliderCoordinate(entry.rect.x + delta.x, options),
+            y: snapColliderCoordinate(entry.rect.y + delta.y, options),
+          },
+        };
+      }
+      return {
+        ...entry,
+        circle: {
+          ...entry.circle,
+          x: snapColliderCoordinate(entry.circle.x + delta.x, options),
+          y: snapColliderCoordinate(entry.circle.y + delta.y, options),
+        },
+      };
+    }),
+  });
+}
+
+export function hitTestCollider(collider: Collider, point: Vec2): boolean {
+  if (!collider.visible) {
+    return false;
+  }
+  if (collider.shape === 'rect') {
+    return (
+      point.x >= collider.rect.x &&
+      point.x <= collider.rect.x + collider.rect.width &&
+      point.y >= collider.rect.y &&
+      point.y <= collider.rect.y + collider.rect.height
+    );
+  }
+  return (
+    Math.hypot(point.x - collider.circle.x, point.y - collider.circle.y) <= collider.circle.radius
+  );
+}
+
+/** 前面相当の末尾から visible な rect / circle 判定をヒットテストする。 */
+export function hitTestColliders(asset: Asset, point: Vec2): string | null {
+  for (let index = asset.colliders.length - 1; index >= 0; index -= 1) {
+    const collider = asset.colliders[index];
+    if (hitTestCollider(collider, point)) {
+      return collider.id;
+    }
+  }
+  return null;
+}
+
 // ---- フレームとアニメーション（Phase 9） ----
 
 /** 現在のレイヤー状態をフレームとして取り込む。 */

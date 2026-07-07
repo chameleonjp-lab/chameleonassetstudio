@@ -6,6 +6,7 @@ import {
   addGuideLayer,
   createPart,
   flipLayerHorizontal,
+  moveCollider,
   moveLayerOrder,
   removeLayer,
   removePart,
@@ -182,6 +183,61 @@ describe('原点、アンカー、当たり判定（Phase 8）', () => {
       expect(collider.rect.x).toBe(192); // 他のフィールドは維持
     }
     expect(validateAsset(updated).valid).toBe(true);
+  });
+
+  it('moveCollider は rect/circle の座標だけを移動し、snap と対象外条件を守る', () => {
+    const withCircle: Asset = {
+      ...baseAsset,
+      colliders: [
+        ...baseAsset.colliders,
+        {
+          id: 'col_circle_test',
+          name: 'circle',
+          purpose: 'body',
+          shape: 'circle',
+          visible: true,
+          circle: { x: 10, y: 12, radius: 7 },
+        },
+        {
+          id: 'col_hidden_test',
+          name: 'hidden',
+          purpose: 'sensor',
+          shape: 'rect',
+          visible: false,
+          rect: { x: 1, y: 2, width: 3, height: 4 },
+        },
+      ],
+    };
+
+    const movedRect = moveCollider(withCircle, 'col_body', { x: 5, y: 7 });
+    const rect = movedRect.colliders.find((c) => c.id === 'col_body')!;
+    expect(rect.shape).toBe('rect');
+    if (rect.shape === 'rect') {
+      expect(rect.rect.x).toBe(197);
+      expect(rect.rect.y).toBe(199);
+      expect(rect.rect.width).toBe(128);
+      expect(rect.rect.height).toBe(256);
+    }
+
+    const movedCircle = moveCollider(
+      withCircle,
+      'col_circle_test',
+      { x: 9, y: 13 },
+      {
+        snapEnabled: true,
+        gridSize: 16,
+      },
+    );
+    const circle = movedCircle.colliders.find((c) => c.id === 'col_circle_test')!;
+    expect(circle.shape).toBe('circle');
+    if (circle.shape === 'circle') {
+      expect(circle.circle.x).toBe(16);
+      expect(circle.circle.y).toBe(32);
+      expect(circle.circle.radius).toBe(7);
+    }
+
+    expect(moveCollider(withCircle, 'missing', { x: 10, y: 10 })).toBe(withCircle);
+    expect(moveCollider(withCircle, 'col_hidden_test', { x: 10, y: 10 })).toBe(withCircle);
   });
 
   it('removeCollider で判定が消える', async () => {

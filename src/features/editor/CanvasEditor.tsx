@@ -2,7 +2,14 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { decodeImageSource, type DecodedImageSource } from '../../core/images/decodeImageSource';
 import { blobKeyFor } from '../../core/images/importImage';
 import type { Rect } from '../../core/images/operations';
-import type { Asset, Layer, Size, Vec2 } from '../../core/model';
+import {
+  hitTestColliders,
+  moveCollider,
+  type Asset,
+  type Layer,
+  type Size,
+  type Vec2,
+} from '../../core/model';
 import { loadBlob } from '../../core/storage';
 import {
   drawGameOverlays,
@@ -56,15 +63,17 @@ interface CanvasEditorProps {
   /** アンカーツールで空き場所をクリックしたときの追加。point は world 座標。 */
   onAddAnchor: (point: Vec2) => void;
   selectedColliderId: string | null;
+  onSelectCollider: (colliderId: string | null) => void;
 }
 
 interface DragState {
-  mode: 'move' | 'pan' | 'pinch' | 'crop' | 'erase' | 'origin' | 'anchor-move';
+  mode: 'move' | 'pan' | 'pinch' | 'crop' | 'erase' | 'origin' | 'anchor-move' | 'collider-move';
   pointerId: number;
   startScreen: Vec2;
   startView: ViewTransform;
   layerId?: string;
   anchorId?: string;
+  colliderId?: string;
   before?: Asset;
   secondPointerId?: number;
   startDistance?: number;
@@ -120,6 +129,7 @@ export function CanvasEditor({
   onSnapEnabledChange,
   onAddAnchor,
   selectedColliderId,
+  onSelectCollider,
 }: CanvasEditorProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -130,11 +140,17 @@ export function CanvasEditor({
   const [cropRectScreen, setCropRectScreen] = useState<{ start: Vec2; end: Vec2 } | null>(null);
   const [eraserStrokeScreen, setEraserStrokeScreen] = useState<Vec2[] | null>(null);
   const dragRef = useRef<DragState | null>(null);
+  const draftAssetRef = useRef<Asset | null>(null);
   const cropTexturePointsRef = useRef<{ start: Vec2; end: Vec2 } | null>(null);
   const eraseTexturePointsRef = useRef<Vec2[]>([]);
   const pointersRef = useRef<Map<number, Vec2>>(new Map());
   const fittedAssetRef = useRef<string | null>(null);
   const bitmapsRef = useRef<Map<string, DecodedImageSource>>(new Map());
+
+  const updateDraftAsset = (next: Asset | null) => {
+    draftAssetRef.current = next;
+    setDraftAsset(next);
+  };
 
   const displayAsset = draftAsset ?? asset;
   const selectedLayer: Layer | null =
@@ -357,7 +373,7 @@ export function CanvasEditor({
         startView: view,
         startDistance: Math.hypot(second[1].x - first[1].x, second[1].y - first[1].y),
       };
-      setDraftAsset(null);
+      updateDraftAsset(null);
       setCropRectScreen(null);
       setEraserStrokeScreen(null);
       return;
@@ -382,7 +398,7 @@ export function CanvasEditor({
         startView: view,
         before: asset,
       };
-      setDraftAsset({
+      updateDraftAsset({
         ...asset,
         updatedAt: new Date().toISOString(),
         origin: { x: snapCoordinate(world.x), y: snapCoordinate(world.y) },
@@ -455,6 +471,21 @@ export function CanvasEditor({
 
     // select ツール
     const worldPoint = screenToWorld(view, point);
+    if (showColliders) {
+      const colliderId = hitTestColliders(asset, worldPoint);
+      if (colliderId) {
+        onSelectCollider(colliderId);
+        dragRef.current = {
+          mode: 'collider-move',
+          pointerId: event.pointerId,
+          startScreen: point,
+          startView: view,
+          colliderId,
+          before: asset,
+        };
+        return;
+      }
+    }
     const targets = asset.layers.map((layer) => ({
       layer,
       textureSize: textureSizeFor(asset, layer.textureId) ?? { width: 0, height: 0 },
@@ -540,7 +571,7 @@ export function CanvasEditor({
 
     if (drag.mode === 'origin' && drag.before) {
       const world = screenToWorld(view, point);
-      setDraftAsset({
+      updateDraftAsset({
         ...drag.before,
         updatedAt: new Date().toISOString(),
         origin: { x: snap(world.x), y: snap(world.y) },
@@ -550,7 +581,7 @@ export function CanvasEditor({
 
     if (drag.mode === 'anchor-move' && drag.before && drag.anchorId) {
       const world = screenToWorld(view, point);
-      setDraftAsset({
+      updateDraftAsset({
         ...drag.before,
         updatedAt: new Date().toISOString(),
         anchors: drag.before.anchors.map((anchor) =>
@@ -562,15 +593,32 @@ export function CanvasEditor({
       return;
     }
 
+    if (drag.mode === 'collider-move' && drag.colliderId && drag.before) {
+      const worldDeltaX = deltaX / drag.startView.scale;
+      const worldDeltaY = deltaY / drag.startView.scale;
+      updateDraftAsset(
+        moveCollider(
+          drag.before,
+          drag.colliderId,
+          { x: worldDeltaX, y: worldDeltaY },
+          {
+            snapEnabled,
+            gridSize,
+          },
+        ),
+      );
+      return;
+    }
+
     if (drag.mode === 'move' && drag.layerId && drag.before) {
       const worldDeltaX = deltaX / drag.startView.scale;
       const worldDeltaY = deltaY / drag.startView.scale;
       const next = moveLayer(drag.before, drag.layerId, worldDeltaX, worldDeltaY);
       if (!snapEnabled) {
-        setDraftAsset(next);
+        updateDraftAsset(next);
         return;
       }
-      setDraftAsset({
+      updateDraftAsset({
         ...next,
         layers: next.layers.map((layer) =>
           layer.id === drag.layerId
@@ -592,6 +640,9 @@ export function CanvasEditor({
 
   const endPointer = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     pointersRef.current.delete(event.pointerId);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
     const drag = dragRef.current;
     if (!drag) {
       return;
@@ -634,29 +685,37 @@ export function CanvasEditor({
       return;
     }
 
-    if (drag.mode === 'origin' && drag.before && draftAsset) {
+    const latestDraftAsset = draftAssetRef.current;
+
+    if (drag.mode === 'origin' && drag.before && latestDraftAsset) {
       if (
-        draftAsset.origin.x !== drag.before.origin.x ||
-        draftAsset.origin.y !== drag.before.origin.y
+        latestDraftAsset.origin.x !== drag.before.origin.x ||
+        latestDraftAsset.origin.y !== drag.before.origin.y
       ) {
-        onCommitAsset('原点変更', drag.before, draftAsset);
+        onCommitAsset('原点変更', drag.before, latestDraftAsset);
       }
-      setDraftAsset(null);
+      updateDraftAsset(null);
       dragRef.current = null;
       return;
     }
 
-    if (drag.mode === 'anchor-move' && drag.before && draftAsset) {
-      if (JSON.stringify(draftAsset.anchors) !== JSON.stringify(drag.before.anchors)) {
-        onCommitAsset('アンカー移動', drag.before, draftAsset);
+    if (drag.mode === 'anchor-move' && drag.before && latestDraftAsset) {
+      if (JSON.stringify(latestDraftAsset.anchors) !== JSON.stringify(drag.before.anchors)) {
+        onCommitAsset('アンカー移動', drag.before, latestDraftAsset);
       }
-      setDraftAsset(null);
+      updateDraftAsset(null);
       dragRef.current = null;
       return;
     }
 
-    if (drag.mode === 'move' && drag.before && draftAsset) {
-      const moved = draftAsset.layers.find((layer) => layer.id === drag.layerId);
+    if (drag.mode === 'collider-move' && drag.before && latestDraftAsset) {
+      if (JSON.stringify(latestDraftAsset.colliders) !== JSON.stringify(drag.before.colliders)) {
+        onCommitAsset('判定移動', drag.before, latestDraftAsset);
+      }
+    }
+
+    if (drag.mode === 'move' && drag.before && latestDraftAsset) {
+      const moved = latestDraftAsset.layers.find((layer) => layer.id === drag.layerId);
       const original = drag.before.layers.find((layer) => layer.id === drag.layerId);
       if (
         moved &&
@@ -664,10 +723,10 @@ export function CanvasEditor({
         (moved.transform.position.x !== original.transform.position.x ||
           moved.transform.position.y !== original.transform.position.y)
       ) {
-        onCommitAsset('レイヤー移動', drag.before, draftAsset);
+        onCommitAsset('レイヤー移動', drag.before, latestDraftAsset);
       }
     }
-    setDraftAsset(null);
+    updateDraftAsset(null);
     dragRef.current = null;
   };
 
