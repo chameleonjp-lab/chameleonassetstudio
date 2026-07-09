@@ -195,6 +195,46 @@ export interface GameOverlayOptions {
   showColliders: boolean;
   /** パネルで選択中の判定。保存形式には含めない UI 状態。 */
   selectedColliderId: string | null;
+  /** 判定ツール使用中のみ true。選択中判定の操作ハンドルを描く。 */
+  showColliderHandles?: boolean;
+}
+
+const COLLIDER_HANDLE_SIZE = 8;
+
+/** 判定の操作ハンドル 1 個を描く（画面座標基準の固定サイズ。view.scale に依存しない）。 */
+function drawColliderHandle(ctx: CanvasRenderingContext2D, point: Vec2, color: string): void {
+  const half = COLLIDER_HANDLE_SIZE / 2;
+  ctx.save();
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.fillRect(point.x - half, point.y - half, COLLIDER_HANDLE_SIZE, COLLIDER_HANDLE_SIZE);
+  ctx.strokeRect(point.x - half, point.y - half, COLLIDER_HANDLE_SIZE, COLLIDER_HANDLE_SIZE);
+  ctx.restore();
+}
+
+/** 選択中判定のハンドル（rect は四隅、circle は半径ハンドル）を描く。 */
+function drawColliderHandles(
+  ctx: CanvasRenderingContext2D,
+  view: ViewTransform,
+  collider: Collider,
+): void {
+  const color = colliderPurposeColor(collider.purpose);
+  if (collider.shape === 'rect') {
+    const { x, y, width, height } = collider.rect;
+    const corners: Vec2[] = [
+      { x, y },
+      { x: x + width, y },
+      { x, y: y + height },
+      { x: x + width, y: y + height },
+    ];
+    for (const corner of corners) {
+      drawColliderHandle(ctx, worldToScreen(view, corner), color);
+    }
+    return;
+  }
+  const { x, y, radius } = collider.circle;
+  drawColliderHandle(ctx, worldToScreen(view, { x: x + radius, y }), color);
 }
 
 function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: number): void {
@@ -208,7 +248,15 @@ function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: nu
 
 /** 原点・アンカー・当たり判定を screen 座標で描く。ズームに依存しない見た目にする。 */
 export function drawGameOverlays(ctx: CanvasRenderingContext2D, options: GameOverlayOptions): void {
-  const { view, origin, anchors, colliders, showColliders, selectedColliderId } = options;
+  const {
+    view,
+    origin,
+    anchors,
+    colliders,
+    showColliders,
+    selectedColliderId,
+    showColliderHandles,
+  } = options;
 
   if (showColliders) {
     for (const collider of colliders) {
@@ -257,6 +305,11 @@ export function drawGameOverlays(ctx: CanvasRenderingContext2D, options: GameOve
         drawLabel(ctx, collider.purpose, center.x - radius + 2, center.y - radius + 11);
       }
       ctx.restore();
+
+      // 判定ツール使用中は、選択中の判定にだけ操作ハンドルを描く
+      if (showColliderHandles && selected) {
+        drawColliderHandles(ctx, view, collider);
+      }
     }
   }
 

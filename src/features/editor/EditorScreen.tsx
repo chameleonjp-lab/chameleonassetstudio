@@ -740,6 +740,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     { tool: 'picker', label: 'スポイト' },
     { tool: 'origin', label: '原点' },
     { tool: 'anchor', label: 'アンカー' },
+    { tool: 'collider', label: '判定' },
   ];
 
   const statusMessages = (
@@ -846,6 +847,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 onSnapEnabledChange={setSnapEnabled}
                 onAddAnchor={handleAddAnchor}
                 selectedColliderId={selectedColliderId}
+                onSelectCollider={setSelectedColliderId}
               />
               {statusMessages}
             </div>
