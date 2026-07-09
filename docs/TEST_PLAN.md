@@ -1,6 +1,6 @@
 # Chameleon Asset Studio テスト計画書
 
-最終更新日: 2026-07-04
+最終更新日: 2026-07-10
 対象バージョン: 0.1.0
 詳細な対象一覧の正本: `docs/implementation/TEST_AND_RELEASE.md`
 
@@ -15,7 +15,13 @@
 | E2E（Playwright） | `npm run e2e` | 実ブラウザ（Chromium）でのユーザーフロー検証 |
 | Lint / Format | `npm run lint` / `npm run format:check` | ESLint / Prettier |
 
-CI（GitHub Actions）は PR ごとに build-and-test（build / lint / format:check / unit）と e2e を実行する。ローカル e2e は `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` の指定が必要な環境がある。
+CI（GitHub Actions）は、最初に変更ファイルを分類する。
+
+- Markdown 文書だけ: 変更分類だけを実行し、build / unit / E2E は省略する。
+- コードまたは設定: build-and-test（build / lint / format:check / unit）を実行する。
+- `src/`、`e2e/`、ブラウザ表示、依存関係、Playwright、Vite、CI workflow: build-and-test に加えて E2E を実行する。
+
+Markdown の説明文は、コード用の自動整形と一致しないことだけを理由に失敗させない。ローカル E2E は `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` の指定が必要な環境がある。
 
 ## 2. Unit テストの主な対象
 
@@ -29,14 +35,23 @@ CI（GitHub Actions）は PR ごとに build-and-test（build / lint / format:ch
 
 プロジェクト管理、取り込み、キャンバス編集、画像編集、レイヤー / パーツ、原点・アンカー・判定、フレーム / アニメーション、書き出し（PNG / WebP / JSON / ZIP の中身検証、Blob 欠落時の失敗表示）、`.casproj` ラウンドトリップ、サンプル表示、型別設定、リグ焼き込み、モバイル（縦 / 横 / iPad / タップ対象 / 入力ズーム防止）。
 
-## 4. 実機ブラウザ確認（未実施・リリース前に必要）
+## 4. テスト変更と失敗時の扱い
+
+テストは現在の仕様を確認する手段であり、変更禁止の仕様書ではない。
+
+- 仕様や UI を意図して変更した場合は、理由と新しい期待値を記録してテストを更新してよい。
+- テストの準備、待機、IndexedDB 読み取り、Canvas 座標依存に欠陥がある場合は、テストを修正または置き換える。
+- 失敗は、実装不具合、テスト不具合、環境不具合に分ける。
+- 失敗を隠すだけの削除や skip は行わない。一時的な skip には原因、復帰条件、未検証範囲を書く。
+
+## 5. 実機ブラウザ確認（未実施・リリース前に必要）
 
 自動テストは Chromium のみ。v1.0.0 判定前に次の実機確認を行う（`docs/RELEASE_CHECKLIST.md`）。
 
 - [ ] iPhone Safari / [ ] iPad Safari / [ ] Chrome / [ ] Edge / [ ] Firefox / [ ] Android Chrome
 - 確認観点: 主要画面の表示、取り込み → 編集 → 書き出し一連、WebP 書き出しの可否表示、ダウンロード動作（Blob URL）、タッチ操作
 
-## 5. 性能・メモリ（未実施・リリース前に必要）
+## 6. 性能・メモリ（未実施・リリース前に必要）
 
 - [ ] 4096 x 4096 画像の取り込み〜編集〜書き出しのメモリ使用量計測（実機）
 - [ ] 連続編集（画像操作を繰り返す）でメモリが増え続けないことの確認

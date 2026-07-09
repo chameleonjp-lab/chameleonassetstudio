@@ -1,40 +1,41 @@
-# Codex / Opus Automation Workflow
+# Claude Code / Codex / Opus Workflow
 
-最終更新日: 2026-07-07  
+最終更新日: 2026-07-10
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
-文書種別: Codex 実装、CI、Claude Code Opus 4.8 レビュー、Codex 修正の PR 運用設計  
-上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`, `docs/future/FABLELESS_DEVELOPMENT_GUIDE.md`
+文書種別: 実装、CI、診断レビュー、最終レビュー、PR 運用の設計
+上位文書: `CLAUDE.md`, `AGENTS.md`, `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
 
 ---
 
-> **現状:** この文書は PR 運用と GitHub Actions の設計案です。現時点では Opus 4.8 レビュー workflow は未実装であり、本文中の YAML は実装済み設定ではなく、今後 `.github/workflows/` に追加する場合の設計例です。
+> **現状:** `.github/workflows/ci.yml` には変更内容に応じて検査を分ける仕組みを実装している。Opus 4.8 を自動起動する workflow は未実装であり、8 章は将来設計である。
 
 ## 1. 目的
 
-この文書は、Chameleon Asset Studio の PR 運用を次の流れで半自動化するための設計を定義する。
+この文書は、必要な更新を不必要な検査で止めず、実装変更には必要な安全確認を残すための運用を定義する。
 
-1. Codex が 1 目的の実装ブランチを作る。
-2. Pull Request を作成する。
-3. GitHub Actions の CI を実行する。
-4. CI が成功した PR だけ、Claude Code Opus 4.8 による深い設計レビューを実行する。
-5. Opus 4.8 の重大指摘がある場合は、Codex 修正に戻す。
-6. 修正後に再 CI と再レビューを行う。
+標準の流れ:
+
+1. Fable5 が使える間は Claude Code Primary Mode、制限中は Codex Fallback Mode を選ぶ。
+2. 1 つの目的を完成させる実装、テスト、docs、CI 安定化を同じ PR にまとめる。
+3. CI が変更ファイルを分類する。
+4. 変更内容に必要な検査だけを実行する。
+5. CI が失敗した場合は、実装、テスト、環境のどこに原因があるかを調べる。
+6. 最終承認のための Opus 4.8 レビューは、必要な CI が成功した後に行う。
 7. 最終 merge は人間が判断する。
-
-この運用は `docs/future/FABLELESS_DEVELOPMENT_GUIDE.md` の `claude-fable-5` 非依存方針に従う。`claude-fable-5` は使わず、高難度レビューは `claude-opus-4-8`、実装修正は Codex、最終判断は人間が担う。
 
 ---
 
-## 2. 絶対ルール
+## 2. 運用ルール
 
-- `main` へ直接 push しない。
-- 1 PR 1 目的を守る。
-- CI が失敗している PR には、Opus 4.8 の深い設計レビューを走らせない。
-- Opus 4.8 レビューは CI 成功後だけ実行する。
-- Opus 4.8 の重大指摘は自動 merge 条件にしない。Codex 修正または人間確認へ戻す。
-- merge は完全自動化しない。最終 merge は人間が判断する。
-- Claude / Codex / その他サービスの API キー値を docs、workflow、ログに書かない。
-- dependencies は、この運用文書だけを根拠に追加しない。
+- 原則として `main` へ直接 push せず、作業ブランチと PR を使う。
+- 1 PR 1 目的とするが、同じ目的の実装、テスト、docs を過度に分割しない。
+- 同じ目的の open PR がある場合は、まず既存 PR を更新する。再利用できない場合は close 理由を残してから作り直す。
+- Markdown 文書だけの変更を、コード用の整形、build、unit、E2E で止めない。
+- コードや設定を変更した場合は、その影響に応じた検査を実行する。
+- CI の失敗は実装不具合と決めつけず、テスト不具合と環境不具合も調べる。
+- 最終レビューは CI 成功後に行う。ただし、失敗原因を調べる診断レビューは CI 失敗中でも行ってよい。
+- 自動 merge は行わない。最終判断は人間が行う。
+- API キーや秘密情報を docs、workflow、ログへ書かない。
 
 ---
 
@@ -42,140 +43,173 @@
 
 ```mermaid
 flowchart TD
-  A[人間が目的を定義] --> B[Codex が作業ブランチ作成]
-  B --> C[Codex が実装・docs・tests を更新]
-  C --> D[Codex がローカル確認]
-  D --> E[PR 作成]
-  E --> F[GitHub Actions CI]
-  F -->|失敗| G[Codex が CI 失敗を修正]
-  G --> F
-  F -->|成功| H[Opus 4.8 深い設計レビュー]
-  H -->|重大指摘なし| I[人間が最終確認]
-  H -->|重大指摘あり| J[Codex 修正ループ]
-  J --> F
-  I --> K[人間が merge 判断]
+  A[人間が目的を定義] --> B[担当モードを選択]
+  B --> C[実装・テスト・docs]
+  C --> D[PR と変更分類]
+  D -->|文書のみ| E[人間レビュー]
+  D -->|コードあり| F[必要な CI]
+  F -->|失敗| G[原因を3分類]
+  G --> H[実装またはテストを修正]
+  H --> F
+  F -->|成功| I[Opus 最終レビュー]
+  E --> J[人間が merge 判断]
+  I --> J
 ```
 
-### 3.1 Codex 実装
+### 3.1 担当モード
 
-Codex は PR 作成前に次を確認する。
+- Claude Code Primary Mode: Fable5 が使える間の主運用。Sonnet5 が実装、Opus 4.8 が高難度レビュー、Haiku が探索を担当する。
+- Codex Fallback Mode: Fable5 の制限中、またはユーザーが指定した場合の退避運用。Codex が既存設計に沿う実装を担当する。
 
-- 今回の目的が 1 つに絞られている。
-- `docs/REQUIREMENTS_SPECIFICATION.md` と `docs/IMPLEMENTATION_PLAN.md` に反していない。
-- Phase 18 以降、または `asset.json` / `.casproj` / export ZIP / 座標系 / 原点 / アンカー / 当たり判定 / リグ / アニメーション / 3D 関連へ触れる場合は、`docs/future/FABLELESS_DEVELOPMENT_GUIDE.md` と `docs/future/POST_PHASE17_IMPLEMENTATION_PLAN.md` も確認している。
-- 仕様変更が必要な場合は、コードより先に docs の差分を作る。
-- 既存アプリ機能と既存データ形式を不要に変更していない。
+どちらのモードでも、仕様や互換性の重大判断を独断で確定しない。
 
-### 3.2 CI
+### 3.2 1 PR 1 目的の意味
 
-既存 CI は `.github/workflows/ci.yml` を正とし、pull request で次を実行する。
+1 PR 1 目的は、1 ファイルや 1 テストごとに PR を分ける意味ではない。
 
-- `npm run lint`
-- `npm run format:check`
-- `npm run build`
-- `npm run test`
-- `npm run e2e`
+同じ PR に含めてよいもの:
 
-CI が失敗した場合、Opus 4.8 の深い設計レビューは実行しない。まず Codex が format / lint / type error / test failure を修正する。
+- 目的を達成する実装。
+- その実装を確認する unit / E2E。
+- 実装に追従する docs。
+- その PR で判明したテストの待機・準備・読み取り不具合の修正。
 
-### 3.3 Opus 4.8 レビュー
+別 PR にするもの:
 
-Opus 4.8 レビューは、CI 成功後にだけ実行する。主な確認対象は次の通り。
+- JSON Schema / `asset.json` version。
+- `.casproj` 構造。
+- export ZIP 構造。
+- dependencies 追加。
+- 3D 関連。
+- 外部ツール向け出力形式。
+
+---
+
+## 4. CI の段階
+
+`.github/workflows/ci.yml` は、変更されたファイルを最初に分類する。
+
+### 4.1 Markdown 文書だけの変更
+
+対象例:
+
+- `README.md`。
+- `CLAUDE.md`。
+- `AGENTS.md`。
+- `docs/**/*.md`。
+
+実行:
+
+- 変更分類。
+- GitHub 上の差分確認。
+
+省略してよいもの:
+
+- `npm run lint`。
+- `npm run format:check`。
+- `npm run build`。
+- `npm run test`。
+- `npm run e2e`。
+
+Markdown の文章は、Prettier の折り返しと一致しないことだけを理由に失敗させない。
+
+### 4.2 コードまたは設定の変更
+
+実行:
+
+- `npm run lint`。
+- `npm run format:check`。
+- `npm run build`。
+- `npm run test`。
+
+### 4.3 ブラウザ動作に関わる変更
+
+`src/`、`e2e/`、`public/`、`index.html`、依存関係、Playwright、Vite、CI workflow に触れる場合は、4.2 に加えて `npm run e2e` を実行する。
+
+---
+
+## 5. テストの扱い
+
+テストは変更禁止の仕様書ではなく、現在の仕様を確認する手段として扱う。
+
+テストを修正または置き換えてよい場合:
+
+- 仕様や UI を意図して変更した。
+- テスト準備が必要な状態を作れていない。
+- 自動保存を待たずに IndexedDB を読んでいる。
+- Canvas 座標、画面倍率、実行順、時間待ちへ不必要に依存している。
+- テストの期待値が現在の正しい仕様と食い違っている。
+
+必要な記録:
+
+- 旧テストが正しくない理由。
+- 正しい仕様または期待値。
+- 新しい検証方法。
+- 残る未検証範囲。
+
+失敗を隠すだけの削除、期待値緩和、skip は行わない。一時的に skip する場合は、原因、復帰条件、未検証範囲を PR に書く。
+
+### 5.1 CI 失敗の分類
+
+| 分類 | 対応 |
+| --- | --- |
+| 実装不具合 | 実装を修正し、関係テストを再実行する |
+| テスト不具合 | 準備、待機、読み取り、期待値を修正する |
+| 環境不具合 | エラー、未検証範囲、CI に委ねる範囲を記録する |
+
+同じ直し方を 2 回試しても解決しない場合は、同じ修正を繰り返さず診断レビューへ切り替える。
+
+---
+
+## 6. Opus 4.8 レビュー
+
+### 6.1 診断レビュー
+
+CI 失敗中でも実行してよい。目的は、実装不具合、テスト不具合、環境不具合を見分けることに限る。
+
+### 6.2 最終レビュー
+
+必要な CI が成功した後に実行する。
+
+確認対象:
 
 - docs と実装の矛盾。
-- 要件仕様書・実装計画書・将来計画との矛盾。
+- 要件仕様書・実装計画書との矛盾。
 - `asset.json` / `.casproj` / export ZIP の互換性破壊。
 - 座標系、原点、アンカー、当たり判定、リグ、アニメーションの意味の破壊。
-- 3D 関連の範囲逸脱。
-- 1 PR 1 目的を超える変更。
-- 次の実装者が誤解する docs / コード構造。
+- Phase の範囲逸脱。
+- 次の実装者が誤解する説明。
 
-format / lint / type error / test failure のように CI で拾えるものは、Opus 4.8 レビューの主指摘にしない。これらは CI 失敗として Codex が先に直す。
-
-### 3.4 Codex 修正ループ
-
-Opus 4.8 が重大指摘を出した場合、Codex は指摘を分類して修正する。
-
-- docs 矛盾: docs または実装のどちらが正かを明確にし、必要なら人間確認へ戻す。
-- 互換性破壊: 自動確定せず、破壊しない実装へ戻す。判断が必要な場合は人間確認へ戻す。
-- 設計破壊: 変更範囲を縮小し、1 PR 1 目的へ戻す。
-- CI で拾える問題: Codex が修正し、再 CI へ戻す。
-
-Codex 自動修正ループは最大 2 回までとする。2 回修正しても Opus 4.8 の重大指摘が残る場合、その PR は自動修正を止め、人間確認へ戻す。
+format や単純な lint だけを理由に、設計レビューそのものを永久に止めない。
 
 ---
 
-## 4. 自動化してよい範囲
+## 7. 自動化と人間確認
 
-次は自動化してよい。
+自動化してよいもの:
 
-- PR 作成後の CI 実行。
-- CI 失敗時のログ収集と分類。
-- format / lint / type error / unit test failure の Codex 修正。
-- docs の誤字、リンク、表記ゆれの修正。
-- 既存仕様に沿ったテスト追加。
-- CI 成功後の Opus 4.8 レビュー起動。
-- Opus 4.8 レビュー結果の PR コメント化。
-- 重大指摘がない場合に、人間へ merge 判断を依頼する通知。
+- 変更分類と必要な CI。
+- CI ログの収集と原因分類。
+- format / lint / type / unit の機械的修正。
+- 根拠が明確なテスト安定化。
+- docs の誤字、リンク、表記ゆれ修正。
+- レビュー結果の PR コメント化。
 
----
+人間確認に戻すもの:
 
-## 5. 人間確認に戻す範囲
-
-次は自動修正だけで確定してはいけない。Opus 4.8 が妥当そうな提案を出しても、最終判断は人間確認へ戻す。
-
-- `asset.json` の仕様変更、version 変更、既存フィールド意味変更。
-- `.casproj` の構造変更、既存 `.casproj` の読み込み互換性に影響する変更。
-- export ZIP の構成変更、既存ファイルの削除・移動・名前変更。
-- 座標系の定義変更。
-- 原点の意味または初期値の変更。
-- アンカーの意味、用途、座標解釈の変更。
-- 当たり判定の形状、座標、用途、書き出し仕様の変更。
-- リグ、bind pose、rotation limit、rig bake の座標変換変更。
-- アニメーション、frame、fps、loop、timeline の意味変更。
-- 3D 関連の要件、ファイル形式、メタデータ、軽量化、外部 3D 生成連携。
-- dependencies 追加、ライセンス未確認ライブラリの採用。
-- WebGPU 必須化、クラウド必須化、アカウント必須化、課金前提化。
+- `asset.json` version または既存フィールドの意味変更。
+- `.casproj` の互換性変更。
+- export ZIP の削除、移動、名前変更。
+- 座標系、原点、アンカー、当たり判定、リグ、アニメーションの意味変更。
+- dependencies 追加とライセンス判断。
+- 3D 生成 AI、WebGPU 必須化、クラウド、アカウント、課金。
+- 最終 merge。
 
 ---
 
-## 6. GitHub Actions 設計
+## 8. Opus 自動レビューの将来設計
 
-### 6.1 推奨構成
-
-既存の `CI` workflow はそのまま維持する。Opus 4.8 レビューは別 workflow とし、CI workflow の成功を条件に起動する。現時点ではこの別 workflow は未実装であり、以下の YAML は設計案であって実際のリポジトリ設定ではない。
-
-推奨イベント:
-
-```yaml
-on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
-```
-
-推奨条件:
-
-```yaml
-if: >
-  github.event.workflow_run.event == 'pull_request' &&
-  github.event.workflow_run.conclusion == 'success'
-```
-
-この条件により、CI が失敗・キャンセル・スキップした PR では Opus 4.8 レビューを実行しない。
-
-### 6.2 実装時の注意
-
-- 既存 `.github/workflows/ci.yml` の job 名や実行内容を壊さない。
-- API キー値は GitHub Secrets に置き、workflow や docs に値を書かない。
-- fork PR から secrets を使う設計は慎重に扱う。必要なら `pull_request_target` ではなく、権限を絞った `workflow_run` + 明示的なチェックアウトにする。
-- Opus 4.8 レビュー job は PR 差分と関連 docs だけを読ませる。
-- レビュー結果は PR コメントまたは `REVIEW.md` 形式の artifact として残す。
-- レビューに失敗した場合も自動 merge しない。人間が確認できる状態で停止する。
-
-### 6.3 workflow 追加案
-
-実際に GitHub Actions を追加する場合は、次のような別ファイルを検討する。
+Opus 4.8 の自動レビューを追加する場合は、CI workflow と別にする。
 
 ```yaml
 name: Opus Review
@@ -203,30 +237,31 @@ jobs:
       - name: Run Opus 4.8 review
         env:
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
-        run: echo "Run claude-opus-4-8 review without printing secrets"
+        run: echo "Run review without printing secrets"
       - name: Comment review result
-        run: echo "Post design review result to PR"
+        run: echo "Post review result to PR"
 ```
 
-上記は設計案であり、そのまま有効な API 呼び出し実装ではない。採用する Claude Code / GitHub 連携方式が確定してから、別 PR で追加する。
+これは設計例であり、そのまま使える API 実装ではない。fork PR の secrets、権限、対象 SHA を確認してから別 PR で実装する。
+
+診断レビューは自動最終レビューとは分け、人間または Claude Code から必要時に起動する。
 
 ---
 
-## 7. Opus 4.8 レビュー入力
+## 9. レビュー入力
 
-レビューに渡す入力は最小限にする。
+レビューへ渡す情報は必要な範囲に絞る。
 
 - PR title / body。
-- 変更ファイル一覧。
-- diff。
+- 変更ファイル一覧と diff。
+- 失敗した job、step、エラー周辺ログ。
 - `README.md`。
 - `docs/REQUIREMENTS_SPECIFICATION.md`。
 - `docs/IMPLEMENTATION_PLAN.md`。
-- Phase 18 以降または将来領域に触れる場合は `docs/future/FABLELESS_DEVELOPMENT_GUIDE.md`, `docs/future/POST_PHASE17_IMPLEMENTATION_PLAN.md`, `docs/future/OPEN_ITEMS.md`。
-- データ形式や export に触れる場合は関連する format docs と schema / model files。
+- 変更領域に関係する `docs/future/` と format docs。
 
 ---
 
-## 8. REVIEW.md との関係
+## 10. まとめ
 
-`REVIEW.md` は Opus 4.8 レビューの観点を固定するためのリポジトリ内ガイドである。Opus 4.8 は CI で検出できる format / lint / type error を主指摘にせず、設計破壊、互換性破壊、docs 矛盾を優先して確認する。
+文書変更は文章の自動整形で止めない。実装変更には必要な検査を残す。テスト自体が誤っている可能性も調べ、最終 merge は人間が判断する。
