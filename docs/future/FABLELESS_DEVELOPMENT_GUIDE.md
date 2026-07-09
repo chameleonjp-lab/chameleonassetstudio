@@ -37,6 +37,8 @@ Claude Code 内の役割:
 
 このモードでは Codex は通常使わない。Codex は退避先であり、主担当ではない。
 
+ユーザーが Claude Code 用のプロンプトを求めた場合は、Claude Code 内で完結する前提で書く。Codex 依頼文を作るのは、ユーザーが Codex 退避を明示した場合、または Fable5 制限により Codex Fallback Mode に切り替える場合だけにする。
+
 ### 2.2 Codex Fallback Mode
 
 Fable5 が制限されている、使えない、または Claude Code で継続するより Codex の方が安定する場合は、Codex Fallback Mode に切り替える。
