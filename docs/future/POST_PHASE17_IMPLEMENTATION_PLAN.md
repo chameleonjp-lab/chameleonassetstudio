@@ -1,6 +1,6 @@
 # Post Phase 17 Implementation Plan
 
-最終更新日: 2026-07-05  
+最終更新日: 2026-07-09  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 文書種別: Phase 17 後の実装計画  
 上位文書: `docs/future/POST_PHASE17_REQUIREMENTS.md`, `docs/future/THREE_D_ASSET_PREPARATION_REQUIREMENTS.md`
@@ -430,4 +430,6 @@ CI が落ちている PR は ready にしない。
 - body / attack / pickup / sensor / custom の用途色を凡例・一覧スワッチ・キャンバス表示で対応付け、sensor は破線と縞スワッチで色以外でも区別できるようにした。
 - 当たり判定一覧の選択ボタンは `判定「${collider.name}」を選択` の aria-label を持ち、表示切替ボタンの `判定「${collider.name}」の表示を切り替え` と accessible name が衝突しない。
 - 選択状態は UI state のみで、asset.json / .casproj / export ZIP / schema / version には含めない。
-- canvas drag、rect resize、circle radius のキャンバス操作、polygon collider、frame-specific collider、3D collider は今回の範囲外として残す。
+- 続く実装 PR で、専用の「判定」ツール（`CanvasTool` に `'collider'` を追加）を導入し、キャンバス上での rect / circle の選択、ドラッグ移動、rect の四隅リサイズ、circle の半径変更に対応した。既存の select ツールの挙動は変えていない。
+- 移動・リサイズは既存のグリッド / スナップ丸め規則をそのまま使い、既存の Undo / Redo 経路（`onCommitAsset`）に乗せた（ラベル: 「判定移動」「判定リサイズ」「判定半径変更」）。更新は既存の `updateCollider` を通し、`asset.json` / `.casproj` / export ZIP / JSON Schema / TypeScript の `Collider` 型 / version は変更していない。
+- polygon collider、frame-specific collider、3D collider、ハンドルの hover 強調（選択前のマウスオーバー表示）は今回の範囲外として残す。

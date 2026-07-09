@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { decodeImageSource, type DecodedImageSource } from '../../core/images/decodeImageSource';
 import { blobKeyFor } from '../../core/images/importImage';
 import type { Rect } from '../../core/images/operations';
-import type { Asset, Layer, Size, Vec2 } from '../../core/model';
+import type { Asset, Collider, Layer, Size, Vec2 } from '../../core/model';
 import { loadBlob } from '../../core/storage';
 import {
   drawGameOverlays,
@@ -26,6 +26,15 @@ import {
 } from '../../renderers/canvas2d/view';
 
 import { TOOL_CURSORS, type CanvasTool } from './canvasTools';
+import {
+  hitTestColliderHandle,
+  hitTestColliders,
+  moveColliderBy,
+  resizeColliderRadius,
+  resizeColliderRect,
+  type ColliderHandle,
+  type ColliderRectHandle,
+} from './colliderEditing';
 
 interface CanvasEditorProps {
   asset: Asset;
@@ -56,10 +65,21 @@ interface CanvasEditorProps {
   /** アンカーツールで空き場所をクリックしたときの追加。point は world 座標。 */
   onAddAnchor: (point: Vec2) => void;
   selectedColliderId: string | null;
+  /** 判定ツールでの選択変更。 */
+  onSelectCollider: (colliderId: string | null) => void;
 }
 
 interface DragState {
-  mode: 'move' | 'pan' | 'pinch' | 'crop' | 'erase' | 'origin' | 'anchor-move';
+  mode:
+    | 'move'
+    | 'pan'
+    | 'pinch'
+    | 'crop'
+    | 'erase'
+    | 'origin'
+    | 'anchor-move'
+    | 'collider-move'
+    | 'collider-resize';
   pointerId: number;
   startScreen: Vec2;
   startView: ViewTransform;
@@ -68,6 +88,10 @@ interface DragState {
   before?: Asset;
   secondPointerId?: number;
   startDistance?: number;
+  /** collider-move / collider-resize 用。 */
+  colliderId?: string;
+  colliderBefore?: Collider;
+  colliderHandle?: ColliderHandle;
 }
 
 function textureSizeFor(asset: Asset, textureId: string | undefined): Size | null {
@@ -120,6 +144,7 @@ export function CanvasEditor({
   onSnapEnabledChange,
   onAddAnchor,
   selectedColliderId,
+  onSelectCollider,
 }: CanvasEditorProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -258,6 +283,7 @@ export function CanvasEditor({
       colliders: displayAsset.colliders,
       showColliders,
       selectedColliderId,
+      showColliderHandles: tool === 'collider',
     });
 
     // ツールのオーバーレイ
@@ -300,6 +326,7 @@ export function CanvasEditor({
     selectedColliderId,
     gridEnabled,
     gridSize,
+    tool,
   ]);
 
   // ホイールズーム（passive: false で登録する必要がある）
@@ -407,6 +434,63 @@ export function CanvasEditor({
         };
       } else {
         onAddAnchor(screenToWorld(view, point));
+      }
+      return;
+    }
+
+    if (tool === 'collider') {
+      if (!showColliders) {
+        // 判定を表示していないときは操作させず、select ツールの空クリックと同様にパン扱いにする
+        dragRef.current = {
+          mode: 'pan',
+          pointerId: event.pointerId,
+          startScreen: point,
+          startView: view,
+        };
+        return;
+      }
+      const selected = selectedColliderId
+        ? (asset.colliders.find((collider) => collider.id === selectedColliderId) ?? null)
+        : null;
+      const handle = selected ? hitTestColliderHandle(selected, point, view) : null;
+      if (selected && handle) {
+        dragRef.current = {
+          mode: 'collider-resize',
+          pointerId: event.pointerId,
+          startScreen: point,
+          startView: view,
+          before: asset,
+          colliderId: selected.id,
+          colliderBefore: selected,
+          colliderHandle: handle,
+        };
+        return;
+      }
+      const worldPoint = screenToWorld(view, point);
+      const hitId = hitTestColliders(asset.colliders, worldPoint, selectedColliderId);
+      if (hitId) {
+        const hitCollider = asset.colliders.find((collider) => collider.id === hitId) ?? null;
+        onSelectCollider(hitId);
+        if (hitCollider) {
+          dragRef.current = {
+            mode: 'collider-move',
+            pointerId: event.pointerId,
+            startScreen: point,
+            startView: view,
+            before: asset,
+            colliderId: hitId,
+            colliderBefore: hitCollider,
+          };
+        }
+      } else {
+        onSelectCollider(null);
+        // 何もない場所のドラッグはパンとして扱う
+        dragRef.current = {
+          mode: 'pan',
+          pointerId: event.pointerId,
+          startScreen: point,
+          startView: view,
+        };
       }
       return;
     }
@@ -562,6 +646,51 @@ export function CanvasEditor({
       return;
     }
 
+    if (drag.mode === 'collider-move' && drag.before && drag.colliderId && drag.colliderBefore) {
+      const worldDelta = {
+        x: deltaX / drag.startView.scale,
+        y: deltaY / drag.startView.scale,
+      };
+      const next = moveColliderBy(drag.before, drag.colliderId, drag.colliderBefore, worldDelta, {
+        enabled: snapEnabled,
+        gridSize,
+      });
+      setDraftAsset(next);
+      return;
+    }
+
+    if (
+      drag.mode === 'collider-resize' &&
+      drag.before &&
+      drag.colliderId &&
+      drag.colliderBefore &&
+      drag.colliderHandle
+    ) {
+      const worldPoint = screenToWorld(view, point);
+      const snapOptions = { enabled: snapEnabled, gridSize };
+      if (drag.colliderBefore.shape === 'rect' && drag.colliderHandle !== 'radius') {
+        const next = resizeColliderRect(
+          drag.before,
+          drag.colliderId,
+          drag.colliderBefore,
+          drag.colliderHandle as ColliderRectHandle,
+          worldPoint,
+          snapOptions,
+        );
+        setDraftAsset(next);
+      } else if (drag.colliderBefore.shape === 'circle' && drag.colliderHandle === 'radius') {
+        const next = resizeColliderRadius(
+          drag.before,
+          drag.colliderId,
+          drag.colliderBefore,
+          worldPoint,
+          snapOptions,
+        );
+        setDraftAsset(next);
+      }
+      return;
+    }
+
     if (drag.mode === 'move' && drag.layerId && drag.before) {
       const worldDeltaX = deltaX / drag.startView.scale;
       const worldDeltaY = deltaY / drag.startView.scale;
@@ -649,6 +778,50 @@ export function CanvasEditor({
     if (drag.mode === 'anchor-move' && drag.before && draftAsset) {
       if (JSON.stringify(draftAsset.anchors) !== JSON.stringify(drag.before.anchors)) {
         onCommitAsset('アンカー移動', drag.before, draftAsset);
+      }
+      setDraftAsset(null);
+      dragRef.current = null;
+      return;
+    }
+
+    if (drag.mode === 'collider-move' && drag.before && drag.colliderId && draftAsset) {
+      const moved = draftAsset.colliders.find((collider) => collider.id === drag.colliderId);
+      const original = drag.before.colliders.find((collider) => collider.id === drag.colliderId);
+      const changed =
+        (moved &&
+          original &&
+          moved.shape === 'rect' &&
+          original.shape === 'rect' &&
+          (moved.rect.x !== original.rect.x || moved.rect.y !== original.rect.y)) ||
+        (moved &&
+          original &&
+          moved.shape === 'circle' &&
+          original.shape === 'circle' &&
+          (moved.circle.x !== original.circle.x || moved.circle.y !== original.circle.y));
+      if (changed) {
+        onCommitAsset('判定移動', drag.before, draftAsset);
+      }
+      setDraftAsset(null);
+      dragRef.current = null;
+      return;
+    }
+
+    if (drag.mode === 'collider-resize' && drag.before && drag.colliderId && draftAsset) {
+      const moved = draftAsset.colliders.find((collider) => collider.id === drag.colliderId);
+      const original = drag.before.colliders.find((collider) => collider.id === drag.colliderId);
+      if (moved && original && moved.shape === 'rect' && original.shape === 'rect') {
+        const changed =
+          moved.rect.x !== original.rect.x ||
+          moved.rect.y !== original.rect.y ||
+          moved.rect.width !== original.rect.width ||
+          moved.rect.height !== original.rect.height;
+        if (changed) {
+          onCommitAsset('判定リサイズ', drag.before, draftAsset);
+        }
+      } else if (moved && original && moved.shape === 'circle' && original.shape === 'circle') {
+        if (moved.circle.radius !== original.circle.radius) {
+          onCommitAsset('判定半径変更', drag.before, draftAsset);
+        }
       }
       setDraftAsset(null);
       dragRef.current = null;

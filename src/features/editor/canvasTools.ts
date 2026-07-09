@@ -1,5 +1,5 @@
 export type CanvasTool =
-  'select' | 'pan' | 'crop' | 'eraser' | 'bgpick' | 'picker' | 'origin' | 'anchor';
+  'select' | 'pan' | 'crop' | 'eraser' | 'bgpick' | 'picker' | 'origin' | 'anchor' | 'collider';
 
 /** レイヤー上のクリック / ドラッグを必要とするツール。 */
 export const LAYER_TOOLS: CanvasTool[] = ['crop', 'eraser', 'bgpick', 'picker'];
@@ -13,4 +13,5 @@ export const TOOL_CURSORS: Record<CanvasTool, string> = {
   picker: 'crosshair',
   origin: 'crosshair',
   anchor: 'crosshair',
+  collider: 'default',
 };
