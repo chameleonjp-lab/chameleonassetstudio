@@ -12,6 +12,7 @@
 - Claude Code 向けの主指示は `CLAUDE.md` に分ける。
 - Codex は、Fable5 が制限されている期間、Claude Code で継続するより Codex の方が安定する場合、またはユーザーが明示した場合の退避実装担当である。
 - Fable5 が使える間は、原則として Claude Code Primary Mode を使う。Codex は通常の主担当ではない。
+- ユーザーが Claude Code 用のプロンプトや Claude Code 内での実装を求めている場合、Codex 用の依頼に置き換えない。
 - Codex は戦略判断の最終決定者ではない。仕様判断に迷う場合は、推測で実装せず確認事項として出す。
 
 ---
