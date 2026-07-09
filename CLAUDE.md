@@ -35,6 +35,8 @@ Fable5 / `claude-fable-5` が使える間は、Claude Code を開発の主担当
 
 このモードでは、Codex は通常使わない。ユーザーが明示的に Codex を指定した場合、または Claude Code 側の制限・失敗により退避が必要な場合だけ Codex に切り替える。
 
+重要: ユーザーが「Claude Code 用のプロンプト」を求めている場合、Codex 依頼文を作らない。Claude Code 内で Fable5 / Sonnet5 / Opus 4.8 / Haiku を使い分け、調査・判断・実装・レビューまで完結する前提で書く。
+
 ### 1.2 Codex Fallback Mode
 
 Fable5 が制限されている、使えない、または Claude Code での継続が効率を落とす場合は、実装の主担当を Codex に切り替える。
