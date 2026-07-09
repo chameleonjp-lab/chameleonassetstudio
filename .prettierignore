@@ -5,3 +5,5 @@ playwright-report
 test-results
 package-lock.json
 docs
+# 日本語の説明文は、コード用の自動整形で更新を止めない。
+*.md

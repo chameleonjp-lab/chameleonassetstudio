@@ -1,6 +1,6 @@
 # Fable-aware / Fableless Development Guide
 
-最終更新日: 2026-07-09  
+最終更新日: 2026-07-10
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 文書種別: Fable5 可用性に応じた開発運用書  
 上位文書: `CLAUDE.md`, `AGENTS.md`, `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
@@ -127,6 +127,8 @@ Fable5 でしてはいけないこと:
 
 1 つの PR では、1 つの目的だけを扱う。
 
+これは 1 ファイル、1 ボタン、1 テストごとに PR を分ける意味ではない。同じ目的を完成させる実装、テスト、docs、CI 安定化は 1 つの PR にまとめる。
+
 良い例:
 
 - `fix: reject missing texture blob during export`
@@ -140,6 +142,23 @@ Fable5 でしてはいけないこと:
 - `refactor editor and update docs and add 3d`
 
 開始前に open PR を確認し、同じ目的の PR を重複作成しない。
+
+次は影響範囲が大きいため、通常の UI 改善とは別 PR にする。
+
+- JSON Schema / `asset.json` version。
+- `.casproj` 構造。
+- export ZIP 構造。
+- dependencies 追加。
+- 3D 関連。
+- 外部ツール向け出力形式。
+
+### 6.1 テストの扱い
+
+- テストは変更禁止の仕様書ではなく、現在の仕様を確認する手段として扱う。
+- 仕様・UI が意図して変わった場合は、理由と新しい期待値を記録してテストを更新してよい。
+- テストの準備、待機、IndexedDB 読み取り、座標依存などに欠陥がある場合は、実装を無理にテストへ合わせず、テストを安定化する。
+- 失敗を隠すための削除や skip は行わない。一時的な skip には原因、復帰条件、未検証範囲を書く。
+- Markdown 文書だけの変更では、コード用の build / unit / E2E を必須にしない。
 
 ---
 
@@ -289,6 +308,8 @@ Claude Code Primary Mode では Sonnet5 が実装側を担う。Codex Fallback M
 - `asset.json` / `.casproj` / export ZIP の互換性を壊していないか。
 - Phase の範囲を超えていないか。
 - 次の実装者が誤解しないか。
+
+最終承認のための設計レビューは CI 成功後に行う。ただし、CI の失敗原因を調べる診断レビューは CI 失敗中でも行ってよい。
 
 ### 10.4 戦略レビュー
 
