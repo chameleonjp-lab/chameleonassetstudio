@@ -1,11 +1,14 @@
 # Post Phase 17 Requirements
 
-最終更新日: 2026-07-05  
-対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
-文書種別: Phase 17 後のローカル制作ツール要件  
-上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/implementation/PHASES_14_17.md`
+最終更新日: 2026-07-10
+対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
+文書種別: Phase 17 後のローカル制作ツール要件（旧要件）
+基礎要件: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/implementation/PHASES_14_17.md`
+現在の2D完成仕様: `2D_COMPLETE_PRODUCT_SPEC.md` とその専門文書群
 
 ---
+
+> **2026-07-10 の優先関係:** 本文書は Phase 17 後に見えていた不足の記録として残す。2D 完成の上位仕様、保存・座標、対象別出力、端末・復旧、今後の順番は、`2D_COMPLETE_PRODUCT_SPEC.md`、`2D_ASSET_DATA_CONTRACT.md`、`2D_EXPORT_COMPATIBILITY_MATRIX.md`、`2D_DEVICE_RELIABILITY_SPEC.md`、`2D_COMPLETION_ROADMAP.md` を優先する。
 
 ## 1. 目的
 

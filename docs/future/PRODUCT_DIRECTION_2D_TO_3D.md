@@ -1,10 +1,11 @@
 # Product Direction: 2D Completion to 3D Expansion
 
-最終更新日: 2026-07-07  
-対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
-文書種別: 2D 完成から 3D 展開へのプロダクト方針  
-上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`, `docs/future/POST_PHASE17_REQUIREMENTS.md`, `docs/future/POST_PHASE17_IMPLEMENTATION_PLAN.md`, `docs/future/THREE_D_ASSET_PREPARATION_REQUIREMENTS.md`  
-関連文書: `docs/future/ASSET_CREATION_AND_EXPORT_STRATEGY.md`, `docs/future/DECISION_LOG.md`
+最終更新日: 2026-07-10
+対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
+文書種別: 2D 完成から 3D 展開へのプロダクト方針（背景・旧方針）
+基礎要件: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
+現在の2D完成仕様: `2D_COMPLETE_PRODUCT_SPEC.md`, `2D_COMPLETION_ROADMAP.md`
+旧計画・関連文書: `POST_PHASE17_REQUIREMENTS.md`, `POST_PHASE17_IMPLEMENTATION_PLAN.md`, `THREE_D_ASSET_PREPARATION_REQUIREMENTS.md`, `ASSET_CREATION_AND_EXPORT_STRATEGY.md`, `DECISION_LOG.md`
 
 ---
 
@@ -197,16 +198,9 @@ Chameleon Asset Studio
 
 ## 8. 3D 開始前の gate
 
-3D の実装へ進む前に、次を満たす。
+3D の実装へ進む前に、`2D_COMPLETION_ROADMAP.md` の **2D Pro Gate** をすべて通し、人間が 3D 開始を承認する。
 
-- 2D の主要 export が壊れていない。
-- `.casproj` の読み書きが安定している。
-- `asset.json` の version / migrate 方針が崩れていない。
-- 2D の E2E を弱くしていない。
-- `docs/future/LIBRARY_EVALUATION_LOG.md` または同等の評価表で 3D ライブラリのライセンスを確認している。
-- GLB / glTF の読み込みに使う library の bundle size と license を確認している。
-- 3D Mode が 2D bundle を不必要に重くしない設計になっている。
-- Opus 4.8 レビューまたは人間確認を通している。
+その gate には、2D の代表制作、対象別の検証済み preset、PC / iPad / スマホの保存・復旧・実機確認、既存データの互換性、品質証跡が含まれる。3D library のライセンス、bundle size、lazy load、Opus 4.8 レビューは、gate 通過後の `3D-0` で追加して確認する。
 
 ---
 

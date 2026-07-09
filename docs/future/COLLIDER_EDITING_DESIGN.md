@@ -3,7 +3,9 @@
 最終更新日: 2026-07-09  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 文書種別: Phase 19-C「判定編集強化」の docs-first 設計  
-上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`, `docs/future/POST_PHASE17_REQUIREMENTS.md`, `docs/future/POST_PHASE17_IMPLEMENTATION_PLAN.md`  
+基礎要件: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
+現在の着手順: `2D_ASSET_DATA_CONTRACT.md`, `2D_COMPLETION_ROADMAP.md`（2D-3）
+関連する旧計画: `POST_PHASE17_REQUIREMENTS.md`, `POST_PHASE17_IMPLEMENTATION_PLAN.md`
 関連文書: `docs/DATA_FORMAT.md`, `docs/EXPORT_FORMATS.md`, `docs/ENGINE_INTEGRATION.md`, `docs/USER_GUIDE.md`, `docs/future/FLIP_DESIGN.md`, `docs/future/ASSET_CREATION_AND_EXPORT_STRATEGY.md`, `docs/future/DECISION_LOG.md`, `REVIEW.md`
 
 ---

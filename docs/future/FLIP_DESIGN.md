@@ -2,7 +2,8 @@
 
 最終更新日: 2026-07-06
 文書種別: Phase 19「左右反転」の仕様方針（実装前の設計固定）
-上位文書: `docs/future/POST_PHASE17_IMPLEMENTATION_PLAN.md`（Phase 19-B）
+現在の着手順: `2D_COMPLETION_ROADMAP.md`（2D-3）
+関連する旧計画: `POST_PHASE17_IMPLEMENTATION_PLAN.md`（Phase 19-B）
 関連: `docs/DATA_FORMAT.md`, `docs/EXPORT_FORMATS.md`
 
 この文書は Phase 19「左右反転」の**設計方針を固定するため**のもの。
