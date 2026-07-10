@@ -60,11 +60,11 @@ Codex は通常使わない。Fable5 が制限されている場合、Claude Cod
 
 関係するときだけ追加で読む。
 
-- Phase 18 以降: `docs/future/FABLELESS_DEVELOPMENT_GUIDE.md`, `docs/future/POST_PHASE17_IMPLEMENTATION_PLAN.md`
+- 2D Pro（Phase 18 以降）: `docs/future/FABLELESS_DEVELOPMENT_GUIDE.md`, `docs/future/2D_COMPLETE_PRODUCT_SPEC.md`, `docs/future/2D_ASSET_DATA_CONTRACT.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/future/2D_DEVICE_RELIABILITY_SPEC.md`, `docs/future/2D_COMPLETION_ROADMAP.md`
 - データ形式: `docs/DATA_FORMAT.md`, `docs/EXPORT_FORMATS.md`
 - Phase 19-C の当たり判定編集: `docs/future/COLLIDER_EDITING_DESIGN.md`
-- 3D 関連: `docs/future/THREE_D_ASSET_PREPARATION_REQUIREMENTS.md`, `docs/future/PRODUCT_DIRECTION_2D_TO_3D.md`
-- 外部ライブラリ採用: `docs/future/LIBRARY_EVALUATION_LOG.md`
+- 3D 関連: `docs/future/THREE_D_ASSET_PREPARATION_REQUIREMENTS.md`, `docs/future/PRODUCT_DIRECTION_2D_TO_3D.md`（2D Pro Gate の人間承認前は実装・library 評価・dependency 追加を開始しない）
+- 外部ライブラリ採用: 採用する PR で評価記録を新規作成し、ライセンス・商用利用・browser 対応・bundle size を確認する。
 
 docs 確認は作業を止めるためではなく、誤実装を避けるために行う。小さな修正では、関係箇所だけを読んで進めてよい。
 

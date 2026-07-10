@@ -1,7 +1,7 @@
 # Codex Instructions
 
-最終更新日: 2026-07-10  
-対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
+最終更新日: 2026-07-10
+対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 用途: Codex Fallback Mode 専用の退避実装指示書
 
 ---
@@ -70,11 +70,12 @@ Codex がやらないこと:
 
 関係するときだけ追加で読む。
 
-- Phase 18 以降: `docs/future/FABLELESS_DEVELOPMENT_GUIDE.md`, `docs/future/POST_PHASE17_IMPLEMENTATION_PLAN.md`
+- Phase 18 以降: `docs/future/FABLELESS_DEVELOPMENT_GUIDE.md`, `docs/future/2D_COMPLETION_ROADMAP.md`, `docs/future/POST_PHASE17_IMPLEMENTATION_PLAN.md`
+- 2D 完成形、保存、対象別出力、端末・復旧: `docs/future/2D_COMPLETE_PRODUCT_SPEC.md`, `docs/future/2D_ASSET_DATA_CONTRACT.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/future/2D_DEVICE_RELIABILITY_SPEC.md`
 - データ形式: `docs/DATA_FORMAT.md`, `docs/EXPORT_FORMATS.md`
 - Phase 19-C の当たり判定編集: `docs/future/COLLIDER_EDITING_DESIGN.md`
-- 3D 関連: `docs/future/THREE_D_ASSET_PREPARATION_REQUIREMENTS.md`
-- 外部ライブラリ採用: `docs/future/LIBRARY_EVALUATION_LOG.md`
+- 3D 関連: `docs/future/THREE_D_ASSET_PREPARATION_REQUIREMENTS.md`（2D Pro Gate の人間承認前は実装・library 評価・dependency 追加を開始しない）
+- 外部ライブラリ採用: 採用する PR で評価記録を新規作成し、ライセンス・商用利用・browser 対応・bundle size を確認する。
 
 `CLAUDE.md` は Claude Code Primary Mode の主指示である。Codex は通常参照しなくてよい。ただし、Claude Code から引き継いだ依頼でモードや責務の確認が必要な場合だけ読む。
 

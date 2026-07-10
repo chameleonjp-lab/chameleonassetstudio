@@ -1,8 +1,8 @@
 # Decision Log
 
-最終更新日: 2026-07-07  
-対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
-文書種別: 重要方針の変更経緯・決定記録  
+最終更新日: 2026-07-10
+対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
+文書種別: 重要方針の変更経緯・決定記録
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
 
 ---
@@ -286,3 +286,49 @@ Phase 19-C「判定編集強化」では、多角形判定の追加検討と rec
 - 多角形判定を正式に入れるか。
 - 入れる場合の schema、version、migration、helper API、engine import notes の範囲。
 
+---
+
+## ADR-2026-07-10-007: 3D より先に 2D Pro Gate を定義して通す
+
+### 状態
+
+- accepted
+
+### 背景
+
+既存の Phase 19〜21 は、2D の編集・書き出し品質を改善するための重要な土台である。しかし、空キャンバス作成、テンプレート、素材修正、派生素材、型別の検査、対象別の検証済み出力、PC / iPad / スマホの保存・復旧までを「2D 完成」として判定する条件は、1つの上位仕様にまとまっていなかった。
+
+旧 Phase 22〜28 は、Phase 21 の後に 3D 調査へ進む順番になっていた。この順番では、2D が画像取り込み中心の基礎ツールのまま 3D を混ぜる危険がある。
+
+### 決定
+
+- 2D 完成形を、`2D_COMPLETE_PRODUCT_SPEC.md`、`2D_ASSET_DATA_CONTRACT.md`、`2D_EXPORT_COMPATIBILITY_MATRIX.md`、`2D_DEVICE_RELIABILITY_SPEC.md`、`2D_COMPLETION_ROADMAP.md` の5文書で定義する。
+- 今後の 2D 拡張は、作成・修正・ゲーム用情報・検査・対象別出力・再編集・端末信頼性を一続きの制作体験として扱う。
+- 旧 Phase 22〜28 の 3D 実装、library 評価、dependency 追加は、2D Pro Gate を人間が承認するまで開始しない。
+- 3D は削除せず、gate 通過後に `3D-0`〜`3D-6` として別画面・別データ境界で再開する。
+- 現在の `asset.json`、`.casproj`、export ZIP、JSON Schema、dependencies、アプリ本体は、この docs-only 判断では変更しない。
+
+### しないこと
+
+- 5文書を書いたことだけで、空キャンバス、template、polygon、frame 別判定、target preset、復旧、3D を実装済みと扱わない。
+- Unity / Godot / RPG Maker / Blender の互換を、対象バージョンと証拠なしに名乗らない。
+- 3D 都合で 2D の型、座標、保存、出力を変えない。
+- アカウント、クラウド、課金、共同編集、3D 生成 AI を 2D 完成の前提にしない。
+
+### 影響する文書
+
+- `README.md`
+- `docs/REQUIREMENTS_SPECIFICATION.md`
+- `docs/future/README.md`
+- `docs/future/POST_PHASE17_IMPLEMENTATION_PLAN.md`
+- `docs/future/PRODUCT_DIRECTION_2D_TO_3D.md`
+- `docs/future/ASSET_CREATION_AND_EXPORT_STRATEGY.md`
+- `docs/future/OPEN_ITEMS.md`
+- 新設する5文書
+
+### 未確定事項
+
+- `Asset Family` / variant、操作履歴、frame 別判定、polygon、target extension の正確な保存形式。
+- 最初に `verified` とする Unity / Godot / RPG Maker の対象バージョンと素材種別。
+- 復旧点、削除復元、オフライン再起動、性能 budget の実装方式。
+- 2D Pro Gate の実機・外部ツール検証を誰がいつ承認するか。
