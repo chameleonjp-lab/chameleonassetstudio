@@ -343,12 +343,13 @@ CI 再成功 + Opus 4.8 再確認
 | 順番 | work package | 内容 | 担当 | 並行可否 |
 |---:|---|---|---|---|
 | 0 | `2D-0-DOCS` | 本文書群、入口 docs、決定記録を merge し、2D 完成条件を固定する。 | Codex 更新、Opus 4.8 review、人間 merge | 他の本実装を merge しない。 |
-| 1 | `2D-1A-CONTRACT` | source / edit / derived / export、ID・参照・variant、座標・trim・flip・scale、migration・復旧境界を ADR と fixture で確定する。 | Fable5 判断、Codex docs / fixture、Opus 4.8 review | 下記2件の準備作業だけ並行可。 |
+| 1 | `2D-1A-BASELINE` | 現行 version、型、schema、`.casproj`、IndexedDB、autosave、export ZIP、migration、fixture/test coverage を [`2D_1A_BASELINE_REPORT.md`](2D_1A_BASELINE_REPORT.md) に固定する。 | Codex docs、Opus 4.8 review | product code、schema、version、保存形式、export ZIPを変えない。 |
+| 2 | `2D-1A-CONTRACT` | source / edit / derived / export、ID・参照・variant、座標・trim・flip・scale、migration・復旧境界を ADR と fixture で確定する。 | Fable5 判断、Codex docs / fixture、Opus 4.8 review | 下記2件の準備作業だけ並行可。 |
 | 1-P | `2D-6-BASELINE` | 現在の端末、保存失敗、性能、アクセシビリティの基準値と再現手順を記録する。 | Codex + 人間実機確認 | product code と保存形式を変えない範囲で可。 |
 | 1-P | `2D-2-PREP` | 空キャンバス、template、取り込み・修正の既存コード調査、UI prototype、acceptance test を作る。 | Codex | 永続データを増やす本実装は `2D-1b` 後。 |
-| 2 | `2D-1B-STORAGE` | 改訂単位の整合保存、復旧点、旧形式 migration、壊れた import の隔離、容量不足導線を実装する。 | Codex 実装、Opus 4.8 必須 review | `2D-6-BASELINE` と `2D-2-PREP` の継続だけ可。 |
-| 3 | `2D-2-CREATE-01` | 空キャンバスと最初の型別 template を、保存・再読込・Undo / Redoまで完成させる。 | Codex、Opus 4.8 review | 契約が重ならない `2D-3-GAMEDATA-01` と品質レーン。 |
-| 3 | `2D-3-GAMEDATA-01` | 既存形式内で最初の animation / origin / anchor / collider 検査体験を完成させる。 | Codex、Opus 4.8 review | `2D-2-CREATE-01` と同じ型・storage・editor fileを変更しない時だけ。 |
+| 3 | `2D-1B-STORAGE` | 改訂単位の整合保存、復旧点、旧形式 migration、壊れた import の隔離、容量不足導線を実装する。 | Codex 実装、Opus 4.8 必須 review | `2D-6-BASELINE` と `2D-2-PREP` の継続だけ可。 |
+| 4 | `2D-2-CREATE-01` | 空キャンバスと最初の型別 template を、保存・再読込・Undo / Redoまで完成させる。 | Codex、Opus 4.8 review | 契約が重ならない `2D-3-GAMEDATA-01` と品質レーン。 |
+| 4 | `2D-3-GAMEDATA-01` | 既存形式内で最初の animation / origin / anchor / collider 検査体験を完成させる。 | Codex、Opus 4.8 review | `2D-2-CREATE-01` と同じ型・storage・editor fileを変更しない時だけ。 |
 
 `2D-1A-CONTRACT` の未決定事項を残したまま `2D-1B-STORAGE` を開始しない。`2D-1B-STORAGE` が merge されるまで、`2D-2-CREATE-01` と `2D-3-GAMEDATA-01` は準備 branch に留め、本実装 PR を open しない。
 

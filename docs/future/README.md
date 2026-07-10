@@ -32,6 +32,7 @@ Chameleon Asset Studio は、画像取り込み専用の変換ツールに限定
 | `2D_EXPORT_COMPATIBILITY_MATRIX.md` | 入出力形式、対象別 preset、`verified` の条件、未対応範囲 |
 | `2D_DEVICE_RELIABILITY_SPEC.md` | PC / iPad / スマホ、保存、復旧、性能、アクセシビリティ、安全性 |
 | `2D_COMPLETION_ROADMAP.md` | 2D Pro Gate までの実装順、PR 分割、品質 gate、3D 再開条件 |
+| `2D_1A_BASELINE_REPORT.md` | 現行 version、型、schema、保存、`.casproj`、export、migration、fixture/test coverage の baseline |
 | `FABLELESS_DEVELOPMENT_GUIDE.md` | `claude-fable-5` を使わない前提の実装・レビュー運用ルール |
 | `CODEX_OPUS_AUTOMATION_WORKFLOW.md` | Codex 主実装、CI 成功後の Opus 4.8 レビュー、Codex 修正ループの PR 運用設計（Opus レビュー workflow は未実装） |
 | `DECISION_LOG.md` | 重要な方針変更と変更経緯の記録 |
