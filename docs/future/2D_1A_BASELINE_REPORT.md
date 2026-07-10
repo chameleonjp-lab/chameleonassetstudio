@@ -6,13 +6,14 @@ work package: `2D-1A-BASELINE`
 
 ## 1. 文書の目的
 
-この文書は、新しいデータ契約を決めるものではない。現行実装、型、schema、保存、`.casproj`、export ZIP、migration、sample、fixture、test から確認できる事実を固定し、後続の `2D-1A-CONTRACT`、`2D-1B-STORAGE`、`2D-4` 以降で互換性を判断するための比較基準にする。
+この文書は、新しいデータ契約を決めるものではない。現行実装、型、schema、保存、`.casproj`、export ZIP、migration、sample、fixture、test から確認できる事実を固定し、後続の詳細 work package（`2D-1A-LAYERS`、`2D-1A-COORD`、`2D-1A-MOTION`、`2D-1A-TARGET`、`2D-1A-PROVENANCE`、`2D-1A-VALIDATION`、`2D-1A-MIGRATION`、`2D-1B-*`、`2D-4-*` 以降）で互換性を判断するための比較基準にする。
 
 ## 2. 調査対象commit
 
-- 調査対象 local commit: `d47c04625da6d0ff68cc70274c1319c0c5039f90`
-- 注意: この環境では `gh` CLI が無く、shell から GitHub / origin への HTTPS 接続も `CONNECT tunnel failed, response 403` で失敗した。そのため PR #49 の merge 状態、同目的 open PR、最新 `origin/main` は shell では確認できていない。
-- ローカル文書上は `docs/IMPLEMENTATION_PLAN.md` が Phase 17 後の直近段階を `2D-1a` とし、`docs/future/2D_COMPLETION_ROADMAP.md` が安全なデータと保存の土台を最初の契約レーンとしている。
+- 調査対象 local commit: `d47c04625da6d0ff68cc70274c1319c0c5039f90`。
+- 調査時点の注意: baseline 作成環境では `gh` CLI が無く、shell から GitHub / origin への HTTPS 接続も `CONNECT tunnel failed, response 403` で失敗した。そのため調査時点では PR #49 の merge 状態、同目的 open PR、最新 `origin/main` は shell では確認できていなかった。
+- 現在時点の扱い: この baseline report は PR #50 の成果物として main へマージ済みであり、PR #49 では詳細ロードマップとの統合を行った。
+- ローカル文書上は `docs/IMPLEMENTATION_PLAN.md` が Phase 17 後の直近段階を `2D-1a` とし、`docs/future/2D_COMPLETION_ROADMAP.md` が `2D-1A-BASELINE` 完了後の詳細契約 work package を定義している。
 
 ## 3. 調査方法
 
@@ -136,7 +137,7 @@ work package: `2D-1A-BASELINE`
 | valid fixture | samples + `validate.test.ts` | valid asset/project/export-presets/animation。 | target別 valid fixture なし。 |
 | invalid fixture | `validate.test.ts` 内で clone 改変 | required / enum / range / invalid shape 等を拒否。 | ファイル fixture ではない。 |
 | current `.casproj` fixture | なし。`casproj.test.ts` が実行時生成 | ZIP round-trip、欠損、危険 path、invalid JSON を検証。 | 固定 ZIP fixture なし。 |
-| old `.casproj` fixture | なし | なし | `2D-1B-STORAGE` / migrationで判断必要。 |
+| old `.casproj` fixture | なし | なし | `2D-1A-MIGRATION` / `2D-1B-CASPROJ` / `2D-1B-RECOVERY` で判断必要。 |
 | future version fixture | `migrate.test.ts` 内の object | future version 拒否。 | `.casproj` としての future fixture なし。 |
 | corrupt fixture | `casproj.test.ts` 内で broken JSON / not casproj生成 | error path。 | 破損ZIP専用 fixture file なし。 |
 | missing Blob fixture | `casproj.test.ts`, `e2e/casproj.spec.ts`, `e2e/export.spec.ts` | 欠損画像の拒否/警告。 | 実ブラウザ容量不足は未検証。 |
@@ -173,7 +174,7 @@ work package: `2D-1A-BASELINE`
 
 ## 14. docsと実装の不一致
 
-- `docs/future/2D_COMPLETION_ROADMAP.md` の実行キューは `2D-1A-CONTRACT` を次 work package としていたが、今回の依頼はその前段の `2D-1A-BASELINE` として現状調査を求めている。
+- PR #50 作成時点では総称 `2D-1A-CONTRACT` を後続 work package として参照していたが、PR #49 との統合後は `2D-1A-LAYERS`、`2D-1A-COORD`、`2D-1A-MOTION`、`2D-1A-TARGET`、`2D-1A-PROVENANCE`、`2D-1A-VALIDATION`、`2D-1A-MIGRATION` に分解して扱う。
 - `docs/DATA_FORMAT.md` は `.casproj` 構造に `thumbnails/` を例示するが、実装は `TextureRef.path` に従うだけで専用 thumbnail directory を必須化しない。
 - `ExportPreset.scale` は型と schema に存在するが、現行 `exportZip` の scale処理には接続されていない。
 - `docs/future/*` の source/edit/derived/export/verification、common manifest、target別 verified 条件は将来契約であり、現行実装ではない。
@@ -182,47 +183,52 @@ work package: `2D-1A-BASELINE`
 
 | 領域 | 現在の正本 | 現在の挙動 | 不変条件 | 変更時に影響する範囲 | 現在のtest | 不足 | 後続work package |
 |---|---|---|---|---|---|---|---|
-| version | model constants + package | `0.1.0` / DB `1` | 勝手に上げない | migration/schema/docs/export | validate/migrate | version const schemaなし | `2D-1A-CONTRACT` |
-| Asset型 | `asset.ts` | 保存・export正本 | UI stateを入れない | 全機能 | validate/assetOps | 参照整合 | `2D-1A-CONTRACT` |
+| version | model constants + package | `0.1.0` / DB `1` | 勝手に上げない | migration/schema/docs/export | validate/migrate | version const schemaなし | `2D-1A-MIGRATION` |
+| Asset型 | `asset.ts` | 保存・export正本 | UI stateを入れない | 全機能 | validate/assetOps | 参照整合 | `2D-1A-LAYERS`, `2D-1A-VALIDATION` |
 | Layer | `layer.ts` | 配列順が表示順 | transform意味維持 | canvas/export | layers/export | trim/derivedなし | `2D-2` |
-| Frame | `animation.ts` | frame配列順 | atlas順序維持 | animation/export | atlas/animation | frame別game data | `2D-3` |
-| Animation | `animation.ts` | fps/loop/frameIds | frameIds意味維持 | player/helpers | validate/atlas | duration整合 | `2D-3` |
-| Rig | `rig.ts` | optional編集用 | bake前契約未拡張 | rig bake | rig tests | flip/variant | `2D-3` |
-| Origin | `Asset.origin` | atlas/readme/helperへ出る | px左上原点 | engine import | export/atlas | target別検証 | `2D-4` |
-| Anchor | `anchor.ts` | atlas/helperへ出る | role/position維持 | gameplay refs | validate/assetOps | frame別なし | `2D-3` |
-| Collider | `collider.ts` | rect/circleのみ | polygon未実装 | schema/export/helper | validate/colliderEditing | polygon判断 | `2D-3` |
-| JSON Schema | `src/core/schema` | Ajv runtime | unknown許容を維持 | import/export/storage | validate | semantic validation | `2D-1A-CONTRACT` |
-| `.casproj` | `casproj.ts` | ZIP | path互換 | backup/import | casproj/e2e | fixed fixtureなし | `2D-1B-STORAGE` |
-| IndexedDB | `db.ts`, `projectStore.ts` | 3 stores | DB version変更なし | persistence | projectStore | quota/persist | `2D-1B-STORAGE` |
-| autosave | `autosave.ts` | 800ms debounce | 直列保存 | editor save UX | autosave | crash recovery | `2D-1B-STORAGE` |
+| Frame | `animation.ts` | frame配列順 | atlas順序維持 | animation/export | atlas/animation | frame別game data | `2D-1A-MOTION`, `2D-3-COLLIDER-OVERRIDE` |
+| Animation | `animation.ts` | fps/loop/frameIds | frameIds意味維持 | player/helpers | validate/atlas | duration整合 | `2D-1A-MOTION` |
+| Rig | `rig.ts` | optional編集用 | bake前契約未拡張 | rig bake | rig tests | flip/variant | `2D-1A-MOTION` |
+| Origin | `Asset.origin` | atlas/readme/helperへ出る | px左上原点 | engine import | export/atlas | target別検証 | `2D-1A-COORD`, `2D-4-PREFLIGHT` |
+| Anchor | `anchor.ts` | atlas/helperへ出る | role/position維持 | gameplay refs | validate/assetOps | frame別なし | `2D-1A-MOTION`, `2D-3-COLLIDER-OVERRIDE` |
+| Collider | `collider.ts` | rect/circleのみ | polygon未実装 | schema/export/helper | validate/colliderEditing | polygon判断 | `2D-1A-MOTION`, `2D-3-POLYGON` |
+| JSON Schema | `src/core/schema` | Ajv runtime | unknown許容を維持 | import/export/storage | validate | semantic validation | `2D-1A-VALIDATION` |
+| `.casproj` | `casproj.ts` | ZIP | path互換 | backup/import | casproj/e2e | fixed fixtureなし | `2D-1B-CASPROJ`, `2D-1B-RECOVERY` |
+| IndexedDB | `db.ts`, `projectStore.ts` | 3 stores | DB version変更なし | persistence | projectStore | quota/persist | `2D-1B-REVISION`, `2D-1B-CAPACITY` |
+| autosave | `autosave.ts` | 800ms debounce | 直列保存 | editor save UX | autosave | crash recovery | `2D-1B-REVISION`, `2D-1B-RECOVERY` |
 | migration | `migrate.ts` | 配列空 | 実旧形式を捏造しない | imports | migrate | old fixtures | `2D-1A-MIGRATION` |
-| export ZIP | `exportAsset.ts` | fixed paths | 既存path維持 | users/helpers | e2e/export | verification/hash | `2D-4` |
-| sprite sheet | `atlas.ts` | sqrt grid | frame order維持 | atlas/helpers | atlas | padding/extrude | `2D-4` |
-| atlas JSON | `atlas.ts` | format/version 0.1.0 | 既存field維持 | engines | atlas/export | target profile | `2D-4` |
-| helper | `helpers.ts` | 3 helper files | ZIP path維持 | external code | helpers/export | target選択 | `2D-4/5` |
-| sample | `src/core/samples` | schema samples | current only | docs/tests | validate | export fixtures | `2D-1A-CONTRACT` |
-| fixture | test生成中心 | fixed files少 | 旧形式捏造禁止 | CI/regression | unit/e2e | current ZIP fixture | `2D-1B-STORAGE` |
+| export ZIP | `exportAsset.ts` | fixed paths | 既存path維持 | users/helpers | e2e/export | verification/hash | `2D-4-CORE`, `2D-4-PACKAGE`, `2D-4-PREFLIGHT` |
+| sprite sheet | `atlas.ts` | sqrt grid | frame order維持 | atlas/helpers | atlas | padding/extrude | `2D-4-SHEET`, `2D-4-SCALE` |
+| atlas JSON | `atlas.ts` | format/version 0.1.0 | 既存field維持 | engines | atlas/export | target profile | `2D-4-CORE`, `2D-4-GENERIC-WEB`, `2D-4-PIXIJS`, `2D-4-PHASER` |
+| helper | `helpers.ts` | 3 helper files | ZIP path維持 | external code | helpers/export | target選択 | `2D-4-GENERIC-WEB`, `2D-4-PIXIJS`, `2D-4-PHASER`, `2D-5-EVIDENCE` |
+| sample | `src/core/samples` | schema samples | current only | docs/tests | validate | export fixtures | `2D-1A-LAYERS`, `2D-1A-VALIDATION` |
+| fixture | test生成中心 | fixed files少 | 旧形式捏造禁止 | CI/regression | unit/e2e | current ZIP fixture | `2D-1B-GATE`, `2D-1B-CASPROJ` |
 
 ## 16. Fable5または人間の判断が必要な項目
 
 | ID | 判断が必要な内容 | 現在確認できる事実 | 選択肢 | 影響範囲 | 推奨される後続work package |
 |---|---|---|---|---|---|
-| D-01 | source / edit / derived / export / verification の分離 | `TextureKind` は source/edit/thumbnail のみ。verification層なし。 | 現行維持 / 新層追加 / 別manifest化 | Asset, `.casproj`, export | `2D-1A-CONTRACT` |
-| D-02 | Project / Asset Family / Variant | Projectはasset summary配列のみ。family/variantなし。 | Asset内metadata / Project層追加 / 別file | schema, UI, migration | `2D-1A-CONTRACT` |
-| D-03 | IDと参照整合 | schemaは参照存在まで強制しない。 | schema拡張 / runtime semantic validation | import/export/storage | `2D-1A-CONTRACT` |
-| D-04 | coordinate / trim / flip / scale | px左上原点、rotation度。trim未実装、scale型はpresetにあるが未接続。 | 現行継続 / export option / asset field | atlas/helper/engine | `2D-4` |
-| D-05 | migration復旧点 | migration入口はあるが配列空、rollbackなし。 | load時のみ / import隔離 / revision保存 | storage/casproj | `2D-1B-STORAGE` |
-| D-06 | common manifest | `.casproj` / export ZIPに共通manifestなし。 | 追加しない / exportだけ / casprojにも追加 | ZIP互換 | `2D-4` |
-| D-07 | frame別データ | frameはlayerStates中心。frame別 collider/anchorなし。 | Asset共通のみ / frame override | schema/helper | `2D-3` |
-| D-08 | polygon collider | Collider shapeは rect/circleのみ。 | 後回し / schema追加 / export-only不可 | schema/export/helper | `2D-3` |
-| D-09 | target extension | engine guidesは説明文のみ。verified presetなし。 | generic維持 / target profile追加 | export ZIP/docs | `2D-5` |
+| D-01 | source / edit / derived / export / verification の分離 | `TextureKind` は source/edit/thumbnail のみ。verification層なし。 | 現行維持 / 新層追加 / 別manifest化 | Asset, `.casproj`, export | `2D-1A-LAYERS` |
+| D-02 | Project / Asset Family / Variant | Projectはasset summary配列のみ。family/variantなし。 | Asset内metadata / Project層追加 / 別file | schema, UI, migration | `2D-1A-LAYERS` |
+| D-03 | IDと参照整合 | schemaは参照存在まで強制しない。 | schema拡張 / runtime semantic validation | import/export/storage | `2D-1A-LAYERS`, `2D-1A-VALIDATION` |
+| D-04 | coordinate / trim / flip / scale | px左上原点、rotation度。trim未実装、scale型はpresetにあるが未接続。 | 現行継続 / export option / asset field | atlas/helper/engine | `2D-1A-COORD` |
+| D-05 | migration復旧点 | migration入口はあるが配列空、rollbackなし。 | load時のみ / import隔離 / revision保存 | storage/casproj | `2D-1A-MIGRATION`, `2D-1B-RECOVERY`, `2D-1B-CASPROJ` |
+| D-06 | common manifest | `.casproj` / export ZIPに共通manifestなし。 | 追加しない / exportだけ / casprojにも追加 | ZIP互換 | `2D-1A-TARGET`, `2D-4-PACKAGE` |
+| D-07 | frame別データ | frameはlayerStates中心。frame別 collider/anchorなし。 | Asset共通のみ / frame override | schema/helper | `2D-1A-MOTION`, `2D-3-COLLIDER-OVERRIDE` |
+| D-08 | polygon collider | Collider shapeは rect/circleのみ。 | 後回し / schema追加 / export-only不可 | schema/export/helper | `2D-1A-MOTION`, `2D-3-POLYGON` |
+| D-09 | target extension | engine guidesは説明文のみ。verified presetなし。 | generic維持 / target profile追加 | export ZIP/docs | `2D-1A-TARGET`, `2D-5-EVIDENCE`, 対象別work package |
 
 ## 17. 後続work packageへの引き継ぎ
 
-- `2D-1A-CONTRACT`: baselineで確認した現行事実を元に、未決定契約を ADR / fixture / acceptance test に分解する。
-- `2D-1A-MIGRATION`: 実在する旧形式が必要になった場合のみ fixture 化し、架空旧形式を正本化しない。
-- `2D-1B-STORAGE`: import隔離、rollback、容量不足、永続ストレージ、削除復元、読み込み後再保存/再書き出しを実装対象にする。
-- `2D-4`: common export contract、manifest、verification record、padding/scale/trim/extrudeを対象別に設計する。
+- `2D-1A-LAYERS`: source / edit / derived / export / verification、Project / Asset Family / Variant、ID・名前・参照の層と責務を baseline 事実から ADR / fixture / acceptance test に分解する。
+- `2D-1A-COORD`: 座標、transform、pivot、trim、atlas、flip、scale、丸めの意味を baseline 事実と既存 export の互換性から固定する。
+- `2D-1A-MOTION`: animation event、可変時間、rig bake、frame別上書き、polygon の採否と境界を決める。
+- `2D-1A-TARGET`: target固有 extension と unknown data の扱いを決め、`2D-4-PACKAGE` / `2D-5-EVIDENCE` へ渡す。
+- `2D-1A-PROVENANCE`: provenance、利用条件、AI送信記録の保存境界を決める。
+- `2D-1A-VALIDATION`: 構造・意味・出力の検証を schema / runtime / preflight に分解する。
+- `2D-1A-MIGRATION`: version、旧形式、rollback、fixture を扱う。実在する旧形式が必要になった場合のみ fixture 化し、架空旧形式を正本化しない。
+- `2D-1B-REVISION` / `2D-1B-LAYERS` / `2D-1B-RECOVERY` / `2D-1B-CAPACITY` / `2D-1B-CASPROJ` / `2D-1B-INPUT-SAFETY` / `2D-1B-GATE`: import隔離、rollback、容量不足、永続ストレージ、削除復元、読み込み後再保存/再書き出しを実装対象にする。
+- `2D-4-CORE` / `2D-4-SHEET` / `2D-4-SCALE` / `2D-4-PACKAGE` / `2D-4-PREFLIGHT` / `2D-4-GENERIC-WEB` / `2D-4-PIXIJS` / `2D-4-PHASER` / `2D-4-DOCS`: common export contract、manifest、verification record、padding/scale/trim/extrudeを対象別に設計する。
 
 ## 18. 実行した検証
 
