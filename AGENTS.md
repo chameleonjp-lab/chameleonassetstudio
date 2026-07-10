@@ -2,7 +2,7 @@
 
 最終更新日: 2026-07-10
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
-用途: Codex Fallback Mode 専用の退避実装指示書
+用途: Codex Fallback Mode / Hybrid Roadmap Mode の実装指示書
 
 ---
 
@@ -11,15 +11,16 @@
 - Codex はこの `AGENTS.md` を主指示として扱う。
 - 上位の運用モードは `docs/DEVELOPMENT_MODES.md` を正本とする。
 - Claude Code 向けの主指示は `CLAUDE.md` に分ける。
-- Codex は、Fable5 が制限されている期間、Claude Code で継続するより Codex の方が安定する場合、またはユーザーが明示した場合の退避実装担当である。
-- Fable5 が使える間は、原則として Claude Code Primary Mode を使う。Codex は通常の主担当ではない。
+- Codex は、Codex Fallback Mode の退避実装担当、または Hybrid Roadmap Mode の Implementation Owner である。
+- Hybrid Roadmap Mode では、Fable5 が段階開始時の判断、Codex が確定済み work package の実装、Opus 4.8 が CI 成功後の review-only を担当する。
+- Claude Code Primary Mode を選んだ場合、Codex は通常の主担当ではない。
 - Codex は戦略判断の最終決定者ではない。仕様判断に迷う場合は、推測で実装せず確認事項として出す。
 
 ---
 
-## 1. Codex Fallback Mode の目的
+## 1. Codex 実装モードの目的
 
-Codex Fallback Mode は、Fable5 / Claude Code 主導で進められない期間に、実装を止めないための運用である。
+Codex Fallback Mode は、Fable5 / Claude Code 主導で進められない期間に実装を止めないための運用である。Hybrid Roadmap Mode では、Fable5 または人間が固定した work package を Codex が実装し、CI 成功後に Opus 4.8 のレビューへ渡す。
 
 Codex がやること:
 
@@ -77,7 +78,7 @@ Codex がやらないこと:
 - 3D 関連: `docs/future/THREE_D_ASSET_PREPARATION_REQUIREMENTS.md`（2D Pro Gate の人間承認前は実装・library 評価・dependency 追加を開始しない）
 - 外部ライブラリ採用: 採用する PR で評価記録を新規作成し、ライセンス・商用利用・browser 対応・bundle size を確認する。
 
-`CLAUDE.md` は Claude Code Primary Mode の主指示である。Codex は通常参照しなくてよい。ただし、Claude Code から引き継いだ依頼でモードや責務の確認が必要な場合だけ読む。
+`CLAUDE.md` は Claude Code Primary / Hybrid Roadmap Mode の主指示である。Codex は通常参照しなくてよい。ただし、Claude Code から引き継いだ依頼でモードや責務の確認が必要な場合だけ読む。
 
 ---
 

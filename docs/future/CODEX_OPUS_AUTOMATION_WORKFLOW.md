@@ -15,7 +15,7 @@
 
 標準の流れ:
 
-1. Fable5 が使える間は Claude Code Primary Mode、制限中は Codex Fallback Mode を選ぶ。
+1. 作業に応じて Claude Code Primary Mode、Hybrid Roadmap Mode、Codex Fallback Mode を選ぶ。2D 完成計画は Hybrid Roadmap Mode を既定にする。
 2. 1 つの目的を完成させる実装、テスト、docs、CI 安定化を同じ PR にまとめる。
 3. CI が変更ファイルを分類する。
 4. 変更内容に必要な検査だけを実行する。
@@ -59,9 +59,10 @@ flowchart TD
 ### 3.1 担当モード
 
 - Claude Code Primary Mode: Fable5 が使える間の主運用。Sonnet5 が実装、Opus 4.8 が高難度レビュー、Haiku が探索を担当する。
+- Hybrid Roadmap Mode: Fable5 が段階開始時の判断、Codex が実装と CI 修正、Opus 4.8 が CI 成功後の review-only を担当する。
 - Codex Fallback Mode: Fable5 の制限中、またはユーザーが指定した場合の退避運用。Codex が既存設計に沿う実装を担当する。
 
-どちらのモードでも、仕様や互換性の重大判断を独断で確定しない。
+どのモードでも、仕様や互換性の重大判断を独断で確定しない。
 
 ### 3.2 1 PR 1 目的の意味
 

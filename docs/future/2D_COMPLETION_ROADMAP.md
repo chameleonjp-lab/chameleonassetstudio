@@ -38,6 +38,7 @@
 5. 共通データの意味を固めてから、対象別の export preset を増やす。
 6. 1 PR 1 目的を守る。同じ目的を完成させる実装、tests、docs、CI 安定化は1つにまとめてよい。
 7. schema、`.casproj`、export ZIP、dependencies、3D、外部ツール向け出力に触る変更は、設計と review を分ける。
+8. 本ロードマップの標準運用は `docs/DEVELOPMENT_MODES.md` の **Hybrid Roadmap Mode** とし、Fable5 は段階開始時の判断、Codex は実装、Opus 4.8 は CI 成功後のレビューに分ける。
 
 ## 3. 既存 Phase との対応
 
@@ -193,29 +194,66 @@
 - 代表プロジェクトが、開始から `.casproj` 再読み込みまで全端末で完走する。
 - 未解決の制限を機能内・README・ユーザーガイドで説明できる。
 
-## 5. 実装の依存関係
+## 5. 実装の依存関係と並行実行
 
-```txt
-データ契約・座標の確定
-        ↓
-保存・migration・復旧の実装
-        ↓
-作成 / 取り込み / 修正
-        ↓
-動き・判定・型別の検査
-        ↓
-packer / exporter / target preset
-        ↓
-外部ツール fixture と実機確認
-        ↓
-端末・保存・性能・品質 gate
-        ↓
-2D Pro Gate
-        ↓
-3D-0
+### 5.1 merge の依存関係
+
+```mermaid
+flowchart TD
+    A["2D-0 完成仕様"] --> B["2D-1a データ設計"]
+    B --> C["2D-1b 保存基盤"]
+    C --> D["2D-2 作成・修正"]
+    C --> E["2D-3 動き・ゲーム情報"]
+    D --> F["2D-4 共通書き出し"]
+    E --> F
+    F --> G["2D-5 対象別検証"]
+    D -.-> H["2D-6 品質レーン"]
+    E -.-> H
+    F -.-> H
+    G --> I["2D Pro Gate"]
+    H --> I
+    I --> J["3D-0"]
 ```
 
+実線は、本実装を merge する前に通過が必要な依存関係である。点線の `2D-6` は最後だけにまとめず、各段階と並行して端末、保存、性能、アクセシビリティ、E2E の確認を積み上げる。ただし `2D-6` 自体の完了判定は、`2D-2`〜`2D-5` の完了後に行う。
+
 この順番を逆にして、Unity / Godot / RPG Maker 向けの個別出力を先に増やしてはいけない。trim、origin、flip、frame 別判定、scale の意味が未確定なまま対象を増やすと、後から互換性を壊す。
+
+### 5.2 段階間で並行してよい範囲
+
+| 組み合わせ | 並行可否 | 並行してよい仕事 | merge 前の条件 |
+|---|---|---|---|
+| `2D-1a` + `2D-6` | 準備のみ可 | 現状性能の基準計測、端末確認表、既存保存障害の fixture 整理。 | 保存方式や schema を先回りして実装しない。 |
+| `2D-1b` + `2D-2` / `2D-3` | 準備のみ可 | UI prototype、test case、fixture、対象ファイル調査。 | `2D-1b` 完了前に、新しい永続データを使う本実装を merge しない。 |
+| `2D-2` + `2D-3` | 条件付きで可 | 作成・画像編集と、既存形式内の animation / game data 改善を別 PR で進める。 | 同じ型、保存処理、editor state、schema を同時に変更しない。 |
+| `2D-2` / `2D-3` + `2D-4` | 設計準備のみ可 | 出力 fixture、期待値、target profile、検査項目の docs 作成。 | 対象データの意味が固まる前に exporter 本体を merge しない。 |
+| `2D-4` + `2D-5` | 原則不可 | `2D-5` の外部ツール用検証手順と fixture 候補の準備だけ可。 | common manifest、座標、trim、scale、atlas 契約を `2D-4` で固定する。 |
+| `2D-5` の対象別 PR 同士 | 可 | Unity、Godot、RPG Maker MZ などを対象別の branch / fixture / PR に分ける。 | 共通 exporter を変更せず、同時実装は最大2対象にする。 |
+| `2D-2`〜`2D-5` + `2D-6` | 可 | 対応画面の accessibility、端末 E2E、性能計測、失敗経路のテスト。 | 機能 PR と品質 PR が同じ UI / storage file を同時変更しない。 |
+
+### 5.3 並行化してはいけない境界
+
+次を変更する PR は**契約レーン**と呼び、同時に1本だけ進める。
+
+- JSON Schema、format version、migration。
+- `.casproj` の構造、保存 transaction、復旧点。
+- `asset.json` の意味、座標、ID、参照、variant。
+- export ZIP、common manifest、atlas の共通契約。
+- 共通の依存関係または外部 parser。
+
+契約レーンが open の間、別 PR はその変更後の形式を推測して実装してはいけない。契約レーンを先に merge し、後続 branch を最新の `main` へ合わせてから本実装を続ける。
+
+### 5.4 同時進行数
+
+open にする実装 PR は原則として最大3本とする。
+
+| レーン | 上限 | 例 |
+|---|---:|---|
+| 契約レーン | 1 | schema / migration / `.casproj` / common export contract |
+| 機能レーン | 1 | 空キャンバス、animation event、atlas など1つの完成体験 |
+| 品質・検証レーン | 1 | accessibility、端末 E2E、外部ツール fixture、性能計測 |
+
+契約レーンがない期間は、変更ファイルと保存データが重ならない場合に限り、機能レーンを2本までにしてよい。CI 失敗や merge conflict が続いた場合は並行数を1本減らし、原因を解消してから戻す。
 
 ## 6. PR の分け方と責務
 
@@ -231,14 +269,88 @@ packer / exporter / target preset
 | target 固有 helper / addon | 対象・対象バージョンごとに fixture と手動検証を付ける。 |
 | 3D | 2D Pro Gate 後に、2D と別境界で扱う。 |
 
-### 6.2 モデルと人間確認の責務
+### 6.2 本ロードマップの標準モデル運用
 
-開発モードの詳細は `docs/DEVELOPMENT_MODES.md` を正本にする。
+開発モードの詳細は `docs/DEVELOPMENT_MODES.md` を正本にする。本ロードマップでは、3つの担当を次のように固定する。
 
-- 仕様や優先順位の判断は、Claude Code Primary Mode の Fable5、または Fable5 が使えない時の人間確認へ戻す。
-- 実装は、Claude Code Primary Mode では Sonnet5、Codex Fallback Mode では Codex が担当する。
-- 互換性、データ形式、migration、export、対象別の差分は Opus 4.8 の設計レビューと人間確認を通す。
-- CI 成功後の最終 merge は人間が判断する。
+| 担当 | 役割 | 使う時 | しないこと |
+|---|---|---|---|
+| Claude Code / Fable5 | Director | 段階開始時の仕様、優先順位、UX、データ境界、複雑な trade-off の決定。 | ファイル探索、長い差分確認、コード実装、CI 修正。 |
+| Codex | Implementation Owner | 決定済み work package のコード、tests、docs、PR、CI 修正。 | 未確定仕様の推測、契約変更の独断、最終 merge。 |
+| Claude Code / Opus 4.8 | Quality Reviewer | CI 成功後の仕様違反、UI / UX、互換性、test gap、将来リスクのレビュー。 | 通常のコード実装、CI 失敗中の反復レビュー、独断 merge。 |
+
+Fable5 が利用できない場合、Fable5 の判断を Codex や Opus 4.8 が代行して確定してはいけない。未決定事項を人間確認へ戻し、確定済みの work package だけ Codex が進める。
+
+Opus 4.8 の `BLOCKER` / `MUST` が残る PR は merge しない。修正は Codex が同じ PR へ追加し、CI を再実行してから Opus 4.8 が該当点を再確認する。最終 merge は人間が判断する。
+
+Claude Code だけで完結させる必要がある場合は、`docs/DEVELOPMENT_MODES.md` の Claude Code Primary Mode を選び、Sonnet5 を実装担当にしてよい。ただし本ロードマップの既定は、Fable5 + Codex + Opus 4.8 の Hybrid Roadmap Mode とする。
+
+### 6.3 段階別の担当と並行レーン
+
+| 段階 | 段階開始時の判断 | 実装・成果物の主担当 | CI 成功後のレビュー | 並行してよい段階 |
+|---|---|---|---|---|
+| `2D-0` | Fable5 または人間 | Codex が docs を整備 | Opus 4.8 が文書矛盾を確認 | 完了済み。 |
+| `2D-1a` | **Fable5 必須級**。座標、ID、variant、migration、復旧境界を決める。 | Codex は決定を ADR、fixture、設計 docs へ反映する。 | Opus 4.8 が互換性と移行リスクを確認する。 | `2D-6` の基準計測・fixture 整理だけ。 |
+| `2D-1b` | Fable5 は未決定事項が残る時だけ。 | **Codex** が保存、migration、復旧、tests を実装する。 | **Opus 4.8 必須**。保存破損、旧形式、失敗経路を確認する。 | `2D-2` / `2D-3` の prototype と test 設計、`2D-6` の基準作り。 |
+| `2D-2` | Fable5 が作成体験と work package の優先順位を段階開始時に決める。 | **Codex** が作成・取り込み・修正を完成体験単位で実装する。 | Opus 4.8 が非破壊性、Undo / Redo、mobile UX、test gap を確認する。 | 契約が重ならない `2D-3`、対象画面の `2D-6`。 |
+| `2D-3` | 新しいデータ意味、polygon、frame 別判定、rig の判断時だけ Fable5。 | **Codex** が確定済みの animation / game data slice を実装する。 | **Opus 4.8 必須**。座標、反転、判定、export 影響を確認する。 | 契約が重ならない `2D-2`、`2D-4` の fixture 設計、`2D-6`。 |
+| `2D-4` | **Fable5 必須級**。common manifest、target 優先度、直接生成しない範囲を固定する。 | **Codex** が packer、exporter、検査、generic profile を実装する。 | **Opus 4.8 必須**。互換性、再生成性、既存 ZIP への影響を確認する。 | `2D-5` の手順準備と `2D-6`。target 実装はまだ始めない。 |
+| `2D-5` | Fable5 は対象順または plugin 採否の判断時だけ。 | **Codex** が対象別に1 target 1 PRで preset、fixture、docs を作る。 | **Opus 4.8 必須**。対象バージョンと証拠を確認する。 | target PR を最大2本、加えて `2D-6`。 |
+| `2D-6` | Fable5 は品質と範囲の trade-off が必要な時だけ。 | **Codex** が自動検証・修正・docs を担当し、人間が実機を確認する。 | Opus 4.8 が全体品質と未解決リスクを監査する。 | `2D-2`〜`2D-5` と継続並行。最終完了は最後。 |
+| `2D Pro Gate` | Fable5 が証拠の要約と未解決判断を整理する。 | 新規実装を行わない。 | Opus 4.8 が gate 証拠を最終レビューする。 | 人間承認後だけ `3D-0`。 |
+
+`Fable5 必須級` は、Fable5 が利用できない時に作業全体を停止する意味ではない。判断済みの調査、fixture、テスト準備は続けてよいが、未確定の契約や UX を Codex が推測して本実装へ進めてはいけない。
+
+### 6.4 work package の開始条件
+
+Codex へ渡す前に、Fable5 または人間が次を1枚の handoff として固定する。
+
+1. work package ID と対象段階。
+2. 今回完成させる利用者体験を1つ。
+3. 変更してよいデータ、変更してはいけないデータ。
+4. 変更予定ファイルと、競合する open PR。
+5. acceptance criteria、必要な unit / E2E / fixture / 実機確認。
+6. `asset.json`、`.casproj`、export ZIP、JSON Schema、version への影響。
+7. 並行してよいレーンと、先に merge が必要な PR。
+8. 今回やらないこと。
+
+未決定項目が残る場合は、Codex が実装を始めず質問として返す。Fable5 はこの handoff と判断点だけを読み、リポジトリ全体や長い差分を毎回読み直さない。
+
+### 6.5 1 work package の完了ループ
+
+```txt
+Fable5 または人間が判断を固定
+        ↓
+Codex が code + tests + docs を1つの draft PRへ実装
+        ↓
+CI 成功
+        ↓
+Opus 4.8 が review-only で確認
+        ↓
+BLOCKER / MUST があれば Codex が同じ PRで修正
+        ↓
+CI 再成功 + Opus 4.8 再確認
+        ↓
+人間が merge
+```
+
+細かな関数やファイルごとに PR を分けない。1つの利用者体験または1つの危険な契約変更を work package とし、それを完成させる実装、tests、docs、CI 修正は同じ PR に含める。
+
+### 6.6 直近の実行キュー
+
+本ロードマップ承認後は、次の順で着手する。work package ID は、依頼文、branch、PR、handoff で共通に使う。
+
+| 順番 | work package | 内容 | 担当 | 並行可否 |
+|---:|---|---|---|---|
+| 0 | `2D-0-DOCS` | 本文書群、入口 docs、決定記録を merge し、2D 完成条件を固定する。 | Codex 更新、Opus 4.8 review、人間 merge | 他の本実装を merge しない。 |
+| 1 | `2D-1A-CONTRACT` | source / edit / derived / export、ID・参照・variant、座標・trim・flip・scale、migration・復旧境界を ADR と fixture で確定する。 | Fable5 判断、Codex docs / fixture、Opus 4.8 review | 下記2件の準備作業だけ並行可。 |
+| 1-P | `2D-6-BASELINE` | 現在の端末、保存失敗、性能、アクセシビリティの基準値と再現手順を記録する。 | Codex + 人間実機確認 | product code と保存形式を変えない範囲で可。 |
+| 1-P | `2D-2-PREP` | 空キャンバス、template、取り込み・修正の既存コード調査、UI prototype、acceptance test を作る。 | Codex | 永続データを増やす本実装は `2D-1b` 後。 |
+| 2 | `2D-1B-STORAGE` | 改訂単位の整合保存、復旧点、旧形式 migration、壊れた import の隔離、容量不足導線を実装する。 | Codex 実装、Opus 4.8 必須 review | `2D-6-BASELINE` と `2D-2-PREP` の継続だけ可。 |
+| 3 | `2D-2-CREATE-01` | 空キャンバスと最初の型別 template を、保存・再読込・Undo / Redoまで完成させる。 | Codex、Opus 4.8 review | 契約が重ならない `2D-3-GAMEDATA-01` と品質レーン。 |
+| 3 | `2D-3-GAMEDATA-01` | 既存形式内で最初の animation / origin / anchor / collider 検査体験を完成させる。 | Codex、Opus 4.8 review | `2D-2-CREATE-01` と同じ型・storage・editor fileを変更しない時だけ。 |
+
+`2D-1A-CONTRACT` の未決定事項を残したまま `2D-1B-STORAGE` を開始しない。`2D-1B-STORAGE` が merge されるまで、`2D-2-CREATE-01` と `2D-3-GAMEDATA-01` は準備 branch に留め、本実装 PR を open しない。
 
 本書に新しいアイデアがあっても、実装担当が独断で `asset.json`、`.casproj`、export ZIP、dependencies、3D、外部 API を変えてはいけない。
 
