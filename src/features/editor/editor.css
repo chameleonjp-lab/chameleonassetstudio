@@ -615,6 +615,48 @@
   font-weight: 700;
 }
 
+.snapshot-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.snapshot-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: 1px solid #8884;
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+}
+
+.snapshot-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.snapshot-item-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.snapshot-item-meta {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.snapshot-list-item button {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.55rem;
+}
+
 .asset-meta {
   font-size: 0.75rem;
   opacity: 0.7;

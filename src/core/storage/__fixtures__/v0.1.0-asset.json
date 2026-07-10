@@ -1,0 +1,60 @@
+{
+  "format": "chameleon-asset",
+  "version": "0.1.0",
+  "id": "asset_fixture_v010",
+  "assetType": "character",
+  "name": "fixture_character",
+  "displayName": "フィクスチャキャラクター",
+  "canvasSize": { "width": 8, "height": 8 },
+  "origin": { "x": 4, "y": 8 },
+  "textures": [
+    {
+      "id": "tex_fixture_edit",
+      "kind": "edit",
+      "name": "main",
+      "mimeType": "image/png",
+      "size": { "width": 8, "height": 8 },
+      "path": "textures/main.png"
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer_fixture_main",
+      "name": "main",
+      "layerType": "image",
+      "visible": true,
+      "locked": false,
+      "opacity": 1,
+      "transform": {
+        "position": { "x": 0, "y": 0 },
+        "scale": { "x": 1, "y": 1 },
+        "rotation": 0
+      },
+      "textureId": "tex_fixture_edit"
+    }
+  ],
+  "parts": [],
+  "anchors": [
+    {
+      "id": "anchor_fixture_foot",
+      "name": "foot",
+      "role": "foot",
+      "position": { "x": 4, "y": 8 }
+    }
+  ],
+  "colliders": [
+    {
+      "id": "collider_fixture_body",
+      "name": "body",
+      "purpose": "body",
+      "shape": "rect",
+      "visible": true,
+      "rect": { "x": 0, "y": 0, "width": 8, "height": 8 }
+    }
+  ],
+  "animations": [],
+  "tags": ["fixture"],
+  "gameAttributes": {},
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

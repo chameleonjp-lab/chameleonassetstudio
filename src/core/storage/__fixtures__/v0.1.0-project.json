@@ -1,0 +1,16 @@
+{
+  "format": "chameleon-project",
+  "version": "0.1.0",
+  "id": "project_fixture_v010",
+  "name": "旧形式フィクスチャ",
+  "assets": [
+    {
+      "id": "asset_fixture_v010",
+      "name": "fixture_character",
+      "displayName": "フィクスチャキャラクター",
+      "assetType": "character"
+    }
+  ],
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

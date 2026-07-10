@@ -1,6 +1,6 @@
 # Chameleon Asset Studio データ形式書
 
-最終更新日: 2026-07-02  
+最終更新日: 2026-07-10  
 対象バージョン: 0.1.0  
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`
 
@@ -74,6 +74,28 @@ UI からの読み書き（Phase 13）:
 
 - 書き出し: 全アセットの全 `TextureRef` に対応する画像ファイルが揃っていない場合、`exportCasproj` は `.casproj` を作らず `CasprojError`（`画像 Blob が見つかりません: asset=… texture=… path=…`）を投げる。画像欠けの保存ファイルは復元不能になるため。
 - 読み込み: `asset.json` が参照する texture path のファイルが ZIP 内に無くてもエラーにしない（この検証強化以前に書き出された `.casproj` を読めなくしないための互換措置）。欠落画像のレイヤーは表示されない。読み込み時は欠落一覧を `warnings`（`一部の画像が見つかりませんでした: asset=… texture=… path=…`）として返し、ホーム画面に警告表示する（Phase 17-B）。
+
+---
+
+## 3.1 IndexedDB（ローカル作業コピー、2D-1B-STORAGE）
+
+IndexedDB（DB 名 `chameleon-asset-studio`、実装: `src/core/storage/db.ts`）はブラウザ内のローカル作業コピーであり、可搬正本は `.casproj` である（ADR-0007）。DB_VERSION は 2（v1 → v2 は store の追加のみ。既存 3 store・キー・レコード形式は無変換で v2 コードから読める）。
+
+| store | keyPath | index | 内容 |
+| --- | --- | --- | --- |
+| `projects` | `id` | - | `Project`（project.json 相当） |
+| `assets` | `id` | `byProject`（`projectId`） | `{ id, projectId, data: Asset }` |
+| `blobs` | `key` | `byProject`（`projectId`） | `{ key, projectId, mimeType, bytes: ArrayBuffer, updatedAt }`。`key` は `blobKeyFor(assetId, texturePath)` = `${assetId}/${texturePath}` |
+| `trash`（v2 追加） | `id`（= 元の project.id） | - | `{ id, deletedAt, project: Project, assets: Asset[] }`。プロジェクトの「ごみ箱」。画像 Blob は含めず、`blobs` ストアの参照をそのまま残す |
+| `snapshots`（v2 追加） | `id` | `byAsset`（`assetId`） | `{ id, projectId, assetId, createdAt, label, asset: Asset, blob: { key, mimeType, bytes } }`。破壊的画像編集の直前状態（復旧点）。アセットあたり最大 3 件 |
+| `quarantine`（v2 追加） | `id` | - | `{ id, fileName, importedAt, errorMessage, size, bytes?: ArrayBuffer }`。読み込みに失敗した `.casproj` の隔離領域。最新 3 件のみ保持し、50MB 超は `bytes` を保存しない |
+
+運用ルール:
+
+- `trash` / `snapshots` / `quarantine` は UI の一時的な安全機構であり、`asset.json` / `.casproj` / export ZIP のいずれにも含めない（ADR-0007 §層をまたぐ規則）。
+- 保存は `saveProjectBundle`（project + assets[] + blobs[]）のように、複数 store にまたがる書き込みを単一トランザクションでまとめ、途中失敗時に部分書き込みが残らないようにする（`src/core/storage/projectStore.ts`）。
+- `trash` は最大 5 件、超過時は最古のプロジェクトを同一トランザクション内で完全削除する（画像 Blob・当該プロジェクトの `snapshots` も含めて削除）。
+- 容量不足（`DOMException.name === 'QuotaExceededError'`）は `StorageError` として検出し、「保存容量が不足しています。ごみ箱を空にするか、不要なプロジェクトを削除して空き容量を確保してください。」を表示する（`src/core/storage/db.ts`）。
 
 ---
 
