@@ -332,3 +332,48 @@ Phase 19-C「判定編集強化」では、多角形判定の追加検討と rec
 - 最初に `verified` とする Unity / Godot / RPG Maker の対象バージョンと素材種別。
 - 復旧点、削除復元、オフライン再起動、性能 budget の実装方式。
 - 2D Pro Gate の実機・外部ツール検証を誰がいつ承認するか。
+
+---
+
+## ADR-2026-07-10-008: 2D 完成は Fable5・Codex・Opus 4.8 の Hybrid Roadmap Mode で進める
+
+### 状態
+
+- accepted
+
+### 背景
+
+2D 完成ロードマップは、データ契約、保存、作成・修正、ゲーム用情報、書き出し、対象別検証、端末品質まで長期間にわたる。すべてを1モデルへ任せると、Fable5 の利用量が増えるか、Codex が未確定仕様を判断するか、Opus 4.8 が実装とレビューを兼ねて責務が曖昧になる。
+
+また、全段階を完全な直列で進めると遅い一方、schema、`.casproj`、export contract を複数 PR で同時変更すると競合と互換性事故が起きる。
+
+### 決定
+
+- `docs/future/2D_COMPLETION_ROADMAP.md` の標準運用を Hybrid Roadmap Mode とする。
+- Claude Code / Fable5 は、段階開始時の仕様、優先順位、UX、データ境界、複雑な trade-off の判断に限定する。
+- Codex は、判断済み work package の code、tests、docs、draft PR、CI 修正を担当する。
+- Claude Code / Opus 4.8 は、CI 成功後に review-only で仕様違反、UI / UX、互換性、test gap、将来リスクを確認する。
+- Opus 4.8 の `BLOCKER` / `MUST` は merge を止め、Codex が同じ PR で修正する。最終 merge は人間が判断する。
+- 契約変更は同時に1 PRだけ進める。独立した機能と品質・検証は、ロードマップの条件内で並行してよい。
+- open の実装 PR は原則最大3本とし、契約、機能、品質・検証の各レーンに分ける。
+
+### しないこと
+
+- Fable5 にファイル探索、長い差分確認、通常実装、CI 修正をさせない。
+- Opus 4.8 に通常実装をさせない。CI 失敗中の PR を繰り返しレビューさせない。
+- Codex に未確定の schema、migration、`.casproj`、export contract、外部 dependency を推測で決めさせない。
+- 同じ目的の修正を新しい PR へ細分化し直さない。
+- Fable5 が利用できないことを理由に、Opus 4.8 または Codex が仕様の最終判断を代行しない。
+
+### 影響する文書
+
+- `docs/DEVELOPMENT_MODES.md`
+- `CLAUDE.md`
+- `AGENTS.md`
+- `docs/future/2D_COMPLETION_ROADMAP.md`
+
+### 未確定事項
+
+- 各 work package の ID と具体的な着手順。
+- CI 成功後の Opus 4.8 review gate を GitHub Actions で自動化する時期。
+- 実作業で conflict が増えた場合の並行数の再調整。

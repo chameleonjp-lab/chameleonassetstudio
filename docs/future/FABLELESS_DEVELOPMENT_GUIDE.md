@@ -13,7 +13,8 @@
 
 開発モードとモデル割り当ては `docs/DEVELOPMENT_MODES.md` を正本にする。
 
-- Fable5 が使える間: Claude Code Primary Mode（`CLAUDE.md`）
+- 2D 完成計画の既定: Hybrid Roadmap Mode（Fable5 の判断と Opus 4.8 のレビューは `CLAUDE.md`、Codex 実装は `AGENTS.md`）
+- Claude Code だけで完結する場合: Claude Code Primary Mode（`CLAUDE.md`）
 - Fable5 が制限中、またはユーザーが明示した場合: Codex Fallback Mode（`AGENTS.md`）
 
 この文書には、Phase 18 以降で特に注意する作業範囲、PR 粒度、レビュー観点だけを残す。
@@ -132,7 +133,7 @@
 -
 
 ## 運用モード
-- Claude Code Primary Mode / Codex Fallback Mode
+- Claude Code Primary Mode / Hybrid Roadmap Mode / Codex Fallback Mode
 - 理由:
 
 ## 今回やらないこと
@@ -227,7 +228,7 @@
 - 既存機能を壊していないか。
 - 変更範囲が大きすぎないか。
 
-Claude Code Primary Mode では Sonnet5 が実装側を担う。Codex Fallback Mode では Codex が実装側を担う。
+Claude Code Primary Mode では Sonnet5、Hybrid Roadmap Mode と Codex Fallback Mode では Codex が実装側を担う。Hybrid Roadmap Mode の Opus 4.8 は CI 成功後の review-only とする。
 
 ### 9.3 設計レビュー
 

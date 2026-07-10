@@ -2,7 +2,7 @@
 
 最終更新日: 2026-07-10  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
-用途: Claude Code Primary Mode 専用の常時参照指示書
+用途: Claude Code Primary Mode / Hybrid Roadmap Mode の常時参照指示書
 
 ---
 
@@ -11,14 +11,14 @@
 - Claude Code はこの `CLAUDE.md` を主指示として読む。
 - 上位の運用モードは `docs/DEVELOPMENT_MODES.md` を正本とする。
 - Codex 向けの退避指示は `AGENTS.md` に分ける。
-- `AGENTS.md` は Codex Fallback Mode へ切り替える場合、または Codex から戻ってきた PR を確認する場合だけ参照する。
+- `AGENTS.md` は Hybrid Roadmap Mode で Codex へ実装を渡す場合、Codex Fallback Mode へ切り替える場合、または Codex から戻ってきた PR を確認する場合に参照する。
 - ユーザーが Claude Code 用の作業を求めている場合、Codex 依頼文に置き換えない。
 
 ---
 
-## 1. Claude Code Primary Mode
+## 1. Claude Code Primary Mode と Hybrid Roadmap Mode
 
-Fable5 / `claude-fable-5` が使える間は、Claude Code を開発の主担当にする。
+最初に `docs/DEVELOPMENT_MODES.md` で運用モードを選ぶ。Claude Code Primary Mode では Claude Code 内で判断・実装・レビューを進める。Hybrid Roadmap Mode では、Claude Code は Fable5 の方針判断と Opus 4.8 のレビューを担当し、実装は Codex へ渡す。
 
 Claude Code 内で次を使い分ける。
 
@@ -45,7 +45,7 @@ Opus 4.8 でレビュー
 判断が割れる場合だけ Fable5 または人間確認
 ```
 
-Codex は通常使わない。Fable5 が制限されている場合、Claude Code で継続するより Codex の方が安定する場合、またはユーザーが明示した場合だけ `AGENTS.md` に沿って Codex Fallback Mode へ切り替える。
+Claude Code Primary Mode では Codex を通常使わない。`docs/future/2D_COMPLETION_ROADMAP.md` は Hybrid Roadmap Mode を既定とし、Fable5 が段階開始時の判断、Codex が実装、Opus 4.8 が CI 成功後の review-only を担当する。Fable5 が制限中で確定済み実装だけを進める場合は、`AGENTS.md` に沿って Codex Fallback Mode を使う。
 
 ---
 
