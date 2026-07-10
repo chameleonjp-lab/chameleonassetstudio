@@ -43,6 +43,7 @@ Chameleon Asset Studio は、画像取り込み専用の変換ツールに限定
 | `OPEN_ITEMS.md` | 今すぐ実装しないが今後検討すべき項目の一覧（Phase 18 整合確認の成果物） |
 | `FLIP_DESIGN.md` | Phase 19「左右反転」の設計方針（通常は transform 反映、反転コピーは別コマンド） |
 | `COLLIDER_EDITING_DESIGN.md` | Phase 19-C「判定編集強化」の docs-first 設計（rect / circle を壊さず、多角形判定の影響を整理） |
+| `EXPORT_QUALITY_DESIGN.md` | Phase 20「書き出し品質改善」の docs-first 設計（padding / scale / helper 選択を互換性を壊さない export 関数オプションとして整理） |
 
 ---
 
