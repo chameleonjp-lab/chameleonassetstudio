@@ -2,16 +2,26 @@ import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 import { blobKeyFor } from '../../core/images/importImage';
 import { createEmptyProject, generateId } from '../../core/model';
 import {
+  CasprojError,
+  TRASH_LIMIT,
   deleteProject,
+  deleteQuarantineEntry,
   formatBytes,
   getStorageUsage,
   importCasproj,
   listProjects,
-  saveAsset,
-  saveBlob,
+  listQuarantine,
+  listTrash,
+  purgeAllTrash,
+  purgeTrash,
+  restoreProject,
   saveProject,
+  saveProjectBundle,
+  saveQuarantineEntry,
   type ProjectSummary,
+  type QuarantineSummary,
   type StorageUsage,
+  type TrashSummary,
 } from '../../core/storage';
 import './home.css';
 
@@ -25,6 +35,8 @@ function toErrorMessage(error: unknown): string {
 
 export function HomeScreen({ onOpenProject }: HomeScreenProps) {
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
+  const [trash, setTrash] = useState<TrashSummary[]>([]);
+  const [quarantine, setQuarantine] = useState<QuarantineSummary[]>([]);
   const [usage, setUsage] = useState<StorageUsage | null>(null);
   const [newName, setNewName] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -38,6 +50,16 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
       setErrorMessage(null);
     } catch (error) {
       setErrorMessage(`プロジェクト一覧を読み込めませんでした: ${toErrorMessage(error)}`);
+    }
+    try {
+      setTrash(await listTrash());
+    } catch {
+      // ごみ箱一覧の取得失敗はプロジェクト一覧の表示を止めない
+    }
+    try {
+      setQuarantine(await listQuarantine());
+    } catch {
+      // 隔離一覧の取得失敗もプロジェクト一覧の表示を止めない
     }
     setUsage(await getStorageUsage());
   }, []);
@@ -83,39 +105,59 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
             id: assetIdMap.get(entry.id)!,
           })),
       };
-      await saveProject(project);
-      for (const asset of bundle.assets) {
-        await saveAsset(project.id, { ...asset, id: assetIdMap.get(asset.id)! });
-      }
-      for (const entry of bundle.files) {
+      const renamedAssets = bundle.assets.map((asset) => ({
+        ...asset,
+        id: assetIdMap.get(asset.id)!,
+      }));
+      const blobs = bundle.files.flatMap((entry) => {
         const match = /^assets\/([^/]+)\/(.+)$/.exec(entry.path);
         if (!match) {
-          continue;
+          return [];
         }
         const newAssetId = assetIdMap.get(match[1]);
         if (!newAssetId) {
-          continue;
+          return [];
         }
         const mimeType = bundle.assets
           .find((asset) => asset.id === match[1])
           ?.textures.find((texture) => texture.path === match[2])?.mimeType;
-        await saveBlob(
-          project.id,
-          blobKeyFor(newAssetId, match[2]),
-          new Blob([entry.bytes.slice().buffer as ArrayBuffer], mimeType ? { type: mimeType } : {}),
-        );
-      }
+        return [
+          {
+            key: blobKeyFor(newAssetId, match[2]),
+            blob: new Blob(
+              [entry.bytes.slice().buffer as ArrayBuffer],
+              mimeType ? { type: mimeType } : {},
+            ),
+          },
+        ];
+      });
+      // project + assets + blobs を単一トランザクションで保存する（2D-1B-STORAGE §A）。
+      // 途中で失敗しても一部だけ保存された不整合な状態が残らない。
+      await saveProjectBundle(project, renamedAssets, blobs);
       await reload();
       setImportWarnings(warnings);
     } catch (error) {
       setErrorMessage(`.casproj を読み込めませんでした: ${toErrorMessage(error)}`);
+      // 壊れた・不正な .casproj は正本ストアへ一切書き込まず、隔離領域へ退避する（2D-1B-STORAGE §E）。
+      if (error instanceof CasprojError) {
+        try {
+          await saveQuarantineEntry({
+            fileName: file.name,
+            errorMessage: toErrorMessage(error),
+            bytes: await file.arrayBuffer(),
+          });
+          await reload();
+        } catch {
+          // 隔離領域への保存に失敗しても、元のエラー表示は変えない
+        }
+      }
     }
     setImporting(false);
   };
 
   const handleDelete = async (summary: ProjectSummary) => {
     const ok = window.confirm(
-      `プロジェクト「${summary.name}」を削除します。この操作は取り消せません。よろしいですか？`,
+      `プロジェクト「${summary.name}」をごみ箱へ移動します。ごみ箱から復元できます。`,
     );
     if (!ok) {
       return;
@@ -125,6 +167,52 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
       await reload();
     } catch (error) {
       setErrorMessage(`プロジェクトを削除できませんでした: ${toErrorMessage(error)}`);
+    }
+  };
+
+  const handleRestoreTrash = async (entry: TrashSummary) => {
+    try {
+      await restoreProject(entry.id);
+      await reload();
+    } catch (error) {
+      setErrorMessage(`プロジェクトを復元できませんでした: ${toErrorMessage(error)}`);
+    }
+  };
+
+  const handlePurgeTrash = async (entry: TrashSummary) => {
+    const ok = window.confirm(
+      `プロジェクト「${entry.name}」を完全に削除します。この操作は取り消せません。よろしいですか？`,
+    );
+    if (!ok) {
+      return;
+    }
+    try {
+      await purgeTrash(entry.id);
+      await reload();
+    } catch (error) {
+      setErrorMessage(`完全に削除できませんでした: ${toErrorMessage(error)}`);
+    }
+  };
+
+  const handlePurgeAllTrash = async () => {
+    const ok = window.confirm('ごみ箱を空にします。この操作は取り消せません。よろしいですか？');
+    if (!ok) {
+      return;
+    }
+    try {
+      await purgeAllTrash();
+      await reload();
+    } catch (error) {
+      setErrorMessage(`ごみ箱を空にできませんでした: ${toErrorMessage(error)}`);
+    }
+  };
+
+  const handleDeleteQuarantineEntry = async (entry: QuarantineSummary) => {
+    try {
+      await deleteQuarantineEntry(entry.id);
+      await reload();
+    } catch (error) {
+      setErrorMessage(`削除できませんでした: ${toErrorMessage(error)}`);
     }
   };
 
@@ -219,6 +307,76 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
           </ul>
         )}
       </section>
+
+      {trash.length > 0 && (
+        <section className="home-section" aria-label="ごみ箱">
+          <div className="home-section-header">
+            <h2>ごみ箱</h2>
+            <button type="button" onClick={() => void handlePurgeAllTrash()}>
+              ごみ箱を空にする
+            </button>
+          </div>
+          <p className="editor-note">
+            削除したプロジェクトは最大 {TRASH_LIMIT} 件までごみ箱に残り、復元できます。
+          </p>
+          <ul className="home-list">
+            {trash.map((entry) => (
+              <li key={entry.id} className="home-list-item">
+                <div className="home-item-main">
+                  <span className="home-item-name">{entry.name}</span>
+                  <span className="home-item-meta">
+                    アセット {entry.assetCount} 件 / 削除{' '}
+                    {new Date(entry.deletedAt).toLocaleString('ja-JP')}
+                  </span>
+                </div>
+                <div className="home-item-actions">
+                  <button
+                    type="button"
+                    onClick={() => void handleRestoreTrash(entry)}
+                    aria-label={`ごみ箱の「${entry.name}」を復元`}
+                  >
+                    復元
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handlePurgeTrash(entry)}
+                    aria-label={`ごみ箱の「${entry.name}」を完全に削除`}
+                  >
+                    完全に削除
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {quarantine.length > 0 && (
+        <section className="home-section" aria-label="読み込みに失敗したファイル">
+          <h2>読み込みに失敗したファイル</h2>
+          <ul className="home-list">
+            {quarantine.map((entry) => (
+              <li key={entry.id} className="home-list-item">
+                <div className="home-item-main">
+                  <span className="home-item-name">{entry.fileName}</span>
+                  <span className="home-item-meta">
+                    {new Date(entry.importedAt).toLocaleString('ja-JP')} / {entry.errorMessage}
+                  </span>
+                </div>
+                <div className="home-item-actions">
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteQuarantineEntry(entry)}
+                    aria-label={`「${entry.fileName}」を削除`}
+                  >
+                    削除
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <footer className="home-storage">
         {usage?.supported && usage.usageBytes !== null ? (

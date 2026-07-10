@@ -36,11 +36,16 @@ import {
 import {
   AutosaveQueue,
   listProjectAssets,
+  listSnapshots,
   loadBlob,
   loadProject,
+  restoreSnapshot,
   saveAsset,
   saveBlob,
   saveProject,
+  saveProjectBundle,
+  saveSnapshot,
+  type AssetSnapshotSummary,
   type SaveState,
 } from '../../core/storage';
 import { layerWorldPoint } from '../../renderers/canvas2d/view';
@@ -146,6 +151,25 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [replaceTolerance, setReplaceTolerance] = useState(20);
   const [outlineColor, setOutlineColor] = useState('#000000');
   const [outlineThickness, setOutlineThickness] = useState(2);
+
+  // 破壊的画像編集の復旧点（Phase 2D-1B-STORAGE §C）。選択中アセットの一覧を保持する。
+  const [snapshots, setSnapshots] = useState<AssetSnapshotSummary[]>([]);
+
+  const reloadSnapshots = useCallback(async (assetId: string | null) => {
+    if (!assetId) {
+      setSnapshots([]);
+      return;
+    }
+    try {
+      setSnapshots(await listSnapshots(assetId));
+    } catch {
+      setSnapshots([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void reloadSnapshots(selectedAssetId);
+  }, [selectedAssetId, reloadSnapshots]);
 
   useEffect(() => {
     let cancelled = false;
@@ -371,6 +395,22 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         ),
       };
 
+      // 上書き（破壊的編集）の前に復旧点を保存する（2D-1B-STORAGE §C）。
+      // 復旧点の保存に失敗しても、画像編集自体は止めない（ベストエフォート）。
+      try {
+        await saveSnapshot({
+          projectId,
+          assetId: before.id,
+          label,
+          asset: before,
+          blobKey: key,
+          blob: beforeBlob,
+        });
+        await reloadSnapshots(before.id);
+      } catch (snapshotError) {
+        console.warn('復旧点の保存に失敗しました', snapshotError);
+      }
+
       await saveBlob(projectId, key, afterBlob);
       applyAssetSnapshot(next);
       history.push({
@@ -395,6 +435,52 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       );
     } finally {
       setImageProcessing(null);
+    }
+  };
+
+  /**
+   * 復旧点から画像とアセットを復元する（2D-1B-STORAGE §C）。
+   * asset（JSON）と Blob（画像実体）は必ず対で書き換える必要があるため、
+   * applyImageEdit と同じ形（saveBlob + applyAssetSnapshot + history.push）で
+   * Undo / Redo の両方で Blob を書き戻す。commitAssetChange（asset のみ）だと
+   * Undo 後に「asset は復元前（新サイズ）だが Blob は復元後（旧サイズ）のまま」という
+   * 不整合が起きるため使わない。
+   */
+  const handleRestoreSnapshot = async (snapshotId: string) => {
+    setEditorError(null);
+    try {
+      const restored = await restoreSnapshot(snapshotId);
+      const key = restored.blobKey;
+      const current = assets.find((asset) => asset.id === restored.asset.id) ?? restored.asset;
+      // 上書きする前に、復元前（現在）の Blob を退避する（Undo で書き戻すため）。
+      const beforeBlob = await loadBlob(key);
+      // textures を新しい配列にしてビットマップ再読込を促す（他の画像編集 Undo/Redo と同じ手当て）
+      const before: Asset = { ...current, textures: [...current.textures] };
+      const next: Asset = { ...restored.asset, textures: [...restored.asset.textures] };
+
+      await saveBlob(projectId, key, restored.blob);
+      applyAssetSnapshot(next);
+      history.push({
+        label: '復旧点から復元',
+        undo: () => {
+          void (async () => {
+            if (beforeBlob) {
+              await saveBlob(projectId, key, beforeBlob);
+            }
+            applyAssetSnapshot({ ...before, textures: [...before.textures] });
+          })();
+        },
+        redo: () => {
+          void (async () => {
+            await saveBlob(projectId, key, restored.blob);
+            applyAssetSnapshot({ ...next, textures: [...next.textures] });
+          })();
+        },
+      });
+    } catch (error) {
+      setEditorError(
+        `復旧点から復元できませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   };
 
@@ -516,13 +602,13 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     try {
       const flipped = flipCopyAsset(selectedAsset);
       // 画像 Blob は asset id 単位で保存されるため、新アセットのキーへ複製する。
+      const blobs: Array<{ key: string; blob: Blob }> = [];
       for (const texture of selectedAsset.textures) {
         const blob = await loadBlob(blobKeyFor(selectedAsset.id, texture.path));
         if (blob) {
-          await saveBlob(project.id, blobKeyFor(flipped.id, texture.path), blob);
+          blobs.push({ key: blobKeyFor(flipped.id, texture.path), blob });
         }
       }
-      await saveAsset(project.id, flipped);
       const nextProject: Project = {
         ...project,
         assets: [
@@ -536,7 +622,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         ],
         updatedAt: new Date().toISOString(),
       };
-      await saveProject(nextProject);
+      // project + 新アセット + 複製した Blob を単一トランザクションで保存する（2D-1B-STORAGE §A）。
+      // 途中で失敗しても、複製が中途半端な状態で残らない。
+      await saveProjectBundle(nextProject, [flipped], blobs);
       setProject(nextProject);
       setAssets((prev) => [...prev, flipped]);
       setSelectedAssetId(flipped.id);
@@ -906,6 +994,37 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             </>
           ) : (
             <p className="editor-note">アセットを選ぶと種別を設定できます。</p>
+          )}
+
+          {selectedAsset && snapshots.length > 0 && (
+            <>
+              <h3 className="editor-subheading">復旧点</h3>
+              <p className="editor-note">
+                破壊的な画像編集（トリミング・消しゴム・色調整など）の前の状態です。アセットあたり最大
+                3 件保持します。
+              </p>
+              <ul className="snapshot-list">
+                {snapshots.map((snapshot) => (
+                  <li key={snapshot.id} className="snapshot-list-item">
+                    <div className="snapshot-item-main">
+                      <span className="snapshot-item-label">{snapshot.label}</span>
+                      <span className="snapshot-item-meta">
+                        {new Date(snapshot.createdAt).toLocaleString('ja-JP')}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void handleRestoreSnapshot(snapshot.id)}
+                      aria-label={`復旧点「${snapshot.label}（${new Date(
+                        snapshot.createdAt,
+                      ).toLocaleString('ja-JP')}）」から復元`}
+                    >
+                      復元
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
 
           <h3 className="editor-subheading">レイヤー</h3>

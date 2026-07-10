@@ -149,3 +149,21 @@
   margin: 0.15rem 0;
   overflow-wrap: anywhere;
 }
+
+.home-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.home-section-header h2 {
+  margin: 0;
+}
+
+.home-section-header button {
+  padding: 0.35rem 0.7rem;
+  font: inherit;
+  font-size: 0.85rem;
+}

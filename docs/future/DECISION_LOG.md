@@ -411,4 +411,45 @@ Phase 19-C「判定編集強化」では、多角形判定の追加検討と rec
 
 - `2D-1B-STORAGE`（保存基盤）の具体的な実装方式（原子的操作の範囲、復旧点、import 隔離領域）。
 - `Asset Family` / `Variant` を導入する場合の additive 設計の詳細。
+
+---
+
+## ADR-2026-07-10-010: 2D-1B-STORAGE: DB v2（additive）とごみ箱・復旧点・quarantine を実装
+
+### 状態
+
+- accepted
+
+### 背景
+
+`2D_COMPLETION_ROADMAP.md` の work package `2D-1B-STORAGE`（段階 2D-1b）として、ADR-0006・ADR-0007 が骨子として残していた復旧境界 (b)(c)(e) を実装した。「保存が途中で失敗しても整合した状態が残る」「プロジェクトを誤削除してもごみ箱から戻せる」「破壊的画像編集の前の状態へ復旧できる」「容量不足と壊れた `.casproj` が理由付きで安全に扱える」という体験を、既存の `asset.json` / `.casproj` / export ZIP / JSON Schema / version を一切変えずに満たす必要があった。
+
+### 決定
+
+- IndexedDB の `DB_VERSION` を 1 → 2 にし、`trash` / `snapshots`（index `byAsset`） / `quarantine` の 3 store を追加した（`src/core/storage/db.ts`）。既存の `projects` / `assets` / `blobs` ストアとレコード形式は変更していない（additive のみ）。v1 相当データを v2 コードで開いても無変換で読めることを unit test で固定した。
+- `saveProjectBundle`（project + assets[] + blobs[]）を新設し、Blob → ArrayBuffer 変換をトランザクション開始前に済ませたうえで、projects / assets / blobs への put を単一トランザクションにまとめた（`src/core/storage/projectStore.ts`）。`HomeScreen.tsx` の `.casproj` 読み込みと、`EditorScreen.tsx` の左右反転コピー保存経路を、この関数へ置き換えた。`runTransaction`（`src/core/storage/db.ts`）は、コールバック内で例外（IndexedDB の同期例外を含む）が起きた場合にトランザクションを明示的に `abort()` するよう変更し、途中失敗時に一部だけがコミットされないことを fail-injection unit test で固定した。
+- `deleteProject` の意味を「完全削除」から「ごみ箱へ移動」へ変更した。project / assets は正本ストアから削除するが、画像 Blob は削除せず、`trash` レコードが project + assets のスナップショットを保持する。ごみ箱は最大 5 件（`TRASH_LIMIT`）で、超過時は同一トランザクション内で最も古いプロジェクトを完全削除する（画像 Blob・当該プロジェクトの `snapshots` も含めて削除）。`listTrash` / `restoreProject` / `purgeTrash` / `purgeAllTrash` を追加し、`HomeScreen.tsx` に「ごみ箱」セクション（復元・完全削除・空にする）を追加した。削除確認ダイアログの文言を「ごみ箱へ移動します。ごみ箱から復元できます。」に変更した（既存 E2E は文言を検証しておらず、確認ダイアログを承認する挙動のみ検証しているため、既存テストの期待値変更は発生していない）。
+- 破壊的画像編集（トリミング・消しゴム・色調整・パレット置換・輪郭線）の直前状態を「復旧点」として `snapshots` store に保存する（`saveSnapshot` / `listSnapshots` / `restoreSnapshot`、`src/core/storage/snapshotStore.ts`）。アセットあたり最大 3 件で、超過分は同一トランザクション内で最古から削除する。復元は Blob を書き戻したうえで、既存の `commitAssetChange`（履歴）経路に「復旧点から復元」として乗せ、セッション内 Undo できるようにした。プロジェクトがごみ箱にある間は復旧点を保持し（復元後も Undo 可能にするため）、完全削除（`purgeTrash` / `purgeAllTrash` / ごみ箱上限超過の自動 purge）のタイミングで、そのプロジェクトの全アセットの復旧点をまとめて削除する。
+- `DOMException.name === 'QuotaExceededError'`（または legacy `code === 22`）を `src/core/storage/db.ts` で検出し、`StorageError` のメッセージを「保存容量が不足しています。ごみ箱を空にするか、不要なプロジェクトを削除して空き容量を確保してください。」に統一した。既存の `AutosaveQueue` の「保存失敗: …」表示にそのまま流れることを確認した。
+- 壊れた・不正な `.casproj` の読み込み失敗時、正本ストアには一切書き込まず、`quarantine` store に `{ fileName, importedAt, errorMessage, size, bytes? }` を保存する（`src/core/storage/quarantineStore.ts`）。最新 3 件のみ保持し、50MB を超えるファイルは `bytes` を保存せず理由とサイズだけ残す。`HomeScreen.tsx` に「読み込みに失敗したファイル」一覧（削除ボタン付き）を追加した。
+- `deleteAsset`（現状 UI 未使用）が assets ストアのみ削除し、`${assetId}/` prefix の画像 Blob を孤児として残していたバグを修正した。
+- `src/core/storage/__fixtures__/` に v0.1.0 の最小プロジェクト（project.json + asset.json + 8x8 PNG）を fixture として追加し、fflate で組み立てた `.casproj` → `importCasproj` → `exportCasproj` → 再 import の roundtrip を unit test で固定した（ADR-0006 が要求する「旧データ fixture・unit test・roundtrip 確認」）。
+
+### しないこと
+
+- `asset.json` / `.casproj` / export ZIP / JSON Schema / version の変更。
+- プロジェクト以外（アセット単位）のごみ箱 UI、quarantine からの再 import、revision 履歴 UI、自動バックアップ、GC スケジューラ、`.casproj` 形式変更。
+- `saveAssetWithBlobs`（asset 単位の原子的保存関数）の実装。ハンドオフでは `saveProjectBundle` の代替として提示されていたが、実際に置き換えが必要だった 2 箇所（`.casproj` 読み込み、左右反転コピー）はどちらも project 側の更新も伴うため、`saveProjectBundle` のみで要件を満たせた。将来、project を伴わないアセット単位の原子的保存が必要になった時点で追加する。
+
+### 影響する文書
+
+- `docs/USER_GUIDE.md`（8.1〜8.4: ごみ箱・復旧点・容量不足・quarantine）
+- `docs/DATA_FORMAT.md`（3.1: IndexedDB store 一覧、DB v2）
+- `docs/adr/0006-migration-and-recovery-boundaries.md` / `0007-data-layer-separation.md`（参照のみ、内容変更なし。骨子 (b)(c)(e) の実装が本 ADR）
+
+### 未確定事項
+
+- ごみ箱・復旧点・quarantine の上限件数（5 / 3 / 3）は初期値であり、実運用のフィードバックで見直す可能性がある。
+- quarantine からの原因調査後の再 import 導線（現状は削除のみ）。
+- アセット単位のごみ箱・復旧履歴の恒久 UI 化。
 - ID prefix（`anim` と `animation` の不一致など）を将来統一するかどうか。
