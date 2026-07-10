@@ -75,7 +75,15 @@ Phase 17 後は、旧 Phase 18〜28 の順番ではなく次を優先する。
 
 - `2D-0`: 完了。
 - `2D-1A-BASELINE`: PR #50で完了し、baseline reportはmainへマージ済み。
-- 現在の契約上の次段階: `2D-1A-LAYERS` と `2D-1A-COORD`。これは Fable5 または人間判断が必要な契約固定作業であり、Codexだけで新規決定しない。
+- `2D-1A-LAYERS`: PR #52で accepted。ADR-0002（ID・参照）、ADR-0003（Family / Variant の現行解釈）、ADR-0007（データ5層）で固定した。
+- `2D-1A-COORD`: PR #52で accepted。ADR-0001（座標と transform）、ADR-0004（trim / atlas / scale 境界）、ADR-0005（flip規則）で固定した。
+- `2D-1A-MOTION`: 次の契約作業。animation event、可変時間、rig bake、frame別上書き、polygon の境界は未決定であり、Codexだけで新規決定しない。
+- `2D-1A-TARGET`: 未着手。
+- `2D-1A-PROVENANCE`: 未着手。
+- `2D-1A-VALIDATION`: 未着手。
+- `2D-1A-MIGRATION`: ADR-0006で migration・復旧境界の骨子を一部固定したが、work package 全体は未完了。
+- `2D-1B-*`: 開始禁止。すべての `2D-1A-*` が accepted になるまで保存・migration・復旧の本実装を開始しない。
+- `2D-1A-CONTRACT`: PR #52で使われた歴史的な総称。現在の正式な進捗管理は、細分化された `2D-1A-*` IDを使用する。PR #52で `2D-1a` 全体が完了したとは扱わない。
 - Codexだけで並行可能な準備作業: `2D-6-PERFORMANCE` / `2D-6-A11Y` の現状基準計測、`2D-2-CREATE` / `2D-2-RASTER` の既存コード調査・prototype・acceptance test設計。これらは実装済み扱いにしない。
 
 詳細な依存関係、同時に変更してはいけない契約、最大3本の PR レーンは `docs/future/2D_COMPLETION_ROADMAP.md` を参照する。2D Pro Gate を人間が承認するまで、旧 Phase 22〜28 の 3D へ進まない。

@@ -380,7 +380,7 @@ Phase 19-C「判定編集強化」では、多角形判定の追加検討と rec
 
 ---
 
-## ADR-2026-07-10-009: 2D-1A-CONTRACT: ADR 0001〜0007 で契約境界を確定（docs/adr/）
+## ADR-2026-07-10-009: PR #52 の ADR 0001〜0007 を詳細 2D-1A work package へ対応付ける
 
 ### 状態
 
@@ -388,27 +388,35 @@ Phase 19-C「判定編集強化」では、多角形判定の追加検討と rec
 
 ### 背景
 
-`2D_COMPLETION_ROADMAP.md` の work package `2D-1A-CONTRACT`（段階 2D-1a）として、`2D_ASSET_DATA_CONTRACT.md` のうちデータ層 / ID・参照・variant / 座標・trim・flip・scale / migration・復旧境界に関わる決定を、実装前に固定する必要があった。これらは `2D-1B-STORAGE` 以降の保存基盤実装の前提になるため、docs だけでなく現行実装の意味を fixture テストで数値として固定した。
+PR #52 では `2D-1A-CONTRACT` という歴史的な総称で ADR 0001〜0007 と fixture test を追加した。一方、現在の `2D_COMPLETION_ROADMAP.md` では 2D-1a を `2D-1A-LAYERS`、`2D-1A-COORD`、`2D-1A-MOTION`、`2D-1A-TARGET`、`2D-1A-PROVENANCE`、`2D-1A-VALIDATION`、`2D-1A-MIGRATION` に細分化して管理する。PR #52 の成果を 2D-1a 全体の完了と誤読すると、未完了の契約を残したまま `2D-1B-*` の保存・migration・復旧実装へ進む危険がある。
 
 ### 決定
 
-- `docs/adr/` を新設し、0001〜0007 の ADR を作成した（座標と変形の意味、ID・名前・参照の規則、Variant・派生アセットの解釈、trim・atlas・scale の出力層の意味、左右反転の意味、migration・復旧境界、データ層の分離）。
-- 各 ADR は `docs/future/2D_ASSET_DATA_CONTRACT.md` の該当章を規範とし、現行実装（`layerWorldPoint`、`flipCopyAsset`、`computeSheetLayout` / `buildAtlas`、`migrateAsset` 等）のどの関数がその意味を体現しているかを明示した。
-- `src/core/model/contract.fixtures.test.ts` と `src/core/export/contract.fixtures.test.ts` を新規作成し、ADR-0001・0002・0004・0005・0006 の数値を独立した fixture として固定した。既存テストの期待値は変更していない。
+- `2D-1A-CONTRACT` は PR #52 で使われた歴史的総称としてのみ残し、現在の正式IDでは PR #52 を主に `2D-1A-LAYERS` と `2D-1A-COORD` に対応付ける。
+- `2D-1A-LAYERS` は PR #52 で accepted とする。対応ADRは ADR-0002（ID・名前・参照）、ADR-0003（Variant・派生アセットの現行解釈）、ADR-0007（データ5層）。
+- `2D-1A-COORD` は PR #52 で accepted とする。対応ADRは ADR-0001（座標と変形）、ADR-0004（trim・atlas・scale）、ADR-0005（flip規則）。
+- ADR-0006 は `2D-1A-MIGRATION` の一部境界と `2D-1B-*` への入力であり、`2D-1A-MIGRATION` 全体の完了ではない。
+- `2D-1A-MOTION`、`2D-1A-TARGET`、`2D-1A-PROVENANCE`、`2D-1A-VALIDATION`、`2D-1A-MIGRATION` の完全な契約は未完了であり、次の契約作業は `2D-1A-MOTION` とする。
+- すべての `2D-1A-*` が accepted になるまで、`2D-1B-*` の本実装を開始しない。
+- `src/core/model/contract.fixtures.test.ts` と `src/core/export/contract.fixtures.test.ts` は PR #52 の成果として維持し、既存テストの期待値は変更していない。
 
 ### しないこと
 
 - 製品コード、JSON Schema、`src/core/samples/` の既存ファイル、既存テストの期待値、version、dependencies は変更しない。
-- `Asset Family` / `Variant`、可変フレーム時間、frame 別判定、polygon、trim / scale / padding の実装、保存基盤（`2D-1B-STORAGE`）は本 work package に含めない。
+- `Asset Family` / `Variant` の実装、可変フレーム時間、frame 別判定、polygon、trim / scale / padding の実装、保存・migration・復旧基盤（`2D-1B-*`）は PR #52 に含めない。
+- PR #52 だけで 2D-1a 全体を完了扱いにしない。
 
 ### 影響する文書
 
 - `docs/adr/README.md`, `docs/adr/0001-*.md` 〜 `docs/adr/0007-*.md`
 - `docs/future/2D_ASSET_DATA_CONTRACT.md`（参照のみ、内容変更なし）
+- `docs/future/2D_COMPLETION_ROADMAP.md`
+- `docs/IMPLEMENTATION_PLAN.md`
 - `docs/future/README.md`
 
 ### 未確定事項
 
-- `2D-1B-STORAGE`（保存基盤）の具体的な実装方式（原子的操作の範囲、復旧点、import 隔離領域）。
+- `2D-1A-MOTION` の契約（animation event、可変時間、rig bake、frame別上書き、polygon境界）。
+- `2D-1B-*`（保存・migration・復旧基盤）の具体的な実装方式（原子的操作の範囲、復旧点、import 隔離領域）。
 - `Asset Family` / `Variant` を導入する場合の additive 設計の詳細。
 - ID prefix（`anim` と `animation` の不一致など）を将来統一するかどうか。

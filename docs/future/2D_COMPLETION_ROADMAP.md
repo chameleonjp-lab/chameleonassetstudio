@@ -84,15 +84,15 @@
 | ID | 分類 | 内容 | 状態 / 次の扱い |
 |---|---|---|---|
 | `2D-1A-BASELINE` | 必須 | 現行実装の baseline report を固定する。 | PR #50で完了・mainへマージ済み。 |
-| `2D-1A-LAYERS` | 判断必須 | source / edit / derived / export / verification、Project / Asset Family / Variant、ID・名前・参照の層を固定する。 | 次の契約作業。Fable5または人間判断が必要。 |
-| `2D-1A-COORD` | 判断必須 | 座標、transform、pivot、trim、atlas、flip、scale、丸めの意味を固定する。 | `2D-1A-LAYERS` と同時に次へ進める。Fable5または人間判断が必要。 |
-| `2D-1A-MOTION` | 判断必須 | animation event、可変時間、rig bake、frame別上書き、polygonの境界を決める。 | `2D-1A-LAYERS` + `2D-1A-COORD` 後。 |
-| `2D-1A-TARGET` | 判断必須 | target固有 extension と unknown data の扱いを決める。 | `2D-1A-MOTION` 後。 |
-| `2D-1A-PROVENANCE` | 判断必須 | provenance、利用条件、AI送信記録の保存境界を決める。 | `2D-1A-MOTION` 後。 |
-| `2D-1A-VALIDATION` | 判断必須 | 構造・意味・出力の検証を schema / runtime / preflight へ分解する。 | `2D-1A-MOTION` 後。 |
-| `2D-1A-MIGRATION` | 判断必須 | version、旧形式、rollback、fixtureの扱いを固定する。 | `2D-1A-MOTION` 後。 |
+| `2D-1A-LAYERS` | 判断必須 | source / edit / derived / export / verification、Project / Asset Family / Variant、ID・名前・参照の層を固定する。 | accepted / PR #52。ADR-0002、ADR-0003、ADR-0007で固定。 |
+| `2D-1A-COORD` | 判断必須 | 座標、transform、pivot、trim、atlas、flip、scale、丸めの意味を固定する。 | accepted / PR #52。ADR-0001、ADR-0004、ADR-0005で固定。 |
+| `2D-1A-MOTION` | 判断必須 | animation event、可変時間、rig bake、frame別上書き、polygonの境界を決める。 | next / pending decision。次の契約作業。 |
+| `2D-1A-TARGET` | 判断必須 | target固有 extension と unknown data の扱いを決める。 | pending。 |
+| `2D-1A-PROVENANCE` | 判断必須 | provenance、利用条件、AI送信記録の保存境界を決める。 | pending。 |
+| `2D-1A-VALIDATION` | 判断必須 | 構造・意味・出力の検証を schema / runtime / preflight へ分解する。 | pending。 |
+| `2D-1A-MIGRATION` | 判断必須 | version、旧形式、rollback、fixtureの扱いを固定する。 | partial / ADR-0006のみ。work package全体はpending。 |
 
-次の契約作業順は、`2D-1A-LAYERS` + `2D-1A-COORD`、`2D-1A-MOTION`、`2D-1A-TARGET` + `2D-1A-PROVENANCE` + `2D-1A-VALIDATION` + `2D-1A-MIGRATION` の順とする。すべての `2D-1A-*` が accepted になる前に、`2D-1B-*` の本実装を開始しない。
+次の契約作業順は、(1) `2D-1A-BASELINE` 完了、(2) `2D-1A-LAYERS` + `2D-1A-COORD` は PR #52で accepted、(3) `2D-1A-MOTION`、(4) `2D-1A-TARGET` + `2D-1A-PROVENANCE` + `2D-1A-VALIDATION` + `2D-1A-MIGRATION`、(5) すべて accepted 後に `2D-1B-*` の順とする。PR #52 の merge だけでは `2D-1B-*` を開始できない。`2D-1A-MOTION`、`2D-1A-TARGET`、`2D-1A-PROVENANCE`、`2D-1A-VALIDATION`、`2D-1A-MIGRATION` の完全な契約が未完了であるため、すべての `2D-1A-*` が accepted になる前に、`2D-1B-*` の本実装を開始しない。
 
 主な仕事:
 
@@ -150,6 +150,21 @@
 - 元画像を残したまま、透明な縁、余白、サイズ、命名、frame ずれを検査・修正する。
 - linked variant と独立コピーの設計・実装を、必要な順番で進める。
 
+
+詳細 work package:
+
+| ID | 分類 | 内容 | Gate |
+|---|---|---|---|
+| `2D-2-PROJECT` | 必須 | 複数 Project / Asset Family の入口、一覧、命名、作成導線を整える。 | `2D-1B-GATE` 後。 |
+| `2D-2-CREATE` | 必須 | 空キャンバス、型別テンプレート、図形・パーツから作る入口を完成させる。 | `2D-1B-GATE` 後。 |
+| `2D-2-RASTER` | 必須 | 基本的なピクセル / ラスター編集、塗り、選択、整列、グリッドを完成させる。 | `2D-1B-GATE` 後。 |
+| `2D-2-REPAIR` | 必須 | 透明な縁、余白、サイズ、命名、frame ずれを検査・修正する。 | `2D-1B-GATE` 後。 |
+| `2D-2-VARIANT` | 判断必須 | linked variant と独立コピーの UX / 保存境界を実装する。 | `2D-1A-LAYERS` accepted 済み、保存基盤後。 |
+| `2D-2-BATCH` | 必須 | 一括変更、命名、複数素材の安全な処理を扱う。 | `2D-2-VARIANT` 後。 |
+| `2D-2-IMPORT-GATE` | 必須 | editable / rasterized / reference-only の import 区分をUIと検査に出す。 | 入力安全後。 |
+| `2D-2-IMPORT-OPTIONAL` | Gate後 | 任意形式の追加 import を、対応可否と制限付きで増やす。 | 2D Pro Gate または個別承認後。 |
+| `2D-2-AI-BOUNDARY` | 判断必須 | 外部AI/通信を使う場合の送信前同意、記録、非送信経路を固定する。 | 本実装は別承認まで禁止。 |
+
 完了条件:
 
 - キャラクター、タイル / 背景、UI または effect のいずれも、空から作る経路と既存画像を直す経路を通せる。
@@ -167,6 +182,22 @@
 - リグ編集データの反転、焼き込み結果、パーツ差し替え、状態候補。
 - character、item、background、tile、gimmick、effect、UI / icon の型別検査画面。
 - tile collision、背景ループ / parallax、gimmick の動き、effect の duration / blend / anchor の確認。
+
+
+詳細 work package:
+
+| ID | 分類 | 内容 | Gate |
+|---|---|---|---|
+| `2D-3-TIMELINE` | 必須 | onion skin、フレーム複製、可変時間、animation event を扱う。 | `2D-1A-MOTION` accepted 後。 |
+| `2D-3-RIG` | 必須 | 簡易 rig、反転、焼き込み、パーツ差し替えの確定範囲を実装する。 | `2D-1A-MOTION` accepted 後。 |
+| `2D-3-GAME-DATA` | 必須 | origin / anchor / collider / tile / gimmick などゲーム用情報を整える。 | `2D-1B-GATE` 後。 |
+| `2D-3-COLLIDER-OVERRIDE` | 必須 | frame 別 collider 上書きの契約とUIを扱う。 | `2D-1A-MOTION` accepted 後。 |
+| `2D-3-POLYGON` | 判断必須 | polygon collider の保存・反転・export 影響を確定してから実装する。 | 個別設計承認後。 |
+| `2D-3-TYPE-PROFILES` | 必須 | character / item / background / tile / gimmick / effect / UI の型別検査を作る。 | `2D-1A-TARGET` accepted 後。 |
+| `2D-3-PREVIEW` | 必須 | ゲーム風 preview、再生、判定表示を完成させる。 | GAME-DATA 後。 |
+| `2D-3-INSPECT` | 必須 | 足りない情報を理由付きで表示する検査を作る。 | TYPE-PROFILES 後。 |
+| `2D-3-IMPACT` | 必須 | 変更影響、未設定、未検証対象を説明する。 | INSPECT 後。 |
+| `2D-3-ADVANCED-RIG` | Gate後 | 高度な rig / IK / 複雑な状態候補を扱う。 | 2D Pro Gate 後。 |
 
 完了条件:
 
@@ -216,6 +247,20 @@
 - 必要に応じて RPG Maker MV、Tiled、Construct 3、GameMaker、GDevelop、Blender texture prep を増やす。
 - 手動 import で情報を安全に再現できない対象だけ、固定版の helper / addon / plugin を検討する。
 
+
+詳細 work package:
+
+| ID | 分類 | 内容 | Gate |
+|---|---|---|---|
+| `2D-5-EVIDENCE` | 必須 | 対象バージョン、手順、fixture、期待結果、証拠形式を固定する。 | `2D-4` 共通 exporter 後。 |
+| `2D-5-LABELS` | 必須 | `candidate` / `import-notes` / `verified` / `unsupported` の表示を分ける。 | EVIDENCE 後。 |
+| `2D-5-UNITY` | 必須 | Unity 2D への持ち込みを対象バージョン付きで確認する。 | 最大2 target並行可。 |
+| `2D-5-GODOT` | 必須 | Godot 2D への持ち込みを対象バージョン付きで確認する。 | 最大2 target並行可。 |
+| `2D-5-RPGMZ` | 必須 | RPG Maker MZ の素材規則に合わせて確認する。 | 最大2 target並行可。 |
+| `2D-5-HELPER-GATE` | 判断必須 | helper / addon / plugin が必要な対象だけ、採否と固定版を判断する。 | 対象別検証後。 |
+| `2D-5-P2-TARGETS` | Gate後 | RPG Maker MV、Tiled、Construct 3、GameMaker、GDevelop などを追加する。 | 2D Pro Gate 後。 |
+| `2D-5-NATIVE-RIG` | Gate後 | Spine / Rive / Live2D など native rig 連携を評価する。 | 2D Pro Gate 後。 |
+
 完了条件:
 
 - `verified` には対象バージョン、手順、fixture、期待結果、証拠、既知の制限がある。
@@ -232,6 +277,22 @@
 - Files 経由の `.casproj` 移動、保存容量、保存失敗、削除復元、オフライン、更新、壊れた入力の確認。
 - 性能 budget、worker、メモリ、アクセシビリティ、キーボード、読み上げ、色以外の識別。
 - unit test、migration test、描画比較、E2E、対象別 fixture、手動証跡の整理。
+
+
+詳細 work package:
+
+| ID | 分類 | 内容 | Gate |
+|---|---|---|---|
+| `2D-6-DEVICE-FLOW` | 必須 | PC / iPad / スマホで作成から再読み込みまでを確認する。 | 各機能段階と並行、完了判定は最後。 |
+| `2D-6-INPUT` | 必須 | Files、D&D、共有、壊れた入力、サイズ超過を検査する。 | INPUT-SAFETY 後。 |
+| `2D-6-RECOVERY` | 必須 | 保存失敗、削除復元、画像欠落、容量不足の復旧導線を確認する。 | `2D-1B-RECOVERY` 後。 |
+| `2D-6-OFFLINE` | 必須 | オフライン、更新、未保存変更保護を確認する。 | 別設計後。 |
+| `2D-6-PERFORMANCE` | 必須 | 代表素材、端末、操作の performance budget と実測を残す。 | 早期 baseline 可。 |
+| `2D-6-A11Y` | 必須 | キーボード、読み上げ、色以外の判別、タップ対象を確認する。 | 早期 baseline 可。 |
+| `2D-6-SECURITY` | 必須 | 秘密情報、外部通信、不正 ZIP / SVG / JSON の安全性を確認する。 | 入力・export段階と並行。 |
+| `2D-6-REFERENCE` | 必須 | 代表 project / fixture / 手動証跡を整理する。 | Gate前。 |
+| `2D-6-DOCS` | 必須 | README、ユーザーガイド、既知制限、release checklist を更新する。 | Gate前。 |
+| `2D-6-GATE-AUDIT` | 必須 | 2D Pro Gate の証拠を監査し、人間承認へ渡す。 | 最後。 |
 
 完了条件:
 
@@ -381,23 +442,76 @@ CI 再成功 + Opus 4.8 再確認
 
 細かな関数やファイルごとに PR を分けない。1つの利用者体験または1つの危険な契約変更を work package とし、それを完成させる実装、tests、docs、CI 修正は同じ PR に含める。
 
-### 6.6 直近の実行キュー
+### 6.6 2D Pro Gate までの実行キュー
 
-本ロードマップ承認後は、次の順で着手する。work package ID は、依頼文、branch、PR、handoff で共通に使う。
+本ロードマップ承認後は、次の順で着手する。work package ID は、依頼文、branch、PR、handoff で共通に使う。PR #52は `2D-1A-LAYERS` + `2D-1A-COORD` の accepted として扱い、2D-1a全体の完了ではない。
 
-| 順番 | work package | 内容 | 担当 | 並行可否 |
-|---:|---|---|---|---|
-| 0 | `2D-0-DOCS` | 本文書群、入口 docs、決定記録を merge し、2D 完成条件を固定する。 | Codex 更新、Opus 4.8 review、人間 merge | 他の本実装を merge しない。 |
-| 1 | `2D-1A-BASELINE` | 現行 version、型、schema、`.casproj`、IndexedDB、autosave、export ZIP、migration、fixture/test coverage を [`2D_1A_BASELINE_REPORT.md`](2D_1A_BASELINE_REPORT.md) に固定する。 | Codex docs、Opus 4.8 review | PR #50で完了・mainへマージ済み。product code、schema、version、保存形式、export ZIPは変更済み扱いにしない。 |
-| 2A | `2D-1A-LAYERS` + `2D-1A-COORD` | 層、Project / Asset Family / Variant、ID・参照、座標、transform、pivot、trim、atlas、flip、scale、丸めを ADR と fixture で確定する。 | Fable5または人間判断、Codex docs / fixture、Opus 4.8 review | 未確定契約をCodexが独断決定しない。下記2件の準備作業だけ並行可。 |
-| 2B | `2D-1A-MOTION` | animation event、可変時間、rig bake、frame別上書き、polygon の境界を確定する。 | Fable5または人間判断、Codex docs / fixture、Opus 4.8 review | 2A accepted 後。 |
-| 2C | `2D-1A-TARGET` + `2D-1A-PROVENANCE` + `2D-1A-VALIDATION` + `2D-1A-MIGRATION` | target固有 extension、unknown data、provenance、利用条件、AI送信記録、構造・意味・出力検証、version・旧形式・rollback・fixtureを確定する。 | Fable5または人間判断、Codex docs / fixture、Opus 4.8 review | 2B accepted 後。 |
-| 1-P | `2D-6-PERFORMANCE` / `2D-6-A11Y` baseline | 現在の性能、アクセシビリティ、端末確認表、再現手順を記録する。 | Codex + 人間実機確認 | product code と保存形式を変えない準備だけ可。 |
-| 1-P | `2D-2-CREATE` / `2D-2-RASTER` prep | 空キャンバス、template、取り込み・修正の既存コード調査、prototype、acceptance test設計を作る。 | Codex | 永続データを増やす本実装は `2D-1B-GATE` 後。 |
-| 3 | `2D-1B-REVISION` → `2D-1B-GATE` | 改訂単位の整合保存、保存境界、復旧点、容量不足導線、`.casproj` staged import、壊れた input 隔離、保存回帰テストを実装する。 | Codex 実装、Opus 4.8 必須 review | すべての `2D-1A-*` が accepted になるまで開始しない。 |
-| 4 | `2D-2-*` / `2D-3-*` 本実装 | 空キャンバス、基本編集、animation / origin / anchor / collider などを完成体験単位で実装する。 | Codex、Opus 4.8 review | `2D-1B-GATE` が merge されるまで本実装 PR を open しない。 |
+| 順番 | work package | 内容 | 担当 | 依存関係 | 並行可否 |
+|---:|---|---|---|---|---|
+| 0 | `2D-0-DOCS` / `2D-0-PLAN` / `2D-0-ENTRY` | 上位4仕様、計画、入口docsを固定。完了済み。 | Codex docs、Opus 4.8 review、人間 merge | なし | 完了済み。 |
+| 1 | `2D-1A-BASELINE` | 現行 baseline を固定。PR #50で完了。 | Codex docs、Opus 4.8 review | 2D-0 | 完了済み。 |
+| 2A | `2D-1A-LAYERS` + `2D-1A-COORD` | ADR-0001〜0005、0007とfixtureで層・ID・座標を固定。PR #52でaccepted。 | Fable5または人間判断、Codex docs / fixture、Opus 4.8 review | 2D-1A-BASELINE | 完了済み扱い。ただし2D-1a全体は未完了。 |
+| 2B | `2D-1A-MOTION` | animation event、可変時間、rig bake、frame別上書き、polygon境界を決める。 | Fable5または人間判断、Codex docs / fixture、Opus 4.8 review | 2A | 次の契約作業。`2D-6` baselineのみ並行可。 |
+| 2C | `2D-1A-TARGET` + `2D-1A-PROVENANCE` + `2D-1A-VALIDATION` + `2D-1A-MIGRATION` | target extension、provenance、検証、migration完全契約を固定。ADR-0006はMIGRATIONの一部入力のみ。 | Fable5または人間判断、Codex docs / fixture、Opus 4.8 review | 2B | 契約レーン1本のみ。 |
+| 5 | `2D-1B-REVISION` + `2D-1B-LAYERS` | 改訂単位と保存境界を実装。 | Codex、Opus 4.8必須review | すべての2D-1A-* accepted | `2D-2` / `2D-3` は調査・test設計のみ。 |
+| 6 | `2D-1B-RECOVERY` + `2D-1B-CAPACITY` | 復旧点、trash、rollback、容量警告を実装。 | Codex、Opus 4.8必須review | 5 | `2D-6` の復旧ケース準備可。 |
+| 7 | `2D-1B-CASPROJ` + `2D-1B-INPUT-SAFETY` + `2D-1B-GATE` | staged import、不正入力隔離、保存回帰testを通し2D-2/2D-3本実装を解禁。 | Codex、Opus 4.8必須review、人間merge | 6 | Gate mergeまで本実装禁止。 |
+| 8A | `2D-2-PROJECT` + `2D-2-CREATE` | 複数asset入口、空キャンバス、template作成。 | Codex、Opus 4.8 review | 2D-1B-GATE | `2D-6` と並行可。 |
+| 8B | `2D-3-TYPE-PROFILES` + `2D-3-INSPECT` | 型別profileと理由付き検査。 | Codex、必要時Fable5、Opus 4.8 review | 2D-1B-GATE、TARGET契約 | 8Aと契約が重ならなければ並行可。 |
+| 9 | `2D-2-RASTER` + `2D-2-REPAIR` | 基本描画、修正、余白・frameずれ補修。 | Codex、Opus 4.8 review | 8A | 同じeditor stateを同時変更しない。 |
+| 10 | `2D-2-VARIANT` + `2D-2-BATCH` | variant UX、一括変更、命名。 | Codex、必要時Fable5、Opus 4.8 review | 9、LAYERS契約 | 契約レーン扱いなら単独。 |
+| 11 | `2D-2-IMPORT-GATE` + `2D-2-IMPORT-OPTIONAL` + `2D-2-AI-BOUNDARY` | import区分、任意形式、AI/通信境界。 | Codex、Fable5/人間判断、Opus 4.8 review | INPUT-SAFETY | OPTIONALとAIは判断必須。 |
+| 12 | `2D-3-TIMELINE` + `2D-3-RIG` | timeline、可変時間、簡易rig、bake。 | Codex、必要時Fable5、Opus 4.8必須review | MOTION契約 | 2D-2と型・保存が重ならなければ可。 |
+| 13 | `2D-3-GAME-DATA` + `2D-3-COLLIDER-OVERRIDE` + `2D-3-POLYGON` | origin/anchor/collider、frame別、polygon。 | Codex、Fable5/人間判断、Opus 4.8必須review | 12、MOTION契約 | polygonは個別設計まで本実装不可。 |
+| 14 | `2D-3-PREVIEW` + `2D-3-IMPACT` | ゲーム風preview、変更影響表示。 | Codex、Opus 4.8 review | 13 | `2D-6-A11Y` と並行可。 |
+| 15 | `2D-4-CORE` + `2D-4-SHEET` + `2D-4-SCALE` | 共通export core、sheet/atlas、scale/trim/padding。 | Fable5契約固定、Codex、Opus 4.8必須review | 2D-2/2D-3 必要データ確定 | 契約レーン単独。 |
+| 16 | `2D-4-PACKAGE` + `2D-4-PREFLIGHT` + `2D-4-GENERIC-WEB` | manifest、report、preflight、Generic Web確認。 | Codex、Opus 4.8必須review | 15 | `2D-6` と並行可。 |
+| 17 | `2D-4-PIXIJS` + `2D-4-PHASER` + `2D-4-DOCS` | PixiJS/Phaser fixture、export docs。 | Codex、Opus 4.8 review | 16 | target実装はまだ増やさない。 |
+| 18 | `2D-5-EVIDENCE` + `2D-5-LABELS` | 証拠形式と対応ラベルを固定。 | Codex、Opus 4.8 review | 2D-4 | 対象別PR準備可。 |
+| 19 | `2D-5-UNITY` + `2D-5-GODOT` | Unity/Godot 2D検証。 | Codex、Opus 4.8必須review、人間確認 | 18 | 最大2 target並行可。 |
+| 20 | `2D-5-RPGMZ` + `2D-5-HELPER-GATE` | RPG Maker MZ、helper採否。 | Codex、必要時Fable5、Opus 4.8必須review | 18 | helperは判断必須。 |
+| 21A | `2D-6-DEVICE-FLOW` + `2D-6-INPUT` | 端末導線と入力安全。 | Codex + 人間実機確認、Opus 4.8 audit | 対象画面実装 | 機能PRと競合しない範囲で継続並行。 |
+| 21B | `2D-6-RECOVERY` + `2D-6-OFFLINE` | 復旧、オフライン、更新導線。 | Codex + 人間実機確認、Opus 4.8 audit | 2D-1B、対象機能 | 継続並行。 |
+| 21C | `2D-6-PERFORMANCE` + `2D-6-A11Y` + `2D-6-SECURITY` | 性能、アクセシビリティ、安全性。 | Codex + 人間実機確認、Opus 4.8 audit | 各機能段階 | 継続並行。 |
+| 22 | `2D-6-REFERENCE` + `2D-6-DOCS` + `2D-6-GATE-AUDIT` | 代表project、docs、Gate監査。 | Codex docs、Opus 4.8 audit、人間確認 | 2D-2〜2D-5、21A〜21C | 最終品質レーン。 |
+| 23 | `2D Pro Gate` | 証拠確認と人間承認。承認後だけ3D-0へ進む。 | Fable5要約、Opus 4.8最終review、人間承認 | 22 | 新規実装なし。 |
 
-すべての `2D-1A-*` が accepted になる前に `2D-1B-*` を開始しない。`2D-1B-GATE` が merge されるまで、`2D-2-*` と `2D-3-*` は調査、prototype、test設計に限定する。product code を変更しない準備作業として、`2D-6-PERFORMANCE` / `2D-6-A11Y` の baseline と、`2D-2-CREATE` / `2D-2-RASTER` の既存コード調査、prototype、acceptance test設計だけを並行可能にする。
+Gate後の work package は `2D-3-ADVANCED-RIG`、`2D-5-P2-TARGETS`、`2D-5-NATIVE-RIG` とする。これらは 2D Pro Gate 前に本実装しない。
+
+### 6.7 上位4仕様とのトレーサビリティ
+
+| 上位仕様 | 要件 | 対応 work package | 状態 |
+|---|---|---|---|
+| `2D_COMPLETE_PRODUCT_SPEC.md` | 空から作る / 素材を取り込む入口 | `2D-2-PROJECT`, `2D-2-CREATE`, `2D-2-IMPORT-GATE` | 必須 |
+| `2D_COMPLETE_PRODUCT_SPEC.md` | 元を残して修正する | `2D-1A-LAYERS`, `2D-1B-LAYERS`, `2D-2-RASTER`, `2D-2-REPAIR` | 必須 |
+| `2D_COMPLETE_PRODUCT_SPEC.md` | 動き・origin・anchor・colliderを付ける | `2D-1A-MOTION`, `2D-3-TIMELINE`, `2D-3-RIG`, `2D-3-GAME-DATA`, `2D-3-COLLIDER-OVERRIDE` | 必須 |
+| `2D_COMPLETE_PRODUCT_SPEC.md` | ゲーム内に近い画面で確認する | `2D-3-PREVIEW`, `2D-3-INSPECT`, `2D-3-IMPACT` | 必須 |
+| `2D_COMPLETE_PRODUCT_SPEC.md` | 対象別に書き出す | `2D-4-*`, `2D-5-UNITY`, `2D-5-GODOT`, `2D-5-RPGMZ` | 必須 |
+| `2D_COMPLETE_PRODUCT_SPEC.md` | 後日・別端末で再編集する | `2D-1B-*`, `2D-6-DEVICE-FLOW`, `2D-6-RECOVERY` | 必須 |
+| `2D_COMPLETE_PRODUCT_SPEC.md` | 3D開始禁止 | `2D Pro Gate`, `3D-0` | Gate後 |
+| `2D_ASSET_DATA_CONTRACT.md` | source / edit / derived / distribution / verification の5層 | `2D-1A-LAYERS`, `2D-1B-LAYERS`, `2D-4-PACKAGE`, `2D-5-EVIDENCE` | LAYERS accepted、実装は後続 |
+| `2D_ASSET_DATA_CONTRACT.md` | Project / Asset Family / Variant | `2D-1A-LAYERS`, `2D-2-VARIANT` | LAYERS accepted、実装は後続 |
+| `2D_ASSET_DATA_CONTRACT.md` | ID・名前・参照 | `2D-1A-LAYERS`, `2D-2-BATCH` | accepted / PR #52 |
+| `2D_ASSET_DATA_CONTRACT.md` | 座標、transform、pivot、trim、atlas、scale、flip | `2D-1A-COORD`, `2D-4-SHEET`, `2D-4-SCALE`, `2D-3-GAME-DATA` | COORD accepted、実装は後続 |
+| `2D_ASSET_DATA_CONTRACT.md` | animation、frame別上書き、rig、polygon | `2D-1A-MOTION`, `2D-3-TIMELINE`, `2D-3-RIG`, `2D-3-COLLIDER-OVERRIDE`, `2D-3-POLYGON` | 次の契約作業 |
+| `2D_ASSET_DATA_CONTRACT.md` | target extension / unknown data | `2D-1A-TARGET`, `2D-3-TYPE-PROFILES`, `2D-4-PREFLIGHT` | pending |
+| `2D_ASSET_DATA_CONTRACT.md` | provenance / 利用条件 / AI送信記録 | `2D-1A-PROVENANCE`, `2D-2-AI-BOUNDARY`, `2D-6-SECURITY` | pending |
+| `2D_ASSET_DATA_CONTRACT.md` | schema / runtime / preflight 検証分担 | `2D-1A-VALIDATION`, `2D-4-PREFLIGHT`, `2D-3-INSPECT` | pending |
+| `2D_ASSET_DATA_CONTRACT.md` | migration / rollback / 旧形式 fixture | `2D-1A-MIGRATION`, `2D-1B-CASPROJ`, `2D-1B-GATE` | ADR-0006 partial、全体pending |
+| `2D_EXPORT_COMPATIBILITY_MATRIX.md` | Generic Web / Canvas 2D | `2D-4-GENERIC-WEB` | 必須 |
+| `2D_EXPORT_COMPATIBILITY_MATRIX.md` | PixiJS / Phaser | `2D-4-PIXIJS`, `2D-4-PHASER` | 必須 |
+| `2D_EXPORT_COMPATIBILITY_MATRIX.md` | Unity 2D / Godot 2D / RPG Maker MZ | `2D-5-UNITY`, `2D-5-GODOT`, `2D-5-RPGMZ` | 必須 |
+| `2D_EXPORT_COMPATIBILITY_MATRIX.md` | candidate / import-notes / verified / unsupported の区別 | `2D-5-LABELS`, `2D-5-EVIDENCE` | 必須 |
+| `2D_EXPORT_COMPATIBILITY_MATRIX.md` | P2 targets / native rig | `2D-5-P2-TARGETS`, `2D-5-NATIVE-RIG` | Gate後 |
+| `2D_DEVICE_RELIABILITY_SPEC.md` | PC / iPad / スマホの全工程到達 | `2D-6-DEVICE-FLOW` | 必須 |
+| `2D_DEVICE_RELIABILITY_SPEC.md` | Files / `.casproj` 移動、保存失敗、容量不足 | `2D-1B-CAPACITY`, `2D-6-INPUT`, `2D-6-RECOVERY` | 必須 |
+| `2D_DEVICE_RELIABILITY_SPEC.md` | offline / update | `2D-6-OFFLINE` | 必須 |
+| `2D_DEVICE_RELIABILITY_SPEC.md` | performance budget / worker / memory | `2D-6-PERFORMANCE` | 必須 |
+| `2D_DEVICE_RELIABILITY_SPEC.md` | accessibility | `2D-6-A11Y` | 必須 |
+| `2D_DEVICE_RELIABILITY_SPEC.md` | privacy / untrusted input / secret handling | `2D-6-SECURITY`, `2D-1B-INPUT-SAFETY` | 必須 |
+| `2D_DEVICE_RELIABILITY_SPEC.md` | 代表projectと最終証拠 | `2D-6-REFERENCE`, `2D-6-GATE-AUDIT` | 必須 |
+
+現時点で上位4仕様から対応 work package が無い要件は確認していない。今後、仕様追加で対応先が無い場合は、この表に「work package不足」として追記し、実装前にロードマップを更新する。
 
 本書に新しいアイデアがあっても、実装担当が独断で `asset.json`、`.casproj`、export ZIP、dependencies、3D、外部 API を変えてはいけない。
 

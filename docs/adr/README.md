@@ -2,7 +2,7 @@
 
 最終更新日: 2026-07-10
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
-文書種別: ADR インデックス（work package `2D-1A-CONTRACT`）
+文書種別: ADR インデックス（PR #52 の歴史的総称 `2D-1A-CONTRACT`。現在の正式管理は細分化された `2D-1A-*`）
 上位文書: `docs/future/2D_ASSET_DATA_CONTRACT.md`, `docs/future/2D_COMPLETION_ROADMAP.md`（2D-1a）
 関連: `docs/future/DECISION_LOG.md`, `docs/future/README.md`
 
@@ -12,7 +12,7 @@
 
 `docs/future/2D_ASSET_DATA_CONTRACT.md` は将来契約の上位仕様であり、docs-only の accepted 文書である。この `docs/adr/` は、その契約のうち **2D-1a（データ層、ID・参照・variant、座標・trim・flip・scale、migration・復旧境界）で先に固定すべき決定**を、現行実装の挙動と対応づけて 1 決定 1 ファイルの ADR として残す。
 
-ADR は仕様を新しく作るものではない。`2D_ASSET_DATA_CONTRACT.md` の該当章を規範とし、**現行コード（`src/`）のどの関数がその意味を実装しているか**を明示し、fixture テストで数値を固定する。ADR と現行コードが食い違う場合は、ADR側に「現状の制限」として食い違いを記録し、製品コードは変更しない（`2D-1A-CONTRACT` の変更範囲は docs と新規テストのみ）。
+ADR は仕様を新しく作るものではない。`2D_ASSET_DATA_CONTRACT.md` の該当章を規範とし、**現行コード（`src/`）のどの関数がその意味を実装しているか**を明示し、fixture テストで数値を固定する。ADR と現行コードが食い違う場合は、ADR側に「現状の制限」として食い違いを記録し、製品コードは変更しない（PR #52 の歴史的総称 `2D-1A-CONTRACT` の変更範囲は docs と新規テストのみ）。
 
 ## 2. 形式
 
@@ -49,8 +49,10 @@ ADR は仕様を新しく作るものではない。`2D_ASSET_DATA_CONTRACT.md` 
 | [0004](./0004-trim-atlas-scale-output-semantics.md) | trim・atlas・scale の出力層の意味 | §6.3, §6.5 | `src/core/export/contract.fixtures.test.ts`（ADR-0004） |
 | [0005](./0005-flip-semantics.md) | 左右反転の意味 | §6.4 | `src/core/model/contract.fixtures.test.ts`（ADR-0005） |
 | [0006](./0006-migration-and-recovery-boundaries.md) | migration・復旧境界 | §13 | `src/core/model/contract.fixtures.test.ts`（ADR-0001/0006） |
-| [0007](./0007-data-layer-separation.md) | データ層の分離（source / edit / derived / 配布物 / 検査記録） | §2, §3 | なし（層の解釈の固定。保存・復旧の fixture は `2D-1B-STORAGE` で追加） |
+| [0007](./0007-data-layer-separation.md) | データ層の分離（source / edit / derived / 配布物 / 検査記録） | §2, §3 | なし（層の解釈の固定。保存・復旧の fixture は `2D-1B-*` で追加） |
 
 ## 4. 変更してよいもの・してはいけないもの
 
-この work package（`2D-1A-CONTRACT`）で変更してよいのは `docs/adr/`、`docs/future/DECISION_LOG.md`、`docs/future/README.md`、`src/` 配下の**新規**テストファイルのみである。製品コード、JSON Schema、`src/core/samples/` の既存ファイル、既存テストの期待値、version、dependencies は変更しない。Asset Family / Variant の実装、可変フレーム時間、frame 別判定、polygon、trim / scale / padding の実装、保存基盤（`2D-1B-STORAGE`）は本 work package の範囲外である。
+PR #52で使われた `2D-1A-CONTRACT` は歴史的な総称であり、現在の正式IDでは主に `2D-1A-LAYERS` と `2D-1A-COORD` に対応する。ADR-0006 は `2D-1A-MIGRATION` の入力になる境界を一部固定しただけで、`2D-1A-MIGRATION` 全体の完了ではない。したがって `2D-1a` 全体は未完了であり、次の契約作業は `2D-1A-MOTION` である。
+
+この PR #52 の変更範囲で変更してよいのは `docs/adr/`、`docs/future/DECISION_LOG.md`、`docs/future/README.md`、`src/` 配下の**新規**テストファイルのみである。製品コード、JSON Schema、`src/core/samples/` の既存ファイル、既存テストの期待値、version、dependencies は変更しない。Asset Family / Variant の実装、可変フレーム時間、frame 別判定、polygon、trim / scale / padding の実装、保存・migration・復旧基盤（`2D-1B-*`）は PR #52 の範囲外である。
