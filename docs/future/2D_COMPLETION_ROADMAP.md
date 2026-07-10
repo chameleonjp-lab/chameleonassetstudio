@@ -77,6 +77,23 @@
 
 目的: 作成・派生・出力を増やしても、既存の `.casproj` とゲーム用データを壊さないようにする。
 
+`2D-1A-BASELINE` は PR #50 で完了・mainへマージ済みであり、成果物は [`2D_1A_BASELINE_REPORT.md`](2D_1A_BASELINE_REPORT.md) とする。ここで確認された現行 version、型、schema、保存、`.casproj`、export ZIP、migration、fixture/test coverage は、以降の詳細契約 work package の比較基準である。
+
+詳細 work package:
+
+| ID | 分類 | 内容 | 状態 / 次の扱い |
+|---|---|---|---|
+| `2D-1A-BASELINE` | 必須 | 現行実装の baseline report を固定する。 | PR #50で完了・mainへマージ済み。 |
+| `2D-1A-LAYERS` | 判断必須 | source / edit / derived / export / verification、Project / Asset Family / Variant、ID・名前・参照の層を固定する。 | 次の契約作業。Fable5または人間判断が必要。 |
+| `2D-1A-COORD` | 判断必須 | 座標、transform、pivot、trim、atlas、flip、scale、丸めの意味を固定する。 | `2D-1A-LAYERS` と同時に次へ進める。Fable5または人間判断が必要。 |
+| `2D-1A-MOTION` | 判断必須 | animation event、可変時間、rig bake、frame別上書き、polygonの境界を決める。 | `2D-1A-LAYERS` + `2D-1A-COORD` 後。 |
+| `2D-1A-TARGET` | 判断必須 | target固有 extension と unknown data の扱いを決める。 | `2D-1A-MOTION` 後。 |
+| `2D-1A-PROVENANCE` | 判断必須 | provenance、利用条件、AI送信記録の保存境界を決める。 | `2D-1A-MOTION` 後。 |
+| `2D-1A-VALIDATION` | 判断必須 | 構造・意味・出力の検証を schema / runtime / preflight へ分解する。 | `2D-1A-MOTION` 後。 |
+| `2D-1A-MIGRATION` | 判断必須 | version、旧形式、rollback、fixtureの扱いを固定する。 | `2D-1A-MOTION` 後。 |
+
+次の契約作業順は、`2D-1A-LAYERS` + `2D-1A-COORD`、`2D-1A-MOTION`、`2D-1A-TARGET` + `2D-1A-PROVENANCE` + `2D-1A-VALIDATION` + `2D-1A-MIGRATION` の順とする。すべての `2D-1A-*` が accepted になる前に、`2D-1B-*` の本実装を開始しない。
+
 主な仕事:
 
 - source、編集元、preview、export、検査記録の分離を設計する。
@@ -93,6 +110,20 @@
 ### 2D-1b: 保存・migration・復旧を実装して固定する
 
 目的: 新規作成、派生素材、出力形式を増やす前に、保存途中の不整合や旧形式の読み込み失敗から戻れる実装を作る。
+
+詳細 work package:
+
+| ID | 分類 | 内容 | 開始条件 |
+|---|---|---|---|
+| `2D-1B-REVISION` | 必須 | 改訂単位の整合保存、autosave状態を固定する。 | すべての `2D-1A-*` accepted 後。 |
+| `2D-1B-LAYERS` | 必須 | source / edit / cache / export record の保存境界を実装する。 | すべての `2D-1A-*` accepted 後。 |
+| `2D-1B-RECOVERY` | 必須 | snapshot、trash、rollback、復元を実装する。 | すべての `2D-1A-*` accepted 後。 |
+| `2D-1B-CAPACITY` | 必須 | storage estimate、quota、退避導線を実装する。 | すべての `2D-1A-*` accepted 後。 |
+| `2D-1B-CASPROJ` | 必須 | `.casproj` の段階的検査と migration を実装する。 | すべての `2D-1A-*` accepted 後。 |
+| `2D-1B-INPUT-SAFETY` | 必須 | ZIP、JSON、画像など不正入力の隔離と拒否を実装する。 | すべての `2D-1A-*` accepted 後。 |
+| `2D-1B-GATE` | 必須 | fixtureと保存回帰テストを通し、2D-2 / 2D-3本実装を解禁する。 | `2D-1B-*` 実装後。 |
+
+`2D-1B-GATE` が merge されるまで、`2D-2-*` と `2D-3-*` は調査、prototype、test設計に限定する。
 
 主な仕事:
 
@@ -146,6 +177,20 @@
 ### 2D-4: 書き出しと検査を完成させる
 
 目的: 作った素材を、手作業のやり直しを最小にしてゲームへ持ち込めるようにする。
+
+詳細 work package:
+
+| ID | 分類 | 内容 |
+|---|---|---|
+| `2D-4-CORE` | 必須 | 共通 export core と決定的な再出力を固定する。 |
+| `2D-4-SHEET` | 必須 | fixed grid sheet、packed atlas、multi-pageを扱う。 |
+| `2D-4-SCALE` | 必須 | 1x / 2x / 3x、scale、trim、padding、extrudeを扱う。 |
+| `2D-4-PACKAGE` | 必須 | generic manifest、対象別 sidecar、README、import notes、verification recordを扱う。 |
+| `2D-4-PREFLIGHT` | 必須 | 名前、画像サイズ、透明、origin、anchor、collider、tile、frame、target制約を検査する。 |
+| `2D-4-GENERIC-WEB` | 必須 | Generic Web / Canvas 2D の fixture と実行確認を扱う。 |
+| `2D-4-PIXIJS` | 必須 | PixiJS の fixture と実行確認を扱う。 |
+| `2D-4-PHASER` | 必須 | Phaser の fixture と実行確認を扱う。 |
+| `2D-4-DOCS` | 必須 | export手順、import notes、既知制限、検証記録を docs に反映する。 |
 
 主な仕事:
 
@@ -343,15 +388,16 @@ CI 再成功 + Opus 4.8 再確認
 | 順番 | work package | 内容 | 担当 | 並行可否 |
 |---:|---|---|---|---|
 | 0 | `2D-0-DOCS` | 本文書群、入口 docs、決定記録を merge し、2D 完成条件を固定する。 | Codex 更新、Opus 4.8 review、人間 merge | 他の本実装を merge しない。 |
-| 1 | `2D-1A-BASELINE` | 現行 version、型、schema、`.casproj`、IndexedDB、autosave、export ZIP、migration、fixture/test coverage を [`2D_1A_BASELINE_REPORT.md`](2D_1A_BASELINE_REPORT.md) に固定する。 | Codex docs、Opus 4.8 review | product code、schema、version、保存形式、export ZIPを変えない。 |
-| 2 | `2D-1A-CONTRACT` | source / edit / derived / export、ID・参照・variant、座標・trim・flip・scale、migration・復旧境界を ADR と fixture で確定する。 | Fable5 判断、Codex docs / fixture、Opus 4.8 review | 下記2件の準備作業だけ並行可。 |
-| 1-P | `2D-6-BASELINE` | 現在の端末、保存失敗、性能、アクセシビリティの基準値と再現手順を記録する。 | Codex + 人間実機確認 | product code と保存形式を変えない範囲で可。 |
-| 1-P | `2D-2-PREP` | 空キャンバス、template、取り込み・修正の既存コード調査、UI prototype、acceptance test を作る。 | Codex | 永続データを増やす本実装は `2D-1b` 後。 |
-| 3 | `2D-1B-STORAGE` | 改訂単位の整合保存、復旧点、旧形式 migration、壊れた import の隔離、容量不足導線を実装する。 | Codex 実装、Opus 4.8 必須 review | `2D-6-BASELINE` と `2D-2-PREP` の継続だけ可。 |
-| 4 | `2D-2-CREATE-01` | 空キャンバスと最初の型別 template を、保存・再読込・Undo / Redoまで完成させる。 | Codex、Opus 4.8 review | 契約が重ならない `2D-3-GAMEDATA-01` と品質レーン。 |
-| 4 | `2D-3-GAMEDATA-01` | 既存形式内で最初の animation / origin / anchor / collider 検査体験を完成させる。 | Codex、Opus 4.8 review | `2D-2-CREATE-01` と同じ型・storage・editor fileを変更しない時だけ。 |
+| 1 | `2D-1A-BASELINE` | 現行 version、型、schema、`.casproj`、IndexedDB、autosave、export ZIP、migration、fixture/test coverage を [`2D_1A_BASELINE_REPORT.md`](2D_1A_BASELINE_REPORT.md) に固定する。 | Codex docs、Opus 4.8 review | PR #50で完了・mainへマージ済み。product code、schema、version、保存形式、export ZIPは変更済み扱いにしない。 |
+| 2A | `2D-1A-LAYERS` + `2D-1A-COORD` | 層、Project / Asset Family / Variant、ID・参照、座標、transform、pivot、trim、atlas、flip、scale、丸めを ADR と fixture で確定する。 | Fable5または人間判断、Codex docs / fixture、Opus 4.8 review | 未確定契約をCodexが独断決定しない。下記2件の準備作業だけ並行可。 |
+| 2B | `2D-1A-MOTION` | animation event、可変時間、rig bake、frame別上書き、polygon の境界を確定する。 | Fable5または人間判断、Codex docs / fixture、Opus 4.8 review | 2A accepted 後。 |
+| 2C | `2D-1A-TARGET` + `2D-1A-PROVENANCE` + `2D-1A-VALIDATION` + `2D-1A-MIGRATION` | target固有 extension、unknown data、provenance、利用条件、AI送信記録、構造・意味・出力検証、version・旧形式・rollback・fixtureを確定する。 | Fable5または人間判断、Codex docs / fixture、Opus 4.8 review | 2B accepted 後。 |
+| 1-P | `2D-6-PERFORMANCE` / `2D-6-A11Y` baseline | 現在の性能、アクセシビリティ、端末確認表、再現手順を記録する。 | Codex + 人間実機確認 | product code と保存形式を変えない準備だけ可。 |
+| 1-P | `2D-2-CREATE` / `2D-2-RASTER` prep | 空キャンバス、template、取り込み・修正の既存コード調査、prototype、acceptance test設計を作る。 | Codex | 永続データを増やす本実装は `2D-1B-GATE` 後。 |
+| 3 | `2D-1B-REVISION` → `2D-1B-GATE` | 改訂単位の整合保存、保存境界、復旧点、容量不足導線、`.casproj` staged import、壊れた input 隔離、保存回帰テストを実装する。 | Codex 実装、Opus 4.8 必須 review | すべての `2D-1A-*` が accepted になるまで開始しない。 |
+| 4 | `2D-2-*` / `2D-3-*` 本実装 | 空キャンバス、基本編集、animation / origin / anchor / collider などを完成体験単位で実装する。 | Codex、Opus 4.8 review | `2D-1B-GATE` が merge されるまで本実装 PR を open しない。 |
 
-`2D-1A-CONTRACT` の未決定事項を残したまま `2D-1B-STORAGE` を開始しない。`2D-1B-STORAGE` が merge されるまで、`2D-2-CREATE-01` と `2D-3-GAMEDATA-01` は準備 branch に留め、本実装 PR を open しない。
+すべての `2D-1A-*` が accepted になる前に `2D-1B-*` を開始しない。`2D-1B-GATE` が merge されるまで、`2D-2-*` と `2D-3-*` は調査、prototype、test設計に限定する。product code を変更しない準備作業として、`2D-6-PERFORMANCE` / `2D-6-A11Y` の baseline と、`2D-2-CREATE` / `2D-2-RASTER` の既存コード調査、prototype、acceptance test設計だけを並行可能にする。
 
 本書に新しいアイデアがあっても、実装担当が独断で `asset.json`、`.casproj`、export ZIP、dependencies、3D、外部 API を変えてはいけない。
 

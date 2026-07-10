@@ -58,16 +58,25 @@
 
 Phase 17 後は、旧 Phase 18〜28 の順番ではなく次を優先する。
 
-| 現在の段階 | 名称 | 主担当 | 並行方針 |
-|---|---|---|---|
-| `2D-0` | 完成仕様の固定 | Fable5 / 人間判断 + Codex docs + Opus 4.8 review | 完了後に `2D-1a` へ進む。 |
-| `2D-1a` | データ・座標・migration・復旧設計 | Fable5、Codex が ADR / fixture 化 | `2D-6` の基準計測だけ準備可。 |
-| `2D-1b` | 保存・migration・復旧実装 | Codex、Opus 4.8 必須 review | `2D-2` / `2D-3` の prototype と test 設計だけ可。 |
-| `2D-2` | 新規作成・取り込み・修正 | Codex | 契約が重ならない `2D-3`、対象画面の `2D-6` と並行可。 |
-| `2D-3` | 動き・ゲーム用情報 | Codex、仕様変更時だけ Fable5 | 契約が重ならない `2D-2`、`2D-4` の fixture 設計、`2D-6` と並行可。 |
-| `2D-4` | 共通書き出し・検査 | Fable5 が契約固定、Codex 実装、Opus 4.8 必須 review | `2D-5` の手順準備と `2D-6` だけ可。 |
-| `2D-5` | 対象別 preset・実ツール検証 | Codex、Opus 4.8 必須 review | 共通 exporter 固定後、target PR を最大2本並行可。 |
-| `2D-6` | 端末・復旧・性能・アクセシビリティ | Codex + 人間実機確認 + Opus 4.8 audit | `2D-2`〜`2D-5` と継続並行し、完了判定は最後。 |
+| 現在の段階 | 名称 | 主な完成内容 | 主担当 | 並行方針 |
+|---|---|---|---|---|
+| `2D-0` | 完成仕様の固定 | 上位4仕様、対象ユーザー、対応範囲、完成条件、判断待ちを承認可能な状態にする。完了済み。 | Fable5 / 人間判断 + Codex docs + Opus 4.8 review | 完了後に `2D-1a` へ進む。 |
+| `2D-1A-BASELINE` | 現行実装 baseline | 現行 version、型、schema、`.casproj`、IndexedDB、autosave、export ZIP、migration、fixture/test coverage を `docs/future/2D_1A_BASELINE_REPORT.md` に固定する。PR #50で完了・mainへマージ済み。 | Codex docs + Opus 4.8 review | product code、schema、version、保存形式、export ZIPを変更しない完了済み前段。 |
+| `2D-1a` | データ・座標・migration・復旧設計 | 5つのデータ層、Family / Variant、ID、座標、trim / flip / scale、animation / collider、target 拡張、検証、migration 契約を固定する。現在の契約上の次段階は `2D-1A-LAYERS` と `2D-1A-COORD`。 | Fable5、Codex が ADR / fixture 化 | `2D-6-PERFORMANCE` / `2D-6-A11Y` の現状基準計測だけ準備可。 |
+| `2D-1b` | 保存・migration・復旧実装 | 改訂単位の整合保存、履歴・backup・trash・rollback、容量警告、安全な staged `.casproj` import と旧形式互換を実装する。 | Codex、Opus 4.8 必須 review | すべての `2D-1A-*` が accepted になるまで開始しない。`2D-2` / `2D-3` の prototype と test 設計だけ可。 |
+| `2D-2` | 新規作成・取り込み・修正 | 複数 Asset、空キャンバス、template、画像 import、基本描画、非破壊修正、派生 variant、一括変更、任意形式と AI の境界を完成させる。 | Codex | `2D-1B-GATE` merge までは `2D-2-CREATE` / `2D-2-RASTER` の既存コード調査、prototype、acceptance test 設計に限定する。 |
+| `2D-3` | 動き・ゲーム用情報 | timeline、可変時間、event、簡易 rig、origin / anchor / collider、素材種別 profile、ゲーム風 preview、理由付き検査、変更影響を完成させる。 | Codex、仕様変更時だけ Fable5 | `2D-1B-GATE` merge までは調査、prototype、test設計に限定する。 |
+| `2D-4` | 共通書き出し・検査 | 決定的な再出力、sheet / atlas、scale、manifest / report / record、preflight、Generic Web / Canvas 2D / PixiJS / Phaser を完成させる。 | Fable5 が契約固定、Codex 実装、Opus 4.8 必須 review | `2D-5` の手順準備と `2D-6` だけ可。 |
+| `2D-5` | 対象別 preset・実ツール検証 | 証拠形式と対応ラベルを固定し、Unity 2D、Godot 2D、RPG Maker MZ への持ち込みを対象バージョン付きで検証する。 | Codex、Opus 4.8 必須 review | 共通 exporter 固定後、target PR を最大2本並行可。 |
+| `2D-6` | 端末・復旧・性能・アクセシビリティ | PC / iPad / スマホの全工程、入力、復旧、offline / update、性能、安全性、アクセシビリティ、代表 project と最終証拠を通す。 | Codex + 人間実機確認 + Opus 4.8 audit | `2D-2`〜`2D-5` と継続並行し、完了判定は最後。 |
+
+
+現在位置:
+
+- `2D-0`: 完了。
+- `2D-1A-BASELINE`: PR #50で完了し、baseline reportはmainへマージ済み。
+- 現在の契約上の次段階: `2D-1A-LAYERS` と `2D-1A-COORD`。これは Fable5 または人間判断が必要な契約固定作業であり、Codexだけで新規決定しない。
+- Codexだけで並行可能な準備作業: `2D-6-PERFORMANCE` / `2D-6-A11Y` の現状基準計測、`2D-2-CREATE` / `2D-2-RASTER` の既存コード調査・prototype・acceptance test設計。これらは実装済み扱いにしない。
 
 詳細な依存関係、同時に変更してはいけない契約、最大3本の PR レーンは `docs/future/2D_COMPLETION_ROADMAP.md` を参照する。2D Pro Gate を人間が承認するまで、旧 Phase 22〜28 の 3D へ進まない。
 
