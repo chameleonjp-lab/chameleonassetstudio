@@ -377,3 +377,38 @@ Phase 19-C「判定編集強化」では、多角形判定の追加検討と rec
 - 各 work package の ID と具体的な着手順。
 - CI 成功後の Opus 4.8 review gate を GitHub Actions で自動化する時期。
 - 実作業で conflict が増えた場合の並行数の再調整。
+
+---
+
+## ADR-2026-07-10-009: 2D-1A-CONTRACT: ADR 0001〜0007 で契約境界を確定（docs/adr/）
+
+### 状態
+
+- accepted
+
+### 背景
+
+`2D_COMPLETION_ROADMAP.md` の work package `2D-1A-CONTRACT`（段階 2D-1a）として、`2D_ASSET_DATA_CONTRACT.md` のうちデータ層 / ID・参照・variant / 座標・trim・flip・scale / migration・復旧境界に関わる決定を、実装前に固定する必要があった。これらは `2D-1B-STORAGE` 以降の保存基盤実装の前提になるため、docs だけでなく現行実装の意味を fixture テストで数値として固定した。
+
+### 決定
+
+- `docs/adr/` を新設し、0001〜0007 の ADR を作成した（座標と変形の意味、ID・名前・参照の規則、Variant・派生アセットの解釈、trim・atlas・scale の出力層の意味、左右反転の意味、migration・復旧境界、データ層の分離）。
+- 各 ADR は `docs/future/2D_ASSET_DATA_CONTRACT.md` の該当章を規範とし、現行実装（`layerWorldPoint`、`flipCopyAsset`、`computeSheetLayout` / `buildAtlas`、`migrateAsset` 等）のどの関数がその意味を体現しているかを明示した。
+- `src/core/model/contract.fixtures.test.ts` と `src/core/export/contract.fixtures.test.ts` を新規作成し、ADR-0001・0002・0004・0005・0006 の数値を独立した fixture として固定した。既存テストの期待値は変更していない。
+
+### しないこと
+
+- 製品コード、JSON Schema、`src/core/samples/` の既存ファイル、既存テストの期待値、version、dependencies は変更しない。
+- `Asset Family` / `Variant`、可変フレーム時間、frame 別判定、polygon、trim / scale / padding の実装、保存基盤（`2D-1B-STORAGE`）は本 work package に含めない。
+
+### 影響する文書
+
+- `docs/adr/README.md`, `docs/adr/0001-*.md` 〜 `docs/adr/0007-*.md`
+- `docs/future/2D_ASSET_DATA_CONTRACT.md`（参照のみ、内容変更なし）
+- `docs/future/README.md`
+
+### 未確定事項
+
+- `2D-1B-STORAGE`（保存基盤）の具体的な実装方式（原子的操作の範囲、復旧点、import 隔離領域）。
+- `Asset Family` / `Variant` を導入する場合の additive 設計の詳細。
+- ID prefix（`anim` と `animation` の不一致など）を将来統一するかどうか。
