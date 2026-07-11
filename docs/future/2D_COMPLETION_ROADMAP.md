@@ -524,7 +524,7 @@ PR 運用 Gate:
 | 20 | `2D-5-RPGMZ` + `2D-5-HELPER-GATE` | RPG Maker MZ を対象バージョン・素材種別ごとに検証し、helper / addon / plugin採否を判断する。 | Fable5または人間判断 + Codex + Opus 4.8 review | 18、19の共通ラベル | helper判断はADR後のみ | 19後 | 未着手。正式IDは `2D-5-RPGMZ`。 |
 | 21A | `2D-6-DEVICE-FLOW` + `2D-6-INPUT` | PC / iPad / スマホの全工程到達と、touch、pan、pinch、Apple Pencil、mouse、keyboard、数値入力、software keyboard、safe area、orientation、hover非依存、誤操作・入力競合を確認する。 | Codex + 人間実機確認 + Opus 4.8 audit | 8A以降で継続、完了は20後 | 2D-2〜2D-5と継続並行可 | 継続並行 | 未着手。 |
 | 21B | `2D-6-RECOVERY` + `2D-6-OFFLINE` | 保存失敗、削除復元、`.casproj`移動、オフライン、更新、復旧導線を確認する。 | Codex + 人間実機確認 + Opus 4.8 audit | 7、関連機能 | 2D-2〜2D-5と継続並行可 | 継続並行 | 未着手。 |
-| 21C | `2D-6-PERFORMANCE` + `2D-6-A11Y` + `2D-6-SECURITY` | 性能budget、worker、メモリ、accessibility、キーボード、読み上げ、色以外の識別、安全性を確認する。 | Codex + 人間実機確認 + Opus 4.8 audit | 関連機能 | 2D-2〜2D-5と継続並行可 | 継続並行 | 未着手。一部baseline準備のみ可。 |
+| 21C | `2D-6-PERFORMANCE` + `2D-6-A11Y` + `2D-6-SECURITY` | 性能budget、worker、メモリ、accessibility、キーボード、読み上げ、色以外の識別、安全性を確認する。 | Codex + 人間実機確認 + Opus 4.8 audit | 関連機能 | 2D-2〜2D-5と継続並行可 | 継続並行 | `docs/future/PERFORMANCE_BUDGET.md` で性能baselineのみ作成。PC / iPad / スマホ実機Gate、`2D-6-PERFORMANCE`全体、`2D-6-A11Y`、`2D-6-SECURITY` は未完了。 |
 | 22 | `2D-6-REFERENCE` + `2D-6-DOCS` + `2D-6-GATE-AUDIT` | 代表project、最終証拠、README / user guide / release checklist / docs整合、最終品質auditを通す。 | Codex docs / evidence + 人間実機確認 + Opus 4.8 audit | 21A〜21C、18〜20 | 最終auditのため並行不可 | 21C後 | 未着手。正式IDは `2D-6-GATE-AUDIT`。 |
 | 23 | `2D Pro Gate` | 全必須package、判断必須ADR、証拠、CI、実機、target fixture、Opus 4.8、PR #53 / #55再監査、人間承認を確認し、3D開始可否を判断する。 | Fable5が証拠整理、Opus 4.8最終review、人間が最終承認 | 22 | Gate中は新規実装しない | 22後 | 未完了。人間承認前は3D開始禁止。 |
 
