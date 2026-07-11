@@ -1,8 +1,8 @@
 # Architecture Decision Records（2D データ契約）
 
-最終更新日: 2026-07-10
+最終更新日: 2026-07-11
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
-文書種別: ADR インデックス（work package `2D-1A-CONTRACT`）
+文書種別: ADR インデックス（work package `2D-1A-CONTRACT`, `2D-1A-MOTION`）
 上位文書: `docs/future/2D_ASSET_DATA_CONTRACT.md`, `docs/future/2D_COMPLETION_ROADMAP.md`（2D-1a）
 関連: `docs/future/DECISION_LOG.md`, `docs/future/README.md`
 
@@ -50,7 +50,13 @@ ADR は仕様を新しく作るものではない。`2D_ASSET_DATA_CONTRACT.md` 
 | [0005](./0005-flip-semantics.md) | 左右反転の意味 | §6.4 | `src/core/model/contract.fixtures.test.ts`（ADR-0005） |
 | [0006](./0006-migration-and-recovery-boundaries.md) | migration・復旧境界 | §13 | `src/core/model/contract.fixtures.test.ts`（ADR-0001/0006） |
 | [0007](./0007-data-layer-separation.md) | データ層の分離（source / edit / derived / 配布物 / 検査記録） | §2, §3 | なし（層の解釈の固定。保存・復旧の fixture は `2D-1B-STORAGE` で追加） |
+| [0008](./0008-motion-time-semantics.md) | 時間の正本と rig bake の正本関係 | §8.1, §8.3 | `src/core/model/motionContract.fixtures.test.ts`（ADR-0008） |
+| [0009](./0009-animation-event-boundary.md) | animation event の境界 | §8.2 | なし（将来フィールドの境界確定のみ。前提は ADR-0011 の fixture で固定） |
+| [0010](./0010-collider-override-and-polygon-boundary.md) | frame 別判定上書きと polygon の境界 | §9.2, §9.3 | なし（将来フィールドの境界確定のみ。前提は ADR-0011 の fixture で固定） |
+| [0011](./0011-motion-forward-compatibility.md) | 0.1.0 無変換条件と追加フィールドの共通条件 | §8.2, §9.2, §13 | `src/core/model/motionContract.fixtures.test.ts`（ADR-0011） |
 
 ## 4. 変更してよいもの・してはいけないもの
 
 この work package（`2D-1A-CONTRACT`）で変更してよいのは `docs/adr/`、`docs/future/DECISION_LOG.md`、`docs/future/README.md`、`src/` 配下の**新規**テストファイルのみである。製品コード、JSON Schema、`src/core/samples/` の既存ファイル、既存テストの期待値、version、dependencies は変更しない。Asset Family / Variant の実装、可変フレーム時間、frame 別判定、polygon、trim / scale / padding の実装、保存基盤（`2D-1B-STORAGE`）は本 work package の範囲外である。
+
+`2D-1A-MOTION`（ADR 0008〜0011）も同じ変更範囲の原則に従う。animation event・frame 単位可変時間・rig bake・frame 別判定上書き・polygon の**契約境界**を ADR として固定するのみで、`events` / frame `durationMs` / `colliderOverrides` / polygon の実装、JSON Schema 変更、`asset.json` / `.casproj` / export ZIP の version・構成変更は本 work package の範囲外である。
