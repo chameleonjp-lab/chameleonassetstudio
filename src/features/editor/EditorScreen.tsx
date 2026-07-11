@@ -28,13 +28,16 @@ import {
   flipCopyAsset,
   flipLayerHorizontal,
   renameLayer,
+  ASSET_TYPES,
   type AnchorRole,
   type Asset,
+  type AssetType,
   type Project,
   type Vec2,
 } from '../../core/model';
 import {
   AutosaveQueue,
+  deleteAsset,
   listProjectAssets,
   listSnapshots,
   loadBlob,
@@ -50,6 +53,13 @@ import {
 } from '../../core/storage';
 import { layerWorldPoint } from '../../renderers/canvas2d/view';
 import { AssetTypePanel, BackgroundLayerFields } from './AssetTypePanel';
+import { ASSET_TYPE_LABELS } from './assetTypeLabels';
+import {
+  BLANK_CANVAS_SIZE_PRESETS,
+  createBlankAssetBundle,
+  DEFAULT_BLANK_CANVAS_SIZE,
+  type BlankCanvasSizePreset,
+} from './blankAsset';
 import { CanvasEditor } from './CanvasEditor';
 import { LAYER_TOOLS, type CanvasTool } from './canvasTools';
 import { ExportPanel } from './ExportPanel';
@@ -135,6 +145,14 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const layerEditBeforeRef = useRef<Asset | null>(null);
+
+  // 新規アセット作成フォーム（2D-2-CREATE-01）。画像を取り込まず、型とサイズだけで空キャンバスを作る。
+  const [newAssetName, setNewAssetName] = useState('新規アセット');
+  const [newAssetType, setNewAssetType] = useState<AssetType>('character');
+  const [newAssetSize, setNewAssetSize] =
+    useState<BlankCanvasSizePreset>(DEFAULT_BLANK_CANVAS_SIZE);
+  const [creatingAsset, setCreatingAsset] = useState(false);
+  const [deletingAsset, setDeletingAsset] = useState(false);
 
   // タイムライン（Phase 9）
   const [selectedAnimationId, setSelectedAnimationId] = useState<string | null>(null);
@@ -636,6 +654,97 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     }
   };
 
+  /**
+   * 画像を取り込まず、型とサイズだけで新しい空キャンバスのアセットを作る（2D-2-CREATE-01）。
+   * プロジェクト級の操作のため Undo 履歴には積まない（docs/USER_GUIDE.md に明記）。
+   */
+  const handleCreateBlankAsset = async () => {
+    if (!project) {
+      return;
+    }
+    setEditorError(null);
+    setCreatingAsset(true);
+    try {
+      const trimmedName = newAssetName.trim() || '新規アセット';
+      const { asset, blobs } = await createBlankAssetBundle({
+        name: trimmedName,
+        displayName: trimmedName,
+        assetType: newAssetType,
+        size: newAssetSize,
+      });
+      const nextProject: Project = {
+        ...project,
+        assets: [
+          ...project.assets,
+          {
+            id: asset.id,
+            name: asset.name,
+            displayName: asset.displayName,
+            assetType: asset.assetType,
+          },
+        ],
+        updatedAt: new Date().toISOString(),
+      };
+      // project + 新アセット + 透明画像 Blob を単一トランザクションで保存する（2D-1B-STORAGE §A）。
+      await saveProjectBundle(nextProject, [asset], blobs);
+      setProject(nextProject);
+      setAssets((prev) => [...prev, asset]);
+      setSelectedAssetId(asset.id);
+      setSelectedLayerId(null);
+    } catch (error) {
+      setEditorError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setCreatingAsset(false);
+    }
+  };
+
+  /**
+   * 選択中のアセットを削除する（2D-2-CREATE-01）。画像 Blob・復旧点も
+   * deleteAsset（2D-1B-STORAGE）でまとめて消し、project 側の参照も外す。
+   * 確認ダイアログで防護するため、Undo 履歴には積まない。
+   *
+   * 削除の前に必ず autosave.flush() で保留中の自動保存（数値編集などの 800ms
+   * デバウンス保存）を完了させる。flush しないと、削除直後にデバウンス済みの
+   * 古い asset スナップショットが保存され、削除したはずのアセットが
+   * IndexedDB へ書き戻ってしまう競合が起きる（Opus 4.8 レビュー指摘）。
+   */
+  const handleDeleteAsset = async () => {
+    if (!project || !selectedAsset) {
+      return;
+    }
+    const ok = window.confirm(
+      `アセット「${selectedAsset.displayName}」を削除します。この操作は元に戻せません。よろしいですか？`,
+    );
+    if (!ok) {
+      return;
+    }
+    setEditorError(null);
+    setDeletingAsset(true);
+    try {
+      // 保留中の自動保存を先に終わらせてから削除する（上記コメント参照）。
+      await autosave.flush();
+      await deleteAsset(selectedAsset.id);
+      const nextProject: Project = {
+        ...project,
+        assets: project.assets.filter((entry) => entry.id !== selectedAsset.id),
+        updatedAt: new Date().toISOString(),
+      };
+      await saveProject(nextProject);
+      const remaining = assets.filter((asset) => asset.id !== selectedAsset.id);
+      setProject(nextProject);
+      setAssets(remaining);
+      setSelectedAssetId(remaining[0]?.id ?? null);
+      setSelectedLayerId(null);
+      setCheckedLayerIds([]);
+    } catch (error) {
+      setEditorError(
+        `アセットを削除できませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setDeletingAsset(false);
+    }
+  };
+
   const handleFileInput = (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
@@ -983,18 +1092,80 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           {selectedAsset ? (
             <>
               <AssetTypePanel asset={selectedAsset} onCommit={commitPanelChange} />
-              <button
-                type="button"
-                className="asset-flip-copy-button"
-                disabled={importing}
-                onClick={() => void handleFlipCopyAsset()}
-              >
-                左右反転コピーを作成
-              </button>
+              <div className="asset-actions">
+                <button
+                  type="button"
+                  className="asset-flip-copy-button"
+                  disabled={importing}
+                  onClick={() => void handleFlipCopyAsset()}
+                >
+                  左右反転コピーを作成
+                </button>
+                <button
+                  type="button"
+                  className="asset-delete-button"
+                  disabled={deletingAsset}
+                  onClick={() => void handleDeleteAsset()}
+                >
+                  アセットを削除
+                </button>
+              </div>
             </>
           ) : (
             <p className="editor-note">アセットを選ぶと種別を設定できます。</p>
           )}
+
+          <fieldset className="editor-fieldset asset-create-fieldset">
+            <legend>新規アセットを作成</legend>
+            <p className="editor-note">
+              画像を取り込まず、型とサイズだけで空キャンバスのアセットを作れます。 character
+              を選ぶと、当たり判定「body」が最初から付きます。
+            </p>
+            <label className="editor-field">
+              新規アセット名
+              <input
+                type="text"
+                value={newAssetName}
+                onChange={(event) => setNewAssetName(event.target.value)}
+              />
+            </label>
+            <label className="editor-field">
+              新規アセットの種別
+              <select
+                value={newAssetType}
+                onChange={(event) => setNewAssetType(event.target.value as AssetType)}
+              >
+                {ASSET_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {ASSET_TYPE_LABELS[type]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="editor-field">
+              新規アセットのサイズ
+              <select
+                value={newAssetSize}
+                onChange={(event) =>
+                  setNewAssetSize(Number(event.target.value) as BlankCanvasSizePreset)
+                }
+              >
+                {BLANK_CANVAS_SIZE_PRESETS.map((size) => (
+                  <option key={size} value={size}>
+                    {size} x {size}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              aria-label="新規アセットを作成"
+              disabled={creatingAsset || !project}
+              onClick={() => void handleCreateBlankAsset()}
+            >
+              新規アセットを作成
+            </button>
+          </fieldset>
 
           {selectedAsset && snapshots.length > 0 && (
             <>
@@ -1352,7 +1523,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
           <h3 className="editor-subheading">アセット</h3>
           {assets.length === 0 ? (
-            <p className="editor-note">画像を取り込むとアセットとして追加されます。</p>
+            <p className="editor-note">
+              アセットがありません。画像を取り込むか、新規アセットを作成してください。
+            </p>
           ) : (
             <ul className="asset-list">
               {assets.map((asset) => (
