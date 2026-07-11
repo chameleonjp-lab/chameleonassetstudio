@@ -1,6 +1,6 @@
 # Decision Log
 
-最終更新日: 2026-07-10
+最終更新日: 2026-07-11
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 重要方針の変更経緯・決定記録
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
@@ -453,3 +453,45 @@ Phase 19-C「判定編集強化」では、多角形判定の追加検討と rec
 - quarantine からの原因調査後の再 import 導線（現状は削除のみ）。
 - アセット単位のごみ箱・復旧履歴の恒久 UI 化。
 - ID prefix（`anim` と `animation` の不一致など）を将来統一するかどうか。
+
+---
+
+## ADR-2026-07-11-011: 2D-2-CREATE-01: 空キャンバスアセットの新規作成・削除
+
+### 状態
+
+- accepted
+
+### 背景
+
+`2D_COMPLETION_ROADMAP.md` の work package `2D-2-CREATE-01`（段階 2D-2、前提: 2D-1B-STORAGE）として、「画像がなくても、型とサイズを選んで空キャンバスのアセットを新規作成し、保存・再読込しても残り、間違えたら削除で戻せる」体験を実装した。既存の `Asset` / `Project` 型、JSON Schema、`.casproj` / export ZIP 形式、座標系は変更していない。
+
+### 決定
+
+- `src/core/model/factories.ts` に `createBlankAsset(options)` を追加した。既存 `createImageAsset` と同じ source / edit / thumbnail の 3 `TextureRef` 構成にし、中身はすべて透明画像として扱う（実際の Blob 生成はしない。Asset JSON 部分のみを組み立てる純関数で、DOM に依存せず unit test できる）。レイヤーは 1 枚（`layerType: 'image'`、position `{0,0}`、transform は既定）。原点は既存既定の下中央（要件 11.6、`{ x: width/2, y: height }`）。
+- 型別テンプレートはコード定数の map（`AssetType → (Asset) => Asset`）として factories.ts 内に持たせ、`.casproj` / asset.json には一切出さない（保存されるのは「テンプレートを適用した結果」であるフィールド値だけで、テンプレートという概念自体は保存データに現れない）。現時点では `character` のときだけ starter の矩形当たり判定「body」を 1 つ追加し、他の型は空キャンバスのみにした。当たり判定の値（キャンバス中央、幅・高さの半分）は `factories.ts` の `createDefaultRectCollider(canvasSize, purpose)`（id を含まない値部分のみを返す純関数）に一本化し、`assetOps.ts` の `addRectCollider` とこのテンプレートの両方がそれを呼ぶ形にした（初期実装では計算式をローカルに複製していたが、Opus 4.8 レビューで重複定義の指摘を受けて解消した）。依存方向は既存どおり `assetOps.ts` → `factories.ts`（`generateId` を使うため）のままで、循環 import は発生しない。`factories.test.ts` に、テンプレートの collider が `addRectCollider(asset, 'body')` の結果と id 以外 deepEqual であることを固定する unit test を追加した。
+- 透明 PNG の実体 Blob 生成は、`src/features/editor/blankAsset.ts`（UI 側ユーティリティ、`createBlankAssetBundle`）でブラウザの `document.createElement('canvas')` + `toBlob('image/png')` により行う。source / edit / thumbnail の 3 Blob は、空キャンバスで内容に差がないため同じ透明画像を使い回す（サムネイル用に別途生成しない）。
+- `EditorScreen.tsx` の「アセット」欄に、名前 / 種別（既存 `AssetType` 全値） / サイズ（32 / 64 / 128 / 256 の正方形プリセット、既定 64）を指定する「新規アセットを作成」フォームを追加した。作成は `saveProjectBundle(project, [asset], blobs)`（2D-1B-STORAGE）で project 更新・asset・Blob を単一トランザクション保存する。アセット種別の表示名は `AssetTypePanel.tsx` の定義と重複させないため、`src/features/editor/assetTypeLabels.ts`（コンポーネントを含まない定数専用ファイル）に切り出して両方から参照する（`react-refresh/only-export-components` 警告を避けるため）。
+- 同じ「アセット」欄に「アセットを削除」ボタンを追加した。`window.confirm` の確認後、まず `autosave.flush()` で保留中の自動保存（数値編集などの 800ms デバウンス保存）を完了させてから `deleteAsset`（2D-1B-STORAGE で Blob・復旧点も削除するよう修正済み）を呼び、project 側の `assets` 参照も外して保存する。`flush()` を先に呼ばないと、判定の数値編集直後にすぐ削除した場合、削除後にデバウンス済みの保存タスクが発火して削除済みアセットを IndexedDB へ書き戻してしまう競合が起きる（Opus 4.8 レビュー指摘、`e2e/create.spec.ts` に回帰テストを追加し、`flush()` を外すと実際に失敗することを確認済み）。削除ボタンは実行中 `disabled`（`deletingAsset` state）にし、多重クリックを防いでいる。最後の 1 件を削除してもアセット 0 件の状態を許可し、アセット一覧に「アセットがありません。画像を取り込むか、新規アセットを作成してください。」という空状態を表示するようにした（既存 UI は 0 件時の表示を既に持っていたため、文言のみ変更）。
+- アセットの新規作成・削除はどちらも **Undo / Redo の対象外**にした。理由は、既存の Undo/Redo（`History`）がアセット内部の変更（layers / colliders 等）を対象にした設計であり、プロジェクトのアセット一覧という別レイヤーの操作をそこへ混在させると、Undo で「削除したはずのアセットが復活する」「作成したはずのアセットが消える」といった一覧とキャンバス選択の整合が壊れやすいため。削除は確認ダイアログで誤操作を防ぐ。
+- 新規作成フォームのラベルは「新規アセット名」「新規アセットの種別」「新規アセットのサイズ」とし、既存の「アセット種別」（`AssetTypePanel`）や、アンカー行の「名前」などの既存ラベルと部分一致で衝突しない文言にした（E2E の `getByLabel` が意図せず複数要素にマッチしないようにするため）。
+
+### しないこと
+
+- ブラシ・図形・文字などの描画ツールの追加。
+- Family / Variant の実装。
+- テンプレート定義自体の保存形式化（`.casproj` / asset.json への追加フィールド化）。
+- `ui` / `icon` の `AssetType` 追加。
+- プロジェクト新規作成フロー（プロジェクト作成フォーム）の変更。
+- `Asset` / `Project` / `Layer` / `Animation` 型、JSON Schema、`.casproj` 形式、export ZIP 構成、座標系、既存テストの期待値の変更。
+
+### 影響する文書
+
+- `docs/USER_GUIDE.md`（2.1 / 2.2: 新規アセット作成・削除、Undo 対象外である旨）
+
+### 未確定事項
+
+- character 以外のテンプレート（item の score/rarity 既定値の自動付与、tile の既定 tileSize 自動付与など）を新規作成時にも適用するかどうかは未定（既存の `AssetTypePanel` の「テンプレートを適用」ボタンで後付けできるため、本 work package では見送った）。
+- 新規作成フォームのキャンバスサイズを正方形プリセット以外（矩形・自由入力）にも広げるかどうか。
+- character 以外の種別にも starter 当たり判定・アンカーを用意するかどうか。
+- `handleDeleteAsset` は `deleteAsset`（asset + Blob + 復旧点、単一トランザクション）と `saveProject`（project の `assets` 参照更新）を別々の非同期呼び出しで行っており、両者の間は原子的ではない（間で保存に失敗すると、asset は消えたが project の参照だけ残る不整合が理論上あり得る）。Opus 4.8 レビューで指摘されたが、本 work package では実装しない。将来 `deleteAssetBundle(project, assetId)` のような project + asset を単一トランザクションで扱う関数を追加するかどうかは未定（`saveProjectBundle` の削除版に相当）。

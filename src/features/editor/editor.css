@@ -507,6 +507,31 @@
   opacity: 0.6;
 }
 
+.asset-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.asset-actions .asset-flip-copy-button,
+.asset-actions .asset-delete-button {
+  margin-top: 0;
+}
+
+.asset-delete-button {
+  padding: 0.3rem 0.7rem;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  color: #b3261e;
+  border-color: #b3261e;
+}
+
+.asset-create-fieldset {
+  margin-top: 0.6rem;
+}
+
 .layer-name {
   margin: 0;
   font-size: 0.85rem;

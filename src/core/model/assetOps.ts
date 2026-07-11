@@ -5,7 +5,7 @@
 import type { Animation, Frame } from './animation';
 import type { Asset, AssetType, EffectSettings, GimmickSettings, TileSettings } from './asset';
 import type { Vec2 } from './common';
-import { generateId } from './factories';
+import { createDefaultRectCollider, generateId } from './factories';
 import type { BackgroundLayerSettings, Layer } from './layer';
 import type { Part, PartPose, PartType } from './part';
 import type { RigAnimation } from './rig';
@@ -188,19 +188,11 @@ export function removeAnchor(asset: Asset, anchorId: string): Asset {
 
 /** キャンバス中央に既定サイズの矩形当たり判定を追加する。 */
 export function addRectCollider(asset: Asset, purpose: ColliderPurpose = 'body'): Asset {
-  const { width, height } = asset.canvasSize;
+  // 値部分（id 以外）は factories.ts の createDefaultRectCollider と共有する
+  // （2D-2-CREATE-01 の新規作成テンプレートも同じ関数を使い、計算式の重複を避けている）。
   const collider: Collider = {
     id: generateId('col'),
-    name: purpose,
-    purpose,
-    shape: 'rect',
-    visible: true,
-    rect: {
-      x: Math.round(width / 4),
-      y: Math.round(height / 4),
-      width: Math.round(width / 2),
-      height: Math.round(height / 2),
-    },
+    ...createDefaultRectCollider(asset.canvasSize, purpose),
   };
   return touch({ ...asset, colliders: [...asset.colliders, collider] });
 }

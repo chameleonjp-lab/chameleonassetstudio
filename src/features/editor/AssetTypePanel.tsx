@@ -22,6 +22,7 @@ import {
   type TileCollisionType,
   type TileSettings,
 } from '../../core/model';
+import { ASSET_TYPE_LABELS } from './assetTypeLabels';
 import { BackgroundPreview } from './BackgroundPreview';
 
 interface AssetTypePanelProps {
@@ -49,15 +50,6 @@ const DEFAULT_BACKGROUND: BackgroundLayerSettings = {
   parallaxSpeed: { x: 0.5, y: 0 },
   loopX: true,
   loopY: false,
-};
-
-const ASSET_TYPE_LABELS: Record<AssetType, string> = {
-  character: 'キャラクター',
-  item: 'アイテム',
-  background: '背景',
-  tile: 'タイル',
-  gimmick: 'ギミック',
-  effect: 'エフェクト',
 };
 
 function toggleTag(asset: Asset, tag: string): Asset {
