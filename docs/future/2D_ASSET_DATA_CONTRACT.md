@@ -173,6 +173,8 @@ Project
 
 ### 8.2 可変時間とイベント
 
+> この項目は `docs/adr/0008-motion-time-semantics.md`、`docs/adr/0009-animation-event-boundary.md`、`docs/adr/0011-motion-forward-compatibility.md` で決定済み（境界確定のみ、実装は別 PR）。
+
 将来、可変フレーム時間やイベントを追加する場合は、次を守る。
 
 - 時間の正本を ms にするか、fps と frame 数から導くかを明文化する。
@@ -198,6 +200,8 @@ Spine、Rive、Live2D の専用形式を直接再現するのではなく、Cham
 
 ### 9.2 将来の拡張順
 
+> この項目は `docs/adr/0010-collider-override-and-polygon-boundary.md`、`docs/adr/0011-motion-forward-compatibility.md` で決定済み（frame 単位上書きのみ許可、animation 単位は不採用。境界確定のみ、実装は別 PR）。
+
 1. アセット共通の rect / circle を正しく編集・反転・書き出しできるようにする。
 2. フレーム別または animation 別の上書き規則を設計する。
 3. 必要なら polygon を追加する。
@@ -206,6 +210,8 @@ Spine、Rive、Live2D の専用形式を直接再現するのではなく、Cham
 フレーム別判定の推奨は、アセット共通判定を基準にして、animation または frame が必要な項目だけを上書きする方式である。上書きには、位置・サイズ・有効状態・目的・追加 / 削除のどこまで許すかを先に決める。
 
 ### 9.3 polygon を追加する条件
+
+> この項目は `docs/adr/0010-collider-override-and-polygon-boundary.md` で決定済み（unsupported を維持。採用条件は変更なし）。
 
 polygon は次を決めた別 PR 以外では追加しない。
 
