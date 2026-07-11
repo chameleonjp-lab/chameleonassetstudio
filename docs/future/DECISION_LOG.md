@@ -495,3 +495,42 @@ Phase 19-C「判定編集強化」では、多角形判定の追加検討と rec
 - 新規作成フォームのキャンバスサイズを正方形プリセット以外（矩形・自由入力）にも広げるかどうか。
 - character 以外の種別にも starter 当たり判定・アンカーを用意するかどうか。
 - `handleDeleteAsset` は `deleteAsset`（asset + Blob + 復旧点、単一トランザクション）と `saveProject`（project の `assets` 参照更新）を別々の非同期呼び出しで行っており、両者の間は原子的ではない（間で保存に失敗すると、asset は消えたが project の参照だけ残る不整合が理論上あり得る）。Opus 4.8 レビューで指摘されたが、本 work package では実装しない。将来 `deleteAssetBundle(project, assetId)` のような project + asset を単一トランザクションで扱う関数を追加するかどうかは未定（`saveProjectBundle` の削除版に相当）。
+
+## ADR-2026-07-11-012: PR #53・PR #55の先行実装と再監査方針
+
+### 状態
+
+- accepted
+
+### 背景
+
+PR #54 のロードマップ整合中に、PR #54 作成後の main へ PR #53（`2D-1B-STORAGE`）と PR #55（`2D-2-CREATE-01`）が先行して merge 済みであることを反映する必要が出た。両 PR は有用な実装を含むが、詳細 2D 契約 Gate の順序より先に入っているため、ロードマップ上では完了扱いではなく provisional / ahead-of-gate として扱う。
+
+### 決定
+
+- PR #53・PR #55はrevertしない。
+- 詳細契約Gateより先にマージされたprovisional実装として扱う。
+- 残りの2D-1A契約後に再監査する。
+- 2D-1B-GATEは未完了。
+- 2D-2-CREATE全体は未完了。
+- 再監査まで追加の2D-1B / 2D-2 / 2D-3本実装を停止する。
+- 次の契約作業は2D-1A-MOTION。
+
+### しないこと
+
+- PR #53・PR #55 の実装を revert しない。
+- 先行実装を理由に `2D-1A-MOTION`、`2D-1A-TARGET`、`2D-1A-PROVENANCE`、`2D-1A-VALIDATION`、詳細 `2D-1A-MIGRATION`、`2D-1B-GATE`、`2D-2-CREATE` 全体、`2D-2-PROJECT` を完了扱いにしない。
+- 未確定契約を Codex が独断で accepted にしない。
+- 追加の 2D-1B / 2D-2 / 2D-3 本実装を、再監査前に進めない。
+
+### 影響する文書
+
+- `docs/IMPLEMENTATION_PLAN.md`
+- `docs/future/2D_COMPLETION_ROADMAP.md`
+- `docs/future/DECISION_LOG.md`
+
+### 未確定事項
+
+- `2D-1A-MOTION` 以降の契約判断。
+- PR #53 の provisional 実装を、残る 2D-1A 契約後にどの PR で再監査・不足補完するか。
+- PR #55 の partial `2D-2-CREATE` を、`2D-1B-GATE` 後にどの単位で completion へ進めるか。
