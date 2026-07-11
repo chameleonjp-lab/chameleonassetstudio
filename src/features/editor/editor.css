@@ -963,3 +963,90 @@
     transparent 2px 4px
   );
 }
+
+/* ゲームデータ検査パネル（2D-3-GAMEDATA-01）。advisory 表示専用で、保存データは持たない。 */
+.inspection-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.inspection-summary {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.inspection-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.inspection-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border: 1px solid #8884;
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
+}
+
+.inspection-row-error {
+  border-color: #c0392b;
+}
+
+.inspection-row-warning {
+  border-color: #d9a300;
+}
+
+.inspection-row-info {
+  border-color: #3a86ff;
+}
+
+.inspection-row-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.inspection-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  color: #fff;
+}
+
+.inspection-badge-error {
+  background: #c0392b;
+}
+
+.inspection-badge-warning {
+  background: #b8860b;
+}
+
+.inspection-badge-info {
+  background: #3a86ff;
+}
+
+.inspection-category {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
+.inspection-message {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.inspection-jump-button {
+  align-self: flex-start;
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}

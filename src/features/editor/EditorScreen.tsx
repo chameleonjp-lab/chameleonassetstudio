@@ -65,6 +65,7 @@ import { LAYER_TOOLS, type CanvasTool } from './canvasTools';
 import { ExportPanel } from './ExportPanel';
 import { GameAttributesPanel } from './GameAttributesPanel';
 import { GameDataPanel } from './GameDataPanel';
+import { InspectionPanel } from './InspectionPanel';
 import { LayerPanel } from './LayerPanel';
 import { PartPanel } from './PartPanel';
 import { RigPanel } from './RigPanel';
@@ -1489,6 +1490,19 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           ) : (
             <p className="editor-note">
               アセットを選ぶと原点・アンカー・当たり判定を設定できます。
+            </p>
+          )}
+
+          <h3 className="editor-subheading">ゲームデータ検査</h3>
+          {selectedAsset ? (
+            <InspectionPanel
+              asset={selectedAsset}
+              onSelectCollider={setSelectedColliderId}
+              onSelectAnimation={handleSelectAnimation}
+            />
+          ) : (
+            <p className="editor-note">
+              アセットを選ぶと原点・アンカー・当たり判定・アニメーションの参照整合を検査できます。
             </p>
           )}
 

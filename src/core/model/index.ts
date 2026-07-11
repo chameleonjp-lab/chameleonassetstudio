@@ -7,6 +7,7 @@ export * from './common';
 export * from './exportPreset';
 export * from './factories';
 export * from './flipCopy';
+export * from './gameDataInspection';
 export * from './layer';
 export * from './migrate';
 export * from './part';
