@@ -30,6 +30,7 @@
 - 影響 docs: `docs/future/2D_ASSET_DATA_CONTRACT.md` §8.2。
 - 影響実装: なし（今回は実装しない。将来 `events` を追加する PR が `src/core/model/animation.ts` / `asset.schema.json` / `animation.schema.json` を変更する）。
 - fixture: 専用 fixture は無い。ただし ADR-0011 の fixture（`src/core/model/motionContract.fixtures.test.ts`）で、`events` のような未知フィールドを持つ animation データが現行 validator を通ることを固定し、本 ADR が定義する将来形の追加が additive で可能であることの前提を裏付ける。
+- flip copy 時の `events[].frameId` の新 ID への張り替えは ADR-0010 の決定を参照（events 実装 PR のチェックリストに含めること）。
 
 ## 再検討条件
 

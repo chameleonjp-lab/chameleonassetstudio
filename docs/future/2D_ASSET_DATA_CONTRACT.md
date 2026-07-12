@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 2D Asset Data Contract
 
-最終更新日: 2026-07-10
+最終更新日: 2026-07-12
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 2D 完成形の保存・座標・互換性契約
 状態: accepted（将来設計。docs-only）
@@ -222,6 +222,8 @@ polygon は次を決めた別 PR 以外では追加しない。
 - 現在の rect / circle と古い `.casproj` の互換性。
 
 ## 10. 対象別情報と拡張領域
+
+> この章の境界は `docs/adr/0012-target-extension-and-unknown-data.md` で決定済み（境界確定のみ、`Asset.extensions` の実装は別 PR）。
 
 共通の `gameAttributes` に、出力先ごとの情報を無制限に混ぜない。将来追加する target 固有情報は、出力設定または名前空間付きの拡張領域へ隔離する。
 
