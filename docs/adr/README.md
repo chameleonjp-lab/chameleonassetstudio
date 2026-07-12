@@ -2,7 +2,7 @@
 
 最終更新日: 2026-07-12
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
-文書種別: ADR インデックス（work package `2D-1A-CONTRACT`, `2D-1A-MOTION`, `2D-1A-TARGET`）
+文書種別: ADR インデックス（work package `2D-1A-CONTRACT`, `2D-1A-MOTION`, `2D-1A-TARGET`, `2D-1A-PROVENANCE`）
 上位文書: `docs/future/2D_ASSET_DATA_CONTRACT.md`, `docs/future/2D_COMPLETION_ROADMAP.md`（2D-1a）
 関連: `docs/future/DECISION_LOG.md`, `docs/future/README.md`
 
@@ -55,6 +55,7 @@ ADR は仕様を新しく作るものではない。`2D_ASSET_DATA_CONTRACT.md` 
 | [0010](./0010-collider-override-and-polygon-boundary.md) | frame 別判定上書きと polygon の境界 | §9.2, §9.3 | なし（将来フィールドの境界確定のみ。前提は ADR-0011 の fixture で固定） |
 | [0011](./0011-motion-forward-compatibility.md) | 0.1.0 無変換条件と追加フィールドの共通条件 | §8.2, §9.2, §13 | `src/core/model/motionContract.fixtures.test.ts`（ADR-0011） |
 | [0012](./0012-target-extension-and-unknown-data.md) | target 固有 extension と unknown data の境界 | §10, §11 | `src/core/model/targetContract.fixtures.test.ts`（ADR-0012） |
+| [0013](./0013-provenance-and-ai-record-boundary.md) | 来歴・利用条件・AI 送信記録の保存境界 | §11 | `src/core/model/provenanceContract.fixtures.test.ts`（ADR-0013） |
 
 ## 4. 変更してよいもの・してはいけないもの
 
@@ -63,3 +64,5 @@ ADR は仕様を新しく作るものではない。`2D_ASSET_DATA_CONTRACT.md` 
 `2D-1A-MOTION`（ADR 0008〜0011）も同じ変更範囲の原則に従う。animation event・frame 単位可変時間・rig bake・frame 別判定上書き・polygon の**契約境界**を ADR として固定するのみで、`events` / frame `durationMs` / `colliderOverrides` / polygon の実装、JSON Schema 変更、`asset.json` / `.casproj` / export ZIP の version・構成変更は本 work package の範囲外である。
 
 `2D-1A-TARGET`（ADR 0012）も同じ変更範囲の原則に従う。target 固有 extension と unknown data の扱いの**契約境界**を ADR として固定するのみで、`Asset.extensions` の実装・schema 追加、`ExportPreset` の変更、unknown data 保持保証の実装は本 work package の範囲外である。
+
+`2D-1A-PROVENANCE`（ADR 0013）も同じ変更範囲の原則に従う。来歴・利用条件・AI 送信記録の保存境界の**契約境界**を ADR として固定するのみで、provenance / AI 送信記録の実装・schema 追加・import 経路の変更は本 work package の範囲外である。
