@@ -201,7 +201,7 @@ LayerTransform の意味は次の通りとする。`position` はテクスチャ
 ### 6.6 Frame と Animation
 
 - `Frame` は `id` / `name` / `layerStates` を持つ。`layerStates` の各要素は `layerId` 必須で、`visible` / `transform` / `opacity` を省略した場合はレイヤー本体の値を使う。
-- `Animation` は `id` / `name` / `fps` / `loop` / `frameIds` を必須で持ち、`durationMs` は任意（未指定時はフレーム数と fps から導出）。
+- `Animation` は `id` / `name` / `fps` / `loop` / `frameIds` を必須で持ち、`durationMs` は任意の参考値（informational）。再生・export はこれを参照せず、時間の正本は fps × フレーム数である（`docs/adr/0008-motion-time-semantics.md`）。
 - name 候補は `idle` / `walk` / `run` / `jump` / `fall` / `attack` / `damage` / `dead` / `win` / `lose`（`ANIMATION_NAME_SUGGESTIONS`）。
 
 ### 6.7 型別設定（Phase 14）
