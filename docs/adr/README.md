@@ -1,8 +1,8 @@
 # Architecture Decision Records（2D データ契約）
 
-最終更新日: 2026-07-11
+最終更新日: 2026-07-12
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
-文書種別: ADR インデックス（work package `2D-1A-CONTRACT`, `2D-1A-MOTION`）
+文書種別: ADR インデックス（work package `2D-1A-CONTRACT`, `2D-1A-MOTION`, `2D-1A-TARGET`）
 上位文書: `docs/future/2D_ASSET_DATA_CONTRACT.md`, `docs/future/2D_COMPLETION_ROADMAP.md`（2D-1a）
 関連: `docs/future/DECISION_LOG.md`, `docs/future/README.md`
 
@@ -54,9 +54,12 @@ ADR は仕様を新しく作るものではない。`2D_ASSET_DATA_CONTRACT.md` 
 | [0009](./0009-animation-event-boundary.md) | animation event の境界 | §8.2 | なし（将来フィールドの境界確定のみ。前提は ADR-0011 の fixture で固定） |
 | [0010](./0010-collider-override-and-polygon-boundary.md) | frame 別判定上書きと polygon の境界 | §9.2, §9.3 | なし（将来フィールドの境界確定のみ。前提は ADR-0011 の fixture で固定） |
 | [0011](./0011-motion-forward-compatibility.md) | 0.1.0 無変換条件と追加フィールドの共通条件 | §8.2, §9.2, §13 | `src/core/model/motionContract.fixtures.test.ts`（ADR-0011） |
+| [0012](./0012-target-extension-and-unknown-data.md) | target 固有 extension と unknown data の境界 | §10, §11 | `src/core/model/targetContract.fixtures.test.ts`（ADR-0012） |
 
 ## 4. 変更してよいもの・してはいけないもの
 
 この work package（`2D-1A-CONTRACT`）で変更してよいのは `docs/adr/`、`docs/future/DECISION_LOG.md`、`docs/future/README.md`、`src/` 配下の**新規**テストファイルのみである。製品コード、JSON Schema、`src/core/samples/` の既存ファイル、既存テストの期待値、version、dependencies は変更しない。Asset Family / Variant の実装、可変フレーム時間、frame 別判定、polygon、trim / scale / padding の実装、保存基盤（`2D-1B-STORAGE`）は本 work package の範囲外である。
 
 `2D-1A-MOTION`（ADR 0008〜0011）も同じ変更範囲の原則に従う。animation event・frame 単位可変時間・rig bake・frame 別判定上書き・polygon の**契約境界**を ADR として固定するのみで、`events` / frame `durationMs` / `colliderOverrides` / polygon の実装、JSON Schema 変更、`asset.json` / `.casproj` / export ZIP の version・構成変更は本 work package の範囲外である。
+
+`2D-1A-TARGET`（ADR 0012）も同じ変更範囲の原則に従う。target 固有 extension と unknown data の扱いの**契約境界**を ADR として固定するのみで、`Asset.extensions` の実装・schema 追加、`ExportPreset` の変更、unknown data 保持保証の実装は本 work package の範囲外である。
