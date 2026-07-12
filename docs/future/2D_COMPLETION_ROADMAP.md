@@ -94,7 +94,7 @@
 | `2D-1A-BASELINE` | 必須 | 現行実装の baseline report を固定する。 | PR #50で完了・mainへマージ済み。 |
 | `2D-1A-LAYERS` | 判断必須 | source / edit / derived / export / verification、Project / Asset Family / Variant、ID・名前・参照の層を固定する。 | PR #52 accepted。 |
 | `2D-1A-COORD` | 判断必須 | 座標、transform、pivot、trim、atlas、flip、scale、丸めの意味を固定する。 | PR #52 accepted。 |
-| `2D-1A-MOTION` | 判断必須 | animation event、可変時間、rig bake、frame別上書き、polygonの境界を決める。 | `2D-1A-LAYERS` + `2D-1A-COORD` 後。 |
+| `2D-1A-MOTION` | 判断必須 | animation event、可変時間、rig bake、frame別上書き、polygonの境界を決める。 | PR #60 accepted（ADR 0008〜0011）。 |
 | `2D-1A-TARGET` | 判断必須 | target固有 extension と unknown data の扱いを決める。 | `2D-1A-MOTION` 後。 |
 | `2D-1A-PROVENANCE` | 判断必須 | provenance、利用条件、AI送信記録の保存境界を決める。 | `2D-1A-MOTION` 後。 |
 | `2D-1A-VALIDATION` | 判断必須 | 構造・意味・出力の検証を schema / runtime / preflight へ分解する。 | `2D-1A-MOTION` 後。 |
@@ -503,7 +503,7 @@ PR 運用 Gate:
 | 0 | `2D-0-DOCS` + `2D-0-PLAN` + `2D-0-ENTRY` | 2D完成仕様、ロードマップ入口、参照関係を固定する。 | Codex docs + Opus 4.8 review + 人間確認 | なし | 完了済みのため並行不要 | completed | 完了済み。 |
 | 1 | `2D-1A-BASELINE` | 現行 version、型、schema、保存、`.casproj`、export ZIP、migration、fixture/test coverage を baseline report に固定する。 | Codex docs + Opus 4.8 review | 0 | 完了済みのため並行不要 | completed | PR #50で完了・mainへマージ済み。 |
 | 2A | `2D-1A-LAYERS` + `2D-1A-COORD` | データ層、Project / Asset Family / Variant、ID、座標、transform、trim、atlas、flip、scaleを固定する。 | Codex ADR / fixture + Opus 4.8 review | 1 | 完了済みのため並行不要 | completed | PR #52 accepted。 |
-| 2B | `2D-1A-MOTION` | animation event、可変時間、rig bake、frame別上書き、polygon境界を判断する。 | Fable5または人間判断 + Codex docs / fixture | 2A | `2D-6-PERFORMANCE` / `2D-6-A11Y` の基準計測のみ可 | next | 未着手。次の正式作業。 |
+| 2B | `2D-1A-MOTION` | animation event、可変時間、rig bake、frame別上書き、polygon境界を判断する。 | Fable5または人間判断 + Codex docs / fixture | 2A | `2D-6-PERFORMANCE` / `2D-6-A11Y` の基準計測のみ可 | completed | PR #60 accepted（ADR 0008〜0011）。次は 2C。 |
 | 2C | `2D-1A-TARGET` + `2D-1A-PROVENANCE` + `2D-1A-VALIDATION` + `2D-1A-MIGRATION` | target extension、unknown data、provenance、AI送信記録、validation、version、旧形式、rollback、fixtureを固定する。 | Fable5または人間判断 + Codex ADR / fixture | 2B accepted | `2D-6` の準備のみ可 | pending | 未着手。`2D-1A-MIGRATION` は ADR-0006 のみ partial。 |
 | 5 | `2D-1B-REVISION` + `2D-1B-LAYERS` | 改訂単位の整合保存、autosave状態、source / edit / cache / export record の保存境界を実装する。 | Codex + Opus 4.8 必須 review | 2C accepted | `2D-2` / `2D-3` はprototype・test設計のみ | 2C後 | PR #53 が provisional / ahead-of-gate。再監査まで本実装停止。 |
 | 6 | `2D-1B-RECOVERY` + `2D-1B-CAPACITY` | snapshot、trash、rollback、復元、storage estimate、quota、退避導線を実装する。 | Codex + Opus 4.8 必須 review | 5 | `2D-6` の基準作りのみ可 | 5後 | PR #53 が partial / provisional implemented。 |
