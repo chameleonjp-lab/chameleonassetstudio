@@ -59,7 +59,7 @@ ADR は仕様を新しく作るものではない。`2D_ASSET_DATA_CONTRACT.md` 
 
 ## 4. 変更してよいもの・してはいけないもの
 
-この work package（`2D-1A-CONTRACT`）で変更してよいのは `docs/adr/`、`docs/future/DECISION_LOG.md`、`docs/future/README.md`、`src/` 配下の**新規**テストファイルのみである。製品コード、JSON Schema、`src/core/samples/` の既存ファイル、既存テストの期待値、version、dependencies は変更しない。Asset Family / Variant の実装、可変フレーム時間、frame 別判定、polygon、trim / scale / padding の実装、保存基盤（`2D-1B-STORAGE`）は本 work package の範囲外である。
+この work package（`2D-1A-CONTRACT`）で変更してよいのは `docs/adr/`、`docs/future/DECISION_LOG.md`、`docs/future/README.md`、`src/` 配下の**新規**テストファイルのみである。上位契約文書（`docs/future/2D_ASSET_DATA_CONTRACT.md`）への「この章の境界は ADR で決定済み」という参照注記の追加は許可される（本文の書き換えは不可。PR #60 / #62 / #63 の前例）。製品コード、JSON Schema、`src/core/samples/` の既存ファイル、既存テストの期待値、version、dependencies は変更しない。Asset Family / Variant の実装、可変フレーム時間、frame 別判定、polygon、trim / scale / padding の実装、保存基盤（`2D-1B-STORAGE`）は本 work package の範囲外である。
 
 `2D-1A-MOTION`（ADR 0008〜0011）も同じ変更範囲の原則に従う。animation event・frame 単位可変時間・rig bake・frame 別判定上書き・polygon の**契約境界**を ADR として固定するのみで、`events` / frame `durationMs` / `colliderOverrides` / polygon の実装、JSON Schema 変更、`asset.json` / `.casproj` / export ZIP の version・構成変更は本 work package の範囲外である。
 
