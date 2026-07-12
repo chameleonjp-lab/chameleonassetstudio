@@ -18,7 +18,7 @@
 2. **名前空間規則**: `extensions` を導入する際、キーは kebab-case の名前空間とし、`chameleon` / `canvas2d` / `pixijs` / `phaser` / `unity` / `godot` / `rpgmaker-mz` を予約する（`chameleon` はアプリ自身の将来用）。その他のベンダー名前空間の追加も許容する。各名前空間の値は **JSON として安全に検証できる値**（プリミティブと浅いオブジェクト / 配列）のみとし、API key・アクセストークン・個人情報などの秘密情報の保存を禁止する（契約 §11 と一貫。検出は `2D-1A-VALIDATION` の preflight に接続する）。
 3. **unknown data の規範 = read-preserve-ignore**: 理解しない名前空間・未知フィールドを持つデータは「読める（エラーにしない）・保持する（編集操作で削除しない）・無視する（挙動に影響させない）」を規範とする。現行実装では未知フィールドは validator を通る（ADR-0011）が、**再保存時の保持は編集経路依存で保証されない**という事実を引き継いで記録する。保持保証の実装と、保持できない場合の version 判断は `extensions` 正式導入 PR（`2D-1A-MIGRATION` 後）で行う。
 4. **`gameAttributes` の境界**: `Asset.gameAttributes`（現行 `Record<string, unknown>`、schema は自由 `{"type":"object"}`）は「ゲーム内で意味を持つユーザー定義値」（score / rarity 等）専用とし、target 固有の出力調整値を新たに入れないことを規範とする。既存データの `gameAttributes` は移動・変換しない。
-5. **export への反映**: `extensions` は既定で atlas.json / export ZIP へ**出さない**。target preset が明示的に選択した名前空間のみ、`2D-4` の出力契約で反映を判断する（ADR-0009 が定めた「event は既定で出さない」と同型の判断）。ここでの「出さない」は**エンジン向け派生出力**（atlas.json、helper API、examples）を指し、export ZIP / `.casproj` に同梱される保存正本 `asset.json` の複製は strip しない（ADR-0013 と同一規範。2D-1A-PROVENANCE レビューのフォローアップ）。
+5. **export への反映**: `extensions` は既定で**エンジン向け派生出力**（atlas.json、helper API、examples）へ**出さない**（2D-1A-VALIDATION フォローアップ: PROVENANCE レビュー軽微 1 の解消）。target preset が明示的に選択した名前空間のみ、`2D-4` の出力契約で反映を判断する（ADR-0009 が定めた「event は既定で出さない」と同型の判断）。ここでの「出さない」は**エンジン向け派生出力**（atlas.json、helper API、examples）を指し、export ZIP / `.casproj` に同梱される保存正本 `asset.json` の複製は strip しない（ADR-0013 と同一規範。2D-1A-PROVENANCE レビューのフォローアップ）。
 6. **0.1.0 無変換条件**: `extensions` は optional・additive とする。不在時の挙動は現行と一致させ、migrate は恒等のまま（ADR-0011 の共通条件に従う）。
 
 ## 根拠
