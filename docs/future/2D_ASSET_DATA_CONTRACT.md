@@ -252,6 +252,8 @@ extensions
 
 ## 12. 検証の段階
 
+> この章（検証の段階）の境界は `docs/adr/0014-validation-staging.md` で決定済み（段の分解と境界確定のみ、統一意味検証パス・preflight の実装は別 PR）。
+
 将来のデータ機能は、JSON Schema を通るだけでは完了にしない。
 
 | 段階 | 例 | 失敗時の扱い |
