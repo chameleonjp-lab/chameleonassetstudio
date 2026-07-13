@@ -2,7 +2,7 @@
 
 最終更新日: 2026-07-12
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
-文書種別: ADR インデックス（work package `2D-1A-CONTRACT`, `2D-1A-MOTION`, `2D-1A-TARGET`, `2D-1A-PROVENANCE`, `2D-1A-VALIDATION`）
+文書種別: ADR インデックス（work package `2D-1A-CONTRACT`, `2D-1A-MOTION`, `2D-1A-TARGET`, `2D-1A-PROVENANCE`, `2D-1A-VALIDATION`, `2D-1A-MIGRATION`）
 上位文書: `docs/future/2D_ASSET_DATA_CONTRACT.md`, `docs/future/2D_COMPLETION_ROADMAP.md`（2D-1a）
 関連: `docs/future/DECISION_LOG.md`, `docs/future/README.md`
 
@@ -57,6 +57,7 @@ ADR は仕様を新しく作るものではない。`2D_ASSET_DATA_CONTRACT.md` 
 | [0012](./0012-target-extension-and-unknown-data.md) | target 固有 extension と unknown data の境界 | §10, §11 | `src/core/model/targetContract.fixtures.test.ts`（ADR-0012） |
 | [0013](./0013-provenance-and-ai-record-boundary.md) | 来歴・利用条件・AI 送信記録の保存境界 | §11 | `src/core/model/provenanceContract.fixtures.test.ts`（ADR-0013） |
 | [0014](./0014-validation-staging.md) | 検証の段階（構造検証 / 意味検証 / 出力検証）の境界 | §12 | `src/core/model/validationContract.fixtures.test.ts`（ADR-0014） |
+| [0015](./0015-migration-detailed-contract.md) | version 採番・移行手順・独立 version・新形式拒否の詳細契約 | §13 | `src/core/model/migrationContract.fixtures.test.ts`（ADR-0015） |
 
 ## 4. 変更してよいもの・してはいけないもの
 
@@ -69,3 +70,5 @@ ADR は仕様を新しく作るものではない。`2D_ASSET_DATA_CONTRACT.md` 
 `2D-1A-PROVENANCE`（ADR 0013）も同じ変更範囲の原則に従う。来歴・利用条件・AI 送信記録の保存境界の**契約境界**を ADR として固定するのみで、provenance / AI 送信記録の実装・schema 追加・import 経路の変更は本 work package の範囲外である。
 
 `2D-1A-VALIDATION`（ADR 0014）も同じ変更範囲の原則に従う。検証の段階（構造検証 / 意味検証 / 出力検証）の**契約境界**を ADR として固定するのみで、統一意味検証パス・preflight の実装、schema 変更は本 work package の範囲外である。
+
+`2D-1A-MIGRATION`（ADR 0015）も同じ変更範囲の原則に従う。version 採番・移行手順の不変条件・独立 version・新形式の拒否・migrate と検証の順序の**契約境界**を ADR として固定するのみで、実際の version 進行・移行手順の追加・`CURRENT_*_VERSION` や schema の変更は本 work package の範囲外である。

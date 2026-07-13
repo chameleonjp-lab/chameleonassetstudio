@@ -266,6 +266,8 @@ extensions
 
 ## 13. 形式変更と migration の gate
 
+> この章の migration 詳細契約（version 採番・移行手順の不変条件・独立 version・新形式の拒否・migrate と検証の順序）の境界は `docs/adr/0015-migration-detailed-contract.md` で決定済み。入口挙動と復旧境界は `docs/adr/0006-migration-and-recovery-boundaries.md`（実装は別 PR）。
+
 次のいずれかに触れる場合は、docs-only の次に別の設計 / migration PR を作り、Opus 4.8 の設計レビューと人間確認を通す。
 
 - `asset.json` / `project.json` / export settings の version。
