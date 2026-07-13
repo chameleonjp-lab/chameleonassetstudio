@@ -72,6 +72,55 @@ export interface ProjectBundleBlobInput {
   blob: Blob;
 }
 
+interface PreparedBlobRecordInput {
+  key: string;
+  projectId: string;
+  blob: Blob;
+}
+
+function assertDistinctBlobOperations(
+  putBlobs: Array<{ key: string }>,
+  deleteBlobKeys: string[],
+): void {
+  const putKeys = new Set<string>();
+  for (const { key } of putBlobs) {
+    if (!key) {
+      throw new StorageError('Blob key が空です');
+    }
+    if (putKeys.has(key)) {
+      throw new StorageError(`同じ Blob key が複数回保存対象に指定されています: ${key}`);
+    }
+    putKeys.add(key);
+  }
+
+  const deleteKeys = new Set<string>();
+  for (const key of deleteBlobKeys) {
+    if (!key) {
+      throw new StorageError('削除する Blob key が空です');
+    }
+    if (deleteKeys.has(key)) {
+      throw new StorageError(`同じ Blob key が複数回削除対象に指定されています: ${key}`);
+    }
+    if (putKeys.has(key)) {
+      throw new StorageError(`同じ Blob key を保存と削除へ同時に指定できません: ${key}`);
+    }
+    deleteKeys.add(key);
+  }
+}
+
+async function prepareBlobRecords(blobs: PreparedBlobRecordInput[]): Promise<StoredBlobRecord[]> {
+  const updatedAt = new Date().toISOString();
+  return Promise.all(
+    blobs.map(async ({ key, projectId, blob }) => ({
+      key,
+      projectId,
+      mimeType: blob.type,
+      bytes: await blob.arrayBuffer(),
+      updatedAt,
+    })),
+  );
+}
+
 /**
  * project + assets[] + blobs[] をまとめて原子的に保存する（2D-1B-STORAGE §A）。
  * Blob → ArrayBuffer の変換はトランザクション開始前に済ませ、
@@ -98,15 +147,9 @@ export async function saveProjectBundle(
 
   // IndexedDB リクエスト以外の非同期処理（Blob→ArrayBuffer 変換）はトランザクション開始前に
   // 済ませる（トランザクション内で待つと、ブラウザがアイドルと判断して自動コミットし得るため）。
-  const updatedAt = new Date().toISOString();
-  const blobRecords: StoredBlobRecord[] = await Promise.all(
-    blobs.map(async ({ key, blob }) => ({
-      key,
-      projectId: project.id,
-      mimeType: blob.type,
-      bytes: await blob.arrayBuffer(),
-      updatedAt,
-    })),
+  assertDistinctBlobOperations(blobs, []);
+  const blobRecords = await prepareBlobRecords(
+    blobs.map(({ key, blob }) => ({ key, projectId: project.id, blob })),
   );
 
   await runTransaction([STORE_PROJECTS, STORE_ASSETS, STORE_BLOBS], 'readwrite', (tx) => {
@@ -117,6 +160,44 @@ export async function saveProjectBundle(
     }
     for (const record of blobRecords) {
       tx.objectStore(STORE_BLOBS).put(record);
+    }
+  });
+}
+
+export interface AssetRevisionInput {
+  projectId: string;
+  asset: Asset;
+  putBlobs?: ProjectBundleBlobInput[];
+  deleteBlobKeys?: string[];
+}
+
+/**
+ * Asset と、その Asset 改訂に対応する Blob 追加・上書き・削除を単一 transaction で確定する。
+ * Blob→ArrayBuffer 変換と Asset 検証は transaction 開始前に済ませる。
+ */
+export async function saveAssetRevision({
+  projectId,
+  asset,
+  putBlobs = [],
+  deleteBlobKeys = [],
+}: AssetRevisionInput): Promise<void> {
+  const result = validateAsset(asset);
+  if (!result.valid) {
+    throw new StorageError(formatValidationErrors('asset', result.errors));
+  }
+  assertDistinctBlobOperations(putBlobs, deleteBlobKeys);
+  const blobRecords = await prepareBlobRecords(
+    putBlobs.map(({ key, blob }) => ({ key, projectId, blob })),
+  );
+  const assetRecord: StoredAssetRecord = { id: asset.id, projectId, data: asset };
+
+  await runTransaction([STORE_ASSETS, STORE_BLOBS], 'readwrite', async (tx) => {
+    await requestToPromise(tx.objectStore(STORE_ASSETS).put(assetRecord));
+    for (const record of blobRecords) {
+      await requestToPromise(tx.objectStore(STORE_BLOBS).put(record));
+    }
+    for (const key of deleteBlobKeys) {
+      await requestToPromise(tx.objectStore(STORE_BLOBS).delete(key));
     }
   });
 }
@@ -369,6 +450,53 @@ export async function deleteAsset(id: string): Promise<void> {
       }
     }
   });
+}
+
+export interface DeleteAssetBundleInput {
+  project: Project;
+  assetId: string;
+}
+
+/**
+ * 更新後 Project、削除対象 Asset、その Asset が所有する Blob、復旧点を同一 transaction で削除する。
+ * Project 検証は transaction 開始前に行い、不正な Project の場合は削除前状態を残す。
+ */
+export async function deleteAssetBundle({
+  project,
+  assetId,
+}: DeleteAssetBundleInput): Promise<void> {
+  const projectResult = validateProject(project);
+  if (!projectResult.valid) {
+    throw new StorageError(formatValidationErrors('project', projectResult.errors));
+  }
+  if (project.assets.some((entry) => entry.id === assetId)) {
+    throw new StorageError(`削除対象アセット（id: ${assetId}）が Project に残っています`);
+  }
+
+  await runTransaction(
+    [STORE_PROJECTS, STORE_ASSETS, STORE_BLOBS, STORE_SNAPSHOTS],
+    'readwrite',
+    async (tx) => {
+      const assetRecord = await requestToPromise(
+        tx.objectStore(STORE_ASSETS).get(assetId) as IDBRequest<StoredAssetRecord | undefined>,
+      );
+      await requestToPromise(tx.objectStore(STORE_PROJECTS).put(project));
+      await requestToPromise(tx.objectStore(STORE_ASSETS).delete(assetId));
+      await deleteSnapshotsForAssetInTx(tx, assetId);
+      if (!assetRecord) {
+        return;
+      }
+      const prefix = `${assetId}/`;
+      const blobKeys = await requestToPromise(
+        tx.objectStore(STORE_BLOBS).index(INDEX_BY_PROJECT).getAllKeys(assetRecord.projectId),
+      );
+      for (const key of blobKeys) {
+        if (typeof key === 'string' && key.startsWith(prefix)) {
+          await requestToPromise(tx.objectStore(STORE_BLOBS).delete(key));
+        }
+      }
+    },
+  );
 }
 
 /** 画像 Blob を保存する。key は TextureRef.path と対応させる。 */

@@ -45,6 +45,25 @@ async function readBlobKeys(page: Page): Promise<string[]> {
   });
 }
 
+async function readProjectAssetIds(page: Page): Promise<string[]> {
+  return page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('chameleon-asset-studio');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const records = await new Promise<Array<{ assets: Array<{ id: string }> }>>(
+      (resolve, reject) => {
+        const request = db.transaction('projects', 'readonly').objectStore('projects').getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      },
+    );
+    db.close();
+    return records[0]?.assets.map((asset) => asset.id) ?? [];
+  });
+}
+
 test('画像を取り込まずに新規アセットを作成すると、型と starter 当たり判定が反映され、再読込しても残る', async ({
   page,
 }) => {
@@ -129,6 +148,7 @@ test('アセットを削除すると一覧と IndexedDB から消え、空状態
   await expect.poll(async () => (await readAllAssets(page)).length).toBe(0);
   const afterBlobKeys = await readBlobKeys(page);
   expect(afterBlobKeys.some((key) => key.startsWith(`${before.id}/`))).toBe(false);
+  expect(await readProjectAssetIds(page)).not.toContain(before.id);
 
   // 空状態表示に切り替わる
   await expect(
@@ -136,6 +156,16 @@ test('アセットを削除すると一覧と IndexedDB から消え、空状態
       'アセットがありません。画像を取り込むか、新規アセットを作成してください。',
     ),
   ).toBeVisible();
+
+  await page.reload();
+  await page.getByRole('button', { name: '「アセット削除テスト」を開く' }).click();
+  await expect(
+    page
+      .getByRole('complementary', { name: 'プロパティ' })
+      .getByText('アセットがありません。画像を取り込むか、新規アセットを作成してください。'),
+  ).toBeVisible();
+  expect(await readAllAssets(page)).toHaveLength(0);
+  expect(await readProjectAssetIds(page)).not.toContain(before.id);
 });
 
 test('判定の数値を編集した直後にアセットを削除しても、デバウンス保存で復活しない（autosave.flush 競合の回帰、Opus 4.8 レビュー対応）', async ({

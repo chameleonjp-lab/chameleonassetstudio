@@ -93,6 +93,27 @@ async function readMainSize(page: Page): Promise<{ width: number; height: number
   });
 }
 
+async function readMainTextureSize(page: Page): Promise<{ width: number; height: number }> {
+  return page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('chameleon-asset-studio');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const records = await new Promise<
+      Array<{
+        data: { textures: Array<{ path: string; size: { width: number; height: number } }> };
+      }>
+    >((resolve, reject) => {
+      const request = db.transaction('assets', 'readonly').objectStore('assets').getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    db.close();
+    return records[0].data.textures.find((texture) => texture.path === 'textures/main.png')!.size;
+  });
+}
+
 async function canvasCenter(canvas: Locator): Promise<{ x: number; y: number }> {
   const box = (await canvas.boundingBox())!;
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
@@ -140,6 +161,27 @@ test('トリミングをドラッグで適用できる', async ({ page }) => {
   // Undo で元のサイズに戻る
   await page.getByRole('button', { name: '元に戻す' }).click();
   await expect.poll(async () => (await readMainSize(page)).width).toBe(64);
+});
+
+test('画像編集後に再読み込みしても Asset の画像サイズと edit Blob が一致する', async ({ page }) => {
+  const png = await makePngBuffer(page, '#00aa00');
+  const canvas = await setupProject(page, '改訂保存E2E', png);
+
+  await page.getByRole('button', { name: '100%', exact: true }).click();
+  await page.getByRole('button', { name: 'トリミング' }).click();
+  const center = await canvasCenter(canvas);
+  await page.mouse.move(center.x - 32, center.y - 32);
+  await page.mouse.down();
+  await page.mouse.move(center.x, center.y, { steps: 4 });
+  await page.mouse.up();
+
+  await expect
+    .poll(async () => (await readMainSize(page)).width, { timeout: 10_000 })
+    .toBeLessThanOrEqual(34);
+  await page.reload();
+  await page.getByRole('button', { name: '「改訂保存E2E」を開く' }).click();
+  await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
+  await expect.poll(async () => await readMainSize(page)).toEqual(await readMainTextureSize(page));
 });
 
 test('消しゴムでドラッグした部分が透明になる', async ({ page }) => {

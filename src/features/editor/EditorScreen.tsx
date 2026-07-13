@@ -37,14 +37,14 @@ import {
 } from '../../core/model';
 import {
   AutosaveQueue,
-  deleteAsset,
+  deleteAssetBundle,
   listProjectAssets,
   listSnapshots,
   loadBlob,
   loadProject,
   restoreSnapshot,
   saveAsset,
-  saveBlob,
+  saveAssetRevision,
   saveProject,
   saveProjectBundle,
   saveSnapshot,
@@ -238,6 +238,26 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     [autosave, projectId],
   );
 
+  /** Blob 変更を含む改訂は保存成功後だけ React 状態へ反映し、Asset 単体 autosave は予約しない。 */
+  const saveAssetRevisionAndApply = useCallback(
+    async (
+      snapshot: Asset,
+      options: {
+        putBlobs?: Array<{ key: string; blob: Blob }>;
+        deleteBlobKeys?: string[];
+      } = {},
+    ) => {
+      await saveAssetRevision({
+        projectId,
+        asset: snapshot,
+        putBlobs: options.putBlobs,
+        deleteBlobKeys: options.deleteBlobKeys,
+      });
+      setAssets((prev) => prev.map((asset) => (asset.id === snapshot.id ? snapshot : asset)));
+    },
+    [projectId],
+  );
+
   /** 変更を適用し、履歴へ積む。 */
   const commitAssetChange = useCallback(
     (label: string, before: Asset, next: Asset) => {
@@ -361,6 +381,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       setEditorError('レイヤーが参照するテクスチャが見つかりません。');
       return;
     }
+    if (texture.kind !== 'edit') {
+      setEditorError('元画像（source）は破壊的編集できません。編集用画像を選択してください。');
+      return;
+    }
     const label = operationLabel(operation);
     setEditorError(null);
     setImageProcessing({ label, progress: 0 });
@@ -429,21 +453,24 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         console.warn('復旧点の保存に失敗しました', snapshotError);
       }
 
-      await saveBlob(projectId, key, afterBlob);
-      applyAssetSnapshot(next);
+      await saveAssetRevisionAndApply(next, { putBlobs: [{ key, blob: afterBlob }] });
       history.push({
         label,
         undo: () => {
           void (async () => {
-            await saveBlob(projectId, key, beforeBlob);
             // textures を新しい配列にしてビットマップ再読込を促す
-            applyAssetSnapshot({ ...before, textures: [...before.textures] });
+            await saveAssetRevisionAndApply(
+              { ...before, textures: [...before.textures] },
+              { putBlobs: [{ key, blob: beforeBlob }] },
+            );
           })();
         },
         redo: () => {
           void (async () => {
-            await saveBlob(projectId, key, afterBlob);
-            applyAssetSnapshot({ ...next, textures: [...next.textures] });
+            await saveAssetRevisionAndApply(
+              { ...next, textures: [...next.textures] },
+              { putBlobs: [{ key, blob: afterBlob }] },
+            );
           })();
         },
       });
@@ -476,22 +503,23 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       const before: Asset = { ...current, textures: [...current.textures] };
       const next: Asset = { ...restored.asset, textures: [...restored.asset.textures] };
 
-      await saveBlob(projectId, key, restored.blob);
-      applyAssetSnapshot(next);
+      await saveAssetRevisionAndApply(next, { putBlobs: [{ key, blob: restored.blob }] });
       history.push({
         label: '復旧点から復元',
         undo: () => {
           void (async () => {
-            if (beforeBlob) {
-              await saveBlob(projectId, key, beforeBlob);
-            }
-            applyAssetSnapshot({ ...before, textures: [...before.textures] });
+            await saveAssetRevisionAndApply(
+              { ...before, textures: [...before.textures] },
+              beforeBlob ? { putBlobs: [{ key, blob: beforeBlob }] } : { deleteBlobKeys: [key] },
+            );
           })();
         },
         redo: () => {
           void (async () => {
-            await saveBlob(projectId, key, restored.blob);
-            applyAssetSnapshot({ ...next, textures: [...next.textures] });
+            await saveAssetRevisionAndApply(
+              { ...next, textures: [...next.textures] },
+              { putBlobs: [{ key, blob: restored.blob }] },
+            );
           })();
         },
       });
@@ -580,10 +608,6 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       let currentProject = project;
       for (const file of Array.from(files)) {
         const result = await importImageFile(file);
-        for (const { key, blob } of result.blobs) {
-          await saveBlob(currentProject.id, key, blob);
-        }
-        await saveAsset(currentProject.id, result.asset);
         currentProject = {
           ...currentProject,
           assets: [
@@ -597,7 +621,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           ],
           updatedAt: new Date().toISOString(),
         };
-        await saveProject(currentProject);
+        await saveProjectBundle(currentProject, [result.asset], result.blobs);
         setAssets((prev) => [...prev, result.asset]);
         setSelectedAssetId(result.asset.id);
         setSelectedLayerId(null);
@@ -723,13 +747,12 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     try {
       // 保留中の自動保存を先に終わらせてから削除する（上記コメント参照）。
       await autosave.flush();
-      await deleteAsset(selectedAsset.id);
       const nextProject: Project = {
         ...project,
         assets: project.assets.filter((entry) => entry.id !== selectedAsset.id),
         updatedAt: new Date().toISOString(),
       };
-      await saveProject(nextProject);
+      await deleteAssetBundle({ project: nextProject, assetId: selectedAsset.id });
       const remaining = assets.filter((asset) => asset.id !== selectedAsset.id);
       setProject(nextProject);
       setAssets(remaining);
@@ -854,16 +877,26 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       let current = selectedAsset;
       for (const file of files) {
         const result = await importImageAsLayer(file, current);
-        for (const { key, blob } of result.blobs) {
-          await saveBlob(projectId, key, blob);
-        }
         const next: Asset = {
           ...current,
           updatedAt: new Date().toISOString(),
           textures: [...current.textures, ...result.textures],
           layers: [...current.layers, result.layer],
         };
-        commitAssetChange('画像レイヤー追加', current, next);
+        await saveAssetRevisionAndApply(next, { putBlobs: result.blobs });
+        const before = current;
+        const after = next;
+        const blobKeys = result.blobs.map(({ key }) => key);
+        const redoBlobs = result.blobs.map(({ key, blob }) => ({ key, blob }));
+        history.push({
+          label: '画像レイヤー追加',
+          undo: () => {
+            void saveAssetRevisionAndApply(before, { deleteBlobKeys: blobKeys });
+          },
+          redo: () => {
+            void saveAssetRevisionAndApply(after, { putBlobs: redoBlobs });
+          },
+        });
         setSelectedLayerId(result.layer.id);
         current = next;
       }
