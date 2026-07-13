@@ -1,9 +1,25 @@
-import { describe, expect, it } from 'vitest';
+import 'fake-indexeddb/auto';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { createEmptyProject, type Asset } from '../model';
+import characterAsset from '../samples/asset.character.json';
 import { AutosaveQueue, type SaveState } from './autosave';
+import { resetDbForTests } from './db';
+import {
+  loadAsset,
+  loadBlob,
+  saveAsset,
+  saveAssetRevision,
+  saveBlob,
+  saveProject,
+} from './projectStore';
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+beforeEach(async () => {
+  await resetDbForTests();
+});
 
 describe('AutosaveQueue', () => {
   it('保存タスクが実行され、状態が saving -> saved と遷移する', async () => {
@@ -46,7 +62,7 @@ describe('AutosaveQueue', () => {
       runs.push('先行保存');
       await wait(20);
     });
-    await wait(10); // デバウンスを越えて保存が始まるのを待つ
+    await wait(10);
     queue.schedule(async () => {
       runs.push('後続保存');
     });
@@ -77,5 +93,49 @@ describe('AutosaveQueue', () => {
     });
     await queue.flush();
     expect(saved).toBe(true);
+  });
+
+  it('原子的保存前の flush で保留中 Asset 単体 autosave が先に完了し、後から上書きしない', async () => {
+    const queue = new AutosaveQueue({ delayMs: 800 });
+    const project = createEmptyProject('autosave conflict');
+    const assetA = characterAsset as unknown as Asset;
+    const assetB: Asset = { ...assetA, displayName: 'B autosave' };
+    const assetC: Asset = {
+      ...assetB,
+      displayName: 'C atomic',
+      textures: assetB.textures.map((texture) =>
+        texture.id === 'tex_main' ? { ...texture, size: { width: 48, height: 32 } } : texture,
+      ),
+    };
+    const sourceKey = `${assetA.id}/source/original.png`;
+    const editKey = `${assetA.id}/textures/main.png`;
+
+    await saveProject(project);
+    await saveAsset(project.id, assetA);
+    await saveBlob(project.id, sourceKey, new Blob([new Uint8Array([1])], { type: 'image/png' }));
+    await saveBlob(project.id, editKey, new Blob([new Uint8Array([2])], { type: 'image/png' }));
+
+    queue.schedule(() => saveAsset(project.id, assetB));
+
+    await queue.flush();
+    await saveAssetRevision({
+      projectId: project.id,
+      asset: assetC,
+      putBlobs: [{ key: editKey, blob: new Blob([new Uint8Array([3])], { type: 'image/png' }) }],
+    });
+    await queue.flush();
+
+    const finalAsset = (await loadAsset(assetA.id)).asset;
+    expect(finalAsset.displayName).toBe('C atomic');
+    expect(finalAsset.textures.find((texture) => texture.id === 'tex_main')?.size).toEqual({
+      width: 48,
+      height: 32,
+    });
+    expect(new Uint8Array(await (await loadBlob(editKey))!.arrayBuffer())).toEqual(
+      new Uint8Array([3]),
+    );
+    expect(new Uint8Array(await (await loadBlob(sourceKey))!.arrayBuffer())).toEqual(
+      new Uint8Array([1]),
+    );
   });
 });
