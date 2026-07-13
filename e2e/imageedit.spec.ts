@@ -253,3 +253,63 @@ test('輪郭線が透明領域との境界の外側に付く', async ({ page }) 
   // 内部は元の色のまま
   expect(await readMainPixel(page, 10, 10)).toEqual([255, 0, 0, 255]);
 });
+
+test('履歴処理開始と通常編集が同じイベント周期で連続しても後の永続編集を拒否する', async ({
+  page,
+}) => {
+  const png = await makePngBuffer(page, '#00aa00');
+  const canvas = await setupProject(page, '履歴競合E2E', png);
+
+  await page.getByRole('button', { name: '100%', exact: true }).click();
+  await page.getByRole('button', { name: 'トリミング' }).click();
+  const center = await canvasCenter(canvas);
+  await page.mouse.move(center.x - 32, center.y - 32);
+  await page.mouse.down();
+  await page.mouse.move(center.x, center.y, { steps: 4 });
+  await page.mouse.up();
+
+  await expect
+    .poll(async () => (await readMainSize(page)).width, { timeout: 10_000 })
+    .toBeLessThanOrEqual(34);
+
+  await page.evaluate(() => {
+    const originalArrayBuffer = Blob.prototype.arrayBuffer;
+    Blob.prototype.arrayBuffer = function delayedArrayBuffer() {
+      Blob.prototype.arrayBuffer = originalArrayBuffer;
+      const result = originalArrayBuffer.call(this);
+      return new Promise<ArrayBuffer>((resolve, reject) => {
+        window.setTimeout(() => {
+          result.then(resolve, reject);
+        }, 150);
+      });
+    };
+  });
+
+  const editor = page.locator('.editor');
+  const undoButton = page.getByRole('button', { name: '元に戻す' });
+  const projectNameInput = page.getByLabel('プロジェクト名');
+
+  await expect(editor).toHaveAttribute('aria-busy', 'false');
+  await expect(undoButton).toBeEnabled();
+  await undoButton.click();
+  await expect(editor).toHaveAttribute('aria-busy', 'true');
+  await expect(projectNameInput).toBeDisabled();
+  await expect(projectNameInput).toHaveValue('履歴競合E2E');
+
+  await expect.poll(async () => (await readMainSize(page)).width, { timeout: 10_000 }).toBe(64);
+  await expect(editor).toHaveAttribute('aria-busy', 'false');
+  await expect(projectNameInput).toBeEnabled();
+  await expect(projectNameInput).toHaveValue('履歴競合E2E');
+
+  await projectNameInput.fill('Undo後は編集できる');
+  await expect(
+    page.getByRole('heading', {
+      name: 'Undo後は編集できる',
+    }),
+  ).toBeVisible();
+
+  await page.reload();
+  await page.getByRole('button', { name: '「Undo後は編集できる」を開く' }).click();
+  await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
+  await expect.poll(async () => await readMainSize(page)).toEqual(await readMainTextureSize(page));
+});
