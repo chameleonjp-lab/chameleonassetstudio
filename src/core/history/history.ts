@@ -48,9 +48,10 @@ export class History {
   }
 
   /** 実行済みの操作を記録する。新しい操作で Redo 履歴は消える。 */
-  push(entry: HistoryEntry): void {
+  push(entry: HistoryEntry): boolean {
     if (this.state.isBusy) {
-      return;
+      this.notify();
+      return false;
     }
     this.undoStack.push(entry);
     if (this.undoStack.length > this.limit) {
@@ -58,6 +59,7 @@ export class History {
     }
     this.redoStack = [];
     this.notify();
+    return true;
   }
 
   async undo(): Promise<boolean> {

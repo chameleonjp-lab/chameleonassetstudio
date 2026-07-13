@@ -186,4 +186,51 @@ describe('History', () => {
     await expect(history.redo()).resolves.toBe(true);
     expect(redo).toHaveBeenCalledTimes(1);
   });
+
+  it('busy中のpushはfalseを返し、busy解除後は正常にpushできる', async () => {
+    const history = new History();
+    const gate = deferred();
+    history.push({ label: 'async', undo: () => gate.promise, redo: vi.fn() });
+
+    const running = history.undo();
+    expect(history.push({ label: 'blocked', undo: vi.fn(), redo: vi.fn() })).toBe(false);
+    expect(history.getState()).toMatchObject({ isBusy: true, canUndo: false, canRedo: false });
+
+    gate.resolve();
+    await running;
+    expect(history.push({ label: 'after-busy', undo: vi.fn(), redo: vi.fn() })).toBe(true);
+    expect(history.getState()).toMatchObject({
+      canUndo: true,
+      canRedo: false,
+      undoLabel: 'after-busy',
+    });
+  });
+
+  it('reject後も新しい履歴を追加でき、clear/push/undo/redo状態が矛盾しない', async () => {
+    const history = new History();
+    history.push({ label: 'fail', undo: () => Promise.reject(new Error('boom')), redo: vi.fn() });
+
+    await expect(history.undo()).rejects.toThrow('boom');
+    expect(history.getState()).toMatchObject({ canUndo: true, canRedo: false, isBusy: false });
+    expect(history.push({ label: 'recovered', undo: vi.fn(), redo: vi.fn() })).toBe(true);
+    expect(history.getState()).toMatchObject({
+      canUndo: true,
+      canRedo: false,
+      undoLabel: 'recovered',
+    });
+
+    await expect(history.undo()).resolves.toBe(true);
+    expect(history.getState()).toMatchObject({
+      canUndo: true,
+      canRedo: true,
+      redoLabel: 'recovered',
+    });
+    history.clear();
+    expect(history.getState()).toMatchObject({
+      canUndo: false,
+      canRedo: false,
+      undoLabel: null,
+      redoLabel: null,
+    });
+  });
 });
