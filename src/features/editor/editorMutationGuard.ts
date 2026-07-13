@@ -1,4 +1,4 @@
-import type { History } from '../../core/history/history';
+import type { History, HistoryEntry } from '../../core/history/history';
 
 export const PERSISTENT_MUTATION_BUSY_MESSAGE =
   '元に戻す／やり直す処理中です。完了後に操作してください。';
@@ -25,4 +25,15 @@ export function canStartPersistentMutation({
     return false;
   }
   return true;
+}
+
+export async function commitPersistentMutationWithHistory(options: {
+  apply: () => Promise<void>;
+  history: Pick<History, 'push'>;
+  entry: HistoryEntry;
+}): Promise<void> {
+  await options.apply();
+  if (!options.history.push(options.entry)) {
+    throw new Error('履歴を登録できませんでした。');
+  }
 }

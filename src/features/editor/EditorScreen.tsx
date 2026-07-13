@@ -62,7 +62,10 @@ import {
 } from './blankAsset';
 import { CanvasEditor } from './CanvasEditor';
 import { LAYER_TOOLS, type CanvasTool } from './canvasTools';
-import { canStartPersistentMutation } from './editorMutationGuard';
+import {
+  canStartPersistentMutation,
+  commitPersistentMutationWithHistory,
+} from './editorMutationGuard';
 import { ExportPanel } from './ExportPanel';
 import { GameAttributesPanel } from './GameAttributesPanel';
 import { GameDataPanel } from './GameDataPanel';
@@ -531,27 +534,26 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         console.warn('復旧点の保存に失敗しました', snapshotError);
       }
 
-      const pushed = history.push({
-        label,
-        undo: async () => {
-          // textures を新しい配列にしてビットマップ再読込を促す
-          await saveAssetRevisionAndApply(
-            { ...before, textures: [...before.textures] },
-            { putBlobs: [{ key, blob: beforeBlob }] },
-          );
-        },
-        redo: async () => {
-          await saveAssetRevisionAndApply(
-            { ...next, textures: [...next.textures] },
-            { putBlobs: [{ key, blob: afterBlob }] },
-          );
+      await commitPersistentMutationWithHistory({
+        apply: () => saveAssetRevisionAndApply(next, { putBlobs: [{ key, blob: afterBlob }] }),
+        history,
+        entry: {
+          label,
+          undo: async () => {
+            // textures を新しい配列にしてビットマップ再読込を促す
+            await saveAssetRevisionAndApply(
+              { ...before, textures: [...before.textures] },
+              { putBlobs: [{ key, blob: beforeBlob }] },
+            );
+          },
+          redo: async () => {
+            await saveAssetRevisionAndApply(
+              { ...next, textures: [...next.textures] },
+              { putBlobs: [{ key, blob: afterBlob }] },
+            );
+          },
         },
       });
-      if (!pushed) {
-        setEditorError('元に戻す／やり直す処理中です。完了後に操作してください。');
-        return;
-      }
-      await saveAssetRevisionAndApply(next, { putBlobs: [{ key, blob: afterBlob }] });
     } catch (error) {
       setEditorError(
         `${label}に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
@@ -585,26 +587,25 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       const before: Asset = { ...current, textures: [...current.textures] };
       const next: Asset = { ...restored.asset, textures: [...restored.asset.textures] };
 
-      const pushed = history.push({
-        label: '復旧点から復元',
-        undo: async () => {
-          await saveAssetRevisionAndApply(
-            { ...before, textures: [...before.textures] },
-            beforeBlob ? { putBlobs: [{ key, blob: beforeBlob }] } : { deleteBlobKeys: [key] },
-          );
-        },
-        redo: async () => {
-          await saveAssetRevisionAndApply(
-            { ...next, textures: [...next.textures] },
-            { putBlobs: [{ key, blob: restored.blob }] },
-          );
+      await commitPersistentMutationWithHistory({
+        apply: () => saveAssetRevisionAndApply(next, { putBlobs: [{ key, blob: restored.blob }] }),
+        history,
+        entry: {
+          label: '復旧点から復元',
+          undo: async () => {
+            await saveAssetRevisionAndApply(
+              { ...before, textures: [...before.textures] },
+              beforeBlob ? { putBlobs: [{ key, blob: beforeBlob }] } : { deleteBlobKeys: [key] },
+            );
+          },
+          redo: async () => {
+            await saveAssetRevisionAndApply(
+              { ...next, textures: [...next.textures] },
+              { putBlobs: [{ key, blob: restored.blob }] },
+            );
+          },
         },
       });
-      if (!pushed) {
-        setEditorError('元に戻す／やり直す処理中です。完了後に操作してください。');
-        return;
-      }
-      await saveAssetRevisionAndApply(next, { putBlobs: [{ key, blob: restored.blob }] });
     } catch (error) {
       setEditorError(
         `復旧点から復元できませんでした: ${error instanceof Error ? error.message : String(error)}`,
@@ -1004,16 +1005,15 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         const after = next;
         const blobKeys = result.blobs.map(({ key }) => key);
         const redoBlobs = result.blobs.map(({ key, blob }) => ({ key, blob }));
-        const pushed = history.push({
-          label: '画像レイヤー追加',
-          undo: () => saveAssetRevisionAndApply(before, { deleteBlobKeys: blobKeys }),
-          redo: () => saveAssetRevisionAndApply(after, { putBlobs: redoBlobs }),
+        await commitPersistentMutationWithHistory({
+          apply: () => saveAssetRevisionAndApply(next, { putBlobs: result.blobs }),
+          history,
+          entry: {
+            label: '画像レイヤー追加',
+            undo: () => saveAssetRevisionAndApply(before, { deleteBlobKeys: blobKeys }),
+            redo: () => saveAssetRevisionAndApply(after, { putBlobs: redoBlobs }),
+          },
         });
-        if (!pushed) {
-          setEditorError('元に戻す／やり直す処理中です。完了後に操作してください。');
-          return;
-        }
-        await saveAssetRevisionAndApply(next, { putBlobs: result.blobs });
         setSelectedLayerId(result.layer.id);
         current = next;
       }
@@ -1234,6 +1234,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             <input
               type="text"
               value={project?.name ?? ''}
+              aria-label="プロジェクト名"
               disabled={!project || persistentMutationBlocked}
               onChange={(event) => handleRename(event.target.value)}
             />
