@@ -247,6 +247,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         deleteBlobKeys?: string[];
       } = {},
     ) => {
+      await autosave.flush();
       await saveAssetRevision({
         projectId,
         asset: snapshot,
@@ -255,8 +256,30 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       });
       setAssets((prev) => prev.map((asset) => (asset.id === snapshot.id ? snapshot : asset)));
     },
-    [projectId],
+    [autosave, projectId],
   );
+
+  const handleHistoryUndo = useCallback(async () => {
+    try {
+      setEditorError(null);
+      await history.undo();
+    } catch (error) {
+      setEditorError(
+        `元に戻せませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }, [history]);
+
+  const handleHistoryRedo = useCallback(async () => {
+    try {
+      setEditorError(null);
+      await history.redo();
+    } catch (error) {
+      setEditorError(
+        `やり直せませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }, [history]);
 
   /** 変更を適用し、履歴へ積む。 */
   const commitAssetChange = useCallback(
@@ -284,15 +307,15 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       const key = event.key.toLowerCase();
       if (key === 'z' && !event.shiftKey) {
         event.preventDefault();
-        history.undo();
+        void handleHistoryUndo();
       } else if (key === 'y' || (key === 'z' && event.shiftKey)) {
         event.preventDefault();
-        history.redo();
+        void handleHistoryRedo();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [history]);
+  }, [handleHistoryRedo, handleHistoryUndo]);
 
   // アセットを切り替えたらタイムラインの選択・再生状態をリセットする
   useEffect(() => {
@@ -456,22 +479,18 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       await saveAssetRevisionAndApply(next, { putBlobs: [{ key, blob: afterBlob }] });
       history.push({
         label,
-        undo: () => {
-          void (async () => {
-            // textures を新しい配列にしてビットマップ再読込を促す
-            await saveAssetRevisionAndApply(
-              { ...before, textures: [...before.textures] },
-              { putBlobs: [{ key, blob: beforeBlob }] },
-            );
-          })();
+        undo: async () => {
+          // textures を新しい配列にしてビットマップ再読込を促す
+          await saveAssetRevisionAndApply(
+            { ...before, textures: [...before.textures] },
+            { putBlobs: [{ key, blob: beforeBlob }] },
+          );
         },
-        redo: () => {
-          void (async () => {
-            await saveAssetRevisionAndApply(
-              { ...next, textures: [...next.textures] },
-              { putBlobs: [{ key, blob: afterBlob }] },
-            );
-          })();
+        redo: async () => {
+          await saveAssetRevisionAndApply(
+            { ...next, textures: [...next.textures] },
+            { putBlobs: [{ key, blob: afterBlob }] },
+          );
         },
       });
     } catch (error) {
@@ -506,21 +525,17 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       await saveAssetRevisionAndApply(next, { putBlobs: [{ key, blob: restored.blob }] });
       history.push({
         label: '復旧点から復元',
-        undo: () => {
-          void (async () => {
-            await saveAssetRevisionAndApply(
-              { ...before, textures: [...before.textures] },
-              beforeBlob ? { putBlobs: [{ key, blob: beforeBlob }] } : { deleteBlobKeys: [key] },
-            );
-          })();
+        undo: async () => {
+          await saveAssetRevisionAndApply(
+            { ...before, textures: [...before.textures] },
+            beforeBlob ? { putBlobs: [{ key, blob: beforeBlob }] } : { deleteBlobKeys: [key] },
+          );
         },
-        redo: () => {
-          void (async () => {
-            await saveAssetRevisionAndApply(
-              { ...next, textures: [...next.textures] },
-              { putBlobs: [{ key, blob: restored.blob }] },
-            );
-          })();
+        redo: async () => {
+          await saveAssetRevisionAndApply(
+            { ...next, textures: [...next.textures] },
+            { putBlobs: [{ key, blob: restored.blob }] },
+          );
         },
       });
     } catch (error) {
@@ -890,12 +905,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         const redoBlobs = result.blobs.map(({ key, blob }) => ({ key, blob }));
         history.push({
           label: '画像レイヤー追加',
-          undo: () => {
-            void saveAssetRevisionAndApply(before, { deleteBlobKeys: blobKeys });
-          },
-          redo: () => {
-            void saveAssetRevisionAndApply(after, { putBlobs: redoBlobs });
-          },
+          undo: () => saveAssetRevisionAndApply(before, { deleteBlobKeys: blobKeys }),
+          redo: () => saveAssetRevisionAndApply(after, { putBlobs: redoBlobs }),
         });
         setSelectedLayerId(result.layer.id);
         current = next;
@@ -999,16 +1010,16 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         <div className="editor-history-buttons">
           <button
             type="button"
-            disabled={!historyState.canUndo}
-            onClick={() => history.undo()}
+            disabled={!historyState.canUndo || historyState.isBusy}
+            onClick={() => void handleHistoryUndo()}
             title={historyState.undoLabel ?? undefined}
           >
             元に戻す
           </button>
           <button
             type="button"
-            disabled={!historyState.canRedo}
-            onClick={() => history.redo()}
+            disabled={!historyState.canRedo || historyState.isBusy}
+            onClick={() => void handleHistoryRedo()}
             title={historyState.redoLabel ?? undefined}
           >
             やり直す

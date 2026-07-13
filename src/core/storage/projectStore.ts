@@ -108,6 +108,28 @@ function assertDistinctBlobOperations(
   }
 }
 
+function assertBlobOperationsBelongToAsset(
+  assetId: string,
+  putBlobs: Array<{ key: string }>,
+  deleteBlobKeys: string[],
+): void {
+  const prefix = `${assetId}/`;
+  for (const { key } of putBlobs) {
+    if (!key.startsWith(prefix)) {
+      throw new StorageError(
+        `Blob key は対象アセットの prefix（${prefix}）配下である必要があります: ${key}`,
+      );
+    }
+  }
+  for (const key of deleteBlobKeys) {
+    if (!key.startsWith(prefix)) {
+      throw new StorageError(
+        `削除する Blob key は対象アセットの prefix（${prefix}）配下である必要があります: ${key}`,
+      );
+    }
+  }
+}
+
 async function prepareBlobRecords(blobs: PreparedBlobRecordInput[]): Promise<StoredBlobRecord[]> {
   const updatedAt = new Date().toISOString();
   return Promise.all(
@@ -186,6 +208,7 @@ export async function saveAssetRevision({
     throw new StorageError(formatValidationErrors('asset', result.errors));
   }
   assertDistinctBlobOperations(putBlobs, deleteBlobKeys);
+  assertBlobOperationsBelongToAsset(asset.id, putBlobs, deleteBlobKeys);
   const blobRecords = await prepareBlobRecords(
     putBlobs.map(({ key, blob }) => ({ key, projectId, blob })),
   );
@@ -480,6 +503,11 @@ export async function deleteAssetBundle({
       const assetRecord = await requestToPromise(
         tx.objectStore(STORE_ASSETS).get(assetId) as IDBRequest<StoredAssetRecord | undefined>,
       );
+      if (assetRecord && assetRecord.projectId !== project.id) {
+        throw new StorageError(
+          `削除対象アセット（id: ${assetId}）は Project（id: ${project.id}）に属していません`,
+        );
+      }
       await requestToPromise(tx.objectStore(STORE_PROJECTS).put(project));
       await requestToPromise(tx.objectStore(STORE_ASSETS).delete(assetId));
       await deleteSnapshotsForAssetInTx(tx, assetId);

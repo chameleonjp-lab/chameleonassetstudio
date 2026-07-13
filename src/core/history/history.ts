@@ -1,8 +1,8 @@
 export interface HistoryEntry {
   /** UI 表示用の操作名（例: レイヤー移動）。 */
   label: string;
-  undo(): void;
-  redo(): void;
+  undo(): void | Promise<void>;
+  redo(): void | Promise<void>;
 }
 
 export interface HistoryState {
@@ -10,6 +10,7 @@ export interface HistoryState {
   canRedo: boolean;
   undoLabel: string | null;
   redoLabel: string | null;
+  isBusy: boolean;
 }
 
 const DEFAULT_LIMIT = 100;
@@ -27,6 +28,7 @@ export class History {
     canRedo: false,
     undoLabel: null,
     redoLabel: null,
+    isBusy: false,
   };
   private readonly listeners = new Set<(state: HistoryState) => void>();
 
@@ -47,6 +49,9 @@ export class History {
 
   /** 実行済みの操作を記録する。新しい操作で Redo 履歴は消える。 */
   push(entry: HistoryEntry): void {
+    if (this.state.isBusy) {
+      return;
+    }
     this.undoStack.push(entry);
     if (this.undoStack.length > this.limit) {
       this.undoStack.shift();
@@ -55,40 +60,73 @@ export class History {
     this.notify();
   }
 
-  undo(): boolean {
-    const entry = this.undoStack.pop();
+  async undo(): Promise<boolean> {
+    if (this.state.isBusy) {
+      return false;
+    }
+    const entry = this.undoStack.at(-1);
     if (!entry) {
       return false;
     }
-    entry.undo();
-    this.redoStack.push(entry);
-    this.notify();
-    return true;
+    this.setBusy(true);
+    try {
+      await entry.undo();
+      this.undoStack.pop();
+      this.redoStack.push(entry);
+      this.notify();
+      return true;
+    } catch (error) {
+      this.notify();
+      throw error;
+    } finally {
+      this.setBusy(false);
+    }
   }
 
-  redo(): boolean {
-    const entry = this.redoStack.pop();
+  async redo(): Promise<boolean> {
+    if (this.state.isBusy) {
+      return false;
+    }
+    const entry = this.redoStack.at(-1);
     if (!entry) {
       return false;
     }
-    entry.redo();
-    this.undoStack.push(entry);
-    this.notify();
-    return true;
+    this.setBusy(true);
+    try {
+      await entry.redo();
+      this.redoStack.pop();
+      this.undoStack.push(entry);
+      this.notify();
+      return true;
+    } catch (error) {
+      this.notify();
+      throw error;
+    } finally {
+      this.setBusy(false);
+    }
   }
 
   clear(): void {
+    if (this.state.isBusy) {
+      return;
+    }
     this.undoStack = [];
     this.redoStack = [];
     this.notify();
   }
 
+  private setBusy(isBusy: boolean): void {
+    this.state = { ...this.state, isBusy };
+    this.notify();
+  }
+
   private notify(): void {
     this.state = {
-      canUndo: this.undoStack.length > 0,
-      canRedo: this.redoStack.length > 0,
+      canUndo: this.undoStack.length > 0 && !this.state.isBusy,
+      canRedo: this.redoStack.length > 0 && !this.state.isBusy,
       undoLabel: this.undoStack.at(-1)?.label ?? null,
       redoLabel: this.redoStack.at(-1)?.label ?? null,
+      isBusy: this.state.isBusy,
     };
     for (const listener of this.listeners) {
       listener(this.state);
