@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createEmptyProject, type Asset } from '../model';
 import characterAsset from '../samples/asset.character.json';
 import { resetDbForTests } from './db';
-import { loadAsset, loadBlob, saveAsset, saveBlob, saveProject } from './projectStore';
+import { loadAsset, loadBlob, saveAssetRevision, saveProject } from './projectStore';
 import { listSnapshots, restoreSnapshot, saveSnapshot } from './snapshotStore';
 
 beforeEach(async () => {
@@ -11,7 +11,7 @@ beforeEach(async () => {
 });
 
 /**
- * EditorScreen.handleRestoreSnapshot が行う手順（Opus 4.8 レビュー指摘の修正）を
+ * EditorScreen.handleRestoreSnapshot が行う原子的な改訂保存手順を
  * ストレージ層だけで再現し、「復元 → Undo」を経ても asset.textures[].size と
  * 実際に保存されている Blob の中身が食い違わないことを固定する。
  *
@@ -38,8 +38,11 @@ describe('復旧点の復元 -> Undo の整合性（2D-1B-STORAGE §C, Opus 4.8 
       textures: baseAsset.textures.map((tex) => ({ ...tex, size: newSize })),
     };
     const newBytes = new Uint8Array([9, 9, 9, 9]);
-    await saveAsset(projectId, currentAsset);
-    await saveBlob(projectId, key, new Blob([newBytes], { type: 'image/png' }));
+    await saveAssetRevision({
+      projectId,
+      asset: currentAsset,
+      putBlobs: [{ key, blob: new Blob([newBytes], { type: 'image/png' }) }],
+    });
 
     // 「復旧点（編集前）」として、より小さいサイズのアセットと Blob を保存しておく
     const oldAsset: Asset = {
@@ -68,8 +71,11 @@ describe('復旧点の復元 -> Undo の整合性（2D-1B-STORAGE §C, Opus 4.8 
     const before: Asset = { ...currentAsset, textures: [...currentAsset.textures] };
     const next: Asset = { ...restored.asset, textures: [...restored.asset.textures] };
 
-    await saveBlob(projectId, key, restored.blob);
-    await saveAsset(projectId, next);
+    await saveAssetRevision({
+      projectId,
+      asset: next,
+      putBlobs: [{ key, blob: restored.blob }],
+    });
 
     // 復元直後: asset・Blob ともに「旧（復旧点）」で揃っている
     {
@@ -80,10 +86,11 @@ describe('復旧点の復元 -> Undo の整合性（2D-1B-STORAGE §C, Opus 4.8 
     }
 
     // --- Undo（修正後の handleRestoreSnapshot と同じ手順: Blob も書き戻す） ---
-    if (beforeBlob) {
-      await saveBlob(projectId, key, beforeBlob);
-    }
-    await saveAsset(projectId, { ...before, textures: [...before.textures] });
+    await saveAssetRevision({
+      projectId,
+      asset: { ...before, textures: [...before.textures] },
+      putBlobs: [{ key, blob: beforeBlob! }],
+    });
 
     // Undo 後: asset・Blob ともに「新（復元前）」で揃っている（ここがバグ修正の核心）
     {

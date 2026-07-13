@@ -7,6 +7,7 @@ import { StorageError, resetDbForTests } from './db';
 import {
   TRASH_LIMIT,
   deleteAsset,
+  deleteAssetBundle,
   deleteProject,
   listProjectAssets,
   listProjects,
@@ -18,6 +19,7 @@ import {
   purgeTrash,
   restoreProject,
   saveAsset,
+  saveAssetRevision,
   saveBlob,
   saveProject,
   saveProjectBundle,
@@ -200,6 +202,169 @@ describe('saveProjectBundle（project + assets + blobs の原子的保存）', (
   });
 });
 
+describe('saveAssetRevision（asset + blobs の原子的改訂保存）', () => {
+  it('Asset と複数 Blob を一つの改訂として保存できる', async () => {
+    const project = createEmptyProject('改訂保存');
+    const asset = characterAsset as unknown as Asset;
+    await saveProject(project);
+
+    await saveAssetRevision({
+      projectId: project.id,
+      asset,
+      putBlobs: [
+        { key: `${asset.id}/source/original.png`, blob: new Blob([new Uint8Array([1])]) },
+        { key: `${asset.id}/textures/main.png`, blob: new Blob([new Uint8Array([2])]) },
+      ],
+    });
+
+    expect((await loadAsset(asset.id)).asset).toEqual(asset);
+    expect(
+      new Uint8Array(await (await loadBlob(`${asset.id}/source/original.png`))!.arrayBuffer()),
+    ).toEqual(new Uint8Array([1]));
+    expect(
+      new Uint8Array(await (await loadBlob(`${asset.id}/textures/main.png`))!.arrayBuffer()),
+    ).toEqual(new Uint8Array([2]));
+  });
+
+  it('Blob 上書き後、読み込んだ Asset と Blob が対応する', async () => {
+    const project = createEmptyProject('改訂上書き');
+    const asset = characterAsset as unknown as Asset;
+    await saveProject(project);
+    await saveAsset(project.id, asset);
+    await saveBlob(project.id, `${asset.id}/textures/main.png`, new Blob([new Uint8Array([1])]));
+    const next: Asset = {
+      ...asset,
+      textures: asset.textures.map((texture) =>
+        texture.id === 'tex_main' ? { ...texture, size: { width: 24, height: 24 } } : texture,
+      ),
+    };
+
+    await saveAssetRevision({
+      projectId: project.id,
+      asset: next,
+      putBlobs: [
+        { key: `${asset.id}/textures/main.png`, blob: new Blob([new Uint8Array([2, 4])]) },
+      ],
+    });
+
+    expect(
+      (await loadAsset(asset.id)).asset.textures.find((texture) => texture.id === 'tex_main')?.size,
+    ).toEqual({
+      width: 24,
+      height: 24,
+    });
+    expect(
+      new Uint8Array(await (await loadBlob(`${asset.id}/textures/main.png`))!.arrayBuffer()),
+    ).toEqual(new Uint8Array([2, 4]));
+  });
+
+  it('Blob 削除と Asset 更新を同時に確定できる', async () => {
+    const project = createEmptyProject('改訂削除');
+    const asset = characterAsset as unknown as Asset;
+    await saveProject(project);
+    await saveAsset(project.id, asset);
+    await saveBlob(
+      project.id,
+      `${asset.id}/textures/old-layer.png`,
+      new Blob([new Uint8Array([9])]),
+    );
+    const next: Asset = { ...asset, displayName: '削除後' };
+
+    await saveAssetRevision({
+      projectId: project.id,
+      asset: next,
+      deleteBlobKeys: [`${asset.id}/textures/old-layer.png`],
+    });
+
+    expect((await loadAsset(asset.id)).asset.displayName).toBe('削除後');
+    expect(await loadBlob(`${asset.id}/textures/old-layer.png`)).toBeNull();
+  });
+
+  it('source Blob が残り、edit Blob だけが更新される', async () => {
+    const project = createEmptyProject('source 不変');
+    const asset = characterAsset as unknown as Asset;
+    await saveProject(project);
+    await saveAsset(project.id, asset);
+    await saveBlob(project.id, `${asset.id}/source/original.png`, new Blob([new Uint8Array([1])]));
+    await saveBlob(project.id, `${asset.id}/textures/main.png`, new Blob([new Uint8Array([2])]));
+
+    await saveAssetRevision({
+      projectId: project.id,
+      asset: { ...asset, updatedAt: '2026-07-13T00:00:00.000Z' },
+      putBlobs: [{ key: `${asset.id}/textures/main.png`, blob: new Blob([new Uint8Array([3])]) }],
+    });
+
+    expect(
+      new Uint8Array(await (await loadBlob(`${asset.id}/source/original.png`))!.arrayBuffer()),
+    ).toEqual(new Uint8Array([1]));
+    expect(
+      new Uint8Array(await (await loadBlob(`${asset.id}/textures/main.png`))!.arrayBuffer()),
+    ).toEqual(new Uint8Array([3]));
+  });
+
+  it('更新途中の失敗後、旧 Asset・旧 edit Blob・source Blob が残る', async () => {
+    const project = createEmptyProject('改訂失敗');
+    const asset = characterAsset as unknown as Asset;
+    await saveProject(project);
+    await saveAsset(project.id, asset);
+    await saveBlob(project.id, `${asset.id}/source/original.png`, new Blob([new Uint8Array([1])]));
+    await saveBlob(project.id, `${asset.id}/textures/main.png`, new Blob([new Uint8Array([2])]));
+    const next: Asset = { ...asset, displayName: '失敗した改訂' };
+    const originalPut = IDBObjectStore.prototype.put;
+    const putSpy = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (
+      this: IDBObjectStore,
+      value: unknown,
+      key?: IDBValidKey,
+    ) {
+      if (
+        this.name === 'blobs' &&
+        typeof value === 'object' &&
+        value !== null &&
+        'key' in value &&
+        value.key === `${asset.id}/textures/new-layer.png`
+      ) {
+        throw new DOMException('fail injection', 'DataError');
+      }
+      return originalPut.call(this, value, key);
+    });
+    try {
+      await expect(
+        saveAssetRevision({
+          projectId: project.id,
+          asset: next,
+          putBlobs: [
+            { key: `${asset.id}/textures/main.png`, blob: new Blob([new Uint8Array([3])]) },
+            { key: `${asset.id}/textures/new-layer.png`, blob: new Blob([new Uint8Array([4])]) },
+          ],
+        }),
+      ).rejects.toThrow();
+    } finally {
+      putSpy.mockRestore();
+    }
+
+    expect((await loadAsset(asset.id)).asset).toEqual(asset);
+    expect(
+      new Uint8Array(await (await loadBlob(`${asset.id}/textures/main.png`))!.arrayBuffer()),
+    ).toEqual(new Uint8Array([2]));
+    expect(
+      new Uint8Array(await (await loadBlob(`${asset.id}/source/original.png`))!.arrayBuffer()),
+    ).toEqual(new Uint8Array([1]));
+    expect(await loadBlob(`${asset.id}/textures/new-layer.png`)).toBeNull();
+  });
+
+  it('同じ Blob key を保存と削除へ同時指定すると拒否する', async () => {
+    const asset = characterAsset as unknown as Asset;
+    await expect(
+      saveAssetRevision({
+        projectId: 'project_x',
+        asset,
+        putBlobs: [{ key: `${asset.id}/textures/main.png`, blob: new Blob() }],
+        deleteBlobKeys: [`${asset.id}/textures/main.png`],
+      }),
+    ).rejects.toThrow(/同時に指定できません/);
+  });
+});
+
 describe('ごみ箱（trash）', () => {
   it('ごみ箱の一覧に表示され、復元すると一覧へ戻る', async () => {
     const project = createEmptyProject('ごみ箱テスト');
@@ -342,5 +507,151 @@ describe('deleteAsset（アセット単位の削除）', () => {
     await deleteAsset(asset.id);
 
     expect(await listSnapshots(asset.id)).toEqual([]);
+  });
+});
+
+describe('deleteAssetBundle（project + asset + blobs + snapshots の原子的削除）', () => {
+  it('Project 参照、Asset、Blob、snapshot を一体で削除できる', async () => {
+    const asset = characterAsset as unknown as Asset;
+    const project: Project = {
+      ...createEmptyProject('bundle delete'),
+      assets: [
+        {
+          id: asset.id,
+          name: asset.name,
+          displayName: asset.displayName,
+          assetType: asset.assetType,
+        },
+      ],
+    };
+    await saveProject(project);
+    await saveAsset(project.id, asset);
+    await saveBlob(project.id, `${asset.id}/textures/main.png`, new Blob([new Uint8Array([1])]));
+    await saveSnapshot({
+      projectId: project.id,
+      assetId: asset.id,
+      label: '消しゴム',
+      asset,
+      blobKey: `${asset.id}/textures/main.png`,
+      blob: new Blob([new Uint8Array([1])]),
+    });
+    const nextProject: Project = { ...project, assets: [], updatedAt: '2026-07-13T00:00:00.000Z' };
+
+    await deleteAssetBundle({ project: nextProject, assetId: asset.id });
+
+    expect((await loadProject(project.id)).project.assets).toEqual([]);
+    await expect(loadAsset(asset.id)).rejects.toThrow(/見つかりません/);
+    expect(await loadBlob(`${asset.id}/textures/main.png`)).toBeNull();
+    expect(await listSnapshots(asset.id)).toEqual([]);
+  });
+
+  it('他の Asset や他 Project の Blob は削除せず、途中一致する別キーも誤削除しない', async () => {
+    const assetA = characterAsset as unknown as Asset;
+    const assetB: Asset = { ...assetA, id: 'asset_b_002' };
+    const otherProject = createEmptyProject('other');
+    const project: Project = {
+      ...createEmptyProject('bundle delete scope'),
+      assets: [
+        {
+          id: assetA.id,
+          name: assetA.name,
+          displayName: assetA.displayName,
+          assetType: assetA.assetType,
+        },
+        {
+          id: assetB.id,
+          name: assetB.name,
+          displayName: assetB.displayName,
+          assetType: assetB.assetType,
+        },
+      ],
+    };
+    await saveProject(project);
+    await saveProject(otherProject);
+    await saveAsset(project.id, assetA);
+    await saveAsset(project.id, assetB);
+    await saveBlob(project.id, `${assetA.id}/textures/main.png`, new Blob([new Uint8Array([1])]));
+    await saveBlob(project.id, `${assetB.id}/textures/main.png`, new Blob([new Uint8Array([2])]));
+    await saveBlob(
+      project.id,
+      `prefix-${assetA.id}/textures/main.png`,
+      new Blob([new Uint8Array([3])]),
+    );
+    await saveBlob(
+      otherProject.id,
+      `${assetA.id}-other/textures/main.png`,
+      new Blob([new Uint8Array([4])]),
+    );
+    const nextProject: Project = {
+      ...project,
+      assets: [
+        {
+          id: assetB.id,
+          name: assetB.name,
+          displayName: assetB.displayName,
+          assetType: assetB.assetType,
+        },
+      ],
+    };
+
+    await deleteAssetBundle({ project: nextProject, assetId: assetA.id });
+
+    expect(await loadBlob(`${assetA.id}/textures/main.png`)).toBeNull();
+    expect(await loadBlob(`${assetB.id}/textures/main.png`)).not.toBeNull();
+    expect(await loadBlob(`prefix-${assetA.id}/textures/main.png`)).not.toBeNull();
+    expect(await loadBlob(`${assetA.id}-other/textures/main.png`)).not.toBeNull();
+    expect((await loadAsset(assetB.id)).asset).toEqual(assetB);
+  });
+
+  it('不正な更新後 Project は transaction 開始前に拒否され、削除前状態が残る', async () => {
+    const asset = characterAsset as unknown as Asset;
+    const project: Project = {
+      ...createEmptyProject('bundle delete invalid'),
+      assets: [
+        {
+          id: asset.id,
+          name: asset.name,
+          displayName: asset.displayName,
+          assetType: asset.assetType,
+        },
+      ],
+    };
+    await saveProject(project);
+    await saveAsset(project.id, asset);
+    await saveBlob(project.id, `${asset.id}/textures/main.png`, new Blob([new Uint8Array([1])]));
+    const invalidProject = { ...project, name: '', assets: [] } as Project;
+
+    await expect(deleteAssetBundle({ project: invalidProject, assetId: asset.id })).rejects.toThrow(
+      /project/,
+    );
+
+    expect((await loadProject(project.id)).project).toEqual(project);
+    expect((await loadAsset(asset.id)).asset).toEqual(asset);
+    expect(await loadBlob(`${asset.id}/textures/main.png`)).not.toBeNull();
+  });
+
+  it('既に削除済みの Asset でも Project 更新は冪等に完了する', async () => {
+    const asset = characterAsset as unknown as Asset;
+    const project: Project = {
+      ...createEmptyProject('bundle delete idempotent'),
+      assets: [
+        {
+          id: asset.id,
+          name: asset.name,
+          displayName: asset.displayName,
+          assetType: asset.assetType,
+        },
+      ],
+    };
+    await saveProject(project);
+    await saveAsset(project.id, asset);
+    const nextProject: Project = { ...project, assets: [] };
+
+    await deleteAssetBundle({ project: nextProject, assetId: asset.id });
+    await expect(
+      deleteAssetBundle({ project: nextProject, assetId: asset.id }),
+    ).resolves.toBeUndefined();
+
+    expect((await loadProject(project.id)).project.assets).toEqual([]);
   });
 });
