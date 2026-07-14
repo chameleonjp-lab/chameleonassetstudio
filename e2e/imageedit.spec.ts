@@ -121,11 +121,13 @@ async function readProjectName(page: Page): Promise<string> {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
-    const records = await new Promise<Array<{ name: string }>>((resolve, reject) => {
-      const request = db.transaction('projects', 'readonly').objectStore('projects').getAll();
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
+    const records = await new Promise<Array<{ name: string }>>(
+      (resolve, reject) => {
+        const request = db.transaction('projects', 'readonly').objectStore('projects').getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      },
+    );
     db.close();
     return records[0]?.name ?? '';
   });
