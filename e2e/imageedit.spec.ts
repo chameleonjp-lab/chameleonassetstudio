@@ -114,6 +114,23 @@ async function readMainTextureSize(page: Page): Promise<{ width: number; height:
   });
 }
 
+async function readProjectName(page: Page): Promise<string> {
+  return page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('chameleon-asset-studio');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const records = await new Promise<Array<{ name: string }>>((resolve, reject) => {
+      const request = db.transaction('projects', 'readonly').objectStore('projects').getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    db.close();
+    return records[0]?.name ?? '';
+  });
+}
+
 async function canvasCenter(canvas: Locator): Promise<{ x: number; y: number }> {
   const box = (await canvas.boundingBox())!;
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
@@ -254,41 +271,47 @@ test('輪郭線が透明領域との境界の外側に付く', async ({ page }) 
   expect(await readMainPixel(page, 10, 10)).toEqual([255, 0, 0, 255]);
 });
 
-test('Undo完了後もAsset・Blob・Projectが整合し、通常編集を再開できる', async ({ page }) => {
-  const png = await makePngBuffer(page, '#00aa00');
-  const canvas = await setupProject(page, '履歴競合E2E', png);
+test(
+  'Undo完了後もAsset・Blob・Projectが整合し、通常編集を再開できる',
+  async ({ page }) => {
+    const png = await makePngBuffer(page, '#00aa00');
+    const canvas = await setupProject(page, '履歴競合E2E', png);
 
-  await page.getByRole('button', { name: '100%', exact: true }).click();
-  await page.getByRole('button', { name: 'トリミング' }).click();
+    await page.getByRole('button', { name: '100%', exact: true }).click();
+    await page.getByRole('button', { name: 'トリミング' }).click();
 
-  const center = await canvasCenter(canvas);
-  await page.mouse.move(center.x - 32, center.y - 32);
-  await page.mouse.down();
-  await page.mouse.move(center.x, center.y, { steps: 4 });
-  await page.mouse.up();
+    const center = await canvasCenter(canvas);
+    await page.mouse.move(center.x - 32, center.y - 32);
+    await page.mouse.down();
+    await page.mouse.move(center.x, center.y, { steps: 4 });
+    await page.mouse.up();
 
-  await expect
-    .poll(async () => (await readMainSize(page)).width, { timeout: 10_000 })
-    .toBeLessThan(64);
+    await expect
+      .poll(async () => (await readMainSize(page)).width, { timeout: 10_000 })
+      .toBeLessThan(64);
 
-  const undoButton = page.getByRole('button', { name: '元に戻す' });
-  await expect(undoButton).toBeEnabled();
-  await undoButton.click();
+    const undoButton = page.getByRole('button', { name: '元に戻す' });
+    await expect(undoButton).toBeEnabled();
+    await undoButton.click();
 
-  await expect
-    .poll(async () => (await readMainSize(page)).width, { timeout: 10_000 })
-    .toBe(64);
+    await expect
+      .poll(async () => (await readMainSize(page)).width, { timeout: 10_000 })
+      .toBe(64);
 
-  await expect.poll(async () => await readMainSize(page)).toEqual(await readMainTextureSize(page));
+    await expect.poll(async () => await readMainSize(page)).toEqual(await readMainTextureSize(page));
 
-  const projectNameInput = page.getByLabel('プロジェクト名');
-  await expect(projectNameInput).toHaveValue('履歴競合E2E');
+    const projectNameInput = page.getByLabel('プロジェクト名');
+    await expect(projectNameInput).toHaveValue('履歴競合E2E');
 
-  await projectNameInput.fill('Undo後は編集できる');
-  await expect(page.getByRole('heading', { name: 'Undo後は編集できる' })).toBeVisible();
+    await projectNameInput.fill('Undo後は編集できる');
+    await expect(page.getByRole('heading', { name: 'Undo後は編集できる' })).toBeVisible();
+    await expect
+      .poll(async () => await readProjectName(page), { timeout: 10_000 })
+      .toBe('Undo後は編集できる');
 
-  await page.reload();
-  await page.getByRole('button', { name: '「Undo後は編集できる」を開く' }).click();
-  await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
-  await expect.poll(async () => await readMainSize(page)).toEqual(await readMainTextureSize(page));
-});
+    await page.reload();
+    await page.getByRole('button', { name: '「Undo後は編集できる」を開く' }).click();
+    await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
+    await expect.poll(async () => await readMainSize(page)).toEqual(await readMainTextureSize(page));
+  },
+);
