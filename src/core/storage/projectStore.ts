@@ -130,6 +130,28 @@ function assertBlobOperationsBelongToAsset(
   }
 }
 
+function assertAssetRevisionDoesNotMutateSourceBlob(
+  asset: Asset,
+  putBlobs: Array<{ key: string }>,
+  deleteBlobKeys: string[],
+): void {
+  const sourceKeys = new Set(
+    asset.textures
+      .filter((texture) => texture.kind === 'source')
+      .map((texture) => `${asset.id}/${texture.path}`),
+  );
+  for (const { key } of putBlobs) {
+    if (sourceKeys.has(key)) {
+      throw new StorageError(`source Blob は Asset 改訂保存で上書きできません: ${key}`);
+    }
+  }
+  for (const key of deleteBlobKeys) {
+    if (sourceKeys.has(key)) {
+      throw new StorageError(`source Blob は Asset 改訂保存で削除できません: ${key}`);
+    }
+  }
+}
+
 async function prepareBlobRecords(blobs: PreparedBlobRecordInput[]): Promise<StoredBlobRecord[]> {
   const updatedAt = new Date().toISOString();
   return Promise.all(
@@ -209,6 +231,7 @@ export async function saveAssetRevision({
   }
   assertDistinctBlobOperations(putBlobs, deleteBlobKeys);
   assertBlobOperationsBelongToAsset(asset.id, putBlobs, deleteBlobKeys);
+  assertAssetRevisionDoesNotMutateSourceBlob(asset, putBlobs, deleteBlobKeys);
   const blobRecords = await prepareBlobRecords(
     putBlobs.map(({ key, blob }) => ({ key, projectId, blob })),
   );

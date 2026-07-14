@@ -238,16 +238,14 @@ describe('saveAssetRevision（asset + blobs の原子的改訂保存）', () => 
   it('Asset と複数 Blob を一つの改訂として保存できる', async () => {
     const project = createEmptyProject('改訂保存');
     const asset = characterAsset as unknown as Asset;
-    await saveProject(project);
-
-    await saveAssetRevision({
-      projectId: project.id,
-      asset,
-      putBlobs: [
+    await saveProjectBundle(
+      project,
+      [asset],
+      [
         { key: `${asset.id}/source/original.png`, blob: new Blob([new Uint8Array([1])]) },
         { key: `${asset.id}/textures/main.png`, blob: new Blob([new Uint8Array([2])]) },
       ],
-    });
+    );
 
     expect((await loadAsset(asset.id)).asset).toEqual(asset);
     expect(
@@ -382,6 +380,36 @@ describe('saveAssetRevision（asset + blobs の原子的改訂保存）', () => 
       new Uint8Array(await (await loadBlob(`${asset.id}/source/original.png`))!.arrayBuffer()),
     ).toEqual(new Uint8Array([1]));
     expect(await loadBlob(`${asset.id}/textures/new-layer.png`)).toBeNull();
+  });
+
+  it('Asset 改訂保存では既存 source Blob の上書き・削除を拒否する', async () => {
+    const project = createEmptyProject('source guard');
+    const asset = characterAsset as unknown as Asset;
+    await saveProject(project);
+    await saveAsset(project.id, asset);
+    await saveBlob(project.id, `${asset.id}/source/original.png`, new Blob([new Uint8Array([1])]));
+    await saveBlob(project.id, `${asset.id}/textures/main.png`, new Blob([new Uint8Array([2])]));
+
+    await expect(
+      saveAssetRevision({
+        projectId: project.id,
+        asset,
+        putBlobs: [
+          { key: `${asset.id}/source/original.png`, blob: new Blob([new Uint8Array([9])]) },
+        ],
+      }),
+    ).rejects.toThrow(/source Blob/);
+    await expect(
+      saveAssetRevision({
+        projectId: project.id,
+        asset,
+        deleteBlobKeys: [`${asset.id}/source/original.png`],
+      }),
+    ).rejects.toThrow(/source Blob/);
+
+    expect(
+      new Uint8Array(await (await loadBlob(`${asset.id}/source/original.png`))!.arrayBuffer()),
+    ).toEqual(new Uint8Array([1]));
   });
 
   it('同じ Blob key を保存と削除へ同時指定すると拒否する', async () => {
