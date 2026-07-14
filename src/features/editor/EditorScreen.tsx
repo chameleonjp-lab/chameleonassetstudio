@@ -50,6 +50,7 @@ import {
   saveSnapshot,
   type AssetSnapshotSummary,
   type SaveState,
+  type SourceBlobTransitions,
 } from '../../core/storage';
 import { layerWorldPoint } from '../../renderers/canvas2d/view';
 import { AssetTypePanel, BackgroundLayerFields } from './AssetTypePanel';
@@ -275,6 +276,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       options: {
         putBlobs?: Array<{ key: string; blob: Blob }>;
         deleteBlobKeys?: string[];
+        sourceBlobTransitions?: SourceBlobTransitions;
       } = {},
     ) => {
       await autosave.flush();
@@ -283,6 +285,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         asset: snapshot,
         putBlobs: options.putBlobs,
         deleteBlobKeys: options.deleteBlobKeys,
+        sourceBlobTransitions: options.sourceBlobTransitions,
       });
       setAssets((prev) => prev.map((asset) => (asset.id === snapshot.id ? snapshot : asset)));
     },
@@ -1004,14 +1007,29 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         const before = current;
         const after = next;
         const blobKeys = result.blobs.map(({ key }) => key);
+        const sourceCreateKeys = result.textures
+          .filter((texture) => texture.kind === 'source')
+          .map((texture) => blobKeyFor(current.id, texture.path));
         const redoBlobs = result.blobs.map(({ key, blob }) => ({ key, blob }));
         await commitPersistentMutationWithHistory({
-          apply: () => saveAssetRevisionAndApply(next, { putBlobs: result.blobs }),
+          apply: () =>
+            saveAssetRevisionAndApply(next, {
+              putBlobs: result.blobs,
+              sourceBlobTransitions: { createKeys: sourceCreateKeys },
+            }),
           history,
           entry: {
             label: '画像レイヤー追加',
-            undo: () => saveAssetRevisionAndApply(before, { deleteBlobKeys: blobKeys }),
-            redo: () => saveAssetRevisionAndApply(after, { putBlobs: redoBlobs }),
+            undo: () =>
+              saveAssetRevisionAndApply(before, {
+                deleteBlobKeys: blobKeys,
+                sourceBlobTransitions: { deleteKeys: sourceCreateKeys },
+              }),
+            redo: () =>
+              saveAssetRevisionAndApply(after, {
+                putBlobs: redoBlobs,
+                sourceBlobTransitions: { createKeys: sourceCreateKeys },
+              }),
           },
         });
         setSelectedLayerId(result.layer.id);
