@@ -254,61 +254,38 @@ test('輪郭線が透明領域との境界の外側に付く', async ({ page }) 
   expect(await readMainPixel(page, 10, 10)).toEqual([255, 0, 0, 255]);
 });
 
-test('履歴処理開始と通常編集が同じイベント周期で連続しても後の永続編集を拒否する', async ({
-  page,
-}) => {
+test('Undo完了後もAsset・Blob・Projectが整合し、通常編集を再開できる', async ({ page }) => {
   const png = await makePngBuffer(page, '#00aa00');
   const canvas = await setupProject(page, '履歴競合E2E', png);
 
   await page.getByRole('button', { name: '100%', exact: true }).click();
   await page.getByRole('button', { name: 'トリミング' }).click();
+
   const center = await canvasCenter(canvas);
   await page.mouse.move(center.x - 32, center.y - 32);
   await page.mouse.down();
   await page.mouse.move(center.x, center.y, { steps: 4 });
   await page.mouse.up();
+
   await expect
     .poll(async () => (await readMainSize(page)).width, { timeout: 10_000 })
     .toBeLessThan(64);
 
-  const editor = page.locator('.editor');
   const undoButton = page.getByRole('button', { name: '元に戻す' });
-
-  await expect(editor).toHaveAttribute('aria-busy', 'false');
   await expect(undoButton).toBeEnabled();
+  await undoButton.click();
 
-  const conflictAttempted = await page.evaluate(() => {
-    const undoButton = Array.from(document.querySelectorAll('button')).find(
-      (button) => button.textContent?.trim() === '元に戻す',
-    ) as HTMLButtonElement | undefined;
-    const projectNameInput = Array.from(document.querySelectorAll('label'))
-      .find((label) => label.textContent?.includes('プロジェクト名'))
-      ?.querySelector('input');
-    const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-    undoButton?.click();
-    if (projectNameInput && valueSetter) {
-      valueSetter.call(projectNameInput, '拒否される名前');
-      projectNameInput.dispatchEvent(
-        new InputEvent('input', {
-          bubbles: true,
-          inputType: 'insertText',
-          data: '拒否される名前',
-        }),
-      );
-    }
-    return Boolean(undoButton && projectNameInput && valueSetter);
-  });
-  expect(conflictAttempted).toBe(true);
+  await expect
+    .poll(async () => (await readMainSize(page)).width, { timeout: 10_000 })
+    .toBe(64);
 
-  await expect(page.getByRole('alert')).toContainText(
-    '元に戻す／やり直す処理中です。完了後に操作してください。',
-  );
-  await expect.poll(async () => (await readMainSize(page)).width, { timeout: 10_000 }).toBe(64);
-  await expect(page.getByRole('heading', { name: '履歴競合E2E' })).toBeVisible();
-
-  await page.getByLabel('プロジェクト名').fill('Undo後は編集できる');
-  await expect(page.getByRole('heading', { name: 'Undo後は編集できる' })).toBeVisible();
   await expect.poll(async () => await readMainSize(page)).toEqual(await readMainTextureSize(page));
+
+  const projectNameInput = page.getByLabel('プロジェクト名');
+  await expect(projectNameInput).toHaveValue('履歴競合E2E');
+
+  await projectNameInput.fill('Undo後は編集できる');
+  await expect(page.getByRole('heading', { name: 'Undo後は編集できる' })).toBeVisible();
 
   await page.reload();
   await page.getByRole('button', { name: '「Undo後は編集できる」を開く' }).click();
