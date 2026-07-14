@@ -87,6 +87,11 @@ async function loadAssetBitmaps(asset: Asset): Promise<Map<string, DecodedImageS
         `画像テクスチャ定義が見つかりません: asset=${asset.id} texture=${textureId}（書き出し合成）`,
       );
     }
+    if (texture.kind !== 'edit') {
+      throw new ExportError(
+        `書き出し対象レイヤーは edit テクスチャを参照する必要があります: asset=${asset.id} texture=${texture.id} kind=${texture.kind}`,
+      );
+    }
     const blob = await loadBlob(blobKeyFor(asset.id, texture.path));
     if (!blob) {
       throw new ExportError(

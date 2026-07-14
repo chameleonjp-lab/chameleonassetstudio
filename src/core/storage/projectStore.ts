@@ -1,4 +1,4 @@
-import type { Asset, Project } from '../model';
+import type { Asset, Project, TextureRef } from '../model';
 import { migrateAsset, migrateProject } from '../model';
 import { validateAsset, validateProject } from '../schema/validate';
 import {
@@ -186,11 +186,120 @@ export async function saveProjectBundle(
   });
 }
 
+export interface SourceBlobTransitions {
+  createKeys?: string[];
+  deleteKeys?: string[];
+}
+
+function sourceTexturesByKey(asset: Asset): Map<string, TextureRef> {
+  const textures = new Map<string, TextureRef>();
+  for (const texture of asset.textures) {
+    if (texture.kind === 'source') {
+      textures.set(blobKeyForAssetPath(asset.id, texture.path), texture);
+    }
+  }
+  return textures;
+}
+
+function blobKeyForAssetPath(assetId: string, path: string): string {
+  return `${assetId}/${path}`;
+}
+
+function assertUniqueTransitionKeys(label: string, keys: string[]): Set<string> {
+  const result = new Set<string>();
+  for (const key of keys) {
+    if (!key) {
+      throw new StorageError(`${label} に空の source Blob key は指定できません`);
+    }
+    if (result.has(key)) {
+      throw new StorageError(`${label} に同じ source Blob key が複数指定されています: ${key}`);
+    }
+    result.add(key);
+  }
+  return result;
+}
+
+function assertSourceBlobTransitions({
+  previousAsset,
+  nextAsset,
+  putBlobKeys,
+  deleteBlobKeys,
+  transitions,
+}: {
+  previousAsset: Asset | null;
+  nextAsset: Asset;
+  putBlobKeys: Set<string>;
+  deleteBlobKeys: Set<string>;
+  transitions: SourceBlobTransitions;
+}): void {
+  const previousSourceTextures = previousAsset ? sourceTexturesByKey(previousAsset) : new Map();
+  const nextSourceTextures = sourceTexturesByKey(nextAsset);
+  const previousSourceKeys = new Set(previousSourceTextures.keys());
+  const nextSourceKeys = new Set(nextSourceTextures.keys());
+  const createKeys = assertUniqueTransitionKeys('source create 許可', transitions.createKeys ?? []);
+  const deleteKeys = assertUniqueTransitionKeys('source delete 許可', transitions.deleteKeys ?? []);
+
+  for (const key of putBlobKeys) {
+    if (previousSourceKeys.has(key)) {
+      throw new StorageError(`既存 source Blob は上書きできません: ${key}`);
+    }
+    if (previousAsset && nextSourceKeys.has(key)) {
+      if (!createKeys.has(key) || previousSourceKeys.has(key)) {
+        throw new StorageError(`source Blob の新規作成には明示的な create 許可が必要です: ${key}`);
+      }
+    }
+  }
+
+  for (const [key, previous] of previousSourceTextures) {
+    const next = nextSourceTextures.get(key);
+    if (next) {
+      if (
+        previous.id !== next.id ||
+        previous.kind !== next.kind ||
+        previous.path !== next.path ||
+        previous.mimeType !== next.mimeType
+      ) {
+        throw new StorageError(`既存 source TextureRef は通常改訂で変更できません: ${key}`);
+      }
+      if (deleteBlobKeys.has(key)) {
+        throw new StorageError(`既存 source Blob は削除できません: ${key}`);
+      }
+    } else if (!deleteKeys.has(key) || !deleteBlobKeys.has(key)) {
+      throw new StorageError(
+        `既存 source TextureRef の削除には明示的な delete 許可が必要です: ${key}`,
+      );
+    }
+  }
+
+  for (const key of deleteBlobKeys) {
+    if (previousSourceKeys.has(key) && !deleteKeys.has(key)) {
+      throw new StorageError(`source Blob の削除には明示的な delete 許可が必要です: ${key}`);
+    }
+  }
+
+  for (const key of createKeys) {
+    if (
+      !previousAsset ||
+      previousSourceKeys.has(key) ||
+      !nextSourceKeys.has(key) ||
+      !putBlobKeys.has(key)
+    ) {
+      throw new StorageError(`source create 許可が実際の新規 source 遷移と一致しません: ${key}`);
+    }
+  }
+  for (const key of deleteKeys) {
+    if (!previousSourceKeys.has(key) || nextSourceKeys.has(key) || !deleteBlobKeys.has(key)) {
+      throw new StorageError(`source delete 許可が実際の source 削除遷移と一致しません: ${key}`);
+    }
+  }
+}
+
 export interface AssetRevisionInput {
   projectId: string;
   asset: Asset;
   putBlobs?: ProjectBundleBlobInput[];
   deleteBlobKeys?: string[];
+  sourceBlobTransitions?: SourceBlobTransitions;
 }
 
 /**
@@ -202,6 +311,7 @@ export async function saveAssetRevision({
   asset,
   putBlobs = [],
   deleteBlobKeys = [],
+  sourceBlobTransitions = {},
 }: AssetRevisionInput): Promise<void> {
   const result = validateAsset(asset);
   if (!result.valid) {
@@ -215,6 +325,16 @@ export async function saveAssetRevision({
   const assetRecord: StoredAssetRecord = { id: asset.id, projectId, data: asset };
 
   await runTransaction([STORE_ASSETS, STORE_BLOBS], 'readwrite', async (tx) => {
+    const previousRecord = await requestToPromise(
+      tx.objectStore(STORE_ASSETS).get(asset.id) as IDBRequest<StoredAssetRecord | undefined>,
+    );
+    assertSourceBlobTransitions({
+      previousAsset: previousRecord?.data ?? null,
+      nextAsset: asset,
+      putBlobKeys: new Set(putBlobs.map(({ key }) => key)),
+      deleteBlobKeys: new Set(deleteBlobKeys),
+      transitions: sourceBlobTransitions,
+    });
     await requestToPromise(tx.objectStore(STORE_ASSETS).put(assetRecord));
     for (const record of blobRecords) {
       await requestToPromise(tx.objectStore(STORE_BLOBS).put(record));

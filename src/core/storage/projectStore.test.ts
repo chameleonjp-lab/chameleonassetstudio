@@ -413,6 +413,218 @@ describe('saveAssetRevision（asset + blobs の原子的改訂保存）', () => 
       }),
     ).rejects.toThrow(/対象アセットの prefix/);
   });
+
+  describe('source Blob transition guard', () => {
+    const baseAsset = characterAsset as unknown as Asset;
+    const sourceKey = `${baseAsset.id}/source/original.png`;
+    const editKey = `${baseAsset.id}/textures/main.png`;
+    const newSourceKey = `${baseAsset.id}/source/added.png`;
+    const newEditKey = `${baseAsset.id}/textures/added.png`;
+
+    async function seedAsset() {
+      const project = createEmptyProject('source guard');
+      const asset = characterAsset as unknown as Asset;
+      await saveProject(project);
+      await saveAsset(project.id, asset);
+      await saveBlob(project.id, sourceKey, new Blob([new Uint8Array([1])], { type: 'image/png' }));
+      await saveBlob(project.id, editKey, new Blob([new Uint8Array([2])], { type: 'image/png' }));
+      return { project, asset };
+    }
+
+    function withAddedSource(asset: Asset): Asset {
+      return {
+        ...asset,
+        textures: [
+          ...asset.textures,
+          {
+            id: 'tex_added_source',
+            kind: 'source',
+            name: 'added original',
+            mimeType: 'image/png',
+            size: { width: 1, height: 1 },
+            path: 'source/added.png',
+          },
+          {
+            id: 'tex_added_edit',
+            kind: 'edit',
+            name: 'added',
+            mimeType: 'image/png',
+            size: { width: 1, height: 1 },
+            path: 'textures/added.png',
+          },
+        ],
+        layers: [
+          ...asset.layers,
+          {
+            id: 'layer_added',
+            name: 'added',
+            layerType: 'image',
+            visible: true,
+            locked: false,
+            opacity: 1,
+            transform: { position: { x: 0, y: 0 }, scale: { x: 1, y: 1 }, rotation: 0 },
+            textureId: 'tex_added_edit',
+          },
+        ],
+      };
+    }
+
+    it('rejects overwriting and deleting existing source blobs', async () => {
+      const { project, asset } = await seedAsset();
+      await expect(
+        saveAssetRevision({
+          projectId: project.id,
+          asset,
+          putBlobs: [{ key: sourceKey, blob: new Blob([new Uint8Array([9])]) }],
+        }),
+      ).rejects.toThrow(/既存 source Blob は上書きできません/);
+      await expect(
+        saveAssetRevision({ projectId: project.id, asset, deleteBlobKeys: [sourceKey] }),
+      ).rejects.toThrow(/既存 source Blob は削除できません/);
+    });
+
+    it('rejects bypasses that remove or reclassify existing source TextureRefs', async () => {
+      const { project, asset } = await seedAsset();
+      await expect(
+        saveAssetRevision({
+          projectId: project.id,
+          asset: {
+            ...asset,
+            textures: asset.textures.filter((texture) => texture.kind !== 'source'),
+          },
+          deleteBlobKeys: [sourceKey],
+        }),
+      ).rejects.toThrow(/delete 許可/);
+      await expect(
+        saveAssetRevision({
+          projectId: project.id,
+          asset: {
+            ...asset,
+            textures: asset.textures.map((texture) =>
+              texture.kind === 'source' ? { ...texture, kind: 'edit' as const } : texture,
+            ),
+          },
+          putBlobs: [{ key: sourceKey, blob: new Blob([new Uint8Array([9])]) }],
+        }),
+      ).rejects.toThrow(/既存 source Blob は上書きできません/);
+      await expect(
+        saveAssetRevision({
+          projectId: project.id,
+          asset: {
+            ...asset,
+            textures: asset.textures.map((texture) =>
+              texture.kind === 'source' ? { ...texture, path: 'source/renamed.png' } : texture,
+            ),
+          },
+          deleteBlobKeys: [sourceKey],
+        }),
+      ).rejects.toThrow(/delete 許可/);
+    });
+
+    it('allows explicit create, undo delete, and redo for newly added source only', async () => {
+      const { project, asset } = await seedAsset();
+      const after = withAddedSource(asset);
+      await expect(
+        saveAssetRevision({
+          projectId: project.id,
+          asset: after,
+          putBlobs: [{ key: newSourceKey, blob: new Blob([new Uint8Array([3])]) }],
+        }),
+      ).rejects.toThrow(/create 許可/);
+      await expect(
+        saveAssetRevision({
+          projectId: project.id,
+          asset: after,
+          putBlobs: [{ key: newSourceKey, blob: new Blob([new Uint8Array([3])]) }],
+          sourceBlobTransitions: { createKeys: [`${asset.id}/source/unrelated.png`] },
+        }),
+      ).rejects.toThrow(/create 許可/);
+      await saveAssetRevision({
+        projectId: project.id,
+        asset: after,
+        putBlobs: [
+          { key: newSourceKey, blob: new Blob([new Uint8Array([3])]) },
+          { key: newEditKey, blob: new Blob([new Uint8Array([4])]) },
+        ],
+        sourceBlobTransitions: { createKeys: [newSourceKey] },
+      });
+      await expect(
+        saveAssetRevision({
+          projectId: project.id,
+          asset,
+          deleteBlobKeys: [newSourceKey, newEditKey],
+        }),
+      ).rejects.toThrow(/delete 許可/);
+      await saveAssetRevision({
+        projectId: project.id,
+        asset,
+        deleteBlobKeys: [newSourceKey, newEditKey],
+        sourceBlobTransitions: { deleteKeys: [newSourceKey] },
+      });
+      expect(await loadBlob(newSourceKey)).toBeNull();
+      await saveAssetRevision({
+        projectId: project.id,
+        asset: after,
+        putBlobs: [
+          { key: newSourceKey, blob: new Blob([new Uint8Array([3])]) },
+          { key: newEditKey, blob: new Blob([new Uint8Array([4])]) },
+        ],
+        sourceBlobTransitions: { createKeys: [newSourceKey] },
+      });
+      expect(new Uint8Array(await (await loadBlob(sourceKey))!.arrayBuffer())).toEqual(
+        new Uint8Array([1]),
+      );
+    });
+
+    it('keeps asset and blobs atomic when source transition validation or transaction writes fail', async () => {
+      const { project, asset } = await seedAsset();
+      const after = withAddedSource({ ...asset, displayName: 'failed' });
+      await expect(
+        saveAssetRevision({
+          projectId: project.id,
+          asset: after,
+          putBlobs: [{ key: newEditKey, blob: new Blob([new Uint8Array([9])]) }],
+          sourceBlobTransitions: { createKeys: [newSourceKey] },
+        }),
+      ).rejects.toThrow(/一致しません/);
+      expect((await loadAsset(asset.id)).asset).toEqual(asset);
+      expect(await loadBlob(newEditKey)).toBeNull();
+      const originalPut = IDBObjectStore.prototype.put;
+      const putSpy = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (
+        this: IDBObjectStore,
+        value: unknown,
+        key?: IDBValidKey,
+      ) {
+        if (
+          this.name === 'blobs' &&
+          typeof value === 'object' &&
+          value !== null &&
+          'key' in value &&
+          value.key === newEditKey
+        )
+          throw new DOMException('fail injection', 'DataError');
+        return originalPut.call(this, value, key);
+      });
+      try {
+        await expect(
+          saveAssetRevision({
+            projectId: project.id,
+            asset: withAddedSource(asset),
+            putBlobs: [
+              { key: newSourceKey, blob: new Blob([new Uint8Array([3])]) },
+              { key: newEditKey, blob: new Blob([new Uint8Array([4])]) },
+            ],
+            sourceBlobTransitions: { createKeys: [newSourceKey] },
+          }),
+        ).rejects.toThrow();
+      } finally {
+        putSpy.mockRestore();
+      }
+      expect((await loadAsset(asset.id)).asset).toEqual(asset);
+      expect(await loadBlob(newSourceKey)).toBeNull();
+      expect(await loadBlob(newEditKey)).toBeNull();
+    });
+  });
 });
 
 describe('ごみ箱（trash）', () => {
