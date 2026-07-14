@@ -62,6 +62,10 @@ import {
 } from './blankAsset';
 import { CanvasEditor } from './CanvasEditor';
 import { LAYER_TOOLS, type CanvasTool } from './canvasTools';
+import {
+  canStartPersistentMutation,
+  commitPersistentMutationWithHistory,
+} from './editorMutationGuard';
 import { ExportPanel } from './ExportPanel';
 import { GameAttributesPanel } from './GameAttributesPanel';
 import { GameDataPanel } from './GameDataPanel';
@@ -140,6 +144,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [editorError, setEditorError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [imageProcessing, setImageProcessing] = useState<ImageProcessingState | null>(null);
+  const mutationBusyRef = useRef(false);
+  const [mutationBusy, setMutationBusy] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [mobileView, setMobileView] = useState<MobileView>('canvas');
   const [leftOpen, setLeftOpen] = useState(true);
@@ -210,6 +216,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     };
   }, [projectId]);
 
+  const persistentMutationBlocked = historyState.isBusy || mutationBusy;
+
   const selectedAsset = assets.find((asset) => asset.id === selectedAssetId) ?? assets[0] ?? null;
   const selectedLayer = selectedAsset?.layers.find((layer) => layer.id === selectedLayerId) ?? null;
   const selectedAnimation =
@@ -228,6 +236,28 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       setSelectedColliderId(null);
     }
   }, [selectedAsset, selectedColliderId]);
+
+  const canStartEditorPersistentMutation = useCallback(() => {
+    return canStartPersistentMutation({
+      history,
+      mutationBusy: mutationBusyRef.current,
+      onReject: setEditorError,
+    });
+  }, [history]);
+
+  const beginEditorPersistentMutation = useCallback(() => {
+    if (!canStartEditorPersistentMutation()) {
+      return false;
+    }
+    mutationBusyRef.current = true;
+    setMutationBusy(true);
+    return true;
+  }, [canStartEditorPersistentMutation]);
+
+  const endEditorPersistentMutation = useCallback(() => {
+    mutationBusyRef.current = false;
+    setMutationBusy(false);
+  }, []);
 
   /** アセットのスナップショットを適用して自動保存する（Undo / Redo からも使う）。 */
   const applyAssetSnapshot = useCallback(
@@ -260,6 +290,15 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   );
 
   const handleHistoryUndo = useCallback(async () => {
+    if (
+      !canStartPersistentMutation({
+        history,
+        mutationBusy: mutationBusyRef.current,
+        onReject: setEditorError,
+      })
+    ) {
+      return;
+    }
     try {
       setEditorError(null);
       await history.undo();
@@ -271,6 +310,15 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   }, [history]);
 
   const handleHistoryRedo = useCallback(async () => {
+    if (
+      !canStartPersistentMutation({
+        history,
+        mutationBusy: mutationBusyRef.current,
+        onReject: setEditorError,
+      })
+    ) {
+      return;
+    }
     try {
       setEditorError(null);
       await history.redo();
@@ -284,14 +332,21 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   /** 変更を適用し、履歴へ積む。 */
   const commitAssetChange = useCallback(
     (label: string, before: Asset, next: Asset) => {
-      applyAssetSnapshot(next);
-      history.push({
+      if (!canStartEditorPersistentMutation()) {
+        return;
+      }
+      const pushed = history.push({
         label,
         undo: () => applyAssetSnapshot(before),
         redo: () => applyAssetSnapshot(next),
       });
+      if (!pushed) {
+        setEditorError('元に戻す／やり直す処理中です。完了後に操作してください。');
+        return;
+      }
+      applyAssetSnapshot(next);
     },
-    [applyAssetSnapshot, history],
+    [applyAssetSnapshot, canStartEditorPersistentMutation, history],
   );
 
   // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y で Undo / Redo
@@ -408,6 +463,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       setEditorError('元画像（source）は破壊的編集できません。編集用画像を選択してください。');
       return;
     }
+    if (!beginEditorPersistentMutation()) {
+      return;
+    }
     const label = operationLabel(operation);
     setEditorError(null);
     setImageProcessing({ label, progress: 0 });
@@ -476,21 +534,24 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         console.warn('復旧点の保存に失敗しました', snapshotError);
       }
 
-      await saveAssetRevisionAndApply(next, { putBlobs: [{ key, blob: afterBlob }] });
-      history.push({
-        label,
-        undo: async () => {
-          // textures を新しい配列にしてビットマップ再読込を促す
-          await saveAssetRevisionAndApply(
-            { ...before, textures: [...before.textures] },
-            { putBlobs: [{ key, blob: beforeBlob }] },
-          );
-        },
-        redo: async () => {
-          await saveAssetRevisionAndApply(
-            { ...next, textures: [...next.textures] },
-            { putBlobs: [{ key, blob: afterBlob }] },
-          );
+      await commitPersistentMutationWithHistory({
+        apply: () => saveAssetRevisionAndApply(next, { putBlobs: [{ key, blob: afterBlob }] }),
+        history,
+        entry: {
+          label,
+          undo: async () => {
+            // textures を新しい配列にしてビットマップ再読込を促す
+            await saveAssetRevisionAndApply(
+              { ...before, textures: [...before.textures] },
+              { putBlobs: [{ key, blob: beforeBlob }] },
+            );
+          },
+          redo: async () => {
+            await saveAssetRevisionAndApply(
+              { ...next, textures: [...next.textures] },
+              { putBlobs: [{ key, blob: afterBlob }] },
+            );
+          },
         },
       });
     } catch (error) {
@@ -499,6 +560,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       );
     } finally {
       setImageProcessing(null);
+      endEditorPersistentMutation();
     }
   };
 
@@ -511,6 +573,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
    * 不整合が起きるため使わない。
    */
   const handleRestoreSnapshot = async (snapshotId: string) => {
+    if (!beginEditorPersistentMutation()) {
+      return;
+    }
     setEditorError(null);
     try {
       const restored = await restoreSnapshot(snapshotId);
@@ -522,26 +587,31 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       const before: Asset = { ...current, textures: [...current.textures] };
       const next: Asset = { ...restored.asset, textures: [...restored.asset.textures] };
 
-      await saveAssetRevisionAndApply(next, { putBlobs: [{ key, blob: restored.blob }] });
-      history.push({
-        label: '復旧点から復元',
-        undo: async () => {
-          await saveAssetRevisionAndApply(
-            { ...before, textures: [...before.textures] },
-            beforeBlob ? { putBlobs: [{ key, blob: beforeBlob }] } : { deleteBlobKeys: [key] },
-          );
-        },
-        redo: async () => {
-          await saveAssetRevisionAndApply(
-            { ...next, textures: [...next.textures] },
-            { putBlobs: [{ key, blob: restored.blob }] },
-          );
+      await commitPersistentMutationWithHistory({
+        apply: () => saveAssetRevisionAndApply(next, { putBlobs: [{ key, blob: restored.blob }] }),
+        history,
+        entry: {
+          label: '復旧点から復元',
+          undo: async () => {
+            await saveAssetRevisionAndApply(
+              { ...before, textures: [...before.textures] },
+              beforeBlob ? { putBlobs: [{ key, blob: beforeBlob }] } : { deleteBlobKeys: [key] },
+            );
+          },
+          redo: async () => {
+            await saveAssetRevisionAndApply(
+              { ...next, textures: [...next.textures] },
+              { putBlobs: [{ key, blob: restored.blob }] },
+            );
+          },
         },
       });
     } catch (error) {
       setEditorError(
         `復旧点から復元できませんでした: ${error instanceof Error ? error.message : String(error)}`,
       );
+    } finally {
+      endEditorPersistentMutation();
     }
   };
 
@@ -614,7 +684,11 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   };
 
   const handleFiles = async (files: Iterable<File>) => {
+    if (!beginEditorPersistentMutation()) {
+      return;
+    }
     if (!project) {
+      endEditorPersistentMutation();
       return;
     }
     setEditorError(null);
@@ -646,12 +720,16 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       setEditorError(error instanceof Error ? error.message : String(error));
     } finally {
       setImporting(false);
+      endEditorPersistentMutation();
     }
   };
 
   /** 選択アセットを左右反転した新しいアセットを生成する（Phase 19-B, docs/future/FLIP_DESIGN.md）。 */
   const handleFlipCopyAsset = async () => {
     if (!project || !selectedAsset) {
+      return;
+    }
+    if (!beginEditorPersistentMutation()) {
       return;
     }
     setEditorError(null);
@@ -690,6 +768,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       setEditorError(error instanceof Error ? error.message : String(error));
     } finally {
       setImporting(false);
+      endEditorPersistentMutation();
     }
   };
 
@@ -699,6 +778,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
    */
   const handleCreateBlankAsset = async () => {
     if (!project) {
+      return;
+    }
+    if (!beginEditorPersistentMutation()) {
       return;
     }
     setEditorError(null);
@@ -734,6 +816,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       setEditorError(error instanceof Error ? error.message : String(error));
     } finally {
       setCreatingAsset(false);
+      endEditorPersistentMutation();
     }
   };
 
@@ -755,6 +838,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       `アセット「${selectedAsset.displayName}」を削除します。この操作は元に戻せません。よろしいですか？`,
     );
     if (!ok) {
+      return;
+    }
+    if (!beginEditorPersistentMutation()) {
       return;
     }
     setEditorError(null);
@@ -780,6 +866,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       );
     } finally {
       setDeletingAsset(false);
+      endEditorPersistentMutation();
     }
   };
 
@@ -804,6 +891,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     if (!project) {
       return;
     }
+    if (!canStartEditorPersistentMutation()) {
+      return;
+    }
     const next: Project = { ...project, name, updatedAt: new Date().toISOString() };
     setProject(next);
     autosave.schedule(() => saveProject(next));
@@ -821,6 +911,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     }
     const value = Number(rawValue);
     if (!Number.isFinite(value)) {
+      return;
+    }
+    if (!canStartEditorPersistentMutation()) {
       return;
     }
     const next: Asset = {
@@ -850,6 +943,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   };
 
   const beginLayerEdit = () => {
+    if (!canStartEditorPersistentMutation()) {
+      layerEditBeforeRef.current = null;
+      return;
+    }
     layerEditBeforeRef.current = selectedAsset;
   };
 
@@ -863,11 +960,14 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     if (JSON.stringify(before) === JSON.stringify(current)) {
       return;
     }
-    history.push({
+    const pushed = history.push({
       label: '数値編集',
       undo: () => applyAssetSnapshot(before),
       redo: () => applyAssetSnapshot(current),
     });
+    if (!pushed) {
+      setEditorError('元に戻す／やり直す処理中です。完了後に操作してください。');
+    }
   };
 
   /** パネルのボタン操作による変更を履歴付きで確定する。 */
@@ -886,6 +986,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     if (files.length === 0 || !selectedAsset) {
       return;
     }
+    if (!beginEditorPersistentMutation()) {
+      return;
+    }
     setEditorError(null);
     setImporting(true);
     try {
@@ -898,15 +1001,18 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           textures: [...current.textures, ...result.textures],
           layers: [...current.layers, result.layer],
         };
-        await saveAssetRevisionAndApply(next, { putBlobs: result.blobs });
         const before = current;
         const after = next;
         const blobKeys = result.blobs.map(({ key }) => key);
         const redoBlobs = result.blobs.map(({ key, blob }) => ({ key, blob }));
-        history.push({
-          label: '画像レイヤー追加',
-          undo: () => saveAssetRevisionAndApply(before, { deleteBlobKeys: blobKeys }),
-          redo: () => saveAssetRevisionAndApply(after, { putBlobs: redoBlobs }),
+        await commitPersistentMutationWithHistory({
+          apply: () => saveAssetRevisionAndApply(next, { putBlobs: result.blobs }),
+          history,
+          entry: {
+            label: '画像レイヤー追加',
+            undo: () => saveAssetRevisionAndApply(before, { deleteBlobKeys: blobKeys }),
+            redo: () => saveAssetRevisionAndApply(after, { putBlobs: redoBlobs }),
+          },
         });
         setSelectedLayerId(result.layer.id);
         current = next;
@@ -915,6 +1021,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       setEditorError(error instanceof Error ? error.message : String(error));
     } finally {
       setImporting(false);
+      endEditorPersistentMutation();
     }
   };
 
@@ -1001,7 +1108,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   );
 
   return (
-    <div className="editor">
+    <div className="editor" aria-busy={persistentMutationBlocked}>
       <header className="editor-topbar">
         <button type="button" onClick={handleBack}>
           ← ホーム
@@ -1010,7 +1117,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         <div className="editor-history-buttons">
           <button
             type="button"
-            disabled={!historyState.canUndo || historyState.isBusy}
+            disabled={!historyState.canUndo || persistentMutationBlocked}
             onClick={() => void handleHistoryUndo()}
             title={historyState.undoLabel ?? undefined}
           >
@@ -1018,7 +1125,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           </button>
           <button
             type="button"
-            disabled={!historyState.canRedo || historyState.isBusy}
+            disabled={!historyState.canRedo || persistentMutationBlocked}
             onClick={() => void handleHistoryRedo()}
             title={historyState.redoLabel ?? undefined}
           >
@@ -1127,7 +1234,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             <input
               type="text"
               value={project?.name ?? ''}
-              disabled={!project}
+              aria-label="プロジェクト名"
+              disabled={!project || persistentMutationBlocked}
               onChange={(event) => handleRename(event.target.value)}
             />
           </label>
@@ -1140,7 +1248,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 <button
                   type="button"
                   className="asset-flip-copy-button"
-                  disabled={importing}
+                  disabled={importing || persistentMutationBlocked}
                   onClick={() => void handleFlipCopyAsset()}
                 >
                   左右反転コピーを作成
@@ -1148,7 +1256,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 <button
                   type="button"
                   className="asset-delete-button"
-                  disabled={deletingAsset}
+                  disabled={deletingAsset || persistentMutationBlocked}
                   onClick={() => void handleDeleteAsset()}
                 >
                   アセットを削除
@@ -1204,7 +1312,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             <button
               type="button"
               aria-label="新規アセットを作成"
-              disabled={creatingAsset || !project}
+              disabled={creatingAsset || !project || persistentMutationBlocked}
               onClick={() => void handleCreateBlankAsset()}
             >
               新規アセットを作成
@@ -1422,7 +1530,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   </label>
                   <button
                     type="button"
-                    disabled={!!imageProcessing}
+                    disabled={!!imageProcessing || persistentMutationBlocked}
                     onClick={() => void applyImageEdit({ type: 'adjustHsl', ...hsl })}
                   >
                     色調整を適用
@@ -1459,7 +1567,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   </label>
                   <button
                     type="button"
-                    disabled={!!imageProcessing}
+                    disabled={!!imageProcessing || persistentMutationBlocked}
                     onClick={() =>
                       void applyImageEdit({
                         type: 'replaceColor',
@@ -1497,7 +1605,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   </label>
                   <button
                     type="button"
-                    disabled={!!imageProcessing}
+                    disabled={!!imageProcessing || persistentMutationBlocked}
                     onClick={() =>
                       void applyImageEdit({
                         type: 'outline',
