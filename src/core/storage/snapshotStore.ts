@@ -166,7 +166,7 @@ export async function saveSnapshot(input: SaveSnapshotInput): Promise<void> {
   };
 
   await runTransaction(
-    [STORE_ASSETS, STORE_BLOBS, STORE_SNAPSHOTS],
+    [STORE_ASSETS, STORE_SNAPSHOTS],
     'readwrite',
     async (tx) => {
       const storedAsset = await loadStoredAssetInTx(tx, input.assetId);
@@ -179,11 +179,6 @@ export async function saveSnapshot(input: SaveSnapshotInput): Promise<void> {
           `復旧点の edit TextureRef が保存中アセットと一致しません: ${input.blobKey}`,
         );
       }
-      const currentBlob = await loadStoredBlobInTx(tx, input.blobKey);
-      if (!currentBlob || currentBlob.projectId !== input.projectId) {
-        throw new StorageError(`復旧点の対象 edit Blob が見つかりません: ${input.blobKey}`);
-      }
-
       await requestToPromise(tx.objectStore(STORE_SNAPSHOTS).put(record));
       await enforceSnapshotLimitInTx(tx, input.projectId, input.assetId);
     },
