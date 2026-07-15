@@ -56,6 +56,58 @@ function formatValidationErrors(label: string, errors: string[]): string {
   return `${label} の内容が不正です: ${errors.join(' / ')}`;
 }
 
+function blobKeyForAssetPath(assetId: string, path: string): string {
+  return `${assetId}/${path}`;
+}
+
+interface TextureIndex {
+  byId: Map<string, TextureRef>;
+  byKey: Map<string, TextureRef>;
+}
+
+function buildTextureIndex(asset: Asset, label: string): TextureIndex {
+  const byId = new Map<string, TextureRef>();
+  const byKey = new Map<string, TextureRef>();
+  for (const texture of asset.textures) {
+    if (byId.has(texture.id)) {
+      throw new StorageError(`${label} に同じ TextureRef ID が複数存在します: ${texture.id}`);
+    }
+    const key = blobKeyForAssetPath(asset.id, texture.path);
+    if (byKey.has(key)) {
+      throw new StorageError(`${label} で同じ Blob key を複数 TextureRef が参照しています: ${key}`);
+    }
+    byId.set(texture.id, texture);
+    byKey.set(key, texture);
+  }
+  return { byId, byKey };
+}
+
+function sameTextureRef(left: TextureRef, right: TextureRef): boolean {
+  return (
+    left.id === right.id &&
+    left.kind === right.kind &&
+    left.name === right.name &&
+    left.mimeType === right.mimeType &&
+    left.path === right.path &&
+    left.size.width === right.size.width &&
+    left.size.height === right.size.height
+  );
+}
+
+function assertTextureRefsUnchanged(previousAsset: Asset, nextAsset: Asset): void {
+  const previous = buildTextureIndex(previousAsset, '保存前 Asset');
+  const next = buildTextureIndex(nextAsset, '保存後 Asset');
+  if (previous.byId.size !== next.byId.size) {
+    throw new StorageError('TextureRef を変更する保存には saveAssetRevision を使用してください');
+  }
+  for (const [id, previousTexture] of previous.byId) {
+    const nextTexture = next.byId.get(id);
+    if (!nextTexture || !sameTextureRef(previousTexture, nextTexture)) {
+      throw new StorageError('TextureRef を変更する保存には saveAssetRevision を使用してください');
+    }
+  }
+}
+
 /** プロジェクトを保存する。自動保存前の検証（要件 14）もここで行う。 */
 export async function saveProject(project: Project): Promise<void> {
   const result = validateProject(project);
@@ -145,11 +197,8 @@ async function prepareBlobRecords(blobs: PreparedBlobRecordInput[]): Promise<Sto
 
 /**
  * project + assets[] + blobs[] をまとめて原子的に保存する（2D-1B-STORAGE §A）。
- * Blob → ArrayBuffer の変換はトランザクション開始前に済ませ、
- * projects / assets / blobs への put は単一の readwrite トランザクションで行う。
- * 途中で失敗した場合は runTransaction が abort するため、一部だけが保存されることはない。
- *
- * .casproj の読み込み（HomeScreen）と、アセットの複製（EditorScreen の左右反転コピー）で使う。
+ * 新規 Asset 作成、.casproj 読み込み、複製で使う。既存 Asset の改訂には
+ * saveAssetRevision を使う。
  */
 export async function saveProjectBundle(
   project: Project,
@@ -165,10 +214,9 @@ export async function saveProjectBundle(
     if (!assetResult.valid) {
       throw new StorageError(formatValidationErrors('asset', assetResult.errors));
     }
+    buildTextureIndex(asset, `Asset（id: ${asset.id}）`);
   }
 
-  // IndexedDB リクエスト以外の非同期処理（Blob→ArrayBuffer 変換）はトランザクション開始前に
-  // 済ませる（トランザクション内で待つと、ブラウザがアイドルと判断して自動コミットし得るため）。
   assertDistinctBlobOperations(blobs, []);
   const blobRecords = await prepareBlobRecords(
     blobs.map(({ key, blob }) => ({ key, projectId: project.id, blob })),
@@ -191,28 +239,6 @@ export interface SourceBlobTransitions {
   deleteKeys?: string[];
 }
 
-function texturesByKey(asset: Asset): Map<string, TextureRef> {
-  const textures = new Map<string, TextureRef>();
-  for (const texture of asset.textures) {
-    textures.set(blobKeyForAssetPath(asset.id, texture.path), texture);
-  }
-  return textures;
-}
-
-function sourceTexturesByKey(asset: Asset): Map<string, TextureRef> {
-  const textures = new Map<string, TextureRef>();
-  for (const [key, texture] of texturesByKey(asset)) {
-    if (texture.kind === 'source') {
-      textures.set(key, texture);
-    }
-  }
-  return textures;
-}
-
-function blobKeyForAssetPath(assetId: string, path: string): string {
-  return `${assetId}/${path}`;
-}
-
 function assertUniqueTransitionKeys(label: string, keys: string[]): Set<string> {
   const result = new Set<string>();
   for (const key of keys) {
@@ -225,6 +251,25 @@ function assertUniqueTransitionKeys(label: string, keys: string[]): Set<string> 
     result.add(key);
   }
   return result;
+}
+
+function assertExactKeySet(label: string, actual: Set<string>, expected: Set<string>): void {
+  for (const key of actual) {
+    if (!expected.has(key)) {
+      throw new StorageError(`${label}が実際の source 遷移と一致しません: ${key}`);
+    }
+  }
+  for (const key of expected) {
+    if (!actual.has(key)) {
+      throw new StorageError(`${label}が必要です: ${key}`);
+    }
+  }
+}
+
+function assertExistingSourceUnchanged(previous: TextureRef, next: TextureRef): void {
+  if (!sameTextureRef(previous, next)) {
+    throw new StorageError(`既存 source TextureRef は通常改訂で変更できません: ${previous.id}`);
+  }
 }
 
 function assertTextureBlobTransitions({
@@ -240,87 +285,86 @@ function assertTextureBlobTransitions({
   deleteBlobKeys: Set<string>;
   transitions: SourceBlobTransitions;
 }): void {
-  const previousTextures = texturesByKey(previousAsset);
-  const nextTextures = texturesByKey(nextAsset);
-  const previousTextureKeys = new Set(previousTextures.keys());
-  const nextTextureKeys = new Set(nextTextures.keys());
-  const previousSourceTextures = sourceTexturesByKey(previousAsset);
-  const nextSourceTextures = sourceTexturesByKey(nextAsset);
-  const previousSourceKeys = new Set(previousSourceTextures.keys());
-  const nextSourceKeys = new Set(nextSourceTextures.keys());
+  const previous = buildTextureIndex(previousAsset, '保存前 Asset');
+  const next = buildTextureIndex(nextAsset, '保存後 Asset');
   const createKeys = assertUniqueTransitionKeys('source create 許可', transitions.createKeys ?? []);
   const deleteKeys = assertUniqueTransitionKeys('source delete 許可', transitions.deleteKeys ?? []);
 
-  const addedTextureKeys = [...nextTextureKeys].filter((key) => !previousTextureKeys.has(key));
-  const removedTextureKeys = [...previousTextureKeys].filter((key) => !nextTextureKeys.has(key));
-  const addedSourceKeys = [...nextSourceKeys].filter((key) => !previousSourceKeys.has(key));
-  const removedSourceKeys = [...previousSourceKeys].filter((key) => !nextSourceKeys.has(key));
-
-  for (const key of addedTextureKeys) {
-    if (!putBlobKeys.has(key)) {
-      throw new StorageError(`新しいTextureRefに対応するBlobが保存対象にありません: ${key}`);
+  for (const key of putBlobKeys) {
+    if (!next.byKey.has(key)) {
+      throw new StorageError(`保存対象 Blob に対応する TextureRef がありません: ${key}`);
+    }
+  }
+  for (const key of deleteBlobKeys) {
+    if (!previous.byKey.has(key)) {
+      throw new StorageError(`削除対象 Blob に対応する保存前 TextureRef がありません: ${key}`);
+    }
+    if (next.byKey.has(key)) {
+      throw new StorageError(`保存後 Asset が参照する Blob は削除できません: ${key}`);
     }
   }
 
-  for (const key of removedTextureKeys) {
-    if (!deleteBlobKeys.has(key)) {
-      throw new StorageError(`削除されたTextureRefに対応するBlobが削除対象にありません: ${key}`);
+  for (const [key, previousTexture] of previous.byKey) {
+    const nextTexture = next.byKey.get(key);
+    if (nextTexture && previousTexture.id !== nextTexture.id) {
+      throw new StorageError(`既存 Blob key を別の TextureRef へ再割り当てできません: ${key}`);
     }
   }
 
-  for (const key of addedSourceKeys) {
-    if (!createKeys.has(key)) {
-      throw new StorageError(`source Blob の新規作成には明示的な create 許可が必要です: ${key}`);
-    }
-    if (!putBlobKeys.has(key)) {
-      throw new StorageError(
-        `新しい source TextureRef に対応する Blob が保存対象にありません: ${key}`,
-      );
-    }
-  }
+  const addedSourceKeys = new Set<string>();
+  const removedSourceKeys = new Set<string>();
 
-  for (const key of removedSourceKeys) {
-    if (!deleteKeys.has(key)) {
-      throw new StorageError(`source Blob の削除には明示的な delete 許可が必要です: ${key}`);
-    }
-    if (!deleteBlobKeys.has(key)) {
-      throw new StorageError(
-        `削除された source TextureRef に対応する Blob が削除対象にありません: ${key}`,
-      );
-    }
-  }
-
-  for (const [key, previous] of previousSourceTextures) {
-    const next = nextSourceTextures.get(key);
-    if (!next) {
+  for (const [id, previousTexture] of previous.byId) {
+    const nextTexture = next.byId.get(id);
+    const previousKey = blobKeyForAssetPath(previousAsset.id, previousTexture.path);
+    if (!nextTexture) {
+      if (!deleteBlobKeys.has(previousKey)) {
+        throw new StorageError(`削除された TextureRef に対応する Blob が削除対象にありません: ${previousKey}`);
+      }
+      if (previousTexture.kind === 'source') {
+        removedSourceKeys.add(previousKey);
+      }
       continue;
     }
-    if (
-      previous.id !== next.id ||
-      previous.kind !== next.kind ||
-      previous.path !== next.path ||
-      previous.mimeType !== next.mimeType
-    ) {
-      throw new StorageError(`既存 source TextureRef は通常改訂で変更できません: ${key}`);
+
+    const nextKey = blobKeyForAssetPath(nextAsset.id, nextTexture.path);
+    if (previousTexture.kind === 'source') {
+      assertExistingSourceUnchanged(previousTexture, nextTexture);
+      if (putBlobKeys.has(previousKey)) {
+        throw new StorageError(`既存 source Blob は上書きできません: ${previousKey}`);
+      }
+      if (deleteBlobKeys.has(previousKey)) {
+        throw new StorageError(`既存 source Blob は削除できません: ${previousKey}`);
+      }
+    } else if (nextTexture.kind === 'source') {
+      throw new StorageError(`既存 TextureRef を source へ変更できません: ${id}`);
     }
-    if (putBlobKeys.has(key)) {
-      throw new StorageError(`既存 source Blob は上書きできません: ${key}`);
-    }
-    if (deleteBlobKeys.has(key)) {
-      throw new StorageError(`既存 source Blob は削除できません: ${key}`);
+
+    if (previousKey !== nextKey) {
+      if (!deleteBlobKeys.has(previousKey)) {
+        throw new StorageError(`変更前 TextureRef の Blob が削除対象にありません: ${previousKey}`);
+      }
+      if (!putBlobKeys.has(nextKey)) {
+        throw new StorageError(`変更後 TextureRef の Blob が保存対象にありません: ${nextKey}`);
+      }
     }
   }
 
-  for (const key of createKeys) {
-    if (!addedSourceKeys.includes(key) || !putBlobKeys.has(key)) {
-      throw new StorageError(`source create 許可が実際の新規 source 遷移と一致しません: ${key}`);
+  for (const [id, nextTexture] of next.byId) {
+    if (previous.byId.has(id)) {
+      continue;
+    }
+    const nextKey = blobKeyForAssetPath(nextAsset.id, nextTexture.path);
+    if (!putBlobKeys.has(nextKey)) {
+      throw new StorageError(`新しい TextureRef に対応する Blob が保存対象にありません: ${nextKey}`);
+    }
+    if (nextTexture.kind === 'source') {
+      addedSourceKeys.add(nextKey);
     }
   }
-  for (const key of deleteKeys) {
-    if (!removedSourceKeys.includes(key) || !deleteBlobKeys.has(key)) {
-      throw new StorageError(`source delete 許可が実際の source 削除遷移と一致しません: ${key}`);
-    }
-  }
+
+  assertExactKeySet('source create 許可', createKeys, addedSourceKeys);
+  assertExactKeySet('source delete 許可', deleteKeys, removedSourceKeys);
 }
 
 export interface AssetRevisionInput {
@@ -333,7 +377,7 @@ export interface AssetRevisionInput {
 
 /**
  * Asset と、その Asset 改訂に対応する Blob 追加・上書き・削除を単一 transaction で確定する。
- * Blob→ArrayBuffer 変換と Asset 検証は transaction 開始前に済ませる。
+ * Blob→ArrayBuffer の変換と Asset 検証は transaction 開始前に済ませる。
  */
 export async function saveAssetRevision({
   projectId,
@@ -346,6 +390,7 @@ export async function saveAssetRevision({
   if (!result.valid) {
     throw new StorageError(formatValidationErrors('asset', result.errors));
   }
+  buildTextureIndex(asset, '保存後 Asset');
   assertDistinctBlobOperations(putBlobs, deleteBlobKeys);
   assertBlobOperationsBelongToAsset(asset.id, putBlobs, deleteBlobKeys);
   const blobRecords = await prepareBlobRecords(
@@ -361,7 +406,7 @@ export async function saveAssetRevision({
       throw new StorageError('改訂対象アセットが保存されていません');
     }
     if (previousRecord.projectId !== projectId) {
-      throw new StorageError('改訂対象アセットは指定Projectに属していません');
+      throw new StorageError('改訂対象アセットは指定 Project に属していません');
     }
     assertTextureBlobTransitions({
       previousAsset: previousRecord.data,
@@ -416,10 +461,6 @@ export async function listProjects(): Promise<ProjectSummary[]> {
     .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
 }
 
-/**
- * 完全削除（ごみ箱からの purge）で trash レコード・画像 Blob・復旧点をまとめて消す。
- * 呼び出し元のトランザクション（STORE_TRASH / STORE_BLOBS / STORE_SNAPSHOTS を含む）へ相乗りする。
- */
 async function purgeTrashRecordInTx(tx: IDBTransaction, record: TrashRecord): Promise<void> {
   await requestToPromise(tx.objectStore(STORE_TRASH).delete(record.id));
   const blobKeys = await requestToPromise(
@@ -433,7 +474,6 @@ async function purgeTrashRecordInTx(tx: IDBTransaction, record: TrashRecord): Pr
   }
 }
 
-/** ごみ箱が上限を超えていたら、最も古いものから完全削除する（同一 tx 内）。 */
 async function enforceTrashLimitInTx(tx: IDBTransaction): Promise<void> {
   const allTrash = await requestToPromise(
     tx.objectStore(STORE_TRASH).getAll() as IDBRequest<TrashRecord[]>,
@@ -448,13 +488,6 @@ async function enforceTrashLimitInTx(tx: IDBTransaction): Promise<void> {
   }
 }
 
-/**
- * プロジェクトをごみ箱へ移動する（2D-1B-STORAGE §B）。
- * project / assets は正本ストアから削除するが、画像 Blob は削除しない
- * （trash が参照を保持しており、復元できるようにするため）。
- * ごみ箱が上限（TRASH_LIMIT）を超えたら、同一トランザクション内で最も古いプロジェクトを
- * 完全削除する（Blob・復旧点も含めて消す）。
- */
 export async function deleteProject(id: string): Promise<void> {
   await runTransaction(
     [STORE_PROJECTS, STORE_ASSETS, STORE_TRASH, STORE_BLOBS, STORE_SNAPSHOTS],
@@ -464,29 +497,24 @@ export async function deleteProject(id: string): Promise<void> {
         tx.objectStore(STORE_PROJECTS).get(id) as IDBRequest<Project | undefined>,
       );
       if (!project) {
-        // 既に存在しない（多重操作など）場合は何もしない
         return;
       }
-
       const assetRecords = await requestToPromise(
         tx.objectStore(STORE_ASSETS).index(INDEX_BY_PROJECT).getAll(id) as IDBRequest<
           StoredAssetRecord[]
         >,
       );
-      const assets = assetRecords.map((record) => record.data);
-
       const trashRecord: TrashRecord = {
         id,
         deletedAt: new Date().toISOString(),
         project,
-        assets,
+        assets: assetRecords.map((record) => record.data),
       };
       await requestToPromise(tx.objectStore(STORE_TRASH).put(trashRecord));
       await requestToPromise(tx.objectStore(STORE_PROJECTS).delete(id));
       for (const record of assetRecords) {
         await requestToPromise(tx.objectStore(STORE_ASSETS).delete(record.id));
       }
-
       await enforceTrashLimitInTx(tx);
     },
   );
@@ -499,7 +527,6 @@ export interface TrashSummary {
   assetCount: number;
 }
 
-/** ごみ箱の一覧。削除が新しい順。 */
 export async function listTrash(): Promise<TrashSummary[]> {
   const rows = await runTransaction([STORE_TRASH], 'readonly', (tx) =>
     requestToPromise(tx.objectStore(STORE_TRASH).getAll() as IDBRequest<TrashRecord[]>),
@@ -514,7 +541,6 @@ export async function listTrash(): Promise<TrashSummary[]> {
     .sort((a, b) => (a.deletedAt < b.deletedAt ? 1 : -1));
 }
 
-/** ごみ箱からプロジェクトを復元する。project / assets を正本ストアへ書き戻し、trash レコードを消す。 */
 export async function restoreProject(trashId: string): Promise<void> {
   await runTransaction([STORE_TRASH, STORE_PROJECTS, STORE_ASSETS], 'readwrite', async (tx) => {
     const record = await requestToPromise(
@@ -536,7 +562,6 @@ export async function restoreProject(trashId: string): Promise<void> {
   });
 }
 
-/** ごみ箱から 1 件を完全に削除する（画像 Blob・復旧点も含めて消す）。 */
 export async function purgeTrash(trashId: string): Promise<void> {
   await runTransaction([STORE_TRASH, STORE_BLOBS, STORE_SNAPSHOTS], 'readwrite', async (tx) => {
     const record = await requestToPromise(
@@ -549,7 +574,6 @@ export async function purgeTrash(trashId: string): Promise<void> {
   });
 }
 
-/** ごみ箱を空にする（全件完全削除）。 */
 export async function purgeAllTrash(): Promise<void> {
   await runTransaction([STORE_TRASH, STORE_BLOBS, STORE_SNAPSHOTS], 'readwrite', async (tx) => {
     const rows = await requestToPromise(
@@ -561,15 +585,29 @@ export async function purgeAllTrash(): Promise<void> {
   });
 }
 
+/**
+ * Asset JSON 単体の保存。新規 Asset の互換用初期保存と、既存 Asset の metadata-only
+ * autosave に使う。既存 Asset の TextureRef 変更は saveAssetRevision へ寄せる。
+ */
 export async function saveAsset(projectId: string, asset: Asset): Promise<void> {
   const result = validateAsset(asset);
   if (!result.valid) {
     throw new StorageError(formatValidationErrors('asset', result.errors));
   }
+  buildTextureIndex(asset, '保存対象 Asset');
   const record: StoredAssetRecord = { id: asset.id, projectId, data: asset };
-  await runTransaction([STORE_ASSETS], 'readwrite', (tx) =>
-    requestToPromise(tx.objectStore(STORE_ASSETS).put(record)),
-  );
+  await runTransaction([STORE_ASSETS], 'readwrite', async (tx) => {
+    const previousRecord = await requestToPromise(
+      tx.objectStore(STORE_ASSETS).get(asset.id) as IDBRequest<StoredAssetRecord | undefined>,
+    );
+    if (previousRecord) {
+      if (previousRecord.projectId !== projectId) {
+        throw new StorageError('保存対象アセットは指定 Project に属していません');
+      }
+      assertTextureRefsUnchanged(previousRecord.data, asset);
+    }
+    await requestToPromise(tx.objectStore(STORE_ASSETS).put(record));
+  });
 }
 
 export interface LoadedAsset {
@@ -603,11 +641,6 @@ export async function listProjectAssets(projectId: string): Promise<Asset[]> {
   return records.map((record) => record.data);
 }
 
-/**
- * アセットと、そのアセットが所有する画像 Blob（`${assetId}/` prefix のキー）・復旧点を削除する。
- * 以前は assets ストアのみ削除しており、Blob が孤児として残るバグがあった。
- * 復旧点（snapshots）も削除しないと、存在しないアセットを指す孤児レコードとして残ってしまう。
- */
 export async function deleteAsset(id: string): Promise<void> {
   await runTransaction([STORE_ASSETS, STORE_BLOBS, STORE_SNAPSHOTS], 'readwrite', async (tx) => {
     const assetRecord = await requestToPromise(
@@ -635,10 +668,6 @@ export interface DeleteAssetBundleInput {
   assetId: string;
 }
 
-/**
- * 更新後 Project、削除対象 Asset、その Asset が所有する Blob、復旧点を同一 transaction で削除する。
- * Project 検証は transaction 開始前に行い、不正な Project の場合は削除前状態を残す。
- */
 export async function deleteAssetBundle({
   project,
   assetId,
@@ -682,7 +711,6 @@ export async function deleteAssetBundle({
   );
 }
 
-/** 画像 Blob を保存する。key は TextureRef.path と対応させる。 */
 export async function saveBlob(projectId: string, key: string, blob: Blob): Promise<void> {
   const bytes = await blob.arrayBuffer();
   const record: StoredBlobRecord = {
