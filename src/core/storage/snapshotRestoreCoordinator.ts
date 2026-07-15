@@ -58,7 +58,9 @@ export async function saveAssetRevision(input: AssetRevisionInput): Promise<void
     deleteBlobKeys.length > 0 ||
     hasSourceTransitions(input)
   ) {
-    throw new StorageError('復旧点の準備後に別の保存操作が指定されたため、復元を中止しました');
+    throw new StorageError(
+      '復旧点の準備後に別の保存操作が指定されたため、復元を中止しました',
+    );
   }
 
   const targetBytes = new Uint8Array(await pending.blob.arrayBuffer());
