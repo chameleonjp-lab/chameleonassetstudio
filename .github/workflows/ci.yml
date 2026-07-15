@@ -68,39 +68,6 @@ jobs:
       - run: npm run build
       - run: npm run test
 
-  e2e-diagnostics:
-    needs: changes
-    if: needs.changes.outputs.e2e == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - name: Capture E2E output
-        shell: bash
-        run: |
-          set +e
-          npm run e2e > e2e.log 2>&1
-          status=$?
-          echo "$status" > e2e-exit.txt
-          exit 0
-      - uses: actions/upload-artifact@v4
-        with:
-          name: e2e-diagnostics
-          if-no-files-found: ignore
-          path: |
-            e2e.log
-            e2e-exit.txt
-            test-results
-            playwright-report
-      - name: Preserve E2E result
-        shell: bash
-        run: test "$(cat e2e-exit.txt)" -eq 0
-
   e2e:
     needs: changes
     if: needs.changes.outputs.e2e == 'true'
