@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEmptyProject, type Asset } from '../model';
 import characterAsset from '../samples/asset.character.json';
 import { resetDbForTests } from './db';
+import { restoreProject } from './index';
 import {
   deleteProject,
   listTrash,
@@ -10,7 +11,6 @@ import {
   loadBlob,
   loadProject,
   purgeTrash,
-  restoreProject,
   saveAsset,
   saveBlob,
   saveProject,
@@ -30,18 +30,19 @@ async function seedRecoveryProject() {
   }
   const key = `${asset.id}/${editTexture.path}`;
   const bytes = new Uint8Array([1, 2, 3, 4]);
+  const blob = new Blob([bytes], { type: 'image/png' });
   await saveProject(project);
   await saveAsset(project.id, asset);
-  await saveBlob(project.id, key, new Blob([bytes], { type: 'image/png' }));
+  await saveBlob(project.id, key, blob);
   await saveSnapshot({
     projectId: project.id,
     assetId: asset.id,
     label: '消しゴム',
     asset,
     blobKey: key,
-    blob: new Blob([bytes], { type: 'image/png' }),
+    blob,
   });
-  return { project, asset, key, bytes };
+  return { project, asset, key };
 }
 
 describe('trash の失敗時原子性', () => {
@@ -95,7 +96,6 @@ describe('trash の失敗時原子性', () => {
 
     expect(await listTrash()).toHaveLength(1);
     expect(await loadBlob(fixture.key)).not.toBeNull();
-
     await restoreProject(trash.id);
     expect((await loadProject(fixture.project.id)).project).toEqual(fixture.project);
     expect((await loadAsset(fixture.asset.id)).asset).toEqual(fixture.asset);
