@@ -1,18 +1,21 @@
 # 2D-1B-GATE 実装・検証報告
 
 作成日: 2026-07-16
-状態: `implementation completed / Draft PR #91 / CI Run #268 success / review pending`
+状態: `implementation merged / PR #91 / CI Run #269 success / formal Gate blocked by missing Opus review evidence`
 正式work package: `2D-1B-GATE`
 基準main: `54f7602974f87710c16a3b79d5fefe175232e376`（PR #90 merge）
 実装Draft PR: #91
 実装head: `c9918b29e75557266c26841320fe34bc5ee6bc93`
 CI: Run #268 success
+最終head: `51a5a2baf6171e80a52fa5823df25fb5d33f95d8`
+最終head CI: Run #269 success
+merge commit: `71c568d6c38846d5795b5e70fdea476336596e57`
 
 ## 1. 結果
 
 全保存契約をfixture、unit test、E2Eへ対応付けて再監査し、横断レビューから継続していたSHOULD 2件を最小補修した。BLOCKER / MUST相当の新しい不整合は確認していない。
 
-Gateは新しいschema、version、migration、DB layout、可搬形式、製品機能を追加していない。PRがDraftの間は2D-2 / 2D-3本実装を解禁せず、3D / WebGPUにも進まない。
+Gateは新しいschema、version、migration、DB layout、可搬形式、製品機能を追加していない。PR #91はmainへmerge済みだが、必須Opus 4.8 review証拠がないため正式Gateは未完了である。2D-2 / 2D-3本実装を解禁せず、3D / WebGPUにも進まない。
 
 ## 2. 補修内容
 
@@ -48,7 +51,7 @@ Gateは新しいschema、version、migration、DB layout、可搬形式、製品
 | `npm run build` | success。既存の500 kB chunk warningのみ。 |
 | `npm run test` | 45 files / 396 tests success |
 | `npm run e2e` | 実行環境にPlaywright Chromium実体がなく、83 testsすべてbrowser起動前に停止。code assertion失敗は0件。正式判定はGitHub Actionsで行う。 |
-| GitHub Actions | CI Run #268 success。lint、format、build、unit test、E2Eの全job成功。 |
+| GitHub Actions | CI Run #268、最終head CI Run #269 success。lint、format、build、unit test、E2Eの全job成功。 |
 
 ## 5. Gate安全不変条件
 
@@ -69,8 +72,9 @@ Gateは新しいschema、version、migration、DB layout、可搬形式、製品
 
 ## 7. 残る完了条件
 
-1. Opus 4.8 reviewでBLOCKER / MUST 0を確認する。
-2. 人間確認を得る。
-3. ユーザーの明示指示まではDraftを維持し、ready化、merge、auto-mergeを行わない。
+1. merge済みmainの範囲`54f7602..71c568d`をOpus 4.8がreviewし、BLOCKER / MUST 0を確認する。
+2. 指摘があれば同じcloseout Draft PRで補修し、全CIを再成功させる。
+3. 人間がreview結果と正式Gate完了を確認する。
+4. closeout PRはユーザーの明示指示まではDraftを維持し、ready化、merge、auto-mergeを行わない。
 
-上記とGate PRのmergeが揃った後にだけ、2D-2 / 2D-3本実装の解禁を文書同期する。3D開始には別途2D Pro Gateの人間承認が必要である。
+上記のreviewと人間確認が揃った後にだけ、2D-2 / 2D-3本実装の解禁を文書同期する。3D開始には別途2D Pro Gateの人間承認が必要である。
