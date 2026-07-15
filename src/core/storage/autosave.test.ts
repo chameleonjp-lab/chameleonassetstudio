@@ -39,9 +39,15 @@ describe('AutosaveQueue', () => {
   it('連続する操作は最後のタスクにまとまる', async () => {
     const queue = new AutosaveQueue({ delayMs: 30 });
     const runs: string[] = [];
-    queue.schedule(async () => runs.push('1回目'));
-    queue.schedule(async () => runs.push('2回目'));
-    queue.schedule(async () => runs.push('3回目'));
+    queue.schedule(async () => {
+      runs.push('1回目');
+    });
+    queue.schedule(async () => {
+      runs.push('2回目');
+    });
+    queue.schedule(async () => {
+      runs.push('3回目');
+    });
     await queue.flush();
     expect(runs).toEqual(['3回目']);
   });
@@ -54,7 +60,9 @@ describe('AutosaveQueue', () => {
       await wait(20);
     });
     await wait(10);
-    queue.schedule(async () => runs.push('後続保存'));
+    queue.schedule(async () => {
+      runs.push('後続保存');
+    });
     await queue.flush();
     expect(runs).toEqual(['先行保存', '後続保存']);
   });
