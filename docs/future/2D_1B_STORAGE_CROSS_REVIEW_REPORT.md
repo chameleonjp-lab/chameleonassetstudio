@@ -170,17 +170,21 @@ CI Run #244:
 
 ## 7. 継続するSHOULD
 
-### SHOULD-1: 低レベルAPIの公開範囲
+### SHOULD-1: 低レベルAPIの公開範囲（Gate補修済み）
 
 `saveBlob`、`deleteBlob`、`deleteAsset`などの低レベルAPIは、test fixtureと一部互換経路で引き続き必要である。Project所有引数が必要なsnapshot削除は今回修正した。
 
 対応期限: `2D-1B-GATE`前に、製品コードから不要なpublic exportを再監査する。
 
-### SHOULD-2: snapshot復元のtoken化・取消
+Gate対応: `src/core/storage/index.ts`を安全な高水準入口の明示exportへ変更し、`saveBlob`、`deleteBlob`、`deleteAsset`、raw snapshot applyをproduct向けbarrelから除外した。内部fixtureは実装moduleから直接importする。`storagePublicApi.test.ts`で再公開を検出する。
+
+### SHOULD-2: snapshot復元のtoken化・取消（Gate補修済み）
 
 `snapshotRestoreCoordinator`のmodule-global Mapは、画面離脱や中間例外時の取消境界が明示されていない。
 
 対応期限: `2D-1B-GATE`の明示項目。token、cancel、timeout、component cleanupの採否を再確認する。
+
+Gate対応: 復元を一回限りのtokenによるprepare / commitへ変更し、cancel後・commit後の再利用を拒否する。製品側の唯一の呼び出しはmutation guard内で直列実行し、`finally`で未使用tokenをcancelする。長時間tokenを保持するUIは存在しないためtimeoutは採用せず、将来そのようなUIを追加する時点でunmount cleanupまたは期限を必須にする。
 
 ## 8. 継続するNOTE
 

@@ -11,7 +11,11 @@ import {
   saveAssetRevision as saveAssetRevisionBase,
   saveProjectBundle,
 } from './projectStore';
-import { restoreSnapshot, saveAssetRevision } from './snapshotRestoreCoordinator';
+import {
+  cancelSnapshotRestore,
+  commitSnapshotRestore,
+  prepareSnapshotRestore,
+} from './snapshotRestoreCoordinator';
 import { listSnapshots, saveSnapshot } from './snapshotStore';
 
 beforeEach(async () => {
@@ -117,14 +121,10 @@ describe('snapshot復元の保存層調整', () => {
     const latestAsset: Asset = { ...fixture.currentAsset, displayName: 'autosave反映後' };
     queue.schedule(() => saveAsset(fixture.projectId, latestAsset));
 
-    const restored = await restoreSnapshot(fixture.snapshotId);
+    const restored = await prepareSnapshotRestore(fixture.snapshotId);
 
     expect(restored.beforeAsset.displayName).toBe('autosave反映後');
-    await saveAssetRevision({
-      projectId: fixture.projectId,
-      asset: restored.asset,
-      putBlobs: [{ key: restored.blobKey, blob: restored.blob }],
-    });
+    await commitSnapshotRestore(restored.restoreToken);
 
     expect((await loadAsset(fixture.currentAsset.id)).asset).toEqual(fixture.snapshotAsset);
     expect(await readBytes(fixture.editKey)).toEqual(fixture.snapshotBytes);
@@ -133,7 +133,7 @@ describe('snapshot復元の保存層調整', () => {
 
   it('復元準備後にAssetまたはBlobが変わった場合は上書きせず拒否する', async () => {
     const fixture = await seedCoordinatorFlow();
-    const restored = await restoreSnapshot(fixture.snapshotId);
+    const restored = await prepareSnapshotRestore(fixture.snapshotId);
     const concurrentAsset: Asset = { ...fixture.currentAsset, displayName: '別操作の保存' };
     const concurrentBytes = new Uint8Array([4, 4, 4, 4]);
 
@@ -148,13 +148,9 @@ describe('snapshot復元の保存層調整', () => {
       ],
     });
 
-    await expect(
-      saveAssetRevision({
-        projectId: fixture.projectId,
-        asset: restored.asset,
-        putBlobs: [{ key: restored.blobKey, blob: restored.blob }],
-      }),
-    ).rejects.toThrow(/変更されたため、復元を中止/);
+    await expect(commitSnapshotRestore(restored.restoreToken)).rejects.toThrow(
+      /変更されたため、復元を中止/,
+    );
 
     expect((await loadAsset(fixture.currentAsset.id)).asset).toEqual(concurrentAsset);
     expect(await readBytes(fixture.editKey)).toEqual(concurrentBytes);
@@ -163,7 +159,7 @@ describe('snapshot復元の保存層調整', () => {
 
   it('復元書き込みが途中で失敗した場合はAssetとBlobの元状態を維持する', async () => {
     const fixture = await seedCoordinatorFlow();
-    const restored = await restoreSnapshot(fixture.snapshotId);
+    const restored = await prepareSnapshotRestore(fixture.snapshotId);
     const originalPut = IDBObjectStore.prototype.put;
     const putSpy = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (
       this: IDBObjectStore,
@@ -183,13 +179,7 @@ describe('snapshot復元の保存層調整', () => {
     });
 
     try {
-      await expect(
-        saveAssetRevision({
-          projectId: fixture.projectId,
-          asset: restored.asset,
-          putBlobs: [{ key: restored.blobKey, blob: restored.blob }],
-        }),
-      ).rejects.toThrow();
+      await expect(commitSnapshotRestore(restored.restoreToken)).rejects.toThrow();
     } finally {
       putSpy.mockRestore();
     }
@@ -197,5 +187,37 @@ describe('snapshot復元の保存層調整', () => {
     expect((await loadAsset(fixture.currentAsset.id)).asset).toEqual(fixture.currentAsset);
     expect(await readBytes(fixture.editKey)).toEqual(fixture.currentBytes);
     expect(await readBytes(fixture.sourceKey)).toEqual(fixture.sourceBytes);
+  });
+
+  it('cancelしたtokenは再利用できず、同じAssetの通常保存を妨げない', async () => {
+    const fixture = await seedCoordinatorFlow();
+    const restored = await prepareSnapshotRestore(fixture.snapshotId);
+    cancelSnapshotRestore(restored.restoreToken);
+
+    await expect(commitSnapshotRestore(restored.restoreToken)).rejects.toThrow(
+      /tokenが無効または使用済み/,
+    );
+
+    const nextAsset: Asset = { ...fixture.currentAsset, displayName: 'cancel後の通常保存' };
+    await saveAssetRevisionBase({
+      projectId: fixture.projectId,
+      asset: nextAsset,
+    });
+
+    expect((await loadAsset(fixture.currentAsset.id)).asset).toEqual(nextAsset);
+    expect(await readBytes(fixture.editKey)).toEqual(fixture.currentBytes);
+  });
+
+  it('commit済みtokenは一度しか利用できない', async () => {
+    const fixture = await seedCoordinatorFlow();
+    const restored = await prepareSnapshotRestore(fixture.snapshotId);
+
+    await commitSnapshotRestore(restored.restoreToken);
+
+    await expect(commitSnapshotRestore(restored.restoreToken)).rejects.toThrow(
+      /tokenが無効または使用済み/,
+    );
+    expect((await loadAsset(fixture.currentAsset.id)).asset).toEqual(fixture.snapshotAsset);
+    expect(await readBytes(fixture.editKey)).toEqual(fixture.snapshotBytes);
   });
 });
