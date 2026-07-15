@@ -1,4 +1,7 @@
 import { generateId, type Asset, type Project, type ProjectAssetEntry } from '../model';
+import { decodeImageSource, type DecodedImageSource } from '../images/decodeImageSource';
+import { detectImageMimeType } from '../images/imageInputSafety';
+import { MAX_IMPORT_FILE_BYTES, checkImageDimensions } from '../images/importImage';
 import {
   CasprojError,
   importCasproj as importCasprojBase,
@@ -57,6 +60,7 @@ export interface StagedCasprojImport {
 }
 
 type IdFactory = (prefix: string) => string;
+type ImageDecoder = (blob: Blob) => Promise<DecodedImageSource>;
 
 function assertProjectAssetSummary(entry: ProjectAssetEntry, asset: Asset): void {
   if (
@@ -115,10 +119,67 @@ function canonicalFilesForAssets(
   return canonicalFiles;
 }
 
+async function validateCanonicalImages(
+  assets: Asset[],
+  files: Map<string, CasprojFileEntry>,
+  imageDecoder: ImageDecoder,
+): Promise<void> {
+  for (const asset of assets) {
+    for (const texture of asset.textures) {
+      const path = `assets/${asset.id}/${texture.path}`;
+      const file = files.get(path)!;
+      if (file.bytes.byteLength > MAX_IMPORT_FILE_BYTES) {
+        throw new CasprojError(`画像fileが大きすぎます: ${path}（1枚25MiBまで）`, {
+          code: 'input-limit',
+        });
+      }
+      const detectedMimeType = detectImageMimeType(file.bytes.subarray(0, 16));
+      if (!detectedMimeType) {
+        throw new CasprojError(`画像の実体形式を確認できません: ${path}`, {
+          code: 'unsafe-input',
+        });
+      }
+      if (detectedMimeType !== texture.mimeType) {
+        throw new CasprojError(
+          `画像の宣言形式と実体が一致しません: ${path}（宣言 ${texture.mimeType} / 実体 ${detectedMimeType}）`,
+          { code: 'unsafe-input' },
+        );
+      }
+
+      let decoded: DecodedImageSource;
+      try {
+        decoded = await imageDecoder(
+          new Blob([file.bytes.slice().buffer as ArrayBuffer], { type: detectedMimeType }),
+        );
+      } catch (error) {
+        throw new CasprojError(`画像をdecodeできません: ${path}`, {
+          cause: error,
+          code: 'unsafe-input',
+        });
+      }
+      try {
+        const dimensionError = checkImageDimensions(decoded.width, decoded.height);
+        if (dimensionError) {
+          throw new CasprojError(`${path}: ${dimensionError}`, { code: 'input-limit' });
+        }
+        if (decoded.width !== texture.size.width || decoded.height !== texture.size.height) {
+          throw new CasprojError(
+            `画像の実寸法とTextureRefが一致しません: ${path}（実体 ${decoded.width} x ${decoded.height} / 宣言 ${texture.size.width} x ${texture.size.height}）`,
+            { code: 'unsafe-input' },
+          );
+        }
+      } finally {
+        decoded.close();
+      }
+    }
+  }
+}
+
 /** 正本へ書き込まず、検査済みのimport copyをメモリ上に準備する。 */
 export async function stageCasprojImport(
   input: Blob | ArrayBuffer | Uint8Array,
   idFactory: IdFactory = generateId,
+  imageDecoder: ImageDecoder = decodeImageSource,
 ): Promise<StagedCasprojImport> {
   const result = await importCasproj(input);
   const warnings = [...result.warnings];
@@ -146,6 +207,7 @@ export async function stageCasprojImport(
     result.bundle.files,
     warnings,
   );
+  await validateCanonicalImages(result.bundle.assets, canonicalFiles, imageDecoder);
   if (result.bundle.exportPresets) {
     warnings.push(
       'settings/export-presets.jsonは検証しましたが、現在のProject正本には保存されません。元の.casprojファイルを保持してください。',

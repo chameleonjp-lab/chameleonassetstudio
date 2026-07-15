@@ -91,13 +91,12 @@ describe('casproj の書き出しと読み込み', () => {
     await expect(exportCasproj(bundle)).rejects.toThrow(/パスが不正です/);
   });
 
-  it('読み込み時に危険なパスのエントリは無視する', async () => {
+  it('読み込み時に危険なパスのエントリがあればarchive全体を拒否する', async () => {
     const zipped = await zipAsync({
       'project.json': strToU8(JSON.stringify(project)),
       '../evil.png': new Uint8Array([1, 2, 3]),
     });
-    const { bundle } = await importCasproj(zipped);
-    expect(bundle.files).toEqual([]);
+    await expect(importCasproj(zipped)).rejects.toMatchObject({ code: 'unsafe-input' });
   });
 
   it('テクスチャの画像ファイルが欠けていると書き出しを拒否する（Phase 15.5-A）', async () => {

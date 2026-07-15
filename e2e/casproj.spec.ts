@@ -133,6 +133,57 @@ test('future versionは理由付きで拒否し、元bytesをquarantineへ残す
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
+test('unsafe path、高圧縮entry、壊れた画像を理由付きで拒否してquarantineする', async ({ page }) => {
+  const [projectJson, assetJson] = await Promise.all([
+    readFile('src/core/storage/__fixtures__/v0.1.0-project.json', 'utf-8'),
+    readFile('src/core/storage/__fixtures__/v0.1.0-asset.json', 'utf-8'),
+  ]);
+  const asset = JSON.parse(assetJson) as { id: string; textures: Array<{ path: string }> };
+  const cases = [
+    {
+      name: 'unsafe-path.casproj',
+      bytes: zipSync({
+        'project.json': strToU8(projectJson),
+        '../evil.bin': new Uint8Array([1]),
+      }),
+      message: 'ZIP内path',
+    },
+    {
+      name: 'high-ratio.casproj',
+      bytes: zipSync({
+        'project.json': strToU8(projectJson),
+        'payload.bin': new Uint8Array(1024 * 1024),
+      }),
+      message: '圧縮率が高すぎ',
+    },
+    {
+      name: 'broken-image.casproj',
+      bytes: zipSync({
+        'project.json': strToU8(projectJson),
+        [`assets/${asset.id}/asset.json`]: strToU8(assetJson),
+        [`assets/${asset.id}/${asset.textures[0].path}`]: new Uint8Array([
+          0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+        ]),
+      }),
+      message: '画像をdecodeできません',
+    },
+  ];
+
+  await page.goto('/');
+  for (const input of cases) {
+    await page.getByLabel('.casproj を読み込む').setInputFiles({
+      name: input.name,
+      mimeType: 'application/zip',
+      buffer: Buffer.from(input.bytes),
+    });
+    await expect(page.getByRole('alert')).toContainText(input.message);
+    await expect(
+      page.getByRole('region', { name: '読み込みに失敗したファイル' }).getByText(input.name),
+    ).toBeVisible();
+  }
+  await expect(page.getByRole('button', { name: '「旧形式フィクスチャ」を開く' })).toHaveCount(0);
+});
+
 test('未参照Assetとorphan fileは警告付きで除外し、canonical Projectだけを保存する', async ({
   page,
 }) => {

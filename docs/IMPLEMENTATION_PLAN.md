@@ -85,7 +85,7 @@ Phase 17 後は、旧 Phase 18〜28 の順番ではなく次を優先する。
 - PR #85: mainへmerge済み。merge commitは`e3c34fb292aab1d35a6da571ff17ca4ed9d13e0e`。最終head `d8ce80f36adaa94b2711d0e4ce3ffc1f1bf5e413`のCI Run #244はlint、format、build、unit test、E2Eを全成功した。
 - 個別完了: `2D-1B-CAPACITY`。PR #87はmainへmerge済み。merge commitは`66ba2c4096dabc297f402a9176b8c60de9c584f9`、最終head `d7b965af333821d4e73937873ed039972a6f5f04`のCI Run #255はlint、format、build、unit test、E2Eを全成功した。契約は`docs/future/2D_1B_CAPACITY_PLAN.md`、完了証拠は`docs/future/2D_1B_CAPACITY_REPORT.md`を正本とする。
 - 個別完了: `2D-1B-CASPROJ`。PR #88はmainへmerge済み。merge commitは`a9a1e27a6f69544c379fb9fcefc90a13e0928859`、最終head `15e77f4bd59c7e03dc5877060fbc9195567db177`のCI Run #260はlint、format、build、unit test、E2Eを全成功した。契約は`docs/future/2D_1B_CASPROJ_PLAN.md`、完了証拠は`docs/future/2D_1B_CASPROJ_REPORT.md`を正本とする。
-- 現在の正式work package: `2D-1B-INPUT-SAFETY`。監査、数量上限候補、実装境界は`docs/future/2D_1B_INPUT_SAFETY_PLAN.md`を正本とする。数量profileと複数画像batchの確定前に実装値を決めない。
+- 現在の正式work package: `2D-1B-INPUT-SAFETY`。監査、accepted数量上限、実装境界は`docs/future/2D_1B_INPUT_SAFETY_PLAN.md`を正本とする。2026-07-16に`B+X`（balanced profile + Asset / Layer batch全件原子）がacceptedとなり、Draft PR #89で実装中。
 - PR #53（`2D-1B-STORAGE`）と PR #55（`2D-2-CREATE-01`）はrevertせず、provisionalとして保持する。PR #53全体のprovisional状態は、未完了の`2D-1B-INPUT-SAFETY`、`2D-1B-GATE`に残る。
 - `2D-1B-GATE`がmergeされるまで、追加の`2D-2-*`と`2D-3-*`本実装は開始しない。
 - 2D Pro Gateを人間が承認するまで、旧Phase 22〜28の3D実装を開始しない。

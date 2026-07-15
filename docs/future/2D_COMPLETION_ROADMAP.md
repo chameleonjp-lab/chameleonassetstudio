@@ -128,7 +128,7 @@
 | `2D-1B-RECOVERY` | 必須 | snapshot、trash、rollback、復元を実装する。 | completed。PR #80、#81でsnapshot / trash / rollback / 復元の再監査と補修を完了。 |
 | `2D-1B-CAPACITY` | 必須 | storage estimate、quota、persistent storage、退避導線を実装する。 | completed。B案（60% / 80% / 90%）をacceptedとし、PR #87 / CI Run #255で完了。 |
 | `2D-1B-CASPROJ` | 必須 | `.casproj` の段階的検査と migration を実装する。 | completed。PR #88 merge commit `a9a1e27a6f69544c379fb9fcefc90a13e0928859`、最終head CI Run #260 success。 |
-| `2D-1B-INPUT-SAFETY` | 必須 | ZIP、JSON、画像など不正入力の隔離と拒否を実装する。 | current。監査と候補は`2D_1B_INPUT_SAFETY_PLAN.md`を正本とし、数量profileと複数画像batch判断待ち。 |
+| `2D-1B-INPUT-SAFETY` | 必須 | ZIP、JSON、画像など不正入力の隔離と拒否を実装する。 | current。`B+X`（balanced profile + Asset / Layer batch全件原子）accepted。Draft PR #89で実装中。契約は`2D_1B_INPUT_SAFETY_PLAN.md`を正本とする。 |
 | `2D-1B-GATE` | 必須 | fixtureと保存回帰テストを通し、2D-2 / 2D-3本実装を解禁する。 | 残る`2D-1B-*`実装後。 |
 
 `2D-1B-STORAGE-CROSS-REVIEW`は、完了済みのREVISION / LAYERS / RECOVERYを横断監査する実行チェックポイントであり、正式work packageを追加するものではない。正式順序は`RECOVERY → CAPACITY → CASPROJ → INPUT-SAFETY → GATE`のまま維持する。
