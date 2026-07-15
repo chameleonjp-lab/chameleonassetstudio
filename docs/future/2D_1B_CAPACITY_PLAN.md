@@ -1,7 +1,7 @@
 # 2D-1B-CAPACITY 実装契約
 
 作成日: 2026-07-16  
-状態: `contract review / warning thresholds pending human decision`  
+状態: `implementation in progress / warning thresholds accepted`
 正式work package: `2D-1B-CAPACITY`  
 基準main: `e3c34fb292aab1d35a6da571ff17ca4ed9d13e0e`  
 直前Gate: `2D-1B-STORAGE-CROSS-REVIEW` completed（`BLOCKER 0 / MUST 0`）
@@ -125,15 +125,15 @@ type PersistentStorageState = 'granted' | 'not-granted' | 'unsupported' | 'error
 
 色だけで区別せず、状態名、理由、行動を文章で表示する。`critical`でも自動削除や保存禁止は行わない。保存はestimateと別に失敗し得るため、`QuotaExceededError`の処理を必ず維持する。
 
-### 5.2 割合候補（未承認）
+### 5.2 割合判断
 
 | 候補 | notice開始 | warning開始 | critical開始 | 特徴 |
 |---|---:|---:|---:|---|
 | A: 早め | 50% | 70% | 85% | 退避を早く促すが、警告が長く表示されやすい。 |
-| B: 標準 | 60% | 80% | 90% | 予防と表示頻度の中間。 |
+| B: 標準 | 60% | 80% | 90% | **accepted（2026-07-16、人間判断）**。予防と表示頻度の中間。 |
 | C: 遅め | 70% | 85% | 95% | 警告は少ないが、対処できる時間が短くなる。 |
 
-現在はどの候補もacceptedではない。人間が1つを承認するまで、割合定数と警告判定を製品コードへ追加しない。承認時はこの節へ判断日と採用値を追記し、同じDraft PRで実装する。
+候補Bを正式採用する。境界値はnotice 60%、warning 80%、critical 90%とし、同値から次の段階へ移る。候補AとCは比較記録として残すが、製品コードへ入れない。
 
 ## 6. 容量不足と正本維持
 
