@@ -144,7 +144,7 @@ test.describe('復旧点（2D-1B-RECOVERY）', () => {
     await setupProjectWithImage(page, 'snapshot-undo-reload');
 
     const layerList = page.getByRole('list', { name: 'レイヤー一覧' });
-    await layerList.getByRole('button', { name: 'base', exact: true }).click();
+    await layerList.getByRole('button', { name: 'main', exact: true }).click();
     const original = await readStoredEditState(page);
 
     await page.getByLabel('色相（-180〜180）').fill('120');
