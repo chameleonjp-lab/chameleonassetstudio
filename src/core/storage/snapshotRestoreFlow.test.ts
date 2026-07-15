@@ -31,18 +31,14 @@ async function seedRestoreFlow() {
     ...baseAsset,
     id: 'asset_restore_flow',
     textures: baseAsset.textures.map((texture) =>
-      texture.kind === 'edit'
-        ? { ...texture, size: { width: 10, height: 10 } }
-        : { ...texture },
+      texture.kind === 'edit' ? { ...texture, size: { width: 10, height: 10 } } : { ...texture },
     ),
   };
   const snapshotAsset: Asset = {
     ...baseAsset,
     id: currentAsset.id,
     textures: baseAsset.textures.map((texture) =>
-      texture.kind === 'edit'
-        ? { ...texture, size: { width: 5, height: 5 } }
-        : { ...texture },
+      texture.kind === 'edit' ? { ...texture, size: { width: 5, height: 5 } } : { ...texture },
     ),
   };
   const project = { ...createEmptyProject('復旧点フローテスト'), id: projectId };
@@ -56,10 +52,14 @@ async function seedRestoreFlow() {
   const snapshotBytes = new Uint8Array([1, 1, 1, 1]);
   const sourceBytes = new Uint8Array([7, 7, 7, 7]);
 
-  await saveProjectBundle(project, [currentAsset], [
-    { key: sourceKey, blob: new Blob([sourceBytes], { type: 'image/png' }) },
-    { key: editKey, blob: new Blob([currentBytes], { type: 'image/png' }) },
-  ]);
+  await saveProjectBundle(
+    project,
+    [currentAsset],
+    [
+      { key: sourceKey, blob: new Blob([sourceBytes], { type: 'image/png' }) },
+      { key: editKey, blob: new Blob([currentBytes], { type: 'image/png' }) },
+    ],
+  );
   await saveSnapshot({
     projectId,
     assetId: currentAsset.id,
