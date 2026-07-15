@@ -79,7 +79,9 @@ function assertValidSnapshotAsset(asset: Asset, assetId: string, blobKey: string
   }
   const texture = findEditTexture(asset, blobKey);
   if (!texture) {
-    throw new StorageError(`復旧点の Blob key は対象アセットの edit TextureRef に対応しません: ${blobKey}`);
+    throw new StorageError(
+      `復旧点の Blob key は対象アセットの edit TextureRef に対応しません: ${blobKey}`,
+    );
   }
   return texture;
 }
@@ -165,24 +167,20 @@ export async function saveSnapshot(input: SaveSnapshotInput): Promise<void> {
     },
   };
 
-  await runTransaction(
-    [STORE_ASSETS, STORE_SNAPSHOTS],
-    'readwrite',
-    async (tx) => {
-      const storedAsset = await loadStoredAssetInTx(tx, input.assetId);
-      assertStoredAssetOwnership(storedAsset, input.projectId, input.assetId);
-      assertSourceTexturesUnchanged(storedAsset.data, input.asset);
+  await runTransaction([STORE_ASSETS, STORE_SNAPSHOTS], 'readwrite', async (tx) => {
+    const storedAsset = await loadStoredAssetInTx(tx, input.assetId);
+    assertStoredAssetOwnership(storedAsset, input.projectId, input.assetId);
+    assertSourceTexturesUnchanged(storedAsset.data, input.asset);
 
-      const currentEditTexture = findEditTexture(storedAsset.data, input.blobKey);
-      if (!currentEditTexture || currentEditTexture.id !== snapshotEditTexture.id) {
-        throw new StorageError(
-          `復旧点の edit TextureRef が保存中アセットと一致しません: ${input.blobKey}`,
-        );
-      }
-      await requestToPromise(tx.objectStore(STORE_SNAPSHOTS).put(record));
-      await enforceSnapshotLimitInTx(tx, input.projectId, input.assetId);
-    },
-  );
+    const currentEditTexture = findEditTexture(storedAsset.data, input.blobKey);
+    if (!currentEditTexture || currentEditTexture.id !== snapshotEditTexture.id) {
+      throw new StorageError(
+        `復旧点の edit TextureRef が保存中アセットと一致しません: ${input.blobKey}`,
+      );
+    }
+    await requestToPromise(tx.objectStore(STORE_SNAPSHOTS).put(record));
+    await enforceSnapshotLimitInTx(tx, input.projectId, input.assetId);
+  });
 }
 
 async function enforceSnapshotLimitInTx(
@@ -247,46 +245,42 @@ export interface RestoredSnapshot {
  * 同一 readonly transaction で確認する。書き戻しは呼び出し側が saveAssetRevision で行う。
  */
 export async function restoreSnapshot(id: string): Promise<RestoredSnapshot> {
-  return runTransaction(
-    [STORE_SNAPSHOTS, STORE_ASSETS, STORE_BLOBS],
-    'readonly',
-    async (tx) => {
-      const record = await requestToPromise(
-        tx.objectStore(STORE_SNAPSHOTS).get(id) as IDBRequest<AssetSnapshotRecord | undefined>,
+  return runTransaction([STORE_SNAPSHOTS, STORE_ASSETS, STORE_BLOBS], 'readonly', async (tx) => {
+    const record = await requestToPromise(
+      tx.objectStore(STORE_SNAPSHOTS).get(id) as IDBRequest<AssetSnapshotRecord | undefined>,
+    );
+    if (!record) {
+      throw new StorageError(`復旧点（id: ${id}）が見つかりません`);
+    }
+
+    const snapshotEditTexture = assertValidSnapshotAsset(
+      record.asset,
+      record.assetId,
+      record.blob.key,
+    );
+    const storedAsset = await loadStoredAssetInTx(tx, record.assetId);
+    assertStoredAssetOwnership(storedAsset, record.projectId, record.assetId);
+    assertSourceTexturesUnchanged(storedAsset.data, record.asset);
+
+    const currentEditTexture = findEditTexture(storedAsset.data, record.blob.key);
+    if (!currentEditTexture || currentEditTexture.id !== snapshotEditTexture.id) {
+      throw new StorageError(
+        `復旧点の edit TextureRef が現在のアセットと一致しません: ${record.blob.key}`,
       );
-      if (!record) {
-        throw new StorageError(`復旧点（id: ${id}）が見つかりません`);
-      }
+    }
+    const currentBlob = await loadStoredBlobInTx(tx, record.blob.key);
+    if (!currentBlob || currentBlob.projectId !== record.projectId) {
+      throw new StorageError(`復元前の edit Blob が見つかりません: ${record.blob.key}`);
+    }
 
-      const snapshotEditTexture = assertValidSnapshotAsset(
-        record.asset,
-        record.assetId,
-        record.blob.key,
-      );
-      const storedAsset = await loadStoredAssetInTx(tx, record.assetId);
-      assertStoredAssetOwnership(storedAsset, record.projectId, record.assetId);
-      assertSourceTexturesUnchanged(storedAsset.data, record.asset);
-
-      const currentEditTexture = findEditTexture(storedAsset.data, record.blob.key);
-      if (!currentEditTexture || currentEditTexture.id !== snapshotEditTexture.id) {
-        throw new StorageError(
-          `復旧点の edit TextureRef が現在のアセットと一致しません: ${record.blob.key}`,
-        );
-      }
-      const currentBlob = await loadStoredBlobInTx(tx, record.blob.key);
-      if (!currentBlob || currentBlob.projectId !== record.projectId) {
-        throw new StorageError(`復元前の edit Blob が見つかりません: ${record.blob.key}`);
-      }
-
-      return {
-        asset: record.asset,
-        blobKey: record.blob.key,
-        blob: new Blob([record.blob.bytes], { type: record.blob.mimeType }),
-        beforeAsset: storedAsset.data,
-        beforeBlob: new Blob([currentBlob.bytes], { type: currentBlob.mimeType }),
-      };
-    },
-  );
+    return {
+      asset: record.asset,
+      blobKey: record.blob.key,
+      blob: new Blob([record.blob.bytes], { type: record.blob.mimeType }),
+      beforeAsset: storedAsset.data,
+      beforeBlob: new Blob([currentBlob.bytes], { type: currentBlob.mimeType }),
+    };
+  });
 }
 
 /**
