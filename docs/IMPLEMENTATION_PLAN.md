@@ -63,7 +63,7 @@ Phase 17 後は、旧 Phase 18〜28 の順番ではなく次を優先する。
 | `2D-0` | 完成仕様の固定 | 上位4仕様、対象ユーザー、対応範囲、完成条件、判断待ちを承認可能な状態にする。完了済み。 | 人間判断 + Codex docs + Opus 4.8 review | 完了済み。 |
 | `2D-1A-BASELINE` | 現行実装 baseline | 現行 version、型、schema、`.casproj`、IndexedDB、autosave、export ZIP、migration、fixture/test coverage を `docs/future/2D_1A_BASELINE_REPORT.md` に固定する。PR #50で完了・mainへマージ済み。 | Codex docs + Opus 4.8 review | product code、schema、version、保存形式、export ZIPを変更しない完了済み前段。 |
 | `2D-1a` | データ・座標・migration・復旧設計 | 5つのデータ層、Family / Variant、ID、座標、trim / flip / scale、animation / collider、target 拡張、provenance、検証、migration 契約を固定した。PR #52、#60、#62、#63、#65、#67、#68で完了し、ADR 0001〜0015がaccepted。 | 人間判断を Codex が ADR / fixture 化。完了済み。 | 完了済み。 |
-| `2D-1b` | 保存・migration・復旧実装 | 改訂単位の整合保存、履歴・backup・trash・rollback、容量警告、安全な staged `.casproj` import と旧形式互換を実装する。PR #53 は詳細契約 Gate より先に merge 済みの provisional 実装であり、`2D-1B-REVISION` はPR #70、#71、#72で完了、`2D-1B-GATE` は未完了。 | ユーザーとChatGPTが範囲を確定し、Codexが実装する。Opus 4.8は利用可能な場合にCI成功後レビュー。 | 現在の段階。`2D-1B-REVISION`は完了し、次は`2D-1B-LAYERS`。 |
+| `2D-1b` | 保存・migration・復旧実装 | 改訂単位の整合保存、履歴・backup・trash・rollback、容量警告、安全な staged `.casproj` import と旧形式互換を実装する。PR #53 は詳細契約 Gate より先に merge 済みの provisional 実装であり、`2D-1B-REVISION` はPR #70、#71、#72で完了、`2D-1B-GATE` は未完了。 | ユーザーとChatGPTが範囲を確定し、Codexが実装する。Opus 4.8は利用可能な場合にCI成功後レビュー。 | 現在の段階。`2D-1B-REVISION`は完了し、`2D-1B-LAYERS`: implementation in review。PR #76 merged; texture transition integrity follow-up in review。次は引き続き`2D-1B-LAYERS`。 |
 | `2D-2` | 新規作成・取り込み・修正 | 複数 Asset、空キャンバス、template、画像 import、基本描画、非破壊修正、派生 variant、一括変更、任意形式と AI の境界を完成させる。PR #55 は `2D-2-CREATE` の partial / provisional 実装であり、`2D-2-PROJECT` は未完了。 | Codex | `2D-1B-GATE` mergeまでは追加の本実装を停止し、調査、prototype、test設計に限定する。 |
 | `2D-3` | 動き・ゲーム用情報 | timeline、可変時間、event、簡易 rig、origin / anchor / collider、素材種別 profile、ゲーム風 preview、理由付き検査、変更影響を完成させる。 | Codex。新しい仕様判断はユーザーとChatGPTへ戻す。 | `2D-1B-GATE` mergeまでは調査、prototype、test設計に限定する。 |
 | `2D-4` | 共通書き出し・検査 | 決定的な再出力、sheet / atlas、scale、manifest / report / record、preflight、Generic Web / Canvas 2D / PixiJS / Phaser を完成させる。 | 契約を人間が固定し、Codexが実装、Opus 4.8が利用可能な場合にレビュー | `2D-5` の手順準備と `2D-6` だけ可。 |
@@ -77,7 +77,7 @@ Phase 17 後は、旧 Phase 18〜28 の順番ではなく次を優先する。
 - `2D-1a`: PR #52、#60、#62、#63、#65、#67、#68により完了。ADR 0001〜0015がaccepted。
 - 現在の段階: `2D-1b`。
 - 完了したwork package: `2D-1B-REVISION`。PR #70、#71、#72により、Asset JSONとBlobの原子的改訂保存、原子的保存前のautosave flush、非同期Undo / Redo、成功時だけの履歴stack移動、Asset所有境界の検証、Undo / Redoと通常編集の相互排他、保存成功後の履歴登録、利用者が観測できる最終状態のE2Eをmainへ反映した。PR #72のCI Run #163は成功済み。
-- 次のwork package: `2D-1B-LAYERS`。source / edit / cache / export record の保存境界を、accepted済みのADRと実コードに基づいて実装する。
+- 次のwork package: `2D-1B-LAYERS`（未変更）。2D-1B-LAYERS: implementation in review。PR #76 merged; texture transition integrity follow-up in review。source / edit / cache / export record の保存境界を、accepted済みのADRと実コードに基づいて実装する。
 - PR #53（`2D-1B-STORAGE`）と PR #55（`2D-2-CREATE-01`）はrevertせず、provisionalとして保持する。PR #53全体のprovisional状態は、未完了の`2D-1B-LAYERS`、`2D-1B-RECOVERY`、`2D-1B-CAPACITY`、`2D-1B-CASPROJ`、`2D-1B-INPUT-SAFETY`、`2D-1B-GATE`に残る。PR #55は`2D-2-CREATE`のpartialであり、`2D-2-PROJECT`は未完了。
 - `2D-1B-GATE`がmergeされるまで、追加の`2D-2-*`と`2D-3-*`本実装は開始しない。
 - 2D Pro Gateを人間が承認するまで、旧Phase 22〜28の3D実装を開始しない。
