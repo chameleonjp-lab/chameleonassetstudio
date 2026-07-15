@@ -281,12 +281,14 @@ function assertTextureBlobTransitions({
   nextAsset,
   putBlobKeys,
   deleteBlobKeys,
+  orphanDeleteKeys,
   transitions,
 }: {
   previousAsset: Asset;
   nextAsset: Asset;
   putBlobKeys: Set<string>;
   deleteBlobKeys: Set<string>;
+  orphanDeleteKeys: Set<string>;
   transitions: SourceBlobTransitions;
 }): void {
   const previous = buildTextureIndex(previousAsset, '保存前 Asset');
@@ -301,6 +303,9 @@ function assertTextureBlobTransitions({
   }
   for (const key of deleteBlobKeys) {
     if (!previous.byKey.has(key)) {
+      if (orphanDeleteKeys.has(key)) {
+        continue;
+      }
       throw new StorageError(`削除対象 Blob に対応する保存前 TextureRef がありません: ${key}`);
     }
     if (next.byKey.has(key)) {
@@ -324,7 +329,7 @@ function assertTextureBlobTransitions({
     if (!nextTexture) {
       if (!deleteBlobKeys.has(previousKey)) {
         throw new StorageError(
-          `削除された TextureRef に対応する Blob が削除対象にありません: ${previousKey}`,
+          `削除されたTextureRefに対応するBlobが削除対象にありません: ${previousKey}`,
         );
       }
       if (previousTexture.kind === 'source') {
@@ -335,6 +340,23 @@ function assertTextureBlobTransitions({
 
     const nextKey = blobKeyForAssetPath(nextAsset.id, nextTexture.path);
     if (previousTexture.kind === 'source') {
+      if (previousKey !== nextKey) {
+        if (!putBlobKeys.has(nextKey)) {
+          throw new StorageError(
+            `新しいTextureRefに対応するBlobが保存対象にありません: ${nextKey}`,
+          );
+        }
+        if (!deleteBlobKeys.has(previousKey)) {
+          throw new StorageError(
+            `削除されたTextureRefに対応するBlobが削除対象にありません: ${previousKey}`,
+          );
+        }
+      }
+      if (nextTexture.kind !== 'source') {
+        if (!deleteKeys.has(previousKey) || !deleteBlobKeys.has(previousKey)) {
+          throw new StorageError(`source delete 許可が必要です: ${previousKey}`);
+        }
+      }
       assertExistingSourceUnchanged(previousTexture, nextTexture);
       if (putBlobKeys.has(previousKey)) {
         throw new StorageError(`既存 source Blob は上書きできません: ${previousKey}`);
@@ -362,9 +384,7 @@ function assertTextureBlobTransitions({
     }
     const nextKey = blobKeyForAssetPath(nextAsset.id, nextTexture.path);
     if (!putBlobKeys.has(nextKey)) {
-      throw new StorageError(
-        `新しい TextureRef に対応する Blob が保存対象にありません: ${nextKey}`,
-      );
+      throw new StorageError(`新しいTextureRefに対応するBlobが保存対象にありません: ${nextKey}`);
     }
     if (nextTexture.kind === 'source') {
       addedSourceKeys.add(nextKey);
@@ -418,15 +438,23 @@ export async function saveAssetRevision({
       throw new StorageError('改訂対象アセットが保存されていません');
     }
     if (previousRecord.projectId !== projectId) {
-      throw new StorageError('改訂対象アセットは指定 Project に属していません');
+      throw new StorageError('改訂対象アセットは指定Projectに属していません');
     }
-    assertTextureBlobTransitions({
-      previousAsset: previousRecord.data,
-      nextAsset: asset,
-      putBlobKeys: new Set(putBlobs.map(({ key }) => key)),
-      deleteBlobKeys: new Set(deleteBlobKeys),
-      transitions: sourceBlobTransitions,
-    });
+
+    const previousTextures = buildTextureIndex(previousRecord.data, '保存前 Asset');
+    const orphanDeleteKeys = new Set<string>();
+    for (const key of deleteBlobKeys) {
+      if (previousTextures.byKey.has(key)) {
+        continue;
+      }
+      const blobRecord = await requestToPromise(
+        tx.objectStore(STORE_BLOBS).get(key) as IDBRequest<StoredBlobRecord | undefined>,
+      );
+      if (blobRecord?.projectId === projectId) {
+        orphanDeleteKeys.add(key);
+      }
+    }
+
     await requestToPromise(tx.objectStore(STORE_ASSETS).put(assetRecord));
     for (const record of blobRecords) {
       await requestToPromise(tx.objectStore(STORE_BLOBS).put(record));
@@ -434,6 +462,15 @@ export async function saveAssetRevision({
     for (const key of deleteBlobKeys) {
       await requestToPromise(tx.objectStore(STORE_BLOBS).delete(key));
     }
+
+    assertTextureBlobTransitions({
+      previousAsset: previousRecord.data,
+      nextAsset: asset,
+      putBlobKeys: new Set(putBlobs.map(({ key }) => key)),
+      deleteBlobKeys: new Set(deleteBlobKeys),
+      orphanDeleteKeys,
+      transitions: sourceBlobTransitions,
+    });
   });
 }
 
