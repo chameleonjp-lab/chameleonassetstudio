@@ -10,7 +10,6 @@ import {
   runTransaction,
 } from './db';
 
-/** アセットあたりに保持する復旧点（snapshot）の最大数（2D-1B-STORAGE §C）。 */
 export const SNAPSHOT_LIMIT_PER_ASSET = 3;
 
 interface StoredAssetRecord {
@@ -27,17 +26,13 @@ interface StoredBlobRecord {
   updatedAt: string;
 }
 
-/** snapshots ストアの 1 レコード。破壊的画像編集の直前状態をまとめて保持する。 */
-export interface AssetSnapshotRecord {
+interface AssetSnapshotRecord {
   id: string;
   projectId: string;
   assetId: string;
   createdAt: string;
-  /** 操作ラベル（例: 「消しゴム」「輪郭線」）。復元 UI とコミット履歴に使う。 */
   label: string;
-  /** 操作前の Asset（layers / textures のサイズなど）。 */
   asset: Asset;
-  /** 操作前の編集用画像 Blob。 */
   blob: {
     key: string;
     mimeType: string;
@@ -49,11 +44,8 @@ export interface SaveSnapshotInput {
   projectId: string;
   assetId: string;
   label: string;
-  /** 上書き前の Asset（そのまま保存する）。 */
   asset: Asset;
-  /** 上書き対象の edit Blob キー（asset.json の textures[].path と対応）。 */
   blobKey: string;
-  /** 上書き前の edit Blob。 */
   blob: Blob;
 }
 
@@ -61,29 +53,8 @@ function blobKeyForTexture(assetId: string, texture: TextureRef): string {
   return `${assetId}/${texture.path}`;
 }
 
-function findEditTexture(asset: Asset, blobKey: string): TextureRef | undefined {
-  return asset.textures.find(
-    (texture) => texture.kind === 'edit' && blobKeyForTexture(asset.id, texture) === blobKey,
-  );
-}
-
-function assertValidSnapshotAsset(asset: Asset, assetId: string, blobKey: string): TextureRef {
-  if (asset.id !== assetId) {
-    throw new StorageError(
-      `復旧点の Asset ID（${asset.id}）が対象アセット（${assetId}）と一致しません`,
-    );
-  }
-  const result = validateAsset(asset);
-  if (!result.valid) {
-    throw new StorageError(`復旧点の Asset 内容が不正です: ${result.errors.join(' / ')}`);
-  }
-  const texture = findEditTexture(asset, blobKey);
-  if (!texture) {
-    throw new StorageError(
-      `復旧点の Blob key は対象アセットの edit TextureRef に対応しません: ${blobKey}`,
-    );
-  }
-  return texture;
+function sourceTextures(asset: Asset): TextureRef[] {
+  return asset.textures.filter((texture) => texture.kind === 'source');
 }
 
 function sameTextureRef(left: TextureRef, right: TextureRef): boolean {
@@ -98,31 +69,64 @@ function sameTextureRef(left: TextureRef, right: TextureRef): boolean {
   );
 }
 
-function sameAsset(left: Asset, right: Asset): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
-
-function sameBytes(left: ArrayBuffer, right: ArrayBuffer): boolean {
-  const leftBytes = new Uint8Array(left);
-  const rightBytes = new Uint8Array(right);
-  if (leftBytes.length !== rightBytes.length) {
-    return false;
+function assertSourceTexturesUnchanged(previous: Asset, next: Asset): void {
+  const previousSources = sourceTextures(previous);
+  const nextById = new Map(sourceTextures(next).map((texture) => [texture.id, texture]));
+  if (previousSources.length !== nextById.size) {
+    throw new StorageError('復旧点では source TextureRef を変更できません');
   }
-  return leftBytes.every((value, index) => value === rightBytes[index]);
-}
-
-function assertSourceTexturesUnchanged(current: Asset, snapshot: Asset): void {
-  const currentSources = current.textures.filter((texture) => texture.kind === 'source');
-  const snapshotSources = snapshot.textures.filter((texture) => texture.kind === 'source');
-  if (currentSources.length !== snapshotSources.length) {
-    throw new StorageError('復旧点で source TextureRef の追加・削除はできません');
-  }
-  const snapshotById = new Map(snapshotSources.map((texture) => [texture.id, texture]));
-  for (const currentSource of currentSources) {
-    const snapshotSource = snapshotById.get(currentSource.id);
-    if (!snapshotSource || !sameTextureRef(currentSource, snapshotSource)) {
-      throw new StorageError(`復旧点で source TextureRef は変更できません: ${currentSource.id}`);
+  for (const texture of previousSources) {
+    const nextTexture = nextById.get(texture.id);
+    if (!nextTexture || !sameTextureRef(texture, nextTexture)) {
+      throw new StorageError(`復旧点では source TextureRef を変更できません: ${texture.id}`);
     }
+  }
+}
+
+function findEditTexture(asset: Asset, blobKey: string): TextureRef | undefined {
+  return asset.textures.find(
+    (texture) => texture.kind === 'edit' && blobKeyForTexture(asset.id, texture) === blobKey,
+  );
+}
+
+function assertValidSnapshotAsset(asset: Asset, assetId: string, blobKey: string): TextureRef {
+  const result = validateAsset(asset);
+  if (!result.valid) {
+    throw new StorageError(`復旧点のAssetが不正です: ${result.errors.join(' / ')}`);
+  }
+  if (asset.id !== assetId) {
+    throw new StorageError(`復旧点のAsset IDが一致しません: expected=${assetId}, actual=${asset.id}`);
+  }
+  const ids = new Set<string>();
+  const keys = new Set<string>();
+  for (const texture of asset.textures) {
+    if (ids.has(texture.id)) {
+      throw new StorageError(`復旧点のAssetに同じTextureRef IDがあります: ${texture.id}`);
+    }
+    const key = blobKeyForTexture(asset.id, texture);
+    if (keys.has(key)) {
+      throw new StorageError(`復旧点のAssetで同じBlob keyが参照されています: ${key}`);
+    }
+    ids.add(texture.id);
+    keys.add(key);
+  }
+  const editTexture = findEditTexture(asset, blobKey);
+  if (!editTexture) {
+    throw new StorageError(`復旧点のBlob keyに対応するedit TextureRefがありません: ${blobKey}`);
+  }
+  return editTexture;
+}
+
+function assertStoredAssetOwnership(
+  record: StoredAssetRecord | undefined,
+  projectId: string,
+  assetId: string,
+): asserts record is StoredAssetRecord {
+  if (!record) {
+    throw new StorageError(`復旧対象アセット（id: ${assetId}）が保存されていません`);
+  }
+  if (record.projectId !== projectId) {
+    throw new StorageError(`復旧対象アセットはProject（id: ${projectId}）に属していません`);
   }
 }
 
@@ -144,25 +148,16 @@ async function loadStoredBlobInTx(
   );
 }
 
-function assertStoredAssetOwnership(
-  stored: StoredAssetRecord | undefined,
-  projectId: string,
-  assetId: string,
-): asserts stored is StoredAssetRecord {
-  if (!stored) {
-    throw new StorageError(`復旧対象アセット（id: ${assetId}）が見つかりません`);
-  }
-  if (stored.projectId !== projectId) {
-    throw new StorageError(
-      `復旧対象アセット（id: ${assetId}）は Project（id: ${projectId}）に属していません`,
-    );
-  }
+function sameBytes(left: ArrayBuffer, right: ArrayBuffer): boolean {
+  const a = new Uint8Array(left);
+  const b = new Uint8Array(right);
+  return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
-/**
- * スナップショット（Project + Asset 単位で最大 SNAPSHOT_LIMIT_PER_ASSET 件）を保存する。
- * 保存前に、対象 Asset の所有境界、source 不変性、edit TextureRef と Blob の対応を検証する。
- */
+function sameAsset(left: Asset, right: Asset): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 export async function saveSnapshot(input: SaveSnapshotInput): Promise<void> {
   const snapshotEditTexture = assertValidSnapshotAsset(input.asset, input.assetId, input.blobKey);
   const bytes = await input.blob.arrayBuffer();
@@ -180,7 +175,7 @@ export async function saveSnapshot(input: SaveSnapshotInput): Promise<void> {
     },
   };
 
-  await runTransaction([STORE_ASSETS, STORE_SNAPSHOTS], 'readwrite', async (tx) => {
+  await runTransaction([STORE_ASSETS, STORE_BLOBS, STORE_SNAPSHOTS], 'readwrite', async (tx) => {
     const storedAsset = await loadStoredAssetInTx(tx, input.assetId);
     assertStoredAssetOwnership(storedAsset, input.projectId, input.assetId);
     assertSourceTexturesUnchanged(storedAsset.data, input.asset);
@@ -191,6 +186,16 @@ export async function saveSnapshot(input: SaveSnapshotInput): Promise<void> {
         `復旧点の edit TextureRef が保存中アセットと一致しません: ${input.blobKey}`,
       );
     }
+    const storedBlob = await loadStoredBlobInTx(tx, input.blobKey);
+    if (!storedBlob || storedBlob.projectId !== input.projectId) {
+      throw new StorageError(`復旧点対象の edit Blob が見つかりません: ${input.blobKey}`);
+    }
+    if (!sameBytes(storedBlob.bytes, bytes) || storedBlob.mimeType !== input.blob.type) {
+      throw new StorageError(
+        `復旧点へ渡された edit Blob が現在の保存済みBlobと一致しません: ${input.blobKey}`,
+      );
+    }
+
     await requestToPromise(tx.objectStore(STORE_SNAPSHOTS).put(record));
     await enforceSnapshotLimitInTx(tx, input.projectId, input.assetId);
   });
@@ -223,7 +228,6 @@ export interface AssetSnapshotSummary {
   createdAt: string;
 }
 
-/** アセット単位の復旧点一覧。現在保存されている Asset の Project に属するものだけを新しい順で返す。 */
 export async function listSnapshots(assetId: string): Promise<AssetSnapshotSummary[]> {
   const rows = await runTransaction([STORE_ASSETS, STORE_SNAPSHOTS], 'readonly', async (tx) => {
     const storedAsset = await loadStoredAssetInTx(tx, assetId);
@@ -247,17 +251,10 @@ export interface RestoredSnapshot {
   asset: Asset;
   blobKey: string;
   blob: Blob;
-  /** 復元直前の正本。UI の Undo 登録に利用できる。 */
   beforeAsset: Asset;
-  /** 復元直前の edit Blob。欠落している場合は復元自体を拒否する。 */
   beforeBlob: Blob;
 }
 
-/**
- * 復旧点を読み出す。
- * 現在の正本 Asset と snapshot の Project / Asset 所有境界、source 不変性、edit Blob の存在を
- * 同一 readonly transaction で確認する。書き戻しは呼び出し側が saveAssetRevision で行う。
- */
 export async function restoreSnapshot(id: string): Promise<RestoredSnapshot> {
   return runTransaction([STORE_SNAPSHOTS, STORE_ASSETS, STORE_BLOBS], 'readonly', async (tx) => {
     const record = await requestToPromise(
@@ -308,10 +305,6 @@ export interface ApplySnapshotRestoreInput {
   blob: Blob;
 }
 
-/**
- * 復旧点の準備時に読み取った正本と現在の正本が一致する場合だけ、
- * Asset JSON と edit Blob を同じ readwrite transaction で復元する。
- */
 export async function applySnapshotRestore(input: ApplySnapshotRestoreInput): Promise<void> {
   const beforeEditTexture = assertValidSnapshotAsset(
     input.beforeAsset,
@@ -367,14 +360,10 @@ export async function applySnapshotRestore(input: ApplySnapshotRestoreInput): Pr
   });
 }
 
-/**
- * 既存トランザクションへ相乗りしてアセットの全復旧点を削除する。
- * Project ID を指定した場合は、その所有範囲だけを削除する。
- */
 export async function deleteSnapshotsForAssetInTx(
   tx: IDBTransaction,
+  projectId: string,
   assetId: string,
-  projectId?: string,
 ): Promise<void> {
   const records = await requestToPromise(
     tx.objectStore(STORE_SNAPSHOTS).index(INDEX_BY_ASSET).getAll(assetId) as IDBRequest<
@@ -382,15 +371,17 @@ export async function deleteSnapshotsForAssetInTx(
     >,
   );
   for (const record of records) {
-    if (projectId === undefined || record.projectId === projectId) {
+    if (record.projectId === projectId) {
       await requestToPromise(tx.objectStore(STORE_SNAPSHOTS).delete(record.id));
     }
   }
 }
 
-/** 単独のトランザクションでアセットの全復旧点を削除する。 */
-export async function deleteSnapshotsForAsset(assetId: string): Promise<void> {
+export async function deleteSnapshotsForAsset(
+  projectId: string,
+  assetId: string,
+): Promise<void> {
   await runTransaction([STORE_SNAPSHOTS], 'readwrite', (tx) =>
-    deleteSnapshotsForAssetInTx(tx, assetId),
+    deleteSnapshotsForAssetInTx(tx, projectId, assetId),
   );
 }
