@@ -1,12 +1,14 @@
 # 2D-1B-CASPROJ 完了報告
 
 作成日: 2026-07-16
-状態: `implementation completed / Draft PR #88 merge pending`
+状態: `completed / PR #88 merged`
 正式work package: `2D-1B-CASPROJ`
 基準main: `66ba2c4096dabc297f402a9176b8c60de9c584f9`（PR #87 merge）
 Draft PR: #88
 実装commit: `ea884efd9c813b0371a333450ff1e794f47d03a9`
 CI: Run #259 success
+merge commit: `a9a1e27a6f69544c379fb9fcefc90a13e0928859`
+最終head CI: Run #260 success
 
 ## 1. 結果
 
@@ -63,13 +65,12 @@ CI: Run #259 success
 - 現行`0.1.0`が最初の実在形式でmigration配列は空のため、非空のapplied migration表示は将来の実migration追加時に実fixtureで固定する。架空の旧versionは追加していない。
 - `settings/export-presets.json`は検証するが、現行canonical storeに対応する保存先がない。UIで非保存と元`.casproj`保持を警告する。schema / store追加は本work packageでは行わない。
 - ZIP展開サイズ、file数、圧縮率、JSON深さ、画像寸法などの数量上限とresource budgetは未決定であり、`2D-1B-INPUT-SAFETY`で契約を固定する。
-- Draft PR #88がmainへmergeされるまでは`2D-1B-CASPROJ`を正式完了にせず、後続へ進まない。
+- PR #88はmainへmerge済みであり、正式な後続`2D-1B-INPUT-SAFETY`へ進む。
 
 正式な後続順序は次のとおり維持する。
 
 ```text
-2D-1B-CASPROJ merge
-→ 2D-1B-INPUT-SAFETY
+2D-1B-INPUT-SAFETY
 → 2D-1B-GATE
 ```
 
