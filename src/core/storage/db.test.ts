@@ -11,6 +11,7 @@ import {
   isQuotaExceededStorageError,
   requestToPromise,
   resetDbForTests,
+  runTransaction,
 } from './db';
 
 beforeEach(async () => {
@@ -134,5 +135,15 @@ describe('容量不足（QuotaExceededError）の検出（2D-1B-STORAGE §D）',
     fake.onerror?.();
 
     await expect(promise).rejects.toThrow(/データベース操作に失敗しました/);
+  });
+
+  it('transaction callback が同期的に投げた QuotaExceededError も容量不足エラーへ変換する', async () => {
+    const promise = runTransaction([STORE_PROJECTS], 'readwrite', () => {
+      throw new DOMException('同期的な容量不足', 'QuotaExceededError');
+    });
+
+    await expect(promise).rejects.toThrow(QUOTA_EXCEEDED_MESSAGE);
+    const convertedError = await promise.catch((error: unknown) => error);
+    expect(isQuotaExceededStorageError(convertedError)).toBe(true);
   });
 });
