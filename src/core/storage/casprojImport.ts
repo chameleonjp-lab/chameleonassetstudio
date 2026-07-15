@@ -1,7 +1,4 @@
-import {
-  importCasproj as importCasprojBase,
-  type CasprojImportResult,
-} from './casproj';
+import { importCasproj as importCasprojBase, type CasprojImportResult } from './casproj';
 
 const ASSET_FILE_PATTERN = /^assets\/([^/]+)\//;
 
