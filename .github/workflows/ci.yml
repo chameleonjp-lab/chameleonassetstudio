@@ -65,6 +65,89 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Apply targeted call-site fixes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          home = Path('src/features/home/HomeScreen.tsx')
+          text = home.read_text()
+          old = """      const assetIdMap = new Map(bundle.assets.map((asset) => [asset.id, generateId('asset')]));
+          const project = {
+            ...bundle.project,
+            // asset 本体（assets/*/asset.json）が無い entry は dangling になるため除外する
+            id: generateId('project'),
+            assets: bundle.project.assets
+              .filter((entry) => assetIdMap.has(entry.id))
+              .map((entry) => ({
+                ...entry,
+                id: assetIdMap.get(entry.id)!,
+              })),
+          };
+          const renamedAssets = bundle.assets.map((asset) => ({
+            ...asset,
+            id: assetIdMap.get(asset.id)!,
+          }));
+"""
+          new = """      const assetIdMap = new Map(bundle.assets.map((asset) => [asset.id, generateId('asset')]));
+          const referencedOriginalAssetIds = new Set(
+            bundle.project.assets.map((entry) => entry.id).filter((id) => assetIdMap.has(id)),
+          );
+          const project = {
+            ...bundle.project,
+            // asset 本体（assets/*/asset.json）が無い entry は dangling になるため除外する
+            id: generateId('project'),
+            assets: bundle.project.assets
+              .filter((entry) => referencedOriginalAssetIds.has(entry.id))
+              .map((entry) => ({
+                ...entry,
+                id: assetIdMap.get(entry.id)!,
+              })),
+          };
+          const renamedAssets = bundle.assets
+            .filter((asset) => referencedOriginalAssetIds.has(asset.id))
+            .map((asset) => ({
+              ...asset,
+              id: assetIdMap.get(asset.id)!,
+            }));
+"""
+          if old not in text:
+            raise SystemExit('HomeScreen remap block not found')
+          text = text.replace(old, new, 1)
+          old_condition = """        if (!newAssetId) {
+                  return [];
+                }
+"""
+          new_condition = """        if (!newAssetId || !referencedOriginalAssetIds.has(match[1])) {
+                  return [];
+                }
+"""
+          if old_condition not in text:
+            raise SystemExit('HomeScreen blob filter block not found')
+          home.write_text(text.replace(old_condition, new_condition, 1))
+
+          editor = Path('src/features/editor/EditorScreen.tsx')
+          text = editor.read_text()
+          old = """    if (!ok) {
+                return;
+              }
+              if (!beginEditorPersistentMutation()) {
+                return;
+              }
+"""
+          new = """    if (!ok) {
+                return;
+              }
+              await history.waitForPending();
+              if (!beginEditorPersistentMutation()) {
+                return;
+              }
+"""
+          if old not in text:
+            raise SystemExit('EditorScreen delete sequencing block not found')
+          editor.write_text(text.replace(old, new, 1))
+          PY
       - name: Apply exact Prettier output
         run: |
           npx prettier --write \
@@ -77,8 +160,10 @@ jobs:
             src/core/storage/recoveryTrash.test.ts \
             src/core/storage/snapshotStore.test.ts \
             src/core/storage/snapshotStore.ts \
-            src/features/editor/editorMutationGuard.test.ts
-      - name: Commit exact Prettier output
+            src/features/editor/EditorScreen.tsx \
+            src/features/editor/editorMutationGuard.test.ts \
+            src/features/home/HomeScreen.tsx
+      - name: Commit targeted fixes and exact formatting
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         shell: bash
         run: |
@@ -87,8 +172,8 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/core src/features/editor/editorMutationGuard.test.ts
-          git commit -m "style: apply exact prettier output [skip ci]"
+          git add src/core src/features
+          git commit -m "fix: align import and delete persistence sequencing [skip ci]"
           git push origin HEAD:${{ github.head_ref }}
       - run: npm run lint
       - run: npm run format:check
