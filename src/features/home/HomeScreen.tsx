@@ -3,6 +3,7 @@ import { createEmptyProject } from '../../core/model';
 import {
   CasprojError,
   TRASH_LIMIT,
+  assertCasprojInputSize,
   commitStagedCasprojImport,
   deleteProject,
   deleteQuarantineEntry,
@@ -177,6 +178,7 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
     setImportSuccessMessage(null);
     let sourceBytes: ArrayBuffer | null = null;
     try {
+      assertCasprojInputSize(file.size);
       sourceBytes = await file.arrayBuffer();
       const staged = await stageCasprojImport(sourceBytes);
       await commitStagedCasprojImport(staged);
@@ -189,12 +191,12 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
     } catch (error) {
       const importErrorMessage = `.casproj を読み込めませんでした: ${toErrorMessage(error)} 既存の保存済みプロジェクトは変更されていません。`;
       // 壊れた・不正な .casproj は正本ストアへ一切書き込まず、隔離領域へ退避する（2D-1B-STORAGE §E）。
-      if (error instanceof CasprojError && sourceBytes) {
+      if (error instanceof CasprojError) {
         try {
           await saveQuarantineEntry({
             fileName: file.name,
             errorMessage: toErrorMessage(error),
-            bytes: sourceBytes,
+            ...(sourceBytes ? { bytes: sourceBytes } : { size: file.size }),
           });
           await reload();
         } catch {

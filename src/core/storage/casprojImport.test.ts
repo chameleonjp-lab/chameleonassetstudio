@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { strToU8, zipSync, type Zippable } from 'fflate';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Asset, ExportPresetFile, Project } from '../model';
 import exportPresetsJson from '../samples/export-presets.sample.json';
 import v010AssetJson from './__fixtures__/v0.1.0-asset.json';
@@ -13,7 +13,7 @@ import { listProjects, loadAsset, loadBlob } from './projectStore';
 const asset = v010AssetJson as unknown as Asset;
 const project = v010ProjectJson as unknown as Project;
 const exportPresets = exportPresetsJson as unknown as ExportPresetFile;
-const imageBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
+const imageBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 function jsonBytes(value: unknown): Uint8Array {
   return strToU8(`${JSON.stringify(value, null, 2)}\n`);
@@ -61,6 +61,14 @@ function deterministicIds(): (prefix: string) => string {
 
 beforeEach(async () => {
   await resetDbForTests();
+  vi.stubGlobal(
+    'createImageBitmap',
+    vi.fn(async () => ({ width: 8, height: 8, close: vi.fn() })),
+  );
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe('2D-1B-CASPROJ staged import', () => {
@@ -105,6 +113,33 @@ describe('2D-1B-CASPROJ staged import', () => {
     await expect(promise).rejects.toMatchObject({ code: 'incomplete-bundle' });
     await expect(promise).rejects.toThrow(/画像ファイルが不足/);
     expect(await listProjects()).toEqual([]);
+  });
+
+  it('画像のmagic bytes、decode、TextureRef実寸法をcommit前に検査する', async () => {
+    const jpegBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
+    await expect(
+      stageCasprojImport(
+        makeCasproj({
+          files: { [`assets/${asset.id}/${asset.textures[0].path}`]: jpegBytes },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'unsafe-input' });
+
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn(async () => Promise.reject(new Error('decode'))),
+    );
+    await expect(stageCasprojImport(makeCasproj())).rejects.toMatchObject({
+      code: 'unsafe-input',
+    });
+
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn(async () => ({ width: 9, height: 8, close: vi.fn() })),
+    );
+    await expect(stageCasprojImport(makeCasproj())).rejects.toMatchObject({
+      code: 'unsafe-input',
+    });
   });
 
   it('canonical storeに保存できないexport presetsは検証後にwarningを返す', async () => {

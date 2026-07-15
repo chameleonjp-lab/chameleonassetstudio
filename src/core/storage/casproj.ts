@@ -1,7 +1,22 @@
-import { strFromU8, strToU8, unzip, zip, type Unzipped, type Zippable } from 'fflate';
+import {
+  strFromU8,
+  strToU8,
+  unzip,
+  zip,
+  type Unzipped,
+  type UnzipFileInfo,
+  type Zippable,
+} from 'fflate';
 import type { Asset, ExportPresetFile, Project } from '../model';
 import { MigrationError, migrateAsset, migrateExportPresets, migrateProject } from '../model';
 import { validateAsset, validateExportPresets, validateProject } from '../schema/validate';
+import {
+  ArchivePreflight,
+  InputSafetyError,
+  assertCasprojCompressedSize,
+  assertExpandedEntries,
+  parseBoundedJson,
+} from '../input/inputSafety';
 
 export type CasprojErrorCode =
   | 'invalid-archive'
@@ -9,7 +24,9 @@ export type CasprojErrorCode =
   | 'invalid-document'
   | 'unsupported-version'
   | 'incomplete-bundle'
-  | 'inconsistent-bundle';
+  | 'inconsistent-bundle'
+  | 'input-limit'
+  | 'unsafe-input';
 
 export class CasprojError extends Error {
   readonly code: CasprojErrorCode;
@@ -75,9 +92,49 @@ function zipAsync(data: Zippable): Promise<Uint8Array> {
   });
 }
 
+function casprojInputError(error: InputSafetyError): CasprojError {
+  return new CasprojError(error.message, {
+    cause: error,
+    code: error.kind,
+  });
+}
+
+export function assertCasprojInputSize(size: number): void {
+  try {
+    assertCasprojCompressedSize(size);
+  } catch (error) {
+    if (error instanceof InputSafetyError) {
+      throw casprojInputError(error);
+    }
+    throw error;
+  }
+}
+
 function unzipAsync(bytes: Uint8Array): Promise<Unzipped> {
+  assertCasprojInputSize(bytes.byteLength);
   return new Promise((resolve, reject) => {
-    unzip(bytes, (error, output) => {
+    const preflight = new ArchivePreflight();
+    let guardError: InputSafetyError | null = null;
+    const filter = (entry: UnzipFileInfo): boolean => {
+      if (guardError) {
+        return false;
+      }
+      try {
+        preflight.add(entry);
+        return true;
+      } catch (error) {
+        if (error instanceof InputSafetyError) {
+          guardError = error;
+          return false;
+        }
+        throw error;
+      }
+    };
+    unzip(bytes, { filter }, (error, output) => {
+      if (guardError) {
+        reject(casprojInputError(guardError));
+        return;
+      }
       if (error) {
         reject(
           new CasprojError('ZIP として読み込めませんでした', {
@@ -86,7 +143,19 @@ function unzipAsync(bytes: Uint8Array): Promise<Unzipped> {
           }),
         );
       } else {
-        resolve(output);
+        try {
+          assertExpandedEntries(
+            Object.entries(output).map(([path, entryBytes]) => ({
+              path,
+              size: entryBytes.byteLength,
+            })),
+          );
+          resolve(output);
+        } catch (inputError) {
+          reject(
+            inputError instanceof InputSafetyError ? casprojInputError(inputError) : inputError,
+          );
+        }
       }
     });
   });
@@ -106,8 +175,11 @@ function toJsonBytes(value: unknown): Uint8Array {
 
 function parseJson(path: string, bytes: Uint8Array): unknown {
   try {
-    return JSON.parse(strFromU8(bytes));
+    return parseBoundedJson(path, bytes);
   } catch (error) {
+    if (error instanceof InputSafetyError) {
+      throw casprojInputError(error);
+    }
     throw new CasprojError(`${path} が JSON として読めません`, {
       cause: error,
       code: 'invalid-document',

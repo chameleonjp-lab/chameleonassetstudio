@@ -62,12 +62,10 @@ describe('壊れた import の隔離（quarantine）', () => {
   });
 
   it('50MB を超えるファイルは bytes を保存せず、size と理由だけ残す', async () => {
-    // 実際に 50MB を確保せず byteLength だけ超過させたオブジェクトで代用する
-    const bytes = { byteLength: QUARANTINE_MAX_STORED_BYTES + 1 } as ArrayBuffer;
     await saveQuarantineEntry({
       fileName: 'huge.casproj',
       errorMessage: '巨大ファイル',
-      bytes,
+      size: QUARANTINE_MAX_STORED_BYTES + 1,
     });
     const list = await listQuarantine();
     expect(list).toHaveLength(1);

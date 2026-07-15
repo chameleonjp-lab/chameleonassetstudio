@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { History } from '../../core/history/history';
 import { blobKeyFor, importImageAsLayer, importImageFile } from '../../core/images/importImage';
+import { assertImageBatchCount } from '../../core/input/inputSafety';
 import {
   hexToRgb,
   operationLabel,
@@ -687,6 +688,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   };
 
   const handleFiles = async (files: Iterable<File>) => {
+    const batch = Array.from(files);
+    if (batch.length === 0) {
+      return;
+    }
     if (!beginEditorPersistentMutation()) {
       return;
     }
@@ -697,30 +702,38 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setEditorError(null);
     setImporting(true);
     try {
-      let currentProject = project;
-      for (const file of Array.from(files)) {
-        const result = await importImageFile(file);
-        currentProject = {
-          ...currentProject,
-          assets: [
-            ...currentProject.assets,
-            {
-              id: result.asset.id,
-              name: result.asset.name,
-              displayName: result.asset.displayName,
-              assetType: result.asset.assetType,
-            },
-          ],
-          updatedAt: new Date().toISOString(),
-        };
-        await saveProjectBundle(currentProject, [result.asset], result.blobs);
-        setAssets((prev) => [...prev, result.asset]);
-        setSelectedAssetId(result.asset.id);
-        setSelectedLayerId(null);
+      assertImageBatchCount(batch.length);
+      const staged = [];
+      for (const file of batch) {
+        staged.push(await importImageFile(file));
       }
-      setProject(currentProject);
+      const stagedAssets = staged.map(({ asset }) => asset);
+      const nextProject: Project = {
+        ...project,
+        assets: [
+          ...project.assets,
+          ...stagedAssets.map((asset) => ({
+            id: asset.id,
+            name: asset.name,
+            displayName: asset.displayName,
+            assetType: asset.assetType,
+          })),
+        ],
+        updatedAt: new Date().toISOString(),
+      };
+      await saveProjectBundle(
+        nextProject,
+        stagedAssets,
+        staged.flatMap(({ blobs }) => blobs),
+      );
+      setProject(nextProject);
+      setAssets((prev) => [...prev, ...stagedAssets]);
+      setSelectedAssetId(stagedAssets.at(-1)?.id ?? null);
+      setSelectedLayerId(null);
     } catch (error) {
-      setEditorError(error instanceof Error ? error.message : String(error));
+      setEditorError(
+        `${error instanceof Error ? error.message : String(error)} 選択した画像は1件も追加されていません。`,
+      );
     } finally {
       setImporting(false);
       endEditorPersistentMutation();
@@ -996,48 +1009,51 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setEditorError(null);
     setImporting(true);
     try {
-      let current = selectedAsset;
+      assertImageBatchCount(files.length);
+      const staged = [];
       for (const file of files) {
-        const result = await importImageAsLayer(file, current);
-        const next: Asset = {
-          ...current,
-          updatedAt: new Date().toISOString(),
-          textures: [...current.textures, ...result.textures],
-          layers: [...current.layers, result.layer],
-        };
-        const before = current;
-        const after = next;
-        const blobKeys = result.blobs.map(({ key }) => key);
-        const sourceCreateKeys = result.textures
-          .filter((texture) => texture.kind === 'source')
-          .map((texture) => blobKeyFor(current.id, texture.path));
-        const redoBlobs = result.blobs.map(({ key, blob }) => ({ key, blob }));
-        await commitPersistentMutationWithHistory({
-          apply: () =>
-            saveAssetRevisionAndApply(next, {
-              putBlobs: result.blobs,
+        staged.push(await importImageAsLayer(file, selectedAsset));
+      }
+      const before = selectedAsset;
+      const after: Asset = {
+        ...before,
+        updatedAt: new Date().toISOString(),
+        textures: [...before.textures, ...staged.flatMap(({ textures }) => textures)],
+        layers: [...before.layers, ...staged.map(({ layer }) => layer)],
+      };
+      const blobs = staged.flatMap(({ blobs: resultBlobs }) => resultBlobs);
+      const blobKeys = blobs.map(({ key }) => key);
+      const sourceCreateKeys = staged
+        .flatMap(({ textures }) => textures)
+        .filter((texture) => texture.kind === 'source')
+        .map((texture) => blobKeyFor(before.id, texture.path));
+      const redoBlobs = blobs.map(({ key, blob }) => ({ key, blob }));
+      await commitPersistentMutationWithHistory({
+        apply: () =>
+          saveAssetRevisionAndApply(after, {
+            putBlobs: blobs,
+            sourceBlobTransitions: { createKeys: sourceCreateKeys },
+          }),
+        history,
+        entry: {
+          label: '画像レイヤー一括追加',
+          undo: () =>
+            saveAssetRevisionAndApply(before, {
+              deleteBlobKeys: blobKeys,
+              sourceBlobTransitions: { deleteKeys: sourceCreateKeys },
+            }),
+          redo: () =>
+            saveAssetRevisionAndApply(after, {
+              putBlobs: redoBlobs,
               sourceBlobTransitions: { createKeys: sourceCreateKeys },
             }),
-          history,
-          entry: {
-            label: '画像レイヤー追加',
-            undo: () =>
-              saveAssetRevisionAndApply(before, {
-                deleteBlobKeys: blobKeys,
-                sourceBlobTransitions: { deleteKeys: sourceCreateKeys },
-              }),
-            redo: () =>
-              saveAssetRevisionAndApply(after, {
-                putBlobs: redoBlobs,
-                sourceBlobTransitions: { createKeys: sourceCreateKeys },
-              }),
-          },
-        });
-        setSelectedLayerId(result.layer.id);
-        current = next;
-      }
+        },
+      });
+      setSelectedLayerId(staged.at(-1)?.layer.id ?? null);
     } catch (error) {
-      setEditorError(error instanceof Error ? error.message : String(error));
+      setEditorError(
+        `${error instanceof Error ? error.message : String(error)} 選択した画像レイヤーは1件も追加されていません。`,
+      );
     } finally {
       setImporting(false);
       endEditorPersistentMutation();
@@ -1233,7 +1249,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   />
                 </label>
                 <p className="editor-note">
-                  PNG / JPG / WebP に対応。1 枚あたり 25MB、4096 x 4096 までです。
+                  PNG / JPG / WebP に対応。一度に16枚、1枚あたり25MiB、4096 x 4096までです。
                 </p>
               </div>
               {statusMessages}

@@ -127,3 +127,42 @@ test('対応していないファイルは理由を表示する', async ({ page 
   await expect(alert).toBeVisible();
   await expect(alert).toContainText('対応していないファイル形式');
 });
+
+test('画像batchは16件上限で、途中に不正画像があればAssetを1件も保存しない', async ({ page }) => {
+  await createProject(page, 'Asset batch原子性');
+  const png = await makePngBuffer(page);
+
+  await page.getByLabel('画像を選ぶ').setInputFiles(
+    Array.from({ length: 17 }, (_, index) => ({
+      name: `limit-${index}.png`,
+      mimeType: 'image/png',
+      buffer: png,
+    })),
+  );
+  await expect(page.getByRole('alert')).toContainText('一度に選べる画像は16件まで');
+
+  await page.getByLabel('画像を選ぶ').setInputFiles([
+    { name: 'valid.png', mimeType: 'image/png', buffer: png },
+    { name: 'spoofed.jpg', mimeType: 'image/jpeg', buffer: png },
+  ]);
+  await expect(page.getByRole('alert')).toContainText('選択した画像は1件も追加されていません');
+  await expect(page.getByLabel('アセットキャンバス')).toHaveCount(0);
+  await expect
+    .poll(async () =>
+      page.evaluate(async () => {
+        const db = await new Promise<IDBDatabase>((resolve, reject) => {
+          const request = indexedDB.open('chameleon-asset-studio');
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        const count = await new Promise<number>((resolve, reject) => {
+          const request = db.transaction('assets', 'readonly').objectStore('assets').count();
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        db.close();
+        return count;
+      }),
+    )
+    .toBe(0);
+});

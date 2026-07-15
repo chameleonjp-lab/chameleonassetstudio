@@ -1,6 +1,7 @@
 import { decodeImageSource } from './decodeImageSource';
 import { createImageAsset, generateId, type Asset, type Layer, type TextureRef } from '../model';
 import { formatBytes } from '../storage/storageUsage';
+import { assertFileImageSignature } from './imageInputSafety';
 
 /** 1 枚あたりの最大ファイルサイズ（要件 11.2）。 */
 export const MAX_IMPORT_FILE_BYTES = 25 * 1024 * 1024;
@@ -167,6 +168,13 @@ export async function importImageFile(file: File): Promise<ImportImageResult> {
   if (fileError) {
     throw new ImageImportError(fileError);
   }
+  try {
+    await assertFileImageSignature(file);
+  } catch (error) {
+    throw new ImageImportError(error instanceof Error ? error.message : String(error), {
+      cause: error,
+    });
+  }
   const mimeType = file.type as SupportedImportMimeType;
 
   const decoded = await decodeImage(file);
@@ -237,6 +245,13 @@ export async function importImageAsLayer(file: File, asset: Asset): Promise<Impo
   const fileError = checkImportFile(file);
   if (fileError) {
     throw new ImageImportError(fileError);
+  }
+  try {
+    await assertFileImageSignature(file);
+  } catch (error) {
+    throw new ImageImportError(error instanceof Error ? error.message : String(error), {
+      cause: error,
+    });
   }
   const mimeType = file.type as SupportedImportMimeType;
   const extension = extensionForMimeType(mimeType);

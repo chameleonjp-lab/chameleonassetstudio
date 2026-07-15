@@ -21,19 +21,25 @@ export interface QuarantineRecord {
 export interface SaveQuarantineEntryInput {
   fileName: string;
   errorMessage: string;
-  bytes: ArrayBuffer;
+  /** 50MiB以下で読み込み済みの場合だけ渡す。 */
+  bytes?: ArrayBuffer;
+  /** bytesを読む前に拒否した入力では、File.sizeだけを記録する。 */
+  size?: number;
 }
 
 /** 読み込みに失敗した .casproj を隔離領域へ保存する（最新 QUARANTINE_LIMIT 件のみ保持）。 */
 export async function saveQuarantineEntry(input: SaveQuarantineEntryInput): Promise<void> {
-  const size = input.bytes.byteLength;
+  const size = input.bytes?.byteLength ?? input.size;
+  if (size === undefined || !Number.isFinite(size) || size < 0) {
+    throw new Error('quarantineへ保存する入力sizeが不正です。');
+  }
   const record: QuarantineRecord = {
     id: generateId('quarantine'),
     fileName: input.fileName,
     importedAt: new Date().toISOString(),
     errorMessage: input.errorMessage,
     size,
-    ...(size <= QUARANTINE_MAX_STORED_BYTES ? { bytes: input.bytes } : {}),
+    ...(input.bytes && size <= QUARANTINE_MAX_STORED_BYTES ? { bytes: input.bytes } : {}),
   };
   await runTransaction([STORE_QUARANTINE], 'readwrite', async (tx) => {
     await requestToPromise(tx.objectStore(STORE_QUARANTINE).put(record));
