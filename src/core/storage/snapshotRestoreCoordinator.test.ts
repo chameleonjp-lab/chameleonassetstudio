@@ -51,23 +51,49 @@ async function seedCoordinatorFlow() {
       texture.kind === 'edit' ? { ...texture, size: { width: 5, height: 5 } } : { ...texture },
     ),
   };
-  const project = { ...createEmptyProject('復旧調整テスト'), id: projectId };
+  const project = {
+    ...createEmptyProject('復旧調整テスト'),
+    id: projectId,
+    assets: [
+      {
+        id: currentAsset.id,
+        name: currentAsset.name,
+        displayName: currentAsset.displayName,
+        assetType: currentAsset.assetType,
+      },
+    ],
+  };
   const editKey = `${currentAsset.id}/${editTexture(currentAsset).path}`;
+  const sourceTexture = currentAsset.textures.find((texture) => texture.kind === 'source');
+  if (!sourceTexture) {
+    throw new Error('fixture に source TextureRef がありません');
+  }
+  const sourceKey = `${currentAsset.id}/${sourceTexture.path}`;
   const currentBytes = new Uint8Array([9, 9, 9, 9]);
   const snapshotBytes = new Uint8Array([1, 1, 1, 1]);
+  const sourceBytes = new Uint8Array([7, 7, 7, 7]);
 
+  const snapshotBlob = new Blob([snapshotBytes], { type: 'image/png' });
   await saveProjectBundle(
     project,
-    [currentAsset],
-    [{ key: editKey, blob: new Blob([currentBytes], { type: 'image/png' }) }],
+    [snapshotAsset],
+    [
+      { key: sourceKey, blob: new Blob([sourceBytes], { type: 'image/png' }) },
+      { key: editKey, blob: snapshotBlob },
+    ],
   );
   await saveSnapshot({
     projectId,
-    assetId: currentAsset.id,
+    assetId: snapshotAsset.id,
     label: '消しゴム',
     asset: snapshotAsset,
     blobKey: editKey,
-    blob: new Blob([snapshotBytes], { type: 'image/png' }),
+    blob: snapshotBlob,
+  });
+  await saveAssetRevisionBase({
+    projectId,
+    asset: currentAsset,
+    putBlobs: [{ key: editKey, blob: new Blob([currentBytes], { type: 'image/png' }) }],
   });
   const [summary] = await listSnapshots(currentAsset.id);
 
@@ -76,8 +102,10 @@ async function seedCoordinatorFlow() {
     currentAsset,
     snapshotAsset,
     editKey,
+    sourceKey,
     currentBytes,
     snapshotBytes,
+    sourceBytes,
     snapshotId: summary.id,
   };
 }
@@ -100,6 +128,7 @@ describe('snapshot復元の保存層調整', () => {
 
     expect((await loadAsset(fixture.currentAsset.id)).asset).toEqual(fixture.snapshotAsset);
     expect(await readBytes(fixture.editKey)).toEqual(fixture.snapshotBytes);
+    expect(await readBytes(fixture.sourceKey)).toEqual(fixture.sourceBytes);
   });
 
   it('復元準備後にAssetまたはBlobが変わった場合は上書きせず拒否する', async () => {
@@ -129,6 +158,7 @@ describe('snapshot復元の保存層調整', () => {
 
     expect((await loadAsset(fixture.currentAsset.id)).asset).toEqual(concurrentAsset);
     expect(await readBytes(fixture.editKey)).toEqual(concurrentBytes);
+    expect(await readBytes(fixture.sourceKey)).toEqual(fixture.sourceBytes);
   });
 
   it('復元書き込みが途中で失敗した場合はAssetとBlobの元状態を維持する', async () => {
@@ -166,5 +196,6 @@ describe('snapshot復元の保存層調整', () => {
 
     expect((await loadAsset(fixture.currentAsset.id)).asset).toEqual(fixture.currentAsset);
     expect(await readBytes(fixture.editKey)).toEqual(fixture.currentBytes);
+    expect(await readBytes(fixture.sourceKey)).toEqual(fixture.sourceBytes);
   });
 });

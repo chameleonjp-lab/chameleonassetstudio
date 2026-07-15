@@ -63,7 +63,7 @@ Phase 17 後は、旧 Phase 18〜28 の順番ではなく次を優先する。
 | `2D-0` | 完成仕様の固定 | 上位4仕様、対象ユーザー、対応範囲、完成条件、判断待ちを承認可能な状態にする。完了済み。 | 人間判断 + Codex docs + Opus 4.8 review | 完了済み。 |
 | `2D-1A-BASELINE` | 現行実装 baseline | 現行 version、型、schema、`.casproj`、IndexedDB、autosave、export ZIP、migration、fixture/test coverage を `docs/future/2D_1A_BASELINE_REPORT.md` に固定する。PR #50で完了・mainへマージ済み。 | Codex docs + Opus 4.8 review | product code、schema、version、保存形式、export ZIPを変更しない完了済み前段。 |
 | `2D-1a` | データ・座標・migration・復旧設計 | 5つのデータ層、Family / Variant、ID、座標、trim / flip / scale、animation / collider、target 拡張、provenance、検証、migration 契約を固定した。PR #52、#60、#62、#63、#65、#67、#68で完了し、ADR 0001〜0015がaccepted。 | 人間判断を Codex が ADR / fixture 化。完了済み。 | 完了済み。 |
-| `2D-1b` | 保存・migration・復旧実装 | 改訂単位の整合保存、履歴・backup・trash・rollback、容量警告、安全な staged `.casproj` import と旧形式互換を実装する。PR #53 は詳細契約 Gate より先に merge 済みの provisional 実装であり、`2D-1B-GATE` は未完了。 | ユーザーとChatGPTが範囲を確定し、実装担当がcode、tests、docsを同じDraft PRへ反映する。Opus 4.8は利用可能な場合にCI成功後レビュー。 | 現在の段階。REVISION / LAYERS / RECOVERYは個別完了したが、横断レビューでBLOCKERが見つかったためCAPACITYは停止。 |
+| `2D-1b` | 保存・migration・復旧実装 | 改訂単位の整合保存、履歴・backup・trash・rollback、容量警告、安全な staged `.casproj` import と旧形式互換を実装する。PR #53 は詳細契約 Gate より先に merge 済みの provisional 実装であり、`2D-1B-GATE` は未完了。 | ユーザーとChatGPTが範囲を確定し、実装担当がcode、tests、docsを同じDraft PRへ反映する。Opus 4.8は利用可能な場合にCI成功後レビュー。 | 現在の段階。REVISION / LAYERS / RECOVERYと保存基盤横断補修は完了。PR #85 merge後に`2D-1B-CAPACITY`へ進む。 |
 | `2D-2` | 新規作成・取り込み・修正 | 複数 Asset、空キャンバス、template、画像 import、基本描画、非破壊修正、派生 variant、一括変更、任意形式と AI の境界を完成させる。PR #55 は `2D-2-CREATE` の partial / provisional 実装であり、`2D-2-PROJECT` は未完了。 | Codex | `2D-1B-GATE` mergeまでは追加の本実装を停止し、調査、prototype、test設計に限定する。 |
 | `2D-3` | 動き・ゲーム用情報 | timeline、可変時間、event、簡易 rig、origin / anchor / collider、素材種別 profile、ゲーム風 preview、理由付き検査、変更影響を完成させる。 | Codex。新しい仕様判断はユーザーとChatGPTへ戻す。 | `2D-1B-GATE` mergeまでは調査、prototype、test設計に限定する。 |
 | `2D-4` | 共通書き出し・検査 | 決定的な再出力、sheet / atlas、scale、manifest / report / record、preflight、Generic Web / Canvas 2D / PixiJS / Phaser を完成させる。 | 契約を人間が固定し、Codexが実装、Opus 4.8が利用可能な場合にレビュー | `2D-5` の手順準備と `2D-6` だけ可。 |
@@ -79,11 +79,12 @@ Phase 17 後は、旧 Phase 18〜28 の順番ではなく次を優先する。
 - 個別完了: `2D-1B-REVISION`。PR #70、#71、#72とCI Run #163。
 - 個別完了: `2D-1B-LAYERS`。PR #76、#77、#78とCI Run #182。
 - 個別完了: `2D-1B-RECOVERY`。PR #80、#81とCI Run #207。
-- `2D-1B-STORAGE-CROSS-REVIEW`: 実施済み。4件のBLOCKERと2件のMUSTを確認した。正本は`docs/future/2D_1B_STORAGE_CROSS_REVIEW_REPORT.md`。
-- 次の対応: `2D-1B-STORAGE-CROSS-FIX`相当の保存基盤補修Draft PR。これは正式work packageを追加するものではなく、REVISION / LAYERS / RECOVERYの完了条件を満たすための補修である。
-- `2D-1B-CAPACITY`: 補修と再レビューが完了するまで開始しない。
-- 判断待ち: trash完全削除時にlive Project IDまたはAsset IDと衝突した場合の方針。推奨は復元時と同様に完全削除を拒否し、live正本とtrashを両方残す。
-- PR #53（`2D-1B-STORAGE`）と PR #55（`2D-2-CREATE-01`）はrevertせず、provisionalとして保持する。PR #53全体のprovisional状態は、保存基盤横断BLOCKERの補修と、未完了の`2D-1B-CAPACITY`、`2D-1B-CASPROJ`、`2D-1B-INPUT-SAFETY`、`2D-1B-GATE`に残る。
+- `2D-1B-STORAGE-CROSS-REVIEW`: 初回監査で4件のBLOCKERと2件のMUSTを確認し、PR #84とPR #85で補修・再検証した。再レビューは`BLOCKER 0 / MUST 0`。正本は`docs/future/2D_1B_STORAGE_CROSS_REVIEW_REPORT.md`。
+- 確定済み方針: trash完全削除時にlive Project IDまたはAsset IDと衝突した場合は完全削除を拒否し、live正本とtrashを両方残す。`purgeAllTrash`は全件原子的に拒否し、自動purgeは別recordを代替削除しない。
+- PR #84: 検証完了前にmainへmergeされたため、PR #85で一時診断物の除去、正式workflow復旧、fixture・E2E補修、最終再検証を実施した。
+- PR #85: Draft・未merge。最終検証head `c46a4f0fa4bef52f1f703d2b6caf173790b4eff2`のCI Run #242はlint、format、build、unit test、E2Eを全成功した。文書同期後の最新headも正式CIで再確認する。
+- 次の正式work package: `2D-1B-CAPACITY`。PR #85がmainへmergeされた後に開始する。merge前にCAPACITY branchを作らない。
+- PR #53（`2D-1B-STORAGE`）と PR #55（`2D-2-CREATE-01`）はrevertせず、provisionalとして保持する。PR #53全体のprovisional状態は、未完了の`2D-1B-CAPACITY`、`2D-1B-CASPROJ`、`2D-1B-INPUT-SAFETY`、`2D-1B-GATE`に残る。
 - `2D-1B-GATE`がmergeされるまで、追加の`2D-2-*`と`2D-3-*`本実装は開始しない。
 - 2D Pro Gateを人間が承認するまで、旧Phase 22〜28の3D実装を開始しない。
 
