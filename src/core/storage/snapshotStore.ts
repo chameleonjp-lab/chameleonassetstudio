@@ -331,9 +331,7 @@ export async function applySnapshotRestore(input: ApplySnapshotRestoreInput): Pr
     const storedAsset = await loadStoredAssetInTx(tx, input.assetId);
     assertStoredAssetOwnership(storedAsset, input.projectId, input.assetId);
     if (!sameAsset(storedAsset.data, input.beforeAsset)) {
-      throw new StorageError(
-        '復旧点を読み出した後にアセットが変更されたため、復元を中止しました',
-      );
+      throw new StorageError('復旧点を読み出した後にアセットが変更されたため、復元を中止しました');
     }
     assertSourceTexturesUnchanged(storedAsset.data, input.asset);
 
@@ -349,9 +347,7 @@ export async function applySnapshotRestore(input: ApplySnapshotRestoreInput): Pr
       throw new StorageError(`復元前の edit Blob が見つかりません: ${input.blobKey}`);
     }
     if (!sameBytes(storedBlob.bytes, beforeBytes)) {
-      throw new StorageError(
-        '復旧点を読み出した後に編集画像が変更されたため、復元を中止しました',
-      );
+      throw new StorageError('復旧点を読み出した後に編集画像が変更されたため、復元を中止しました');
     }
 
     const nextAssetRecord: StoredAssetRecord = {
