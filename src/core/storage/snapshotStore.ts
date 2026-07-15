@@ -214,14 +214,14 @@ export interface AssetSnapshotSummary {
 export async function listSnapshots(assetId: string): Promise<AssetSnapshotSummary[]> {
   const rows = await runTransaction([STORE_ASSETS, STORE_SNAPSHOTS], 'readonly', async (tx) => {
     const storedAsset = await loadStoredAssetInTx(tx, assetId);
-    if (!storedAsset) {
-      return [];
-    }
     const snapshots = await requestToPromise(
       tx.objectStore(STORE_SNAPSHOTS).index(INDEX_BY_ASSET).getAll(assetId) as IDBRequest<
         AssetSnapshotRecord[]
       >,
     );
+    if (!storedAsset) {
+      return snapshots;
+    }
     return snapshots.filter((row) => row.projectId === storedAsset.projectId);
   });
   return rows
