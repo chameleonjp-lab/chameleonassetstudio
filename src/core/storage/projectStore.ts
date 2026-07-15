@@ -309,6 +309,9 @@ function assertTextureBlobTransitions({
       throw new StorageError(`削除対象 Blob に対応する保存前 TextureRef がありません: ${key}`);
     }
     if (next.byKey.has(key)) {
+      if (previous.byKey.get(key)?.kind === 'source') {
+        throw new StorageError(`既存 source Blob は削除できません: ${key}`);
+      }
       throw new StorageError(`保存後 Asset が参照する Blob は削除できません: ${key}`);
     }
   }
