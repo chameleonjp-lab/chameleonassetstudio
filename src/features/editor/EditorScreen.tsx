@@ -1275,7 +1275,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 <button
                   type="button"
                   className="asset-delete-button"
-                  disabled={deletingAsset || persistentMutationBlocked}
+                  disabled={deletingAsset || mutationBusy}
                   onClick={() => void handleDeleteAsset()}
                 >
                   アセットを削除
