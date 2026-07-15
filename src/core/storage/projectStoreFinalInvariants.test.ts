@@ -8,6 +8,7 @@ import {
   loadBlob,
   saveAsset,
   saveAssetRevision,
+  saveBlob,
   saveProject,
   saveProjectBundle,
 } from './projectStore';
@@ -162,8 +163,17 @@ describe('2D-1B-LAYERS final storage invariants', () => {
     ).rejects.toThrow(/保存後 Asset が参照する Blob/);
   });
 
-  it('rejects deleting an unknown Blob key', async () => {
+  it('allows deleting an existing orphan Blob but rejects a missing Blob key', async () => {
     const { project, asset } = await seedAsset();
+    const orphanKey = `${asset.id}/textures/orphan-cleanup.png`;
+    await saveBlob(project.id, orphanKey, bytes(7));
+
+    await saveAssetRevision({
+      projectId: project.id,
+      asset,
+      deleteBlobKeys: [orphanKey],
+    });
+    expect(await loadBlob(orphanKey)).toBeNull();
 
     await expect(
       saveAssetRevision({
