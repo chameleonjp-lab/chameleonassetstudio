@@ -8,7 +8,7 @@
 
 `2D-1B-CAPACITY`の契約、実装、unit test、E2E、標準CIを完了した。警告閾値は人間判断によりB案をacceptedとし、notice 60%、warning 80%、critical 90%で固定した。
 
-PR #86は同branchのdocs-only旧headで外部mergeされたため、製品コードとテストはDraft PR #87が引き継いだ。Draft PR #87の最終head `69d8e53d7cdc212d68042e6796ab47d447c9503c`に対するCI Run #250は、変更分類、lint、format、build、unit test、E2Eがすべて成功した。
+PR #86は同branchのdocs-only旧headで外部mergeされたため、製品コードとテストはDraft PR #87が引き継いだ。Draft PR #87の実装検証head `69d8e53d7cdc212d68042e6796ab47d447c9503c`に対するCI Run #250は、変更分類、lint、format、build、unit test、E2Eがすべて成功した。
 
 実装は完了しているがmainには未反映である。PR #87はDraftのまま維持し、明示指示前にready化、merge、auto-mergeを行わない。
 
