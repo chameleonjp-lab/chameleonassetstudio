@@ -187,7 +187,11 @@ async function prepareBlobRecords(blobs: PreparedBlobRecordInput[]): Promise<Sto
   );
 }
 
-function assertBundleReferences(project: Project, assets: Asset[], blobs: ProjectBundleBlobInput[]): void {
+function assertBundleReferences(
+  project: Project,
+  assets: Asset[],
+  blobs: ProjectBundleBlobInput[],
+): void {
   const projectAssetIds = new Set<string>();
   for (const entry of project.assets) {
     if (projectAssetIds.has(entry.id)) {
@@ -555,9 +559,7 @@ async function assertTrashPurgeSafeInTx(tx: IDBTransaction, record: TrashRecord)
       tx.objectStore(STORE_ASSETS).get(asset.id) as IDBRequest<StoredAssetRecord | undefined>,
     );
     if (liveAsset) {
-      throw new StorageError(
-        `同じAsset ID（${asset.id}）の正本が存在するため完全削除できません`,
-      );
+      throw new StorageError(`同じAsset ID（${asset.id}）の正本が存在するため完全削除できません`);
     }
   }
 }
