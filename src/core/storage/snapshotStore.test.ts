@@ -3,7 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEmptyProject, type Asset } from '../model';
 import characterAsset from '../samples/asset.character.json';
 import { StorageError, resetDbForTests } from './db';
-import { deleteBlob, deleteProject, loadBlob, saveAsset, saveBlob, saveProject } from './projectStore';
+import {
+  deleteBlob,
+  deleteProject,
+  loadBlob,
+  saveAsset,
+  saveBlob,
+  saveProject,
+} from './projectStore';
 import {
   SNAPSHOT_LIMIT_PER_ASSET,
   deleteSnapshotsForAsset,
