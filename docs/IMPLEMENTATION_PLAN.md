@@ -84,7 +84,7 @@ Phase 17 後は、旧 Phase 18〜28 の順番ではなく次を優先する。
 - PR #84: 検証完了前にmainへmergeされたため、PR #85で一時診断物の除去、正式workflow復旧、fixture・E2E補修、最終再検証を実施した。
 - PR #85: mainへmerge済み。merge commitは`e3c34fb292aab1d35a6da571ff17ca4ed9d13e0e`。最終head `d8ce80f36adaa94b2711d0e4ce3ffc1f1bf5e413`のCI Run #244はlint、format、build、unit test、E2Eを全成功した。
 - 個別完了: `2D-1B-CAPACITY`。PR #87はmainへmerge済み。merge commitは`66ba2c4096dabc297f402a9176b8c60de9c584f9`、最終head `d7b965af333821d4e73937873ed039972a6f5f04`のCI Run #255はlint、format、build、unit test、E2Eを全成功した。契約は`docs/future/2D_1B_CAPACITY_PLAN.md`、完了証拠は`docs/future/2D_1B_CAPACITY_REPORT.md`を正本とする。
-- 現在の正式work package: `2D-1B-CASPROJ`。実装とCI Run #258は完了し、Draft PR #88のmain merge待ちである。契約、対象ファイル、受け入れ条件は`docs/future/2D_1B_CASPROJ_PLAN.md`、実装証拠は`docs/future/2D_1B_CASPROJ_REPORT.md`を正本とする。mergeまでは後続`2D-1B-INPUT-SAFETY`へ進まない。
+- 現在の正式work package: `2D-1B-CASPROJ`。実装とCI Run #259は完了し、Draft PR #88のmain merge待ちである。契約、対象ファイル、受け入れ条件は`docs/future/2D_1B_CASPROJ_PLAN.md`、実装証拠は`docs/future/2D_1B_CASPROJ_REPORT.md`を正本とする。mergeまでは後続`2D-1B-INPUT-SAFETY`へ進まない。
 - PR #53（`2D-1B-STORAGE`）と PR #55（`2D-2-CREATE-01`）はrevertせず、provisionalとして保持する。PR #53全体のprovisional状態は、未完了の`2D-1B-CASPROJ`、`2D-1B-INPUT-SAFETY`、`2D-1B-GATE`に残る。
 - `2D-1B-GATE`がmergeされるまで、追加の`2D-2-*`と`2D-3-*`本実装は開始しない。
 - 2D Pro Gateを人間が承認するまで、旧Phase 22〜28の3D実装を開始しない。

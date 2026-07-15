@@ -6,7 +6,7 @@
 基準main: `66ba2c4096dabc297f402a9176b8c60de9c584f9`（PR #87 merge）
 Draft PR: #88
 実装commit: `ea884efd9c813b0371a333450ff1e794f47d03a9`
-CI: Run #258 success
+CI: Run #259 success
 
 ## 1. 結果
 
@@ -37,7 +37,7 @@ CI: Run #258 success
 | `npm run build` | success。既存の500 kB chunk warningのみ。 |
 | `npm run test` | 42 files / 385 tests success |
 | `npm run e2e` | 80 tests success |
-| GitHub Actions | CI Run #258 success |
+| GitHub Actions | CI Run #259 success |
 
 追加・補強した主な回帰:
 
