@@ -1,7 +1,7 @@
 # 2D-1B-GATE 実装・検証報告
 
 作成日: 2026-07-16
-状態: `implementation merged / PR #91 / CI Run #269 success / formal Gate blocked by missing Opus review evidence`
+状態: `completed / PR #91 / CI Run #269 success / Opus review problem-free / human confirmed`
 正式work package: `2D-1B-GATE`
 基準main: `54f7602974f87710c16a3b79d5fefe175232e376`（PR #90 merge）
 実装Draft PR: #91
@@ -15,7 +15,7 @@ merge commit: `71c568d6c38846d5795b5e70fdea476336596e57`
 
 全保存契約をfixture、unit test、E2Eへ対応付けて再監査し、横断レビューから継続していたSHOULD 2件を最小補修した。BLOCKER / MUST相当の新しい不整合は確認していない。
 
-Gateは新しいschema、version、migration、DB layout、可搬形式、製品機能を追加していない。PR #91はmainへmerge済みだが、必須Opus 4.8 review証拠がないため正式Gateは未完了である。2D-2 / 2D-3本実装を解禁せず、3D / WebGPUにも進まない。
+Gateは新しいschema、version、migration、DB layout、可搬形式、製品機能を追加していない。PR #91はmainへmerge済みで、2026-07-16にユーザーからOpus 4.8 review完了・問題なしが報告された。少なくとも`BLOCKER 0 / MUST 0`、その他の指摘報告なしとして人間確認され、正式Gateを完了する。2D-2 / 2D-3は正式キューに従って解禁するが、3D / WebGPUは2D Pro Gateの人間承認まで解禁しない。
 
 ## 2. 補修内容
 
@@ -70,11 +70,12 @@ Gateは新しいschema、version、migration、DB layout、可搬形式、製品
 - accepted済み容量警告閾値、INPUT-SAFETY B+X
 - 2D-2 / 2D-3本実装、3D / WebGPU
 
-## 7. 残る完了条件
+## 7. Review・人間確認
 
-1. merge済みmainの範囲`54f7602..71c568d`をOpus 4.8がreviewし、BLOCKER / MUST 0を確認する。
-2. 指摘があれば同じcloseout Draft PRで補修し、全CIを再成功させる。
-3. 人間がreview結果と正式Gate完了を確認する。
-4. closeout PRはユーザーの明示指示まではDraftを維持し、ready化、merge、auto-mergeを行わない。
+- 対象範囲: `54f7602974f87710c16a3b79d5fefe175232e376..71c568d6c38846d5795b5e70fdea476336596e57`
+- Opus 4.8 review: 2026-07-16にユーザーから完了・問題なしと報告
+- 判定: 少なくとも`BLOCKER 0 / MUST 0`。その他の指摘報告なし
+- 人間確認: 同日に後続対応開始が明示され、正式Gate完了を確認
+- review証拠待ち記録: PR #92 merge commit `f1fcdf1fbd05f33810206ee0ebfbfd49cba784f0`、CI Run #271 success
 
-上記のreviewと人間確認が揃った後にだけ、2D-2 / 2D-3本実装の解禁を文書同期する。3D開始には別途2D Pro Gateの人間承認が必要である。
+これにより2D-1Bを正式完了し、次の正式work packageを`2D-2-PROJECT + 2D-2-CREATE`とする。3D開始には別途2D Pro Gateの人間承認が必要である。

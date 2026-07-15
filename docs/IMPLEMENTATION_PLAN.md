@@ -63,9 +63,9 @@ Phase 17 後は、旧 Phase 18〜28 の順番ではなく次を優先する。
 | `2D-0` | 完成仕様の固定 | 上位4仕様、対象ユーザー、対応範囲、完成条件、判断待ちを承認可能な状態にする。完了済み。 | 人間判断 + Codex docs + Opus 4.8 review | 完了済み。 |
 | `2D-1A-BASELINE` | 現行実装 baseline | 現行 version、型、schema、`.casproj`、IndexedDB、autosave、export ZIP、migration、fixture/test coverage を `docs/future/2D_1A_BASELINE_REPORT.md` に固定する。PR #50で完了・mainへマージ済み。 | Codex docs + Opus 4.8 review | product code、schema、version、保存形式、export ZIPを変更しない完了済み前段。 |
 | `2D-1a` | データ・座標・migration・復旧設計 | 5つのデータ層、Family / Variant、ID、座標、trim / flip / scale、animation / collider、target 拡張、provenance、検証、migration 契約を固定した。PR #52、#60、#62、#63、#65、#67、#68で完了し、ADR 0001〜0015がaccepted。 | 人間判断を Codex が ADR / fixture 化。完了済み。 | 完了済み。 |
-| `2D-1b` | 保存・migration・復旧実装 | 改訂単位の整合保存、履歴・backup・trash・rollback、容量警告、安全な staged `.casproj` import と旧形式互換を実装する。PR #53 は詳細契約 Gate より先に merge 済みの provisional 実装であり、`2D-1B-GATE` の正式完了判定は未完了。 | ユーザーとChatGPTが範囲を確定し、実装担当がcode、tests、docsを同じDraft PRへ反映する。Opus 4.8は利用可能な場合にCI成功後レビュー。 | 現在の段階。Gate実装PR #91と最終CIは完了・merge済みだが、必須Opus 4.8 review証拠が未確認のため正式closeout待ち。 |
-| `2D-2` | 新規作成・取り込み・修正 | 複数 Asset、空キャンバス、template、画像 import、基本描画、非破壊修正、派生 variant、一括変更、任意形式と AI の境界を完成させる。PR #55 は `2D-2-CREATE` の partial / provisional 実装であり、`2D-2-PROJECT` は未完了。 | Codex | `2D-1B-GATE`正式完了までは追加の本実装を停止し、調査、prototype、test設計に限定する。 |
-| `2D-3` | 動き・ゲーム用情報 | timeline、可変時間、event、簡易 rig、origin / anchor / collider、素材種別 profile、ゲーム風 preview、理由付き検査、変更影響を完成させる。 | Codex。新しい仕様判断はユーザーとChatGPTへ戻す。 | `2D-1B-GATE`正式完了までは調査、prototype、test設計に限定する。 |
+| `2D-1b` | 保存・migration・復旧実装 | 改訂単位の整合保存、履歴・backup・trash・rollback、容量警告、安全な staged `.casproj` import と旧形式互換を実装する。PR #53 は詳細契約 Gate より先に merge 済みの provisional 実装だったが、`2D-1B-GATE`の正式完了により該当範囲の再監査を完了した。 | ユーザーとChatGPTが範囲を確定し、実装担当がcode、tests、docsを同じDraft PRへ反映した。Opus 4.8 reviewと人間確認まで完了。 | 完了済み。PR #91 / CI Run #269、Opus 4.8 review問題なし、人間確認済み。 |
+| `2D-2` | 新規作成・取り込み・修正 | 複数 Asset、空キャンバス、template、画像 import、基本描画、非破壊修正、派生 variant、一括変更、任意形式と AI の境界を完成させる。PR #55 は `2D-2-CREATE` の partial / provisional 実装であり、`2D-2-PROJECT` は未完了。 | Codex | 現在の段階。まず`2D-2-PROJECT + 2D-2-CREATE`の契約監査を行い、Family / Variantの新しいデータ意味は人間判断後にだけ実装する。 |
+| `2D-3` | 動き・ゲーム用情報 | timeline、可変時間、event、簡易 rig、origin / anchor / collider、素材種別 profile、ゲーム風 preview、理由付き検査、変更影響を完成させる。 | Codex。新しい仕様判断はユーザーとChatGPTへ戻す。 | `2D-2-PROJECT + 2D-2-CREATE`と契約が重ならない準備だけ条件付き並行可。本実装は正式キューに従う。 |
 | `2D-4` | 共通書き出し・検査 | 決定的な再出力、sheet / atlas、scale、manifest / report / record、preflight、Generic Web / Canvas 2D / PixiJS / Phaser を完成させる。 | 契約を人間が固定し、Codexが実装、Opus 4.8が利用可能な場合にレビュー | `2D-5` の手順準備と `2D-6` だけ可。 |
 | `2D-5` | 対象別 preset・実ツール検証 | 証拠形式と対応ラベルを固定し、Unity 2D、Godot 2D、RPG Maker MZ への持ち込みを対象バージョン付きで検証する。 | Codex、Opus 4.8は利用可能な場合にレビュー | 共通 exporter 固定後、target PR を最大2本並行可。 |
 | `2D-6` | 端末・復旧・性能・アクセシビリティ | PC / iPad / スマホの全工程、入力、復旧、offline / update、性能、安全性、アクセシビリティ、代表 project と最終証拠を通す。 | Codex + 人間実機確認 + Opus 4.8は利用可能な場合にaudit | `2D-2`〜`2D-5` と継続並行し、完了判定は最後。 |
@@ -75,7 +75,7 @@ Phase 17 後は、旧 Phase 18〜28 の順番ではなく次を優先する。
 - `2D-0`: 完了。
 - `2D-1A-BASELINE`: PR #50で完了し、baseline reportはmainへマージ済み。
 - `2D-1a`: PR #52、#60、#62、#63、#65、#67、#68により完了。ADR 0001〜0015がaccepted。
-- 現在の段階: `2D-1b`。
+- `2D-1b`: 完了。`2D-1B-GATE`まで正式closeout済み。
 - 個別完了: `2D-1B-REVISION`。PR #70、#71、#72とCI Run #163。
 - 個別完了: `2D-1B-LAYERS`。PR #76、#77、#78とCI Run #182。
 - 個別完了: `2D-1B-RECOVERY`。PR #80、#81とCI Run #207。
@@ -86,9 +86,9 @@ Phase 17 後は、旧 Phase 18〜28 の順番ではなく次を優先する。
 - 個別完了: `2D-1B-CAPACITY`。PR #87はmainへmerge済み。merge commitは`66ba2c4096dabc297f402a9176b8c60de9c584f9`、最終head `d7b965af333821d4e73937873ed039972a6f5f04`のCI Run #255はlint、format、build、unit test、E2Eを全成功した。契約は`docs/future/2D_1B_CAPACITY_PLAN.md`、完了証拠は`docs/future/2D_1B_CAPACITY_REPORT.md`を正本とする。
 - 個別完了: `2D-1B-CASPROJ`。PR #88はmainへmerge済み。merge commitは`a9a1e27a6f69544c379fb9fcefc90a13e0928859`、最終head `15e77f4bd59c7e03dc5877060fbc9195567db177`のCI Run #260はlint、format、build、unit test、E2Eを全成功した。契約は`docs/future/2D_1B_CASPROJ_PLAN.md`、完了証拠は`docs/future/2D_1B_CASPROJ_REPORT.md`を正本とする。
 - 個別完了: `2D-1B-INPUT-SAFETY`。2026-07-16に`B+X`（balanced profile + Asset / Layer batch全件原子）がacceptedとなり、契約PR #89と実装PR #90はmainへmerge済み。PR #90のmerge commitは`54f7602974f87710c16a3b79d5fefe175232e376`、最終head `eef04042b9e82583e9efd0666b4d1fc4fb091ad9`のCI Run #266はlint、format、build、unit test、E2Eを全成功した。契約は`docs/future/2D_1B_INPUT_SAFETY_PLAN.md`、実装証拠は`docs/future/2D_1B_INPUT_SAFETY_REPORT.md`を正本とする。
-- 現在の正式work package: `2D-1B-GATE` closeout。Gate実装PR #91はmainへmerge済みで、merge commitは`71c568d6c38846d5795b5e70fdea476336596e57`、最終headは`51a5a2baf6171e80a52fa5823df25fb5d33f95d8`、CI Run #269はlint、format、build、unit test、E2Eを全成功した。一方、PR review、comment、review threadはいずれも0件で、必須Opus 4.8 review証拠を確認できない。merge操作は人間によるコード反映の証拠だが、未実施review結果への人間確認を兼ねたとは扱わない。正式Gateは未完了であり、2D-2 / 2D-3本実装はまだ解禁しない。契約は`docs/future/2D_1B_GATE_PLAN.md`、証拠は`docs/future/2D_1B_GATE_REPORT.md`、review依頼は`docs/future/2D_1B_GATE_REVIEW_REQUEST.md`を正本とする。
-- PR #53（`2D-1B-STORAGE`）と PR #55（`2D-2-CREATE-01`）はrevertせず、provisionalとして保持する。PR #53全体のprovisional状態は、未完了の`2D-1B-GATE`に残る。
-- `2D-1B-GATE`の必須review・人間確認を含む正式完了が文書化されるまで、追加の`2D-2-*`と`2D-3-*`本実装は開始しない。
+- `2D-1B-GATE`: 正式完了。Gate実装PR #91はmainへmerge済みで、merge commitは`71c568d6c38846d5795b5e70fdea476336596e57`、最終headは`51a5a2baf6171e80a52fa5823df25fb5d33f95d8`、CI Run #269はlint、format、build、unit test、E2Eを全成功した。2026-07-16にユーザーからOpus 4.8 review完了・問題なしが報告され、少なくとも`BLOCKER 0 / MUST 0`、その他の指摘報告なしとして人間確認された。review証拠待ちを記録したPR #92もmainへmerge済みで、merge commitは`f1fcdf1fbd05f33810206ee0ebfbfd49cba784f0`、CI Run #271はsuccessである。契約は`docs/future/2D_1B_GATE_PLAN.md`、証拠は`docs/future/2D_1B_GATE_REPORT.md`、review記録は`docs/future/2D_1B_GATE_REVIEW_REQUEST.md`を正本とする。
+- PR #53（`2D-1B-STORAGE`）のprovisional状態は`2D-1B-GATE`正式完了により解消した。PR #55（`2D-2-CREATE-01`）は`2D-2-CREATE`全体完了ではないためpartial / provisionalとして保持する。
+- 現在の正式work packageは`2D-2-PROJECT + 2D-2-CREATE`。契約監査は`docs/future/2D_2_PROJECT_CREATE_PLAN.md`を正本とし、現行の独立Asset管理と、判断を要するFamily / Variant実装を分離する。
 - 2D Pro Gateを人間が承認するまで、旧Phase 22〜28の3D実装を開始しない。
 
 詳細な依存関係、同時に変更してはいけない契約、最大3本の PR レーンは `docs/future/2D_COMPLETION_ROADMAP.md` を参照する。
