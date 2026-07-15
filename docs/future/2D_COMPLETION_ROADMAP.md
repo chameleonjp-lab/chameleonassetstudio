@@ -126,7 +126,7 @@
 | `2D-1B-REVISION` | 必須 | 改訂単位の整合保存、autosave状態を固定する。 | completed。PR #70、#71、#72で再監査と補修を完了。 |
 | `2D-1B-LAYERS` | 必須 | source / edit / cache / export record の保存境界を実装する。 | completed。PR #76、#77、#78で保存境界、source不変性、TextureRefとBlobの双方向整合、export edit境界を完了。 |
 | `2D-1B-RECOVERY` | 必須 | snapshot、trash、rollback、復元を実装する。 | completed。PR #80、#81でsnapshot / trash / rollback / 復元の再監査と補修を完了。 |
-| `2D-1B-CAPACITY` | 必須 | storage estimate、quota、退避導線を実装する。 | 開始条件を満たした。着手前に`2D-1B-STORAGE-CROSS-REVIEW`を実施する。 |
+| `2D-1B-CAPACITY` | 必須 | storage estimate、quota、persistent storage、退避導線を実装する。 | in progress。横断再レビューは`BLOCKER 0 / MUST 0`、PR #85 merge済み。警告割合の人間判断後に製品コードを確定する。 |
 | `2D-1B-CASPROJ` | 必須 | `.casproj` の段階的検査と migration を実装する。 | `2D-1B-RECOVERY` + `2D-1B-CAPACITY`後。 |
 | `2D-1B-INPUT-SAFETY` | 必須 | ZIP、JSON、画像など不正入力の隔離と拒否を実装する。 | `2D-1B-RECOVERY` + `2D-1B-CAPACITY`後。 |
 | `2D-1B-GATE` | 必須 | fixtureと保存回帰テストを通し、2D-2 / 2D-3本実装を解禁する。 | 残る`2D-1B-*`実装後。 |
@@ -508,7 +508,7 @@ PR 運用 Gate:
 | 2B | `2D-1A-MOTION` | animation event、可変時間、rig bake、frame別上書き、polygon境界を判断する。 | Fable5または人間判断 + Codex docs / fixture | 2A | `2D-6-PERFORMANCE` / `2D-6-A11Y` の基準計測のみ可 | completed | PR #60 accepted（ADR 0008〜0011）。次は 2C。 |
 | 2C | `2D-1A-TARGET` + `2D-1A-PROVENANCE` + `2D-1A-VALIDATION` + `2D-1A-MIGRATION` | target extension、unknown data、provenance、AI送信記録、validation、version、旧形式、rollback、fixtureを固定する。 | Fable5または人間判断 + Codex ADR / fixture | 2B accepted | `2D-6` の準備のみ可 | accepted | `2D-1A-TARGET`（PR #62 / ADR 0012）、`2D-1A-PROVENANCE`（PR #63 / ADR 0013）、`2D-1A-VALIDATION`（PR #65 / ADR 0014）、`2D-1A-MIGRATION`（PR #67 / ADR 0015）が全て accepted。**これで 2D-1a 契約（ADR 0001〜0015）が全て揃い、`2D-1B-*` 本実装解禁の契約前提が成立**。次は `2D-1b`。 |
 | 5 | `2D-1B-REVISION` + `2D-1B-LAYERS` | 改訂単位の整合保存、autosave状態、source / edit / cache / export record の保存境界を実装する。 | Codex + Opus 4.8 必須 review | 2C accepted | `2D-2` / `2D-3` はprototype・test設計のみ | completed | `2D-1B-REVISION`はPR #70、#71、#72、`2D-1B-LAYERS`はPR #76、#77、#78でcompleted。 |
-| 6 | `2D-1B-RECOVERY` + `2D-1B-CAPACITY` | snapshot、trash、rollback、復元、storage estimate、quota、退避導線を実装する。 | Codex + Opus 4.8 必須 review | 5 completed | `2D-6` の基準作りのみ可 | in progress | `2D-1B-RECOVERY`はPR #80、#81でcompleted。`2D-1B-STORAGE-CROSS-REVIEW`後に`2D-1B-CAPACITY`へ進む。 |
+| 6 | `2D-1B-RECOVERY` + `2D-1B-CAPACITY` | snapshot、trash、rollback、復元、storage estimate、quota、persistent storage、退避導線を実装する。 | Codex + Opus 4.8 必須 review | 5 completed | `2D-6` の基準作りのみ可 | in progress | `2D-1B-RECOVERY`はPR #80、#81でcompleted。横断再レビューとPR #85 mergeを完了し、`2D-1B-CAPACITY`の契約固定中。 |
 | 7 | `2D-1B-CASPROJ` + `2D-1B-INPUT-SAFETY` + `2D-1B-GATE` | `.casproj` 段階的検査、migration、不正入力隔離、保存回帰 Gate 証拠を揃え、2D-2 / 2D-3本実装を解禁する。 | Codex + Opus 4.8 必須 review + 人間確認 | 6 | Gate mergeまで 2D-2 / 2D-3 本実装不可 | 6後 | PR #53 は partial。`2D-1B-GATE` は未完了。 |
 | 8A | `2D-2-PROJECT` + `2D-2-CREATE` | Project内の複数Asset / Family / Variant管理と、空キャンバス、template、複製、図形、パーツ、文字からの作成を完成させる。 | Codex + Opus 4.8 review | 7 | 契約が重ならない 8B 準備のみ可 | `2D-1B-GATE` 後 | PR #55 は `2D-2-CREATE` partial / provisional。`2D-2-PROJECT` は未完了。 |
 | 8B | `2D-3-TYPE-PROFILES` + `2D-3-INSPECT` | asset type profile と理由付き検査を先に固定し、以後の作成・game data・exportの不足表示を揃える。 | Codex。新しいデータ意味はFable5または人間判断 | 7 | 8A と条件付き並行可 | `2D-1B-GATE` 後 | 未着手。 |
@@ -530,7 +530,7 @@ PR 運用 Gate:
 | 22 | `2D-6-REFERENCE` + `2D-6-DOCS` + `2D-6-GATE-AUDIT` | 代表project、最終証拠、README / user guide / release checklist / docs整合、最終品質auditを通す。 | Codex docs / evidence + 人間実機確認 + Opus 4.8 audit | 21A〜21C、18〜20 | 最終auditのため並行不可 | 21C後 | 未着手。正式IDは `2D-6-GATE-AUDIT`。 |
 | 23 | `2D Pro Gate` | 全必須package、判断必須ADR、証拠、CI、実機、target fixture、Opus 4.8、PR #53 / #55再監査、人間承認を確認し、3D開始可否を判断する。 | Fable5が証拠整理、Opus 4.8最終review、人間が最終承認 | 22 | Gate中は新規実装しない | 22後 | 未完了。人間承認前は3D開始禁止。 |
 
-PR #53・PR #55 は先行 merge 済みのため revert しない。PR #53の`2D-1B-REVISION`該当範囲はPR #70、#71、#72、`2D-1B-LAYERS`該当範囲はPR #76、#77、#78、`2D-1B-RECOVERY`該当範囲はPR #80、#81で再監査を完了した。次の実行チェックポイントは`2D-1B-STORAGE-CROSS-REVIEW`であり、BLOCKERがなければ`2D-1B-CAPACITY`へ進む。残る`2D-1B-*`の完了と`2D-1B-GATE`のmergeまでは、追加の`2D-2-*`と`2D-3-*`本実装を停止し、調査、prototype、test設計に限定する。product code を変更しない準備作業として、`2D-6-PERFORMANCE` / `2D-6-A11Y` の baseline だけを並行可能にする。
+PR #53・PR #55 は先行 merge 済みのため revert しない。PR #53の`2D-1B-REVISION`該当範囲はPR #70、#71、#72、`2D-1B-LAYERS`該当範囲はPR #76、#77、#78、`2D-1B-RECOVERY`該当範囲はPR #80、#81で再監査を完了した。`2D-1B-STORAGE-CROSS-REVIEW`はPR #84、#85による補修後に`BLOCKER 0 / MUST 0`で完了し、現在は`2D-1B-CAPACITY`である。残る`2D-1B-*`の完了と`2D-1B-GATE`のmergeまでは、追加の`2D-2-*`と`2D-3-*`本実装を停止し、調査、prototype、test設計に限定する。product code を変更しない準備作業として、`2D-6-PERFORMANCE` / `2D-6-A11Y` の baseline だけを並行可能にする。
 
 本書に新しいアイデアがあっても、実装担当が独断で `asset.json`、`.casproj`、export ZIP、dependencies、3D、外部 API を変えてはいけない。
 
