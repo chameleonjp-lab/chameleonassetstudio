@@ -1,12 +1,28 @@
 import { strFromU8, strToU8, unzip, zip, type Unzipped, type Zippable } from 'fflate';
 import type { Asset, ExportPresetFile, Project } from '../model';
-import { migrateAsset, migrateExportPresets, migrateProject } from '../model';
+import { MigrationError, migrateAsset, migrateExportPresets, migrateProject } from '../model';
 import { validateAsset, validateExportPresets, validateProject } from '../schema/validate';
 
+export type CasprojErrorCode =
+  | 'invalid-archive'
+  | 'missing-project'
+  | 'invalid-document'
+  | 'unsupported-version'
+  | 'incomplete-bundle'
+  | 'inconsistent-bundle';
+
 export class CasprojError extends Error {
-  constructor(message: string, options?: ErrorOptions) {
+  readonly code: CasprojErrorCode;
+
+  constructor(
+    message: string,
+    options?: ErrorOptions & {
+      code?: CasprojErrorCode;
+    },
+  ) {
     super(message, options);
     this.name = 'CasprojError';
+    this.code = options?.code ?? 'invalid-document';
   }
 }
 
@@ -30,10 +46,7 @@ export interface CasprojImportResult {
   bundle: CasprojBundle;
   /** 古い形式から移行した場合の適用ログ。 */
   appliedMigrations: string[];
-  /**
-   * 読み込みは継続するがユーザーへ伝えるべき問題（Phase 17-B）。
-   * 現在は asset.json が参照する texture path のファイルが ZIP 内に無い場合の欠落一覧。
-   */
+  /** 読み込みは継続するが、canonical保存前にユーザーへ伝えるべき互換上の問題。 */
   warnings: string[];
 }
 
@@ -66,7 +79,12 @@ function unzipAsync(bytes: Uint8Array): Promise<Unzipped> {
   return new Promise((resolve, reject) => {
     unzip(bytes, (error, output) => {
       if (error) {
-        reject(new CasprojError('ZIP として読み込めませんでした', { cause: error }));
+        reject(
+          new CasprojError('ZIP として読み込めませんでした', {
+            cause: error,
+            code: 'invalid-archive',
+          }),
+        );
       } else {
         resolve(output);
       }
@@ -90,7 +108,74 @@ function parseJson(path: string, bytes: Uint8Array): unknown {
   try {
     return JSON.parse(strFromU8(bytes));
   } catch (error) {
-    throw new CasprojError(`${path} が JSON として読めません`, { cause: error });
+    throw new CasprojError(`${path} が JSON として読めません`, {
+      cause: error,
+      code: 'invalid-document',
+    });
+  }
+}
+
+function migrateForImport(
+  path: string,
+  migrate: () => { data: Record<string, unknown>; appliedMigrations: string[] },
+): { data: Record<string, unknown>; appliedMigrations: string[] } {
+  try {
+    return migrate();
+  } catch (error) {
+    if (error instanceof MigrationError) {
+      throw new CasprojError(`${path} を移行できません: ${error.message}`, {
+        cause: error,
+        code: 'unsupported-version',
+      });
+    }
+    throw error;
+  }
+}
+
+function assertBundleDocumentConsistency(project: Project, assets: Asset[]): void {
+  const projectAssetIds = new Set<string>();
+  for (const entry of project.assets) {
+    if (projectAssetIds.has(entry.id)) {
+      throw new CasprojError(`Projectに同じAsset IDが複数あります: ${entry.id}`, {
+        code: 'inconsistent-bundle',
+      });
+    }
+    projectAssetIds.add(entry.id);
+  }
+
+  const assetsById = new Map<string, Asset>();
+  for (const asset of assets) {
+    if (assetsById.has(asset.id)) {
+      throw new CasprojError(`同じAsset IDが複数あります: ${asset.id}`, {
+        code: 'inconsistent-bundle',
+      });
+    }
+    assetsById.set(asset.id, asset);
+  }
+
+  for (const entry of project.assets) {
+    const asset = assetsById.get(entry.id);
+    if (!asset) {
+      throw new CasprojError(`Projectが参照するAssetがありません: ${entry.id}`, {
+        code: 'incomplete-bundle',
+      });
+    }
+    if (
+      entry.name !== asset.name ||
+      entry.assetType !== asset.assetType ||
+      entry.displayName !== asset.displayName
+    ) {
+      throw new CasprojError(`ProjectのAsset summaryとAssetが一致しません: ${asset.id}`, {
+        code: 'inconsistent-bundle',
+      });
+    }
+  }
+  for (const asset of assets) {
+    if (!projectAssetIds.has(asset.id)) {
+      throw new CasprojError(`Projectから参照されないAssetがあります: ${asset.id}`, {
+        code: 'inconsistent-bundle',
+      });
+    }
   }
 }
 
@@ -116,10 +201,29 @@ export async function exportCasproj(bundle: CasprojBundle): Promise<Blob> {
       );
     }
   }
+  assertBundleDocumentConsistency(bundle.project, bundle.assets);
 
   // 画像欠けの .casproj は復元不能になるため、全 TextureRef に対応するファイルが
   // 揃っていることを書き出し時点で保証する（Phase 15.5-A）。
-  const filePaths = new Set(bundle.files.map((file) => file.path));
+  const filePaths = new Set<string>();
+  for (const file of bundle.files) {
+    if (filePaths.has(file.path)) {
+      throw new CasprojError(`同じファイルパスが複数あります: ${file.path}`, {
+        code: 'inconsistent-bundle',
+      });
+    }
+    if (
+      file.path === PROJECT_JSON_PATH ||
+      file.path === EXPORT_PRESETS_PATH ||
+      file.path === README_PATH ||
+      ASSET_JSON_PATTERN.test(file.path)
+    ) {
+      throw new CasprojError(`予約済みファイルパスは上書きできません: ${file.path}`, {
+        code: 'inconsistent-bundle',
+      });
+    }
+    filePaths.add(file.path);
+  }
   for (const asset of bundle.assets) {
     for (const texture of asset.textures) {
       const expectedPath = `assets/${asset.id}/${texture.path}`;
@@ -178,10 +282,15 @@ export async function importCasproj(
   if (!projectBytes) {
     throw new CasprojError(
       'project.json が見つかりません。casproj ファイルではない可能性があります',
+      { code: 'missing-project' },
     );
   }
-  const projectMigration = migrateProject(parseJson(PROJECT_JSON_PATH, projectBytes));
-  appliedMigrations.push(...projectMigration.appliedMigrations);
+  const projectMigration = migrateForImport(PROJECT_JSON_PATH, () =>
+    migrateProject(parseJson(PROJECT_JSON_PATH, projectBytes)),
+  );
+  appliedMigrations.push(
+    ...projectMigration.appliedMigrations.map((entry) => `${PROJECT_JSON_PATH}: ${entry}`),
+  );
   const projectResult = validateProject(projectMigration.data);
   if (!projectResult.valid) {
     throw new CasprojError(`project.json の内容が不正です: ${projectResult.errors.join(' / ')}`);
@@ -192,6 +301,7 @@ export async function importCasproj(
   let exportPresets: ExportPresetFile | undefined;
   let readme: string | undefined;
   const files: CasprojFileEntry[] = [];
+  const assetIds = new Set<string>();
 
   for (const [path, entryBytes] of Object.entries(unzipped)) {
     if (path === PROJECT_JSON_PATH) {
@@ -205,18 +315,39 @@ export async function importCasproj(
     }
     const assetMatch = ASSET_JSON_PATTERN.exec(path);
     if (assetMatch) {
-      const assetMigration = migrateAsset(parseJson(path, entryBytes));
-      appliedMigrations.push(...assetMigration.appliedMigrations);
+      const assetMigration = migrateForImport(path, () =>
+        migrateAsset(parseJson(path, entryBytes)),
+      );
+      appliedMigrations.push(
+        ...assetMigration.appliedMigrations.map((entry) => `${path}: ${entry}`),
+      );
       const assetResult = validateAsset(assetMigration.data);
       if (!assetResult.valid) {
         throw new CasprojError(`${path} の内容が不正です: ${assetResult.errors.join(' / ')}`);
       }
-      assets.push(assetMigration.data as unknown as Asset);
+      const importedAsset = assetMigration.data as unknown as Asset;
+      if (assetMatch[1] !== importedAsset.id) {
+        throw new CasprojError(
+          `${path} のdirectory ID（${assetMatch[1]}）とAsset ID（${importedAsset.id}）が一致しません`,
+          { code: 'inconsistent-bundle' },
+        );
+      }
+      if (assetIds.has(importedAsset.id)) {
+        throw new CasprojError(`同じAsset IDのasset.jsonが複数あります: ${importedAsset.id}`, {
+          code: 'inconsistent-bundle',
+        });
+      }
+      assetIds.add(importedAsset.id);
+      assets.push(importedAsset);
       continue;
     }
     if (path === EXPORT_PRESETS_PATH) {
-      const presetsMigration = migrateExportPresets(parseJson(path, entryBytes));
-      appliedMigrations.push(...presetsMigration.appliedMigrations);
+      const presetsMigration = migrateForImport(path, () =>
+        migrateExportPresets(parseJson(path, entryBytes)),
+      );
+      appliedMigrations.push(
+        ...presetsMigration.appliedMigrations.map((entry) => `${path}: ${entry}`),
+      );
       const presetsResult = validateExportPresets(presetsMigration.data);
       if (!presetsResult.valid) {
         throw new CasprojError(`${path} の内容が不正です: ${presetsResult.errors.join(' / ')}`);

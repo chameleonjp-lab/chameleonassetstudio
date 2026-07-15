@@ -1,6 +1,11 @@
 export * from './autosave';
 export * from './casproj';
-export { importCasproj } from './casprojImport';
+export {
+  commitStagedCasprojImport,
+  importCasproj,
+  stageCasprojImport,
+  type StagedCasprojImport,
+} from './casprojImport';
 export {
   QUOTA_EXCEEDED_MESSAGE,
   StorageError,
