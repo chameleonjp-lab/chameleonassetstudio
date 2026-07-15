@@ -95,7 +95,9 @@ function assertValidSnapshotAsset(asset: Asset, assetId: string, blobKey: string
     throw new StorageError(`復旧点のAssetが不正です: ${result.errors.join(' / ')}`);
   }
   if (asset.id !== assetId) {
-    throw new StorageError(`復旧点のAsset IDが一致しません: expected=${assetId}, actual=${asset.id}`);
+    throw new StorageError(
+      `復旧点のAsset IDが一致しません: expected=${assetId}, actual=${asset.id}`,
+    );
   }
   const ids = new Set<string>();
   const keys = new Set<string>();
@@ -377,10 +379,7 @@ export async function deleteSnapshotsForAssetInTx(
   }
 }
 
-export async function deleteSnapshotsForAsset(
-  projectId: string,
-  assetId: string,
-): Promise<void> {
+export async function deleteSnapshotsForAsset(projectId: string, assetId: string): Promise<void> {
   await runTransaction([STORE_SNAPSHOTS], 'readwrite', (tx) =>
     deleteSnapshotsForAssetInTx(tx, projectId, assetId),
   );
