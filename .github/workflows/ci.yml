@@ -68,6 +68,35 @@ jobs:
       - run: npm run build
       - run: npm run test
 
+  unit-test-diagnostics:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Capture unit test output
+        shell: bash
+        run: |
+          set +e
+          npm run test > unit-test.log 2>&1
+          status=$?
+          echo "$status" > unit-test-exit.txt
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-diagnostics
+          path: |
+            unit-test.log
+            unit-test-exit.txt
+      - name: Preserve unit test result
+        shell: bash
+        run: test "$(cat unit-test-exit.txt)" -eq 0
+
   e2e:
     needs: changes
     if: needs.changes.outputs.e2e == 'true'
