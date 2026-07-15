@@ -68,8 +68,7 @@ async function readStoredEditState(page: Page): Promise<StoredEditState> {
       const blobKey = `${asset.id}/${texture.path}`;
       const blobTx = db.transaction(['blobs'], 'readonly');
       const blobRecord = (await requestResult(blobTx.objectStore('blobs').get(blobKey))) as
-        | { mimeType: string; bytes: ArrayBuffer }
-        | undefined;
+        { mimeType: string; bytes: ArrayBuffer } | undefined;
       if (!blobRecord) {
         throw new Error('保存済み edit Blob が見つかりません');
       }
