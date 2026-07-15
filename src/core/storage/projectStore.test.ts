@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Asset, Project } from '../model';
 import { createEmptyProject } from '../model';
 import characterAsset from '../samples/asset.character.json';
-import { StorageError, resetDbForTests } from './db';
+import { resetDbForTests } from './db';
 import { restoreProject } from './index';
 import {
   TRASH_LIMIT,
@@ -69,11 +69,22 @@ async function saveAssetWithBlobs(project: Project, asset: Asset, seed = 1): Pro
 
 async function saveCurrentSnapshot(project: Project, asset: Asset, label: string): Promise<void> {
   const edit = asset.textures.find((texture) => texture.kind === 'edit');
-  if (!edit) throw new Error('edit texture missing');
+  if (!edit) {
+    throw new Error('edit texture missing');
+  }
   const key = `${asset.id}/${edit.path}`;
   const blob = await loadBlob(key);
-  if (!blob) throw new Error('edit blob missing');
-  await saveSnapshot({ projectId: project.id, assetId: asset.id, label, asset, blobKey: key, blob });
+  if (!blob) {
+    throw new Error('edit blob missing');
+  }
+  await saveSnapshot({
+    projectId: project.id,
+    assetId: asset.id,
+    label,
+    asset,
+    blobKey: key,
+    blob,
+  });
 }
 
 describe('project / asset 基本保存', () => {
@@ -82,6 +93,7 @@ describe('project / asset 基本保存', () => {
     const project = projectWithAssets('basic', [asset]);
     await saveProject(project);
     await saveAsset(project.id, asset);
+
     expect((await loadProject(project.id)).project).toEqual(project);
     expect((await loadAsset(asset.id)).asset).toEqual(asset);
     expect(await listProjects()).toHaveLength(1);
@@ -95,7 +107,10 @@ describe('project / asset 基本保存', () => {
     await saveProject(owner);
     await saveProject(other);
     await saveAsset(owner.id, asset);
-    await expect(saveAsset(other.id, { ...asset, displayName: 'wrong' })).rejects.toThrow(/属していません/);
+
+    await expect(saveAsset(other.id, { ...asset, displayName: 'wrong' })).rejects.toThrow(
+      /属していません/,
+    );
     expect((await loadAsset(asset.id)).asset).toEqual(asset);
   });
 });
@@ -105,6 +120,7 @@ describe('saveProjectBundle guard', () => {
     const asset = assetWithId('asset_bundle');
     const project = projectWithAssets('bundle', [asset]);
     await saveProjectBundle(project, [asset], blobsForAsset(asset));
+
     expect((await loadProject(project.id)).project).toEqual(project);
     expect((await loadAsset(asset.id)).asset).toEqual(asset);
     for (const texture of asset.textures) {
@@ -112,18 +128,18 @@ describe('saveProjectBundle guard', () => {
     }
   });
 
-  it('Projectから参照されないAssetを拒否する', async () => {
-    const asset = assetWithId('asset_unreferenced');
-    const project = createEmptyProject('unreferenced');
-    await expect(saveProjectBundle(project, [asset], blobsForAsset(asset))).rejects.toThrow(/参照されていません/);
-    await expect(loadProject(project.id)).rejects.toThrow(/見つかりません/);
-  });
+  it('Project参照欠落、Blob不足、orphan Blobを拒否する', async () => {
+    const asset = assetWithId('asset_bundle_invalid');
+    const unreferencedProject = createEmptyProject('unreferenced');
+    await expect(
+      saveProjectBundle(unreferencedProject, [asset], blobsForAsset(asset)),
+    ).rejects.toThrow(/参照されていません/);
 
-  it('TextureRefに対応するBlob不足とorphan Blobを拒否する', async () => {
-    const asset = assetWithId('asset_blob_guard');
     const project = projectWithAssets('blob guard', [asset]);
     const complete = blobsForAsset(asset);
-    await expect(saveProjectBundle(project, [asset], complete.slice(1))).rejects.toThrow(/Blob が保存対象にありません/);
+    await expect(saveProjectBundle(project, [asset], complete.slice(1))).rejects.toThrow(
+      /Blob が保存対象にありません/,
+    );
     await expect(
       saveProjectBundle(project, [asset], [
         ...complete,
@@ -132,13 +148,15 @@ describe('saveProjectBundle guard', () => {
     ).rejects.toThrow(/対応する TextureRef/);
   });
 
-  it('既存AssetやBlobを新規bundle APIで上書きしない', async () => {
+  it('既存Assetを新規bundle APIで上書きしない', async () => {
     const asset = assetWithId('asset_existing', 'before');
     const owner = projectWithAssets('owner', [asset]);
     await saveAssetWithBlobs(owner, asset);
-    const nextProject = projectWithAssets('same owner update', [{ ...asset, displayName: 'after' }], owner.id);
+    const changed = { ...asset, displayName: 'after' };
+    const nextProject = projectWithAssets('same owner update', [changed], owner.id);
+
     await expect(
-      saveProjectBundle(nextProject, [{ ...asset, displayName: 'after' }], blobsForAsset(asset, 20)),
+      saveProjectBundle(nextProject, [changed], blobsForAsset(changed, 20)),
     ).rejects.toThrow(/saveAssetRevision/);
     expect((await loadAsset(asset.id)).asset.displayName).toBe('before');
   });
@@ -147,23 +165,35 @@ describe('saveProjectBundle guard', () => {
     const asset = assetWithId('asset_bundle_fail');
     const project = projectWithAssets('bundle fail', [asset]);
     const blobs = blobsForAsset(asset);
-    const failKey = blobs.at(-1)!.key;
+    const failKey = blobs.at(-1)?.key;
+    if (!failKey) {
+      throw new Error('fixture blob missing');
+    }
+
     const originalPut = IDBObjectStore.prototype.put;
     const spy = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (
       this: IDBObjectStore,
       value: unknown,
       key?: IDBValidKey,
     ) {
-      if (this.name === 'blobs' && typeof value === 'object' && value && 'key' in value && value.key === failKey) {
+      if (
+        this.name === 'blobs' &&
+        typeof value === 'object' &&
+        value !== null &&
+        'key' in value &&
+        value.key === failKey
+      ) {
         throw new DOMException('fail injection', 'DataError');
       }
       return originalPut.call(this, value, key);
     });
+
     try {
       await expect(saveProjectBundle(project, [asset], blobs)).rejects.toThrow();
     } finally {
       spy.mockRestore();
     }
+
     await expect(loadProject(project.id)).rejects.toThrow(/見つかりません/);
     await expect(loadAsset(asset.id)).rejects.toThrow(/見つかりません/);
     expect(await loadBlob(blobs[0].key)).toBeNull();
@@ -175,25 +205,34 @@ describe('改訂保存', () => {
     const asset = assetWithId('asset_revision');
     const project = projectWithAssets('revision', [asset]);
     await saveAssetWithBlobs(project, asset);
-    const edit = asset.textures.find((texture) => texture.kind === 'edit')!;
-    const source = asset.textures.find((texture) => texture.kind === 'source')!;
+    const edit = asset.textures.find((texture) => texture.kind === 'edit');
+    const source = asset.textures.find((texture) => texture.kind === 'source');
+    if (!edit || !source) {
+      throw new Error('fixture texture missing');
+    }
     const editKey = `${asset.id}/${edit.path}`;
     const sourceKey = `${asset.id}/${source.path}`;
     const sourceBefore = new Uint8Array(await (await loadBlob(sourceKey))!.arrayBuffer());
-    const next = {
+    const next: Asset = {
       ...asset,
       displayName: 'after',
       textures: asset.textures.map((texture) =>
         texture.id === edit.id ? { ...texture, size: { width: 24, height: 24 } } : texture,
       ),
     };
+
     await saveAssetRevision({
       projectId: project.id,
       asset: next,
-      putBlobs: [{ key: editKey, blob: new Blob([new Uint8Array([99])], { type: edit.mimeType }) }],
+      putBlobs: [
+        { key: editKey, blob: new Blob([new Uint8Array([99])], { type: edit.mimeType }) },
+      ],
     });
+
     expect((await loadAsset(asset.id)).asset.displayName).toBe('after');
-    expect(new Uint8Array(await (await loadBlob(editKey))!.arrayBuffer())).toEqual(new Uint8Array([99]));
+    expect(new Uint8Array(await (await loadBlob(editKey))!.arrayBuffer())).toEqual(
+      new Uint8Array([99]),
+    );
     expect(new Uint8Array(await (await loadBlob(sourceKey))!.arrayBuffer())).toEqual(sourceBefore);
   });
 });
@@ -205,6 +244,7 @@ describe('trash restore / purge ownership', () => {
     await saveAssetWithBlobs(project, asset);
     await deleteProject(project.id);
     await restoreProject(project.id);
+
     expect((await loadProject(project.id)).project).toEqual(project);
     expect((await loadAsset(asset.id)).asset).toEqual(asset);
   });
@@ -214,9 +254,9 @@ describe('trash restore / purge ownership', () => {
     const deleted = projectWithAssets('deleted', [asset], 'project_collision');
     await saveAssetWithBlobs(deleted, asset);
     await deleteProject(deleted.id);
-    const live = { ...deleted, name: 'live' };
-    await saveProject(live);
-    await saveBlob(live.id, 'live-only/blob.png', new Blob([new Uint8Array([77])]));
+    await saveProject({ ...deleted, name: 'live' });
+    await saveBlob(deleted.id, 'live-only/blob.png', new Blob([new Uint8Array([77])]));
+
     await expect(purgeTrash(deleted.id)).rejects.toThrow(/同じProject ID/);
     expect(await listTrash()).toHaveLength(1);
     expect(await loadBlob('live-only/blob.png')).not.toBeNull();
@@ -248,11 +288,12 @@ describe('trash restore / purge ownership', () => {
     await deleteProject(conflict.id);
     await deleteProject(other.id);
     await saveProject({ ...conflict, name: 'live conflict' });
+
     await expect(purgeAllTrash()).rejects.toThrow(/同じProject ID/);
     expect(await listTrash()).toHaveLength(2);
   });
 
-  it('自動purge対象が衝突する場合は別recordを代替削除せず上限超過を維持する', async () => {
+  it('自動purge対象が衝突する場合は別recordを代替削除しない', async () => {
     const oldest = createEmptyProject('oldest collision');
     await saveProject(oldest);
     vi.useFakeTimers({ toFake: ['Date'] });
@@ -269,6 +310,7 @@ describe('trash restore / purge ownership', () => {
     } finally {
       vi.useRealTimers();
     }
+
     expect(await listTrash()).toHaveLength(TRASH_LIMIT + 1);
     expect((await listTrash()).some((entry) => entry.id === oldest.id)).toBe(true);
   });
@@ -277,16 +319,15 @@ describe('trash restore / purge ownership', () => {
 describe('Asset削除のsnapshot所有境界', () => {
   it('deleteAssetBundleは対象Projectのsnapshotだけを削除する', async () => {
     const sharedAsset = assetWithId('asset_shared_snapshot');
-    const deletedProject = projectWithAssets('trash owner', [sharedAsset]);
-    await saveAssetWithBlobs(deletedProject, sharedAsset);
-    await saveCurrentSnapshot(deletedProject, sharedAsset, 'trash snapshot');
-    await deleteProject(deletedProject.id);
+    const trashProject = projectWithAssets('trash owner', [sharedAsset]);
+    await saveAssetWithBlobs(trashProject, sharedAsset);
+    await saveCurrentSnapshot(trashProject, sharedAsset, 'trash snapshot');
+    await deleteProject(trashProject.id);
 
     const liveProject = projectWithAssets('live owner', [sharedAsset]);
     await saveAssetWithBlobs(liveProject, sharedAsset, 40);
     await saveCurrentSnapshot(liveProject, sharedAsset, 'live snapshot');
-    const nextProject = { ...liveProject, assets: [] };
-    await deleteAssetBundle({ project: nextProject, assetId: sharedAsset.id });
+    await deleteAssetBundle({ project: { ...liveProject, assets: [] }, assetId: sharedAsset.id });
 
     const remaining = await listSnapshots(sharedAsset.id);
     expect(remaining).toHaveLength(1);
@@ -299,10 +340,12 @@ describe('Asset削除のsnapshot所有境界', () => {
     await saveAssetWithBlobs(trashProject, sharedAsset);
     await saveCurrentSnapshot(trashProject, sharedAsset, 'trash snapshot');
     await deleteProject(trashProject.id);
+
     const liveProject = projectWithAssets('live', [sharedAsset]);
     await saveAssetWithBlobs(liveProject, sharedAsset, 50);
     await saveCurrentSnapshot(liveProject, sharedAsset, 'live snapshot');
     await deleteAsset(sharedAsset.id);
+
     const remaining = await listSnapshots(sharedAsset.id);
     expect(remaining.map((entry) => entry.label)).toEqual(['trash snapshot']);
   });
