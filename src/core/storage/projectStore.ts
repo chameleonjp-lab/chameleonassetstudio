@@ -225,7 +225,11 @@ export async function saveProjectBundle(
   await runTransaction([STORE_PROJECTS, STORE_ASSETS, STORE_BLOBS], 'readwrite', (tx) => {
     tx.objectStore(STORE_PROJECTS).put(project);
     for (const asset of assets) {
-      const record: StoredAssetRecord = { id: asset.id, projectId: project.id, data: asset };
+      const record: StoredAssetRecord = {
+        id: asset.id,
+        projectId: project.id,
+        data: asset,
+      };
       tx.objectStore(STORE_ASSETS).put(record);
     }
     for (const record of blobRecords) {
@@ -319,7 +323,9 @@ function assertTextureBlobTransitions({
     const previousKey = blobKeyForAssetPath(previousAsset.id, previousTexture.path);
     if (!nextTexture) {
       if (!deleteBlobKeys.has(previousKey)) {
-        throw new StorageError(`削除された TextureRef に対応する Blob が削除対象にありません: ${previousKey}`);
+        throw new StorageError(
+          `削除された TextureRef に対応する Blob が削除対象にありません: ${previousKey}`,
+        );
       }
       if (previousTexture.kind === 'source') {
         removedSourceKeys.add(previousKey);
@@ -356,7 +362,9 @@ function assertTextureBlobTransitions({
     }
     const nextKey = blobKeyForAssetPath(nextAsset.id, nextTexture.path);
     if (!putBlobKeys.has(nextKey)) {
-      throw new StorageError(`新しい TextureRef に対応する Blob が保存対象にありません: ${nextKey}`);
+      throw new StorageError(
+        `新しい TextureRef に対応する Blob が保存対象にありません: ${nextKey}`,
+      );
     }
     if (nextTexture.kind === 'source') {
       addedSourceKeys.add(nextKey);
@@ -396,7 +404,11 @@ export async function saveAssetRevision({
   const blobRecords = await prepareBlobRecords(
     putBlobs.map(({ key, blob }) => ({ key, projectId, blob })),
   );
-  const assetRecord: StoredAssetRecord = { id: asset.id, projectId, data: asset };
+  const assetRecord: StoredAssetRecord = {
+    id: asset.id,
+    projectId,
+    data: asset,
+  };
 
   await runTransaction([STORE_ASSETS, STORE_BLOBS], 'readwrite', async (tx) => {
     const previousRecord = await requestToPromise(
