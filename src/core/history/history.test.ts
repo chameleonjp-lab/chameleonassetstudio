@@ -134,7 +134,10 @@ describe('History', () => {
     });
     await history.waitForPending();
     expect(state.value).toBe(0);
-    expect(queue.getState()).toMatchObject({ status: 'error', errorMessage: 'metadata save failed' });
+    expect(queue.getState()).toMatchObject({
+      status: 'error',
+      errorMessage: 'metadata save failed',
+    });
     expect(history.getState()).toMatchObject({ canUndo: false, canRedo: false, isBusy: false });
   });
 
