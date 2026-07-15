@@ -15,6 +15,8 @@ export type SaveTask = () => Promise<void>;
  * 保存中、保存済み、保存失敗の状態を購読者へ返す。
  */
 export class AutosaveQueue {
+  private static readonly activeQueues = new Set<AutosaveQueue>();
+
   private readonly delayMs: number;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private pendingTask: SaveTask | null = null;
@@ -24,6 +26,17 @@ export class AutosaveQueue {
 
   constructor(options?: { delayMs?: number }) {
     this.delayMs = options?.delayMs ?? 800;
+  }
+
+  /**
+   * 画面ごとの自動保存キューに残っている処理をすべて完了させる。
+   * snapshot 復元など、現在の正本を読み取る前に使用する。
+   */
+  static async flushAll(): Promise<void> {
+    while (AutosaveQueue.activeQueues.size > 0) {
+      const queues = [...AutosaveQueue.activeQueues];
+      await Promise.all(queues.map((queue) => queue.flush()));
+    }
   }
 
   getState(): SaveState {
@@ -39,6 +52,7 @@ export class AutosaveQueue {
 
   /** 保存タスクを予約する。デバウンス中に再度呼ばれたら最新のタスクだけ残す。 */
   schedule(task: SaveTask): void {
+    AutosaveQueue.activeQueues.add(this);
     this.pendingTask = task;
     if (this.timer) {
       clearTimeout(this.timer);
@@ -58,6 +72,7 @@ export class AutosaveQueue {
     while (this.currentRun || this.pendingTask) {
       await (this.currentRun ?? this.startRun());
     }
+    AutosaveQueue.activeQueues.delete(this);
   }
 
   private startRun(): Promise<void> {
@@ -66,6 +81,7 @@ export class AutosaveQueue {
     }
     const task = this.pendingTask;
     if (!task) {
+      AutosaveQueue.activeQueues.delete(this);
       return Promise.resolve();
     }
     this.pendingTask = null;
@@ -88,6 +104,8 @@ export class AutosaveQueue {
       // 保存中に新しい操作が来ていたら続けて保存する
       if (this.pendingTask && !this.timer) {
         void this.startRun();
+      } else if (!this.pendingTask) {
+        AutosaveQueue.activeQueues.delete(this);
       }
     });
     return this.currentRun;

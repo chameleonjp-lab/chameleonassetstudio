@@ -98,6 +98,19 @@ function sameTextureRef(left: TextureRef, right: TextureRef): boolean {
   );
 }
 
+function sameAsset(left: Asset, right: Asset): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function sameBytes(left: ArrayBuffer, right: ArrayBuffer): boolean {
+  const leftBytes = new Uint8Array(left);
+  const rightBytes = new Uint8Array(right);
+  if (leftBytes.length !== rightBytes.length) {
+    return false;
+  }
+  return leftBytes.every((value, index) => value === rightBytes[index]);
+}
+
 function assertSourceTexturesUnchanged(current: Asset, snapshot: Asset): void {
   const currentSources = current.textures.filter((texture) => texture.kind === 'source');
   const snapshotSources = snapshot.textures.filter((texture) => texture.kind === 'source');
@@ -230,6 +243,7 @@ export async function listSnapshots(assetId: string): Promise<AssetSnapshotSumma
 }
 
 export interface RestoredSnapshot {
+  projectId: string;
   asset: Asset;
   blobKey: string;
   blob: Blob;
@@ -274,12 +288,82 @@ export async function restoreSnapshot(id: string): Promise<RestoredSnapshot> {
     }
 
     return {
+      projectId: record.projectId,
       asset: record.asset,
       blobKey: record.blob.key,
       blob: new Blob([record.blob.bytes], { type: record.blob.mimeType }),
       beforeAsset: storedAsset.data,
       beforeBlob: new Blob([currentBlob.bytes], { type: currentBlob.mimeType }),
     };
+  });
+}
+
+export interface ApplySnapshotRestoreInput {
+  projectId: string;
+  assetId: string;
+  blobKey: string;
+  beforeAsset: Asset;
+  beforeBlob: Blob;
+  asset: Asset;
+  blob: Blob;
+}
+
+/**
+ * 復旧点の準備時に読み取った正本と現在の正本が一致する場合だけ、
+ * Asset JSON と edit Blob を同じ readwrite transaction で復元する。
+ */
+export async function applySnapshotRestore(input: ApplySnapshotRestoreInput): Promise<void> {
+  const beforeEditTexture = assertValidSnapshotAsset(
+    input.beforeAsset,
+    input.assetId,
+    input.blobKey,
+  );
+  const nextEditTexture = assertValidSnapshotAsset(input.asset, input.assetId, input.blobKey);
+  if (beforeEditTexture.id !== nextEditTexture.id) {
+    throw new StorageError(`復旧前後の edit TextureRef が一致しません: ${input.blobKey}`);
+  }
+  assertSourceTexturesUnchanged(input.beforeAsset, input.asset);
+
+  const beforeBytes = await input.beforeBlob.arrayBuffer();
+  const nextBytes = await input.blob.arrayBuffer();
+
+  await runTransaction([STORE_ASSETS, STORE_BLOBS], 'readwrite', async (tx) => {
+    const storedAsset = await loadStoredAssetInTx(tx, input.assetId);
+    assertStoredAssetOwnership(storedAsset, input.projectId, input.assetId);
+    if (!sameAsset(storedAsset.data, input.beforeAsset)) {
+      throw new StorageError('復旧点を読み出した後にアセットが変更されたため、復元を中止しました');
+    }
+    assertSourceTexturesUnchanged(storedAsset.data, input.asset);
+
+    const currentEditTexture = findEditTexture(storedAsset.data, input.blobKey);
+    if (!currentEditTexture || currentEditTexture.id !== nextEditTexture.id) {
+      throw new StorageError(
+        `復旧対象の edit TextureRef が現在のアセットと一致しません: ${input.blobKey}`,
+      );
+    }
+
+    const storedBlob = await loadStoredBlobInTx(tx, input.blobKey);
+    if (!storedBlob || storedBlob.projectId !== input.projectId) {
+      throw new StorageError(`復元前の edit Blob が見つかりません: ${input.blobKey}`);
+    }
+    if (!sameBytes(storedBlob.bytes, beforeBytes)) {
+      throw new StorageError('復旧点を読み出した後に編集画像が変更されたため、復元を中止しました');
+    }
+
+    const nextAssetRecord: StoredAssetRecord = {
+      id: input.assetId,
+      projectId: input.projectId,
+      data: input.asset,
+    };
+    const nextBlobRecord: StoredBlobRecord = {
+      key: input.blobKey,
+      projectId: input.projectId,
+      mimeType: input.blob.type,
+      bytes: nextBytes,
+      updatedAt: new Date().toISOString(),
+    };
+    await requestToPromise(tx.objectStore(STORE_ASSETS).put(nextAssetRecord));
+    await requestToPromise(tx.objectStore(STORE_BLOBS).put(nextBlobRecord));
   });
 }
 

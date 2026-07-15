@@ -5,4 +5,5 @@ export * from './projectStore';
 export { restoreProject } from './projectRecovery';
 export * from './quarantineStore';
 export * from './snapshotStore';
+export { restoreSnapshot, saveAssetRevision } from './snapshotRestoreCoordinator';
 export * from './storageUsage';
