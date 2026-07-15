@@ -22,17 +22,12 @@ export interface ProjectSummary {
   updatedAt: string;
 }
 
-/** assets ストアの 1 レコード。asset 本体に projectId を持たせず、レコード側で持つ。 */
 interface StoredAssetRecord {
   id: string;
   projectId: string;
   data: Asset;
 }
 
-/**
- * blobs ストアの 1 レコード。
- * Blob をそのまま入れず ArrayBuffer で保存する（ブラウザ差による Blob 保存の不具合を避ける）。
- */
 interface StoredBlobRecord {
   key: string;
   projectId: string;
@@ -41,7 +36,6 @@ interface StoredBlobRecord {
   updatedAt: string;
 }
 
-/** ごみ箱（trash ストア）の 1 レコード。id は元の project.id をそのまま使う。 */
 interface TrashRecord {
   id: string;
   deletedAt: string;
@@ -49,7 +43,6 @@ interface TrashRecord {
   assets: Asset[];
 }
 
-/** ごみ箱に保持するプロジェクト数の上限（2D-1B-STORAGE §B）。 */
 export const TRASH_LIMIT = 5;
 
 function formatValidationErrors(label: string, errors: string[]): string {
@@ -108,7 +101,6 @@ function assertTextureRefsUnchanged(previousAsset: Asset, nextAsset: Asset): voi
   }
 }
 
-/** プロジェクトを保存する。自動保存前の検証（要件 14）もここで行う。 */
 export async function saveProject(project: Project): Promise<void> {
   const result = validateProject(project);
   if (!result.valid) {
@@ -195,10 +187,47 @@ async function prepareBlobRecords(blobs: PreparedBlobRecordInput[]): Promise<Sto
   );
 }
 
+function assertBundleReferences(project: Project, assets: Asset[], blobs: ProjectBundleBlobInput[]): void {
+  const projectAssetIds = new Set<string>();
+  for (const entry of project.assets) {
+    if (projectAssetIds.has(entry.id)) {
+      throw new StorageError(`Project に同じ Asset ID が複数参照されています: ${entry.id}`);
+    }
+    projectAssetIds.add(entry.id);
+  }
+
+  const inputAssetIds = new Set<string>();
+  const expectedBlobKeys = new Set<string>();
+  for (const asset of assets) {
+    if (inputAssetIds.has(asset.id)) {
+      throw new StorageError(`保存対象に同じ Asset ID が複数指定されています: ${asset.id}`);
+    }
+    inputAssetIds.add(asset.id);
+    if (!projectAssetIds.has(asset.id)) {
+      throw new StorageError(`保存対象 Asset が Project から参照されていません: ${asset.id}`);
+    }
+    const textureIndex = buildTextureIndex(asset, `Asset（id: ${asset.id}）`);
+    for (const key of textureIndex.byKey.keys()) {
+      expectedBlobKeys.add(key);
+    }
+  }
+
+  const actualBlobKeys = new Set(blobs.map(({ key }) => key));
+  for (const key of actualBlobKeys) {
+    if (!expectedBlobKeys.has(key)) {
+      throw new StorageError(`保存対象 Blob に対応する TextureRef がありません: ${key}`);
+    }
+  }
+  for (const key of expectedBlobKeys) {
+    if (!actualBlobKeys.has(key)) {
+      throw new StorageError(`TextureRef に対応する Blob が保存対象にありません: ${key}`);
+    }
+  }
+}
+
 /**
- * project + assets[] + blobs[] をまとめて原子的に保存する（2D-1B-STORAGE §A）。
- * 新規 Asset 作成、.casproj 読み込み、複製で使う。既存 Asset の改訂には
- * saveAssetRevision を使う。
+ * project + 新規 assets[] + blobs[] をまとめて原子的に保存する。
+ * 既存 Asset の上書き改訂には saveAssetRevision を使う。
  */
 export async function saveProjectBundle(
   project: Project,
@@ -214,26 +243,44 @@ export async function saveProjectBundle(
     if (!assetResult.valid) {
       throw new StorageError(formatValidationErrors('asset', assetResult.errors));
     }
-    buildTextureIndex(asset, `Asset（id: ${asset.id}）`);
   }
-
   assertDistinctBlobOperations(blobs, []);
+  assertBundleReferences(project, assets, blobs);
+
   const blobRecords = await prepareBlobRecords(
     blobs.map(({ key, blob }) => ({ key, projectId: project.id, blob })),
   );
 
-  await runTransaction([STORE_PROJECTS, STORE_ASSETS, STORE_BLOBS], 'readwrite', (tx) => {
-    tx.objectStore(STORE_PROJECTS).put(project);
+  await runTransaction([STORE_PROJECTS, STORE_ASSETS, STORE_BLOBS], 'readwrite', async (tx) => {
+    const assetStore = tx.objectStore(STORE_ASSETS);
+    const blobStore = tx.objectStore(STORE_BLOBS);
+
     for (const asset of assets) {
-      const record: StoredAssetRecord = {
-        id: asset.id,
-        projectId: project.id,
-        data: asset,
-      };
-      tx.objectStore(STORE_ASSETS).put(record);
+      const existing = await requestToPromise(
+        assetStore.get(asset.id) as IDBRequest<StoredAssetRecord | undefined>,
+      );
+      if (existing) {
+        throw new StorageError(
+          `同じ Asset ID（${asset.id}）が既に保存されています。既存 Asset の変更には saveAssetRevision を使用してください`,
+        );
+      }
     }
     for (const record of blobRecords) {
-      tx.objectStore(STORE_BLOBS).put(record);
+      const existing = await requestToPromise(
+        blobStore.get(record.key) as IDBRequest<StoredBlobRecord | undefined>,
+      );
+      if (existing) {
+        throw new StorageError(`同じ Blob key が既に保存されています: ${record.key}`);
+      }
+    }
+
+    await requestToPromise(tx.objectStore(STORE_PROJECTS).put(project));
+    for (const asset of assets) {
+      const record: StoredAssetRecord = { id: asset.id, projectId: project.id, data: asset };
+      await requestToPromise(assetStore.put(record));
+    }
+    for (const record of blobRecords) {
+      await requestToPromise(blobStore.put(record));
     }
   });
 }
@@ -267,12 +314,6 @@ function assertExactKeySet(label: string, actual: Set<string>, expected: Set<str
     if (!actual.has(key)) {
       throw new StorageError(`${label}が必要です: ${key}`);
     }
-  }
-}
-
-function assertExistingSourceUnchanged(previous: TextureRef, next: TextureRef): void {
-  if (!sameTextureRef(previous, next)) {
-    throw new StorageError(`既存 source TextureRef は通常改訂で変更できません: ${previous.id}`);
   }
 }
 
@@ -343,29 +384,20 @@ function assertTextureBlobTransitions({
 
     const nextKey = blobKeyForAssetPath(nextAsset.id, nextTexture.path);
     if (previousTexture.kind === 'source') {
-      if (previousKey !== nextKey) {
-        if (!putBlobKeys.has(nextKey)) {
-          throw new StorageError(
-            `新しいTextureRefに対応するBlobが保存対象にありません: ${nextKey}`,
-          );
-        }
-        if (!deleteBlobKeys.has(previousKey)) {
-          throw new StorageError(
-            `削除されたTextureRefに対応するBlobが削除対象にありません: ${previousKey}`,
-          );
+      if (!sameTextureRef(previousTexture, nextTexture)) {
+        if (nextTexture.kind !== 'source') {
+          removedSourceKeys.add(previousKey);
+        } else {
+          throw new StorageError(`既存 source TextureRef は通常改訂で変更できません: ${id}`);
         }
       }
-      if (nextTexture.kind !== 'source') {
-        if (!deleteKeys.has(previousKey) || !deleteBlobKeys.has(previousKey)) {
-          throw new StorageError(`source delete 許可が必要です: ${previousKey}`);
+      if (nextTexture.kind === 'source') {
+        if (putBlobKeys.has(previousKey)) {
+          throw new StorageError(`既存 source Blob は上書きできません: ${previousKey}`);
         }
-      }
-      assertExistingSourceUnchanged(previousTexture, nextTexture);
-      if (putBlobKeys.has(previousKey)) {
-        throw new StorageError(`既存 source Blob は上書きできません: ${previousKey}`);
-      }
-      if (deleteBlobKeys.has(previousKey)) {
-        throw new StorageError(`既存 source Blob は削除できません: ${previousKey}`);
+        if (deleteBlobKeys.has(previousKey)) {
+          throw new StorageError(`既存 source Blob は削除できません: ${previousKey}`);
+        }
       }
     } else if (nextTexture.kind === 'source') {
       throw new StorageError(`既存 TextureRef を source へ変更できません: ${id}`);
@@ -406,10 +438,6 @@ export interface AssetRevisionInput {
   sourceBlobTransitions?: SourceBlobTransitions;
 }
 
-/**
- * Asset と、その Asset 改訂に対応する Blob 追加・上書き・削除を単一 transaction で確定する。
- * Blob→ArrayBuffer の変換と Asset 検証は transaction 開始前に済ませる。
- */
 export async function saveAssetRevision({
   projectId,
   asset,
@@ -427,11 +455,7 @@ export async function saveAssetRevision({
   const blobRecords = await prepareBlobRecords(
     putBlobs.map(({ key, blob }) => ({ key, projectId, blob })),
   );
-  const assetRecord: StoredAssetRecord = {
-    id: asset.id,
-    projectId,
-    data: asset,
-  };
+  const assetRecord: StoredAssetRecord = { id: asset.id, projectId, data: asset };
 
   await runTransaction([STORE_ASSETS, STORE_BLOBS], 'readwrite', async (tx) => {
     const previousRecord = await requestToPromise(
@@ -458,14 +482,6 @@ export async function saveAssetRevision({
       }
     }
 
-    await requestToPromise(tx.objectStore(STORE_ASSETS).put(assetRecord));
-    for (const record of blobRecords) {
-      await requestToPromise(tx.objectStore(STORE_BLOBS).put(record));
-    }
-    for (const key of deleteBlobKeys) {
-      await requestToPromise(tx.objectStore(STORE_BLOBS).delete(key));
-    }
-
     assertTextureBlobTransitions({
       previousAsset: previousRecord.data,
       nextAsset: asset,
@@ -474,12 +490,19 @@ export async function saveAssetRevision({
       orphanDeleteKeys,
       transitions: sourceBlobTransitions,
     });
+
+    await requestToPromise(tx.objectStore(STORE_ASSETS).put(assetRecord));
+    for (const record of blobRecords) {
+      await requestToPromise(tx.objectStore(STORE_BLOBS).put(record));
+    }
+    for (const key of deleteBlobKeys) {
+      await requestToPromise(tx.objectStore(STORE_BLOBS).delete(key));
+    }
   });
 }
 
 export interface LoadedProject {
   project: Project;
-  /** 古い形式から移行した場合の適用ログ。 */
   appliedMigrations: string[];
 }
 
@@ -513,6 +536,32 @@ export async function listProjects(): Promise<ProjectSummary[]> {
     .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
 }
 
+async function assertTrashPurgeSafeInTx(tx: IDBTransaction, record: TrashRecord): Promise<void> {
+  if (record.id !== record.project.id) {
+    throw new StorageError(
+      `ごみ箱のProject IDが一致しないため完全削除できません: trash=${record.id}, project=${record.project.id}`,
+    );
+  }
+  const liveProject = await requestToPromise(
+    tx.objectStore(STORE_PROJECTS).get(record.project.id) as IDBRequest<Project | undefined>,
+  );
+  if (liveProject) {
+    throw new StorageError(
+      `同じProject ID（${record.project.id}）の正本が存在するため完全削除できません`,
+    );
+  }
+  for (const asset of record.assets) {
+    const liveAsset = await requestToPromise(
+      tx.objectStore(STORE_ASSETS).get(asset.id) as IDBRequest<StoredAssetRecord | undefined>,
+    );
+    if (liveAsset) {
+      throw new StorageError(
+        `同じAsset ID（${asset.id}）の正本が存在するため完全削除できません`,
+      );
+    }
+  }
+}
+
 async function purgeTrashRecordInTx(tx: IDBTransaction, record: TrashRecord): Promise<void> {
   await requestToPromise(tx.objectStore(STORE_TRASH).delete(record.id));
   const blobKeys = await requestToPromise(
@@ -522,7 +571,7 @@ async function purgeTrashRecordInTx(tx: IDBTransaction, record: TrashRecord): Pr
     await requestToPromise(tx.objectStore(STORE_BLOBS).delete(key));
   }
   for (const asset of record.assets) {
-    await deleteSnapshotsForAssetInTx(tx, asset.id);
+    await deleteSnapshotsForAssetInTx(tx, record.project.id, asset.id);
   }
 }
 
@@ -535,6 +584,15 @@ async function enforceTrashLimitInTx(tx: IDBTransaction): Promise<void> {
   }
   const sorted = [...allTrash].sort((a, b) => (a.deletedAt < b.deletedAt ? -1 : 1));
   const overflow = sorted.slice(0, sorted.length - TRASH_LIMIT);
+
+  try {
+    for (const record of overflow) {
+      await assertTrashPurgeSafeInTx(tx, record);
+    }
+  } catch {
+    // 衝突したrecordや別recordを代わりに無断削除しない。上限超過を維持し手動解消を求める。
+    return;
+  }
   for (const record of overflow) {
     await purgeTrashRecordInTx(tx, record);
   }
@@ -593,54 +651,41 @@ export async function listTrash(): Promise<TrashSummary[]> {
     .sort((a, b) => (a.deletedAt < b.deletedAt ? 1 : -1));
 }
 
-export async function restoreProject(trashId: string): Promise<void> {
-  await runTransaction([STORE_TRASH, STORE_PROJECTS, STORE_ASSETS], 'readwrite', async (tx) => {
-    const record = await requestToPromise(
-      tx.objectStore(STORE_TRASH).get(trashId) as IDBRequest<TrashRecord | undefined>,
-    );
-    if (!record) {
-      throw new StorageError(`ごみ箱にプロジェクト（id: ${trashId}）が見つかりません`);
-    }
-    await requestToPromise(tx.objectStore(STORE_PROJECTS).put(record.project));
-    for (const asset of record.assets) {
-      const assetRecord: StoredAssetRecord = {
-        id: asset.id,
-        projectId: record.project.id,
-        data: asset,
-      };
-      await requestToPromise(tx.objectStore(STORE_ASSETS).put(assetRecord));
-    }
-    await requestToPromise(tx.objectStore(STORE_TRASH).delete(trashId));
-  });
-}
-
 export async function purgeTrash(trashId: string): Promise<void> {
-  await runTransaction([STORE_TRASH, STORE_BLOBS, STORE_SNAPSHOTS], 'readwrite', async (tx) => {
-    const record = await requestToPromise(
-      tx.objectStore(STORE_TRASH).get(trashId) as IDBRequest<TrashRecord | undefined>,
-    );
-    if (!record) {
-      return;
-    }
-    await purgeTrashRecordInTx(tx, record);
-  });
+  await runTransaction(
+    [STORE_TRASH, STORE_PROJECTS, STORE_ASSETS, STORE_BLOBS, STORE_SNAPSHOTS],
+    'readwrite',
+    async (tx) => {
+      const record = await requestToPromise(
+        tx.objectStore(STORE_TRASH).get(trashId) as IDBRequest<TrashRecord | undefined>,
+      );
+      if (!record) {
+        return;
+      }
+      await assertTrashPurgeSafeInTx(tx, record);
+      await purgeTrashRecordInTx(tx, record);
+    },
+  );
 }
 
 export async function purgeAllTrash(): Promise<void> {
-  await runTransaction([STORE_TRASH, STORE_BLOBS, STORE_SNAPSHOTS], 'readwrite', async (tx) => {
-    const rows = await requestToPromise(
-      tx.objectStore(STORE_TRASH).getAll() as IDBRequest<TrashRecord[]>,
-    );
-    for (const record of rows) {
-      await purgeTrashRecordInTx(tx, record);
-    }
-  });
+  await runTransaction(
+    [STORE_TRASH, STORE_PROJECTS, STORE_ASSETS, STORE_BLOBS, STORE_SNAPSHOTS],
+    'readwrite',
+    async (tx) => {
+      const rows = await requestToPromise(
+        tx.objectStore(STORE_TRASH).getAll() as IDBRequest<TrashRecord[]>,
+      );
+      for (const record of rows) {
+        await assertTrashPurgeSafeInTx(tx, record);
+      }
+      for (const record of rows) {
+        await purgeTrashRecordInTx(tx, record);
+      }
+    },
+  );
 }
 
-/**
- * Asset JSON 単体の保存。新規 Asset の互換用初期保存と、既存 Asset の metadata-only
- * autosave に使う。既存 Asset の TextureRef 変更は saveAssetRevision へ寄せる。
- */
 export async function saveAsset(projectId: string, asset: Asset): Promise<void> {
   const result = validateAsset(asset);
   if (!result.valid) {
@@ -698,11 +743,11 @@ export async function deleteAsset(id: string): Promise<void> {
     const assetRecord = await requestToPromise(
       tx.objectStore(STORE_ASSETS).get(id) as IDBRequest<StoredAssetRecord | undefined>,
     );
-    await requestToPromise(tx.objectStore(STORE_ASSETS).delete(id));
-    await deleteSnapshotsForAssetInTx(tx, id);
     if (!assetRecord) {
       return;
     }
+    await requestToPromise(tx.objectStore(STORE_ASSETS).delete(id));
+    await deleteSnapshotsForAssetInTx(tx, assetRecord.projectId, id);
     const prefix = `${id}/`;
     const blobKeys = await requestToPromise(
       tx.objectStore(STORE_BLOBS).index(INDEX_BY_PROJECT).getAllKeys(assetRecord.projectId),
@@ -745,11 +790,11 @@ export async function deleteAssetBundle({
         );
       }
       await requestToPromise(tx.objectStore(STORE_PROJECTS).put(project));
-      await requestToPromise(tx.objectStore(STORE_ASSETS).delete(assetId));
-      await deleteSnapshotsForAssetInTx(tx, assetId);
       if (!assetRecord) {
         return;
       }
+      await requestToPromise(tx.objectStore(STORE_ASSETS).delete(assetId));
+      await deleteSnapshotsForAssetInTx(tx, project.id, assetId);
       const prefix = `${assetId}/`;
       const blobKeys = await requestToPromise(
         tx.objectStore(STORE_BLOBS).index(INDEX_BY_PROJECT).getAllKeys(assetRecord.projectId),
