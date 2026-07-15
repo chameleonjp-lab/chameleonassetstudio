@@ -141,10 +141,11 @@ describe('saveProjectBundle guard', () => {
       /Blob が保存対象にありません/,
     );
     await expect(
-      saveProjectBundle(project, [asset], [
-        ...complete,
-        { key: `${asset.id}/orphan.bin`, blob: new Blob([new Uint8Array([9])]) },
-      ]),
+      saveProjectBundle(
+        project,
+        [asset],
+        [...complete, { key: `${asset.id}/orphan.bin`, blob: new Blob([new Uint8Array([9])]) }],
+      ),
     ).rejects.toThrow(/対応する TextureRef/);
   });
 
@@ -224,9 +225,7 @@ describe('改訂保存', () => {
     await saveAssetRevision({
       projectId: project.id,
       asset: next,
-      putBlobs: [
-        { key: editKey, blob: new Blob([new Uint8Array([99])], { type: edit.mimeType }) },
-      ],
+      putBlobs: [{ key: editKey, blob: new Blob([new Uint8Array([99])], { type: edit.mimeType }) }],
     });
 
     expect((await loadAsset(asset.id)).asset.displayName).toBe('after');
