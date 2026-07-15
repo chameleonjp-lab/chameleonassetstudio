@@ -86,7 +86,7 @@ Phase 17 後は、旧 Phase 18〜28 の順番ではなく次を優先する。
 - 個別完了: `2D-1B-CAPACITY`。PR #87はmainへmerge済み。merge commitは`66ba2c4096dabc297f402a9176b8c60de9c584f9`、最終head `d7b965af333821d4e73937873ed039972a6f5f04`のCI Run #255はlint、format、build、unit test、E2Eを全成功した。契約は`docs/future/2D_1B_CAPACITY_PLAN.md`、完了証拠は`docs/future/2D_1B_CAPACITY_REPORT.md`を正本とする。
 - 個別完了: `2D-1B-CASPROJ`。PR #88はmainへmerge済み。merge commitは`a9a1e27a6f69544c379fb9fcefc90a13e0928859`、最終head `15e77f4bd59c7e03dc5877060fbc9195567db177`のCI Run #260はlint、format、build、unit test、E2Eを全成功した。契約は`docs/future/2D_1B_CASPROJ_PLAN.md`、完了証拠は`docs/future/2D_1B_CASPROJ_REPORT.md`を正本とする。
 - 個別完了: `2D-1B-INPUT-SAFETY`。2026-07-16に`B+X`（balanced profile + Asset / Layer batch全件原子）がacceptedとなり、契約PR #89と実装PR #90はmainへmerge済み。PR #90のmerge commitは`54f7602974f87710c16a3b79d5fefe175232e376`、最終head `eef04042b9e82583e9efd0666b4d1fc4fb091ad9`のCI Run #266はlint、format、build、unit test、E2Eを全成功した。契約は`docs/future/2D_1B_INPUT_SAFETY_PLAN.md`、実装証拠は`docs/future/2D_1B_INPUT_SAFETY_REPORT.md`を正本とする。
-- 現在の正式work package: `2D-1B-GATE`。全保存fixture・回帰、ADR-0015 migration契約、横断レビューの継続SHOULDを最終確認し、Opus 4.8 reviewと人間確認を経て2D-2 / 2D-3本実装の解禁可否を判定する。契約は`docs/future/2D_1B_GATE_PLAN.md`を正本とする。
+- 現在の正式work package: `2D-1B-GATE`。全保存fixture・回帰、ADR-0015 migration契約、横断レビューの継続SHOULDを最終確認するDraft PR #91を作成し、実装head `c9918b29e75557266c26841320fe34bc5ee6bc93`のCI Run #268はlint、format、build、unit test、E2Eを全成功した。Opus 4.8 reviewと人間確認は未完了であり、2D-2 / 2D-3本実装はまだ解禁しない。契約は`docs/future/2D_1B_GATE_PLAN.md`、証拠は`docs/future/2D_1B_GATE_REPORT.md`を正本とする。
 - PR #53（`2D-1B-STORAGE`）と PR #55（`2D-2-CREATE-01`）はrevertせず、provisionalとして保持する。PR #53全体のprovisional状態は、未完了の`2D-1B-GATE`に残る。
 - `2D-1B-GATE`がmergeされるまで、追加の`2D-2-*`と`2D-3-*`本実装は開始しない。
 - 2D Pro Gateを人間が承認するまで、旧Phase 22〜28の3D実装を開始しない。

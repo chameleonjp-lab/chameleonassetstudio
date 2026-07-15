@@ -1,9 +1,12 @@
 # 2D-1B-GATE 実装・検証報告
 
 作成日: 2026-07-16
-状態: `implementation completed locally / Draft PR pending / CI pending`
+状態: `implementation completed / Draft PR #91 / CI Run #268 success / review pending`
 正式work package: `2D-1B-GATE`
 基準main: `54f7602974f87710c16a3b79d5fefe175232e376`（PR #90 merge）
+実装Draft PR: #91
+実装head: `c9918b29e75557266c26841320fe34bc5ee6bc93`
+CI: Run #268 success
 
 ## 1. 結果
 
@@ -45,7 +48,7 @@ Gateは新しいschema、version、migration、DB layout、可搬形式、製品
 | `npm run build` | success。既存の500 kB chunk warningのみ。 |
 | `npm run test` | 45 files / 396 tests success |
 | `npm run e2e` | 実行環境にPlaywright Chromium実体がなく、83 testsすべてbrowser起動前に停止。code assertion失敗は0件。正式判定はGitHub Actionsで行う。 |
-| GitHub Actions | Draft PR作成後に追記する。 |
+| GitHub Actions | CI Run #268 success。lint、format、build、unit test、E2Eの全job成功。 |
 
 ## 5. Gate安全不変条件
 
@@ -66,10 +69,8 @@ Gateは新しいschema、version、migration、DB layout、可搬形式、製品
 
 ## 7. 残る完了条件
 
-1. Draft PR上のlint、format、build、unit test、E2Eを全成功させる。
-2. CI成功headを本報告へ追記し、同じPRで再度CIを成功させる。
-3. Opus 4.8 reviewでBLOCKER / MUST 0を確認する。
-4. 人間確認を得る。
-5. ユーザーの明示指示まではDraftを維持し、ready化、merge、auto-mergeを行わない。
+1. Opus 4.8 reviewでBLOCKER / MUST 0を確認する。
+2. 人間確認を得る。
+3. ユーザーの明示指示まではDraftを維持し、ready化、merge、auto-mergeを行わない。
 
 上記とGate PRのmergeが揃った後にだけ、2D-2 / 2D-3本実装の解禁を文書同期する。3D開始には別途2D Pro Gateの人間承認が必要である。

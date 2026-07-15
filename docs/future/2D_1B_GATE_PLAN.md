@@ -1,7 +1,7 @@
 # 2D-1B-GATE 実装・検証契約
 
 作成日: 2026-07-16
-状態: `implementation completed locally / Draft PR pending / CI pending`
+状態: `implementation completed / Draft PR #91 / CI Run #268 success / review pending`
 正式work package: `2D-1B-GATE`
 基準main: `54f7602974f87710c16a3b79d5fefe175232e376`（PR #90 merge）
 直前work package: `2D-1B-INPUT-SAFETY` completed（最終head CI Run #266 success）
@@ -19,6 +19,8 @@ Gateのmerge、Opus 4.8 review、人間確認が揃うまで、追加の2D-2 / 2
 - PR #90最終head: `eef04042b9e82583e9efd0666b4d1fc4fb091ad9`
 - CI Run #266: lint、format、build、unit test、E2Eがすべてsuccess
 - open PR: 0件
+
+実装開始後にDraft PR #91を作成した。実装head `c9918b29e75557266c26841320fe34bc5ee6bc93`のCI Run #268は全job successである。
 
 ## 3. 変更範囲
 
