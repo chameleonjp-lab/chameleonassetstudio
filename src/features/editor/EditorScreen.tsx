@@ -38,12 +38,14 @@ import {
 } from '../../core/model';
 import {
   AutosaveQueue,
+  cancelSnapshotRestore,
+  commitSnapshotRestore,
   deleteAssetBundle,
   listProjectAssets,
   listSnapshots,
   loadBlob,
   loadProject,
-  restoreSnapshot,
+  prepareSnapshotRestore,
   saveAsset,
   saveAssetRevision,
   saveProject,
@@ -570,36 +572,41 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
   /**
    * 復旧点から画像とアセットを復元する（2D-1B-STORAGE §C）。
-   * asset（JSON）と Blob（画像実体）は必ず対で書き換える必要があるため、
-   * applyImageEdit と同じ形（saveBlob + applyAssetSnapshot + history.push）で
-   * Undo / Redo の両方で Blob を書き戻す。commitAssetChange（asset のみ）だと
+   * asset（JSON）と Blob（画像実体）はtoken付きの原子的な復元入口で対にして書き換え、
+   * Undo / Redo も改訂保存で Blob を対にして書き戻す。assetだけを保存すると
    * Undo 後に「asset は復元前（新サイズ）だが Blob は復元後（旧サイズ）のまま」という
-   * 不整合が起きるため使わない。
+   * 不整合が起きるため使わない。未使用tokenはfinallyで必ず取消す。
    */
   const handleRestoreSnapshot = async (snapshotId: string) => {
     if (!beginEditorPersistentMutation()) {
       return;
     }
     setEditorError(null);
+    let restoreToken: string | null = null;
     try {
-      const restored = await restoreSnapshot(snapshotId);
+      const restored = await prepareSnapshotRestore(snapshotId);
+      restoreToken = restored.restoreToken;
       const key = restored.blobKey;
-      const current = assets.find((asset) => asset.id === restored.asset.id) ?? restored.asset;
-      // 上書きする前に、復元前（現在）の Blob を退避する（Undo で書き戻すため）。
-      const beforeBlob = await loadBlob(key);
+      const beforeBlob = restored.beforeBlob;
       // textures を新しい配列にしてビットマップ再読込を促す（他の画像編集 Undo/Redo と同じ手当て）
-      const before: Asset = { ...current, textures: [...current.textures] };
+      const before: Asset = {
+        ...restored.beforeAsset,
+        textures: [...restored.beforeAsset.textures],
+      };
       const next: Asset = { ...restored.asset, textures: [...restored.asset.textures] };
 
       await commitPersistentMutationWithHistory({
-        apply: () => saveAssetRevisionAndApply(next, { putBlobs: [{ key, blob: restored.blob }] }),
+        apply: async () => {
+          await commitSnapshotRestore(restored.restoreToken);
+          setAssets((previous) => previous.map((asset) => (asset.id === next.id ? next : asset)));
+        },
         history,
         entry: {
           label: '復旧点から復元',
           undo: async () => {
             await saveAssetRevisionAndApply(
               { ...before, textures: [...before.textures] },
-              beforeBlob ? { putBlobs: [{ key, blob: beforeBlob }] } : { deleteBlobKeys: [key] },
+              { putBlobs: [{ key, blob: beforeBlob }] },
             );
           },
           redo: async () => {
@@ -615,6 +622,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         `復旧点から復元できませんでした: ${error instanceof Error ? error.message : String(error)}`,
       );
     } finally {
+      if (restoreToken) {
+        cancelSnapshotRestore(restoreToken);
+      }
       endEditorPersistentMutation();
     }
   };
