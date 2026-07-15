@@ -843,6 +843,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     if (!ok) {
       return;
     }
+    await history.waitForPending();
     if (!beginEditorPersistentMutation()) {
       return;
     }

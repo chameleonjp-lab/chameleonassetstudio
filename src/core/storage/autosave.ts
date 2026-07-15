@@ -12,7 +12,7 @@ export type SaveTask = () => Promise<void>;
 /**
  * 自動保存キュー。
  * 連続する操作は最後のタスクにまとめ（デバウンス）、保存は常に直列で走らせる。
- * 保存中、保存済み、保存失敗の状態を購読者へ返す。
+ * flush / flushAll は保存失敗を呼び出し元へ伝え、後続の破壊的操作を止める。
  */
 export class AutosaveQueue {
   private static readonly activeQueues = new Set<AutosaveQueue>();
@@ -21,6 +21,7 @@ export class AutosaveQueue {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private pendingTask: SaveTask | null = null;
   private currentRun: Promise<void> | null = null;
+  private lastError: unknown = null;
   private state: SaveState = { status: 'idle' };
   private readonly listeners = new Set<(state: SaveState) => void>();
 
@@ -28,14 +29,20 @@ export class AutosaveQueue {
     this.delayMs = options?.delayMs ?? 800;
   }
 
-  /**
-   * 画面ごとの自動保存キューに残っている処理をすべて完了させる。
-   * snapshot 復元など、現在の正本を読み取る前に使用する。
-   */
   static async flushAll(): Promise<void> {
     while (AutosaveQueue.activeQueues.size > 0) {
       const queues = [...AutosaveQueue.activeQueues];
       await Promise.all(queues.map((queue) => queue.flush()));
+    }
+  }
+
+  /**
+   * 保存失敗後にUIを保存前状態へ戻した場合、rollbackが予約した重複autosaveだけを破棄する。
+   * 実行中taskは中断せず、待機中taskとtimerのみを取り除く。
+   */
+  static cancelAllPending(): void {
+    for (const queue of AutosaveQueue.activeQueues) {
+      queue.cancelPending();
     }
   }
 
@@ -50,20 +57,21 @@ export class AutosaveQueue {
     };
   }
 
-  /** 保存タスクを予約する。デバウンス中に再度呼ばれたら最新のタスクだけ残す。 */
   schedule(task: SaveTask): void {
     AutosaveQueue.activeQueues.add(this);
+    this.lastError = null;
     this.pendingTask = task;
     if (this.timer) {
       clearTimeout(this.timer);
     }
     this.timer = setTimeout(() => {
       this.timer = null;
-      void this.startRun();
+      void this.startRun().catch(() => {
+        // 失敗はstateとlastErrorへ保持し、次のflush / flushAllで呼び出し元へ返す。
+      });
     }, this.delayMs);
   }
 
-  /** 待機中・実行中の保存をすべて完了させる。画面遷移前などに使う。 */
   async flush(): Promise<void> {
     if (this.timer) {
       clearTimeout(this.timer);
@@ -72,7 +80,21 @@ export class AutosaveQueue {
     while (this.currentRun || this.pendingTask) {
       await (this.currentRun ?? this.startRun());
     }
+    if (this.lastError !== null) {
+      throw this.lastError;
+    }
     AutosaveQueue.activeQueues.delete(this);
+  }
+
+  private cancelPending(): void {
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    this.pendingTask = null;
+    if (!this.currentRun) {
+      AutosaveQueue.activeQueues.delete(this);
+    }
   }
 
   private startRun(): Promise<void> {
@@ -81,8 +103,10 @@ export class AutosaveQueue {
     }
     const task = this.pendingTask;
     if (!task) {
-      AutosaveQueue.activeQueues.delete(this);
-      return Promise.resolve();
+      if (this.lastError === null) {
+        AutosaveQueue.activeQueues.delete(this);
+      }
+      return this.lastError === null ? Promise.resolve() : Promise.reject(this.lastError);
     }
     this.pendingTask = null;
 
@@ -90,21 +114,25 @@ export class AutosaveQueue {
       this.setState({ status: 'saving' });
       try {
         await task();
+        this.lastError = null;
         this.setState({ status: 'saved', lastSavedAt: new Date().toISOString() });
       } catch (error) {
+        this.lastError = error;
         this.setState({
           status: 'error',
           errorMessage: error instanceof Error ? error.message : String(error),
         });
+        throw error;
       }
     })();
 
     this.currentRun = run.finally(() => {
       this.currentRun = null;
-      // 保存中に新しい操作が来ていたら続けて保存する
       if (this.pendingTask && !this.timer) {
-        void this.startRun();
-      } else if (!this.pendingTask) {
+        void this.startRun().catch(() => {
+          // 次のflushで失敗を伝える。
+        });
+      } else if (!this.pendingTask && this.lastError === null) {
         AutosaveQueue.activeQueues.delete(this);
       }
     });

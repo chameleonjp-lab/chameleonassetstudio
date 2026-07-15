@@ -3,7 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEmptyProject, type Asset } from '../model';
 import characterAsset from '../samples/asset.character.json';
 import { StorageError, resetDbForTests } from './db';
-import { deleteBlob, deleteProject, saveAsset, saveBlob, saveProject } from './projectStore';
+import {
+  deleteBlob,
+  deleteProject,
+  loadBlob,
+  saveAsset,
+  saveBlob,
+  saveProject,
+} from './projectStore';
 import {
   SNAPSHOT_LIMIT_PER_ASSET,
   deleteSnapshotsForAsset,
@@ -20,9 +27,7 @@ const baseAsset = characterAsset as unknown as Asset;
 
 function editBlobKey(asset: Asset): string {
   const texture = asset.textures.find((entry) => entry.kind === 'edit');
-  if (!texture) {
-    throw new Error('fixture に edit TextureRef がありません');
-  }
+  if (!texture) throw new Error('fixture に edit TextureRef がありません');
   return `${asset.id}/${texture.path}`;
 }
 
@@ -39,51 +44,58 @@ async function seedStoredAsset(options?: {
   };
   const key = editBlobKey(asset);
   const bytes = options?.blobBytes ?? new Uint8Array([7, 7, 7]);
+  const blob = new Blob([bytes], { type: 'image/png' });
   await saveProject(project);
   await saveAsset(project.id, asset);
-  await saveBlob(project.id, key, new Blob([bytes], { type: 'image/png' }));
-  return { project, asset, key, bytes };
+  await saveBlob(project.id, key, blob);
+  return { project, asset, key, bytes, blob };
 }
 
-async function saveTestSnapshot(options: {
+async function saveCurrentSnapshot(options: {
   projectId: string;
   asset: Asset;
   key: string;
   label: string;
-  bytes?: Uint8Array;
 }) {
+  const blob = await loadBlob(options.key);
+  if (!blob) throw new Error('stored edit blob missing');
   await saveSnapshot({
     projectId: options.projectId,
     assetId: options.asset.id,
     label: options.label,
     asset: options.asset,
     blobKey: options.key,
-    blob: new Blob([options.bytes ?? new Uint8Array([9, 9, 9])], { type: 'image/png' }),
+    blob,
   });
 }
 
 describe('復旧点（snapshot）の所有境界', () => {
-  it('保存した復旧点を復元でき、復元直前の Asset と edit Blob も返す', async () => {
+  it('現在の保存済みedit Blobを復旧点として保存・復元できる', async () => {
     const { project, asset, key, bytes } = await seedStoredAsset();
-    const snapshotBytes = new Uint8Array([9, 9, 9]);
-    await saveTestSnapshot({
-      projectId: project.id,
-      asset,
-      key,
-      label: '消しゴム',
-      bytes: snapshotBytes,
-    });
-
-    const list = await listSnapshots(asset.id);
-    expect(list).toHaveLength(1);
-    expect(list[0].label).toBe('消しゴム');
-
-    const restored = await restoreSnapshot(list[0].id);
+    await saveCurrentSnapshot({ projectId: project.id, asset, key, label: '消しゴム' });
+    const [summary] = await listSnapshots(asset.id);
+    expect(summary.label).toBe('消しゴム');
+    const restored = await restoreSnapshot(summary.id);
     expect(restored.asset).toEqual(asset);
     expect(restored.beforeAsset).toEqual(asset);
     expect(restored.blobKey).toBe(key);
-    expect(new Uint8Array(await restored.blob.arrayBuffer())).toEqual(snapshotBytes);
+    expect(new Uint8Array(await restored.blob.arrayBuffer())).toEqual(bytes);
     expect(new Uint8Array(await restored.beforeBlob.arrayBuffer())).toEqual(bytes);
+  });
+
+  it('保存済みedit Blobと異なる入力Blobを拒否してsnapshotを残さない', async () => {
+    const { project, asset, key } = await seedStoredAsset();
+    await expect(
+      saveSnapshot({
+        projectId: project.id,
+        assetId: asset.id,
+        label: 'stale',
+        asset,
+        blobKey: key,
+        blob: new Blob([new Uint8Array([9, 9, 9])], { type: 'image/png' }),
+      }),
+    ).rejects.toThrow(/保存済みBlobと一致しません/);
+    expect(await listSnapshots(asset.id)).toEqual([]);
   });
 
   it('存在しない復旧点の復元は理由付きで失敗する', async () => {
@@ -91,7 +103,7 @@ describe('復旧点（snapshot）の所有境界', () => {
     await expect(restoreSnapshot('snapshot_missing')).rejects.toThrow(/見つかりません/);
   });
 
-  it('保存されていない Asset の復旧点作成を拒否する', async () => {
+  it('保存されていないAssetと別Project指定を拒否する', async () => {
     await expect(
       saveSnapshot({
         projectId: 'project_missing',
@@ -102,10 +114,8 @@ describe('復旧点（snapshot）の所有境界', () => {
         blob: new Blob([new Uint8Array([1])]),
       }),
     ).rejects.toThrow(/復旧対象アセット/);
-  });
 
-  it('別 Project を指定した復旧点作成を拒否する', async () => {
-    const { asset, key } = await seedStoredAsset();
+    const { asset, key, blob } = await seedStoredAsset();
     await expect(
       saveSnapshot({
         projectId: 'project_wrong',
@@ -113,13 +123,13 @@ describe('復旧点（snapshot）の所有境界', () => {
         label: '不正',
         asset,
         blobKey: key,
-        blob: new Blob([new Uint8Array([1])]),
+        blob,
       }),
     ).rejects.toThrow(/属していません/);
   });
 
-  it('Asset ID と snapshot.asset.id が一致しない入力を拒否する', async () => {
-    const { project, asset, key } = await seedStoredAsset();
+  it('Asset ID不一致、source key、source TextureRef変更を拒否する', async () => {
+    const { project, asset, key, blob } = await seedStoredAsset();
     await expect(
       saveSnapshot({
         projectId: project.id,
@@ -127,29 +137,22 @@ describe('復旧点（snapshot）の所有境界', () => {
         label: '不正',
         asset,
         blobKey: key,
-        blob: new Blob([new Uint8Array([1])]),
+        blob,
       }),
     ).rejects.toThrow(/Asset ID/);
-  });
 
-  it('source Blob key を復旧対象として保存できない', async () => {
-    const { project, asset } = await seedStoredAsset();
-    const source = asset.textures.find((entry) => entry.kind === 'source');
-    expect(source).toBeDefined();
+    const source = asset.textures.find((entry) => entry.kind === 'source')!;
     await expect(
       saveSnapshot({
         projectId: project.id,
         assetId: asset.id,
         label: '不正',
         asset,
-        blobKey: `${asset.id}/${source!.path}`,
-        blob: new Blob([new Uint8Array([1])]),
+        blobKey: `${asset.id}/${source.path}`,
+        blob,
       }),
     ).rejects.toThrow(/edit TextureRef/);
-  });
 
-  it('source TextureRef を変更した復旧点を拒否する', async () => {
-    const { project, asset, key } = await seedStoredAsset();
     const modified: Asset = {
       ...asset,
       textures: asset.textures.map((texture) =>
@@ -163,35 +166,28 @@ describe('復旧点（snapshot）の所有境界', () => {
         label: '不正',
         asset: modified,
         blobKey: key,
-        blob: new Blob([new Uint8Array([1])]),
+        blob,
       }),
     ).rejects.toThrow(/source TextureRef/);
   });
 
-  it('復元前の edit Blob が欠落している場合は復元を開始しない', async () => {
+  it('復元前のedit Blobが欠落している場合は復元を開始しない', async () => {
     const { project, asset, key } = await seedStoredAsset();
-    await saveTestSnapshot({ projectId: project.id, asset, key, label: '消しゴム' });
+    await saveCurrentSnapshot({ projectId: project.id, asset, key, label: '消しゴム' });
     const [summary] = await listSnapshots(asset.id);
     await deleteBlob(key);
-
     await expect(restoreSnapshot(summary.id)).rejects.toThrow(/復元前の edit Blob/);
   });
 });
 
-describe('復旧点の上限と Project 分離', () => {
-  it(`Project + Asset 単位で最大 ${SNAPSHOT_LIMIT_PER_ASSET} 件まで保持し、超過分は最古から消える`, async () => {
+describe('復旧点の上限とProject分離', () => {
+  it(`Project + Asset単位で最大${SNAPSHOT_LIMIT_PER_ASSET}件まで保持する`, async () => {
     const { project, asset, key } = await seedStoredAsset();
-    for (let i = 0; i < SNAPSHOT_LIMIT_PER_ASSET + 2; i += 1) {
+    for (let index = 0; index < SNAPSHOT_LIMIT_PER_ASSET + 2; index += 1) {
       vi.useFakeTimers({ toFake: ['Date'] });
-      vi.setSystemTime(new Date(2026, 1, i + 1));
+      vi.setSystemTime(new Date(2026, 1, index + 1));
       try {
-        await saveTestSnapshot({
-          projectId: project.id,
-          asset,
-          key,
-          label: `操作${i}`,
-          bytes: new Uint8Array([i]),
-        });
+        await saveCurrentSnapshot({ projectId: project.id, asset, key, label: `操作${index}` });
       } finally {
         vi.useRealTimers();
       }
@@ -201,9 +197,9 @@ describe('復旧点の上限と Project 分離', () => {
     expect(list.map((row) => row.label)).toEqual(['操作4', '操作3', '操作2']);
   });
 
-  it('同じ Asset ID を再利用した別 Project の復旧点を一覧・復元へ混ぜない', async () => {
+  it('同じAsset IDを再利用した別Projectの復旧点を一覧・復元へ混ぜない', async () => {
     const first = await seedStoredAsset({ projectId: 'project_old', projectName: 'old' });
-    await saveTestSnapshot({
+    await saveCurrentSnapshot({
       projectId: first.project.id,
       asset: first.asset,
       key: first.key,
@@ -213,47 +209,38 @@ describe('復旧点の上限と Project 分離', () => {
     await deleteProject(first.project.id);
 
     const current = await seedStoredAsset({ projectId: 'project_current', projectName: 'current' });
-    await saveTestSnapshot({
+    await saveCurrentSnapshot({
       projectId: current.project.id,
       asset: current.asset,
       key: current.key,
       label: 'current snapshot',
     });
-
     expect((await listSnapshots(current.asset.id)).map((row) => row.label)).toEqual([
       'current snapshot',
     ]);
     await expect(restoreSnapshot(oldSummary.id)).rejects.toThrow(/属していません/);
   });
 
-  it('他のアセットの復旧点には影響しない', async () => {
-    const assetA: Asset = { ...baseAsset, id: 'asset_a' };
-    const assetB: Asset = { ...baseAsset, id: 'asset_b' };
-    const project = { ...createEmptyProject('two assets'), id: 'project_two_assets' };
-    await saveProject(project);
-    await saveAsset(project.id, assetA);
-    await saveAsset(project.id, assetB);
-    await saveTestSnapshot({
-      projectId: project.id,
-      asset: assetA,
-      key: editBlobKey(assetA),
-      label: 'A の操作',
+  it('Project IDを指定して対象所有者の復旧点だけを削除する', async () => {
+    const first = await seedStoredAsset({ projectId: 'project_delete_old' });
+    await saveCurrentSnapshot({
+      projectId: first.project.id,
+      asset: first.asset,
+      key: first.key,
+      label: 'old snapshot',
     });
-    await saveTestSnapshot({
-      projectId: project.id,
-      asset: assetB,
-      key: editBlobKey(assetB),
-      label: 'B の操作',
+    await deleteProject(first.project.id);
+    const current = await seedStoredAsset({ projectId: 'project_delete_current' });
+    await saveCurrentSnapshot({
+      projectId: current.project.id,
+      asset: current.asset,
+      key: current.key,
+      label: 'current snapshot',
     });
-    expect(await listSnapshots(assetA.id)).toHaveLength(1);
-    expect(await listSnapshots(assetB.id)).toHaveLength(1);
-  });
-
-  it('deleteSnapshotsForAsset でアセットの復旧点をすべて消せる', async () => {
-    const { project, asset, key } = await seedStoredAsset();
-    await saveTestSnapshot({ projectId: project.id, asset, key, label: '操作1' });
-    await saveTestSnapshot({ projectId: project.id, asset, key, label: '操作2' });
-    await deleteSnapshotsForAsset(asset.id);
-    expect(await listSnapshots(asset.id)).toEqual([]);
+    await deleteSnapshotsForAsset(current.project.id, current.asset.id);
+    expect(await listSnapshots(current.asset.id)).toEqual([]);
+    await deleteProject(current.project.id);
+    const all = await listSnapshots(current.asset.id);
+    expect(all.map((row) => row.label)).toEqual(['old snapshot']);
   });
 });
