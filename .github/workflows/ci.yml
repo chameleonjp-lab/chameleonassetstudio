@@ -6,7 +6,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   changes:
@@ -58,12 +58,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Generate exact Prettier output
+      - name: Apply exact Prettier output
         run: |
           npx prettier --write \
             src/core/history/history.test.ts \
@@ -76,25 +78,36 @@ jobs:
             src/core/storage/snapshotStore.test.ts \
             src/core/storage/snapshotStore.ts \
             src/features/editor/editorMutationGuard.test.ts
-      - name: Upload exact Prettier output
-        uses: actions/upload-artifact@v4
-        with:
-          name: storage-blocker-prettier-output
-          path: |
-            src/core/history/history.test.ts
-            src/core/history/history.ts
-            src/core/storage/autosave.test.ts
-            src/core/storage/autosave.ts
-            src/core/storage/projectStore.test.ts
-            src/core/storage/projectStore.ts
-            src/core/storage/recoveryTrash.test.ts
-            src/core/storage/snapshotStore.test.ts
-            src/core/storage/snapshotStore.ts
-            src/features/editor/editorMutationGuard.test.ts
-          retention-days: 1
+      - name: Commit exact Prettier output
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/core src/features/editor/editorMutationGuard.test.ts
+          git commit -m "style: apply exact prettier output [skip ci]"
+          git push origin HEAD:${{ github.head_ref }}
       - run: npm run lint
       - run: npm run format:check
-      - run: npm run build
+      - name: Run build and capture diagnostics
+        shell: bash
+        run: |
+          set +e
+          npm run build > build-diagnostics.log 2>&1
+          status=$?
+          cat build-diagnostics.log
+          exit $status
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: storage-blocker-build-diagnostics
+          path: build-diagnostics.log
+          if-no-files-found: ignore
+          retention-days: 1
       - run: npm run test
 
   e2e:
