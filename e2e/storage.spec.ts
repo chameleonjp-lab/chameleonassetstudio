@@ -68,7 +68,8 @@ async function readStoredEditState(page: Page): Promise<StoredEditState> {
       const blobKey = `${asset.id}/${texture.path}`;
       const blobTx = db.transaction(['blobs'], 'readonly');
       const blobRecord = (await requestResult(blobTx.objectStore('blobs').get(blobKey))) as
-        { mimeType: string; bytes: ArrayBuffer } | undefined;
+        | { mimeType: string; bytes: ArrayBuffer }
+        | undefined;
       if (!blobRecord) {
         throw new Error('保存済み edit Blob が見つかりません');
       }
@@ -94,33 +95,27 @@ async function readStoredEditState(page: Page): Promise<StoredEditState> {
 
 test.describe('ごみ箱（2D-1B-STORAGE §B）', () => {
   test('削除したプロジェクトはごみ箱から復元でき、画像も残る', async ({ page }) => {
-    // 削除・完全削除は確認ダイアログを出すため、常に承認する
     page.on('dialog', (dialog) => void dialog.accept());
 
     await setupProjectWithImage(page, 'trash-rt');
     await page.getByRole('button', { name: '← ホーム' }).click();
     await expect(page.getByRole('button', { name: '「trash-rt」を開く' })).toBeVisible();
 
-    // 削除するとごみ箱へ移動し、一覧からは消える
     await page.getByRole('button', { name: '「trash-rt」を削除' }).click();
     await expect(page.getByRole('button', { name: '「trash-rt」を開く' })).toHaveCount(0);
 
-    // ごみ箱に表示される
     const restoreButton = page.getByRole('button', { name: 'ごみ箱の「trash-rt」を復元' });
     await expect(restoreButton).toBeVisible();
 
-    // 復元すると一覧に戻る
     await restoreButton.click();
     await expect(page.getByRole('button', { name: '「trash-rt」を開く' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'ごみ箱の「trash-rt」を復元' })).toHaveCount(0);
 
-    // 開くと画像も復元されている
     await page.getByRole('button', { name: '「trash-rt」を開く' }).click();
     await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
   });
 
   test('ごみ箱から完全に削除すると復元できなくなる', async ({ page }) => {
-    // 削除・完全削除は確認ダイアログを出すため、常に承認する
     page.on('dialog', (dialog) => void dialog.accept());
 
     await setupProjectWithImage(page, 'trash-purge');
@@ -162,11 +157,16 @@ test.describe('復旧点（2D-1B-RECOVERY）', () => {
     await expect.poll(async () => (await readStoredEditState(page)).bytes).toEqual(edited.bytes);
 
     await page.reload();
-    await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: '「snapshot-undo-reload」を開く' }),
+    ).toBeVisible();
     const reloaded = await readStoredEditState(page);
     expect(reloaded.bytes).toEqual(edited.bytes);
     expect(reloaded.textureWidth).toBe(reloaded.decodedWidth);
     expect(reloaded.textureHeight).toBe(reloaded.decodedHeight);
+
+    await page.getByRole('button', { name: '「snapshot-undo-reload」を開く' }).click();
+    await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
   });
 });
 
