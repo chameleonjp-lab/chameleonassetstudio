@@ -1,7 +1,12 @@
 export * from './autosave';
 export * from './casproj';
 export { importCasproj } from './casprojImport';
-export { QUOTA_EXCEEDED_MESSAGE, StorageError, isQuotaExceededError } from './db';
+export {
+  QUOTA_EXCEEDED_MESSAGE,
+  StorageError,
+  isQuotaExceededError,
+  isQuotaExceededStorageError,
+} from './db';
 export * from './projectStore';
 export { restoreProject } from './projectRecovery';
 export * from './quarantineStore';
