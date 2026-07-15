@@ -28,7 +28,17 @@ function keyFor(asset: Asset, texture: TextureRef): string {
 }
 
 async function seedAsset(asset: Asset = cloneBaseAsset()) {
-  const project = createEmptyProject('texture invariants');
+  const project = {
+    ...createEmptyProject('texture invariants'),
+    assets: [
+      {
+        id: asset.id,
+        name: asset.name,
+        displayName: asset.displayName,
+        assetType: asset.assetType,
+      },
+    ],
+  };
   const blobs = asset.textures.map((texture, index) => ({
     key: keyFor(asset, texture),
     blob: bytes(index + 1),

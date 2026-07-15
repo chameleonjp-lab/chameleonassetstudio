@@ -51,23 +51,36 @@ async function seedCoordinatorFlow() {
       texture.kind === 'edit' ? { ...texture, size: { width: 5, height: 5 } } : { ...texture },
     ),
   };
-  const project = { ...createEmptyProject('復旧調整テスト'), id: projectId };
+  const project = {
+    ...createEmptyProject('復旧調整テスト'),
+    id: projectId,
+    assets: [
+      {
+        id: currentAsset.id,
+        name: currentAsset.name,
+        displayName: currentAsset.displayName,
+        assetType: currentAsset.assetType,
+      },
+    ],
+  };
   const editKey = `${currentAsset.id}/${editTexture(currentAsset).path}`;
   const currentBytes = new Uint8Array([9, 9, 9, 9]);
   const snapshotBytes = new Uint8Array([1, 1, 1, 1]);
 
-  await saveProjectBundle(
-    project,
-    [currentAsset],
-    [{ key: editKey, blob: new Blob([currentBytes], { type: 'image/png' }) }],
-  );
+  const snapshotBlob = new Blob([snapshotBytes], { type: 'image/png' });
+  await saveProjectBundle(project, [snapshotAsset], [{ key: editKey, blob: snapshotBlob }]);
   await saveSnapshot({
     projectId,
-    assetId: currentAsset.id,
+    assetId: snapshotAsset.id,
     label: '消しゴム',
     asset: snapshotAsset,
     blobKey: editKey,
-    blob: new Blob([snapshotBytes], { type: 'image/png' }),
+    blob: snapshotBlob,
+  });
+  await saveAssetRevisionBase({
+    projectId,
+    asset: currentAsset,
+    putBlobs: [{ key: editKey, blob: new Blob([currentBytes], { type: 'image/png' }) }],
   });
   const [summary] = await listSnapshots(currentAsset.id);
 

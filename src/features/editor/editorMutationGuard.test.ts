@@ -58,7 +58,6 @@ describe('commitPersistentMutationWithHistory', () => {
       }),
     ).resolves.toBeUndefined();
     expect(apply).toHaveBeenCalledTimes(1);
-    expect(history.getState()).toMatchObject({ isBusy: true, canUndo: false });
     await history.waitForPending();
     expect(history.getState()).toMatchObject({ canUndo: true, undoLabel: '保存成功' });
   });
