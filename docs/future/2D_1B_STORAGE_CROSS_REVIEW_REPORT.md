@@ -1,16 +1,16 @@
 # 2D-1B 保存基盤 横断レビュー報告
 
 最終更新日: 2026-07-16  
-状態: `re-review passed / pending PR #85 merge`  
+状態: `completed / re-review passed / PR #85 merged`
 実行チェックポイント: `2D-1B-STORAGE-CROSS-REVIEW`  
 判定: `BLOCKER 0 / MUST 0`  
-次の正式work package: `2D-1B-CAPACITY`（PR #85 merge後）
+次の正式work package: `2D-1B-CAPACITY`
 
 ## 1. 結論
 
 `2D-1B-REVISION`、`2D-1B-LAYERS`、`2D-1B-RECOVERY`を横断監査し、初回監査で4件の`BLOCKER`と2件の`MUST`を確認した。
 
-PR #84とfollow-up PR #85により、所有境界、復元入口、metadata-only履歴、bundle保存、autosave失敗伝播、snapshot作成時のStored Blob照合を補修した。最新head `c46a4f0fa4bef52f1f703d2b6caf173790b4eff2`に対する正式CI Run #242は、lint、format、build、unit test、E2Eをすべて成功した。
+PR #84とfollow-up PR #85により、所有境界、復元入口、metadata-only履歴、bundle保存、autosave失敗伝播、snapshot作成時のStored Blob照合を補修した。PR #85の最終head `d8ce80f36adaa94b2711d0e4ce3ffc1f1bf5e413`に対する正式CI Run #244は、lint、format、build、unit test、E2Eをすべて成功した。
 
 再レビュー結果:
 
@@ -19,7 +19,7 @@ PR #84とfollow-up PR #85により、所有境界、復元入口、metadata-only
 - `SHOULD`: 2件。`2D-1B-GATE`前の追跡項目として維持する。
 - `NOTE`: 2件。計画済みの後続work packageへ維持する。
 
-したがって、PR #85がmainへmergeされた後は`2D-1B-CAPACITY`を開始できる。PR #85のmerge前にCAPACITY branchを作らない。
+PR #85はmainへmerge済みであり、`2D-1B-CAPACITY`の開始条件は成立した。保存基盤横断レビューはcompletedとし、CAPACITYの契約・実装へ進む。
 
 ## 2. GitHub基準
 
@@ -28,8 +28,9 @@ PR #84とfollow-up PR #85により、所有境界、復元入口、metadata-only
 - 保存基盤補修: PR #84
 - PR #84 merge commit: `fcb576a126c85cbf523a56a846785803a614ed84`
 - 検証完了follow-up: PR #85
-- PR #85最終検証head: `c46a4f0fa4bef52f1f703d2b6caf173790b4eff2`
-- 正式CI Run #242: success
+- PR #85最終head: `d8ce80f36adaa94b2711d0e4ce3ffc1f1bf5e413`
+- PR #85 merge commit: `e3c34fb292aab1d35a6da571ff17ca4ed9d13e0e`
+- 正式CI Run #244: success
 
 PR #84は検証完了前にmainへmergeされたため、PR #85で一時診断workflowと一時スクリプトを除去し、標準read-only workflowへ復元した上で再検証した。
 
@@ -37,7 +38,7 @@ PR #84は検証完了前にmainへmergeされたため、PR #85で一時診断wo
 
 | 分類 | 初回 | 再レビュー | CAPACITY開始への影響 |
 |---|---:|---:|---|
-| `BLOCKER` | 4 | 0 | PR #85 merge後に解禁 |
+| `BLOCKER` | 4 | 0 | 解消済み。CAPACITY開始可 |
 | `MUST` | 2 | 0 | 解消済み |
 | `SHOULD` | 2 | 2 | `2D-1B-GATE`前に対応先を維持 |
 | `NOTE` | 2 | 2 | 計画済み後続範囲 |
@@ -147,7 +148,7 @@ PR #84は検証完了前にmainへmergeされたため、PR #85で一時診断wo
 
 ## 6. 正式CI証拠
 
-CI Run #242:
+CI Run #244:
 
 - classify-changes: success
 - npm ci: success
@@ -206,10 +207,9 @@ storage estimate、persistent storage、予防警告、容量不足時の`.caspr
 
 ## 10. 次のアクション
 
-1. PR #85をDraftのまま確認する。
-2. ユーザー判断でPR #85をmergeする。
-3. merge後のmainとCIを確認する。
-4. `2D-1B-CAPACITY`の契約、対象ファイル、受け入れ条件を固定する。
-5. `2D-1B-CAPACITY`を新しいDraft PRで開始する。
+1. `docs/future/2D_1B_CAPACITY_PLAN.md`でCAPACITYの契約、対象ファイル、受け入れ条件を固定する。
+2. 人間判断で予防警告の割合を選ぶ。
+3. 同じCAPACITY Draft PRでcode、unit test、E2E、完了報告を実装する。
+4. CI成功後にreview-onlyを行う。
 
-PR #85 merge前にCAPACITYを開始しない。`2D-1B-GATE` merge前に2D-2 / 2D-3本実装を開始せず、2D Pro Gate承認前に3Dを開始しない。
+`2D-1B-GATE` merge前に2D-2 / 2D-3本実装を開始せず、2D Pro Gate承認前に3Dを開始しない。
