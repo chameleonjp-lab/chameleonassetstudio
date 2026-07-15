@@ -136,6 +136,7 @@ test('future versionは理由付きで拒否し、元bytesをquarantineへ残す
 test('未参照Assetとorphan fileは警告付きで除外し、canonical Projectだけを保存する', async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
   const [projectJson, assetJson, imageBase64] = await Promise.all([
     readFile('src/core/storage/__fixtures__/v0.1.0-project.json', 'utf-8'),
     readFile('src/core/storage/__fixtures__/v0.1.0-asset.json', 'utf-8'),
@@ -173,4 +174,8 @@ test('未参照Assetとorphan fileは警告付きで除外し、canonical Projec
   await expect(warnings).toContainText('未参照Assetのfile');
   await expect(warnings).toContainText('TextureRefから参照されないfile');
   await expect(page.getByRole('button', { name: '「旧形式フィクスチャ」を開く' })).toBeVisible();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
 });

@@ -1,10 +1,11 @@
 # 2D-1B-CASPROJ 実装契約
 
 作成日: 2026-07-16
-状態: `contract fixed / implementation pending`
+状態: `implementation completed / Draft PR #88 merge pending`
 正式work package: `2D-1B-CASPROJ`
 基準main: `66ba2c4096dabc297f402a9176b8c60de9c584f9`（PR #87 merge）
 直前work package: `2D-1B-CAPACITY` completed（CI Run #255 success）
+実装CI: Run #258 success（unit 385件、E2E 80件）
 
 ## 1. 目的
 
