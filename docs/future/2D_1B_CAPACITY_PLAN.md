@@ -1,7 +1,7 @@
 # 2D-1B-CAPACITY 実装契約
 
 作成日: 2026-07-16  
-状態: `implementation completed / Draft PR #87 merge pending`
+状態: `completed`
 正式work package: `2D-1B-CAPACITY`  
 基準main: `9e0a42afc47bb390b13f45b03884a7ea8571bba0`（PR #86 docs-only merge）
 直前Gate: `2D-1B-STORAGE-CROSS-REVIEW` completed（`BLOCKER 0 / MUST 0`）
@@ -23,7 +23,8 @@
 - PR #85最終head: `d8ce80f36adaa94b2711d0e4ce3ffc1f1bf5e413`
 - CI Run #244: lint、format、build、unit test、E2Eがすべてsuccess
 - PR #86: 同branchのdocs-only旧headで外部merge。実装差分はDraft PR #87が引き継ぐ。
-- Draft PR #87最終CI Run #250: lint、format、build、unit test、E2Eがすべてsuccess
+- PR #87: merge済み。merge commit `66ba2c4096dabc297f402a9176b8c60de9c584f9`
+- PR #87最終head `d7b965af333821d4e73937873ed039972a6f5f04`のCI Run #255: lint、format、build、unit test、E2Eがすべてsuccess
 
 ### 2.2 既存実装
 
