@@ -43,7 +43,10 @@ function addedTexture(asset: Asset, texture: TextureRef): Asset {
 describe('2D-1B-LAYERS final storage invariants', () => {
   it('rejects duplicate TextureRef IDs', async () => {
     const asset = cloneBaseAsset();
-    asset.textures.push({ ...asset.textures[1], path: 'textures/duplicate-id.png' });
+    asset.textures.push({
+      ...asset.textures[1],
+      path: 'textures/duplicate-id.png',
+    });
     const project = createEmptyProject('duplicate id');
 
     await expect(saveAsset(project.id, asset)).rejects.toThrow(/同じ TextureRef ID/);
@@ -92,7 +95,10 @@ describe('2D-1B-LAYERS final storage invariants', () => {
       { ...source, kind: 'edit' },
       { ...source, path: 'source/renamed.png' },
       { ...source, mimeType: 'image/jpeg' },
-      { ...source, size: { width: source.size.width + 1, height: source.size.height } },
+      {
+        ...source,
+        size: { width: source.size.width + 1, height: source.size.height },
+      },
     ];
 
     for (const replacement of variants) {
@@ -194,9 +200,9 @@ describe('2D-1B-LAYERS final storage invariants', () => {
     expect(new Uint8Array(await (await loadBlob(keyFor(asset, edit)))!.arrayBuffer())).toEqual(
       new Uint8Array([8]),
     );
-    expect(
-      new Uint8Array(await (await loadBlob(keyFor(asset, thumbnail)))!.arrayBuffer()),
-    ).toEqual(new Uint8Array([9]));
+    expect(new Uint8Array(await (await loadBlob(keyFor(asset, thumbnail)))!.arrayBuffer())).toEqual(
+      new Uint8Array([9]),
+    );
   });
 
   it('allows adding and removing non-source TextureRefs with their Blobs', async () => {
@@ -267,9 +273,7 @@ describe('2D-1B-LAYERS final storage invariants', () => {
       const nextKey = keyFor(asset, changed);
       const next = {
         ...asset,
-        textures: asset.textures.map((texture) =>
-          texture.id === source.id ? changed : texture,
-        ),
+        textures: asset.textures.map((texture) => (texture.id === source.id ? changed : texture)),
       };
 
       await expect(
@@ -279,9 +283,7 @@ describe('2D-1B-LAYERS final storage invariants', () => {
           putBlobs: previousKey === nextKey ? [] : [{ key: nextKey, blob: bytes(4) }],
           deleteBlobKeys: previousKey === nextKey ? [] : [previousKey],
           sourceBlobTransitions:
-            previousKey === nextKey
-              ? {}
-              : { createKeys: [nextKey], deleteKeys: [previousKey] },
+            previousKey === nextKey ? {} : { createKeys: [nextKey], deleteKeys: [previousKey] },
         }),
       ).rejects.toThrow(/既存 source TextureRef/);
     }
@@ -290,12 +292,14 @@ describe('2D-1B-LAYERS final storage invariants', () => {
   it('rejects reusing an existing source key for a new edit TextureRef', async () => {
     const { project, asset } = await seedAsset();
     const source = asset.textures.find((texture) => texture.kind === 'source')!;
-    const replacement: TextureRef = { ...source, id: 'tex_replacement', kind: 'edit' };
+    const replacement: TextureRef = {
+      ...source,
+      id: 'tex_replacement',
+      kind: 'edit',
+    };
     const next = {
       ...asset,
-      textures: asset.textures.map((texture) =>
-        texture.id === source.id ? replacement : texture,
-      ),
+      textures: asset.textures.map((texture) => (texture.id === source.id ? replacement : texture)),
     };
 
     await expect(
@@ -311,12 +315,14 @@ describe('2D-1B-LAYERS final storage invariants', () => {
   it('rejects reusing an existing edit key for a new source TextureRef', async () => {
     const { project, asset } = await seedAsset();
     const edit = asset.textures.find((texture) => texture.kind === 'edit')!;
-    const replacement: TextureRef = { ...edit, id: 'tex_new_source', kind: 'source' };
+    const replacement: TextureRef = {
+      ...edit,
+      id: 'tex_new_source',
+      kind: 'source',
+    };
     const next = {
       ...asset,
-      textures: asset.textures.map((texture) =>
-        texture.id === edit.id ? replacement : texture,
-      ),
+      textures: asset.textures.map((texture) => (texture.id === edit.id ? replacement : texture)),
     };
     const key = keyFor(asset, edit);
 
@@ -348,8 +354,8 @@ describe('2D-1B-LAYERS final storage invariants', () => {
     ).rejects.toThrow(/対応する TextureRef/);
 
     expect((await loadAsset(asset.id)).asset).toEqual(asset);
-    expect(
-      new Uint8Array(await (await loadBlob(keyFor(asset, edit)))!.arrayBuffer()),
-    ).toEqual(beforeBlob);
+    expect(new Uint8Array(await (await loadBlob(keyFor(asset, edit)))!.arrayBuffer())).toEqual(
+      beforeBlob,
+    );
   });
 });
