@@ -164,6 +164,9 @@ export async function runTransaction<T>(
     // より詳細な元のエラーを投げ直す。待たずに投げると、後から reject される
     // done が未処理の Promise rejection になってしまう。
     await done.catch(() => {});
+    if (isQuotaExceededError(error)) {
+      throw toStorageError('保存トランザクションが失敗しました', error);
+    }
     throw error;
   }
 }
