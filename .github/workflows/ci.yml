@@ -36,16 +36,13 @@ jobs:
           while IFS= read -r file; do
             [ -z "$file" ] && continue
             echo "$file"
-
             case "$file" in
               *.md) ;;
               *) code=true ;;
             esac
-
             case "$file" in
               src/* | e2e/* | public/* | index.html | package.json | package-lock.json | playwright.config.* | vite.config.* | .github/workflows/*)
-                e2e=true
-                ;;
+                e2e=true ;;
             esac
           done <<< "$changed_files"
 
@@ -66,7 +63,22 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run build
-      - run: npm run test
+      - name: Run unit tests and capture diagnostics
+        shell: bash
+        run: |
+          set +e
+          npm run test > unit-diagnostics.log 2>&1
+          status=$?
+          cat unit-diagnostics.log
+          exit $status
+      - name: Upload unit diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postmerge-storage-unit-diagnostics
+          path: unit-diagnostics.log
+          if-no-files-found: ignore
+          retention-days: 1
 
   e2e:
     needs: changes
@@ -81,3 +93,11 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e
+      - name: Upload Playwright failure details
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postmerge-storage-playwright-failure
+          path: test-results
+          if-no-files-found: ignore
+          retention-days: 1
