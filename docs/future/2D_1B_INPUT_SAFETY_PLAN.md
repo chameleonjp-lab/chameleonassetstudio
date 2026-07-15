@@ -1,7 +1,7 @@
 # 2D-1B-INPUT-SAFETY 実装契約
 
 作成日: 2026-07-16
-状態: `implementation completed / Draft PR #90 / CI Run #264 success`
+状態: `implementation completed / Draft PR #90 / final implementation CI Run #265 success`
 正式work package: `2D-1B-INPUT-SAFETY`
 基準main: `a9a1e27a6f69544c379fb9fcefc90a13e0928859`（PR #88 merge）
 直前work package: `2D-1B-CASPROJ` completed（最終head CI Run #260 success）
