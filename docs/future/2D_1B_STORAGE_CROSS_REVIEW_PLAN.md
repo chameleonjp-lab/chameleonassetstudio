@@ -1,8 +1,9 @@
 # 2D-1B 保存基盤 横断レビュー計画
 
 作成日: 2026-07-16  
-状態: `planned`  
-実行チェックポイント: `2D-1B-STORAGE-CROSS-REVIEW`
+状態: `completed / blockers found`  
+実行チェックポイント: `2D-1B-STORAGE-CROSS-REVIEW`  
+結果報告: `docs/future/2D_1B_STORAGE_CROSS_REVIEW_REPORT.md`
 
 ## 1. 目的
 
@@ -190,3 +191,23 @@ BLOCKERあり → 保存基盤補修PR → 再レビュー → 2D-1B-CAPACITY
 - CI失敗は同じbranch・同じPRで修正する。
 - BLOCKER補修が必要な場合は、監査PRで修正範囲を固定した後に別Draft PRを作る。
 - ユーザーの明示指示前にready化、merge、auto-mergeを行わない。
+
+## 9. 実行結果
+
+監査基準mainはPR #82 merge commit `fb6f4454ecb46dc66b8f5e9141a12462ab8faef8`。
+
+判定:
+
+- `BLOCKER`: 4件。
+- `MUST`: 2件。
+- `SHOULD`: 2件。
+- `2D-1B-CAPACITY`: 開始不可。
+
+主なBLOCKER:
+
+1. trash purge / Asset削除のsnapshot・Blob所有境界。
+2. 衝突を拒否しない旧`restoreProject`の残存export。
+3. metadata-only操作の履歴が保存成功前に確定する問題。
+4. `saveProjectBundle`の所有・参照・TextureRef / Blob guard不足。
+
+詳細、必要な補修、test条件、判断待ちは`2D_1B_STORAGE_CROSS_REVIEW_REPORT.md`を正本とする。
