@@ -239,14 +239,13 @@ describe('saveAssetRevision（asset + blobs の原子的改訂保存）', () => 
     const project = createEmptyProject('改訂保存');
     const asset = characterAsset as unknown as Asset;
     await saveProject(project);
+    await saveAsset(project.id, asset);
+    await saveBlob(project.id, `${asset.id}/source/original.png`, new Blob([new Uint8Array([1])]));
 
     await saveAssetRevision({
       projectId: project.id,
       asset,
-      putBlobs: [
-        { key: `${asset.id}/source/original.png`, blob: new Blob([new Uint8Array([1])]) },
-        { key: `${asset.id}/textures/main.png`, blob: new Blob([new Uint8Array([2])]) },
-      ],
+      putBlobs: [{ key: `${asset.id}/textures/main.png`, blob: new Blob([new Uint8Array([2])]) }],
     });
 
     expect((await loadAsset(asset.id)).asset).toEqual(asset);
@@ -414,6 +413,41 @@ describe('saveAssetRevision（asset + blobs の原子的改訂保存）', () => 
     ).rejects.toThrow(/対象アセットの prefix/);
   });
 
+  it('Stored Asset が存在しない場合は改訂を拒否する', async () => {
+    const project = createEmptyProject('missing revision target');
+    const asset = characterAsset as unknown as Asset;
+    await saveProject(project);
+
+    await expect(saveAssetRevision({ projectId: project.id, asset })).rejects.toThrow(
+      /改訂対象アセットが保存されていません/,
+    );
+  });
+
+  it('Stored Asset の projectId と指定 projectId が異なる場合は拒否する', async () => {
+    const ownerProject = createEmptyProject('owner');
+    const otherProject = createEmptyProject('other');
+    const asset = characterAsset as unknown as Asset;
+    await saveProject(ownerProject);
+    await saveProject(otherProject);
+    await saveAsset(ownerProject.id, asset);
+
+    await expect(saveAssetRevision({ projectId: otherProject.id, asset })).rejects.toThrow(
+      /改訂対象アセットは指定Projectに属していません/,
+    );
+  });
+
+  it('正しい Project の既存 Asset は改訂できる', async () => {
+    const project = createEmptyProject('owned revision target');
+    const asset = characterAsset as unknown as Asset;
+    await saveProject(project);
+    await saveAsset(project.id, asset);
+    const next = { ...asset, displayName: '改訂成功' };
+
+    await saveAssetRevision({ projectId: project.id, asset: next });
+
+    expect((await loadAsset(asset.id)).asset.displayName).toBe('改訂成功');
+  });
+
   describe('source Blob transition guard', () => {
     const baseAsset = characterAsset as unknown as Asset;
     const sourceKey = `${baseAsset.id}/source/original.png`;
@@ -429,6 +463,23 @@ describe('saveAssetRevision（asset + blobs の原子的改訂保存）', () => 
       await saveBlob(project.id, sourceKey, new Blob([new Uint8Array([1])], { type: 'image/png' }));
       await saveBlob(project.id, editKey, new Blob([new Uint8Array([2])], { type: 'image/png' }));
       return { project, asset };
+    }
+
+    function withAddedTexture(asset: Asset, kind: 'edit' | 'thumbnail', path: string): Asset {
+      return {
+        ...asset,
+        textures: [
+          ...asset.textures,
+          {
+            id: `tex_added_${kind}`,
+            kind,
+            name: `added ${kind}`,
+            mimeType: 'image/png',
+            size: { width: 1, height: 1 },
+            path,
+          },
+        ],
+      };
     }
 
     function withAddedSource(asset: Asset): Asset {
@@ -506,7 +557,7 @@ describe('saveAssetRevision（asset + blobs の原子的改訂保存）', () => 
           },
           putBlobs: [{ key: sourceKey, blob: new Blob([new Uint8Array([9])]) }],
         }),
-      ).rejects.toThrow(/既存 source Blob は上書きできません/);
+      ).rejects.toThrow(/delete 許可/);
       await expect(
         saveAssetRevision({
           projectId: project.id,
@@ -518,7 +569,79 @@ describe('saveAssetRevision（asset + blobs の原子的改訂保存）', () => 
           },
           deleteBlobKeys: [sourceKey],
         }),
-      ).rejects.toThrow(/delete 許可/);
+      ).rejects.toThrow(/新しいTextureRefに対応するBlob/);
+    });
+
+    it('rejects new source TextureRef without its Blob', async () => {
+      const { project, asset } = await seedAsset();
+      await expect(
+        saveAssetRevision({
+          projectId: project.id,
+          asset: withAddedSource(asset),
+          sourceBlobTransitions: { createKeys: [newSourceKey] },
+        }),
+      ).rejects.toThrow(/新しいTextureRefに対応するBlob/);
+    });
+
+    it('rejects new edit TextureRef without its Blob', async () => {
+      const { project, asset } = await seedAsset();
+      await expect(
+        saveAssetRevision({
+          projectId: project.id,
+          asset: withAddedTexture(asset, 'edit', 'textures/missing-edit.png'),
+        }),
+      ).rejects.toThrow(/新しいTextureRefに対応するBlob/);
+    });
+
+    it('rejects new thumbnail TextureRef without its Blob', async () => {
+      const { project, asset } = await seedAsset();
+      await expect(
+        saveAssetRevision({
+          projectId: project.id,
+          asset: withAddedTexture(asset, 'thumbnail', 'thumbnails/missing-thumb.png'),
+        }),
+      ).rejects.toThrow(/新しいTextureRefに対応するBlob/);
+    });
+
+    it('allows adding a new non-source TextureRef with its Blob', async () => {
+      const { project, asset } = await seedAsset();
+      const key = `${asset.id}/textures/added-edit-only.png`;
+      await saveAssetRevision({
+        projectId: project.id,
+        asset: withAddedTexture(asset, 'edit', 'textures/added-edit-only.png'),
+        putBlobs: [{ key, blob: new Blob([new Uint8Array([8])], { type: 'image/png' }) }],
+      });
+
+      expect(new Uint8Array(await (await loadBlob(key))!.arrayBuffer())).toEqual(
+        new Uint8Array([8]),
+      );
+    });
+
+    it('rejects removing a TextureRef without deleting its Blob', async () => {
+      const { project, asset } = await seedAsset();
+      await expect(
+        saveAssetRevision({
+          projectId: project.id,
+          asset: {
+            ...asset,
+            textures: asset.textures.filter((texture) => texture.id !== 'tex_main'),
+          },
+        }),
+      ).rejects.toThrow(/削除されたTextureRefに対応するBlob/);
+    });
+
+    it('allows removing a TextureRef with its Blob in the same revision', async () => {
+      const { project, asset } = await seedAsset();
+      await saveAssetRevision({
+        projectId: project.id,
+        asset: {
+          ...asset,
+          textures: asset.textures.filter((texture) => texture.id !== 'tex_main'),
+        },
+        deleteBlobKeys: [editKey],
+      });
+
+      expect(await loadBlob(editKey)).toBeNull();
     });
 
     it('allows explicit create, undo delete, and redo for newly added source only', async () => {
@@ -530,12 +653,15 @@ describe('saveAssetRevision（asset + blobs の原子的改訂保存）', () => 
           asset: after,
           putBlobs: [{ key: newSourceKey, blob: new Blob([new Uint8Array([3])]) }],
         }),
-      ).rejects.toThrow(/create 許可/);
+      ).rejects.toThrow(/新しいTextureRefに対応するBlob/);
       await expect(
         saveAssetRevision({
           projectId: project.id,
           asset: after,
-          putBlobs: [{ key: newSourceKey, blob: new Blob([new Uint8Array([3])]) }],
+          putBlobs: [
+            { key: newSourceKey, blob: new Blob([new Uint8Array([3])]) },
+            { key: newEditKey, blob: new Blob([new Uint8Array([4])]) },
+          ],
           sourceBlobTransitions: { createKeys: [`${asset.id}/source/unrelated.png`] },
         }),
       ).rejects.toThrow(/create 許可/);
@@ -586,7 +712,7 @@ describe('saveAssetRevision（asset + blobs の原子的改訂保存）', () => 
           putBlobs: [{ key: newEditKey, blob: new Blob([new Uint8Array([9])]) }],
           sourceBlobTransitions: { createKeys: [newSourceKey] },
         }),
-      ).rejects.toThrow(/一致しません/);
+      ).rejects.toThrow(/新しいTextureRefに対応するBlob/);
       expect((await loadAsset(asset.id)).asset).toEqual(asset);
       expect(await loadBlob(newEditKey)).toBeNull();
       const originalPut = IDBObjectStore.prototype.put;

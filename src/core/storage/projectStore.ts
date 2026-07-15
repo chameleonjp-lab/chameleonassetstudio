@@ -191,11 +191,19 @@ export interface SourceBlobTransitions {
   deleteKeys?: string[];
 }
 
-function sourceTexturesByKey(asset: Asset): Map<string, TextureRef> {
+function texturesByKey(asset: Asset): Map<string, TextureRef> {
   const textures = new Map<string, TextureRef>();
   for (const texture of asset.textures) {
+    textures.set(blobKeyForAssetPath(asset.id, texture.path), texture);
+  }
+  return textures;
+}
+
+function sourceTexturesByKey(asset: Asset): Map<string, TextureRef> {
+  const textures = new Map<string, TextureRef>();
+  for (const [key, texture] of texturesByKey(asset)) {
     if (texture.kind === 'source') {
-      textures.set(blobKeyForAssetPath(asset.id, texture.path), texture);
+      textures.set(key, texture);
     }
   }
   return textures;
@@ -219,76 +227,97 @@ function assertUniqueTransitionKeys(label: string, keys: string[]): Set<string> 
   return result;
 }
 
-function assertSourceBlobTransitions({
+function assertTextureBlobTransitions({
   previousAsset,
   nextAsset,
   putBlobKeys,
   deleteBlobKeys,
   transitions,
 }: {
-  previousAsset: Asset | null;
+  previousAsset: Asset;
   nextAsset: Asset;
   putBlobKeys: Set<string>;
   deleteBlobKeys: Set<string>;
   transitions: SourceBlobTransitions;
 }): void {
-  const previousSourceTextures = previousAsset ? sourceTexturesByKey(previousAsset) : new Map();
+  const previousTextures = texturesByKey(previousAsset);
+  const nextTextures = texturesByKey(nextAsset);
+  const previousTextureKeys = new Set(previousTextures.keys());
+  const nextTextureKeys = new Set(nextTextures.keys());
+  const previousSourceTextures = sourceTexturesByKey(previousAsset);
   const nextSourceTextures = sourceTexturesByKey(nextAsset);
   const previousSourceKeys = new Set(previousSourceTextures.keys());
   const nextSourceKeys = new Set(nextSourceTextures.keys());
   const createKeys = assertUniqueTransitionKeys('source create 許可', transitions.createKeys ?? []);
   const deleteKeys = assertUniqueTransitionKeys('source delete 許可', transitions.deleteKeys ?? []);
 
-  for (const key of putBlobKeys) {
-    if (previousSourceKeys.has(key)) {
-      throw new StorageError(`既存 source Blob は上書きできません: ${key}`);
+  const addedTextureKeys = [...nextTextureKeys].filter((key) => !previousTextureKeys.has(key));
+  const removedTextureKeys = [...previousTextureKeys].filter((key) => !nextTextureKeys.has(key));
+  const addedSourceKeys = [...nextSourceKeys].filter((key) => !previousSourceKeys.has(key));
+  const removedSourceKeys = [...previousSourceKeys].filter((key) => !nextSourceKeys.has(key));
+
+  for (const key of addedTextureKeys) {
+    if (!putBlobKeys.has(key)) {
+      throw new StorageError(`新しいTextureRefに対応するBlobが保存対象にありません: ${key}`);
     }
-    if (previousAsset && nextSourceKeys.has(key)) {
-      if (!createKeys.has(key) || previousSourceKeys.has(key)) {
-        throw new StorageError(`source Blob の新規作成には明示的な create 許可が必要です: ${key}`);
-      }
+  }
+
+  for (const key of removedTextureKeys) {
+    if (!deleteBlobKeys.has(key)) {
+      throw new StorageError(`削除されたTextureRefに対応するBlobが削除対象にありません: ${key}`);
+    }
+  }
+
+  for (const key of addedSourceKeys) {
+    if (!createKeys.has(key)) {
+      throw new StorageError(`source Blob の新規作成には明示的な create 許可が必要です: ${key}`);
+    }
+    if (!putBlobKeys.has(key)) {
+      throw new StorageError(
+        `新しい source TextureRef に対応する Blob が保存対象にありません: ${key}`,
+      );
+    }
+  }
+
+  for (const key of removedSourceKeys) {
+    if (!deleteKeys.has(key)) {
+      throw new StorageError(`source Blob の削除には明示的な delete 許可が必要です: ${key}`);
+    }
+    if (!deleteBlobKeys.has(key)) {
+      throw new StorageError(
+        `削除された source TextureRef に対応する Blob が削除対象にありません: ${key}`,
+      );
     }
   }
 
   for (const [key, previous] of previousSourceTextures) {
     const next = nextSourceTextures.get(key);
-    if (next) {
-      if (
-        previous.id !== next.id ||
-        previous.kind !== next.kind ||
-        previous.path !== next.path ||
-        previous.mimeType !== next.mimeType
-      ) {
-        throw new StorageError(`既存 source TextureRef は通常改訂で変更できません: ${key}`);
-      }
-      if (deleteBlobKeys.has(key)) {
-        throw new StorageError(`既存 source Blob は削除できません: ${key}`);
-      }
-    } else if (!deleteKeys.has(key) || !deleteBlobKeys.has(key)) {
-      throw new StorageError(
-        `既存 source TextureRef の削除には明示的な delete 許可が必要です: ${key}`,
-      );
+    if (!next) {
+      continue;
     }
-  }
-
-  for (const key of deleteBlobKeys) {
-    if (previousSourceKeys.has(key) && !deleteKeys.has(key)) {
-      throw new StorageError(`source Blob の削除には明示的な delete 許可が必要です: ${key}`);
+    if (
+      previous.id !== next.id ||
+      previous.kind !== next.kind ||
+      previous.path !== next.path ||
+      previous.mimeType !== next.mimeType
+    ) {
+      throw new StorageError(`既存 source TextureRef は通常改訂で変更できません: ${key}`);
+    }
+    if (putBlobKeys.has(key)) {
+      throw new StorageError(`既存 source Blob は上書きできません: ${key}`);
+    }
+    if (deleteBlobKeys.has(key)) {
+      throw new StorageError(`既存 source Blob は削除できません: ${key}`);
     }
   }
 
   for (const key of createKeys) {
-    if (
-      !previousAsset ||
-      previousSourceKeys.has(key) ||
-      !nextSourceKeys.has(key) ||
-      !putBlobKeys.has(key)
-    ) {
+    if (!addedSourceKeys.includes(key) || !putBlobKeys.has(key)) {
       throw new StorageError(`source create 許可が実際の新規 source 遷移と一致しません: ${key}`);
     }
   }
   for (const key of deleteKeys) {
-    if (!previousSourceKeys.has(key) || nextSourceKeys.has(key) || !deleteBlobKeys.has(key)) {
+    if (!removedSourceKeys.includes(key) || !deleteBlobKeys.has(key)) {
       throw new StorageError(`source delete 許可が実際の source 削除遷移と一致しません: ${key}`);
     }
   }
@@ -328,8 +357,14 @@ export async function saveAssetRevision({
     const previousRecord = await requestToPromise(
       tx.objectStore(STORE_ASSETS).get(asset.id) as IDBRequest<StoredAssetRecord | undefined>,
     );
-    assertSourceBlobTransitions({
-      previousAsset: previousRecord?.data ?? null,
+    if (!previousRecord) {
+      throw new StorageError('改訂対象アセットが保存されていません');
+    }
+    if (previousRecord.projectId !== projectId) {
+      throw new StorageError('改訂対象アセットは指定Projectに属していません');
+    }
+    assertTextureBlobTransitions({
+      previousAsset: previousRecord.data,
       nextAsset: asset,
       putBlobKeys: new Set(putBlobs.map(({ key }) => key)),
       deleteBlobKeys: new Set(deleteBlobKeys),

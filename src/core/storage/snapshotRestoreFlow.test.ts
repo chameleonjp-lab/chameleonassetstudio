@@ -3,7 +3,13 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createEmptyProject, type Asset } from '../model';
 import characterAsset from '../samples/asset.character.json';
 import { resetDbForTests } from './db';
-import { loadAsset, loadBlob, saveAssetRevision, saveProject } from './projectStore';
+import {
+  loadAsset,
+  loadBlob,
+  saveAssetRevision,
+  saveProject,
+  saveProjectBundle,
+} from './projectStore';
 import { listSnapshots, restoreSnapshot, saveSnapshot } from './snapshotStore';
 
 beforeEach(async () => {
@@ -38,11 +44,17 @@ describe('復旧点の復元 -> Undo の整合性（2D-1B-STORAGE §C, Opus 4.8 
       textures: baseAsset.textures.map((tex) => ({ ...tex, size: newSize })),
     };
     const newBytes = new Uint8Array([9, 9, 9, 9]);
-    await saveAssetRevision({
-      projectId,
-      asset: currentAsset,
-      putBlobs: [{ key, blob: new Blob([newBytes], { type: 'image/png' }) }],
-    });
+    await saveProjectBundle(
+      { ...project, id: projectId },
+      [currentAsset],
+      [
+        {
+          key: `${currentAsset.id}/source/original.png`,
+          blob: new Blob([new Uint8Array([7, 7, 7, 7])], { type: 'image/png' }),
+        },
+        { key, blob: new Blob([newBytes], { type: 'image/png' }) },
+      ],
+    );
 
     // 「復旧点（編集前）」として、より小さいサイズのアセットと Blob を保存しておく
     const oldAsset: Asset = {
