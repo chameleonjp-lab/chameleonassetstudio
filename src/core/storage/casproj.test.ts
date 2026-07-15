@@ -6,8 +6,18 @@ import exportPresets from '../samples/export-presets.sample.json';
 import sampleProject from '../samples/project.sample.json';
 import { CasprojError, exportCasproj, importCasproj, type CasprojBundle } from './casproj';
 
-const project = sampleProject as unknown as Project;
 const asset = characterAsset as unknown as Asset;
+const project = {
+  ...(sampleProject as unknown as Project),
+  assets: [
+    {
+      id: asset.id,
+      name: asset.name,
+      displayName: asset.displayName,
+      assetType: asset.assetType,
+    },
+  ],
+};
 const presets = exportPresets as unknown as ExportPresetFile;
 
 function zipAsync(data: Zippable): Promise<Uint8Array> {
@@ -74,7 +84,7 @@ describe('casproj の書き出しと読み込み', () => {
 
   it('危険なパスを含むファイルの書き出しは拒否する', async () => {
     const bundle: CasprojBundle = {
-      project,
+      project: { ...project, assets: [] },
       assets: [],
       files: [{ path: '../evil.png', bytes: new Uint8Array([1]) }],
     };
@@ -130,5 +140,43 @@ describe('casproj の書き出しと読み込み', () => {
     const blob = await exportCasproj(bundle);
     const { warnings } = await importCasproj(blob);
     expect(warnings).toEqual([]);
+  });
+
+  it('future versionのproject / asset / export presetsを理由付きで拒否する', async () => {
+    const futureProject = await zipAsync({
+      'project.json': strToU8(JSON.stringify({ ...project, version: '0.1.1' })),
+    });
+    await expect(importCasproj(futureProject)).rejects.toMatchObject({
+      code: 'unsupported-version',
+    });
+
+    const futureAsset = await zipAsync({
+      'project.json': strToU8(JSON.stringify(project)),
+      [`assets/${asset.id}/asset.json`]: strToU8(JSON.stringify({ ...asset, version: '0.1.1' })),
+    });
+    await expect(importCasproj(futureAsset)).rejects.toMatchObject({
+      code: 'unsupported-version',
+    });
+
+    const futurePresets = await zipAsync({
+      'project.json': strToU8(JSON.stringify({ ...project, assets: [] })),
+      'settings/export-presets.json': strToU8(JSON.stringify({ ...presets, version: '0.1.1' })),
+    });
+    await expect(importCasproj(futurePresets)).rejects.toMatchObject({
+      code: 'unsupported-version',
+    });
+  });
+
+  it('Project参照とAssetが不整合なbundleや予約済みfile pathの書き出しを拒否する', async () => {
+    await expect(exportCasproj({ project, assets: [], files: [] })).rejects.toMatchObject({
+      code: 'incomplete-bundle',
+    });
+    await expect(
+      exportCasproj({
+        project: { ...project, assets: [] },
+        assets: [],
+        files: [{ path: 'project.json', bytes: new Uint8Array([1]) }],
+      }),
+    ).rejects.toMatchObject({ code: 'inconsistent-bundle' });
   });
 });

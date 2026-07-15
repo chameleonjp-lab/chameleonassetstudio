@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
-import { blobKeyFor } from '../../core/images/importImage';
-import { createEmptyProject, generateId } from '../../core/model';
+import { createEmptyProject } from '../../core/model';
 import {
   CasprojError,
   TRASH_LIMIT,
+  commitStagedCasprojImport,
   deleteProject,
   deleteQuarantineEntry,
   canRequestPersistentStorage,
@@ -11,7 +11,6 @@ import {
   getPersistentStorageState,
   getStorageUsage,
   getStorageWarningLevel,
-  importCasproj,
   listProjects,
   listQuarantine,
   listTrash,
@@ -20,8 +19,8 @@ import {
   requestPersistentStorage,
   restoreProject,
   saveProject,
-  saveProjectBundle,
   saveQuarantineEntry,
+  stageCasprojImport,
   type ProjectSummary,
   type PersistentStorageState,
   type QuarantineSummary,
@@ -79,6 +78,8 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
+  const [importMigrations, setImportMigrations] = useState<string[]>([]);
+  const [importSuccessMessage, setImportSuccessMessage] = useState<string | null>(null);
 
   const refreshStorage = useCallback(async () => {
     setStorageRefreshing(true);
@@ -172,67 +173,35 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
     setImporting(true);
     setErrorMessage(null);
     setImportWarnings([]);
+    setImportMigrations([]);
+    setImportSuccessMessage(null);
+    let sourceBytes: ArrayBuffer | null = null;
     try {
-      const { bundle, warnings } = await importCasproj(file);
-      // 既存プロジェクトや Blob キーとの ID 衝突を避けるため、常に ID を再採番する
-      const assetIdMap = new Map(bundle.assets.map((asset) => [asset.id, generateId('asset')]));
-      const project = {
-        ...bundle.project,
-        // asset 本体（assets/*/asset.json）が無い entry は dangling になるため除外する
-        id: generateId('project'),
-        assets: bundle.project.assets
-          .filter((entry) => assetIdMap.has(entry.id))
-          .map((entry) => ({
-            ...entry,
-            id: assetIdMap.get(entry.id)!,
-          })),
-      };
-      const renamedAssets = bundle.assets.map((asset) => ({
-        ...asset,
-        id: assetIdMap.get(asset.id)!,
-      }));
-      const blobs = bundle.files.flatMap((entry) => {
-        const match = /^assets\/([^/]+)\/(.+)$/.exec(entry.path);
-        if (!match) {
-          return [];
-        }
-        const newAssetId = assetIdMap.get(match[1]);
-        if (!newAssetId) {
-          return [];
-        }
-        const mimeType = bundle.assets
-          .find((asset) => asset.id === match[1])
-          ?.textures.find((texture) => texture.path === match[2])?.mimeType;
-        return [
-          {
-            key: blobKeyFor(newAssetId, match[2]),
-            blob: new Blob(
-              [entry.bytes.slice().buffer as ArrayBuffer],
-              mimeType ? { type: mimeType } : {},
-            ),
-          },
-        ];
-      });
-      // project + assets + blobs を単一トランザクションで保存する（2D-1B-STORAGE §A）。
-      // 途中で失敗しても一部だけ保存された不整合な状態が残らない。
-      await saveProjectBundle(project, renamedAssets, blobs);
+      sourceBytes = await file.arrayBuffer();
+      const staged = await stageCasprojImport(sourceBytes);
+      await commitStagedCasprojImport(staged);
       await reload();
-      setImportWarnings(warnings);
+      setImportWarnings(staged.warnings);
+      setImportMigrations(staged.appliedMigrations);
+      setImportSuccessMessage(
+        `「${staged.project.name}」を新しいcopyとして読み込みました。元の.casprojファイルは変更されていません。`,
+      );
     } catch (error) {
-      setErrorMessage(`.casproj を読み込めませんでした: ${toErrorMessage(error)}`);
+      const importErrorMessage = `.casproj を読み込めませんでした: ${toErrorMessage(error)} 既存の保存済みプロジェクトは変更されていません。`;
       // 壊れた・不正な .casproj は正本ストアへ一切書き込まず、隔離領域へ退避する（2D-1B-STORAGE §E）。
-      if (error instanceof CasprojError) {
+      if (error instanceof CasprojError && sourceBytes) {
         try {
           await saveQuarantineEntry({
             fileName: file.name,
             errorMessage: toErrorMessage(error),
-            bytes: await file.arrayBuffer(),
+            bytes: sourceBytes,
           });
           await reload();
         } catch {
           // 隔離領域への保存に失敗しても、元のエラー表示は変えない
         }
       }
+      setErrorMessage(importErrorMessage);
     }
     setImporting(false);
   };
@@ -447,11 +416,21 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
         </div>
         {importWarnings.length > 0 && (
           <div className="home-import-warnings" role="status">
+            <h3>互換性に関する警告</h3>
             {importWarnings.map((warning) => (
               <p key={warning}>{warning}</p>
             ))}
           </div>
         )}
+        {importMigrations.length > 0 && (
+          <div className="home-import-warnings" role="status">
+            <h3>適用したmigration</h3>
+            {importMigrations.map((migration) => (
+              <p key={migration}>{migration}</p>
+            ))}
+          </div>
+        )}
+        {importSuccessMessage && <p role="status">{importSuccessMessage}</p>}
       </section>
 
       <section id="home-projects" className="home-section" aria-label="プロジェクト一覧">
