@@ -6,21 +6,27 @@ import {
   TRASH_LIMIT,
   deleteProject,
   deleteQuarantineEntry,
+  canRequestPersistentStorage,
   formatBytes,
+  getPersistentStorageState,
   getStorageUsage,
+  getStorageWarningLevel,
   importCasproj,
   listProjects,
   listQuarantine,
   listTrash,
   purgeAllTrash,
   purgeTrash,
+  requestPersistentStorage,
   restoreProject,
   saveProject,
   saveProjectBundle,
   saveQuarantineEntry,
   type ProjectSummary,
+  type PersistentStorageState,
   type QuarantineSummary,
   type StorageUsage,
+  type StorageWarningLevel,
   type TrashSummary,
 } from '../../core/storage';
 import './home.css';
@@ -33,16 +39,60 @@ function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+const STORAGE_WARNING_MESSAGES: Record<StorageWarningLevel, string> = {
+  normal: '現在は予防警告の対象ではありません。定期的な .casproj バックアップは続けてください。',
+  notice:
+    '保存容量の60%以上を使用しています。早めに必要なプロジェクトを .casproj で退避してください。',
+  warning:
+    '保存容量の80%以上を使用しています。.casproj で退避してから、不要なデータを手動で整理してください。',
+  critical:
+    '保存容量の90%以上を使用しています。大きな取り込みや編集の前に .casproj で退避し、不要なデータを整理してください。',
+  unavailable:
+    '使用率を計算できません。空き容量は推測せず、定期的な .casproj バックアップを案内します。',
+};
+
+const PERSISTENT_STORAGE_MESSAGES: Record<PersistentStorageState, string> = {
+  granted: 'ブラウザによる保存領域の保護が有効です。',
+  'not-granted': '保存領域は保護されていません。通常保存は利用できます。',
+  unsupported: 'この環境では保存領域の保護状態を確認または要求できません。',
+  error: '保存領域の保護状態を確認できませんでした。通常保存は引き続き利用できます。',
+};
+
+function formatUsagePercentage(ratio: number): string {
+  return `${(ratio * 100).toFixed(1)}%`;
+}
+
 export function HomeScreen({ onOpenProject }: HomeScreenProps) {
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [trash, setTrash] = useState<TrashSummary[]>([]);
   const [quarantine, setQuarantine] = useState<QuarantineSummary[]>([]);
   const [usage, setUsage] = useState<StorageUsage | null>(null);
+  const [persistentStorage, setPersistentStorage] = useState<PersistentStorageState | null>(null);
+  const [storageRefreshing, setStorageRefreshing] = useState(false);
+  const [persistRequesting, setPersistRequesting] = useState(false);
+  const [storageActionMessage, setStorageActionMessage] = useState<{
+    type: 'status' | 'error';
+    text: string;
+  } | null>(null);
   const [newName, setNewName] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
+
+  const refreshStorage = useCallback(async () => {
+    setStorageRefreshing(true);
+    try {
+      const [nextUsage, nextPersistentStorage] = await Promise.all([
+        getStorageUsage(),
+        getPersistentStorageState(),
+      ]);
+      setUsage(nextUsage);
+      setPersistentStorage(nextPersistentStorage);
+    } finally {
+      setStorageRefreshing(false);
+    }
+  }, []);
 
   const reload = useCallback(async () => {
     try {
@@ -61,12 +111,44 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
     } catch {
       // 隔離一覧の取得失敗もプロジェクト一覧の表示を止めない
     }
-    setUsage(await getStorageUsage());
-  }, []);
+    await refreshStorage();
+  }, [refreshStorage]);
 
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  const handleRequestPersistentStorage = async () => {
+    setPersistRequesting(true);
+    setStorageActionMessage(null);
+    const nextState = await requestPersistentStorage();
+    setPersistentStorage(nextState);
+    if (nextState === 'granted') {
+      setStorageActionMessage({ type: 'status', text: '保存領域の保護が有効になりました。' });
+    } else if (nextState === 'not-granted') {
+      setStorageActionMessage({
+        type: 'status',
+        text: '保存領域の保護は許可されませんでした。通常保存は引き続き利用できます。',
+      });
+    } else if (nextState === 'unsupported') {
+      setStorageActionMessage({
+        type: 'status',
+        text: 'この環境では保存領域の保護を要求できません。',
+      });
+    } else {
+      setStorageActionMessage({
+        type: 'error',
+        text: '保存領域の保護を要求できませんでした。通常保存は引き続き利用できます。',
+      });
+    }
+    setPersistRequesting(false);
+  };
+
+  const scrollToSection = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const warningLevel = usage ? getStorageWarningLevel(usage) : 'unavailable';
 
   const handleCreate = async () => {
     setCreating(true);
@@ -229,6 +311,107 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
         </p>
       )}
 
+      <section className="home-section home-storage" aria-label="保存容量">
+        <div className="home-section-header">
+          <h2>保存容量</h2>
+          <button type="button" onClick={() => void refreshStorage()} disabled={storageRefreshing}>
+            {storageRefreshing ? '確認中…' : '容量を再確認'}
+          </button>
+        </div>
+
+        {usage === null ? (
+          <p role="status">保存容量を確認しています。</p>
+        ) : (
+          <div className="home-storage-details">
+            {usage.status === 'available' ? (
+              <p>
+                使用量: {usage.usageBytes !== null ? formatBytes(usage.usageBytes) : '取得不能'} /{' '}
+                {usage.quotaBytes !== null ? formatBytes(usage.quotaBytes) : '取得不能'}
+                {usage.usageRatio !== null
+                  ? `（${formatUsagePercentage(usage.usageRatio)}）`
+                  : '（使用率は計算できません）'}
+              </p>
+            ) : usage.status === 'unsupported' ? (
+              <p>この環境は使用量の取得に対応していません。</p>
+            ) : (
+              <p>使用量の取得中にエラーが発生しました。</p>
+            )}
+            <p className="home-storage-note">
+              この値はブラウザによる推定であり、次の保存成功や実際の空き容量を保証しません。
+            </p>
+          </div>
+        )}
+
+        <div className={`home-storage-warning home-storage-warning--${warningLevel}`} role="status">
+          <strong>
+            {warningLevel === 'normal'
+              ? '通常'
+              : warningLevel === 'notice'
+                ? 'お知らせ'
+                : warningLevel === 'warning'
+                  ? '警告'
+                  : warningLevel === 'critical'
+                    ? '重要な警告'
+                    : '使用率不明'}
+          </strong>
+          <p>{STORAGE_WARNING_MESSAGES[warningLevel]}</p>
+        </div>
+
+        <div className="home-persistent-storage">
+          <h3>保存領域の保護</h3>
+          <p role="status">
+            {persistentStorage === null
+              ? '保護状態を確認しています。'
+              : PERSISTENT_STORAGE_MESSAGES[persistentStorage]}
+          </p>
+          {persistentStorage === 'not-granted' && canRequestPersistentStorage() && (
+            <button
+              type="button"
+              onClick={() => void handleRequestPersistentStorage()}
+              disabled={persistRequesting}
+            >
+              {persistRequesting ? '要求中…' : '保存領域の保護を要求'}
+            </button>
+          )}
+        </div>
+
+        {storageActionMessage && (
+          <p
+            className={storageActionMessage.type === 'error' ? 'home-error' : 'home-storage-note'}
+            role={storageActionMessage.type === 'error' ? 'alert' : 'status'}
+          >
+            {storageActionMessage.text}
+          </p>
+        )}
+
+        <div className="home-storage-guidance">
+          <h3>容量を確保する前に</h3>
+          <p>
+            必要なプロジェクトを開き、編集画面の「.casproj をダウンロード」で退避してください。
+            退避を確認してから、ごみ箱や不要なデータを手動で整理します。
+          </p>
+          <div className="home-storage-actions">
+            <button
+              type="button"
+              onClick={() => scrollToSection('home-projects')}
+              disabled={!projects || projects.length === 0}
+            >
+              バックアップするプロジェクトを選ぶ
+            </button>
+            {trash.length > 0 && (
+              <button type="button" onClick={() => scrollToSection('home-trash')}>
+                ごみ箱を確認
+              </button>
+            )}
+            {quarantine.length > 0 && (
+              <button type="button" onClick={() => scrollToSection('home-quarantine')}>
+                読み込み失敗データを確認
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+
       <section className="home-section" aria-label="新規プロジェクト">
         <h2>新規プロジェクト</h2>
         <div className="home-create">
@@ -271,7 +454,7 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
         )}
       </section>
 
-      <section className="home-section" aria-label="プロジェクト一覧">
+      <section id="home-projects" className="home-section" aria-label="プロジェクト一覧">
         <h2>プロジェクト一覧</h2>
         {projects === null && <p>読み込み中…</p>}
         {projects !== null && projects.length === 0 && <p>保存済みのプロジェクトはありません。</p>}
@@ -309,7 +492,7 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
       </section>
 
       {trash.length > 0 && (
-        <section className="home-section" aria-label="ごみ箱">
+        <section id="home-trash" className="home-section" aria-label="ごみ箱">
           <div className="home-section-header">
             <h2>ごみ箱</h2>
             <button type="button" onClick={() => void handlePurgeAllTrash()}>
@@ -352,7 +535,11 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
       )}
 
       {quarantine.length > 0 && (
-        <section className="home-section" aria-label="読み込みに失敗したファイル">
+        <section
+          id="home-quarantine"
+          className="home-section"
+          aria-label="読み込みに失敗したファイル"
+        >
           <h2>読み込みに失敗したファイル</h2>
           <ul className="home-list">
             {quarantine.map((entry) => (
@@ -377,17 +564,6 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
           </ul>
         </section>
       )}
-
-      <footer className="home-storage">
-        {usage?.supported && usage.usageBytes !== null ? (
-          <p>
-            ストレージ使用量: {formatBytes(usage.usageBytes)}
-            {usage.quotaBytes !== null ? ` / ${formatBytes(usage.quotaBytes)}` : ''}
-          </p>
-        ) : (
-          <p>ストレージ使用量: この環境では取得できません</p>
-        )}
-      </footer>
     </main>
   );
 }

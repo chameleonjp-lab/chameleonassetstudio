@@ -97,10 +97,73 @@
   gap: 0.5rem;
 }
 
-.home-storage p {
+.home-storage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.8rem;
+  border: 1px solid #8885;
+  border-radius: 10px;
+}
+
+.home-storage p,
+.home-storage h3 {
   margin: 0;
-  font-size: 0.85rem;
+}
+
+.home-storage-details,
+.home-persistent-storage,
+.home-storage-guidance {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.home-storage h3 {
+  font-size: 0.95rem;
+}
+
+.home-storage-note {
+  font-size: 0.82rem;
   opacity: 0.75;
+}
+
+.home-storage-warning {
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #7776;
+  border-radius: 8px;
+}
+
+.home-storage-warning p {
+  margin-top: 0.25rem;
+}
+
+.home-storage-warning--notice {
+  border-color: #9a7b18;
+  background: #9a7b1814;
+}
+
+.home-storage-warning--warning {
+  border-color: #c06f00;
+  background: #c06f0018;
+}
+
+.home-storage-warning--critical {
+  border-color: #c0392b;
+  background: #c0392b18;
+}
+
+.home-storage-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.home-storage button {
+  max-width: 100%;
+  padding: 0.4rem 0.7rem;
+  font: inherit;
+  overflow-wrap: anywhere;
 }
 
 .home-import {

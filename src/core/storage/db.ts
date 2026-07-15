@@ -21,16 +21,21 @@ export const INDEX_BY_ASSET = 'byAsset';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
+export type StorageErrorCode = 'quota-exceeded';
+
 export class StorageError extends Error {
-  constructor(message: string, options?: ErrorOptions) {
+  readonly code?: StorageErrorCode;
+
+  constructor(message: string, options?: ErrorOptions & { code?: StorageErrorCode }) {
     super(message, options);
     this.name = 'StorageError';
+    this.code = options?.code;
   }
 }
 
-/** 保存容量不足時にユーザーへ表示する理由。ごみ箱を空にする・削除する導線を案内する。 */
+/** 保存容量不足時にユーザーへ表示する理由。正本維持と退避・手動整理を案内する。 */
 export const QUOTA_EXCEEDED_MESSAGE =
-  '保存容量が不足しています。ごみ箱を空にするか、不要なプロジェクトを削除して空き容量を確保してください。';
+  '保存容量が不足しています。保存済みの正本は変更されていません。必要なプロジェクトを .casproj で退避してから、ごみ箱や不要なデータを手動で整理し、もう一度お試しください。';
 
 /**
  * QuotaExceededError を検出する。
@@ -43,10 +48,15 @@ export function isQuotaExceededError(error: unknown): boolean {
   return error.name === 'QuotaExceededError' || error.code === 22;
 }
 
+/** UIが日本語メッセージの文字列一致をせず、変換済み容量不足エラーを判定するための入口。 */
+export function isQuotaExceededStorageError(error: unknown): error is StorageError {
+  return error instanceof StorageError && error.code === 'quota-exceeded';
+}
+
 /** request / transaction のエラーを StorageError へ変換する。容量不足は専用メッセージにする。 */
 function toStorageError(defaultMessage: string, cause: unknown): StorageError {
   if (isQuotaExceededError(cause)) {
-    return new StorageError(QUOTA_EXCEEDED_MESSAGE, { cause });
+    return new StorageError(QUOTA_EXCEEDED_MESSAGE, { cause, code: 'quota-exceeded' });
   }
   return new StorageError(defaultMessage, { cause });
 }
@@ -154,6 +164,9 @@ export async function runTransaction<T>(
     // より詳細な元のエラーを投げ直す。待たずに投げると、後から reject される
     // done が未処理の Promise rejection になってしまう。
     await done.catch(() => {});
+    if (isQuotaExceededError(error)) {
+      throw toStorageError('保存トランザクションが失敗しました', error);
+    }
     throw error;
   }
 }
