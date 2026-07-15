@@ -63,6 +63,35 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Generate exact Prettier output
+        run: |
+          npx prettier --write \
+            src/core/history/history.test.ts \
+            src/core/history/history.ts \
+            src/core/storage/autosave.test.ts \
+            src/core/storage/autosave.ts \
+            src/core/storage/projectStore.test.ts \
+            src/core/storage/projectStore.ts \
+            src/core/storage/recoveryTrash.test.ts \
+            src/core/storage/snapshotStore.test.ts \
+            src/core/storage/snapshotStore.ts \
+            src/features/editor/editorMutationGuard.test.ts
+      - name: Upload exact Prettier output
+        uses: actions/upload-artifact@v4
+        with:
+          name: storage-blocker-prettier-output
+          path: |
+            src/core/history/history.test.ts
+            src/core/history/history.ts
+            src/core/storage/autosave.test.ts
+            src/core/storage/autosave.ts
+            src/core/storage/projectStore.test.ts
+            src/core/storage/projectStore.ts
+            src/core/storage/recoveryTrash.test.ts
+            src/core/storage/snapshotStore.test.ts
+            src/core/storage/snapshotStore.ts
+            src/features/editor/editorMutationGuard.test.ts
+          retention-days: 1
       - run: npm run lint
       - run: npm run format:check
       - run: npm run build
@@ -81,3 +110,11 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e
+      - name: Upload Playwright failure details
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: storage-blocker-playwright-failure
+          path: test-results
+          if-no-files-found: ignore
+          retention-days: 1
