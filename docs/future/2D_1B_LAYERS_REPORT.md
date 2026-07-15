@@ -1,8 +1,19 @@
 # 2D-1B-LAYERS 実装レビュー報告
 
 最終更新日: 2026-07-15  
-状態: `implementation in review`  
+状態: `completed`  
 対象: `2D-1B-LAYERS`
+
+## 完了証拠
+
+- PR #76: source Blob遷移guardとexport edit境界。
+- PR #77: TextureRef追加・削除とBlob遷移の整合、保存API境界。
+- PR #78: TextureRef一意性、双方向整合、source不変性、transaction abort、`saveAsset`境界の最終固定。
+- CI Run #168: success。
+- CI Run #170: success。
+- CI Run #182: success。正式CIのみでlint、format、build、unit test、E2Eが全成功。
+
+次のwork package: `2D-1B-RECOVERY`
 
 ## 1. 目的
 
@@ -81,6 +92,8 @@ schema、version、migration、`.casproj` 構成、export ZIP 構成、IndexedDB
 | `.casproj` import後保存 | Home import flow | Project + Asset + TextureRef files | `saveProjectBundle`でimplemented | 別Projectとして保存 | not implemented | staged import等は`2D-1B-CASPROJ`範囲 |
 
 ## 5. 未実装・後続範囲
+
+次の項目は`2D-1B-LAYERS`の未完了事項ではない。完了済みの保存境界を前提に、それぞれ後続work packageまたは別契約で扱う。
 
 - thumbnail欠落時の自動再生成。
 - export record / verification recordの正式永続化。
