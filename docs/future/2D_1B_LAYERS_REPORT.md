@@ -1,51 +1,90 @@
 # 2D-1B-LAYERS 実装レビュー報告
 
-状態: implementation in review
+最終更新日: 2026-07-15  
+状態: `implementation in review`  
+対象: `2D-1B-LAYERS`
 
-## source Blob 境界
+## 1. 目的
 
-- 既存 source: 通常改訂では不変。保存前 Asset と保存後 Asset の両方に存在する source TextureRef は、source Blob の上書き・削除を拒否する。TextureRef の kind / path / mimeType を変更して保護を回避することも拒否する。
-- 新規レイヤー source: 画像レイヤー追加で保存前に存在せず保存後に追加される source は、runtime API の明示的な source create 遷移として具体的な Blob key が許可された場合だけ初期保存できる。
-- 新規レイヤー追加の Undo: その操作で追加した source だけ、runtime API の明示的な source delete 遷移として具体的な Blob key が許可された場合だけ削除できる。
-- Redo: Undo で削除された追加 source は、同じ具体 key の source create 遷移として再作成できる。
+source / edit / thumbnail・preview / export artifact の保存境界を、accepted 済み ADR と現在の実コードに一致させる。Asset JSON の `TextureRef` と IndexedDB の Blob は双方向に対応させ、参照欠落、孤児 Blob、既存 source の変更、別 Project への移動を保存 API 境界で拒否する。
 
-| kind | 保存目的 | 再生成可能か | 通常改訂での扱い |
-| --- | --- | --- | --- |
-| source | 取り込んだ元画像 | 再生成不可 | 既存 source は不変。新規レイヤー追加時だけ明示的な create 遷移で追加可能。 |
-| edit | 編集・書き出し用画像 | source または編集結果から更新 | 通常改訂で更新可能。 |
-| thumbnail | 一覧表示用派生画像 | 必要に応じて再生成可能 | source / edit とは別境界で扱う。 |
+schema、version、migration、`.casproj` 構成、export ZIP 構成、IndexedDB store layout は変更しない。
 
-## export 境界
+## 2. 固定した不変条件
 
-画像 layer の書き出し前処理は、参照先 TextureRef が `kind: "edit"` であることを runtime guard する。layer が source または thumbnail を参照している場合は、該当 Blob を読み込まず、理由付きの ExportError で停止する。
+### TextureRef 一意性
 
-## 計画書上の状態
+- 1 Asset 内で `TextureRef.id` は一意でなければならない。
+- 1 Asset 内で `${asset.id}/${texture.path}` による Blob key は一意でなければならない。
+- 同じ Blob key を別の TextureRef ID へ再割り当てしない。
 
-2D-1B-LAYERS: implementation in review
+### TextureRef と Blob の双方向対応
 
-## 層対応表
+- 新しい TextureRef を追加する改訂では、対応 Blob を同じ transaction の `putBlobs` に含める。
+- TextureRef を削除する改訂では、対応 Blob を同じ transaction の `deleteBlobKeys` に含める。
+- 保存後 Asset が参照しない Blob key は `putBlobs` に指定できない。
+- 保存後 Asset が引き続き参照する Blob key は削除できない。
+- 保存前 Asset が参照していない Blob key は削除できない。
 
-| 層 | 現在のデータ | 正本か | IndexedDB保存 | .casproj同梱 | export ZIP同梱 | 更新経路 | 削除経路 | Undo / Redo対象 | 再生成可能か |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| source | implemented | implemented | implemented | implemented | not implemented | partially implemented | partially implemented | partially implemented | not persisted by design |
-| edit | implemented | partially implemented | implemented | implemented | implemented | implemented | partially implemented | implemented | partially implemented |
-| thumbnail / preview | partially implemented | not persisted by design | partially implemented | partially implemented | not implemented | partially implemented | partially implemented | not implemented | implemented |
-| export preset | implemented | implemented | implemented | partially implemented | implemented | implemented | partially implemented | not implemented | not persisted by design |
-| export artifact | partially implemented | not persisted by design | not persisted by design | not persisted by design | implemented | implemented | not persisted by design | not implemented | implemented |
-| export record | partially implemented | implemented | partially implemented | partially implemented | partially implemented | partially implemented | requires decision | not implemented | not persisted by design |
-| verification record | partially implemented | implemented | partially implemented | partially implemented | partially implemented | partially implemented | requires decision | not implemented | partially implemented |
+### source
 
-## 保存API一覧
+- 既存 source TextureRef は ID で追跡し、通常改訂では `kind`、`name`、`mimeType`、`size`、`path`を変更しない。
+- 既存 source Blob は上書きしない。
+- 新規 source は、保存前に存在しない source ID、対応 Blob、具体的な `sourceBlobTransitions.createKeys` が揃う場合だけ作成する。
+- source 削除は、保存後に ID が存在せず、対応 Blob 削除と具体的な `sourceBlobTransitions.deleteKeys` が揃う場合だけ許可する。
+- 既存 source keyをeditやthumbnailへ再利用しない。
 
-| API | 呼び出し元 | 対象層 | 原子的か | autosaveとの順序 | 履歴対象か | 残る問題 |
-| --- | --- | --- | --- | --- | --- | --- |
-| saveProject | Home / editor autosave | project metadata | implemented | partially implemented | not implemented | project と asset / blob の一体更新は `saveProjectBundle` または上位 flow で扱う。 |
-| saveAsset | 初期保存 / 旧API呼び出し | Asset JSON | partially implemented | partially implemented | not implemented | 新規作成用途。改訂保存は `saveAssetRevision` へ寄せる。 |
-| saveBlob | import / 旧API呼び出し | TextureRef Blob | partially implemented | partially implemented | not implemented | 単独保存のため Asset JSON との対応は呼び出し側責務。 |
-| saveProjectBundle | .casproj import / 複製 / 新規bundle保存 | project / asset / blobs | implemented | implemented | not implemented | 新規Asset作成の責務を持つ。既存Asset改訂とは分離。 |
-| saveAssetRevision | editor revision保存 | Asset JSON / TextureRef Blob | implemented | implemented | implemented | 2D-1B-LAYERS follow-upでTextureRef追加・削除とsource create/delete整合を補修中。 |
-| deleteAsset | asset削除 | asset / blob / snapshots | implemented | partially implemented | not implemented | Project参照更新との一体性が必要な箇所は `deleteAssetBundle` を使う。 |
-| deleteAssetBundle | Home asset削除 | project / asset / blobs / snapshots | implemented | implemented | not implemented | recovery packageでtrash / rollback導線の追加確認が残る。 |
-| saveSnapshot | snapshot保存 | backup / revision snapshot | implemented | implemented | implemented | 復旧UIと容量管理は後続work package。 |
-| restoreSnapshot | snapshot復元 | asset / blobs | partially implemented | requires decision | implemented | restore後のautosave順序とUI導線は2D-1B-RECOVERYで扱う。 |
-| .casproj import後の保存 | HomeScreen import flow | project / asset / blobs | implemented | implemented | not implemented | staged import / 旧形式互換の残課題は2D-1B-CASPROJで扱う。 |
+### edit / thumbnail
+
+- 既存 edit・thumbnail Blobの内容更新は許可する。
+- pathを変更する場合は、旧Blob削除と新Blob保存を同じ改訂で行う。
+- TextureRefを残したままBlobだけを削除しない。
+
+### saveAsset / saveAssetRevision
+
+- `saveAsset` は新規 Asset の互換用初期保存と、既存 Asset の metadata-only autosaveに限定する。
+- 既存 Asset の TextureRef変更は `saveAsset` で拒否し、`saveAssetRevision`へ誘導する。
+- `saveAssetRevision` は保存済み Asset だけを対象とし、指定Projectの所有境界を検証する。
+- Asset JSONとBlob追加・更新・削除は単一transactionで確定する。
+
+### export
+
+- 画像 layer のexport入力は `kind: "edit"` のTextureRefに限定する。
+- sourceまたはthumbnailを参照するlayerは、Blobを読み込む前に理由付き`ExportError`で停止する。
+- export artifactはIndexedDBの編集正本へ書き戻さない。
+
+## 3. 層対応表
+
+| 層 | 現在のデータ | 正本か | IndexedDB保存 | `.casproj`同梱 | export ZIP同梱 | 更新経路 | 削除経路 | Undo / Redo対象 | 再生成可能か |
+|---|---|---|---|---|---|---|---|---|---|
+| source | `TextureRef.kind === 'source'` と対応Blob | implemented: 元データの正本 | implemented | implemented: 現行は全TextureRefファイル必須 | not implemented | 新規作成・import・明示source createのみ | Asset削除、Project完全削除、明示source delete | 通常編集対象外 | 再生成不可 |
+| edit | `TextureRef.kind === 'edit'`、Asset JSONの編集情報 | implemented: 編集正本 | implemented | implemented | implemented: 合成出力の入力 | `saveAssetRevision` | TextureRef削除と同一改訂 | implemented | sourceまたは履歴から更新可能 |
+| thumbnail / preview | thumbnail Blob、UI一時合成 | 正本ではない | partially implemented: thumbnail Blobのみ | implemented: 現行要件 | not implemented | 新規作成時。自動再生成は未実装 | TextureRef削除、Asset完全削除 | not implemented | partially implemented |
+| export preset | `ExportPresetFile` | 出力設定 | 専用IndexedDB storeはnot implemented | optionalでimplemented | recordとしてはnot implemented | `.casproj` import/export | requires decision | not implemented | 該当なし |
+| export artifact | PNG、WebP、sheet、atlas、ZIP | 正本ではない | not persisted by design | not persisted by design | implemented | editから都度生成 | アプリ正本外 | not implemented | implemented |
+| export record | 未実装 | not implemented | not implemented | not implemented | not implemented | requires decision | requires decision | not implemented | requires decision |
+| verification record | 未実装 | not implemented | not implemented | not implemented | not implemented | requires decision | requires decision | not implemented | requires decision |
+
+## 4. 保存API一覧
+
+| API | 主な呼び出し元 | 対象層 | 原子的か | autosaveとの順序 | 履歴対象か | 境界 |
+|---|---|---|---|---|---|---|
+| `saveProject` | Home、Project metadata autosave | Project metadata | Project単体 | queue経由あり | not implemented | Asset・Blob改訂には使用しない |
+| `saveAsset` | Editor metadata autosave、metadata Undo/Redo、unit test | Asset JSON metadata | Asset単体 | queue経由 | implemented | 既存TextureRef変更を拒否する |
+| `saveBlob` | 低レベル補助、unit test | 単一Blob | Blob単体 | UI改訂では直接使用しない | not implemented | Asset JSONとの整合は保証しないため通常改訂に使わない |
+| `saveProjectBundle` | 新規Asset、import、複製 | Project + Asset + Blob | implemented | 呼び出し側でflush | 新規操作 | 新規作成用。TextureRef ID/key一意性を検証する |
+| `saveAssetRevision` | 画像編集、layer追加、snapshot復元 | Asset JSON + Blob | implemented | flush後 | implemented | TextureRef/Blob双方向整合、source、Project所有境界を検証する |
+| `deleteAsset` | 低レベル削除 | Asset + 所有Blob + snapshot | implemented | UIではbundle版優先 | not implemented | Project参照は呼び出し側責務 |
+| `deleteAssetBundle` | Editor Asset削除 | Project参照 + Asset + Blob + snapshot | implemented | flush後 | not implemented | 別Project所有を拒否する |
+| `saveSnapshot` | 破壊的編集前 | edit復旧点 | snapshot単体 | 編集前 | 復旧点 | sourceを変更しない |
+| `restoreSnapshot` | 復旧UI | edit復旧データ | 読み出し | 改訂保存前 | implemented | 確定は`saveAssetRevision`を使う |
+| `.casproj` import後保存 | Home import flow | Project + Asset + TextureRef files | `saveProjectBundle`でimplemented | 別Projectとして保存 | not implemented | staged import等は`2D-1B-CASPROJ`範囲 |
+
+## 5. 未実装・後続範囲
+
+- thumbnail欠落時の自動再生成。
+- export record / verification recordの正式永続化。
+- export presetの専用IndexedDB保存。
+- recovery UI、容量管理、安全なstaged `.casproj` import。
+
+これらはそれぞれ後続work packageまたは別契約で扱い、`2D-1B-LAYERS`内で新しいschemaやstoreを追加しない。
