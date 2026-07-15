@@ -49,9 +49,7 @@ async function readStoredEditState(page: Page): Promise<StoredEditState> {
     });
     try {
       const assetTx = db.transaction(['assets'], 'readonly');
-      const assetRecords = (await requestResult(
-        assetTx.objectStore('assets').getAll(),
-      )) as Array<{
+      const assetRecords = (await requestResult(assetTx.objectStore('assets').getAll())) as Array<{
         id: string;
         data: {
           id: string;
@@ -70,8 +68,7 @@ async function readStoredEditState(page: Page): Promise<StoredEditState> {
       const blobKey = `${asset.id}/${texture.path}`;
       const blobTx = db.transaction(['blobs'], 'readonly');
       const blobRecord = (await requestResult(blobTx.objectStore('blobs').get(blobKey))) as
-        | { mimeType: string; bytes: ArrayBuffer }
-        | undefined;
+        { mimeType: string; bytes: ArrayBuffer } | undefined;
       if (!blobRecord) {
         throw new Error('保存済み edit Blob が見つかりません');
       }
@@ -150,10 +147,15 @@ test.describe('復旧点（2D-1B-RECOVERY）', () => {
     await page.getByRole('button', { name: '色調整を適用' }).click();
     await expect(page.getByRole('heading', { name: '復旧点' })).toBeVisible();
 
-    await expect.poll(async () => (await readStoredEditState(page)).bytes).not.toEqual(original.bytes);
+    await expect
+      .poll(async () => (await readStoredEditState(page)).bytes)
+      .not.toEqual(original.bytes);
     const edited = await readStoredEditState(page);
 
-    await page.getByRole('button', { name: /復旧点「.*」から復元/ }).first().click();
+    await page
+      .getByRole('button', { name: /復旧点「.*」から復元/ })
+      .first()
+      .click();
     await expect.poll(async () => (await readStoredEditState(page)).bytes).toEqual(original.bytes);
 
     await page.getByRole('button', { name: '元に戻す' }).click();
