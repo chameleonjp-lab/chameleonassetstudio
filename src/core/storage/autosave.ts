@@ -36,6 +36,16 @@ export class AutosaveQueue {
     }
   }
 
+  /**
+   * 保存失敗後にUIを保存前状態へ戻した場合、rollbackが予約した重複autosaveだけを破棄する。
+   * 実行中taskは中断せず、待機中taskとtimerのみを取り除く。
+   */
+  static cancelAllPending(): void {
+    for (const queue of AutosaveQueue.activeQueues) {
+      queue.cancelPending();
+    }
+  }
+
   getState(): SaveState {
     return this.state;
   }
@@ -74,6 +84,17 @@ export class AutosaveQueue {
       throw this.lastError;
     }
     AutosaveQueue.activeQueues.delete(this);
+  }
+
+  private cancelPending(): void {
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    this.pendingTask = null;
+    if (!this.currentRun) {
+      AutosaveQueue.activeQueues.delete(this);
+    }
   }
 
   private startRun(): Promise<void> {
