@@ -8,6 +8,7 @@ import {
   STORE_PROJECTS,
   StorageError,
   isQuotaExceededError,
+  isQuotaExceededStorageError,
   requestToPromise,
   resetDbForTests,
 } from './db';
@@ -121,6 +122,8 @@ describe('容量不足（QuotaExceededError）の検出（2D-1B-STORAGE §D）',
 
     await expect(promise).rejects.toThrow(StorageError);
     await expect(promise).rejects.toThrow(QUOTA_EXCEEDED_MESSAGE);
+    const convertedError = await promise.catch((error: unknown) => error);
+    expect(isQuotaExceededStorageError(convertedError)).toBe(true);
   });
 
   it('QuotaExceededError 以外の request エラーは既存の汎用メッセージのままにする', async () => {
