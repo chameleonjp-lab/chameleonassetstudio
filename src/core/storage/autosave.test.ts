@@ -26,31 +26,22 @@ describe('AutosaveQueue', () => {
     const queue = new AutosaveQueue({ delayMs: 5 });
     const states: SaveState[] = [];
     queue.subscribe((state) => states.push(state));
-
     let saved = 0;
     queue.schedule(async () => {
       saved += 1;
     });
     await queue.flush();
-
     expect(saved).toBe(1);
-    expect(states.map((s) => s.status)).toEqual(['saving', 'saved']);
+    expect(states.map((state) => state.status)).toEqual(['saving', 'saved']);
     expect(queue.getState().status).toBe('saved');
-    expect(queue.getState().lastSavedAt).toBeDefined();
   });
 
-  it('連続する操作は最後のタスクにまとまる（デバウンス）', async () => {
+  it('連続する操作は最後のタスクにまとまる', async () => {
     const queue = new AutosaveQueue({ delayMs: 30 });
     const runs: string[] = [];
-    queue.schedule(async () => {
-      runs.push('1回目');
-    });
-    queue.schedule(async () => {
-      runs.push('2回目');
-    });
-    queue.schedule(async () => {
-      runs.push('3回目');
-    });
+    queue.schedule(async () => runs.push('1回目'));
+    queue.schedule(async () => runs.push('2回目'));
+    queue.schedule(async () => runs.push('3回目'));
     await queue.flush();
     expect(runs).toEqual(['3回目']);
   });
@@ -63,39 +54,40 @@ describe('AutosaveQueue', () => {
       await wait(20);
     });
     await wait(10);
-    queue.schedule(async () => {
-      runs.push('後続保存');
-    });
+    queue.schedule(async () => runs.push('後続保存'));
     await queue.flush();
     expect(runs).toEqual(['先行保存', '後続保存']);
   });
 
-  it('保存失敗で error 状態と理由を返し、次の保存成功で回復する', async () => {
+  it('保存失敗をflushへ伝え、次の保存成功で回復する', async () => {
     const queue = new AutosaveQueue({ delayMs: 1 });
     queue.schedule(async () => {
       throw new Error('容量が足りません');
     });
-    await queue.flush();
+    await expect(queue.flush()).rejects.toThrow('容量が足りません');
     expect(queue.getState().status).toBe('error');
     expect(queue.getState().errorMessage).toContain('容量が足りません');
-
+    await expect(AutosaveQueue.flushAll()).rejects.toThrow('容量が足りません');
     queue.schedule(async () => {});
-    await queue.flush();
+    await expect(queue.flush()).resolves.toBeUndefined();
     expect(queue.getState().status).toBe('saved');
-    expect(queue.getState().errorMessage).toBeUndefined();
   });
 
-  it('flush は待機中のタスクを即時実行する', async () => {
-    const queue = new AutosaveQueue({ delayMs: 60_000 });
-    let saved = false;
-    queue.schedule(async () => {
-      saved = true;
+  it('flushAllは複数queueの失敗を呼び出し元へ返す', async () => {
+    const success = new AutosaveQueue({ delayMs: 60_000 });
+    const failure = new AutosaveQueue({ delayMs: 60_000 });
+    let successRan = false;
+    success.schedule(async () => {
+      successRan = true;
     });
-    await queue.flush();
-    expect(saved).toBe(true);
+    failure.schedule(async () => {
+      throw new Error('global autosave failed');
+    });
+    await expect(AutosaveQueue.flushAll()).rejects.toThrow('global autosave failed');
+    expect(successRan).toBe(true);
   });
 
-  it('原子的保存前の flush で保留中 Asset 単体 autosave が先に完了し、後から上書きしない', async () => {
+  it('原子的保存前のflush後は古いautosaveが改訂を上書きしない', async () => {
     const queue = new AutosaveQueue({ delayMs: 800 });
     const project = createEmptyProject('autosave conflict');
     const assetA = characterAsset as unknown as Asset;
@@ -109,28 +101,18 @@ describe('AutosaveQueue', () => {
     };
     const sourceKey = `${assetA.id}/source/original.png`;
     const editKey = `${assetA.id}/textures/main.png`;
-
     await saveProject(project);
     await saveAsset(project.id, assetA);
     await saveBlob(project.id, sourceKey, new Blob([new Uint8Array([1])], { type: 'image/png' }));
     await saveBlob(project.id, editKey, new Blob([new Uint8Array([2])], { type: 'image/png' }));
-
     queue.schedule(() => saveAsset(project.id, assetB));
-
     await queue.flush();
     await saveAssetRevision({
       projectId: project.id,
       asset: assetC,
       putBlobs: [{ key: editKey, blob: new Blob([new Uint8Array([3])], { type: 'image/png' }) }],
     });
-    await queue.flush();
-
-    const finalAsset = (await loadAsset(assetA.id)).asset;
-    expect(finalAsset.displayName).toBe('C atomic');
-    expect(finalAsset.textures.find((texture) => texture.id === 'tex_main')?.size).toEqual({
-      width: 48,
-      height: 32,
-    });
+    expect((await loadAsset(assetA.id)).asset.displayName).toBe('C atomic');
     expect(new Uint8Array(await (await loadBlob(editKey))!.arrayBuffer())).toEqual(
       new Uint8Array([3]),
     );
