@@ -6,7 +6,7 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   changes:
@@ -28,38 +28,25 @@ jobs:
           if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
             BASE_SHA="${GITHUB_SHA}^"
           fi
-
           changed_files="$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA")"
           code=false
           e2e=false
-
           while IFS= read -r file; do
             [ -z "$file" ] && continue
             echo "$file"
-
+            case "$file" in *.md) ;; *) code=true ;; esac
             case "$file" in
-              *.md) ;;
-              *) code=true ;;
-            esac
-
-            case "$file" in
-              src/* | e2e/* | public/* | index.html | package.json | package-lock.json | playwright.config.* | vite.config.* | .github/workflows/*)
-                e2e=true
-                ;;
+              src/* | e2e/* | public/* | index.html | package.json | package-lock.json | playwright.config.* | vite.config.* | .github/workflows/*) e2e=true ;;
             esac
           done <<< "$changed_files"
-
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "e2e=$e2e" >> "$GITHUB_OUTPUT"
 
-  verify-palette-workflow-e2e:
+  diagnose-palette-workflow-e2e:
     if: github.event_name == 'pull_request' && github.head_ref == 'agent/2d2-layer-repair-palette-workflow'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -70,16 +57,21 @@ jobs:
       - run: npm run build
       - run: npm run test
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test e2e/layer-repair-palette-workflow.spec.ts
-      - name: Commit verified E2E and restore CI
+      - name: Run focused E2E with log
         shell: bash
         run: |
-          git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/workflows/ci.yml e2e/layer-repair-palette-workflow.spec.ts
-          git commit -m "test: verify palette repair persistence"
-          git push origin HEAD:${{ github.head_ref }}
+          set -o pipefail
+          npx playwright test e2e/layer-repair-palette-workflow.spec.ts 2>&1 | tee palette-e2e.log
+      - name: Upload focused E2E diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: palette-e2e-diagnostics
+          path: |
+            palette-e2e.log
+            playwright-report
+            test-results
+          if-no-files-found: warn
 
   build-and-test:
     needs: changes
