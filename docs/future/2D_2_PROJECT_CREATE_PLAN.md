@@ -1,10 +1,11 @@
 # 2D-2-PROJECT + 2D-2-CREATE 契約監査・実装計画
 
 作成日: 2026-07-16
-状態: `C slice completed / Family-Variant and remaining CREATE deferred`
+状態: `C slice completed / remaining CREATE contract audit / Family-Variant deferred`
 正式work package: `2D-2-PROJECT + 2D-2-CREATE`
 基準main: `f1fcdf1fbd05f33810206ee0ebfbfd49cba784f0`（PR #92 merge）
-直前work package: `2D-1B-GATE` completed
+直前完了work package: `2D-3-TYPE-PROFILES + 2D-3-INSPECT`
+現在の後続slice正本: `docs/future/2D_2_CREATE_REMAINING_PLAN.md`
 
 ## 1. 目的
 
@@ -21,9 +22,10 @@
 - 2026-07-16: 上記結果を人間確認し、後続対応開始を明示
 - PR #92 merge commit `f1fcdf1fbd05f33810206ee0ebfbfd49cba784f0`
 - CI Run #271: success
-- open PR: 0件
 
-これにより`2D-1B-GATE`の完了条件が揃い、2D-2 / 2D-3の正式キューを解禁する。3D / WebGPUは2D Pro Gateの人間承認まで解禁しない。
+これにより`2D-1B-GATE`の完了条件が揃い、2D-2 / 2D-3の正式キューを解禁した。3D / WebGPUは2D Pro Gateの人間承認まで解禁しない。
+
+後続の型別template判断に必要だった`2D-3-TYPE-PROFILES + 2D-3-INSPECT`は、PR #96、#97で完了した。PR #97の最終head `3e237e3186317095c73cdf411aa13d39e4ac8e6c`に対するCI Run #293は全成功し、merge commitは`500397ac7d04b23ac88cd17a6e79843c8405a557`である。2026-07-16にOpus reviewと人間確認の完了・問題なしが報告された。
 
 ## 3. 現行実装監査
 
@@ -60,27 +62,30 @@
 
 将来`A`または`B`へ進む場合は、ADR-0003の再検討条件を満たす設計PRを先に作る。`C`の実装では、独立copyをlinked variantと表示せず、Family / Variant完成を主張しない。
 
-## 5. 最初の実装slice候補
+## 5. 完了した最初のC-slice
 
-契約監査PR #93はmerge commit `359cb9c9d0918df95d1fc52db6d472639f0f3703`でmainへmerge済みである。accepted `C`の最初のproduct code実装はDraft PR #94で次を同時に扱う。
+契約監査PR #93はmerge commit `359cb9c9d0918df95d1fc52db6d472639f0f3703`でmainへmerge済みである。accepted `C`の最初のproduct code実装はPR #94で次を扱った。
 
-1. Project要約とAsset metadataを原子的に同期する高水準保存APIを追加し、`saveProjectBundle`の新規追加時にもmetadata一致を検査する。
-2. Asset種別変更をそのAPIへ移し、成功後だけReact stateとHistoryを確定する。
-3. 独立Asset複製を、Project、Asset、TextureRef、Blobの整合を維持して追加する。
-4. Asset listに型と複製操作を表示し、複数Assetの選択、保存、reload、`.casproj`退避をE2Eで確認する。
-5. unit test、E2E、完了報告を追加する。
+1. Project要約とAsset metadataを原子的に同期する高水準保存API。
+2. Asset種別変更の原子的保存。
+3. Project、Asset、TextureRef、Blobの整合を維持する独立Asset複製。
+4. 型表示と複製操作を持つAsset list、複数Assetのreload / `.casproj`退避。
+5. unit test、E2E、完了報告。
 
 PR #94はmerge commit `5b0d16478d0b0140e6e56db63b5b89c52fd0f608`でmainへmerge済みである。最終head `c44246cbcf9f038c8089cbba4f79528165d3b553`のCI Run #277は全job successで、unit test 401件、E2E 84件が成功した。2026-07-16にOpus reviewと人間reviewの完了が報告された。この完了は現行0.1.0の独立Asset管理sliceを対象とし、Family / Variantまたは`2D-2-CREATE`全体の完成を意味しない。
 
-このsliceではschema、data version、DB version、IndexedDB layout、migration、`.casproj`内部構成、export ZIP内部構成、dependenciesを変更しない。
+このsliceではschema、data version、DB version、IndexedDB layout、migration、`.casproj`内部構成、export ZIP内部構成、dependenciesを変更していない。
 
-## 6. 後続slice
+## 6. 現在の後続slice契約監査
 
-- 矩形preset / 自由sizeとINPUT-SAFETY境界
-- 型別template入口。ただし型固有の必須情報は`2D-3-TYPE-PROFILES`契約後
-- パーツから開始するflow
-- 図形・文字を初期要素として作る入口。編集tool本体は`2D-2-RASTER`
-- Family / Variantは人間判断と互換性review後
+`docs/future/2D_2_CREATE_REMAINING_PLAN.md`で、次を判断待ちとして監査する。
+
+- 矩形preset / 自由sizeと4096上限
+- 型別templateを自動適用せず明示選択にするか
+- characterの初期PartをCREATEへ含めるか
+- 永続的な図形・文字を`2D-2-RASTER + 2D-2-REPAIR`へ送るか
+
+推奨組み合わせは`A+B+X`である。判断がacceptedになるまでproduct code、schema、保存形式、export形式を変更しない。
 
 ## 7. 維持する安全条件
 
