@@ -127,9 +127,7 @@ async function readRepairState(page: Page): Promise<RepairState> {
           sourceImageSize: { width: sourceBitmap.width, height: sourceBitmap.height },
           layerPosition: layer.transform.position,
           alphaBounds:
-            maxX < 0
-              ? null
-              : { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 },
+            maxX < 0 ? null : { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 },
         };
       } finally {
         editBitmap.close();
@@ -141,9 +139,7 @@ async function readRepairState(page: Page): Promise<RepairState> {
   });
 }
 
-test('paddingとsmooth resizeを保存し、位置補正・Undo・Redo・reloadを維持する', async ({
-  page,
-}) => {
+test('paddingとsmooth resizeを保存し、位置補正・Undo・Redo・reloadを維持する', async ({ page }) => {
   await createBlankAsset(page);
   const center = await canvasCenter(page);
 
