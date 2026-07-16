@@ -10,6 +10,12 @@ import {
   type RgbColor,
 } from './operations';
 import {
+  padLayerImage,
+  resizeLayerImage,
+  type LayerImagePadding,
+  type LayerResizeInterpolation,
+} from './layerRepair';
+import {
   clearSelectionPixels,
   compositeStampPixels,
   drawRasterEllipse,
@@ -54,7 +60,16 @@ export type RasterFoundationOperation =
   | { type: 'selectionMove'; selection: RasterSelection; target: PointLike }
   | { type: 'stampImage'; clipboard: SelectionClipboard; target: PointLike };
 
-export type ImageOperation = LegacyImageOperation | RasterFoundationOperation;
+export type LayerRepairOperation =
+  | { type: 'padLayerImage'; padding: LayerImagePadding }
+  | {
+      type: 'resizeLayerImage';
+      width: number;
+      height: number;
+      interpolation: LayerResizeInterpolation;
+    };
+
+export type ImageOperation = LegacyImageOperation | RasterFoundationOperation | LayerRepairOperation;
 
 export { ImageOperationError };
 export type { PixelBuffer, ProgressCallback };
@@ -102,6 +117,16 @@ export function applyImageOperation(
     case 'stampImage':
       result = compositeStampPixels(buffer, operation.clipboard, operation.target);
       break;
+    case 'padLayerImage':
+      return padLayerImage(buffer, operation.padding, onProgress);
+    case 'resizeLayerImage':
+      return resizeLayerImage(
+        buffer,
+        operation.width,
+        operation.height,
+        operation.interpolation,
+        onProgress,
+      );
     default:
       return applyLegacyOperation(buffer, operation, onProgress);
   }
@@ -127,6 +152,12 @@ export function imageOperationLabel(operation: ImageOperation): string {
       return '選択範囲を移動';
     case 'stampImage':
       return 'テキストを確定';
+    case 'padLayerImage':
+      return '透明paddingを追加';
+    case 'resizeLayerImage':
+      return operation.interpolation === 'nearest'
+        ? '画像をnearestでリサイズ'
+        : '画像をsmoothでリサイズ';
     default:
       return legacyOperationLabel(operation);
   }
