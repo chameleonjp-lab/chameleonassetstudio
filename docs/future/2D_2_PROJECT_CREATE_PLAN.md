@@ -62,7 +62,7 @@
 
 ## 5. 最初の実装slice候補
 
-accepted `C`の最初のproduct code実装はDraft PR #93で次を同時に扱う。
+契約監査PR #93はmerge commit `359cb9c9d0918df95d1fc52db6d472639f0f3703`でmainへmerge済みである。accepted `C`の最初のproduct code実装はDraft PR #94で次を同時に扱う。
 
 1. Project要約とAsset metadataを原子的に同期する高水準保存APIを追加し、`saveProjectBundle`の新規追加時にもmetadata一致を検査する。
 2. Asset種別変更をそのAPIへ移し、成功後だけReact stateとHistoryを確定する。
