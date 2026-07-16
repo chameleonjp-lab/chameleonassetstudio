@@ -10,6 +10,7 @@ import {
 import { History } from '../../core/history/history';
 import { blobKeyFor, importImageAsLayer, importImageFile } from '../../core/images/importImage';
 import { assertImageBatchCount } from '../../core/input/inputSafety';
+import { type AlphaInspection } from '../../core/images/layerRepair';
 import {
   imageOperationLabel as operationLabel,
   type ImageOperation,
@@ -20,6 +21,7 @@ import {
   type RasterSelection,
   type SelectionClipboard,
 } from '../../core/images/rasterFoundation';
+import { runAlphaInspection } from '../../core/images/runAnalysis';
 import {
   blobToPixelBuffer,
   pixelBufferToBlob,
@@ -150,6 +152,13 @@ interface ImageProcessingState {
   progress: number;
 }
 
+interface AlphaInspectionState {
+  assetId: string;
+  layerId: string;
+  textureId: string;
+  result: AlphaInspection;
+}
+
 export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const autosaveRef = useRef<AutosaveQueue | null>(null);
   autosaveRef.current ??= new AutosaveQueue();
@@ -250,6 +259,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [replaceTolerance, setReplaceTolerance] = useState(20);
   const [outlineColor, setOutlineColor] = useState('#000000');
   const [outlineThickness, setOutlineThickness] = useState(2);
+  const [alphaThreshold, setAlphaThreshold] = useState(0);
+  const [alphaInspection, setAlphaInspection] = useState<AlphaInspectionState | null>(null);
+  const [alphaInspecting, setAlphaInspecting] = useState(false);
 
   // 単一layerのrectangular selection（契約 §6 / §10.4）。すべて一時UI状態でAsset / Project / Historyへは保存しない。
   const [selection, setSelection] = useState<RasterSelection | null>(null);
@@ -302,13 +314,20 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     };
   }, [projectId]);
 
-  const persistentMutationBlocked = historyState.isBusy || mutationBusy;
+  const persistentMutationBlocked = historyState.isBusy || mutationBusy || alphaInspecting;
 
   const selectedAsset = assets.find((asset) => asset.id === selectedAssetId) ?? assets[0] ?? null;
   const selectedLayer = selectedAsset?.layers.find((layer) => layer.id === selectedLayerId) ?? null;
   const selectedTextureSize =
     selectedAsset?.textures.find((texture) => texture.id === selectedLayer?.textureId)?.size ??
     null;
+  const activeAlphaInspection =
+    alphaInspection &&
+    alphaInspection.assetId === selectedAsset?.id &&
+    alphaInspection.layerId === selectedLayer?.id &&
+    alphaInspection.textureId === selectedLayer?.textureId
+      ? alphaInspection.result
+      : null;
   const selectedAnimation =
     selectedAsset?.animations.find((animation) => animation.id === selectedAnimationId) ?? null;
   /** タイムラインでプレビュー中のフレームをレイヤーへ適用したアセット（キャンバス表示用）。 */
@@ -502,6 +521,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setPastePreview(null);
     setPastePreviewPosition(null);
     setTextDraft(null);
+    setAlphaInspection(null);
   }, [selectedAssetId, selectedLayerId]);
 
   // selection-aware以外のtoolへ切り替えたらselection・copy bufferを解除する
@@ -694,6 +714,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           },
         },
       });
+      setAlphaInspection(null);
       return true;
     } catch (error) {
       setEditorError(
@@ -703,6 +724,63 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     } finally {
       setImageProcessing(null);
       endEditorPersistentMutation();
+    }
+  };
+
+  const handleAlphaInspect = async () => {
+    if (!selectedAsset || !selectedLayer?.textureId) {
+      setEditorError('検査するレイヤーを選択してください。');
+      return;
+    }
+    const texture = selectedAsset.textures.find((entry) => entry.id === selectedLayer.textureId);
+    if (!texture) {
+      setEditorError('レイヤーが参照するテクスチャが見つかりません。');
+      return;
+    }
+    if (texture.kind !== 'edit') {
+      setEditorError('元画像（source）は検査対象にできません。編集用画像を選択してください。');
+      return;
+    }
+    if (persistentMutationBlocked || imageProcessing) {
+      return;
+    }
+
+    setEditorError(null);
+    setAlphaInspection(null);
+    setAlphaInspecting(true);
+    setImageProcessing({ label: '透明縁を検査', progress: 0 });
+    try {
+      const blob = await loadBlob(blobKeyFor(selectedAsset.id, texture.path));
+      if (!blob) {
+        throw new Error('編集用画像が見つかりません。');
+      }
+      const buffer = await blobToPixelBuffer(blob);
+      const result = await runAlphaInspection(buffer, alphaThreshold, (progress) =>
+        setImageProcessing({ label: '透明縁を検査', progress }),
+      );
+      setAlphaInspection({
+        assetId: selectedAsset.id,
+        layerId: selectedLayer.id,
+        textureId: texture.id,
+        result,
+      });
+    } catch (error) {
+      setEditorError(
+        `透明縁を検査できませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setImageProcessing(null);
+      setAlphaInspecting(false);
+    }
+  };
+
+  const handleAlphaTrim = async () => {
+    if (!activeAlphaInspection?.bounds || !activeAlphaInspection.hasTransparentMargin) {
+      return;
+    }
+    const success = await applyImageEdit({ type: 'crop', rect: activeAlphaInspection.bounds });
+    if (success) {
+      setAlphaInspection(null);
     }
   };
 
@@ -2113,6 +2191,88 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                       テキストをリセット
                     </button>
                   </div>
+                </fieldset>
+
+                <fieldset className="editor-fieldset">
+                  <legend>透明縁・トリミング</legend>
+                  <p className="editor-note">
+                    alpha
+                    boundsを読み取り専用で検査します。結果は保存せず、トリミング時も選択layerの画像だけを変更します。Asset
+                    canvas、原点、アンカー、当たり判定は変更しません。
+                  </p>
+                  <label className="editor-field">
+                    alphaしきい値（0-255）
+                    <input
+                      type="number"
+                      aria-label="alphaしきい値"
+                      min={0}
+                      max={255}
+                      step={1}
+                      value={alphaThreshold}
+                      onChange={(event) => {
+                        const next = Math.min(
+                          255,
+                          Math.max(0, Math.round(Number(event.target.value) || 0)),
+                        );
+                        setAlphaThreshold(next);
+                        setAlphaInspection(null);
+                      }}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={!!imageProcessing || persistentMutationBlocked}
+                    onClick={() => void handleAlphaInspect()}
+                  >
+                    透明縁を検査
+                  </button>
+                  {activeAlphaInspection && (
+                    <div aria-label="透明縁検査結果" className="editor-repair-result">
+                      {activeAlphaInspection.isEmpty ||
+                      !activeAlphaInspection.bounds ||
+                      !activeAlphaInspection.margins ? (
+                        <p role="alert" className="editor-note">
+                          しきい値を超える表示pixelがありません。トリミングできません。
+                        </p>
+                      ) : (
+                        <>
+                          <p className="editor-note">
+                            表示範囲: x {activeAlphaInspection.bounds.x}, y{' '}
+                            {activeAlphaInspection.bounds.y}, {activeAlphaInspection.bounds.width} x{' '}
+                            {activeAlphaInspection.bounds.height}px
+                          </p>
+                          <p className="editor-note">
+                            透明余白: 上 {activeAlphaInspection.margins.top}px / 右{' '}
+                            {activeAlphaInspection.margins.right}px / 下{' '}
+                            {activeAlphaInspection.margins.bottom}px / 左{' '}
+                            {activeAlphaInspection.margins.left}px
+                          </p>
+                          <p role="status" className="editor-note">
+                            {activeAlphaInspection.hasTransparentMargin
+                              ? '透明縁があります。選択画像だけをトリミングできます。'
+                              : '透明縁はありません。現在の画像サイズが表示範囲と一致しています。'}
+                          </p>
+                          {Object.values(activeAlphaInspection.touchesEdge).some(Boolean) && (
+                            <p role="alert" className="editor-note">
+                              表示pixelが画像端に接しています。接している辺にはトリミング後も余白がありません。
+                            </p>
+                          )}
+                        </>
+                      )}
+                      <button
+                        type="button"
+                        disabled={
+                          !activeAlphaInspection.bounds ||
+                          !activeAlphaInspection.hasTransparentMargin ||
+                          !!imageProcessing ||
+                          persistentMutationBlocked
+                        }
+                        onClick={() => void handleAlphaTrim()}
+                      >
+                        透明縁をトリミング
+                      </button>
+                    </div>
+                  )}
                 </fieldset>
 
                 <label className="editor-field">
