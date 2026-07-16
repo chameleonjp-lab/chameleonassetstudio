@@ -245,9 +245,9 @@ test('スポイトで拾った色をパレット置換できる', async ({ page 
   await page.getByRole('button', { name: 'スポイト' }).click();
   const center = await canvasCenter(canvas);
   await page.mouse.click(center.x, center.y);
-  await expect(page.getByLabel('対象色（スポイトで拾えます）')).toHaveValue('#ff0000');
+  await expect(page.getByLabel('色置換の対象色')).toHaveValue('#ff0000');
 
-  await page.getByLabel('置換色', { exact: true }).fill('#0000ff');
+  await page.getByLabel('色置換の置換色').fill('#0000ff');
   await page.getByRole('button', { name: 'パレット置換を適用' }).click();
 
   await expect.poll(async () => await readMainPixel(page, 32, 32)).toEqual([0, 0, 255, 255]);
@@ -260,7 +260,7 @@ test('輪郭線が透明領域との境界の外側に付く', async ({ page }) 
   const center = await canvasCenter(canvas);
   await page.mouse.click(center.x, center.y);
 
-  await page.getByLabel('太さ（px）').fill('2');
+  await page.getByLabel('輪郭線の太さ').fill('2');
   await page.getByRole('button', { name: '輪郭線を追加' }).click();
 
   // 不透明領域は x=0..31。輪郭は x=32,33 に付く

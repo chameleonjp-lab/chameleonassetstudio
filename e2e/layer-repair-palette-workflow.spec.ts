@@ -35,15 +35,6 @@ interface RepairState {
   snapshotLabels: string[];
 }
 
-function checksum(bytes: ArrayBuffer): number {
-  let hash = 2166136261;
-  for (const value of new Uint8Array(bytes)) {
-    hash ^= value;
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
 async function createBlankAsset(page: Page): Promise<void> {
   await page.goto('/');
   await page.getByLabel('プロジェクト名').fill('palette repair E2E');
@@ -53,6 +44,8 @@ async function createBlankAsset(page: Page): Promise<void> {
   await properties.getByLabel('新規アセットのサイズ').selectOption('32');
   await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
   await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
+  await properties.getByRole('button', { name: 'main', exact: true }).click();
+  await expect(page.getByLabel('描画色')).toBeVisible();
 }
 
 async function canvasCenter(page: Page): Promise<{ x: number; y: number }> {
@@ -79,6 +72,15 @@ async function drawRectangle(
 
 async function readRepairState(page: Page): Promise<RepairState> {
   return page.evaluate(async () => {
+    const checksum = (bytes: ArrayBuffer): number => {
+      let hash = 2166136261;
+      for (const value of new Uint8Array(bytes)) {
+        hash ^= value;
+        hash = Math.imul(hash, 16777619);
+      }
+      return hash >>> 0;
+    };
+
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open('chameleon-asset-studio', 2);
       request.onsuccess = () => resolve(request.result);
@@ -222,9 +224,7 @@ test('palette分析を保存せず、色置換・輪郭・反転をUndo・Redo�
   expect(afterAnalysis.snapshotLabels).toEqual(beforeAnalysis.snapshotLabels);
   expect(afterAnalysis.scaleX).toBe(beforeAnalysis.scaleX);
 
-  await page
-    .getByRole('button', { name: '抽出色 #ff0000 を置換元に設定', exact: true })
-    .click();
+  await page.getByRole('button', { name: '抽出色 #ff0000 を置換元に設定', exact: true }).click();
   await expect(page.getByLabel('色置換の対象色')).toHaveValue('#ff0000');
   await page.getByLabel('色置換の置換色').fill('#0000ff');
   await page.getByLabel('色置換の許容量').fill('0');
