@@ -78,12 +78,12 @@ describe('Project trash復元のID衝突拒否', () => {
     await saveAsset(deletedProject.id, assetB);
     await deleteProject(deletedProject.id);
 
-    const ownerProject = createEmptyProject('現在のAsset所有Project');
     const existingAssetB: Asset = {
       ...assetB,
       displayName: '現在のAsset B',
       updatedAt: '2026-07-15T12:31:00.000Z',
     };
+    const ownerProject = projectWithAssets('現在のAsset所有Project', [existingAssetB]);
     await saveProject(ownerProject);
     await saveAsset(ownerProject.id, existingAssetB);
 

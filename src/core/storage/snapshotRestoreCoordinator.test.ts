@@ -60,10 +60,10 @@ async function seedCoordinatorFlow() {
     id: projectId,
     assets: [
       {
-        id: currentAsset.id,
-        name: currentAsset.name,
-        displayName: currentAsset.displayName,
-        assetType: currentAsset.assetType,
+        id: snapshotAsset.id,
+        name: snapshotAsset.name,
+        displayName: snapshotAsset.displayName,
+        assetType: snapshotAsset.assetType,
       },
     ],
   };

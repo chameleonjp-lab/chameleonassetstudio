@@ -22,8 +22,19 @@ beforeEach(async () => {
 });
 
 async function seedRecoveryProject() {
-  const project = { ...createEmptyProject('recovery trash'), id: 'project_recovery_trash' };
   const asset = { ...(characterAsset as unknown as Asset), id: 'asset_recovery_trash' };
+  const project = {
+    ...createEmptyProject('recovery trash'),
+    id: 'project_recovery_trash',
+    assets: [
+      {
+        id: asset.id,
+        name: asset.name,
+        displayName: asset.displayName,
+        assetType: asset.assetType,
+      },
+    ],
+  };
   const editTexture = asset.textures.find((texture) => texture.kind === 'edit');
   if (!editTexture) {
     throw new Error('fixture に edit TextureRef がありません');

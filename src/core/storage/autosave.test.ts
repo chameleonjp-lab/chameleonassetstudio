@@ -97,8 +97,18 @@ describe('AutosaveQueue', () => {
 
   it('原子的保存前のflush後は古いautosaveが改訂を上書きしない', async () => {
     const queue = new AutosaveQueue({ delayMs: 800 });
-    const project = createEmptyProject('autosave conflict');
     const assetA = characterAsset as unknown as Asset;
+    const project = {
+      ...createEmptyProject('autosave conflict'),
+      assets: [
+        {
+          id: assetA.id,
+          name: assetA.name,
+          displayName: assetA.displayName,
+          assetType: assetA.assetType,
+        },
+      ],
+    };
     const assetB: Asset = { ...assetA, displayName: 'B autosave' };
     const assetC: Asset = {
       ...assetB,

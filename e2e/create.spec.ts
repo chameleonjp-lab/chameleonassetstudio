@@ -6,7 +6,15 @@ interface StoredAssetRecord {
   displayName: string;
   assetType: string;
   canvasSize: { width: number; height: number };
+  textures: Array<{ id: string; path: string }>;
   colliders: Array<{ shape: string; purpose: string }>;
+}
+
+interface StoredProjectAssetEntry {
+  id: string;
+  name: string;
+  displayName?: string;
+  assetType: string;
 }
 
 /** IndexedDB の assets ストアから全アセットを読む（実体は core/storage の StoredAssetRecord.data）。 */
@@ -45,14 +53,14 @@ async function readBlobKeys(page: Page): Promise<string[]> {
   });
 }
 
-async function readProjectAssetIds(page: Page): Promise<string[]> {
+async function readProjectAssets(page: Page): Promise<StoredProjectAssetEntry[]> {
   return page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open('chameleon-asset-studio');
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
-    const records = await new Promise<Array<{ assets: Array<{ id: string }> }>>(
+    const records = await new Promise<Array<{ assets: StoredProjectAssetEntry[] }>>(
       (resolve, reject) => {
         const request = db.transaction('projects', 'readonly').objectStore('projects').getAll();
         request.onsuccess = () => resolve(request.result);
@@ -60,8 +68,12 @@ async function readProjectAssetIds(page: Page): Promise<string[]> {
       },
     );
     db.close();
-    return records[0]?.assets.map((asset) => asset.id) ?? [];
+    return records[0]?.assets ?? [];
   });
+}
+
+async function readProjectAssetIds(page: Page): Promise<string[]> {
+  return (await readProjectAssets(page)).map((asset) => asset.id);
 }
 
 test('画像を取り込まずに新規アセットを作成すると、型と starter 当たり判定が反映され、再読込しても残る', async ({
@@ -121,6 +133,57 @@ test('item を新規作成すると当たり判定は付かない（character �
   const [created] = await readAllAssets(page);
   expect(created.assetType).toBe('item');
   expect(created.colliders).toHaveLength(0);
+});
+
+test('Asset種別をProject要約と同期し、独立copyをBlobごと追加して再読込・casproj退避できる', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByLabel('プロジェクト名').fill('複数アセット管理');
+  await page.getByRole('button', { name: '作成', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '複数アセット管理' })).toBeVisible();
+
+  const properties = page.getByRole('complementary', { name: 'プロパティ' });
+  await properties.getByLabel('新規アセット名').fill('原本');
+  await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
+  await expect.poll(async () => (await readAllAssets(page)).length).toBe(1);
+
+  await properties.getByLabel('アセット種別').selectOption('tile');
+  await expect(page.getByRole('status')).toContainText('保存済み');
+  await expect.poll(async () => (await readAllAssets(page))[0]?.assetType).toBe('tile');
+  await expect.poll(async () => (await readProjectAssets(page))[0]?.assetType).toBe('tile');
+
+  await properties.getByRole('button', { name: '独立コピーを作成', exact: true }).click();
+  await expect.poll(async () => (await readAllAssets(page)).length).toBe(2);
+  const assets = await readAllAssets(page);
+  const source = assets.find((asset) => asset.name === '原本')!;
+  const copy = assets.find((asset) => asset.name === '原本_copy')!;
+  expect(source).toBeDefined();
+  expect(copy).toBeDefined();
+  expect(copy.id).not.toBe(source.id);
+  expect(new Set(copy.textures.map((texture) => texture.id))).not.toEqual(
+    new Set(source.textures.map((texture) => texture.id)),
+  );
+  expect((await readProjectAssets(page)).map((entry) => entry.assetType)).toEqual(['tile', 'tile']);
+  const blobKeys = await readBlobKeys(page);
+  expect(blobKeys.some((key) => key.startsWith(`${source.id}/`))).toBe(true);
+  expect(blobKeys.some((key) => key.startsWith(`${copy.id}/`))).toBe(true);
+
+  await expect(page.locator('.asset-list li')).toHaveCount(2);
+  await expect(page.locator('.asset-list button[aria-pressed="true"]')).toContainText(
+    '原本 (コピー)',
+  );
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: '.casproj をダウンロード' }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe('複数アセット管理.casproj');
+  await expect(page.getByRole('alert')).toHaveCount(0);
+
+  await page.reload();
+  await page.getByRole('button', { name: '「複数アセット管理」を開く' }).click();
+  await expect(page.locator('.asset-list li')).toHaveCount(2);
+  await expect(properties.getByText('タイル · 64 x 64')).toHaveCount(2);
 });
 
 test('アセットを削除すると一覧と IndexedDB から消え、空状態が表示される', async ({ page }) => {

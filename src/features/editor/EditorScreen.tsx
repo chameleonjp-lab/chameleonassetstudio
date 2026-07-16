@@ -26,6 +26,7 @@ import {
   addAnchor,
   addGuideLayer,
   applyFrameToAsset,
+  duplicateAsset,
   flipCopyAsset,
   flipLayerHorizontal,
   renameLayer,
@@ -109,6 +110,26 @@ function roundValue(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+function syncProjectAssetSummary(project: Project | null, asset: Asset): Project | null {
+  if (!project || !project.assets.some((entry) => entry.id === asset.id)) {
+    return project;
+  }
+  return {
+    ...project,
+    assets: project.assets.map((entry) =>
+      entry.id === asset.id
+        ? {
+            id: asset.id,
+            name: asset.name,
+            displayName: asset.displayName,
+            assetType: asset.assetType,
+          }
+        : entry,
+    ),
+    updatedAt: project.updatedAt < asset.updatedAt ? asset.updatedAt : project.updatedAt,
+  };
+}
+
 const IMPORT_ACCEPT = 'image/png,image/jpeg,image/webp';
 
 interface ImageProcessingState {
@@ -162,6 +183,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [newAssetSize, setNewAssetSize] =
     useState<BlankCanvasSizePreset>(DEFAULT_BLANK_CANVAS_SIZE);
   const [creatingAsset, setCreatingAsset] = useState(false);
+  const [duplicatingAsset, setDuplicatingAsset] = useState(false);
   const [deletingAsset, setDeletingAsset] = useState(false);
 
   // タイムライン（Phase 9）
@@ -267,6 +289,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const applyAssetSnapshot = useCallback(
     (snapshot: Asset) => {
       setAssets((prev) => prev.map((asset) => (asset.id === snapshot.id ? snapshot : asset)));
+      setProject((current) => syncProjectAssetSummary(current, snapshot));
       autosave.schedule(() => saveAsset(projectId, snapshot));
     },
     [autosave, projectId],
@@ -291,6 +314,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         sourceBlobTransitions: options.sourceBlobTransitions,
       });
       setAssets((prev) => prev.map((asset) => (asset.id === snapshot.id ? snapshot : asset)));
+      setProject((current) => syncProjectAssetSummary(current, snapshot));
     },
     [autosave, projectId],
   );
@@ -798,6 +822,56 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     }
   };
 
+  /** 選択Assetを参照もBlobも共有しない独立Assetとして複製する。 */
+  const handleDuplicateAsset = async () => {
+    if (!project || !selectedAsset) {
+      return;
+    }
+    if (!beginEditorPersistentMutation()) {
+      return;
+    }
+    setEditorError(null);
+    setDuplicatingAsset(true);
+    try {
+      await autosave.flush();
+      const copy = duplicateAsset(selectedAsset);
+      const blobs: Array<{ key: string; blob: Blob }> = [];
+      for (const texture of selectedAsset.textures) {
+        const blob = await loadBlob(blobKeyFor(selectedAsset.id, texture.path));
+        if (!blob) {
+          throw new Error(`複製元の画像Blobが見つかりません: ${texture.path}`);
+        }
+        blobs.push({ key: blobKeyFor(copy.id, texture.path), blob });
+      }
+      const nextProject: Project = {
+        ...project,
+        assets: [
+          ...project.assets,
+          {
+            id: copy.id,
+            name: copy.name,
+            displayName: copy.displayName,
+            assetType: copy.assetType,
+          },
+        ],
+        updatedAt: new Date().toISOString(),
+      };
+      await saveProjectBundle(nextProject, [copy], blobs);
+      setProject(nextProject);
+      setAssets((prev) => [...prev, copy]);
+      setSelectedAssetId(copy.id);
+      setSelectedLayerId(null);
+      setCheckedLayerIds([]);
+    } catch (error) {
+      setEditorError(
+        `アセットを複製できませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setDuplicatingAsset(false);
+      endEditorPersistentMutation();
+    }
+  };
+
   /**
    * 画像を取り込まず、型とサイズだけで新しい空キャンバスのアセットを作る（2D-2-CREATE-01）。
    * プロジェクト級の操作のため Undo 履歴には積まない（docs/USER_GUIDE.md に明記）。
@@ -1292,6 +1366,13 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               <div className="asset-actions">
                 <button
                   type="button"
+                  disabled={duplicatingAsset || persistentMutationBlocked}
+                  onClick={() => void handleDuplicateAsset()}
+                >
+                  独立コピーを作成
+                </button>
+                <button
+                  type="button"
                   className="asset-flip-copy-button"
                   disabled={importing || persistentMutationBlocked}
                   onClick={() => void handleFlipCopyAsset()}
@@ -1739,7 +1820,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                     {asset.displayName}
                   </button>
                   <span className="asset-meta">
-                    {asset.canvasSize.width} x {asset.canvasSize.height}
+                    {ASSET_TYPE_LABELS[asset.assetType]} · {asset.canvasSize.width} x{' '}
+                    {asset.canvasSize.height}
                   </span>
                 </li>
               ))}
