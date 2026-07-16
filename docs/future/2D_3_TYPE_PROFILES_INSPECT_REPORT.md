@@ -1,14 +1,15 @@
 # 2D-3-TYPE-PROFILES + 2D-3-INSPECT 実装報告
 
 作成日: 2026-07-16
-状態: `implementation completed / Draft PR #97 / CI Run #291 success / review pending`
+状態: `completed / PR #97 merged / CI Run #293 success / reviewed`
 正式work package: `2D-3-TYPE-PROFILES + 2D-3-INSPECT`
 採用判断: `A+B+X`
 契約PR: #96（merge commit `2e35d4d4d8913198ce0fffe7f52c0256fc9f2258`）
 実装branch: `agent/2d3-type-profiles-inspector`
-実装Draft PR: #97
+実装PR: #97
 実装基準main: `ab66aa8b0f5b374887e18dea16bcb3b9821e41f9`
-CI確認対象head: `93ad555d06e5a2b3d88a6692a8df6aa6fc561577`
+最終head: `3e237e3186317095c73cdf411aa13d39e4ac8e6c`
+merge commit: `500397ac7d04b23ac88cd17a6e79843c8405a557`
 
 ## 1. 実装した内容
 
@@ -75,7 +76,7 @@ inspectorのseverityを保存またはexportの停止判定APIにはしていな
 
 ### Unit test
 
-`src/core/model/assetInspection.test.ts`を追加した。次を固定する。
+`src/core/model/assetInspection.test.ts`で次を固定した。
 
 - 現行6種すべてのprofile
 - 共通参照切れとPart親子循環
@@ -86,13 +87,11 @@ inspectorのseverityを保存またはexportの停止判定APIにはしていな
 
 ### E2E
 
-`e2e/asset-inspection.spec.ts`を追加した。
-
-新規tile Assetに`tile.settingsMissing`が表示され、既存の「タイル設定を追加」操作で手動修正するとissueが消えることを確認する。自動修復や保存停止を経由せず、既存Editorの操作だけで結果が更新される回帰を対象とする。
+`e2e/asset-inspection.spec.ts`で、新規tile Assetに`tile.settingsMissing`が表示され、既存の「タイル設定を追加」操作で手動修正するとissueが消えることを確認した。自動修復や保存停止を経由せず、既存Editorの操作だけで結果が更新される。
 
 ### CI
 
-CI Run #291（workflow run ID: `29466690493`）は、head `93ad555d06e5a2b3d88a6692a8df6aa6fc561577`について次をすべて成功した。
+最終head `3e237e3186317095c73cdf411aa13d39e4ac8e6c`のCI Run #293（workflow run ID `29466869457`）は次をすべて成功した。
 
 - lint
 - format check
@@ -100,12 +99,10 @@ CI Run #291（workflow run ID: `29466690493`）は、head `93ad555d06e5a2b3d88a6
 - unit test
 - E2E
 
-本報告の証拠同期後のheadについても、同じDraft PR #97で全job成功を確認する。失敗した場合は同じbranch・同じPRで補修する。
+## 4. Reviewと完了
 
-## 4. 完了前に必要な確認
+2026-07-16にユーザーから、Opus 4.8 reviewと人間確認が完了し、問題なしと報告された。少なくとも追加の`BLOCKER` / `MUST`相当の指摘は引き継がれていない。
 
-- 証拠同期後headのGitHub Actions全job成功
-- Opus 4.8 review（利用可能な場合）
-- 人間確認
+PR #97はmerge commit `500397ac7d04b23ac88cd17a6e79843c8405a557`でmainへmerge済みである。これにより`2D-3-TYPE-PROFILES + 2D-3-INSPECT`を正式完了とする。
 
-上記が完了するまでDraftを維持し、ready化、merge、auto-mergeを行わない。
+後続は、保留していた`2D-2-CREATE`の矩形・自由size、型別template、初期Part、図形・文字の境界を契約監査する。正本は`docs/future/2D_2_CREATE_REMAINING_PLAN.md`とする。
