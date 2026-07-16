@@ -3,6 +3,7 @@ import { decodeImageSource, type DecodedImageSource } from '../../core/images/de
 import { blobKeyFor } from '../../core/images/importImage';
 import type { ImageOperation } from '../../core/images/imageOperation';
 import type { Rect, RgbColor } from '../../core/images/operations';
+import type { RasterSelection, SelectionClipboard } from '../../core/images/rasterFoundation';
 import type { Asset, Collider, Layer, Size, Vec2 } from '../../core/model';
 import { loadBlob } from '../../core/storage';
 import {
@@ -17,6 +18,7 @@ import {
   fitView,
   hitTestLayers,
   layerLocalPoint,
+  layerWorldPoint,
   panBy,
   screenToWorld,
   snapToGrid,
@@ -36,6 +38,24 @@ import {
   type ColliderHandle,
   type ColliderRectHandle,
 } from './colliderEditing';
+
+/** 汎用font family候補（契約 §5 A: 再編集不可・可搬性のため汎用candidateのみ）。 */
+export type RasterTextFontFamily = 'sans-serif' | 'serif' | 'monospace';
+
+/** raster text確定前の一時UI状態。Asset / Projectへは保存しない。 */
+export interface RasterTextDraft {
+  /** アンカー位置（テクスチャピクセル座標、左上原点）。 */
+  anchor: Vec2;
+  text: string;
+  fontFamily: RasterTextFontFamily;
+  size: number;
+}
+
+/** 貼り付けpreviewの一時UI状態。armしたclipboardと初期位置を保持する。 */
+export interface PastePreviewState {
+  clipboard: SelectionClipboard;
+  origin: Vec2;
+}
 
 interface CanvasEditorProps {
   asset: Asset;
@@ -58,6 +78,22 @@ interface CanvasEditorProps {
   onEraseCommit: (layerId: string, points: Vec2[]) => void;
   /** raster操作の確定。選択中のedit layerへ既存改訂保存経路で適用する。 */
   onRasterCommit: (operation: ImageOperation) => void;
+  /** 単一layerのrectangular selection（一時UI状態）。Asset / Historyへは保存しない。 */
+  selection: RasterSelection | null;
+  /** ドラッグで新しいselectionを定義したときの確定。 */
+  onSelectionCommit: (selection: RasterSelection) => void;
+  /** selection内側をドラッグして移動したときの確定。元のselectionとテクスチャ座標の移動先を渡す。 */
+  onSelectionMoveCommit: (selection: RasterSelection, target: Vec2) => void;
+  /** paste preview（armされたcopy buffer）。ボタンでarmし、ドラッグで位置調整する。 */
+  pastePreview: PastePreviewState | null;
+  /** paste previewの現在位置をUI側へ都度ミラーする（ボタンからの確定に使う）。 */
+  onPastePreviewMove: (position: Vec2) => void;
+  /** paste previewの確定（pointer up）。 */
+  onPasteCommit: (position: Vec2) => void;
+  /** raster textの確定前preview状態。 */
+  textDraft: RasterTextDraft | null;
+  /** textツールでキャンバスをクリックしたときのアンカー確定。 */
+  onTextAnchor: (point: Vec2) => void;
   /** 当たり判定オーバーレイの一括表示。 */
   showColliders: boolean;
   /** グリッド表示。UI 補助のみで保存形式には影響しない。 */
@@ -85,6 +121,9 @@ interface DragState {
     | 'erase'
     | 'brush'
     | 'raster-shape'
+    | 'selection-new'
+    | 'selection-move'
+    | 'paste-move'
     | 'origin'
     | 'anchor-move'
     | 'collider-move'
@@ -110,6 +149,15 @@ function textureSizeFor(asset: Asset, textureId: string | undefined): Size | nul
   }
   const texture = asset.textures.find((tex) => tex.id === textureId);
   return texture ? texture.size : null;
+}
+
+function isPointInRect(point: Vec2, rect: Rect): boolean {
+  return (
+    point.x >= rect.x &&
+    point.x <= rect.x + rect.width &&
+    point.y >= rect.y &&
+    point.y <= rect.y + rect.height
+  );
 }
 
 function moveLayer(asset: Asset, layerId: string, deltaX: number, deltaY: number): Asset {
@@ -147,6 +195,14 @@ export function CanvasEditor({
   onCropCommit,
   onEraseCommit,
   onRasterCommit,
+  selection,
+  onSelectionCommit,
+  onSelectionMoveCommit,
+  pastePreview,
+  onPastePreviewMove,
+  onPasteCommit,
+  textDraft,
+  onTextAnchor,
   showColliders,
   gridEnabled,
   gridSize,
@@ -174,6 +230,14 @@ export function CanvasEditor({
     end: Vec2;
     tool: 'rect' | 'ellipse';
   } | null>(null);
+  // 選択（rectangular selection）のドラッグ中preview。すべて一時UI状態で保存データへは含めない（契約 §6 / §10.4）。
+  const [selectionRectScreen, setSelectionRectScreen] = useState<{
+    start: Vec2;
+    end: Vec2;
+  } | null>(null);
+  const [selectionMoveOffset, setSelectionMoveOffset] = useState<Vec2 | null>(null);
+  const [pastePosition, setPastePosition] = useState<Vec2 | null>(null);
+  const [pasteBitmap, setPasteBitmap] = useState<ImageBitmap | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const cropTexturePointsRef = useRef<{ start: Vec2; end: Vec2 } | null>(null);
   const eraseTexturePointsRef = useRef<Vec2[]>([]);
@@ -183,6 +247,10 @@ export function CanvasEditor({
     end: Vec2;
     tool: 'rect' | 'ellipse';
   } | null>(null);
+  const selectionTexturePointsRef = useRef<{ start: Vec2; end: Vec2 } | null>(null);
+  const selectionMoveStartTextureRef = useRef<Vec2 | null>(null);
+  const pasteDragStartTextureRef = useRef<Vec2 | null>(null);
+  const pasteDragBaseRef = useRef<Vec2 | null>(null);
   const pointersRef = useRef<Map<number, Vec2>>(new Map());
   const fittedAssetRef = useRef<string | null>(null);
   const bitmapsRef = useRef<Map<string, DecodedImageSource>>(new Map());
@@ -268,6 +336,42 @@ export function CanvasEditor({
       setView(fitView(viewport, asset.canvasSize));
     }
   }, [viewport, asset.id, asset.canvasSize]);
+
+  // paste previewがarmされたらclipboardをImageBitmapへ変換し、初期位置を局所stateへ写す。
+  // clipboardはメモリ内一時データであり、Asset / Project / Historyへは保存しない（契約 §6）。
+  useEffect(() => {
+    let cancelled = false;
+    let createdBitmap: ImageBitmap | null = null;
+    if (!pastePreview) {
+      setPastePosition(null);
+      setPasteBitmap(null);
+      return;
+    }
+    setPastePosition(pastePreview.origin);
+    const imageData = new ImageData(
+      new Uint8ClampedArray(pastePreview.clipboard.data),
+      pastePreview.clipboard.width,
+      pastePreview.clipboard.height,
+    );
+    void createImageBitmap(imageData)
+      .then((bitmap) => {
+        if (cancelled) {
+          bitmap.close();
+          return;
+        }
+        createdBitmap = bitmap;
+        setPasteBitmap(bitmap);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPasteBitmap(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+      createdBitmap?.close();
+    };
+  }, [pastePreview]);
 
   // 描画（イベント駆動）
   useEffect(() => {
@@ -370,6 +474,89 @@ export function CanvasEditor({
       }
       ctx.restore();
     }
+
+    // ラスターselection・paste preview・raster textのオーバーレイ（すべて一時UI状態）
+    if (selectedLayer && selectedTextureSize) {
+      const toOverlayScreen = (texturePoint: Vec2): Vec2 => {
+        const local = {
+          x: texturePoint.x - selectedTextureSize.width / 2,
+          y: texturePoint.y - selectedTextureSize.height / 2,
+        };
+        const world = layerWorldPoint(selectedLayer, selectedTextureSize, local);
+        return worldToScreen(view, world);
+      };
+
+      if (selectionRectScreen) {
+        const x = Math.min(selectionRectScreen.start.x, selectionRectScreen.end.x);
+        const y = Math.min(selectionRectScreen.start.y, selectionRectScreen.end.y);
+        const width = Math.abs(selectionRectScreen.end.x - selectionRectScreen.start.x);
+        const height = Math.abs(selectionRectScreen.end.y - selectionRectScreen.start.y);
+        ctx.save();
+        ctx.strokeStyle = '#2bb673';
+        ctx.setLineDash([4, 3]);
+        ctx.strokeRect(x, y, width, height);
+        ctx.restore();
+      } else if (selection) {
+        const rect = selectionMoveOffset
+          ? {
+              x: selection.rect.x + selectionMoveOffset.x,
+              y: selection.rect.y + selectionMoveOffset.y,
+              width: selection.rect.width,
+              height: selection.rect.height,
+            }
+          : selection.rect;
+        const topLeft = toOverlayScreen({ x: rect.x, y: rect.y });
+        const bottomRight = toOverlayScreen({ x: rect.x + rect.width, y: rect.y + rect.height });
+        ctx.save();
+        ctx.strokeStyle = '#2bb673';
+        ctx.setLineDash([4, 3]);
+        ctx.strokeRect(
+          Math.min(topLeft.x, bottomRight.x),
+          Math.min(topLeft.y, bottomRight.y),
+          Math.abs(bottomRight.x - topLeft.x),
+          Math.abs(bottomRight.y - topLeft.y),
+        );
+        ctx.restore();
+      }
+
+      if (pasteBitmap && pastePosition) {
+        try {
+          const topLeft = toOverlayScreen(pastePosition);
+          const bottomRight = toOverlayScreen({
+            x: pastePosition.x + pasteBitmap.width,
+            y: pastePosition.y + pasteBitmap.height,
+          });
+          ctx.save();
+          ctx.globalAlpha = 0.75;
+          ctx.drawImage(
+            pasteBitmap,
+            Math.min(topLeft.x, bottomRight.x),
+            Math.min(topLeft.y, bottomRight.y),
+            Math.abs(bottomRight.x - topLeft.x),
+            Math.abs(bottomRight.y - topLeft.y),
+          );
+          ctx.restore();
+        } catch {
+          // paste確定直後、pasteBitmapが別effectでcloseされた直後の1フレームだけ発生し得る。
+          // 次のrenderでpasteBitmapがnullへ更新されるため、このframeの描画をskipするだけで安全。
+        }
+      }
+
+      if (tool === 'text' && textDraft) {
+        const screenPoint = toOverlayScreen(textDraft.anchor);
+        const scaledSize = Math.max(
+          1,
+          textDraft.size * Math.abs(selectedLayer.transform.scale.x || 1) * view.scale,
+        );
+        ctx.save();
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle = `rgb(${rasterColor.r}, ${rasterColor.g}, ${rasterColor.b})`;
+        ctx.font = `${scaledSize}px ${textDraft.fontFamily}`;
+        ctx.textBaseline = 'top';
+        ctx.fillText(textDraft.text || '', screenPoint.x, screenPoint.y);
+        ctx.restore();
+      }
+    }
   }, [
     viewport,
     view,
@@ -384,11 +571,18 @@ export function CanvasEditor({
     shapeRectScreen,
     rasterColor,
     selectedLayer,
+    selectedTextureSize,
     showColliders,
     selectedColliderId,
     gridEnabled,
     gridSize,
     tool,
+    selection,
+    selectionRectScreen,
+    selectionMoveOffset,
+    pasteBitmap,
+    pastePosition,
+    textDraft,
   ]);
 
   // ホイールズーム（passive: false で登録する必要がある）
@@ -451,8 +645,12 @@ export function CanvasEditor({
       setEraserStrokeScreen(null);
       setBrushStrokeScreen(null);
       setShapeRectScreen(null);
+      setSelectionRectScreen(null);
+      setSelectionMoveOffset(null);
       brushTexturePointsRef.current = [];
       shapeTexturePointsRef.current = null;
+      selectionTexturePointsRef.current = null;
+      selectionMoveStartTextureRef.current = null;
       return;
     }
 
@@ -611,6 +809,7 @@ export function CanvasEditor({
           start: texturePoint,
           color: rasterColor,
           tolerance: fillTolerance,
+          selection: selection ?? undefined,
         });
       }
       return;
@@ -647,6 +846,60 @@ export function CanvasEditor({
         startView: view,
         layerId: selectedLayer.id,
         shapeTool: tool,
+      };
+      return;
+    }
+
+    if (tool === 'text') {
+      const texturePoint = toTexturePoint(point);
+      if (selectedLayer && texturePoint) {
+        onTextAnchor(texturePoint);
+      }
+      return;
+    }
+
+    if (tool === 'selection') {
+      const texturePoint = toTexturePoint(point);
+      if (!selectedLayer || !texturePoint) {
+        return;
+      }
+
+      // paste previewがarmされている間は、ドラッグで貼り付け位置を調整する
+      if (pastePreview && pastePosition) {
+        pasteDragStartTextureRef.current = texturePoint;
+        pasteDragBaseRef.current = pastePosition;
+        dragRef.current = {
+          mode: 'paste-move',
+          pointerId: event.pointerId,
+          startScreen: point,
+          startView: view,
+          layerId: selectedLayer.id,
+        };
+        return;
+      }
+
+      // 有効なselectionの内側なら移動、それ以外は新規selectionのドラッグを開始する
+      if (selection && isPointInRect(texturePoint, selection.rect)) {
+        selectionMoveStartTextureRef.current = texturePoint;
+        setSelectionMoveOffset({ x: 0, y: 0 });
+        dragRef.current = {
+          mode: 'selection-move',
+          pointerId: event.pointerId,
+          startScreen: point,
+          startView: view,
+          layerId: selectedLayer.id,
+        };
+        return;
+      }
+
+      selectionTexturePointsRef.current = { start: texturePoint, end: texturePoint };
+      setSelectionRectScreen({ start: point, end: point });
+      dragRef.current = {
+        mode: 'selection-new',
+        pointerId: event.pointerId,
+        startScreen: point,
+        startView: view,
+        layerId: selectedLayer.id,
       };
       return;
     }
@@ -749,6 +1002,42 @@ export function CanvasEditor({
         shapeTexturePointsRef.current = { ...shapeTexturePointsRef.current, end: texturePoint };
       }
       setShapeRectScreen((current) => (current ? { ...current, end: point } : current));
+      return;
+    }
+
+    if (drag.mode === 'selection-new') {
+      const texturePoint = toTexturePoint(point);
+      if (texturePoint && selectionTexturePointsRef.current) {
+        selectionTexturePointsRef.current = {
+          ...selectionTexturePointsRef.current,
+          end: texturePoint,
+        };
+      }
+      setSelectionRectScreen((current) => (current ? { ...current, end: point } : current));
+      return;
+    }
+
+    if (drag.mode === 'selection-move') {
+      const texturePoint = toTexturePoint(point);
+      if (texturePoint && selectionMoveStartTextureRef.current) {
+        setSelectionMoveOffset({
+          x: texturePoint.x - selectionMoveStartTextureRef.current.x,
+          y: texturePoint.y - selectionMoveStartTextureRef.current.y,
+        });
+      }
+      return;
+    }
+
+    if (drag.mode === 'paste-move') {
+      const texturePoint = toTexturePoint(point);
+      if (texturePoint && pasteDragStartTextureRef.current && pasteDragBaseRef.current) {
+        const next = {
+          x: pasteDragBaseRef.current.x + (texturePoint.x - pasteDragStartTextureRef.current.x),
+          y: pasteDragBaseRef.current.y + (texturePoint.y - pasteDragStartTextureRef.current.y),
+        };
+        setPastePosition(next);
+        onPastePreviewMove(next);
+      }
       return;
     }
 
@@ -901,7 +1190,13 @@ export function CanvasEditor({
       setBrushStrokeScreen(null);
       dragRef.current = null;
       if (points.length > 0) {
-        onRasterCommit({ type: 'paintBrush', points, radius: brushRadius, color: rasterColor });
+        onRasterCommit({
+          type: 'paintBrush',
+          points,
+          radius: brushRadius,
+          color: rasterColor,
+          selection: selection ?? undefined,
+        });
       }
       return;
     }
@@ -921,10 +1216,55 @@ export function CanvasEditor({
         if (rect.width >= 1 && rect.height >= 1) {
           onRasterCommit(
             shape.tool === 'rect'
-              ? { type: 'rasterRect', rect, color: rasterColor }
-              : { type: 'rasterEllipse', rect, color: rasterColor },
+              ? { type: 'rasterRect', rect, color: rasterColor, selection: selection ?? undefined }
+              : {
+                  type: 'rasterEllipse',
+                  rect,
+                  color: rasterColor,
+                  selection: selection ?? undefined,
+                },
           );
         }
+      }
+      return;
+    }
+
+    if (drag.mode === 'selection-new' && drag.layerId) {
+      const points = selectionTexturePointsRef.current;
+      selectionTexturePointsRef.current = null;
+      setSelectionRectScreen(null);
+      dragRef.current = null;
+      if (points) {
+        const x = Math.min(points.start.x, points.end.x);
+        const y = Math.min(points.start.y, points.end.y);
+        const width = Math.abs(points.end.x - points.start.x);
+        const height = Math.abs(points.end.y - points.start.y);
+        if (width >= 1 && height >= 1) {
+          onSelectionCommit({ rect: { x, y, width, height } });
+        }
+      }
+      return;
+    }
+
+    if (drag.mode === 'selection-move' && drag.layerId && selection) {
+      const offset = selectionMoveOffset;
+      selectionMoveStartTextureRef.current = null;
+      setSelectionMoveOffset(null);
+      dragRef.current = null;
+      if (offset && (offset.x !== 0 || offset.y !== 0)) {
+        const target = { x: selection.rect.x + offset.x, y: selection.rect.y + offset.y };
+        onSelectionMoveCommit(selection, target);
+      }
+      return;
+    }
+
+    if (drag.mode === 'paste-move' && drag.layerId) {
+      const position = pastePosition;
+      pasteDragStartTextureRef.current = null;
+      pasteDragBaseRef.current = null;
+      dragRef.current = null;
+      if (position) {
+        onPasteCommit(position);
       }
       return;
     }

@@ -16,6 +16,11 @@ import {
 } from '../../core/images/imageOperation';
 import { hexToRgb, rgbToHex, type Rect } from '../../core/images/operations';
 import {
+  copySelectionPixels,
+  type RasterSelection,
+  type SelectionClipboard,
+} from '../../core/images/rasterFoundation';
+import {
   blobToPixelBuffer,
   pixelBufferToBlob,
   runImageOperation,
@@ -68,8 +73,13 @@ import {
   DEFAULT_BLANK_CANVAS_SIZE,
   type BlankCanvasPresetId,
 } from './blankAsset';
-import { CanvasEditor } from './CanvasEditor';
-import { LAYER_TOOLS, type CanvasTool } from './canvasTools';
+import {
+  CanvasEditor,
+  type PastePreviewState,
+  type RasterTextDraft,
+  type RasterTextFontFamily,
+} from './CanvasEditor';
+import { LAYER_TOOLS, SELECTION_AWARE_TOOLS, type CanvasTool } from './canvasTools';
 import {
   canStartPersistentMutation,
   commitPersistentMutationWithHistory,
@@ -241,6 +251,17 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [outlineColor, setOutlineColor] = useState('#000000');
   const [outlineThickness, setOutlineThickness] = useState(2);
 
+  // 単一layerのrectangular selection（契約 §6 / §10.4）。すべて一時UI状態でAsset / Project / Historyへは保存しない。
+  const [selection, setSelection] = useState<RasterSelection | null>(null);
+  const [selectionClipboard, setSelectionClipboard] = useState<SelectionClipboard | null>(null);
+  const [pastePreview, setPastePreview] = useState<PastePreviewState | null>(null);
+  const [pastePreviewPosition, setPastePreviewPosition] = useState<Vec2 | null>(null);
+
+  // raster textの確定前preview（契約 §5 A）。text文字列・font・sizeはAsset / Projectへ保存しない。
+  const [textDraft, setTextDraft] = useState<RasterTextDraft | null>(null);
+  const [textFontFamily, setTextFontFamily] = useState<RasterTextFontFamily>('sans-serif');
+  const [textSize, setTextSize] = useState(24);
+
   // 破壊的画像編集の復旧点（Phase 2D-1B-STORAGE §C）。選択中アセットの一覧を保持する。
   const [snapshots, setSnapshots] = useState<AssetSnapshotSummary[]>([]);
 
@@ -285,6 +306,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
   const selectedAsset = assets.find((asset) => asset.id === selectedAssetId) ?? assets[0] ?? null;
   const selectedLayer = selectedAsset?.layers.find((layer) => layer.id === selectedLayerId) ?? null;
+  const selectedTextureSize =
+    selectedAsset?.textures.find((texture) => texture.id === selectedLayer?.textureId)?.size ??
+    null;
   const selectedAnimation =
     selectedAsset?.animations.find((animation) => animation.id === selectedAnimationId) ?? null;
   /** タイムラインでプレビュー中のフレームをレイヤーへ適用したアセット（キャンバス表示用）。 */
@@ -441,6 +465,26 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleHistoryRedo, handleHistoryUndo]);
 
+  // Escで selection・copy buffer・paste preview・text draftを解除する（契約 §6 / §10.4）
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      setSelection(null);
+      setSelectionClipboard(null);
+      setPastePreview(null);
+      setPastePreviewPosition(null);
+      setTextDraft(null);
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, []);
+
   // アセットを切り替えたらタイムラインの選択・再生状態をリセットする
   useEffect(() => {
     setSelectedAnimationId(null);
@@ -449,6 +493,31 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setSelectedColliderId(null);
     playbackIndexRef.current = 0;
   }, [selectedAssetId]);
+
+  // アセット / レイヤーを切り替えたらselection・copy buffer・paste preview・text draftを解除する
+  // （selectionはsingle-layerのため、レイヤーが変わったら維持しない。契約 §6 / §10.4）
+  useEffect(() => {
+    setSelection(null);
+    setSelectionClipboard(null);
+    setPastePreview(null);
+    setPastePreviewPosition(null);
+    setTextDraft(null);
+  }, [selectedAssetId, selectedLayerId]);
+
+  // selection-aware以外のtoolへ切り替えたらselection・copy bufferを解除する
+  useEffect(() => {
+    if (!SELECTION_AWARE_TOOLS.includes(tool)) {
+      setSelection(null);
+      setSelectionClipboard(null);
+    }
+    if (tool !== 'selection') {
+      setPastePreview(null);
+      setPastePreviewPosition(null);
+    }
+    if (tool !== 'text') {
+      setTextDraft(null);
+    }
+  }, [tool]);
 
   // アニメーションの再生ループ（fps に従いフレームを順送りする）
   useEffect(() => {
@@ -517,23 +586,25 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   /**
    * 選択レイヤーの編集用テクスチャへ画像処理を適用する。
    * 元画像（source）は変更せず、失敗時は理由を表示し、Undo で戻せる。
+   * 呼び出し側が結果に応じて追加のUI状態（selectionの移動先反映など）を更新できるよう、
+   * 保存成功時は true、失敗・early returnは false を返す。
    */
-  const applyImageEdit = async (operation: ImageOperation) => {
+  const applyImageEdit = async (operation: ImageOperation): Promise<boolean> => {
     if (!selectedAsset || !selectedLayer?.textureId) {
       setEditorError('編集するレイヤーを選択してください。');
-      return;
+      return false;
     }
     const texture = selectedAsset.textures.find((tex) => tex.id === selectedLayer.textureId);
     if (!texture) {
       setEditorError('レイヤーが参照するテクスチャが見つかりません。');
-      return;
+      return false;
     }
     if (texture.kind !== 'edit') {
       setEditorError('元画像（source）は破壊的編集できません。編集用画像を選択してください。');
-      return;
+      return false;
     }
     if (!beginEditorPersistentMutation()) {
-      return;
+      return false;
     }
     const label = operationLabel(operation);
     setEditorError(null);
@@ -623,10 +694,12 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           },
         },
       });
+      return true;
     } catch (error) {
       setEditorError(
         `${label}に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
       );
+      return false;
     } finally {
       setImageProcessing(null);
       endEditorPersistentMutation();
@@ -758,6 +831,156 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       setSelectedLayerId(layerId);
     }
     void applyImageEdit({ type: 'erase', points, radius: eraserSize });
+  };
+
+  /** ドラッグで新しいselectionを定義したときの確定（契約 §6）。 */
+  const handleSelectionCommit = (nextSelection: RasterSelection) => {
+    setSelection(nextSelection);
+  };
+
+  /**
+   * 選択範囲のpixelsをin-memoryのcopy bufferへコピーする。Asset / Project / Historyへは保存しない。
+   * source Blobは読み取るだけで変更しない。
+   */
+  const handleSelectionCopy = async () => {
+    if (!selectedAsset || !selectedLayer?.textureId || !selection) {
+      setEditorError('コピーするには選択範囲が必要です。');
+      return;
+    }
+    const texture = selectedAsset.textures.find((tex) => tex.id === selectedLayer.textureId);
+    if (!texture) {
+      return;
+    }
+    try {
+      const blob = await loadBlob(blobKeyFor(selectedAsset.id, texture.path));
+      if (!blob) {
+        setEditorError('編集用画像が見つかりません。');
+        return;
+      }
+      const buffer = await blobToPixelBuffer(blob);
+      setSelectionClipboard(copySelectionPixels(buffer, selection));
+      setEditorError(null);
+    } catch (error) {
+      setEditorError(
+        `選択範囲のコピーに失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  };
+
+  /** 選択範囲を透明化して確定する（既存改訂保存経路）。 */
+  const handleSelectionClear = () => {
+    if (!selection) {
+      return;
+    }
+    void applyImageEdit({ type: 'selectionClear', selection });
+  };
+
+  /** selection内側のドラッグによる移動の確定。元位置は透明化され、選択自体も移動先へ追従する。 */
+  const handleSelectionMoveCommit = async (movedSelection: RasterSelection, target: Vec2) => {
+    const success = await applyImageEdit({
+      type: 'selectionMove',
+      selection: movedSelection,
+      target,
+    });
+    if (success) {
+      setSelection({
+        rect: {
+          x: target.x,
+          y: target.y,
+          width: movedSelection.rect.width,
+          height: movedSelection.rect.height,
+        },
+      });
+    }
+  };
+
+  /** paste previewをarmする。ドラッグまたはボタンでの確定を待つ状態にする。 */
+  const handleArmPaste = () => {
+    if (!selectionClipboard) {
+      return;
+    }
+    const origin = selection ? { x: selection.rect.x, y: selection.rect.y } : { x: 0, y: 0 };
+    setPastePreview({ clipboard: selectionClipboard, origin });
+    setPastePreviewPosition(origin);
+    setTool('selection');
+  };
+
+  const handleCancelPaste = () => {
+    setPastePreview(null);
+    setPastePreviewPosition(null);
+  };
+
+  /** paste previewの確定（pointer up、またはパネルの確定ボタン）。 */
+  const handlePasteCommit = async (position: Vec2) => {
+    if (!pastePreview) {
+      return;
+    }
+    const success = await applyImageEdit({
+      type: 'selectionPaste',
+      clipboard: pastePreview.clipboard,
+      target: position,
+    });
+    if (success) {
+      setPastePreview(null);
+      setPastePreviewPosition(null);
+    }
+  };
+
+  /** textツールでキャンバスをクリックしたときのアンカー確定（既存の文字列・font・sizeは維持する）。 */
+  const handleTextAnchor = (point: Vec2) => {
+    setTextDraft((prev) => ({
+      anchor: point,
+      text: prev?.text ?? '',
+      fontFamily: prev?.fontFamily ?? textFontFamily,
+      size: prev?.size ?? textSize,
+    }));
+  };
+
+  /**
+   * raster textの確定。main threadのoffscreen canvasへtextureサイズ全体を描画し、
+   * 透明部分を保ったまま合成するstampImage操作を既存改訂保存経路で適用する（契約 §5 A）。
+   * text文字列・font・sizeはAsset / Projectへ一切保存しない。
+   */
+  const handleTextCommit = async () => {
+    if (!textDraft || !textDraft.text.trim() || !selectedLayer || !selectedTextureSize) {
+      return;
+    }
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = selectedTextureSize.width;
+      canvas.height = selectedTextureSize.height;
+      const context = canvas.getContext('2d');
+      if (!context) {
+        throw new Error('この環境ではCanvas 2Dが使えません。');
+      }
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = rasterColor;
+      context.font = `${textDraft.size}px ${textDraft.fontFamily}`;
+      context.textBaseline = 'top';
+      context.fillText(textDraft.text, textDraft.anchor.x, textDraft.anchor.y);
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      const clipboard: SelectionClipboard = {
+        width: imageData.width,
+        height: imageData.height,
+        data: imageData.data,
+      };
+      const success = await applyImageEdit({
+        type: 'stampImage',
+        clipboard,
+        target: { x: 0, y: 0 },
+      });
+      if (success) {
+        setTextDraft(null);
+      }
+    } catch (error) {
+      setEditorError(
+        `テキストの確定に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  };
+
+  const handleTextCancel = () => {
+    setTextDraft(null);
   };
 
   const handleFiles = async (files: Iterable<File>) => {
@@ -1251,6 +1474,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     { tool: 'fill', label: '塗りつぶし' },
     { tool: 'rect', label: '矩形' },
     { tool: 'ellipse', label: '楕円' },
+    { tool: 'selection', label: '範囲' },
+    { tool: 'text', label: '文字' },
     { tool: 'bgpick', label: '背景透過' },
     { tool: 'picker', label: 'スポイト' },
     { tool: 'origin', label: '原点' },
@@ -1355,6 +1580,14 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 onCropCommit={handleCropCommit}
                 onEraseCommit={handleEraseCommit}
                 onRasterCommit={(operation) => void applyImageEdit(operation)}
+                selection={selection}
+                onSelectionCommit={handleSelectionCommit}
+                onSelectionMoveCommit={(sel, target) => void handleSelectionMoveCommit(sel, target)}
+                pastePreview={pastePreview}
+                onPastePreviewMove={setPastePreviewPosition}
+                onPasteCommit={(position) => void handlePasteCommit(position)}
+                textDraft={textDraft}
+                onTextAnchor={handleTextAnchor}
                 showColliders={showColliders}
                 gridEnabled={gridEnabled}
                 gridSize={gridSize}
@@ -1738,6 +1971,150 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                     />
                   </label>
                 </fieldset>
+
+                <fieldset className="editor-fieldset">
+                  <legend>選択範囲</legend>
+                  <p className="editor-note">
+                    「範囲」ツールでキャンバスをドラッグすると矩形選択を作れます。選択中は他のラスターツールが選択範囲をmaskとして使います。Escで解除できます。
+                  </p>
+                  {selection && (
+                    <p className="editor-note">
+                      選択範囲: {Math.round(selection.rect.width)} x{' '}
+                      {Math.round(selection.rect.height)}px
+                    </p>
+                  )}
+                  <div className="editor-button-row">
+                    <button
+                      type="button"
+                      disabled={!selection || !!imageProcessing || persistentMutationBlocked}
+                      onClick={() => void handleSelectionCopy()}
+                    >
+                      コピー
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!selection || !!imageProcessing || persistentMutationBlocked}
+                      onClick={handleSelectionClear}
+                    >
+                      消去
+                    </button>
+                    <button
+                      type="button"
+                      disabled={
+                        !selectionClipboard || !!imageProcessing || persistentMutationBlocked
+                      }
+                      onClick={handleArmPaste}
+                    >
+                      貼り付け
+                    </button>
+                  </div>
+                  {pastePreview && (
+                    <div className="editor-button-row">
+                      <button
+                        type="button"
+                        disabled={!!imageProcessing || persistentMutationBlocked}
+                        onClick={() =>
+                          void handlePasteCommit(pastePreviewPosition ?? pastePreview.origin)
+                        }
+                      >
+                        貼り付けを確定
+                      </button>
+                      <button type="button" onClick={handleCancelPaste}>
+                        貼り付けをキャンセル
+                      </button>
+                    </div>
+                  )}
+                </fieldset>
+
+                <fieldset className="editor-fieldset">
+                  <legend>文字</legend>
+                  <p className="editor-note">
+                    「文字」ツールでキャンバスをクリックするとアンカー位置を決められます。
+                  </p>
+                  <p role="note" className="editor-note editor-text-warning">
+                    確定するとテキストはピクセルになり、再編集できません。
+                  </p>
+                  <label className="editor-field">
+                    テキスト文字列
+                    <input
+                      type="text"
+                      aria-label="テキスト文字列"
+                      value={textDraft?.text ?? ''}
+                      onChange={(event) => {
+                        const nextText = event.target.value;
+                        setTextDraft((prev) =>
+                          prev
+                            ? { ...prev, text: nextText }
+                            : {
+                                anchor: { x: 0, y: 0 },
+                                text: nextText,
+                                fontFamily: textFontFamily,
+                                size: textSize,
+                              },
+                        );
+                      }}
+                    />
+                  </label>
+                  <label className="editor-field">
+                    フォント
+                    <select
+                      aria-label="フォント"
+                      value={textDraft?.fontFamily ?? textFontFamily}
+                      onChange={(event) => {
+                        const nextFont = event.target.value as typeof textFontFamily;
+                        setTextFontFamily(nextFont);
+                        setTextDraft((prev) => (prev ? { ...prev, fontFamily: nextFont } : prev));
+                      }}
+                    >
+                      <option value="sans-serif">サンセリフ体</option>
+                      <option value="serif">セリフ体</option>
+                      <option value="monospace">等幅</option>
+                    </select>
+                  </label>
+                  <label className="editor-field">
+                    文字サイズ（px）
+                    <input
+                      type="number"
+                      aria-label="文字サイズ"
+                      min={1}
+                      max={
+                        selectedTextureSize
+                          ? Math.max(selectedTextureSize.width, selectedTextureSize.height)
+                          : 256
+                      }
+                      value={textDraft?.size ?? textSize}
+                      onChange={(event) => {
+                        const max = selectedTextureSize
+                          ? Math.max(selectedTextureSize.width, selectedTextureSize.height)
+                          : 256;
+                        const nextSize = Math.min(
+                          max,
+                          Math.max(1, Math.round(Number(event.target.value) || 1)),
+                        );
+                        setTextSize(nextSize);
+                        setTextDraft((prev) => (prev ? { ...prev, size: nextSize } : prev));
+                      }}
+                    />
+                  </label>
+                  <div className="editor-button-row">
+                    <button
+                      type="button"
+                      disabled={
+                        !textDraft ||
+                        !textDraft.text.trim() ||
+                        !!imageProcessing ||
+                        persistentMutationBlocked
+                      }
+                      onClick={() => void handleTextCommit()}
+                    >
+                      テキストを確定
+                    </button>
+                    <button type="button" disabled={!textDraft} onClick={handleTextCancel}>
+                      テキストをリセット
+                    </button>
+                  </div>
+                </fieldset>
+
                 <label className="editor-field">
                   背景透過の許容量（0-100）
                   <input

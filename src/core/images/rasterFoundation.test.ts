@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { PixelBuffer } from './operations';
 import {
   clearSelectionPixels,
+  compositeStampPixels,
   copySelectionPixels,
   drawRasterEllipse,
   drawRasterRect,
@@ -185,5 +186,41 @@ describe('single-layer rectangular selection', () => {
       rect: { x: 0, y: 0, width: 1, height: 1 },
     });
     expect(Object.keys(clipboard).sort()).toEqual(['data', 'height', 'width']);
+  });
+});
+
+describe('compositeStampPixels', () => {
+  it('不透明pixelは上書きし、透明pixelは既存の内容を保つ（raster text stamp用）', () => {
+    const buffer = makeBuffer(4, 2, [10, 20, 30, 255]);
+    const stamp = {
+      width: 2,
+      height: 1,
+      data: new Uint8ClampedArray([255, 0, 0, 255, 0, 0, 0, 0]),
+    };
+    const result = compositeStampPixels(buffer, stamp, { x: 1, y: 0 });
+    expect(pixelAt(result, 1, 0)).toEqual([255, 0, 0, 255]);
+    // stampの2つ目のpixelは透明なので、既存の背景色を保つ（pasteSelectionPixelsと異なり上書きしない）
+    expect(pixelAt(result, 2, 0)).toEqual([10, 20, 30, 255]);
+    expect(pixelAt(result, 0, 0)).toEqual([10, 20, 30, 255]);
+  });
+
+  it('半透明pixelはsource-overで下地と合成する', () => {
+    const buffer = makeBuffer(2, 1, [0, 0, 0, 255]);
+    const stamp = {
+      width: 1,
+      height: 1,
+      data: new Uint8ClampedArray([255, 255, 255, 128]),
+    };
+    const result = compositeStampPixels(buffer, stamp, { x: 0, y: 0 });
+    // outAlpha = 0.5 + 1*(1-0.5) = 1、rgb = 255*0.5 + 0*1*0.5 = 127.5 -> 128
+    expect(pixelAt(result, 0, 0)).toEqual([128, 128, 128, 255]);
+  });
+
+  it('範囲外の座標は無視し、元bufferを変更しない', () => {
+    const buffer = makeBuffer(2, 2);
+    const stamp = { width: 2, height: 2, data: new Uint8ClampedArray(16).fill(255) };
+    const result = compositeStampPixels(buffer, stamp, { x: 1, y: 1 });
+    expect(pixelAt(result, 1, 1)).toEqual([255, 255, 255, 255]);
+    expect(pixelAt(buffer, 1, 1)).toEqual([0, 0, 0, 0]);
   });
 });

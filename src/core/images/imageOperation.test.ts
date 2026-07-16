@@ -65,6 +65,17 @@ describe('applyImageOperation', () => {
     expect(pixelAt(moved, 1, 1)).toEqual([0, 0, 0, 0]);
     expect(pixelAt(moved, 3, 1)).toEqual([255, 0, 255, 255]);
   });
+
+  it('stampImageは既存pixelsを保ったまま不透明部分だけを合成する（raster text確定用）', () => {
+    const source = makeBuffer(3, 1, [1, 2, 3, 255]);
+    const result = applyImageOperation(source, {
+      type: 'stampImage',
+      clipboard: { width: 1, height: 1, data: new Uint8ClampedArray([9, 9, 9, 255]) },
+      target: { x: 1, y: 0 },
+    });
+    expect(pixelAt(result, 1, 0)).toEqual([9, 9, 9, 255]);
+    expect(pixelAt(result, 0, 0)).toEqual([1, 2, 3, 255]);
+  });
 });
 
 describe('imageOperationLabel', () => {
@@ -84,5 +95,12 @@ describe('imageOperationLabel', () => {
         thickness: 1,
       }),
     ).toBe('輪郭線の追加');
+    expect(
+      imageOperationLabel({
+        type: 'stampImage',
+        clipboard: { width: 1, height: 1, data: new Uint8ClampedArray(4) },
+        target: { x: 0, y: 0 },
+      }),
+    ).toBe('テキストを確定');
   });
 });
