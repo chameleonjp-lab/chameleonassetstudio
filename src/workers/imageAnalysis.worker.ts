@@ -1,28 +1,45 @@
 import { inspectAlphaBounds, type AlphaInspection } from '../core/images/layerRepair';
+import { extractPalette, type PaletteExtraction } from '../core/images/paletteExtraction';
 import type { PixelBuffer } from '../core/images/operations';
 
-export interface ImageAnalysisRequest {
+interface BaseImageAnalysisRequest {
   id: number;
-  type: 'alphaBounds';
   width: number;
   height: number;
   data: Uint8ClampedArray;
-  alphaThreshold: number;
 }
+
+export type ImageAnalysisRequest =
+  | (BaseImageAnalysisRequest & {
+      type: 'alphaBounds';
+      alphaThreshold: number;
+    })
+  | (BaseImageAnalysisRequest & {
+      type: 'palette';
+      maxColors: number;
+      alphaThreshold: number;
+    });
+
+export type ImageAnalysisResult = AlphaInspection | PaletteExtraction;
 
 export type ImageAnalysisResponse =
   | { id: number; type: 'progress'; progress: number }
-  | { id: number; type: 'done'; result: AlphaInspection }
+  | { id: number; type: 'done'; result: ImageAnalysisResult }
   | { id: number; type: 'error'; message: string };
 
 self.onmessage = (event: MessageEvent<ImageAnalysisRequest>) => {
-  const { id, width, height, data, alphaThreshold } = event.data;
+  const request = event.data;
+  const { id, width, height, data } = request;
   try {
     const buffer: PixelBuffer = { width, height, data };
-    const result = inspectAlphaBounds(buffer, alphaThreshold, (progress) => {
+    const onProgress = (progress: number) => {
       const message: ImageAnalysisResponse = { id, type: 'progress', progress };
       self.postMessage(message);
-    });
+    };
+    const result =
+      request.type === 'alphaBounds'
+        ? inspectAlphaBounds(buffer, request.alphaThreshold, onProgress)
+        : extractPalette(buffer, request.maxColors, request.alphaThreshold, onProgress);
     const message: ImageAnalysisResponse = { id, type: 'done', result };
     self.postMessage(message);
   } catch (error) {
