@@ -156,7 +156,9 @@ test('alpha boundsを検査してlayer画像だけtrimし、Undo・Redo・reload
 
   await page.getByRole('button', { name: '透明縁を検査', exact: true }).click();
   await expect(page.getByLabel('透明縁検査結果')).toBeVisible();
-  await expect(page.getByText('透明縁があります。選択画像だけをトリミングできます。')).toBeVisible();
+  await expect(
+    page.getByText('透明縁があります。選択画像だけをトリミングできます。'),
+  ).toBeVisible();
 
   await page.getByRole('button', { name: '透明縁をトリミング', exact: true }).click();
   await expect
@@ -187,6 +189,9 @@ test('alpha boundsを検査してlayer画像だけtrimし、Undo・Redo・reload
     .toEqual({ width: bounds.width, height: bounds.height });
 
   await page.reload();
+  const openButton = page.getByRole('button', { name: '「alpha trim E2E」を開く', exact: true });
+  await expect(openButton).toBeVisible();
+  await openButton.click();
   await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
   const reloaded = await readRepairState(page);
   expect(reloaded.textureSize).toEqual({ width: bounds.width, height: bounds.height });
