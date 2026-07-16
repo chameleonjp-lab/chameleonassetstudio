@@ -1,10 +1,11 @@
 # 2D-2-PROJECT + 2D-2-CREATE C-slice 実装報告
 
 作成日: 2026-07-16
-状態: `implementation completed locally / Draft PR #94 / CI pending`
+状態: `implementation completed / Draft PR #94 / CI Run #276 success / review pending`
 正式work package: `2D-2-PROJECT + 2D-2-CREATE`
 採用判断: `C`（現行0.1.0の独立Asset管理を先行し、Family / Variantを別契約へ保留）
-基準main: `f1fcdf1fbd05f33810206ee0ebfbfd49cba784f0`
+基準main: `359cb9c9d0918df95d1fc52db6d472639f0f3703`
+CI確認対象head: `f8c677b425e4184b1ab57c3ee0217c6e92654a52`
 
 ## 1. 実装範囲
 
@@ -34,9 +35,23 @@
 | `npm run test` | 46 files / 401 tests success |
 | `npm run e2e -- e2e/create.spec.ts` | Playwright Chromium実体がローカル環境になく、5 testsすべてbrowser起動前に停止。code assertion失敗は0件。正式判定はGitHub Actionsで行う。 |
 
-GitHub Actionsの全job結果はDraft PR #94更新後に追記する。CI失敗は同じbranch・同じPRで補修する。
+## 4. GitHub Actions
 
-## 4. 完了条件
+CI Run #276（workflow run ID: `29461197731`）は、Draft PR #94のhead
+`f8c677b425e4184b1ab57c3ee0217c6e92654a52`に対して全job successとなった。
+
+| job / 検証 | 結果 |
+|---|---|
+| `classify-changes` | success |
+| `build-and-test` / lint | success |
+| `build-and-test` / format | success |
+| `build-and-test` / build | success。既存の500 kB chunk warningのみ。 |
+| `build-and-test` / unit test | 46 files / 401 tests success |
+| `e2e` | success。84 tests中83 passed、既存`canvas.spec.ts`の1件は初回失敗後のretryで成功し、Playwright上はflakyとして記録された。今回追加した`create.spec.ts`を含むjob全体の最終conclusionはsuccess。 |
+
+文書同期後のheadについても同じDraft PR #94でCIを再確認する。CI失敗は同じbranch・同じPRで補修する。
+
+## 5. 完了条件
 
 1. Project要約とAsset metadataが成功時だけ同時更新され、途中失敗時は両方維持される。
 2. 独立copyの全IDと内部参照が元Assetと分離され、Blob欠落・ID衝突時は全件拒否される。
