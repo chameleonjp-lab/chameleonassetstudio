@@ -470,6 +470,21 @@
   padding: 0.3rem 0.7rem;
 }
 
+.editor-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.editor-button-row button {
+  align-self: auto;
+}
+
+.editor-text-warning {
+  font-weight: 600;
+  opacity: 1;
+}
+
 .editor-field input[type='color'] {
   width: 3.5rem;
   height: 2rem;

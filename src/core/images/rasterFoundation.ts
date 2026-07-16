@@ -339,3 +339,60 @@ export function moveSelectionPixels(
   const cleared = clearSelectionPixels(buffer, selection);
   return pasteSelectionPixels(cleared, clipboard, target);
 }
+
+/**
+ * RGBAをsource-overで合成して重ねる。pasteSelectionPixelsと異なり透明部分は上書きしないため、
+ * textなど既存pixelsを保ったまま一部だけ確定するstamp操作に使う。
+ */
+export function compositeStampPixels(
+  buffer: PixelBuffer,
+  stamp: SelectionClipboard,
+  target: PointLike,
+): PixelBuffer {
+  assertFinitePoint(target, 'スタンプ');
+  const result = clonePixelBuffer(buffer);
+  const targetX = Math.floor(target.x);
+  const targetY = Math.floor(target.y);
+  for (let y = 0; y < stamp.height; y += 1) {
+    for (let x = 0; x < stamp.width; x += 1) {
+      const destinationX = targetX + x;
+      const destinationY = targetY + y;
+      if (
+        destinationX < 0 ||
+        destinationY < 0 ||
+        destinationX >= buffer.width ||
+        destinationY >= buffer.height
+      ) {
+        continue;
+      }
+      const sourceOffset = (y * stamp.width + x) * 4;
+      const srcAlpha = stamp.data[sourceOffset + 3] / 255;
+      if (srcAlpha <= 0) {
+        continue;
+      }
+      const destinationOffset = offsetFor(result, destinationX, destinationY);
+      if (srcAlpha >= 1) {
+        result.data.set(stamp.data.subarray(sourceOffset, sourceOffset + 4), destinationOffset);
+        continue;
+      }
+      const dstAlpha = result.data[destinationOffset + 3] / 255;
+      const outAlpha = srcAlpha + dstAlpha * (1 - srcAlpha);
+      if (outAlpha <= 0) {
+        result.data[destinationOffset] = 0;
+        result.data[destinationOffset + 1] = 0;
+        result.data[destinationOffset + 2] = 0;
+        result.data[destinationOffset + 3] = 0;
+        continue;
+      }
+      for (let channel = 0; channel < 3; channel += 1) {
+        const srcChannel = stamp.data[sourceOffset + channel];
+        const dstChannel = result.data[destinationOffset + channel];
+        result.data[destinationOffset + channel] = Math.round(
+          (srcChannel * srcAlpha + dstChannel * dstAlpha * (1 - srcAlpha)) / outAlpha,
+        );
+      }
+      result.data[destinationOffset + 3] = Math.round(outAlpha * 255);
+    }
+  }
+  return result;
+}

@@ -11,6 +11,7 @@ import {
 } from './operations';
 import {
   clearSelectionPixels,
+  compositeStampPixels,
   drawRasterEllipse,
   drawRasterRect,
   floodFill,
@@ -50,7 +51,8 @@ export type RasterFoundationOperation =
     }
   | { type: 'selectionClear'; selection: RasterSelection }
   | { type: 'selectionPaste'; clipboard: SelectionClipboard; target: PointLike }
-  | { type: 'selectionMove'; selection: RasterSelection; target: PointLike };
+  | { type: 'selectionMove'; selection: RasterSelection; target: PointLike }
+  | { type: 'stampImage'; clipboard: SelectionClipboard; target: PointLike };
 
 export type ImageOperation = LegacyImageOperation | RasterFoundationOperation;
 
@@ -97,6 +99,9 @@ export function applyImageOperation(
     case 'selectionMove':
       result = moveSelectionPixels(buffer, operation.selection, operation.target);
       break;
+    case 'stampImage':
+      result = compositeStampPixels(buffer, operation.clipboard, operation.target);
+      break;
     default:
       return applyLegacyOperation(buffer, operation, onProgress);
   }
@@ -120,6 +125,8 @@ export function imageOperationLabel(operation: ImageOperation): string {
       return '選択範囲を複製';
     case 'selectionMove':
       return '選択範囲を移動';
+    case 'stampImage':
+      return 'テキストを確定';
     default:
       return legacyOperationLabel(operation);
   }

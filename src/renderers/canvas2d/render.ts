@@ -80,13 +80,19 @@ function drawLayer(ctx: CanvasRenderingContext2D, view: ViewTransform, entry: Re
   ctx.translate(center.x, center.y);
   ctx.rotate((transform.rotation * Math.PI) / 180);
   ctx.scale(transform.scale.x * view.scale, transform.scale.y * view.scale);
-  ctx.drawImage(
-    bitmap,
-    -textureSize.width / 2,
-    -textureSize.height / 2,
-    textureSize.width,
-    textureSize.height,
-  );
+  try {
+    ctx.drawImage(
+      bitmap,
+      -textureSize.width / 2,
+      -textureSize.height / 2,
+      textureSize.width,
+      textureSize.height,
+    );
+  } catch {
+    // asset切り替え直後、直前のbitmapが読み込みeffectのcleanupでcloseされた直後の
+    // 1フレームだけ発生し得る（新しいbitmapへの差し替えは次のrenderで反映される）。
+    // 描画をskipするだけで安全なため、ここで握りつぶす。
+  }
   ctx.restore();
 }
 
