@@ -1,11 +1,12 @@
 # 2D-2-PROJECT + 2D-2-CREATE C-slice 実装報告
 
 作成日: 2026-07-16
-状態: `implementation completed / Draft PR #94 / CI Run #276 success / review pending`
+状態: `C slice completed / PR #94 merged / CI Run #277 success / reviewed`
 正式work package: `2D-2-PROJECT + 2D-2-CREATE`
 採用判断: `C`（現行0.1.0の独立Asset管理を先行し、Family / Variantを別契約へ保留）
 基準main: `359cb9c9d0918df95d1fc52db6d472639f0f3703`
-CI確認対象head: `f8c677b425e4184b1ab57c3ee0217c6e92654a52`
+最終head: `c44246cbcf9f038c8089cbba4f79528165d3b553`
+merge commit: `5b0d16478d0b0140e6e56db63b5b89c52fd0f608`
 
 ## 1. 実装範囲
 
@@ -50,6 +51,8 @@ CI Run #276（workflow run ID: `29461197731`）は、Draft PR #94のhead
 | `e2e` | success。84 tests中83 passed、既存`canvas.spec.ts`の1件は初回失敗後のretryで成功し、Playwright上はflakyとして記録された。今回追加した`create.spec.ts`を含むjob全体の最終conclusionはsuccess。 |
 
 文書同期後のheadについても同じDraft PR #94でCIを再確認する。CI失敗は同じbranch・同じPRで補修する。
+
+文書同期後の最終head `c44246cbcf9f038c8089cbba4f79528165d3b553`に対するCI Run #277（workflow run ID: `29461350701`）も全job successとなった。unit testは46 files / 401 tests、E2Eは84 tests passed / flaky 0である。PR #94はmerge commit `5b0d16478d0b0140e6e56db63b5b89c52fd0f608`でmainへmerge済みで、2026-07-16にユーザーからOpus reviewと人間reviewの完了が報告された。追加の対応指摘は引き継がれていない。
 
 ## 5. 完了条件
 
