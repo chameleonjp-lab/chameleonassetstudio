@@ -1,7 +1,7 @@
 # 2D-2-PROJECT + 2D-2-CREATE 契約監査・実装計画
 
 作成日: 2026-07-16
-状態: `C accepted / independent-Asset implementation in progress / Family-Variant deferred`
+状態: `C slice completed / Family-Variant and remaining CREATE deferred`
 正式work package: `2D-2-PROJECT + 2D-2-CREATE`
 基準main: `f1fcdf1fbd05f33810206ee0ebfbfd49cba784f0`（PR #92 merge）
 直前work package: `2D-1B-GATE` completed
@@ -69,6 +69,8 @@
 3. 独立Asset複製を、Project、Asset、TextureRef、Blobの整合を維持して追加する。
 4. Asset listに型と複製操作を表示し、複数Assetの選択、保存、reload、`.casproj`退避をE2Eで確認する。
 5. unit test、E2E、完了報告を追加する。
+
+PR #94はmerge commit `5b0d16478d0b0140e6e56db63b5b89c52fd0f608`でmainへmerge済みである。最終head `c44246cbcf9f038c8089cbba4f79528165d3b553`のCI Run #277は全job successで、unit test 401件、E2E 84件が成功した。2026-07-16にOpus reviewと人間reviewの完了が報告された。この完了は現行0.1.0の独立Asset管理sliceを対象とし、Family / Variantまたは`2D-2-CREATE`全体の完成を意味しない。
 
 このsliceではschema、data version、DB version、IndexedDB layout、migration、`.casproj`内部構成、export ZIP内部構成、dependenciesを変更しない。
 
