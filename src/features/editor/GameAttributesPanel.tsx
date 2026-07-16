@@ -5,6 +5,7 @@ import {
   setGameAttribute,
   type Asset,
 } from '../../core/model';
+import { InspectionPanel } from './InspectionPanel';
 
 interface GameAttributesPanelProps {
   asset: Asset;
@@ -47,6 +48,9 @@ export function GameAttributesPanel({ asset, onCommit }: GameAttributesPanelProp
 
   return (
     <div className="gamedata-panel">
+      <InspectionPanel asset={asset} />
+
+      <h4 className="gamedata-heading">属性一覧</h4>
       {entries.length > 0 && (
         <ul className="gamedata-list" aria-label="ゲーム属性一覧">
           {entries.map(([key, value]) => (
