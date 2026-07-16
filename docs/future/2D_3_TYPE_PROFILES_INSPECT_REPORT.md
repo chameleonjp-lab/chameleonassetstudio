@@ -1,13 +1,14 @@
 # 2D-3-TYPE-PROFILES + 2D-3-INSPECT 実装報告
 
 作成日: 2026-07-16
-状態: `implementation completed on branch / Draft PR #97 / CI pending`
+状態: `implementation completed / Draft PR #97 / CI Run #291 success / review pending`
 正式work package: `2D-3-TYPE-PROFILES + 2D-3-INSPECT`
 採用判断: `A+B+X`
 契約PR: #96（merge commit `2e35d4d4d8913198ce0fffe7f52c0256fc9f2258`）
 実装branch: `agent/2d3-type-profiles-inspector`
 実装Draft PR: #97
 実装基準main: `ab66aa8b0f5b374887e18dea16bcb3b9821e41f9`
+CI確認対象head: `93ad555d06e5a2b3d88a6692a8df6aa6fc561577`
 
 ## 1. 実装した内容
 
@@ -91,11 +92,19 @@ inspectorのseverityを保存またはexportの停止判定APIにはしていな
 
 ### CI
 
-Draft PR #97のGitHub Actionsで、lint、format、build、unit test、E2Eを確認する。失敗した場合は同じbranch・同じPRで補修し、本報告の状態と証拠を更新する。
+CI Run #291（workflow run ID: `29466690493`）は、head `93ad555d06e5a2b3d88a6692a8df6aa6fc561577`について次をすべて成功した。
+
+- lint
+- format check
+- build
+- unit test
+- E2E
+
+本報告の証拠同期後のheadについても、同じDraft PR #97で全job成功を確認する。失敗した場合は同じbranch・同じPRで補修する。
 
 ## 4. 完了前に必要な確認
 
-- GitHub Actions全job成功
+- 証拠同期後headのGitHub Actions全job成功
 - Opus 4.8 review（利用可能な場合）
 - 人間確認
 
