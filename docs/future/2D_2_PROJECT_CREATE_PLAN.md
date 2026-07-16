@@ -1,0 +1,93 @@
+# 2D-2-PROJECT + 2D-2-CREATE 契約監査・実装計画
+
+作成日: 2026-07-16
+状態: `contract audit / Family-Variant decision pending`
+正式work package: `2D-2-PROJECT + 2D-2-CREATE`
+基準main: `f1fcdf1fbd05f33810206ee0ebfbfd49cba784f0`（PR #92 merge）
+直前work package: `2D-1B-GATE` completed
+
+## 1. 目的
+
+1つのProject内で複数Assetを安全に作成・選択・管理できる入口を完成させ、Family / Variantを導入する場合のデータ意味と互換性境界を実装前に固定する。同時に、PR #55の空キャンバス作成を再監査し、`2D-2-CREATE`に残る複製、型別template、図形、パーツ、文字からの作成を後続実装へ分割する。
+
+本計画はwork packageを新設しない。正式な`2D-2-PROJECT + 2D-2-CREATE`の中で、現行0.1.0を変えずに実装できる範囲と、人間判断後にだけ変更できる範囲を分ける。
+
+## 2. 着手条件
+
+- PR #91 merge commit `71c568d6c38846d5795b5e70fdea476336596e57`
+- PR #91最終head `51a5a2baf6171e80a52fa5823df25fb5d33f95d8`
+- CI Run #269: lint、format、build、unit test、E2Eがすべてsuccess
+- 2026-07-16: ユーザー報告によりOpus 4.8 review完了・問題なし。少なくとも`BLOCKER 0 / MUST 0`、その他の指摘報告なし
+- 2026-07-16: 上記結果を人間確認し、後続対応開始を明示
+- PR #92 merge commit `f1fcdf1fbd05f33810206ee0ebfbfd49cba784f0`
+- CI Run #271: success
+- open PR: 0件
+
+これにより`2D-1B-GATE`の完了条件が揃い、2D-2 / 2D-3の正式キューを解禁する。3D / WebGPUは2D Pro Gateの人間承認まで解禁しない。
+
+## 3. 現行実装監査
+
+### 3.1 既に成立する範囲
+
+- `Project.assets`は複数の`ProjectAssetEntry`を保持し、Editorは複数Assetを読み込んで選択できる。
+- 画像batch import、空Asset作成、左右反転copyは、Project要約、新Asset、必要なBlobを`saveProjectBundle`で原子的に追加する。
+- 左右反転copyはADR-0003どおり、元との派生関係や自動追従を持たない独立Assetを作る。
+- Asset削除はautosaveをflushした後、Project参照、Asset、Blob、snapshotを`deleteAssetBundle`で単一transaction更新する。PR #55時点の「完全な単一transactionが未完了」という記録は後続の保存基盤補修により解消済みである。
+- `saveProjectBundle`はProject内のAsset ID重複、保存対象Assetの参照漏れ、TextureRefとBlobの不整合、既存ID / Blob key衝突を拒否する。
+
+### 3.2 本実装前に直すべき独立Asset管理の欠落
+
+| 項目 | 現状 | 必要な契約 |
+|---|---|---|
+| Project要約同期 | `saveAsset` / `saveAssetRevision`はAsset本体だけを保存し、`saveProjectBundle`も新規追加時にProject要約とAsset metadataの一致までは検査しない。Asset種別変更などの後に`Project.assets`要約が古くなり、`.casproj`整合検査で拒否され得る。 | 名前、表示名、asset typeを変える操作はProject要約とAssetを同一transactionで確定し、新規追加時もmetadata一致を検査する。失敗時は両方とも直前正本を維持する。 |
+| Asset管理UI | Editor下部の平坦な選択listだけで、型表示、明示的複製、並び替え、検索・絞り込みがない。 | 最初の実装では選択、型表示、独立複製、複数Assetのreload整合を必須にする。検索・並び替えはAsset数と端末UIの検証結果で採否を決める。 |
+| 作成size | 空Assetは32 / 64 / 128 / 256の正方形だけを選べる。 | 矩形presetと安全な自由size入力を追加し、INPUT-SAFETY上限、正の整数、失敗時無変更を共有する。 |
+| 型別template | characterだけが初期colliderを持ち、他型は実質空templateである。 | 各型の必須情報は`2D-3-TYPE-PROFILES`判断と重複させない。2D-2では作成入口と明示template適用に限定する。 |
+| 図形・文字 | 作成入口として未実装。後続`2D-2-RASTER`にもshape / textが定義されている。 | 2D-2-CREATEでは新規Assetへ最初の編集要素を置く入口まで、編集tool本体は`2D-2-RASTER`へ送る。 |
+| パーツ | Asset作成後のPart追加は存在するが、パーツから開始する作成flowがない。 | 初期Part構成を選べる入口と、既存Part編集機能を再利用する。 |
+
+## 4. Family / Variantの停止境界
+
+現行の`Project` / `Asset`型、JSON Schema、`.casproj`にはFamily / Variantが存在しない。ADR-0003は、導入時にadditive設計または安全なmigration、同期範囲、手動調整保護、複製・反転・色違いとの関係を別設計PRで決め、Fable5または人間判断とOpus 4.8互換性reviewを得ることを要求する。
+
+したがって、次のどれかを人間が選ぶまでFamily / Variantのproduct code、schema、version、migration、可搬形式を変更しない。
+
+| 選択肢 | 方針 | 主な利点 / 制約 |
+|---|---|---|
+| `A` | Project側にadditiveなFamily / Variant構造を置き、既存Asset IDをmemberとして参照する。 | 関係の正本を一箇所にできる。Project schema、`.casproj`、保存transaction、migration判断が必要。 |
+| `B` | Asset側にoptionalなfamily / variant metadataを置く。 | Asset単位で読めるが、重複・不整合membershipを防ぐ横断検査が必要。Asset schema、`.casproj`、migration判断が必要。 |
+| `C`（推奨） | まず現行0.1.0の独立Asset管理とCREATE不足を実装し、Family / Variant設計を別の契約変更として保留する。 | schema / versionを変えず最小リスクで進められる。ただし`2D-2-PROJECT`全体はFamily / Variant実装までpartialのまま。 |
+
+`A`または`B`を選ぶ場合は、ADR-0003の再検討条件を満たす設計PRを先に作る。`C`を選ぶ場合も、独立copyをlinked variantと表示せず、Family / Variant完成を主張しない。
+
+## 5. 最初の実装slice候補
+
+人間が`C`を選んだ場合、最初のproduct code PRは次を同じDraft PRで扱う。
+
+1. Project要約とAsset metadataを原子的に同期する高水準保存APIを追加し、`saveProjectBundle`の新規追加時にもmetadata一致を検査する。
+2. Asset種別変更をそのAPIへ移し、成功後だけReact stateとHistoryを確定する。
+3. 独立Asset複製を、Project、Asset、TextureRef、Blobの整合を維持して追加する。
+4. Asset listに型と複製操作を表示し、複数Assetの選択、保存、reload、`.casproj`退避をE2Eで確認する。
+5. unit test、E2E、完了報告を追加する。
+
+このsliceではschema、data version、DB version、IndexedDB layout、migration、`.casproj`内部構成、export ZIP内部構成、dependenciesを変更しない。
+
+## 6. 後続slice
+
+- 矩形preset / 自由sizeとINPUT-SAFETY境界
+- 型別template入口。ただし型固有の必須情報は`2D-3-TYPE-PROFILES`契約後
+- パーツから開始するflow
+- 図形・文字を初期要素として作る入口。編集tool本体は`2D-2-RASTER`
+- Family / Variantは人間判断と互換性review後
+
+## 7. 維持する安全条件
+
+- 復元、trash purge、autosave、History、snapshot、`saveProjectBundle`の2D-1B確定方針を後退させない。
+- 保存失敗時はProject要約、Asset、Blob、画面stateの直前正本を維持する。
+- 新しいcopyはID、TextureRef ID、Blob keyを一貫して更新し、既存正本と衝突した場合は全件拒否する。
+- source Blobは無断上書き・削除せず、copy後の独立性を明示する。
+- 2D Pro Gate完了まで3D / WebGPUへ進まない。
+
+## 8. Draft PR運用
+
+code、tests、docs、CI修正、Opus 4.8 review対応は同じbranch・同じDraft PRへ入れる。ユーザーの明示指示前にready化、merge、auto-mergeを行わない。

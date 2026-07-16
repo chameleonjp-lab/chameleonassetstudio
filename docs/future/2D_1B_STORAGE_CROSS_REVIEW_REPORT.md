@@ -16,7 +16,7 @@ PR #84とfollow-up PR #85により、所有境界、復元入口、metadata-only
 
 - `BLOCKER`: 0件
 - `MUST`: 0件
-- `SHOULD`: 2件。`2D-1B-GATE`前の追跡項目として維持する。
+- `SHOULD`: 2件。PR #91で補修し、`2D-1B-GATE`の正式完了まで追跡を完了した。
 - `NOTE`: 2件。計画済みの後続work packageへ維持する。
 
 PR #85はmainへmerge済みであり、`2D-1B-CAPACITY`の開始条件は成立した。保存基盤横断レビューはcompletedとし、CAPACITYの契約・実装へ進む。
@@ -40,7 +40,7 @@ PR #84は検証完了前にmainへmergeされたため、PR #85で一時診断wo
 |---|---:|---:|---|
 | `BLOCKER` | 4 | 0 | 解消済み。CAPACITY開始可 |
 | `MUST` | 2 | 0 | 解消済み |
-| `SHOULD` | 2 | 2 | `2D-1B-GATE`前に対応先を維持 |
+| `SHOULD` | 2 | 0 | PR #91で補修し、Gate review・人間確認まで完了 |
 | `NOTE` | 2 | 2 | 計画済み後続範囲 |
 
 ## 4. 解消したBLOCKER
@@ -216,4 +216,4 @@ storage estimate、persistent storage、予防警告、容量不足時の`.caspr
 3. 同じCAPACITY Draft PRでcode、unit test、E2E、完了報告を実装する。
 4. CI成功後にreview-onlyを行う。
 
-`2D-1B-GATE`の必須review・人間確認を含む正式完了前に2D-2 / 2D-3本実装を開始せず、2D Pro Gate承認前に3Dを開始しない。
+`2D-1B-GATE`はPR #91 / CI Run #269、2026-07-16のOpus 4.8 review問題なし報告、人間確認により正式完了した。2D-2 / 2D-3は正式キューに従って開始できるが、2D Pro Gate承認前に3Dを開始しない。
