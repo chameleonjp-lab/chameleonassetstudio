@@ -1,13 +1,15 @@
 # 2D-3-TYPE-PROFILES + 2D-3-INSPECT 契約監査・実装計画
 
 作成日: 2026-07-16
-状態: `A+B+X accepted / implementation completed / Draft PR #97 / CI Run #291 success / review pending`
+状態: `A+B+X completed / PR #97 merged / CI Run #293 success / reviewed`
 正式work package: `2D-3-TYPE-PROFILES + 2D-3-INSPECT`
 契約基準main: `2e35d4d4d8913198ce0fffe7f52c0256fc9f2258`（PR #96 merge）
 実装基準main: `ab66aa8b0f5b374887e18dea16bcb3b9821e41f9`
 直前slice: `2D-2-PROJECT + 2D-2-CREATE` accepted C-slice completed
 採用判断: `A+B+X`
-実装Draft PR: #97
+実装PR: #97
+最終head: `3e237e3186317095c73cdf411aa13d39e4ac8e6c`
+merge commit: `500397ac7d04b23ac88cd17a6e79843c8405a557`
 
 ## 1. 目的
 
@@ -93,28 +95,27 @@ inspectorはissueを計算して表示するだけとし、Asset、Project、Blo
 
 共通の参照整合性は型profileとは別の意味検査として共有する。型別issueは、少なくとも安定したcode、severity、短いmessage、理由、修正方法、対象pathを持つ一時的な計算結果とし、Asset JSON、Project、`.casproj`へ保存しない。
 
-## 9. 最初の実装slice
+## 9. 実装結果
 
-最初のproduct code Draft PRは次を扱う。
+PR #97で次を実装した。
 
-1. side effectのない純粋なAsset inspectorと安定issue codeを追加する。
-2. 現行6種のaccepted profileだけを実装し、構造検証、意味検証、出力preflightを混同しない。
-3. Editorへ理由・修正方法付きの検査結果一覧を追加する。
-4. issue選択で対象パネルへ案内できる範囲を明示し、自動修復は行わない。
-5. 保存、autosave、reload、`.casproj`、exportがinspector issueによって新たに停止しないことを回帰テストで固定する。
-6. 6種のunit fixture、非変更回帰、E2E、ユーザーガイド、実装報告を追加する。
-7. 同じbranch・同じDraft PRでCIを成功させ、Opus reviewと人間確認を待つ。
+1. side effectのない純粋なAsset inspectorと安定issue code。
+2. 現行6種のaccepted profileと共通参照検査。
+3. Editorの理由・修正方法・対象path付き検査結果一覧。
+4. 自動修復を行わず、既存Editorで手動修正すると結果が再計算される表示。
+5. 保存、autosave、reload、`.casproj`、exportを新たに停止しない境界。
+6. 6種のunit fixture、非変更回帰、E2E、ユーザーガイド、実装報告。
 
-Draft PR #97では、`src/core/model/assetInspection.ts`、Editor表示、6種のunit test、E2E、`docs/future/2D_3_INSPECT_USER_GUIDE.md`、`docs/future/2D_3_TYPE_PROFILES_INSPECT_REPORT.md`を同じbranchへ実装した。head `93ad555d06e5a2b3d88a6692a8df6aa6fc561577`のCI Run #291はlint、format、build、unit test、E2Eを全成功した。証拠同期後のheadも同じPRで確認し、Opus reviewと人間確認まではDraftを維持する。
+最終head `3e237e3186317095c73cdf411aa13d39e4ac8e6c`のCI Run #293（workflow run ID `29466869457`）はlint、format、build、unit test、E2Eを全成功した。PR #97はmerge commit `500397ac7d04b23ac88cd17a6e79843c8405a557`でmainへmerge済みである。2026-07-16にユーザーからOpus 4.8 reviewと人間確認の完了・問題なしが報告され、追加の対応指摘は引き継がれていない。
 
 ## 10. 完了条件
 
-1. `A+B+X`が採用判断として文書に記録される。
-2. 現行6種について、必須不足・矛盾と推奨warningが分離される。
-3. 各issueが不足情報、理由、修正方法、対象を表示する。
-4. inspector実行がAsset、Project、Blob、History、保存状態を変更しない。
-5. inspector issueが保存、autosave、`.casproj`、exportを新たに停止しない。
-6. UI / iconを対応済みと扱わず、専用schema契約まで保留する。
-7. accepted範囲外のschema、version、migration、preflight、Family / Variantを実装しない。
-8. unit test、E2E、lint、format、build、GitHub Actionsが成功する。
-9. Opus reviewと人間確認前にready化、merge、auto-mergeを行わない。
+1. `A+B+X`が採用判断として文書に記録される。完了。
+2. 現行6種について、必須不足・矛盾と推奨warningが分離される。完了。
+3. 各issueが不足情報、理由、修正方法、対象を表示する。完了。
+4. inspector実行がAsset、Project、Blob、History、保存状態を変更しない。完了。
+5. inspector issueが保存、autosave、`.casproj`、exportを新たに停止しない。完了。
+6. UI / iconを対応済みと扱わず、専用schema契約まで保留する。完了。
+7. accepted範囲外のschema、version、migration、preflight、Family / Variantを実装しない。完了。
+8. unit test、E2E、lint、format、build、GitHub Actionsが成功する。完了。
+9. Opus reviewと人間確認を行う。完了。
