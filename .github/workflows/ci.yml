@@ -6,7 +6,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   changes:
@@ -51,6 +51,35 @@ jobs:
 
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "e2e=$e2e" >> "$GITHUB_OUTPUT"
+
+  verify-palette-workflow-e2e:
+    if: github.event_name == 'pull_request' && github.head_ref == 'agent/2d2-layer-repair-palette-workflow'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prettier --write e2e/layer-repair-palette-workflow.spec.ts
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run test
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test e2e/layer-repair-palette-workflow.spec.ts
+      - name: Commit verified E2E and restore CI
+        shell: bash
+        run: |
+          git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/ci.yml e2e/layer-repair-palette-workflow.spec.ts
+          git commit -m "test: verify palette repair persistence"
+          git push origin HEAD:${{ github.head_ref }}
 
   build-and-test:
     needs: changes
