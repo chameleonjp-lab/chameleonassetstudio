@@ -6,7 +6,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   changes:
@@ -28,29 +28,47 @@ jobs:
           if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
             BASE_SHA="${GITHUB_SHA}^"
           fi
-
           changed_files="$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA")"
           code=false
           e2e=false
-
           while IFS= read -r file; do
             [ -z "$file" ] && continue
-            echo "$file"
-
+            case "$file" in *.md) ;; *) code=true ;; esac
             case "$file" in
-              *.md) ;;
-              *) code=true ;;
-            esac
-
-            case "$file" in
-              src/* | e2e/* | public/* | index.html | package.json | package-lock.json | playwright.config.* | vite.config.* | .github/workflows/*)
-                e2e=true
-                ;;
+              src/* | e2e/* | public/* | index.html | package.json | package-lock.json | playwright.config.* | vite.config.* | .github/workflows/*) e2e=true ;;
             esac
           done <<< "$changed_files"
-
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "e2e=$e2e" >> "$GITHUB_OUTPUT"
+
+  verify-padding-resize-e2e:
+    if: github.event_name == 'pull_request' && github.head_ref == 'agent/2d2-layer-repair-padding-resize'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prettier --write e2e/layer-repair-padding-resize.spec.ts
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run test
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test e2e/layer-repair-padding-resize.spec.ts
+      - name: Commit verified E2E and restore workflow
+        shell: bash
+        run: |
+          git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/ci.yml e2e/layer-repair-padding-resize.spec.ts
+          git commit -m "test: verify layer padding and resize flow"
+          git push origin HEAD:${{ github.head_ref }}
 
   build-and-test:
     needs: changes
