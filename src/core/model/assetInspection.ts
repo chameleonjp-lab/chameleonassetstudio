@@ -27,7 +27,7 @@ export type InspectionPanelTarget =
   | 'parts';
 
 export interface InspectionTarget {
-  /** Asset 内の確認位置。保存される JSON path ではなく、検査表示用の安定した位置表現。 */
+  /** Asset 内の確認位置。検査表示用の安定した位置表現であり、保存しない。 */
   path: string;
   /** ユーザーが画面上で探せる表示名。 */
   label: string;
@@ -35,17 +35,14 @@ export interface InspectionTarget {
 }
 
 export interface InspectionIssue {
-  /** React key などに使える、1 回の検査結果内で一意な識別子。 */
+  /** 1回の検査結果内で一意な識別子。 */
   id: string;
   /** テスト・文書・将来の案内処理で参照する安定したコード。 */
   code: string;
   severity: InspectionSeverity;
   category: InspectionCategory;
-  /** 一覧で最初に読む短い説明。 */
   message: string;
-  /** なぜ確認が必要か。 */
   reason: string;
-  /** ユーザーが手動で行う修正または確認方法。 */
   action: string;
   target: InspectionTarget;
 }
@@ -56,8 +53,7 @@ const SEVERITY_RANK: Record<InspectionSeverity, number> = {
   info: 2,
 };
 
-interface IssueInput extends Omit<InspectionIssue, 'id'> {}
-
+type IssueInput = Omit<InspectionIssue, 'id'>;
 type PushIssue = (issue: IssueInput) => void;
 
 function createIssueCollector(): { issues: InspectionIssue[]; push: PushIssue } {
@@ -81,7 +77,7 @@ function unique(values: string[]): string[] {
   return [...new Set(values)];
 }
 
-function duplicateValues<T>(items: T[], valueOf: (item: T) => string): string[] {
+function duplicateValues<T>(items: readonly T[], valueOf: (item: T) => string): string[] {
   const counts = new Map<string, number>();
   for (const item of items) {
     const value = valueOf(item);
@@ -97,7 +93,7 @@ function inspectDuplicateIds(asset: Asset, push: PushIssue): void {
   const collections: Array<{
     name: string;
     path: string;
-    values: Array<{ id: string }>;
+    values: ReadonlyArray<{ id: string }>;
     panel: InspectionPanelTarget;
   }> = [
     { name: 'テクスチャ', path: 'textures', values: asset.textures, panel: 'layers' },
@@ -349,13 +345,16 @@ function inspectAnimations(asset: Asset, push: PushIssue): void {
         },
       });
     }
-    if (animation.durationMs !== undefined && animation.durationMs <= 0) {
+    if (
+      animation.durationMs !== undefined &&
+      (!Number.isFinite(animation.durationMs) || animation.durationMs <= 0)
+    ) {
       push({
         code: 'animation.durationInvalid',
         severity: 'error',
         category: 'animation',
         message: `アニメーション「${animation.name}」の再生時間が正しくありません。`,
-        reason: '明示する再生時間は0ミリ秒より大きい必要があります。',
+        reason: '明示する再生時間は0ミリ秒より大きい有限の数である必要があります。',
         action: 'タイムラインで再生時間を正の値に直すか、自動計算を使ってください。',
         target: {
           path: `animations[id=${animation.id}].durationMs`,
@@ -430,7 +429,8 @@ function inspectCharacterProfile(asset: Asset, push: PushIssue): void {
       category: 'collider',
       message: 'キャラクター用の本体判定がありません。',
       reason: '被弾、接地、押し戻しなどで本体範囲が必要になることが多いためです。',
-      action: 'ゲーム情報で用途「body」の当たり判定を追加してください。不要な用途なら、そのままでも保存できます。',
+      action:
+        'ゲーム情報で用途「body」の当たり判定を追加してください。不要な用途なら、そのままでも保存できます。',
       target: {
         path: 'colliders[purpose=body]',
         label: 'ゲーム情報 > 当たり判定',
@@ -445,12 +445,9 @@ function inspectCharacterProfile(asset: Asset, push: PushIssue): void {
       category: 'animation',
       message: 'キャラクターのアニメーションがありません。',
       reason: '待機、移動、攻撃などの動きをゲームへ渡せない状態です。',
-      action: '必要な場合はタイムラインでフレームとアニメーションを追加してください。静止素材なら対応不要です。',
-      target: {
-        path: 'animations',
-        label: 'タイムライン',
-        panel: 'timeline',
-      },
+      action:
+        '必要な場合はタイムラインでフレームとアニメーションを追加してください。静止素材なら対応不要です。',
+      target: { path: 'animations', label: 'タイムライン', panel: 'timeline' },
     });
   }
   if (asset.anchors.length === 0) {
@@ -461,11 +458,7 @@ function inspectCharacterProfile(asset: Asset, push: PushIssue): void {
       message: 'キャラクターのアンカーがありません。',
       reason: '武器、手、足、弾の発生位置などを他の素材と合わせる基準点がありません。',
       action: '位置合わせが必要な場合はゲーム情報でアンカーを追加してください。',
-      target: {
-        path: 'anchors',
-        label: 'ゲーム情報 > アンカー',
-        panel: 'game-data',
-      },
+      target: { path: 'anchors', label: 'ゲーム情報 > アンカー', panel: 'game-data' },
     });
   }
 }
@@ -512,7 +505,8 @@ function inspectBackgroundProfile(asset: Asset, push: PushIssue): void {
       category: 'background',
       message: '背景レイヤー設定がありません。',
       reason: '役割、視差速度、ループ方法をゲーム側へ渡せない状態です。',
-      action: '対象レイヤーを選び、背景レイヤー設定を追加してください。静止画としてだけ使う場合は対応不要です。',
+      action:
+        '対象レイヤーを選び、背景レイヤー設定を追加してください。静止画としてだけ使う場合は対応不要です。',
       target: {
         path: 'layers[].background',
         label: '選択中レイヤー > 背景レイヤー設定',
@@ -559,11 +553,7 @@ function inspectTileProfile(asset: Asset, push: PushIssue): void {
       message: 'タイル設定がありません。',
       reason: 'タイル幅、高さ、当たり判定タイプを判定できません。',
       action: 'アセット種別設定で「タイル設定を追加」を押してください。',
-      target: {
-        path: 'tile',
-        label: 'アセット種別 > タイル設定',
-        panel: 'asset-type',
-      },
+      target: { path: 'tile', label: 'アセット種別 > タイル設定', panel: 'asset-type' },
     });
     return;
   }
@@ -707,11 +697,7 @@ function inspectGimmickProfile(asset: Asset, push: PushIssue): void {
       message: 'ギミックの用途タグがありません。',
       reason: 'hazard、platform、obstacleなどの用途をゲーム側で区別しにくくなります。',
       action: 'アセット種別設定で用途に近いタグを追加してください。',
-      target: {
-        path: 'tags',
-        label: 'アセット種別 > ギミック設定',
-        panel: 'asset-type',
-      },
+      target: { path: 'tags', label: 'アセット種別 > ギミック設定', panel: 'asset-type' },
     });
   }
 }
@@ -736,11 +722,7 @@ function inspectEffectProfile(asset: Asset, push: PushIssue): void {
       message: 'エフェクト設定がありません。',
       reason: '種類、再生時間、ループ、合成方法を判定できません。',
       action: 'アセット種別設定で「エフェクト設定を追加」を押してください。',
-      target: {
-        path: 'effect',
-        label: 'アセット種別 > エフェクト設定',
-        panel: 'asset-type',
-      },
+      target: { path: 'effect', label: 'アセット種別 > エフェクト設定', panel: 'asset-type' },
     });
     return;
   }
@@ -769,11 +751,7 @@ function inspectEffectProfile(asset: Asset, push: PushIssue): void {
       message: 'エフェクトのアニメーションがありません。',
       reason: '静止エフェクトとして正しい場合もありますが、時間変化する見た目を再生できません。',
       action: '必要な場合はタイムラインでフレームとアニメーションを追加してください。',
-      target: {
-        path: 'animations',
-        label: 'タイムライン',
-        panel: 'timeline',
-      },
+      target: { path: 'animations', label: 'タイムライン', panel: 'timeline' },
     });
   } else {
     if (asset.animations.some((animation) => animation.loop !== effect.loop)) {
@@ -824,11 +802,7 @@ function inspectEffectProfile(asset: Asset, push: PushIssue): void {
       message: 'エフェクトの発生位置アンカーがありません。',
       reason: '攻撃地点、接触地点、装備位置などへ合わせる基準点がありません。',
       action: '位置合わせが必要な場合はゲーム情報でアンカーを追加してください。',
-      target: {
-        path: 'anchors',
-        label: 'ゲーム情報 > アンカー',
-        panel: 'game-data',
-      },
+      target: { path: 'anchors', label: 'ゲーム情報 > アンカー', panel: 'game-data' },
     });
   }
 }
