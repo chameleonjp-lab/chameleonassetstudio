@@ -79,7 +79,9 @@ function assertOutputSize(width: number, height: number): void {
     throw new ImageOperationError('変更後の画像サイズは1以上の整数にしてください。');
   }
   if (width > MAX_LAYER_IMAGE_EDGE || height > MAX_LAYER_IMAGE_EDGE) {
-    throw new ImageOperationError(`変更後の画像の幅と高さは${MAX_LAYER_IMAGE_EDGE}以下にしてください。`);
+    throw new ImageOperationError(
+      `変更後の画像の幅と高さは${MAX_LAYER_IMAGE_EDGE}以下にしてください。`,
+    );
   }
   if (width * height > MAX_LAYER_IMAGE_PIXELS) {
     throw new ImageOperationError(
@@ -221,7 +223,11 @@ function nearestSourceIndex(targetIndex: number, sourceSize: number, targetSize:
   return Math.min(sourceSize - 1, Math.floor(((targetIndex + 0.5) * sourceSize) / targetSize));
 }
 
-function smoothSample(buffer: PixelBuffer, sourceX: number, sourceY: number): [number, number, number, number] {
+function smoothSample(
+  buffer: PixelBuffer,
+  sourceX: number,
+  sourceY: number,
+): [number, number, number, number] {
   const clampedX = Math.max(0, Math.min(buffer.width - 1, sourceX));
   const clampedY = Math.max(0, Math.min(buffer.height - 1, sourceY));
   const x0 = Math.floor(clampedX);

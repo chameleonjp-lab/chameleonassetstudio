@@ -69,7 +69,8 @@ export type LayerRepairOperation =
       interpolation: LayerResizeInterpolation;
     };
 
-export type ImageOperation = LegacyImageOperation | RasterFoundationOperation | LayerRepairOperation;
+export type ImageOperation =
+  LegacyImageOperation | RasterFoundationOperation | LayerRepairOperation;
 
 export { ImageOperationError };
 export type { PixelBuffer, ProgressCallback };
