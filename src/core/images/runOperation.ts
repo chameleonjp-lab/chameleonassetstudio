@@ -111,9 +111,7 @@ export async function blobToPixelBuffer(blob: Blob): Promise<PixelBuffer> {
             return el;
           })();
     const context = canvas.getContext('2d') as
-      | CanvasRenderingContext2D
-      | OffscreenCanvasRenderingContext2D
-      | null;
+      CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
     if (!context) {
       throw new ImageOperationError('この環境では Canvas 2D が使えません。');
     }
