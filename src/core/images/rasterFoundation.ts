@@ -285,10 +285,7 @@ export function copySelectionPixels(
   return { width, height, data };
 }
 
-export function clearSelectionPixels(
-  buffer: PixelBuffer,
-  selection: RasterSelection,
-): PixelBuffer {
+export function clearSelectionPixels(buffer: PixelBuffer, selection: RasterSelection): PixelBuffer {
   const result = clonePixelBuffer(buffer);
   const bounds = normalizeBounds(buffer, selection.rect);
   for (let y = bounds.top; y < bounds.bottom; y += 1) {
