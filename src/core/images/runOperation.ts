@@ -1,12 +1,12 @@
 import { decodeImageSource } from './decodeImageSource';
 import type { ImageOpsRequest, ImageOpsResponse } from '../../workers/imageOps.worker';
 import {
-  applyOperation,
+  applyImageOperation,
   ImageOperationError,
   type ImageOperation,
   type PixelBuffer,
   type ProgressCallback,
-} from './operations';
+} from './imageOperation';
 
 let worker: Worker | null = null;
 let requestId = 0;
@@ -74,7 +74,7 @@ export function runImageOperation(
   if (!activeWorker) {
     return new Promise((resolve, reject) => {
       try {
-        resolve(applyOperation(buffer, operation, onProgress));
+        resolve(applyImageOperation(buffer, operation, onProgress));
       } catch (error) {
         reject(error instanceof Error ? error : new Error(String(error)));
       }
@@ -111,7 +111,9 @@ export async function blobToPixelBuffer(blob: Blob): Promise<PixelBuffer> {
             return el;
           })();
     const context = canvas.getContext('2d') as
-      CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
+      | CanvasRenderingContext2D
+      | OffscreenCanvasRenderingContext2D
+      | null;
     if (!context) {
       throw new ImageOperationError('この環境では Canvas 2D が使えません。');
     }
@@ -139,7 +141,7 @@ export async function pixelBufferToBlob(buffer: PixelBuffer): Promise<Blob> {
   canvas.height = buffer.height;
   const context = canvas.getContext('2d');
   if (!context) {
-    throw new ImageOperationError('この環境では Canvas 2D が使えません。');
+    throw new ImageOperationError('画像のエンコードに失敗しました。');
   }
   context.putImageData(imageData, 0, 0);
   const blob = await new Promise<Blob | null>((resolve) =>
