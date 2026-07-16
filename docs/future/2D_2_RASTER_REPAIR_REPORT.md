@@ -1,10 +1,11 @@
 # 2D-2-RASTER + 2D-2-REPAIR 実装報告
 
 作成日: 2026-07-16
-状態: `Slice 1 in progress / Draft PR #105 / Worker and revision path integrated`
+状態: `Slice 1 in progress / Draft PR #106 / Canvas drawing UI completed`
 採用判断: `A+X+P+M`
 契約PR: #103（merge commit `6cd9c71ff49466ce054eb8e00b65b6823ca9d964`）
-実装branch: `agent/2d2-raster-foundation-slice1`
+基盤実装PR: #105（merge commit `45c2ce2df277823d7d4e8d92363659794c878504`）
+現在branch: `agent/2d2-raster-foundation-ui`
 
 ## 1. 純粋PixelBuffer基盤
 
@@ -41,31 +42,44 @@ legacy画像操作と新しいraster操作を統合する`imageOperation.ts` fac
 - source Blobを上書きしない
 - 既存legacy操作の挙動とエラー文言を維持する
 
-現時点ではCanvas UIから新operationを発火しないため、保存形式や既存ユーザー操作の挙動は変わらない。
+PR #105のfinal head `98761c48091a1d8e97a7fc35b45bb1be6a618072`について、CI Run #330はlint、format、build、unit test、E2Eを全成功した。
 
-## 4. unit test
+## 4. Canvas raster描画UI
 
-- brushの点列補間、selection外拒否、入力検査
-- fillの連続領域、selection境界
-- rect / ellipseのpixel確定
-- selection copy / clear / paste / move
-- 元buffer不変性
-- copy bufferが永続Asset形式を持たないこと
-- legacy operationが既存dispatcherへ委譲されること
-- raster operationが統合dispatcherから実行され、progress 1を通知すること
-- selection moveが統合operationでもPixelBufferを返すこと
-- 新旧operation label
+Draft PR #106で、純粋処理と改訂保存経路をCanvas上の利用者操作へ接続した。
 
-Worker統合とEditor接続の一時job内でPrettier、lint、build、unit testは成功した。一時的なCI jobは各commit時にmain版へ戻し、最終差分へ残していない。
+- toolbarへ`ブラシ`、`塗りつぶし`、`矩形`、`楕円`を追加
+- 描画色、brush size、fill toleranceを設定できる
+- brushはpointer dragの点列をpreviewし、pointer upで1操作として確定
+- fillは選択中のedit layerをタップして確定
+- rect / ellipseはpointer drag中に半透明previewを表示し、pointer upでpixelsへ確定
+- mouseとtouchで共通のPointer Events経路を使う
+- すべて統合`ImageOperation`からWorker、snapshot、`saveAssetRevision`、Undo / Redoへ到達する
+- shape parameterは保存せず、確定後のpixelsだけを正本とする
 
-## 5. Slice 1の残作業
+限定適用jobのCI Run #332では、Prettier、lint、build、unit test、全E2Eが成功し、補助workflowを除去して3つのUIファイルだけをbranchへ確定した。
 
-- Canvas tool UI
-- raster text preview / commit
-- mouse / touch / iPhone SE E2E
+## 5. focused E2E
 
-これらは同じDraft PR #105で継続する。
+`e2e/raster-canvas-ui.spec.ts`で次を保存済みedit PNGから直接確認する。
 
-## 6. 安全境界
+- 32 x 32透明Assetへのbrush描画
+- 全透明領域へのfill
+- raster rect / ellipse
+- 各操作後に保存済みPNGのalpha画素数が変化する
+- 各操作をUndoすると保存済みPNGが全透明へ戻る
+- Assetのedit TextureRefから対象Blob keyを特定し、source / thumbnailと混同しない
+
+初回CI Run #335はテスト実装側のpreset IDとBlob選択方法に問題があり失敗した。製品コードの失敗ではない。修正版はpreset ID `32`とedit TextureRefを使用し、focused診断CI Run #336で成功した。診断workflowは最終差分から除去した。
+
+## 6. Slice 1の残作業
+
+- single-layer rectangular selectionのCanvas UI、copy / clear / paste / move導線
+- raster textのpreview / commitと「確定後はpixelsになる」説明
+- touch viewportとiPhone SE級viewportを明示した専用E2E
+
+これらは同じ正式work package内の後続Draft PRで継続する。PR #106はCanvas raster描画UIの完成単位としてDraftを維持する。
+
+## 7. 安全境界
 
 schema、version、migration、IndexedDB layout、`.casproj`、export ZIP、dependencies、source Blobを変更しない。selectionやcopy bufferを永続化しない。persistent shape / text、frameずれ修正、Asset canvas resize、game data自動追従は実装しない。
