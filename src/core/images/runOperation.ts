@@ -141,7 +141,7 @@ export async function pixelBufferToBlob(buffer: PixelBuffer): Promise<Blob> {
   canvas.height = buffer.height;
   const context = canvas.getContext('2d');
   if (!context) {
-    throw new ImageOperationError('画像のエンコードに失敗しました。');
+    throw new ImageOperationError('この環境では Canvas 2D が使えません。');
   }
   context.putImageData(imageData, 0, 0);
   const blob = await new Promise<Blob | null>((resolve) =>
