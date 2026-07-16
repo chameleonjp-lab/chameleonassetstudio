@@ -6,7 +6,7 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   changes:
@@ -28,62 +28,52 @@ jobs:
           if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
             BASE_SHA="${GITHUB_SHA}^"
           fi
-
           changed_files="$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA")"
           code=false
           e2e=false
-
           while IFS= read -r file; do
             [ -z "$file" ] && continue
-            echo "$file"
-
+            case "$file" in *.md) ;; *) code=true ;; esac
             case "$file" in
-              *.md) ;;
-              *) code=true ;;
-            esac
-
-            case "$file" in
-              src/* | e2e/* | public/* | index.html | package.json | package-lock.json | playwright.config.* | vite.config.* | .github/workflows/*)
-                e2e=true
-                ;;
+              src/* | e2e/* | public/* | index.html | package.json | package-lock.json | playwright.config.* | vite.config.* | .github/workflows/*) e2e=true ;;
             esac
           done <<< "$changed_files"
-
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "e2e=$e2e" >> "$GITHUB_OUTPUT"
 
-  verify-alpha-trim-e2e:
+  diagnose-alpha-trim-e2e:
     if: github.event_name == 'pull_request' && github.head_ref == 'agent/2d2-layer-repair-alpha-trim'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npx prettier --write e2e/layer-repair-alpha.spec.ts
-      - run: npm run lint
-      - run: npm run build
-      - run: npm run test
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test e2e/layer-repair-alpha.spec.ts
-      - name: Commit verified E2E and restore workflow
+      - name: Run focused alpha trim E2E
+        id: focused
+        continue-on-error: true
         shell: bash
         run: |
-          git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/workflows/ci.yml e2e/layer-repair-alpha.spec.ts
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "test: verify alpha inspection and trim flow"
-            git push origin HEAD:${{ github.head_ref }}
-          fi
+          set -o pipefail
+          npx playwright test e2e/layer-repair-alpha.spec.ts --reporter=line 2>&1 | tee alpha-trim-e2e.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: alpha-trim-e2e-diagnostics
+          path: |
+            alpha-trim-e2e.log
+            test-results
+            playwright-report
+          if-no-files-found: warn
+      - name: Fail when focused E2E failed
+        if: steps.focused.outcome == 'failure'
+        run: exit 1
 
   build-and-test:
     needs: changes
