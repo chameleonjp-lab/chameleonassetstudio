@@ -1,11 +1,13 @@
 # 2D-3-TYPE-PROFILES + 2D-3-INSPECT 契約監査・実装計画
 
 作成日: 2026-07-16
-状態: `A+B+X accepted / implementation ready`
+状態: `A+B+X accepted / implementation completed on branch / Draft PR #97 / CI pending`
 正式work package: `2D-3-TYPE-PROFILES + 2D-3-INSPECT`
-基準main: `dc14616b1c11c64833e8dd5921b27b7459eac9c4`（PR #95 merge）
+契約基準main: `2e35d4d4d8913198ce0fffe7f52c0256fc9f2258`（PR #96 merge）
+実装基準main: `ab66aa8b0f5b374887e18dea16bcb3b9821e41f9`
 直前slice: `2D-2-PROJECT + 2D-2-CREATE` accepted C-slice completed
 採用判断: `A+B+X`
+実装Draft PR: #97
 
 ## 1. 目的
 
@@ -102,6 +104,8 @@ inspectorはissueを計算して表示するだけとし、Asset、Project、Blo
 5. 保存、autosave、reload、`.casproj`、exportがinspector issueによって新たに停止しないことを回帰テストで固定する。
 6. 6種のunit fixture、非変更回帰、E2E、ユーザーガイド、実装報告を追加する。
 7. 同じbranch・同じDraft PRでCIを成功させ、Opus reviewと人間確認を待つ。
+
+Draft PR #97では、`src/core/model/assetInspection.ts`、Editor表示、6種のunit test、E2E、`docs/future/2D_3_INSPECT_USER_GUIDE.md`、`docs/future/2D_3_TYPE_PROFILES_INSPECT_REPORT.md`を同じbranchへ実装した。CI失敗はPR #97で補修し、成功後もOpus reviewと人間確認まではDraftを維持する。
 
 ## 10. 完了条件
 
