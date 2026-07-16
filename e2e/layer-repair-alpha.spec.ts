@@ -121,9 +121,7 @@ async function readRepairState(page: Page): Promise<RepairState> {
           imageSize: { width: bitmap.width, height: bitmap.height },
           layerPosition: layer.transform.position,
           alphaBounds:
-            maxX < 0
-              ? null
-              : { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 },
+            maxX < 0 ? null : { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 },
         };
       } finally {
         bitmap.close();
