@@ -76,6 +76,27 @@ describe('applyImageOperation', () => {
     expect(pixelAt(result, 1, 0)).toEqual([9, 9, 9, 255]);
     expect(pixelAt(result, 0, 0)).toEqual([1, 2, 3, 255]);
   });
+
+  it('paddingとresizeを統合Worker操作として実行する', () => {
+    const source = makeBuffer(2, 2, [10, 20, 30, 255]);
+    const padded = applyImageOperation(source, {
+      type: 'padLayerImage',
+      padding: { top: 1, right: 0, bottom: 0, left: 2 },
+    });
+    expect(padded.width).toBe(4);
+    expect(padded.height).toBe(3);
+    expect(pixelAt(padded, 2, 1)).toEqual([10, 20, 30, 255]);
+
+    const resized = applyImageOperation(source, {
+      type: 'resizeLayerImage',
+      width: 1,
+      height: 1,
+      interpolation: 'nearest',
+    });
+    expect(resized.width).toBe(1);
+    expect(resized.height).toBe(1);
+    expect(pixelAt(resized, 0, 0)).toEqual([10, 20, 30, 255]);
+  });
 });
 
 describe('imageOperationLabel', () => {
@@ -102,5 +123,19 @@ describe('imageOperationLabel', () => {
         target: { x: 0, y: 0 },
       }),
     ).toBe('テキストを確定');
+    expect(
+      imageOperationLabel({
+        type: 'padLayerImage',
+        padding: { top: 1, right: 1, bottom: 1, left: 1 },
+      }),
+    ).toBe('透明paddingを追加');
+    expect(
+      imageOperationLabel({
+        type: 'resizeLayerImage',
+        width: 8,
+        height: 8,
+        interpolation: 'smooth',
+      }),
+    ).toBe('画像をsmoothでリサイズ');
   });
 });
