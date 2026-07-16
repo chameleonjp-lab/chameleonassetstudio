@@ -230,6 +230,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
   // 画像編集パラメータ
   const [eraserSize, setEraserSize] = useState(16);
+  const [brushSize, setBrushSize] = useState(8);
+  const [rasterColor, setRasterColor] = useState('#000000');
+  const [fillTolerance, setFillTolerance] = useState(0);
   const [bgTolerance, setBgTolerance] = useState(30);
   const [hsl, setHsl] = useState({ hue: 0, saturation: 0, lightness: 0 });
   const [replaceFrom, setReplaceFrom] = useState('#ffffff');
@@ -1244,6 +1247,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     { tool: 'pan', label: 'パン' },
     { tool: 'crop', label: 'トリミング' },
     { tool: 'eraser', label: '消しゴム' },
+    { tool: 'brush', label: 'ブラシ' },
+    { tool: 'fill', label: '塗りつぶし' },
+    { tool: 'rect', label: '矩形' },
+    { tool: 'ellipse', label: '楕円' },
     { tool: 'bgpick', label: '背景透過' },
     { tool: 'picker', label: 'スポイト' },
     { tool: 'origin', label: '原点' },
@@ -1339,11 +1346,15 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 tool={tool}
                 selectedLayerId={selectedLayerId}
                 eraserRadius={eraserSize}
+                brushRadius={brushSize}
+                rasterColor={hexToRgb(rasterColor)}
+                fillTolerance={Math.round((fillTolerance / 100) * 255)}
                 onSelectLayer={setSelectedLayerId}
                 onCommitAsset={commitAssetChange}
                 onPickColor={(layerId, point) => void handlePickColor(layerId, point)}
                 onCropCommit={handleCropCommit}
                 onEraseCommit={handleEraseCommit}
+                onRasterCommit={(operation) => void applyImageEdit(operation)}
                 showColliders={showColliders}
                 gridEnabled={gridEnabled}
                 gridSize={gridSize}
@@ -1685,8 +1696,48 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               <h3 className="editor-subheading">画像編集</h3>
               <div className="image-edit-fields">
                 <p className="editor-note">
-                  トリミングはキャンバス上でドラッグ、背景透過は消したい色をクリックします。
+                  ブラシ・矩形・楕円はキャンバス上でドラッグ、塗りつぶしと背景透過は対象をタップします。描画は選択中の編集用画像へ確定され、Undoで戻せます。
                 </p>
+                <fieldset className="editor-fieldset">
+                  <legend>ラスター描画</legend>
+                  <label className="editor-field">
+                    描画色
+                    <input
+                      type="color"
+                      aria-label="描画色"
+                      value={rasterColor}
+                      onChange={(event) => setRasterColor(event.target.value)}
+                    />
+                  </label>
+                  <label className="editor-field">
+                    ブラシサイズ（px）
+                    <input
+                      type="number"
+                      aria-label="ブラシサイズ"
+                      min={1}
+                      max={128}
+                      value={brushSize}
+                      onChange={(event) =>
+                        setBrushSize(Math.min(128, Math.max(1, Number(event.target.value) || 1)))
+                      }
+                    />
+                  </label>
+                  <label className="editor-field">
+                    塗りつぶし許容量（0-100）
+                    <input
+                      type="number"
+                      aria-label="塗りつぶし許容量"
+                      min={0}
+                      max={100}
+                      value={fillTolerance}
+                      onChange={(event) =>
+                        setFillTolerance(
+                          Math.min(100, Math.max(0, Number(event.target.value) || 0)),
+                        )
+                      }
+                    />
+                  </label>
+                </fieldset>
                 <label className="editor-field">
                   背景透過の許容量（0-100）
                   <input
