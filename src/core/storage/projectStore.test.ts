@@ -149,6 +149,18 @@ describe('saveProjectBundle guard', () => {
     ).rejects.toThrow(/対応する TextureRef/);
   });
 
+  it('Project要約と新規Asset metadataの不一致を拒否する', async () => {
+    const asset = assetWithId('asset_bundle_metadata');
+    const project = projectWithAssets('metadata guard', [asset]);
+    project.assets[0] = { ...project.assets[0], assetType: 'tile' };
+
+    await expect(saveProjectBundle(project, [asset], blobsForAsset(asset))).rejects.toThrow(
+      /Asset 要約が保存対象 Asset と一致しません/,
+    );
+    await expect(loadProject(project.id)).rejects.toThrow(/見つかりません/);
+    await expect(loadAsset(asset.id)).rejects.toThrow(/見つかりません/);
+  });
+
   it('既存Assetを新規bundle APIで上書きしない', async () => {
     const asset = assetWithId('asset_existing', 'before');
     const owner = projectWithAssets('owner', [asset]);
@@ -202,6 +214,61 @@ describe('saveProjectBundle guard', () => {
 });
 
 describe('改訂保存', () => {
+  it('metadata保存でProject要約とAssetを原子的に同期する', async () => {
+    const asset = assetWithId('asset_metadata_sync', 'before');
+    const project = projectWithAssets('metadata sync', [asset]);
+    await saveProject(project);
+    await saveAsset(project.id, asset);
+    const next: Asset = {
+      ...asset,
+      name: 'renamed_asset',
+      displayName: 'after',
+      assetType: 'tile',
+      updatedAt: '2026-07-16T01:00:00.000Z',
+    };
+
+    await saveAsset(project.id, next);
+
+    expect((await loadAsset(asset.id)).asset).toEqual(next);
+    expect((await loadProject(project.id)).project.assets[0]).toEqual({
+      id: next.id,
+      name: next.name,
+      displayName: next.displayName,
+      assetType: next.assetType,
+    });
+  });
+
+  it('metadata保存の途中失敗時はProject要約とAssetを両方維持する', async () => {
+    const asset = assetWithId('asset_metadata_atomic', 'before');
+    const project = projectWithAssets('metadata atomic', [asset]);
+    await saveProject(project);
+    await saveAsset(project.id, asset);
+    const next: Asset = { ...asset, displayName: 'after', assetType: 'tile' };
+    const originalPut = IDBObjectStore.prototype.put;
+    const spy = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (
+      this: IDBObjectStore,
+      value: unknown,
+      key?: IDBValidKey,
+    ) {
+      if (this.name === 'assets') {
+        throw new DOMException('fail injection', 'DataError');
+      }
+      return originalPut.call(this, value, key);
+    });
+
+    try {
+      await expect(saveAsset(project.id, next)).rejects.toThrow();
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect((await loadAsset(asset.id)).asset.displayName).toBe('before');
+    expect((await loadProject(project.id)).project.assets[0]).toMatchObject({
+      displayName: 'before',
+      assetType: asset.assetType,
+    });
+  });
+
   it('Assetとedit Blobを同じ改訂で更新しsource Blobを維持する', async () => {
     const asset = assetWithId('asset_revision');
     const project = projectWithAssets('revision', [asset]);
@@ -233,6 +300,7 @@ describe('改訂保存', () => {
       new Uint8Array([99]),
     );
     expect(new Uint8Array(await (await loadBlob(sourceKey))!.arrayBuffer())).toEqual(sourceBefore);
+    expect((await loadProject(project.id)).project.assets[0].displayName).toBe('after');
   });
 });
 

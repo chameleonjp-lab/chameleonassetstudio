@@ -1,4 +1,4 @@
-import type { Asset, Project, TextureRef } from '../model';
+import type { Asset, Project, ProjectAssetEntry, TextureRef } from '../model';
 import { migrateAsset, migrateProject } from '../model';
 import { validateAsset, validateProject } from '../schema/validate';
 import {
@@ -99,6 +99,68 @@ function assertTextureRefsUnchanged(previousAsset: Asset, nextAsset: Asset): voi
       throw new StorageError('TextureRef を変更する保存には saveAssetRevision を使用してください');
     }
   }
+}
+
+function projectEntryForAsset(asset: Asset): ProjectAssetEntry {
+  return {
+    id: asset.id,
+    name: asset.name,
+    displayName: asset.displayName,
+    assetType: asset.assetType,
+  };
+}
+
+function projectEntryMatchesAsset(entry: ProjectAssetEntry, asset: Asset): boolean {
+  return (
+    entry.id === asset.id &&
+    entry.name === asset.name &&
+    entry.displayName === asset.displayName &&
+    entry.assetType === asset.assetType
+  );
+}
+
+function assertProjectEntryMatchesAsset(entry: ProjectAssetEntry, asset: Asset): void {
+  if (!projectEntryMatchesAsset(entry, asset)) {
+    throw new StorageError(`Project の Asset 要約が保存対象 Asset と一致しません: ${asset.id}`);
+  }
+}
+
+function latestUpdatedAt(left: string, right: string): string {
+  return left < right ? right : left;
+}
+
+async function syncProjectAssetEntryInTx(
+  tx: IDBTransaction,
+  projectId: string,
+  asset: Asset,
+): Promise<Project> {
+  const project = await requestToPromise(
+    tx.objectStore(STORE_PROJECTS).get(projectId) as IDBRequest<Project | undefined>,
+  );
+  if (!project) {
+    throw new StorageError(`指定 Project（id: ${projectId}）が見つかりません`);
+  }
+  const matches = project.assets.filter((entry) => entry.id === asset.id);
+  if (matches.length !== 1) {
+    throw new StorageError(
+      matches.length === 0
+        ? `保存対象 Asset（id: ${asset.id}）が Project から参照されていません`
+        : `Project に同じ Asset ID が複数参照されています: ${asset.id}`,
+    );
+  }
+  const nextProject: Project = {
+    ...project,
+    assets: project.assets.map((entry) =>
+      entry.id === asset.id ? projectEntryForAsset(asset) : entry,
+    ),
+    updatedAt: latestUpdatedAt(project.updatedAt, asset.updatedAt),
+  };
+  const result = validateProject(nextProject);
+  if (!result.valid) {
+    throw new StorageError(formatValidationErrors('project', result.errors));
+  }
+  await requestToPromise(tx.objectStore(STORE_PROJECTS).put(nextProject));
+  return nextProject;
 }
 
 export async function saveProject(project: Project): Promise<void> {
@@ -210,6 +272,8 @@ function assertBundleReferences(
     if (!projectAssetIds.has(asset.id)) {
       throw new StorageError(`保存対象 Asset が Project から参照されていません: ${asset.id}`);
     }
+    const entry = project.assets.find((candidate) => candidate.id === asset.id)!;
+    assertProjectEntryMatchesAsset(entry, asset);
     const textureIndex = buildTextureIndex(asset, `Asset（id: ${asset.id}）`);
     for (const key of textureIndex.byKey.keys()) {
       expectedBlobKeys.add(key);
@@ -259,6 +323,14 @@ export async function saveProjectBundle(
     const assetStore = tx.objectStore(STORE_ASSETS);
     const blobStore = tx.objectStore(STORE_BLOBS);
 
+    const inputAssets = new Map(assets.map((asset) => [asset.id, asset]));
+    const existingProjectRecords = await requestToPromise(
+      assetStore.index(INDEX_BY_PROJECT).getAll(project.id) as IDBRequest<StoredAssetRecord[]>,
+    );
+    const resolvedAssets = new Map(
+      existingProjectRecords.map((record) => [record.id, record.data] as const),
+    );
+
     for (const asset of assets) {
       const existing = await requestToPromise(
         assetStore.get(asset.id) as IDBRequest<StoredAssetRecord | undefined>,
@@ -268,6 +340,19 @@ export async function saveProjectBundle(
           `同じ Asset ID（${asset.id}）が既に保存されています。既存 Asset の変更には saveAssetRevision を使用してください`,
         );
       }
+      resolvedAssets.set(asset.id, asset);
+    }
+    if (resolvedAssets.size !== project.assets.length) {
+      throw new StorageError(
+        'Project の Asset 参照と保存済み・保存対象 Asset の集合が一致しません',
+      );
+    }
+    for (const entry of project.assets) {
+      const asset = inputAssets.get(entry.id) ?? resolvedAssets.get(entry.id);
+      if (!asset) {
+        throw new StorageError(`Project が参照する Asset が見つかりません: ${entry.id}`);
+      }
+      assertProjectEntryMatchesAsset(entry, asset);
     }
     for (const record of blobRecords) {
       const existing = await requestToPromise(
@@ -461,7 +546,7 @@ export async function saveAssetRevision({
   );
   const assetRecord: StoredAssetRecord = { id: asset.id, projectId, data: asset };
 
-  await runTransaction([STORE_ASSETS, STORE_BLOBS], 'readwrite', async (tx) => {
+  await runTransaction([STORE_PROJECTS, STORE_ASSETS, STORE_BLOBS], 'readwrite', async (tx) => {
     const previousRecord = await requestToPromise(
       tx.objectStore(STORE_ASSETS).get(asset.id) as IDBRequest<StoredAssetRecord | undefined>,
     );
@@ -495,6 +580,7 @@ export async function saveAssetRevision({
       transitions: sourceBlobTransitions,
     });
 
+    await syncProjectAssetEntryInTx(tx, projectId, asset);
     await requestToPromise(tx.objectStore(STORE_ASSETS).put(assetRecord));
     for (const record of blobRecords) {
       await requestToPromise(tx.objectStore(STORE_BLOBS).put(record));
@@ -695,7 +781,7 @@ export async function saveAsset(projectId: string, asset: Asset): Promise<void> 
   }
   buildTextureIndex(asset, '保存対象 Asset');
   const record: StoredAssetRecord = { id: asset.id, projectId, data: asset };
-  await runTransaction([STORE_ASSETS], 'readwrite', async (tx) => {
+  await runTransaction([STORE_PROJECTS, STORE_ASSETS], 'readwrite', async (tx) => {
     const previousRecord = await requestToPromise(
       tx.objectStore(STORE_ASSETS).get(asset.id) as IDBRequest<StoredAssetRecord | undefined>,
     );
@@ -705,6 +791,7 @@ export async function saveAsset(projectId: string, asset: Asset): Promise<void> 
       }
       assertTextureRefsUnchanged(previousRecord.data, asset);
     }
+    await syncProjectAssetEntryInTx(tx, projectId, asset);
     await requestToPromise(tx.objectStore(STORE_ASSETS).put(record));
   });
 }

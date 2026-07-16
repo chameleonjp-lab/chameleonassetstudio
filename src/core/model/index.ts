@@ -4,6 +4,7 @@ export * from './animation';
 export * from './asset';
 export * from './collider';
 export * from './common';
+export * from './duplicateAsset';
 export * from './exportPreset';
 export * from './factories';
 export * from './flipCopy';

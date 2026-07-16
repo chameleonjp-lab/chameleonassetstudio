@@ -41,6 +41,14 @@ async function seedStoredAsset(options?: {
   const project = {
     ...createEmptyProject(options?.projectName ?? 'snapshot test'),
     id: options?.projectId ?? 'project_1',
+    assets: [
+      {
+        id: asset.id,
+        name: asset.name,
+        displayName: asset.displayName,
+        assetType: asset.assetType,
+      },
+    ],
   };
   const key = editBlobKey(asset);
   const bytes = options?.blobBytes ?? new Uint8Array([7, 7, 7]);

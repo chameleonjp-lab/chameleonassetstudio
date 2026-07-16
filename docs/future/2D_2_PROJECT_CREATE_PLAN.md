@@ -1,7 +1,7 @@
 # 2D-2-PROJECT + 2D-2-CREATE 契約監査・実装計画
 
 作成日: 2026-07-16
-状態: `contract audit / Family-Variant decision pending`
+状態: `C accepted / independent-Asset implementation in progress / Family-Variant deferred`
 正式work package: `2D-2-PROJECT + 2D-2-CREATE`
 基準main: `f1fcdf1fbd05f33810206ee0ebfbfd49cba784f0`（PR #92 merge）
 直前work package: `2D-1B-GATE` completed
@@ -50,19 +50,19 @@
 
 現行の`Project` / `Asset`型、JSON Schema、`.casproj`にはFamily / Variantが存在しない。ADR-0003は、導入時にadditive設計または安全なmigration、同期範囲、手動調整保護、複製・反転・色違いとの関係を別設計PRで決め、Fable5または人間判断とOpus 4.8互換性reviewを得ることを要求する。
 
-したがって、次のどれかを人間が選ぶまでFamily / Variantのproduct code、schema、version、migration、可搬形式を変更しない。
+2026-07-16に人間判断で`C`をacceptedとした。現行0.1.0の独立Asset管理とCREATE不足を先に実装し、Family / Variantのproduct code、schema、version、migration、可搬形式は別の契約変更まで保留する。
 
 | 選択肢 | 方針 | 主な利点 / 制約 |
 |---|---|---|
 | `A` | Project側にadditiveなFamily / Variant構造を置き、既存Asset IDをmemberとして参照する。 | 関係の正本を一箇所にできる。Project schema、`.casproj`、保存transaction、migration判断が必要。 |
 | `B` | Asset側にoptionalなfamily / variant metadataを置く。 | Asset単位で読めるが、重複・不整合membershipを防ぐ横断検査が必要。Asset schema、`.casproj`、migration判断が必要。 |
-| `C`（推奨） | まず現行0.1.0の独立Asset管理とCREATE不足を実装し、Family / Variant設計を別の契約変更として保留する。 | schema / versionを変えず最小リスクで進められる。ただし`2D-2-PROJECT`全体はFamily / Variant実装までpartialのまま。 |
+| `C`（accepted） | まず現行0.1.0の独立Asset管理とCREATE不足を実装し、Family / Variant設計を別の契約変更として保留する。 | schema / versionを変えず最小リスクで進められる。ただし`2D-2-PROJECT`全体はFamily / Variant実装までpartialのまま。 |
 
-`A`または`B`を選ぶ場合は、ADR-0003の再検討条件を満たす設計PRを先に作る。`C`を選ぶ場合も、独立copyをlinked variantと表示せず、Family / Variant完成を主張しない。
+将来`A`または`B`へ進む場合は、ADR-0003の再検討条件を満たす設計PRを先に作る。`C`の実装では、独立copyをlinked variantと表示せず、Family / Variant完成を主張しない。
 
 ## 5. 最初の実装slice候補
 
-人間が`C`を選んだ場合、最初のproduct code PRは次を同じDraft PRで扱う。
+accepted `C`の最初のproduct code実装はDraft PR #93で次を同時に扱う。
 
 1. Project要約とAsset metadataを原子的に同期する高水準保存APIを追加し、`saveProjectBundle`の新規追加時にもmetadata一致を検査する。
 2. Asset種別変更をそのAPIへ移し、成功後だけReact stateとHistoryを確定する。
