@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { decodeImageSource, type DecodedImageSource } from '../../core/images/decodeImageSource';
 import { blobKeyFor } from '../../core/images/importImage';
-import type { Rect } from '../../core/images/operations';
+import type { ImageOperation } from '../../core/images/imageOperation';
+import type { Rect, RgbColor } from '../../core/images/operations';
 import type { Asset, Collider, Layer, Size, Vec2 } from '../../core/model';
 import { loadBlob } from '../../core/storage';
 import {
@@ -42,6 +43,10 @@ interface CanvasEditorProps {
   selectedLayerId: string | null;
   /** 消しゴムの半径（テクスチャのピクセル単位）。 */
   eraserRadius: number;
+  /** brushの半径（テクスチャのピクセル単位）。 */
+  brushRadius: number;
+  rasterColor: RgbColor;
+  fillTolerance: number;
   onSelectLayer: (layerId: string | null) => void;
   /** ドラッグ移動の確定。before / next はアセットのスナップショット。 */
   onCommitAsset: (label: string, before: Asset, next: Asset) => void;
@@ -51,6 +56,8 @@ interface CanvasEditorProps {
   onCropCommit: (layerId: string, rect: Rect) => void;
   /** 消しゴムストロークの確定。points はテクスチャ座標。 */
   onEraseCommit: (layerId: string, points: Vec2[]) => void;
+  /** raster操作の確定。選択中のedit layerへ既存改訂保存経路で適用する。 */
+  onRasterCommit: (operation: ImageOperation) => void;
   /** 当たり判定オーバーレイの一括表示。 */
   showColliders: boolean;
   /** グリッド表示。UI 補助のみで保存形式には影響しない。 */
@@ -76,6 +83,8 @@ interface DragState {
     | 'pinch'
     | 'crop'
     | 'erase'
+    | 'brush'
+    | 'raster-shape'
     | 'origin'
     | 'anchor-move'
     | 'collider-move'
@@ -86,6 +95,7 @@ interface DragState {
   layerId?: string;
   anchorId?: string;
   before?: Asset;
+  shapeTool?: 'rect' | 'ellipse';
   secondPointerId?: number;
   startDistance?: number;
   /** collider-move / collider-resize 用。 */
@@ -128,11 +138,15 @@ export function CanvasEditor({
   tool,
   selectedLayerId,
   eraserRadius,
+  brushRadius,
+  rasterColor,
+  fillTolerance,
   onSelectLayer,
   onCommitAsset,
   onPickColor,
   onCropCommit,
   onEraseCommit,
+  onRasterCommit,
   showColliders,
   gridEnabled,
   gridSize,
@@ -154,9 +168,21 @@ export function CanvasEditor({
   const [draftAsset, setDraftAsset] = useState<Asset | null>(null);
   const [cropRectScreen, setCropRectScreen] = useState<{ start: Vec2; end: Vec2 } | null>(null);
   const [eraserStrokeScreen, setEraserStrokeScreen] = useState<Vec2[] | null>(null);
+  const [brushStrokeScreen, setBrushStrokeScreen] = useState<Vec2[] | null>(null);
+  const [shapeRectScreen, setShapeRectScreen] = useState<{
+    start: Vec2;
+    end: Vec2;
+    tool: 'rect' | 'ellipse';
+  } | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const cropTexturePointsRef = useRef<{ start: Vec2; end: Vec2 } | null>(null);
   const eraseTexturePointsRef = useRef<Vec2[]>([]);
+  const brushTexturePointsRef = useRef<Vec2[]>([]);
+  const shapeTexturePointsRef = useRef<{
+    start: Vec2;
+    end: Vec2;
+    tool: 'rect' | 'ellipse';
+  } | null>(null);
   const pointersRef = useRef<Map<number, Vec2>>(new Map());
   const fittedAssetRef = useRef<string | null>(null);
   const bitmapsRef = useRef<Map<string, DecodedImageSource>>(new Map());
@@ -312,6 +338,38 @@ export function CanvasEditor({
       }
       ctx.restore();
     }
+    if (brushStrokeScreen && selectedLayer) {
+      const radiusScreen =
+        brushRadius * Math.abs(selectedLayer.transform.scale.x || 1) * view.scale;
+      ctx.save();
+      ctx.fillStyle = `rgba(${rasterColor.r}, ${rasterColor.g}, ${rasterColor.b}, 0.35)`;
+      for (const point of brushStrokeScreen) {
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, Math.max(2, radiusScreen), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    if (shapeRectScreen) {
+      const x = Math.min(shapeRectScreen.start.x, shapeRectScreen.end.x);
+      const y = Math.min(shapeRectScreen.start.y, shapeRectScreen.end.y);
+      const width = Math.abs(shapeRectScreen.end.x - shapeRectScreen.start.x);
+      const height = Math.abs(shapeRectScreen.end.y - shapeRectScreen.start.y);
+      ctx.save();
+      ctx.fillStyle = `rgba(${rasterColor.r}, ${rasterColor.g}, ${rasterColor.b}, 0.2)`;
+      ctx.strokeStyle = `rgb(${rasterColor.r}, ${rasterColor.g}, ${rasterColor.b})`;
+      ctx.setLineDash([6, 4]);
+      if (shapeRectScreen.tool === 'rect') {
+        ctx.fillRect(x, y, width, height);
+        ctx.strokeRect(x, y, width, height);
+      } else {
+        ctx.beginPath();
+        ctx.ellipse(x + width / 2, y + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
   }, [
     viewport,
     view,
@@ -321,6 +379,10 @@ export function CanvasEditor({
     cropRectScreen,
     eraserStrokeScreen,
     eraserRadius,
+    brushStrokeScreen,
+    brushRadius,
+    shapeRectScreen,
+    rasterColor,
     selectedLayer,
     showColliders,
     selectedColliderId,
@@ -387,6 +449,10 @@ export function CanvasEditor({
       setDraftAsset(null);
       setCropRectScreen(null);
       setEraserStrokeScreen(null);
+      setBrushStrokeScreen(null);
+      setShapeRectScreen(null);
+      brushTexturePointsRef.current = [];
+      shapeTexturePointsRef.current = null;
       return;
     }
 
@@ -537,6 +603,54 @@ export function CanvasEditor({
       return;
     }
 
+    if (tool === 'fill') {
+      const texturePoint = toTexturePoint(point);
+      if (selectedLayer && texturePoint) {
+        onRasterCommit({
+          type: 'floodFill',
+          start: texturePoint,
+          color: rasterColor,
+          tolerance: fillTolerance,
+        });
+      }
+      return;
+    }
+
+    if (tool === 'brush') {
+      const texturePoint = toTexturePoint(point);
+      if (!selectedLayer || !texturePoint) {
+        return;
+      }
+      brushTexturePointsRef.current = [texturePoint];
+      setBrushStrokeScreen([point]);
+      dragRef.current = {
+        mode: 'brush',
+        pointerId: event.pointerId,
+        startScreen: point,
+        startView: view,
+        layerId: selectedLayer.id,
+      };
+      return;
+    }
+
+    if (tool === 'rect' || tool === 'ellipse') {
+      const texturePoint = toTexturePoint(point);
+      if (!selectedLayer || !texturePoint) {
+        return;
+      }
+      shapeTexturePointsRef.current = { start: texturePoint, end: texturePoint, tool };
+      setShapeRectScreen({ start: point, end: point, tool });
+      dragRef.current = {
+        mode: 'raster-shape',
+        pointerId: event.pointerId,
+        startScreen: point,
+        startView: view,
+        layerId: selectedLayer.id,
+        shapeTool: tool,
+      };
+      return;
+    }
+
     // select ツール
     const worldPoint = screenToWorld(view, point);
     const targets = asset.layers.map((layer) => ({
@@ -617,6 +731,24 @@ export function CanvasEditor({
         eraseTexturePointsRef.current.push(texturePoint);
       }
       setEraserStrokeScreen((current) => (current ? [...current, point] : current));
+      return;
+    }
+
+    if (drag.mode === 'brush') {
+      const texturePoint = toTexturePoint(point);
+      if (texturePoint) {
+        brushTexturePointsRef.current.push(texturePoint);
+      }
+      setBrushStrokeScreen((current) => (current ? [...current, point] : current));
+      return;
+    }
+
+    if (drag.mode === 'raster-shape') {
+      const texturePoint = toTexturePoint(point);
+      if (texturePoint && shapeTexturePointsRef.current) {
+        shapeTexturePointsRef.current = { ...shapeTexturePointsRef.current, end: texturePoint };
+      }
+      setShapeRectScreen((current) => (current ? { ...current, end: point } : current));
       return;
     }
 
@@ -759,6 +891,40 @@ export function CanvasEditor({
       dragRef.current = null;
       if (points.length > 0) {
         onEraseCommit(drag.layerId, points);
+      }
+      return;
+    }
+
+    if (drag.mode === 'brush' && drag.layerId) {
+      const points = brushTexturePointsRef.current;
+      brushTexturePointsRef.current = [];
+      setBrushStrokeScreen(null);
+      dragRef.current = null;
+      if (points.length > 0) {
+        onRasterCommit({ type: 'paintBrush', points, radius: brushRadius, color: rasterColor });
+      }
+      return;
+    }
+
+    if (drag.mode === 'raster-shape' && drag.layerId) {
+      const shape = shapeTexturePointsRef.current;
+      shapeTexturePointsRef.current = null;
+      setShapeRectScreen(null);
+      dragRef.current = null;
+      if (shape) {
+        const rect = {
+          x: Math.min(shape.start.x, shape.end.x),
+          y: Math.min(shape.start.y, shape.end.y),
+          width: Math.abs(shape.end.x - shape.start.x),
+          height: Math.abs(shape.end.y - shape.start.y),
+        };
+        if (rect.width >= 1 && rect.height >= 1) {
+          onRasterCommit(
+            shape.tool === 'rect'
+              ? { type: 'rasterRect', rect, color: rasterColor }
+              : { type: 'rasterEllipse', rect, color: rasterColor },
+          );
+        }
       }
       return;
     }
