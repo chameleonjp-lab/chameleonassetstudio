@@ -1,4 +1,9 @@
-import { ImageOperationError, type PixelBuffer, type ProgressCallback, type RgbColor } from './operations';
+import {
+  ImageOperationError,
+  type PixelBuffer,
+  type ProgressCallback,
+  type RgbColor,
+} from './operations';
 
 export const MAX_PALETTE_COLORS = 32;
 export const PALETTE_QUANTIZATION_BITS = 5;

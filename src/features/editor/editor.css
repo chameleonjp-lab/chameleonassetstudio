@@ -480,6 +480,42 @@
   align-self: auto;
 }
 
+.palette-result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.palette-swatch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.editor-fieldset .palette-swatch-button {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.35rem 0.45rem;
+}
+
+.palette-swatch-chip {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid #8888;
+  border-radius: 4px;
+  flex: none;
+}
+
+.repair-section-heading {
+  margin: 0.25rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #8885;
+  font-size: 0.82rem;
+}
+
 .editor-text-warning {
   font-weight: 600;
   opacity: 1;

@@ -16,6 +16,7 @@ import {
   type LayerImagePadding,
   type LayerResizeInterpolation,
 } from '../../core/images/layerRepair';
+import { MAX_PALETTE_COLORS, type PaletteExtraction } from '../../core/images/paletteExtraction';
 import {
   imageOperationLabel as operationLabel,
   type ImageOperation,
@@ -26,7 +27,7 @@ import {
   type RasterSelection,
   type SelectionClipboard,
 } from '../../core/images/rasterFoundation';
-import { runAlphaInspection } from '../../core/images/runAnalysis';
+import { runAlphaInspection, runPaletteExtraction } from '../../core/images/runAnalysis';
 import {
   blobToPixelBuffer,
   pixelBufferToBlob,
@@ -222,6 +223,13 @@ interface AlphaInspectionState {
   result: AlphaInspection;
 }
 
+interface PaletteExtractionState {
+  assetId: string;
+  layerId: string;
+  textureId: string;
+  result: PaletteExtraction;
+}
+
 export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const autosaveRef = useRef<AutosaveQueue | null>(null);
   autosaveRef.current ??= new AutosaveQueue();
@@ -325,6 +333,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [alphaThreshold, setAlphaThreshold] = useState(0);
   const [alphaInspection, setAlphaInspection] = useState<AlphaInspectionState | null>(null);
   const [alphaInspecting, setAlphaInspecting] = useState(false);
+  const [paletteMaxColors, setPaletteMaxColors] = useState(8);
+  const [paletteAlphaThreshold, setPaletteAlphaThreshold] = useState(0);
+  const [paletteExtraction, setPaletteExtraction] = useState<PaletteExtractionState | null>(null);
+  const [paletteInspecting, setPaletteInspecting] = useState(false);
   const [layerPadding, setLayerPadding] = useState<LayerImagePadding>({
     top: 0,
     right: 0,
@@ -387,7 +399,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     };
   }, [projectId]);
 
-  const persistentMutationBlocked = historyState.isBusy || mutationBusy || alphaInspecting;
+  const persistentMutationBlocked =
+    historyState.isBusy || mutationBusy || alphaInspecting || paletteInspecting;
 
   const selectedAsset = assets.find((asset) => asset.id === selectedAssetId) ?? assets[0] ?? null;
   const selectedLayer = selectedAsset?.layers.find((layer) => layer.id === selectedLayerId) ?? null;
@@ -400,6 +413,13 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     alphaInspection.layerId === selectedLayer?.id &&
     alphaInspection.textureId === selectedLayer?.textureId
       ? alphaInspection.result
+      : null;
+  const activePaletteExtraction =
+    paletteExtraction &&
+    paletteExtraction.assetId === selectedAsset?.id &&
+    paletteExtraction.layerId === selectedLayer?.id &&
+    paletteExtraction.textureId === selectedLayer?.textureId
+      ? paletteExtraction.result
       : null;
   useEffect(() => {
     if (!selectedTextureSize) {
@@ -675,6 +695,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setPastePreviewPosition(null);
     setTextDraft(null);
     setAlphaInspection(null);
+    setPaletteExtraction(null);
   }, [selectedAssetId, selectedLayerId]);
 
   // selection-aware以外のtoolへ切り替えたらselection・copy bufferを解除する
@@ -862,6 +883,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         },
       });
       setAlphaInspection(null);
+      setPaletteExtraction(null);
       return true;
     } catch (error) {
       setEditorError(
@@ -928,6 +950,56 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     const success = await applyImageEdit({ type: 'crop', rect: activeAlphaInspection.bounds });
     if (success) {
       setAlphaInspection(null);
+    }
+  };
+
+  const handlePaletteExtract = async () => {
+    if (!selectedAsset || !selectedLayer?.textureId) {
+      setEditorError('パレットを抽出するレイヤーを選択してください。');
+      return;
+    }
+    const texture = selectedAsset.textures.find((entry) => entry.id === selectedLayer.textureId);
+    if (!texture) {
+      setEditorError('レイヤーが参照するテクスチャが見つかりません。');
+      return;
+    }
+    if (texture.kind !== 'edit') {
+      setEditorError('元画像（source）は分析対象にできません。編集用画像を選択してください。');
+      return;
+    }
+    if (persistentMutationBlocked || imageProcessing) {
+      return;
+    }
+
+    setEditorError(null);
+    setPaletteExtraction(null);
+    setPaletteInspecting(true);
+    setImageProcessing({ label: 'パレットを抽出', progress: 0 });
+    try {
+      const blob = await loadBlob(blobKeyFor(selectedAsset.id, texture.path));
+      if (!blob) {
+        throw new Error('編集用画像が見つかりません。');
+      }
+      const buffer = await blobToPixelBuffer(blob);
+      const result = await runPaletteExtraction(
+        buffer,
+        paletteMaxColors,
+        paletteAlphaThreshold,
+        (progress) => setImageProcessing({ label: 'パレットを抽出', progress }),
+      );
+      setPaletteExtraction({
+        assetId: selectedAsset.id,
+        layerId: selectedLayer.id,
+        textureId: texture.id,
+        result,
+      });
+    } catch (error) {
+      setEditorError(
+        `パレットを抽出できませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setImageProcessing(null);
+      setPaletteInspecting(false);
     }
   };
 
@@ -2122,21 +2194,6 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   onChange={(event) => handleLayerTransformChange('rotation', event.target.value)}
                 />
               </label>
-              <button
-                type="button"
-                className="layer-flip-button"
-                aria-pressed={selectedLayer.transform.scale.x < 0}
-                onClick={() => {
-                  if (selectedAsset) {
-                    commitPanelChange(
-                      '左右反転',
-                      flipLayerHorizontal(selectedAsset, selectedLayer.id),
-                    );
-                  }
-                }}
-              >
-                左右反転
-              </button>
               {selectedAsset?.assetType === 'background' && (
                 <BackgroundLayerFields
                   asset={selectedAsset}
@@ -2653,11 +2710,104 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 </fieldset>
 
                 <fieldset className="editor-fieldset">
-                  <legend>パレット置換</legend>
+                  <legend>パレット・色違い・輪郭・反転</legend>
+                  <p className="editor-note">
+                    選択中のedit画像から主要色を読み取り専用で抽出します。抽出結果は保存せず、swatchを選ぶと色置換の対象色へ設定できます。
+                  </p>
                   <label className="editor-field">
-                    対象色（スポイトで拾えます）
+                    抽出色数（1-{MAX_PALETTE_COLORS}）
+                    <input
+                      type="number"
+                      aria-label="パレット抽出色数"
+                      min={1}
+                      max={MAX_PALETTE_COLORS}
+                      step={1}
+                      value={paletteMaxColors}
+                      onChange={(event) => {
+                        const next = Math.min(
+                          MAX_PALETTE_COLORS,
+                          Math.max(1, Math.round(Number(event.target.value) || 1)),
+                        );
+                        setPaletteMaxColors(next);
+                        setPaletteExtraction(null);
+                      }}
+                    />
+                  </label>
+                  <label className="editor-field">
+                    palette alphaしきい値（0-255）
+                    <input
+                      type="number"
+                      aria-label="パレットalphaしきい値"
+                      min={0}
+                      max={255}
+                      step={1}
+                      value={paletteAlphaThreshold}
+                      onChange={(event) => {
+                        const next = Math.min(
+                          255,
+                          Math.max(0, Math.round(Number(event.target.value) || 0)),
+                        );
+                        setPaletteAlphaThreshold(next);
+                        setPaletteExtraction(null);
+                      }}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={!!imageProcessing || persistentMutationBlocked}
+                    onClick={() => void handlePaletteExtract()}
+                  >
+                    パレットを抽出
+                  </button>
+                  {activePaletteExtraction && (
+                    <div className="palette-result" aria-label="抽出パレット">
+                      <p className="editor-note">
+                        表示pixel {activePaletteExtraction.visiblePixelCount} / 透明扱い{' '}
+                        {activePaletteExtraction.transparentPixelCount} / RGB{' '}
+                        {activePaletteExtraction.quantizationBits}-bit量子化
+                      </p>
+                      {activePaletteExtraction.colors.length === 0 ? (
+                        <p role="alert" className="editor-note">
+                          しきい値を超える色がありません。
+                        </p>
+                      ) : (
+                        <div className="palette-swatch-list">
+                          {activePaletteExtraction.colors.map((entry) => {
+                            const hex = rgbToHex(entry.color);
+                            return (
+                              <button
+                                key={`${hex}-${entry.count}`}
+                                type="button"
+                                className="palette-swatch-button"
+                                aria-label={`抽出色 ${hex} を置換元に設定`}
+                                onClick={() => {
+                                  setReplaceFrom(hex);
+                                  setEditorError(null);
+                                }}
+                              >
+                                <span
+                                  className="palette-swatch-chip"
+                                  style={{ backgroundColor: hex }}
+                                  aria-hidden="true"
+                                />
+                                <span>
+                                  {hex} · {entry.count}px · {Math.round(entry.coverage * 1000) / 10}
+                                  %
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <h4 className="repair-section-heading">色置換</h4>
+                  <label className="editor-field">
+                    対象色（スポイトまたは抽出paletteから選べます）
                     <input
                       type="color"
+                      aria-label="色置換の対象色"
                       value={replaceFrom}
                       onChange={(event) => setReplaceFrom(event.target.value)}
                     />
@@ -2666,6 +2816,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                     置換色
                     <input
                       type="color"
+                      aria-label="色置換の置換色"
                       value={replaceTo}
                       onChange={(event) => setReplaceTo(event.target.value)}
                     />
@@ -2674,6 +2825,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                     許容量（0-100）
                     <input
                       type="number"
+                      aria-label="色置換の許容量"
                       min={0}
                       max={100}
                       value={replaceTolerance}
@@ -2694,14 +2846,13 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   >
                     パレット置換を適用
                   </button>
-                </fieldset>
 
-                <fieldset className="editor-fieldset">
-                  <legend>輪郭線</legend>
+                  <h4 className="repair-section-heading">輪郭線</h4>
                   <label className="editor-field">
                     輪郭線の色
                     <input
                       type="color"
+                      aria-label="輪郭線の色"
                       value={outlineColor}
                       onChange={(event) => setOutlineColor(event.target.value)}
                     />
@@ -2710,6 +2861,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                     太さ（px）
                     <input
                       type="number"
+                      aria-label="輪郭線の太さ"
                       min={1}
                       max={16}
                       value={outlineThickness}
@@ -2730,6 +2882,24 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                     }
                   >
                     輪郭線を追加
+                  </button>
+
+                  <h4 className="repair-section-heading">レイヤー反転</h4>
+                  <button
+                    type="button"
+                    className="layer-flip-button"
+                    aria-pressed={selectedLayer.transform.scale.x < 0}
+                    disabled={!!imageProcessing || persistentMutationBlocked}
+                    onClick={() => {
+                      if (selectedAsset) {
+                        commitPanelChange(
+                          '左右反転',
+                          flipLayerHorizontal(selectedAsset, selectedLayer.id),
+                        );
+                      }
+                    }}
+                  >
+                    左右反転
                   </button>
                 </fieldset>
               </div>

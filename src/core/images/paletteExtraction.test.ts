@@ -81,8 +81,8 @@ describe('extractPalette', () => {
     expect(() => extractPalette(makeBuffer(2, 2), 0)).toThrow('抽出色数');
     expect(() => extractPalette(makeBuffer(2, 2), 33)).toThrow('抽出色数');
     expect(() => extractPalette(makeBuffer(2, 2), 8, -1)).toThrow('alphaしきい値');
-    expect(() =>
-      extractPalette({ width: 2, height: 2, data: new Uint8ClampedArray(3) }),
-    ).toThrow('画像データの長さ');
+    expect(() => extractPalette({ width: 2, height: 2, data: new Uint8ClampedArray(3) })).toThrow(
+      '画像データの長さ',
+    );
   });
 });
