@@ -1,9 +1,6 @@
 import { useMemo } from 'react';
 import type { Asset } from '../../core/model/asset';
-import {
-  inspectAsset,
-  type InspectionSeverity,
-} from '../../core/model/assetInspection';
+import { inspectAsset, type InspectionSeverity } from '../../core/model/assetInspection';
 
 const SEVERITY_LABELS: Record<InspectionSeverity, string> = {
   error: '必須確認',

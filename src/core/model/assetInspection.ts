@@ -19,12 +19,7 @@ export type InspectionCategory =
   | 'effect';
 
 export type InspectionPanelTarget =
-  | 'asset-type'
-  | 'game-data'
-  | 'game-attributes'
-  | 'timeline'
-  | 'layers'
-  | 'parts';
+  'asset-type' | 'game-data' | 'game-attributes' | 'timeline' | 'layers' | 'parts';
 
 export interface InspectionTarget {
   /** Asset 内の確認位置。検査表示用の安定した位置表現であり、保存しない。 */
@@ -532,7 +527,8 @@ function inspectBackgroundProfile(asset: Asset, push: PushIssue): void {
       severity: 'warning',
       category: 'background',
       message: 'すべての背景レイヤーがループなし・視差なしです。',
-      reason: '静止背景として正しい場合もありますが、スクロール背景では設定漏れの可能性があります。',
+      reason:
+        '静止背景として正しい場合もありますが、スクロール背景では設定漏れの可能性があります。',
       action: '各背景レイヤーのループと視差速度が意図どおりか確認してください。',
       target: {
         path: 'layers[].background',
@@ -674,7 +670,11 @@ function inspectGimmickProfile(asset: Asset, push: PushIssue): void {
     });
   }
 
-  if (!asset.colliders.some((collider) => collider.purpose === 'sensor' || collider.purpose === 'body')) {
+  if (
+    !asset.colliders.some(
+      (collider) => collider.purpose === 'sensor' || collider.purpose === 'body',
+    )
+  ) {
     push({
       code: 'gimmick.colliderRecommended',
       severity: 'warning',
