@@ -66,8 +66,8 @@ describe('inspectAlphaBounds', () => {
   it('不正なthresholdとBufferを理由付きで拒否する', () => {
     expect(() => inspectAlphaBounds(makeBuffer(2, 2), -1)).toThrow('alphaしきい値');
     expect(() => inspectAlphaBounds(makeBuffer(2, 2), 1.5)).toThrow('alphaしきい値');
-    expect(() => inspectAlphaBounds({ width: 2, height: 2, data: new Uint8ClampedArray(3) })).toThrow(
-      '画像データの長さ',
-    );
+    expect(() =>
+      inspectAlphaBounds({ width: 2, height: 2, data: new Uint8ClampedArray(3) }),
+    ).toThrow('画像データの長さ');
   });
 });
