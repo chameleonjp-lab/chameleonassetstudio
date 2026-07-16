@@ -62,6 +62,9 @@ export function validateBlankCanvasSize(size: Size): string | null {
   if (width > MAX_BLANK_CANVAS_EDGE || height > MAX_BLANK_CANVAS_EDGE) {
     return `キャンバスの幅と高さは${MAX_BLANK_CANVAS_EDGE}以下にしてください。`;
   }
+  // 現行値（MAX_BLANK_CANVAS_PIXELS = EDGE^2）では各辺検査を通過した入力がここで
+  // 拒否されることはない。将来どちらかの上限だけを変えても総pixel契約
+  //（REQUIREMENTS §11.2 の 4096 x 4096）が単体で効くよう防御的に残す。
   if (width * height > MAX_BLANK_CANVAS_PIXELS) {
     return `キャンバスの総pixel数は${MAX_BLANK_CANVAS_EDGE} x ${MAX_BLANK_CANVAS_EDGE}以下にしてください。`;
   }
