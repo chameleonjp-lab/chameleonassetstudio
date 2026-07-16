@@ -9,6 +9,25 @@ permissions:
   contents: read
 
 jobs:
+  format-raster-foundation:
+    if: github.head_ref == 'agent/2d2-raster-foundation-slice1'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prettier --write src/core/images/rasterFoundation.ts src/core/images/rasterFoundation.test.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: raster-foundation-formatted
+          path: |
+            src/core/images/rasterFoundation.ts
+            src/core/images/rasterFoundation.test.ts
+          if-no-files-found: error
+
   changes:
     name: classify-changes
     runs-on: ubuntu-latest
