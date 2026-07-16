@@ -9,6 +9,59 @@ permissions:
   contents: read
 
 jobs:
+  connect-raster-editor:
+    if: github.head_ref == 'agent/2d2-raster-foundation-slice1' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/2d2-raster-foundation-slice1
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Connect unified operation type
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/features/editor/EditorScreen.tsx')
+          text = path.read_text()
+          old = """import {
+            hexToRgb,
+            operationLabel,
+            rgbToHex,
+            type ImageOperation,
+            type Rect,
+          } from '../../core/images/operations';"""
+          new = """import {
+            imageOperationLabel as operationLabel,
+            type ImageOperation,
+          } from '../../core/images/imageOperation';
+          import { hexToRgb, rgbToHex, type Rect } from '../../core/images/operations';"""
+          if old not in text:
+              raise SystemExit('EditorScreen image operation import block not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - run: npm ci
+      - run: npx prettier --write src/features/editor/EditorScreen.tsx
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run test
+      - name: Commit editor integration and restore CI
+        shell: bash
+        run: |
+          git fetch origin main --depth=1
+          git checkout origin/main -- .github/workflows/ci.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: connect raster operations to editor revision path"
+          git push origin HEAD:agent/2d2-raster-foundation-slice1
+
   changes:
     name: classify-changes
     runs-on: ubuntu-latest
