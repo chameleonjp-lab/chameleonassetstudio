@@ -11,12 +11,10 @@ import { History } from '../../core/history/history';
 import { blobKeyFor, importImageAsLayer, importImageFile } from '../../core/images/importImage';
 import { assertImageBatchCount } from '../../core/input/inputSafety';
 import {
-  hexToRgb,
-  operationLabel,
-  rgbToHex,
+  imageOperationLabel as operationLabel,
   type ImageOperation,
-  type Rect,
-} from '../../core/images/operations';
+} from '../../core/images/imageOperation';
+import { hexToRgb, rgbToHex, type Rect } from '../../core/images/operations';
 import {
   blobToPixelBuffer,
   pixelBufferToBlob,
