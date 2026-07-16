@@ -24,9 +24,11 @@ jobs:
           node-version: 22
           cache: npm
       - name: Apply bounded source patch
+        id: apply
+        continue-on-error: true
         shell: bash
         run: |
-          python - <<'PY'
+          python - <<'PY' > /tmp/apply-create-abx.log 2>&1
           from pathlib import Path
           import base64
           import gzip
@@ -36,6 +38,18 @@ jobs:
           script = gzip.decompress(base64.b64decode(payload)).decode()
           exec(compile(script, '/tmp/apply_create_abx.py', 'exec'))
           PY
+      - name: Upload patch diagnostic
+        if: steps.apply.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: apply-create-abx-diagnostic
+          path: /tmp/apply-create-abx.log
+      - name: Stop after patch failure
+        if: steps.apply.outcome == 'failure'
+        shell: bash
+        run: |
+          tail -80 /tmp/apply-create-abx.log
+          exit 1
       - run: npm ci
       - run: npm run format
       - run: npm run lint
