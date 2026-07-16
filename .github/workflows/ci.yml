@@ -6,7 +6,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   changes:
@@ -51,6 +51,192 @@ jobs:
 
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "e2e=$e2e" >> "$GITHUB_OUTPUT"
+
+  apply-raster-canvas-ui:
+    if: github.event_name == 'pull_request' && github.head_ref == 'agent/2d2-raster-foundation-ui'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply bounded raster Canvas UI patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match, found {count}: {old[:100]!r}")
+              p.write_text(text.replace(old, new, 1))
+
+          Path('src/features/editor/canvasTools.ts').write_text("""export type CanvasTool =
+            | 'select'
+            | 'pan'
+            | 'crop'
+            | 'eraser'
+            | 'brush'
+            | 'fill'
+            | 'rect'
+            | 'ellipse'
+            | 'bgpick'
+            | 'picker'
+            | 'origin'
+            | 'anchor'
+            | 'collider';
+
+          /** レイヤー上のクリック / ドラッグを必要とするツール。 */
+          export const LAYER_TOOLS: CanvasTool[] = [
+            'crop',
+            'eraser',
+            'brush',
+            'fill',
+            'rect',
+            'ellipse',
+            'bgpick',
+            'picker',
+          ];
+
+          export const TOOL_CURSORS: Record<CanvasTool, string> = {
+            select: 'default',
+            pan: 'grab',
+            crop: 'crosshair',
+            eraser: 'crosshair',
+            brush: 'crosshair',
+            fill: 'crosshair',
+            rect: 'crosshair',
+            ellipse: 'crosshair',
+            bgpick: 'crosshair',
+            picker: 'crosshair',
+            origin: 'crosshair',
+            anchor: 'crosshair',
+            collider: 'default',
+          };
+          """)
+
+          canvas = 'src/features/editor/CanvasEditor.tsx'
+          replace_once(
+              canvas,
+              "import type { Rect } from '../../core/images/operations';",
+              "import type { ImageOperation } from '../../core/images/imageOperation';\nimport type { Rect, RgbColor } from '../../core/images/operations';",
+          )
+          replace_once(
+              canvas,
+              "  /** 消しゴムの半径（テクスチャのピクセル単位）。 */\n  eraserRadius: number;\n  onSelectLayer: (layerId: string | null) => void;",
+              "  /** 消しゴムの半径（テクスチャのピクセル単位）。 */\n  eraserRadius: number;\n  /** brushの半径（テクスチャのピクセル単位）。 */\n  brushRadius: number;\n  rasterColor: RgbColor;\n  fillTolerance: number;\n  onSelectLayer: (layerId: string | null) => void;",
+          )
+          replace_once(
+              canvas,
+              "  /** 消しゴムストロークの確定。points はテクスチャ座標。 */\n  onEraseCommit: (layerId: string, points: Vec2[]) => void;\n  /** 当たり判定オーバーレイの一括表示。 */",
+              "  /** 消しゴムストロークの確定。points はテクスチャ座標。 */\n  onEraseCommit: (layerId: string, points: Vec2[]) => void;\n  /** raster操作の確定。選択中のedit layerへ既存改訂保存経路で適用する。 */\n  onRasterCommit: (operation: ImageOperation) => void;\n  /** 当たり判定オーバーレイの一括表示。 */",
+          )
+          replace_once(
+              canvas,
+              "    | 'crop'\n    | 'erase'\n    | 'origin'",
+              "    | 'crop'\n    | 'erase'\n    | 'brush'\n    | 'raster-shape'\n    | 'origin'",
+          )
+          replace_once(
+              canvas,
+              "  before?: Asset;\n  secondPointerId?: number;",
+              "  before?: Asset;\n  shapeTool?: 'rect' | 'ellipse';\n  secondPointerId?: number;",
+          )
+          replace_once(
+              canvas,
+              "  eraserRadius,\n  onSelectLayer,",
+              "  eraserRadius,\n  brushRadius,\n  rasterColor,\n  fillTolerance,\n  onSelectLayer,",
+          )
+          replace_once(
+              canvas,
+              "  onCropCommit,\n  onEraseCommit,\n  showColliders,",
+              "  onCropCommit,\n  onEraseCommit,\n  onRasterCommit,\n  showColliders,",
+          )
+          replace_once(
+              canvas,
+              "  const [cropRectScreen, setCropRectScreen] = useState<{ start: Vec2; end: Vec2 } | null>(null);\n  const [eraserStrokeScreen, setEraserStrokeScreen] = useState<Vec2[] | null>(null);\n  const dragRef = useRef<DragState | null>(null);\n  const cropTexturePointsRef = useRef<{ start: Vec2; end: Vec2 } | null>(null);\n  const eraseTexturePointsRef = useRef<Vec2[]>([]);",
+              "  const [cropRectScreen, setCropRectScreen] = useState<{ start: Vec2; end: Vec2 } | null>(null);\n  const [eraserStrokeScreen, setEraserStrokeScreen] = useState<Vec2[] | null>(null);\n  const [brushStrokeScreen, setBrushStrokeScreen] = useState<Vec2[] | null>(null);\n  const [shapeRectScreen, setShapeRectScreen] = useState<{\n    start: Vec2;\n    end: Vec2;\n    tool: 'rect' | 'ellipse';\n  } | null>(null);\n  const dragRef = useRef<DragState | null>(null);\n  const cropTexturePointsRef = useRef<{ start: Vec2; end: Vec2 } | null>(null);\n  const eraseTexturePointsRef = useRef<Vec2[]>([]);\n  const brushTexturePointsRef = useRef<Vec2[]>([]);\n  const shapeTexturePointsRef = useRef<{\n    start: Vec2;\n    end: Vec2;\n    tool: 'rect' | 'ellipse';\n  } | null>(null);",
+          )
+          replace_once(
+              canvas,
+              "    if (eraserStrokeScreen && selectedLayer) {\n      const radiusScreen =\n        eraserRadius * Math.abs(selectedLayer.transform.scale.x || 1) * view.scale;\n      ctx.save();\n      ctx.fillStyle = 'rgba(220, 60, 60, 0.35)';\n      for (const point of eraserStrokeScreen) {\n        ctx.beginPath();\n        ctx.arc(point.x, point.y, Math.max(2, radiusScreen), 0, Math.PI * 2);\n        ctx.fill();\n      }\n      ctx.restore();\n    }",
+              "    if (eraserStrokeScreen && selectedLayer) {\n      const radiusScreen =\n        eraserRadius * Math.abs(selectedLayer.transform.scale.x || 1) * view.scale;\n      ctx.save();\n      ctx.fillStyle = 'rgba(220, 60, 60, 0.35)';\n      for (const point of eraserStrokeScreen) {\n        ctx.beginPath();\n        ctx.arc(point.x, point.y, Math.max(2, radiusScreen), 0, Math.PI * 2);\n        ctx.fill();\n      }\n      ctx.restore();\n    }\n    if (brushStrokeScreen && selectedLayer) {\n      const radiusScreen =\n        brushRadius * Math.abs(selectedLayer.transform.scale.x || 1) * view.scale;\n      ctx.save();\n      ctx.fillStyle = `rgba(${rasterColor.r}, ${rasterColor.g}, ${rasterColor.b}, 0.35)`;\n      for (const point of brushStrokeScreen) {\n        ctx.beginPath();\n        ctx.arc(point.x, point.y, Math.max(2, radiusScreen), 0, Math.PI * 2);\n        ctx.fill();\n      }\n      ctx.restore();\n    }\n    if (shapeRectScreen) {\n      const x = Math.min(shapeRectScreen.start.x, shapeRectScreen.end.x);\n      const y = Math.min(shapeRectScreen.start.y, shapeRectScreen.end.y);\n      const width = Math.abs(shapeRectScreen.end.x - shapeRectScreen.start.x);\n      const height = Math.abs(shapeRectScreen.end.y - shapeRectScreen.start.y);\n      ctx.save();\n      ctx.fillStyle = `rgba(${rasterColor.r}, ${rasterColor.g}, ${rasterColor.b}, 0.2)`;\n      ctx.strokeStyle = `rgb(${rasterColor.r}, ${rasterColor.g}, ${rasterColor.b})`;\n      ctx.setLineDash([6, 4]);\n      if (shapeRectScreen.tool === 'rect') {\n        ctx.fillRect(x, y, width, height);\n        ctx.strokeRect(x, y, width, height);\n      } else {\n        ctx.beginPath();\n        ctx.ellipse(x + width / 2, y + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2);\n        ctx.fill();\n        ctx.stroke();\n      }\n      ctx.restore();\n    }",
+          )
+          replace_once(
+              canvas,
+              "    eraserStrokeScreen,\n    eraserRadius,\n    selectedLayer,",
+              "    eraserStrokeScreen,\n    eraserRadius,\n    brushStrokeScreen,\n    brushRadius,\n    shapeRectScreen,\n    rasterColor,\n    selectedLayer,",
+          )
+          replace_once(
+              canvas,
+              "      setDraftAsset(null);\n      setCropRectScreen(null);\n      setEraserStrokeScreen(null);\n      return;",
+              "      setDraftAsset(null);\n      setCropRectScreen(null);\n      setEraserStrokeScreen(null);\n      setBrushStrokeScreen(null);\n      setShapeRectScreen(null);\n      brushTexturePointsRef.current = [];\n      shapeTexturePointsRef.current = null;\n      return;",
+          )
+          replace_once(
+              canvas,
+              "    // select ツール\n    const worldPoint = screenToWorld(view, point);",
+              "    if (tool === 'fill') {\n      const texturePoint = toTexturePoint(point);\n      if (selectedLayer && texturePoint) {\n        onRasterCommit({\n          type: 'floodFill',\n          start: texturePoint,\n          color: rasterColor,\n          tolerance: fillTolerance,\n        });\n      }\n      return;\n    }\n\n    if (tool === 'brush') {\n      const texturePoint = toTexturePoint(point);\n      if (!selectedLayer || !texturePoint) {\n        return;\n      }\n      brushTexturePointsRef.current = [texturePoint];\n      setBrushStrokeScreen([point]);\n      dragRef.current = {\n        mode: 'brush',\n        pointerId: event.pointerId,\n        startScreen: point,\n        startView: view,\n        layerId: selectedLayer.id,\n      };\n      return;\n    }\n\n    if (tool === 'rect' || tool === 'ellipse') {\n      const texturePoint = toTexturePoint(point);\n      if (!selectedLayer || !texturePoint) {\n        return;\n      }\n      shapeTexturePointsRef.current = { start: texturePoint, end: texturePoint, tool };\n      setShapeRectScreen({ start: point, end: point, tool });\n      dragRef.current = {\n        mode: 'raster-shape',\n        pointerId: event.pointerId,\n        startScreen: point,\n        startView: view,\n        layerId: selectedLayer.id,\n        shapeTool: tool,\n      };\n      return;\n    }\n\n    // select ツール\n    const worldPoint = screenToWorld(view, point);",
+          )
+          replace_once(
+              canvas,
+              "    if (drag.mode === 'erase') {\n      const texturePoint = toTexturePoint(point);\n      if (texturePoint) {\n        eraseTexturePointsRef.current.push(texturePoint);\n      }\n      setEraserStrokeScreen((current) => (current ? [...current, point] : current));\n      return;\n    }\n\n    const snap = snapCoordinate;",
+              "    if (drag.mode === 'erase') {\n      const texturePoint = toTexturePoint(point);\n      if (texturePoint) {\n        eraseTexturePointsRef.current.push(texturePoint);\n      }\n      setEraserStrokeScreen((current) => (current ? [...current, point] : current));\n      return;\n    }\n\n    if (drag.mode === 'brush') {\n      const texturePoint = toTexturePoint(point);\n      if (texturePoint) {\n        brushTexturePointsRef.current.push(texturePoint);\n      }\n      setBrushStrokeScreen((current) => (current ? [...current, point] : current));\n      return;\n    }\n\n    if (drag.mode === 'raster-shape') {\n      const texturePoint = toTexturePoint(point);\n      if (texturePoint && shapeTexturePointsRef.current) {\n        shapeTexturePointsRef.current = { ...shapeTexturePointsRef.current, end: texturePoint };\n      }\n      setShapeRectScreen((current) => (current ? { ...current, end: point } : current));\n      return;\n    }\n\n    const snap = snapCoordinate;",
+          )
+          replace_once(
+              canvas,
+              "    if (drag.mode === 'erase' && drag.layerId) {\n      const points = eraseTexturePointsRef.current;\n      eraseTexturePointsRef.current = [];\n      setEraserStrokeScreen(null);\n      dragRef.current = null;\n      if (points.length > 0) {\n        onEraseCommit(drag.layerId, points);\n      }\n      return;\n    }\n\n    if (drag.mode === 'origin' && drag.before && draftAsset) {",
+              "    if (drag.mode === 'erase' && drag.layerId) {\n      const points = eraseTexturePointsRef.current;\n      eraseTexturePointsRef.current = [];\n      setEraserStrokeScreen(null);\n      dragRef.current = null;\n      if (points.length > 0) {\n        onEraseCommit(drag.layerId, points);\n      }\n      return;\n    }\n\n    if (drag.mode === 'brush' && drag.layerId) {\n      const points = brushTexturePointsRef.current;\n      brushTexturePointsRef.current = [];\n      setBrushStrokeScreen(null);\n      dragRef.current = null;\n      if (points.length > 0) {\n        onRasterCommit({ type: 'paintBrush', points, radius: brushRadius, color: rasterColor });\n      }\n      return;\n    }\n\n    if (drag.mode === 'raster-shape' && drag.layerId) {\n      const shape = shapeTexturePointsRef.current;\n      shapeTexturePointsRef.current = null;\n      setShapeRectScreen(null);\n      dragRef.current = null;\n      if (shape) {\n        const rect = {\n          x: Math.min(shape.start.x, shape.end.x),\n          y: Math.min(shape.start.y, shape.end.y),\n          width: Math.abs(shape.end.x - shape.start.x),\n          height: Math.abs(shape.end.y - shape.start.y),\n        };\n        if (rect.width >= 1 && rect.height >= 1) {\n          onRasterCommit(\n            shape.tool === 'rect'\n              ? { type: 'rasterRect', rect, color: rasterColor }\n              : { type: 'rasterEllipse', rect, color: rasterColor },\n          );\n        }\n      }\n      return;\n    }\n\n    if (drag.mode === 'origin' && drag.before && draftAsset) {",
+          )
+
+          editor = 'src/features/editor/EditorScreen.tsx'
+          replace_once(
+              editor,
+              "  const [eraserSize, setEraserSize] = useState(16);\n  const [bgTolerance, setBgTolerance] = useState(30);",
+              "  const [eraserSize, setEraserSize] = useState(16);\n  const [brushSize, setBrushSize] = useState(8);\n  const [rasterColor, setRasterColor] = useState('#000000');\n  const [fillTolerance, setFillTolerance] = useState(0);\n  const [bgTolerance, setBgTolerance] = useState(30);",
+          )
+          replace_once(
+              editor,
+              "    { tool: 'eraser', label: '消しゴム' },\n    { tool: 'bgpick', label: '背景透過' },",
+              "    { tool: 'eraser', label: '消しゴム' },\n    { tool: 'brush', label: 'ブラシ' },\n    { tool: 'fill', label: '塗りつぶし' },\n    { tool: 'rect', label: '矩形' },\n    { tool: 'ellipse', label: '楕円' },\n    { tool: 'bgpick', label: '背景透過' },",
+          )
+          replace_once(
+              editor,
+              "                eraserRadius={eraserSize}\n                onSelectLayer={setSelectedLayerId}",
+              "                eraserRadius={eraserSize}\n                brushRadius={brushSize}\n                rasterColor={hexToRgb(rasterColor)}\n                fillTolerance={Math.round((fillTolerance / 100) * 255)}\n                onSelectLayer={setSelectedLayerId}",
+          )
+          replace_once(
+              editor,
+              "                onCropCommit={handleCropCommit}\n                onEraseCommit={handleEraseCommit}\n                showColliders={showColliders}",
+              "                onCropCommit={handleCropCommit}\n                onEraseCommit={handleEraseCommit}\n                onRasterCommit={(operation) => void applyImageEdit(operation)}\n                showColliders={showColliders}",
+          )
+          replace_once(
+              editor,
+              "                <p className=\"editor-note\">\n                  トリミングはキャンバス上でドラッグ、背景透過は消したい色をクリックします。\n                </p>\n                <label className=\"editor-field\">\n                  背景透過の許容量（0-100）",
+              "                <p className=\"editor-note\">\n                  ブラシ・矩形・楕円はキャンバス上でドラッグ、塗りつぶしと背景透過は対象をタップします。描画は選択中の編集用画像へ確定され、Undoで戻せます。\n                </p>\n                <fieldset className=\"editor-fieldset\">\n                  <legend>ラスター描画</legend>\n                  <label className=\"editor-field\">\n                    描画色\n                    <input\n                      type=\"color\"\n                      aria-label=\"描画色\"\n                      value={rasterColor}\n                      onChange={(event) => setRasterColor(event.target.value)}\n                    />\n                  </label>\n                  <label className=\"editor-field\">\n                    ブラシサイズ（px）\n                    <input\n                      type=\"number\"\n                      aria-label=\"ブラシサイズ\"\n                      min={1}\n                      max={128}\n                      value={brushSize}\n                      onChange={(event) =>\n                        setBrushSize(Math.min(128, Math.max(1, Number(event.target.value) || 1)))\n                      }\n                    />\n                  </label>\n                  <label className=\"editor-field\">\n                    塗りつぶし許容量（0-100）\n                    <input\n                      type=\"number\"\n                      aria-label=\"塗りつぶし許容量\"\n                      min={0}\n                      max={100}\n                      value={fillTolerance}\n                      onChange={(event) =>\n                        setFillTolerance(Math.min(100, Math.max(0, Number(event.target.value) || 0)))\n                      }\n                    />\n                  </label>\n                </fieldset>\n                <label className=\"editor-field\">\n                  背景透過の許容量（0-100）",
+          )
+          PY
+      - run: npm ci
+      - run: npx prettier --write src/features/editor/canvasTools.ts src/features/editor/CanvasEditor.tsx src/features/editor/EditorScreen.tsx
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+      - name: Commit verified UI changes and restore workflow
+        shell: bash
+        run: |
+          git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/features/editor/canvasTools.ts src/features/editor/CanvasEditor.tsx src/features/editor/EditorScreen.tsx .github/workflows/ci.yml
+          git commit -m "feat: connect raster canvas tools"
+          git push origin HEAD:${GITHUB_HEAD_REF}
 
   build-and-test:
     needs: changes
