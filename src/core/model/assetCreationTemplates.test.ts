@@ -14,7 +14,9 @@ describe('新規作成template（2D-2-CREATE A+B+X）', () => {
     const templates = assetCreationTemplatesForType(assetType);
     expect(templates.map((template) => template.id)).toContain('blank');
     expect(
-      templates.every((template) => template.assetType === null || template.assetType === assetType),
+      templates.every(
+        (template) => template.assetType === null || template.assetType === assetType,
+      ),
     ).toBe(true);
   });
 
@@ -133,9 +135,7 @@ describe('新規作成template（2D-2-CREATE A+B+X）', () => {
   });
 
   it('全fixture IDがAssetCreationTemplateIdとして利用できる', () => {
-    const ids: AssetCreationTemplateId[] = ASSET_CREATION_TEMPLATES.map(
-      (template) => template.id,
-    );
+    const ids: AssetCreationTemplateId[] = ASSET_CREATION_TEMPLATES.map((template) => template.id);
     expect(ids).toHaveLength(7);
   });
 });

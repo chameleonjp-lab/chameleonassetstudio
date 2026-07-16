@@ -115,9 +115,7 @@ export async function createBlankAssetBundle(
   options: CreateBlankAssetBundleOptions,
 ): Promise<BlankAssetBundle> {
   const size =
-    typeof options.size === 'number'
-      ? { width: options.size, height: options.size }
-      : options.size;
+    typeof options.size === 'number' ? { width: options.size, height: options.size } : options.size;
   assertBlankCanvasSize(size);
 
   const asset = createBlankAsset({

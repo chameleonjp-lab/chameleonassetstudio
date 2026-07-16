@@ -87,9 +87,7 @@ test('自由な矩形sizeと明示tile starterを保存・再読込できる', a
 test('character starterはbody Partを明示した場合だけ作る', async ({ page }) => {
   const properties = await openNewProject(page, '初期Part作成');
   await properties.getByLabel('新規アセット名').fill('主人公');
-  await expect(properties.getByLabel('新規アセットのテンプレート')).toHaveValue(
-    'character-basic',
-  );
+  await expect(properties.getByLabel('新規アセットのテンプレート')).toHaveValue('character-basic');
   await properties.getByLabel('character body Partを作成').check();
   await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
 
