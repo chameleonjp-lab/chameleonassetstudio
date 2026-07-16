@@ -63,6 +63,7 @@ describe('新規作成template（2D-2-CREATE A+B+X）', () => {
     });
     expect(withPart.parts[0].parentId).toBeUndefined();
     expect(withPart.parts[0].bindPose).toBeUndefined();
+    expect(validateAsset(withPart).valid).toBe(true);
   });
 
   it.each([
