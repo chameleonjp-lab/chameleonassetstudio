@@ -26,6 +26,8 @@ import {
   addAnchor,
   addGuideLayer,
   applyFrameToAsset,
+  assetCreationTemplatesForType,
+  defaultAssetCreationTemplateId,
   duplicateAsset,
   flipCopyAsset,
   flipLayerHorizontal,
@@ -33,6 +35,7 @@ import {
   ASSET_TYPES,
   type AnchorRole,
   type Asset,
+  type AssetCreationTemplateId,
   type AssetType,
   type Project,
   type Vec2,
@@ -60,10 +63,12 @@ import { layerWorldPoint } from '../../renderers/canvas2d/view';
 import { AssetTypePanel, BackgroundLayerFields } from './AssetTypePanel';
 import { ASSET_TYPE_LABELS } from './assetTypeLabels';
 import {
-  BLANK_CANVAS_SIZE_PRESETS,
+  BLANK_CANVAS_PRESETS,
+  blankCanvasSizeForPreset,
   createBlankAssetBundle,
+  DEFAULT_BLANK_CANVAS_PRESET_ID,
   DEFAULT_BLANK_CANVAS_SIZE,
-  type BlankCanvasSizePreset,
+  type BlankCanvasPresetId,
 } from './blankAsset';
 import { CanvasEditor } from './CanvasEditor';
 import { LAYER_TOOLS, type CanvasTool } from './canvasTools';
@@ -180,11 +185,44 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   // 新規アセット作成フォーム（2D-2-CREATE-01）。画像を取り込まず、型とサイズだけで空キャンバスを作る。
   const [newAssetName, setNewAssetName] = useState('新規アセット');
   const [newAssetType, setNewAssetType] = useState<AssetType>('character');
-  const [newAssetSize, setNewAssetSize] =
-    useState<BlankCanvasSizePreset>(DEFAULT_BLANK_CANVAS_SIZE);
+  const [newAssetSizePreset, setNewAssetSizePreset] = useState<BlankCanvasPresetId>(
+    DEFAULT_BLANK_CANVAS_PRESET_ID,
+  );
+  const [newAssetWidth, setNewAssetWidth] = useState(String(DEFAULT_BLANK_CANVAS_SIZE));
+  const [newAssetHeight, setNewAssetHeight] = useState(String(DEFAULT_BLANK_CANVAS_SIZE));
+  const [newAssetTemplateId, setNewAssetTemplateId] = useState<AssetCreationTemplateId>(
+    defaultAssetCreationTemplateId('character'),
+  );
+  const [newAssetCreateBodyPart, setNewAssetCreateBodyPart] = useState(false);
   const [creatingAsset, setCreatingAsset] = useState(false);
   const [duplicatingAsset, setDuplicatingAsset] = useState(false);
   const [deletingAsset, setDeletingAsset] = useState(false);
+
+  const handleNewAssetTypeChange = (assetType: AssetType) => {
+    setNewAssetType(assetType);
+    setNewAssetTemplateId(defaultAssetCreationTemplateId(assetType));
+    setNewAssetCreateBodyPart(false);
+  };
+
+  const handleNewAssetPresetChange = (presetId: BlankCanvasPresetId) => {
+    setNewAssetSizePreset(presetId);
+    const presetSize = blankCanvasSizeForPreset(presetId);
+    if (presetSize) {
+      setNewAssetWidth(String(presetSize.width));
+      setNewAssetHeight(String(presetSize.height));
+    }
+  };
+
+  const handleNewAssetDimensionChange = (dimension: 'width' | 'height', value: string) => {
+    setNewAssetSizePreset('custom');
+    if (dimension === 'width') {
+      setNewAssetWidth(value);
+    } else {
+      setNewAssetHeight(value);
+    }
+  };
+
+  const newAssetTemplates = assetCreationTemplatesForType(newAssetType);
 
   // タイムライン（Phase 9）
   const [selectedAnimationId, setSelectedAnimationId] = useState<string | null>(null);
@@ -891,7 +929,12 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         name: trimmedName,
         displayName: trimmedName,
         assetType: newAssetType,
-        size: newAssetSize,
+        size: { width: Number(newAssetWidth), height: Number(newAssetHeight) },
+        templateId: newAssetTemplateId,
+        createCharacterBodyPart:
+          newAssetType === 'character' &&
+          newAssetTemplateId === 'character-basic' &&
+          newAssetCreateBodyPart,
       });
       const nextProject: Project = {
         ...project,
@@ -1396,8 +1439,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           <fieldset className="editor-fieldset asset-create-fieldset">
             <legend>新規アセットを作成</legend>
             <p className="editor-note">
-              画像を取り込まず、型とサイズだけで空キャンバスのアセットを作れます。 character
-              を選ぶと、当たり判定「body」が最初から付きます。
+              サイズとtemplateを確認してから作成します。templateは作成結果だけを保存し、template
+              ID自体は保存しません。
             </p>
             <label className="editor-field">
               新規アセット名
@@ -1411,7 +1454,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               新規アセットの種別
               <select
                 value={newAssetType}
-                onChange={(event) => setNewAssetType(event.target.value as AssetType)}
+                onChange={(event) => handleNewAssetTypeChange(event.target.value as AssetType)}
               >
                 {ASSET_TYPES.map((type) => (
                   <option key={type} value={type}>
@@ -1423,18 +1466,77 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             <label className="editor-field">
               新規アセットのサイズ
               <select
-                value={newAssetSize}
+                value={newAssetSizePreset}
                 onChange={(event) =>
-                  setNewAssetSize(Number(event.target.value) as BlankCanvasSizePreset)
+                  handleNewAssetPresetChange(event.target.value as BlankCanvasPresetId)
                 }
               >
-                {BLANK_CANVAS_SIZE_PRESETS.map((size) => (
-                  <option key={size} value={size}>
-                    {size} x {size}
+                {BLANK_CANVAS_PRESETS.map((preset) => (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.label}
+                  </option>
+                ))}
+                <option value="custom">自由入力</option>
+              </select>
+            </label>
+            <div className="gamedata-inline-fields">
+              <label className="editor-field">
+                新規アセットの幅
+                <input
+                  type="number"
+                  min={1}
+                  max={4096}
+                  inputMode="numeric"
+                  value={newAssetWidth}
+                  onChange={(event) => handleNewAssetDimensionChange('width', event.target.value)}
+                />
+              </label>
+              <label className="editor-field">
+                新規アセットの高さ
+                <input
+                  type="number"
+                  min={1}
+                  max={4096}
+                  inputMode="numeric"
+                  value={newAssetHeight}
+                  onChange={(event) => handleNewAssetDimensionChange('height', event.target.value)}
+                />
+              </label>
+            </div>
+            <p className="editor-note">
+              幅・高さは1〜4096の整数です。値は自動調整せず、範囲外なら画像生成前に拒否します。
+            </p>
+            <label className="editor-field">
+              新規アセットのテンプレート
+              <select
+                value={newAssetTemplateId}
+                onChange={(event) => {
+                  setNewAssetTemplateId(event.target.value as AssetCreationTemplateId);
+                  setNewAssetCreateBodyPart(false);
+                }}
+              >
+                {newAssetTemplates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.label}
                   </option>
                 ))}
               </select>
             </label>
+            <p className="editor-note">
+              {newAssetTemplates.find((template) => template.id === newAssetTemplateId)
+                ?.description ?? ''}
+            </p>
+            {newAssetType === 'character' && newAssetTemplateId === 'character-basic' && (
+              <label className="editor-field editor-field-checkbox">
+                <input
+                  type="checkbox"
+                  aria-label="character body Partを作成"
+                  checked={newAssetCreateBodyPart}
+                  onChange={(event) => setNewAssetCreateBodyPart(event.target.checked)}
+                />
+                main layerを参照するbody Partも作成する
+              </label>
+            )}
             <button
               type="button"
               aria-label="新規アセットを作成"
