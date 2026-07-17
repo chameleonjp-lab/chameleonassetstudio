@@ -1,7 +1,7 @@
 # 2D-2-RASTER + 2D-2-REPAIR 契約監査・実装計画
 
 作成日: 2026-07-16
-状態: `A+X+P+M accepted / implementation ready`
+状態: `A+X+P+M accepted / Slice 1 + Slice 2 completed / align-distribute contract audit next`
 正式work package: `2D-2-RASTER + 2D-2-REPAIR`
 基準main: `c6a18eb78637033ddeeb60dc5d645bf6d3347ed5`（PR #102 merge）
 直前slice: `2D-2-PROJECT + 2D-2-CREATE` accepted A+B+X completed
@@ -141,10 +141,12 @@ alpha trimは選択textureだけを切り詰め、Layer.positionを補正してw
 
 ### 後続slice
 
-- 複数layer align / distribute
+- 複数layer align / distribute。次の正式契約監査とし、一時選択範囲、active layer、整列基準、回転・負scaleを含むworld bounds、同率時の決定性、Undo / Redoを実装前に固定する。
 - canvas resizeとgame data追従契約
 - timeline完成後のframeずれ修正
 - persistent shape / textを採用する場合の独立schema契約
+
+Slice 1とSlice 2はPR #105〜#110で完了した。次のalign / distribute契約がacceptedになるまで、複数Layer選択や整列のproduct codeを追加しない。
 
 ## 11. 完了条件
 

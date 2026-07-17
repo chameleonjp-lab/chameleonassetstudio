@@ -1,7 +1,7 @@
 # 2D-2-RASTER + 2D-2-REPAIR 実装報告
 
 作成日: 2026-07-16
-状態: `Slice 1 completed / Slice 2 padding + resize in Draft PR #109`
+状態: `Slice 1 + Slice 2 completed / PR #110 merged / CI Run #371 success`
 採用判断: `A+X+P+M`
 
 ## 1. 反映済みPR
@@ -11,9 +11,8 @@
 - Canvas描画PR #106: merge commit `509778ba205fa6d973529ce5c55dc96aabe776be`
 - Slice 1完了PR #107: merge commit `07422af6472d59874da5ca2cef1a7c7a6a2b9dbb`
 - alpha検査・trim PR #108: merge commit `0e405773c1e88c235351e40f396c2bff1fbc8abb`
-
-現在branch: `agent/2d2-layer-repair-padding-resize`
-現在Draft PR: #109
+- padding・resize PR #109: final head `dc74803704d3c00e0b594abbc940e7db387c18d6`、merge commit `4f781a1dca76e67aedc517632edb81d8d852a6e1`
+- palette・修復workflow PR #110: final head `788386abf20d2b95ee5141d20e97a03ea7c2ed53`、merge commit `ac1dfd3a9daff2f1079524e63b02579c01216674`
 
 ## 2. Slice 1: raster foundation
 
@@ -56,7 +55,7 @@ PR #108のfinal head `e977032327dec7051d2efbce787226423fc16858`について、CI
 
 ## 4. Slice 2-2: 透明padding
 
-Draft PR #109で、選択中Layer画像の周囲へ透明pixelを追加する処理を実装した。
+PR #109で、選択中Layer画像の周囲へ透明pixelを追加する処理を実装した。
 
 ### 4.1 純粋PixelBuffer処理
 
@@ -147,20 +146,37 @@ paddingとresizeを統合`ImageOperation`へ追加し、既存のWorker request 
 12. Undo / Redoでresize前後を復元できる
 13. reload後にホームからプロジェクトを再度開き、20 x 19のedit画像を読み込める
 
-focused CI Run #360では、Prettier、lint、build、unit test、対象E2Eが成功した。整形済みE2Eをcommitする際に補助workflowを標準版へ戻しており、最終差分には含めない。
+PR #109のfinal headに対するCI Run #362では、lint、format、build、unit test、全E2Eが成功した。整形済みE2Eをcommitする際に使用した補助workflowは標準版へ戻し、最終差分には含めていない。
 
-## 8. Slice 2の残作業
+## 8. Slice 2-3: palette抽出と修復workflow
 
-PR #109のpadding / resize単位を確定後、次を進める。
+PR #110で次を完成した。
 
-- palette抽出
-- 既存replaceColor、outline、flipとの修復workflow統合
-- palette・修復操作の失敗時無変更
-- snapshot、Undo / Redo、reload、`.casproj`退避確認
+- alphaしきい値と1〜32色の上限を持つ、入力非破壊のpalette抽出
+- RGB 5-bit量子化、代表平均色、pixel数、coverageの決定的な算出
+- 既存image analysis Workerと同期fallbackへの接続
+- Asset / Layer / Textureに結び付いた一時palette state
+- swatchからreplaceColorの対象色を選ぶ導線
+- replaceColor、outline、flipを同じ修復panelへ統合
+- source Blob不変、snapshot、Undo / Redo、reload、`.casproj`downloadのE2E
+
+一時的に追加されていたPR専用のtest書き換え・自動push workflowは削除し、read-only権限の標準CIへ戻した。PR #110のfinal headに対するCI Run #371は、classify-changes、build-and-test、全E2Eを成功した。
+
+## 9. 完了範囲と次の作業
+
+Raster Slice 1とLayer Repair Slice 2は完了した。次の正式作業は、同じwork package内の複数Layer align / distribute契約監査である。
+
+実装前に次を固定する。
+
+- 複数Layer選択は保存しない一時UI状態とし、active layerとの関係を明示する
+- Asset基準、選択範囲基準、active layer基準のどれを各操作に使うか
+- rotation、scale、負scaleを含むworld boundsの計算
+- 同じ位置や同じ大きさのLayerがある場合の決定的な順序
+- 1操作1履歴としてのsnapshot、Undo / Redo、保存、reloadの確認
 
 frame alignmentは`2D-3-TIMELINE`完了後まで実装しない。
 
-## 9. 安全境界
+## 10. 安全境界
 
 次を変更しない。
 
