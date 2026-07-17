@@ -111,6 +111,28 @@ describe('F1/V1: Family参照・linked recipe不変条件', () => {
     expect(validateProjectFamilies(cycle).join('\n')).toContain('複数Family');
   });
 
+  it('Family ID重複と同一Family内のvariant Asset ID重複を理由付きで拒否する', () => {
+    const duplicateFamilyId = projectWithFamily();
+    duplicateFamilyId.families!.push({
+      id: duplicateFamilyId.families![0].id,
+      name: 'Duplicate ID',
+      baseAssetId: 'asset_standalone',
+      variants: [],
+    });
+    expect(validateProjectFamilies(duplicateFamilyId).join('\n')).toContain(
+      'family idがProject内で重複',
+    );
+
+    const duplicateVariant = projectWithFamily();
+    duplicateVariant.families![0].variants.push({
+      assetId: 'asset_variant',
+      kind: 'manual',
+    });
+    expect(validateProjectFamilies(duplicateVariant).join('\n')).toContain(
+      '同じvariant assetIdが重複',
+    );
+  });
+
   it('linkedのrecipe/fingerprint欠落とmanualのrecipe/fingerprint混入を拒否する', () => {
     const missingLinkedData = projectWithFamily();
     missingLinkedData.families![0].variants = [

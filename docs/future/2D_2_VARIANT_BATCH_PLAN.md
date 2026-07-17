@@ -1,10 +1,11 @@
 # 2D-2-VARIANT + 2D-2-BATCH 契約監査・実装計画
 
 作成日: 2026-07-17
-状態: `F1+C1+V1+T1+B1+O1+H1+L1 accepted (2026-07-17) / Slice A in progress`
+状態: `F1+C1+V1+T1+B1+O1+H1+L1 accepted (2026-07-17) / Slice A merged / Slice B implementing`
 正式work package: `2D-2-VARIANT + 2D-2-BATCH`（2D完成ロードマップ PR group 10）
 契約監査基準main: `1838f58918a2958f9ebce2f8379f87a45fb17c26`（PR #115 merge）
 Slice A実装基準main: `f08ec3f108e877dfbd6edc7106946f6e3519644a`（PR #116 merge）
+Slice B実装基準main: `015064c6ae6b9e2a0f28e84c9ac447b9f9e0a8d1`（PR #117 merge）
 前段: `2D-2-RASTER + 2D-2-REPAIR`の現在実装可能なsliceは完了。frameずれ修正はaccepted `M`契約どおり`2D-3-TIMELINE`後へ保留する。
 
 ## 1. 目的
@@ -21,7 +22,7 @@ Slice A実装基準main: `f08ec3f108e877dfbd6edc7106946f6e3519644a`（PR #116 me
 6. source Blob、snapshot、`.casproj`、exportへの影響。
 7. Desktop / touch / iPhone SE級viewportと性能上限。
 
-この文書は判断候補を提示したdocs-only監査を経て、§8で推奨組み合わせがaccepted済みである。現在は§5の直列順に従い、Slice Aの型、schema、意味検査、fixture、文書同期だけを実装する。Family / Variant UI、linked refresh、batch実装は後続Sliceまで開始しない。
+この文書は判断候補を提示したdocs-only監査を経て、§8で推奨組み合わせがaccepted済みである。Slice Aの型、schema、意味検査、fixture、文書同期はPR #117でmainへmerge済みである。現在は§5の直列順に従いSlice Bの原子revision / recovery基盤を実装し、Family / Variant UIとlinked refreshはSlice C、preview / progress / 取消を持つbatch体験はSlice Dまで開始しない。
 
 ## 2. 前段closeoutと開始条件
 
@@ -153,6 +154,8 @@ C1の旧client再保存リスクは、現行`0.1.0`のmigration・schema・stora
 2. 保存前の正本一致を確認し、validation、欠落Blob、競合、容量不足、transaction abortで全件を無変更にする。
 3. 複数Asset / Blobの復旧点と、同じ原子APIを使うgroup Undo / Redoの基盤を追加する。
 4. 既存の単一Asset保存、source不変性、snapshot / recovery、`.casproj`を後退させないstorage testを追加する。
+
+Slice Bの初回基盤は既存snapshot形式（1 Asset + 1 edit Blob）を再利用する。1 targetで複数edit Blobを同時に変更すると1件の復旧点からAsset / Blob全体を整合復元できないため、新しい永続形式を推測せず理由付きで拒否する。複数Assetそれぞれの1 edit Blobとmetadata-only targetは同じtransactionで扱える。source TextureRef / Blob、DB version / store / index、Project / Asset schema、`.casproj`、product exportは変更しない。
 
 ### Slice C: Variant management and recipes
 
