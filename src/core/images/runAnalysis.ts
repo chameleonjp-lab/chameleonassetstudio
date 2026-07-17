@@ -1,8 +1,10 @@
 import { inspectAlphaBounds, type AlphaInspection } from './layerRepair';
+import { extractPalette, type PaletteExtraction } from './paletteExtraction';
 import { ImageOperationError, type PixelBuffer, type ProgressCallback } from './operations';
 import type {
   ImageAnalysisRequest,
   ImageAnalysisResponse,
+  ImageAnalysisResult,
 } from '../../workers/imageAnalysis.worker';
 
 let worker: Worker | null = null;
@@ -10,7 +12,7 @@ let requestId = 0;
 const pending = new Map<
   number,
   {
-    resolve: (result: AlphaInspection) => void;
+    resolve: (result: ImageAnalysisResult) => void;
     reject: (error: Error) => void;
     onProgress?: ProgressCallback;
   }
@@ -57,6 +59,11 @@ function getWorker(): Worker | null {
   return worker;
 }
 
+function nextRequestId(): number {
+  requestId += 1;
+  return requestId;
+}
+
 /** alpha bounds分析をWorkerで実行し、非対応環境では同期処理へfallbackする。 */
 export function runAlphaInspection(
   buffer: PixelBuffer,
@@ -74,16 +81,57 @@ export function runAlphaInspection(
     });
   }
 
-  requestId += 1;
-  const id = requestId;
+  const id = nextRequestId();
   return new Promise<AlphaInspection>((resolve, reject) => {
-    pending.set(id, { resolve, reject, onProgress });
+    pending.set(id, {
+      resolve: (result) => resolve(result as AlphaInspection),
+      reject,
+      onProgress,
+    });
     const request: ImageAnalysisRequest = {
       id,
       type: 'alphaBounds',
       width: buffer.width,
       height: buffer.height,
       data: new Uint8ClampedArray(buffer.data),
+      alphaThreshold,
+    };
+    activeWorker.postMessage(request);
+  });
+}
+
+/** palette分析をWorkerで実行し、非対応環境では同期処理へfallbackする。 */
+export function runPaletteExtraction(
+  buffer: PixelBuffer,
+  maxColors = 8,
+  alphaThreshold = 0,
+  onProgress?: ProgressCallback,
+): Promise<PaletteExtraction> {
+  const activeWorker = getWorker();
+  if (!activeWorker) {
+    return new Promise((resolve, reject) => {
+      try {
+        resolve(extractPalette(buffer, maxColors, alphaThreshold, onProgress));
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    });
+  }
+
+  const id = nextRequestId();
+  return new Promise<PaletteExtraction>((resolve, reject) => {
+    pending.set(id, {
+      resolve: (result) => resolve(result as PaletteExtraction),
+      reject,
+      onProgress,
+    });
+    const request: ImageAnalysisRequest = {
+      id,
+      type: 'palette',
+      width: buffer.width,
+      height: buffer.height,
+      data: new Uint8ClampedArray(buffer.data),
+      maxColors,
       alphaThreshold,
     };
     activeWorker.postMessage(request);
