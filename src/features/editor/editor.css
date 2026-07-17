@@ -297,6 +297,179 @@
   padding: 0.3rem 0.6rem;
 }
 
+.canvas-resize-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.canvas-resize-size-fields {
+  display: flex;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.canvas-resize-size-fields .editor-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.canvas-resize-size-fields input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.canvas-resize-anchor-fieldset {
+  margin: 0;
+  padding: 0.45rem;
+  border: 1px solid #8884;
+  border-radius: 6px;
+}
+
+.canvas-resize-anchor-fieldset legend {
+  padding: 0 0.25rem;
+  font-size: 0.8rem;
+}
+
+.canvas-resize-anchor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(44px, 1fr));
+  gap: 0.25rem;
+  max-width: 12rem;
+}
+
+.canvas-resize-anchor-option {
+  position: relative;
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.canvas-resize-anchor-option input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.canvas-resize-anchor-option span {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  border: 1px solid #8888;
+  border-radius: 5px;
+  font-size: 1rem;
+}
+
+.canvas-resize-anchor-option input:checked + span {
+  border-color: #3a86ff;
+  background: #3a86ff22;
+  box-shadow: inset 0 0 0 1px #3a86ff;
+}
+
+.canvas-resize-anchor-option input:focus-visible + span {
+  outline: 2px solid #3a86ff;
+  outline-offset: 2px;
+}
+
+.canvas-resize-summary {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.canvas-resize-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.canvas-resize-preview svg {
+  width: 100%;
+  height: 150px;
+  border: 1px solid #8884;
+  border-radius: 6px;
+  background: repeating-conic-gradient(#8882 0 25%, transparent 0 50%) 50% / 12px 12px;
+}
+
+.canvas-resize-preview-next {
+  fill: #3a86ff20;
+  stroke: #3a86ff;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.canvas-resize-preview-old {
+  fill: #ff9f1c18;
+  stroke: #ff9f1c;
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.canvas-resize-preview-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+}
+
+.canvas-resize-preview-next-swatch,
+.canvas-resize-preview-old-swatch {
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 2px solid;
+  box-sizing: border-box;
+}
+
+.canvas-resize-preview-next-swatch {
+  border-color: #3a86ff;
+}
+
+.canvas-resize-preview-old-swatch {
+  margin-left: 0.4rem;
+  border-color: #ff9f1c;
+  border-style: dashed;
+}
+
+.canvas-resize-warning,
+.canvas-resize-safe {
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+}
+
+.canvas-resize-warning {
+  border: 1px solid #c97700;
+  background: #ffb70318;
+}
+
+.canvas-resize-safe {
+  border: 1px solid #2a9d8f;
+  background: #2a9d8f12;
+}
+
+.canvas-resize-warning p,
+.canvas-resize-safe p {
+  margin: 0;
+}
+
+.canvas-resize-warning ul,
+.canvas-resize-safe ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.15rem 0.5rem;
+  margin: 0.35rem 0;
+  padding-left: 1.1rem;
+}
+
 .part-row {
   display: flex;
   flex-direction: column;

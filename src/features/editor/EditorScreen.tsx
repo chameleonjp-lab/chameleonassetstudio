@@ -84,6 +84,7 @@ import {
   DEFAULT_BLANK_CANVAS_SIZE,
   type BlankCanvasPresetId,
 } from './blankAsset';
+import { CanvasResizePanel } from './CanvasResizePanel';
 import {
   CanvasEditor,
   type PastePreviewState,
@@ -2116,6 +2117,13 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 ))}
               </ul>
             </>
+          )}
+
+          <h3 className="editor-subheading">Asset canvasサイズ</h3>
+          {selectedAsset ? (
+            <CanvasResizePanel asset={selectedAsset} onCommit={commitPanelChange} />
+          ) : (
+            <p className="editor-note">アセットを選ぶとcanvasサイズを変更できます。</p>
           )}
 
           <h3 className="editor-subheading">レイヤー</h3>
