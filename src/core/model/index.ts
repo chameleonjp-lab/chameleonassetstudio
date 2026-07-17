@@ -7,6 +7,7 @@ export * from './common';
 export * from './duplicateAsset';
 export * from './exportPreset';
 export * from './factories';
+export * from './family';
 export * from './flipCopy';
 export * from './layer';
 export * from './migrate';

@@ -25,7 +25,111 @@
         }
       }
     },
+    "families": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/assetFamily" }
+    },
     "createdAt": { "type": "string", "format": "date-time" },
     "updatedAt": { "type": "string", "format": "date-time" }
+  },
+  "definitions": {
+    "paletteReplacement": {
+      "type": "object",
+      "required": ["from", "to"],
+      "properties": {
+        "from": { "type": "string", "pattern": "^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$" },
+        "to": { "type": "string", "pattern": "^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$" }
+      }
+    },
+    "familyVariantRecipe": {
+      "type": "object",
+      "required": ["type", "idMap"],
+      "properties": {
+        "type": { "enum": ["mirror", "palette"] },
+        "idMap": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        },
+        "replacements": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/paletteReplacement" }
+        },
+        "tolerance": { "type": "number", "minimum": 0 }
+      },
+      "if": {
+        "properties": { "type": { "const": "palette" } }
+      },
+      "then": {
+        "required": ["replacements"]
+      }
+    },
+    "familyVariantFingerprint": {
+      "type": "object",
+      "required": ["base", "variant", "syncedAt"],
+      "properties": {
+        "base": { "type": "string", "minLength": 1 },
+        "variant": { "type": "string", "minLength": 1 },
+        "syncedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "assetFamilyVariant": {
+      "type": "object",
+      "required": ["assetId", "kind"],
+      "properties": {
+        "assetId": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["linked-mirror", "linked-palette", "manual"] },
+        "recipe": { "$ref": "#/definitions/familyVariantRecipe" },
+        "fingerprint": { "$ref": "#/definitions/familyVariantFingerprint" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "kind": { "const": "linked-mirror" } }
+          },
+          "then": {
+            "required": ["recipe"],
+            "properties": {
+              "recipe": {
+                "properties": { "type": { "const": "mirror" } }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "linked-palette" } }
+          },
+          "then": {
+            "required": ["recipe"],
+            "properties": {
+              "recipe": {
+                "properties": { "type": { "const": "palette" } }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "manual" } }
+          },
+          "then": {
+            "not": { "required": ["recipe"] }
+          }
+        }
+      ]
+    },
+    "assetFamily": {
+      "type": "object",
+      "required": ["id", "name", "baseAssetId", "variants"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "baseAssetId": { "type": "string", "minLength": 1 },
+        "variants": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/assetFamilyVariant" }
+        }
+      }
+    }
   }
 }

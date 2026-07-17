@@ -1,5 +1,5 @@
 import type { Asset, Project, ProjectAssetEntry, TextureRef } from '../model';
-import { migrateAsset, migrateProject } from '../model';
+import { migrateAsset, migrateProject, validateProjectFamilies } from '../model';
 import { validateAsset, validateProject } from '../schema/validate';
 import {
   INDEX_BY_PROJECT,
@@ -47,6 +47,17 @@ export const TRASH_LIMIT = 5;
 
 function formatValidationErrors(label: string, errors: string[]): string {
   return `${label} の内容が不正です: ${errors.join(' / ')}`;
+}
+
+/**
+ * Project.families の参照 invariant を検査し、違反があれば理由付きで保存拒否する（Slice A, F1）。
+ * ajv によるスキーマ検証（`validateProject`）の直後に呼び出す。
+ */
+function assertProjectFamiliesValid(project: Project): void {
+  const familyErrors = validateProjectFamilies(project);
+  if (familyErrors.length > 0) {
+    throw new StorageError(formatValidationErrors('project', familyErrors));
+  }
 }
 
 function blobKeyForAssetPath(assetId: string, path: string): string {
@@ -168,6 +179,7 @@ export async function saveProject(project: Project): Promise<void> {
   if (!result.valid) {
     throw new StorageError(formatValidationErrors('project', result.errors));
   }
+  assertProjectFamiliesValid(project);
   await runTransaction([STORE_PROJECTS], 'readwrite', (tx) =>
     requestToPromise(tx.objectStore(STORE_PROJECTS).put(project)),
   );
@@ -306,6 +318,7 @@ export async function saveProjectBundle(
   if (!projectResult.valid) {
     throw new StorageError(formatValidationErrors('project', projectResult.errors));
   }
+  assertProjectFamiliesValid(project);
   for (const asset of assets) {
     const assetResult = validateAsset(asset);
     if (!assetResult.valid) {
@@ -865,6 +878,24 @@ export async function deleteAssetBundle({
   if (project.assets.some((entry) => entry.id === assetId)) {
     throw new StorageError(`削除対象アセット（id: ${assetId}）が Project に残っています`);
   }
+  // Family invariant enforce（Slice A, F1）。API 形状（{ project, assetId }）は変えず、
+  // project.assets の既存チェックと同じパターンで「呼び出し元が渡す更新後 Project」を検査する。
+  // base の場合: 別 base への付替えまたは Family 解除を先に行うまで拒否する。
+  // variant の場合: 呼び出し元が該当 variant エントリを除去した Project を渡す必要があり、
+  // 除去済みでなければ理由付きで拒否する（family 自体は残 variants 0 でも維持してよい）。
+  for (const family of project.families ?? []) {
+    if (family.baseAssetId === assetId) {
+      throw new StorageError(
+        `削除対象アセット（id: ${assetId}）は Family（id: ${family.id}）の base です。先に別 base への付替えまたは Family 解除が必要です`,
+      );
+    }
+    if (family.variants.some((variant) => variant.assetId === assetId)) {
+      throw new StorageError(
+        `削除対象アセット（id: ${assetId}）は Family（id: ${family.id}）の variant として残っています。先に variant エントリを除去した Project を渡してください`,
+      );
+    }
+  }
+  assertProjectFamiliesValid(project);
 
   await runTransaction(
     [STORE_PROJECTS, STORE_ASSETS, STORE_BLOBS, STORE_SNAPSHOTS],
