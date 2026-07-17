@@ -2,8 +2,9 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Asset, Project } from '../model';
 import { createEmptyProject } from '../model';
+import { createLinkedMirrorVariant } from '../model/familyTestFixtures';
 import characterAsset from '../samples/asset.character.json';
-import { resetDbForTests } from './db';
+import { requestToPromise, resetDbForTests, runTransaction, STORE_PROJECTS } from './db';
 import { restoreProject } from './index';
 import {
   TRASH_LIMIT,
@@ -112,6 +113,178 @@ describe('project / asset 基本保存', () => {
       /属していません/,
     );
     expect((await loadAsset(asset.id)).asset).toEqual(asset);
+  });
+});
+
+describe('Slice A Family保存・削除境界', () => {
+  it('有効なFamilyを保存・読込でき、欠落参照とProject Asset ID重複を拒否する', async () => {
+    const base = assetWithId('asset_family_base');
+    const variant = assetWithId('asset_family_variant');
+    const project = projectWithAssets('family', [base, variant]);
+    project.families = [
+      {
+        id: 'family_hero',
+        name: 'Hero',
+        baseAssetId: base.id,
+        variants: [createLinkedMirrorVariant(variant.id)],
+      },
+    ];
+
+    await saveProject(project);
+    expect((await loadProject(project.id)).project).toEqual(project);
+
+    await expect(
+      saveProject({
+        ...project,
+        families: [
+          {
+            ...project.families[0],
+            baseAssetId: 'asset_missing',
+          },
+        ],
+      }),
+    ).rejects.toThrow(/baseAssetId/);
+    await expect(
+      saveProject({ ...project, assets: [...project.assets, project.assets[0]] }),
+    ).rejects.toThrow(/同じAsset ID/);
+  });
+
+  it('schema上は正しいがFamily参照が壊れた保存済みProjectをloadProjectで拒否する', async () => {
+    const base = assetWithId('asset_invalid_loaded_base');
+    const invalid = projectWithAssets('invalid loaded family', [base]);
+    invalid.families = [
+      {
+        id: 'family_invalid_loaded',
+        name: 'Invalid Loaded Family',
+        baseAssetId: base.id,
+        variants: [{ assetId: 'asset_missing', kind: 'manual' }],
+      },
+    ];
+    await runTransaction([STORE_PROJECTS], 'readwrite', (tx) =>
+      requestToPromise(tx.objectStore(STORE_PROJECTS).put(invalid)),
+    );
+
+    await expect(loadProject(invalid.id)).rejects.toThrow(/variant assetId/);
+  });
+
+  it('base削除とFamily参照を残したvariant削除を拒否し、参照除去後は他memberを維持して原子的に削除する', async () => {
+    const base = assetWithId('asset_delete_base');
+    const variant = assetWithId('asset_delete_variant');
+    const standalone = assetWithId('asset_delete_standalone');
+    const project = projectWithAssets('family delete', [base, variant, standalone]);
+    project.families = [
+      {
+        id: 'family_delete',
+        name: 'Delete Family',
+        baseAssetId: base.id,
+        variants: [{ assetId: variant.id, kind: 'manual' }],
+      },
+    ];
+    await saveProjectBundle(
+      project,
+      [base, variant, standalone],
+      [base, variant, standalone].flatMap((item, index) => blobsForAsset(item, 10 + index * 10)),
+    );
+
+    await expect(
+      deleteAssetBundle({
+        project: { ...project, assets: project.assets.filter((entry) => entry.id !== base.id) },
+        assetId: base.id,
+      }),
+    ).rejects.toThrow(/Family.*base/);
+    await expect(
+      deleteAssetBundle({
+        project: { ...project, assets: project.assets.filter((entry) => entry.id !== variant.id) },
+        assetId: variant.id,
+      }),
+    ).rejects.toThrow(/variant として残っています/);
+
+    const nextProject: Project = {
+      ...project,
+      assets: project.assets.filter((entry) => entry.id !== variant.id),
+      families: [{ ...project.families[0], variants: [] }],
+    };
+    await deleteAssetBundle({ project: nextProject, assetId: variant.id });
+
+    expect((await loadProject(project.id)).project).toEqual(nextProject);
+    await expect(loadAsset(variant.id)).rejects.toThrow(/見つかりません/);
+    expect((await loadAsset(base.id)).asset.id).toBe(base.id);
+    expect((await loadAsset(standalone.id)).asset.id).toBe(standalone.id);
+    expect(await loadBlob(`${variant.id}/${variant.textures[0].path}`)).toBeNull();
+    expect(await loadBlob(`${base.id}/${base.textures[0].path}`)).not.toBeNull();
+    expect(await loadBlob(`${standalone.id}/${standalone.textures[0].path}`)).not.toBeNull();
+  });
+
+  it('Family付きProjectをごみ箱へ移動・復元して関係を保持する', async () => {
+    const base = assetWithId('asset_restore_family_base');
+    const variant = assetWithId('asset_restore_family_variant');
+    const project = projectWithAssets('family restore', [base, variant]);
+    project.families = [
+      {
+        id: 'family_restore',
+        name: 'Restore Family',
+        baseAssetId: base.id,
+        variants: [{ assetId: variant.id, kind: 'manual' }],
+      },
+    ];
+    await saveProjectBundle(
+      project,
+      [base, variant],
+      [base, variant].flatMap((item, index) => blobsForAsset(item, 70 + index * 10)),
+    );
+
+    await deleteProject(project.id);
+    await restoreProject(project.id);
+
+    expect((await loadProject(project.id)).project).toEqual(project);
+    expect((await loadAsset(base.id)).asset.id).toBe(base.id);
+    expect((await loadAsset(variant.id)).asset.id).toBe(variant.id);
+  });
+
+  it('variant削除transactionが失敗したらFamily参照・Asset・Blobをすべて維持する', async () => {
+    const base = assetWithId('asset_delete_atomic_base');
+    const variant = assetWithId('asset_delete_atomic_variant');
+    const project = projectWithAssets('family delete atomic', [base, variant]);
+    project.families = [
+      {
+        id: 'family_delete_atomic',
+        name: 'Delete Atomic Family',
+        baseAssetId: base.id,
+        variants: [{ assetId: variant.id, kind: 'manual' }],
+      },
+    ];
+    await saveProjectBundle(
+      project,
+      [base, variant],
+      [base, variant].flatMap((item, index) => blobsForAsset(item, 90 + index * 10)),
+    );
+    const nextProject: Project = {
+      ...project,
+      assets: project.assets.filter((entry) => entry.id !== variant.id),
+      families: [{ ...project.families[0], variants: [] }],
+    };
+    const originalDelete = IDBObjectStore.prototype.delete;
+    const spy = vi.spyOn(IDBObjectStore.prototype, 'delete').mockImplementation(function (
+      this: IDBObjectStore,
+      key: IDBValidKey | IDBKeyRange,
+    ) {
+      if (this.name === 'assets' && key === variant.id) {
+        throw new DOMException('fail injection', 'DataError');
+      }
+      return originalDelete.call(this, key);
+    });
+
+    try {
+      await expect(
+        deleteAssetBundle({ project: nextProject, assetId: variant.id }),
+      ).rejects.toThrow();
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect((await loadProject(project.id)).project).toEqual(project);
+    expect((await loadAsset(variant.id)).asset.id).toBe(variant.id);
+    expect(await loadBlob(`${variant.id}/${variant.textures[0].path}`)).not.toBeNull();
   });
 });
 

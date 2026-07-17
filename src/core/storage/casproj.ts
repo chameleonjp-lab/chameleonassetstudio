@@ -8,7 +8,13 @@ import {
   type Zippable,
 } from 'fflate';
 import type { Asset, ExportPresetFile, Project } from '../model';
-import { MigrationError, migrateAsset, migrateExportPresets, migrateProject } from '../model';
+import {
+  MigrationError,
+  migrateAsset,
+  migrateExportPresets,
+  migrateProject,
+  validateProjectFamilies,
+} from '../model';
 import { validateAsset, validateExportPresets, validateProject } from '../schema/validate';
 import {
   ArchivePreflight,
@@ -251,12 +257,22 @@ function assertBundleDocumentConsistency(project: Project, assets: Asset[]): voi
   }
 }
 
+function assertProjectFamilyConsistency(project: Project, label: string): void {
+  const familyErrors = validateProjectFamilies(project);
+  if (familyErrors.length > 0) {
+    throw new CasprojError(`${label}のfamiliesが不正です: ${familyErrors.join(' / ')}`, {
+      code: 'inconsistent-bundle',
+    });
+  }
+}
+
 /** `.casproj`（ZIP）を生成する。書き出し前に schema 検証を行う（要件 14）。 */
 export async function exportCasproj(bundle: CasprojBundle): Promise<Blob> {
   const projectResult = validateProject(bundle.project);
   if (!projectResult.valid) {
     throw new CasprojError(`project.json の内容が不正です: ${projectResult.errors.join(' / ')}`);
   }
+  assertProjectFamilyConsistency(bundle.project, 'project.json');
   for (const asset of bundle.assets) {
     const assetResult = validateAsset(asset);
     if (!assetResult.valid) {
@@ -368,6 +384,7 @@ export async function importCasproj(
     throw new CasprojError(`project.json の内容が不正です: ${projectResult.errors.join(' / ')}`);
   }
   const project = projectMigration.data as unknown as Project;
+  assertProjectFamilyConsistency(project, 'project.json');
 
   const assets: Asset[] = [];
   let exportPresets: ExportPresetFile | undefined;

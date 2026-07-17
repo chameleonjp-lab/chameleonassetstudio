@@ -83,7 +83,7 @@ Chameleon は次を一度に置き換えることを目的にしない。
 - 元データ、編集用データ、プレビュー用の派生物、書き出し物を混同しない。
 - 自動保存、明示的なバックアップ、復元、容量表示、端末間の `.casproj` 移動を扱う。
 
-素材の親子や派生の保存形式は、`2D_ASSET_DATA_CONTRACT.md` を先に設計してから追加する。現在の `Project` / `Asset` 型へこの文書だけを理由にフィールドを追加してはいけない。
+素材の親子や派生の保存形式は、`2D_ASSET_DATA_CONTRACT.md`と別契約`2D_2_VARIANT_BATCH_PLAN.md`を先に設計してから追加する。2026-07-17に`F1+C1+V1+T1`がacceptedされ、Slice Aではoptionalな`Project.families`だけを追加する。この文書だけを理由に`Asset`、version、migration、ZIP path、product export形式を変更してはいけない。
 
 ### 5.2 新規作成と取り込み
 

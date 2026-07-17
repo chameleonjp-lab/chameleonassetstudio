@@ -1,5 +1,6 @@
 import type { AssetType } from './asset';
 import type { IsoDateTimeString, VersionString } from './common';
+import type { AssetFamily } from './family';
 
 export const PROJECT_FORMAT = 'chameleon-project' as const;
 
@@ -21,6 +22,12 @@ export interface Project {
   id: string;
   name: string;
   assets: ProjectAssetEntry[];
+  /**
+   * Asset Family / Variant の registry（Slice A、optional・additive field）。
+   * 不在・空配列は「全 Asset が standalone」を意味し、`CURRENT_PROJECT_VERSION` は変えない（C1）。
+   * 参照 invariant は `validateProjectFamilies`（`./family.ts`）で検査する。
+   */
+  families?: AssetFamily[];
   createdAt: IsoDateTimeString;
   updatedAt: IsoDateTimeString;
 }

@@ -1,6 +1,11 @@
 import { strToU8, zip, type Zippable } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import type { Asset, ExportPresetFile, Project } from '../model';
+import {
+  createFamilyVariantIdMap,
+  createFamilyVariantWriteSet,
+  createLinkedMirrorVariant,
+} from '../model/familyTestFixtures';
 import characterAsset from '../samples/asset.character.json';
 import exportPresets from '../samples/export-presets.sample.json';
 import sampleProject from '../samples/project.sample.json';
@@ -177,5 +182,102 @@ describe('casproj の書き出しと読み込み', () => {
         files: [{ path: 'project.json', bytes: new Uint8Array([1]) }],
       }),
     ).rejects.toMatchObject({ code: 'inconsistent-bundle' });
+  });
+
+  it('Family・recipe・fingerprint・standalone Asset・未知fieldを往復保持する（Slice A）', async () => {
+    const variant: Asset = {
+      ...structuredClone(asset),
+      id: 'asset_family_variant',
+      name: 'family_variant',
+      displayName: 'Family Variant',
+    };
+    const standalone: Asset = {
+      ...structuredClone(asset),
+      id: 'asset_standalone',
+      name: 'standalone',
+      displayName: 'Standalone',
+    };
+    const linked = createLinkedMirrorVariant(variant.id);
+    linked.recipe.idMap = {
+      ...createFamilyVariantIdMap(),
+      layers: Object.fromEntries(
+        asset.layers.map((layer, index) => [layer.id, variant.layers[index]?.id ?? layer.id]),
+      ),
+    };
+    linked.recipe.writeSet = {
+      ...createFamilyVariantWriteSet(),
+      layers: variant.layers.map((layer) => layer.id),
+    };
+    (linked.recipe.writeSet as unknown as Record<string, unknown>).futureSelector = {
+      preserved: true,
+    };
+    const familyProject = {
+      ...project,
+      assets: [asset, variant, standalone].map((item) => ({
+        id: item.id,
+        name: item.name,
+        displayName: item.displayName,
+        assetType: item.assetType,
+      })),
+      families: [
+        {
+          id: 'family_hero',
+          name: 'Hero',
+          baseAssetId: asset.id,
+          variants: [linked],
+          futureFamilyField: { preserved: true },
+        },
+      ],
+      futureProjectField: { preserved: true },
+    } as unknown as Project;
+    const imageBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
+    const familyBundle: CasprojBundle = {
+      project: familyProject,
+      assets: [asset, variant, standalone],
+      files: [asset, variant, standalone].flatMap((item) =>
+        item.textures.map((texture) => ({
+          path: `assets/${item.id}/${texture.path}`,
+          bytes: imageBytes,
+        })),
+      ),
+    };
+
+    const exported = await exportCasproj(familyBundle);
+    const imported = await importCasproj(exported);
+
+    expect(imported.bundle.project).toEqual(familyProject);
+    expect(imported.bundle.project.families).toEqual(familyProject.families);
+    expect(imported.bundle.project.assets.map((entry) => entry.id)).toContain(standalone.id);
+    expect(
+      (imported.bundle.project as unknown as Record<string, unknown>).futureProjectField,
+    ).toEqual({ preserved: true });
+  });
+
+  it('欠落Family参照をexport / import境界でinconsistent-bundleとして拒否する', async () => {
+    const invalidProject: Project = {
+      ...project,
+      families: [
+        {
+          id: 'family_invalid',
+          name: 'Invalid',
+          baseAssetId: asset.id,
+          variants: [{ assetId: 'asset_missing', kind: 'manual' }],
+        },
+      ],
+    };
+    const completeFiles = asset.textures.map((texture) => ({
+      path: `assets/${asset.id}/${texture.path}`,
+      bytes: new Uint8Array([1, 2, 3]),
+    }));
+
+    await expect(
+      exportCasproj({ project: invalidProject, assets: [asset], files: completeFiles }),
+    ).rejects.toMatchObject({ code: 'inconsistent-bundle' });
+
+    const zipped = await zipAsync({
+      'project.json': strToU8(JSON.stringify(invalidProject)),
+      [`assets/${asset.id}/asset.json`]: strToU8(JSON.stringify(asset)),
+    });
+    await expect(importCasproj(zipped)).rejects.toMatchObject({ code: 'inconsistent-bundle' });
   });
 });

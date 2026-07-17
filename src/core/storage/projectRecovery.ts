@@ -1,4 +1,5 @@
 import type { Asset, Project } from '../model';
+import { validateProjectFamilies } from '../model';
 import {
   STORE_ASSETS,
   STORE_PROJECTS,
@@ -42,6 +43,12 @@ export async function restoreProject(trashId: string): Promise<void> {
     if (record.id !== trashId || record.project.id !== trashId) {
       throw new StorageError(
         `ごみ箱のProject IDが一致しないため復元できません: trash=${trashId}, project=${record.project.id}`,
+      );
+    }
+    const familyErrors = validateProjectFamilies(record.project);
+    if (familyErrors.length > 0) {
+      throw new StorageError(
+        `ごみ箱のProject familiesが不正なため復元できません: ${familyErrors.join(' / ')}`,
       );
     }
 

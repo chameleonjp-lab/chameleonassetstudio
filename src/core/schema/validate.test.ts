@@ -5,6 +5,11 @@ import minimalAsset from '../samples/asset.minimal.json';
 import exportPresets from '../samples/export-presets.sample.json';
 import sampleProject from '../samples/project.sample.json';
 import {
+  createFamilyVariantIdMap,
+  createFamilyVariantWriteSet,
+  createLinkedMirrorVariant,
+} from '../model/familyTestFixtures';
+import {
   validateAnimation,
   validateAsset,
   validateExportPresets,
@@ -235,6 +240,153 @@ describe('validateProject', () => {
     const result = validateProject(broken);
     expect(result.valid).toBe(false);
     expect(result.errors.join('\n')).toContain('/format');
+  });
+
+  it('linked mirrorはrecipe・write-set・fingerprintを含めると検証を通る', () => {
+    const project = clone(sampleProject) as Record<string, unknown>;
+    const assets = project.assets as Array<Record<string, unknown>>;
+    const base = assets[0];
+    assets.push({ ...base, id: 'asset_variant', name: 'variant', displayName: 'Variant' });
+    project.families = [
+      {
+        id: 'family_hero',
+        name: 'Hero',
+        baseAssetId: base.id,
+        variants: [createLinkedMirrorVariant('asset_variant')],
+      },
+    ];
+
+    expect(validateProject(project)).toEqual({ valid: true, errors: [] });
+  });
+
+  it('linked variantのrecipe / fingerprint欠落とmanualへの混入を拒否する', () => {
+    const makeProject = (variant: Record<string, unknown>): Record<string, unknown> => {
+      const project = clone(sampleProject) as Record<string, unknown>;
+      const assets = project.assets as Array<Record<string, unknown>>;
+      const base = assets[0];
+      assets.push({ ...base, id: 'asset_variant', name: 'variant', displayName: 'Variant' });
+      project.families = [
+        {
+          id: 'family_hero',
+          name: 'Hero',
+          baseAssetId: base.id,
+          variants: [variant],
+        },
+      ];
+      return project;
+    };
+
+    expect(
+      validateProject(makeProject({ assetId: 'asset_variant', kind: 'linked-mirror' })).valid,
+    ).toBe(false);
+    expect(
+      validateProject(
+        makeProject({
+          assetId: 'asset_variant',
+          kind: 'manual',
+          recipe: createLinkedMirrorVariant('asset_variant').recipe,
+        }),
+      ).valid,
+    ).toBe(false);
+    expect(
+      validateProject(
+        makeProject({
+          assetId: 'asset_variant',
+          kind: 'manual',
+          fingerprint: createLinkedMirrorVariant('asset_variant').fingerprint,
+        }),
+      ).valid,
+    ).toBe(false);
+  });
+
+  it('paletteは対象layer・置換・0〜255 toleranceを要求する', () => {
+    const project = clone(sampleProject) as Record<string, unknown>;
+    const assets = project.assets as Array<Record<string, unknown>>;
+    const base = assets[0];
+    assets.push({ ...base, id: 'asset_variant', name: 'variant', displayName: 'Variant' });
+    const variant = {
+      assetId: 'asset_variant',
+      kind: 'linked-palette',
+      recipe: {
+        type: 'palette',
+        idMap: createFamilyVariantIdMap(),
+        baseLayerIds: ['layer_base'],
+        writeSet: { ...createFamilyVariantWriteSet(), blobPaths: ['textures/main.png'] },
+        replacements: [{ from: '#112233', to: '#aabbccdd' }],
+        tolerance: 255,
+      },
+      fingerprint: createLinkedMirrorVariant('asset_variant').fingerprint,
+    };
+    project.families = [
+      {
+        id: 'family_hero',
+        name: 'Hero',
+        baseAssetId: base.id,
+        variants: [variant],
+      },
+    ];
+
+    expect(validateProject(project).valid).toBe(true);
+
+    const tooWide = clone(project) as Record<string, unknown>;
+    const tooWideRecipe = (
+      (tooWide.families as Array<Record<string, unknown>>)[0].variants as Array<
+        Record<string, unknown>
+      >
+    )[0].recipe as Record<string, unknown>;
+    tooWideRecipe.tolerance = 256;
+    expect(validateProject(tooWide).valid).toBe(false);
+
+    const noTargets = clone(project) as Record<string, unknown>;
+    const noTargetsRecipe = (
+      (noTargets.families as Array<Record<string, unknown>>)[0].variants as Array<
+        Record<string, unknown>
+      >
+    )[0].recipe as Record<string, unknown>;
+    noTargetsRecipe.baseLayerIds = [];
+    noTargetsRecipe.replacements = [];
+    expect(validateProject(noTargets).valid).toBe(false);
+  });
+
+  it('mirrorへのpalette専用field、空idMap key、write-set重複を拒否し、未知fieldは保持可能にする', () => {
+    const project = clone(sampleProject) as Record<string, unknown>;
+    const assets = project.assets as Array<Record<string, unknown>>;
+    const base = assets[0];
+    assets.push({ ...base, id: 'asset_variant', name: 'variant', displayName: 'Variant' });
+    const variant = createLinkedMirrorVariant('asset_variant') as unknown as Record<
+      string,
+      unknown
+    >;
+    project.families = [
+      {
+        id: 'family_hero',
+        name: 'Hero',
+        baseAssetId: base.id,
+        variants: [variant],
+        futureFamilyField: { preserved: true },
+      },
+    ];
+    project.futureProjectField = { preserved: true };
+    expect(validateProject(project).valid).toBe(true);
+
+    const mirrorWithPaletteFields = clone(project) as Record<string, unknown>;
+    const mirrorRecipe = (
+      (mirrorWithPaletteFields.families as Array<Record<string, unknown>>)[0].variants as Array<
+        Record<string, unknown>
+      >
+    )[0].recipe as Record<string, unknown>;
+    mirrorRecipe.replacements = [{ from: '#000000', to: '#ffffff' }];
+    expect(validateProject(mirrorWithPaletteFields).valid).toBe(false);
+
+    const invalidIds = clone(project) as Record<string, unknown>;
+    const invalidRecipe = (
+      (invalidIds.families as Array<Record<string, unknown>>)[0].variants as Array<
+        Record<string, unknown>
+      >
+    )[0].recipe as Record<string, unknown>;
+    (invalidRecipe.idMap as Record<string, Record<string, string>>).layers = { '': 'target' };
+    (invalidRecipe.writeSet as Record<string, string[]>).layers = ['target', 'target'];
+    expect(validateProject(invalidIds).valid).toBe(false);
   });
 });
 
