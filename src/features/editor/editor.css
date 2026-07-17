@@ -279,6 +279,24 @@
   padding: 0.35rem 0.7rem;
 }
 
+.align-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.align-button-row {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.align-button-row button {
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 0.3rem 0.6rem;
+}
+
 .part-row {
   display: flex;
   flex-direction: column;

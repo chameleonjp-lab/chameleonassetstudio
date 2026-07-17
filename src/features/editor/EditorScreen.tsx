@@ -73,6 +73,7 @@ import {
   type SourceBlobTransitions,
 } from '../../core/storage';
 import { layerWorldPoint } from '../../renderers/canvas2d/view';
+import { AlignPanel } from './AlignPanel';
 import { AssetTypePanel, BackgroundLayerFields } from './AssetTypePanel';
 import { ASSET_TYPE_LABELS } from './assetTypeLabels';
 import {
@@ -2132,6 +2133,18 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             />
           ) : (
             <p className="editor-note">アセットを選ぶとレイヤーを操作できます。</p>
+          )}
+
+          <h3 className="editor-subheading">整列・等間隔配置</h3>
+          {selectedAsset ? (
+            <AlignPanel
+              asset={selectedAsset}
+              checkedLayerIds={checkedLayerIds}
+              selectedLayerId={selectedLayerId}
+              onCommit={commitPanelChange}
+            />
+          ) : (
+            <p className="editor-note">アセットを選ぶと複数レイヤーの整列ができます。</p>
           )}
 
           <h3 className="editor-subheading">選択中レイヤー</h3>
