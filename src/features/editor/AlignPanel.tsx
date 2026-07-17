@@ -5,6 +5,7 @@ import {
   distributeLayers,
   excludeActiveTarget,
   resolveReferenceBounds,
+  MIN_ACTIVE_ALIGN_TARGETS,
   MIN_ALIGN_TARGETS,
   MIN_DISTRIBUTE_TARGETS,
   type AlignBasis,
@@ -75,10 +76,11 @@ function buildTargets(asset: Asset, layerIds: string[]): AlignTarget[] {
 export function AlignPanel({ asset, checkedLayerIds, selectedLayerId, onCommit }: AlignPanelProps) {
   const [basis, setBasis] = useState<AlignBasis>('selection');
   const [notice, setNotice] = useState<string | null>(null);
+  const checkedLayerIdsKey = checkedLayerIds.join(',');
 
   useEffect(() => {
     setNotice(null);
-  }, [asset.id, checkedLayerIds.join(','), selectedLayerId, basis]);
+  }, [asset.id, checkedLayerIdsKey, selectedLayerId, basis]);
 
   const checkedTargets = useMemo(
     () => buildTargets(asset, checkedLayerIds),
@@ -96,11 +98,12 @@ export function AlignPanel({ asset, checkedLayerIds, selectedLayerId, onCommit }
     selectionTargets: checkedTargets,
     activeTarget,
   });
-  const canAlign = alignMoveTargets.length >= MIN_ALIGN_TARGETS && alignReferenceBounds !== null;
+  const minimumAlignTargets = basis === 'active' ? MIN_ACTIVE_ALIGN_TARGETS : MIN_ALIGN_TARGETS;
+  const canAlign = alignMoveTargets.length >= minimumAlignTargets && alignReferenceBounds !== null;
   const alignDisabledReason =
     basis === 'active' && !activeTarget
       ? 'アクティブレイヤーがありません。レイヤー一覧で選択してください。'
-      : `整列には対象レイヤーが${MIN_ALIGN_TARGETS}件以上必要です（現在${alignMoveTargets.length}件）。`;
+      : `整列には対象レイヤーが${minimumAlignTargets}件以上必要です（現在${alignMoveTargets.length}件）。`;
 
   const canDistribute = checkedTargets.length >= MIN_DISTRIBUTE_TARGETS;
   const distributeDisabledReason = `等間隔配置には対象レイヤーが${MIN_DISTRIBUTE_TARGETS}件以上必要です（現在${checkedTargets.length}件）。`;

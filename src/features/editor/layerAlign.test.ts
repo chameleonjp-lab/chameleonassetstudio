@@ -7,9 +7,10 @@ import {
   layerWorldBounds,
   resolveReferenceBounds,
   unionBounds,
+  MIN_ACTIVE_ALIGN_TARGETS,
   MIN_ALIGN_TARGETS,
   MIN_DISTRIBUTE_TARGETS,
-  ALIGN_MIN_TARGETS_REASON,
+  ALIGN_NO_TARGETS_REASON,
   DISTRIBUTE_MIN_TARGETS_REASON,
   type AlignTarget,
 } from './layerAlign';
@@ -23,16 +24,20 @@ function transform(overrides: Partial<LayerTransform> = {}): LayerTransform {
   };
 }
 
-function target(id: string, overrides: Partial<LayerTransform> = {}, size = { width: 20, height: 20 }): AlignTarget {
+function target(
+  id: string,
+  overrides: Partial<LayerTransform> = {},
+  size = { width: 20, height: 20 },
+): AlignTarget {
   return { id, transform: transform(overrides), textureSize: size };
 }
 
 describe('layerWorldBounds', () => {
   it('rotation なし・scale 1 のときテクスチャそのままの AABB になる', () => {
-    const bounds = layerWorldBounds(
-      transform({ position: { x: 10, y: 20 } }),
-      { width: 100, height: 50 },
-    );
+    const bounds = layerWorldBounds(transform({ position: { x: 10, y: 20 } }), {
+      width: 100,
+      height: 50,
+    });
     expect(bounds).toEqual({ minX: 10, minY: 20, maxX: 110, maxY: 70 });
   });
 
@@ -50,10 +55,10 @@ describe('layerWorldBounds', () => {
   });
 
   it('90度回転すると幅と高さが入れ替わった AABB になる', () => {
-    const bounds = layerWorldBounds(
-      transform({ position: { x: 0, y: 0 }, rotation: 90 }),
-      { width: 100, height: 50 },
-    );
+    const bounds = layerWorldBounds(transform({ position: { x: 0, y: 0 }, rotation: 90 }), {
+      width: 100,
+      height: 50,
+    });
     // 中心 (50, 25) を軸に90度回転すると、half-width/half-heightが入れ替わる。
     expect(bounds.minX).toBeCloseTo(25);
     expect(bounds.maxX).toBeCloseTo(75);
@@ -62,10 +67,10 @@ describe('layerWorldBounds', () => {
   });
 
   it('負 scale と回転を組み合わせても中心と大きさは変わらない', () => {
-    const withoutFlip = layerWorldBounds(
-      transform({ position: { x: 0, y: 0 }, rotation: 30 }),
-      { width: 80, height: 40 },
-    );
+    const withoutFlip = layerWorldBounds(transform({ position: { x: 0, y: 0 }, rotation: 30 }), {
+      width: 80,
+      height: 40,
+    });
     const withFlip = layerWorldBounds(
       transform({ position: { x: 0, y: 0 }, rotation: 30, scale: { x: -1, y: -1 } }),
       { width: 80, height: 40 },
@@ -101,11 +106,12 @@ describe('alignLayers', () => {
     layerWorldBounds(b.transform, b.textureSize),
   ]);
 
-  it('対象が2件未満なら no-op で理由を返す', () => {
-    const outcome = alignLayers([a], selectionBounds, 'left');
+  it('対象が0件なら no-op で理由を返す', () => {
+    const outcome = alignLayers([], selectionBounds, 'left');
     expect(outcome.changes).toEqual([]);
-    expect(outcome.reason).toBe(ALIGN_MIN_TARGETS_REASON);
+    expect(outcome.reason).toBe(ALIGN_NO_TARGETS_REASON);
     expect(MIN_ALIGN_TARGETS).toBe(2);
+    expect(MIN_ACTIVE_ALIGN_TARGETS).toBe(1);
   });
 
   it('referenceBounds が無ければ no-op で理由を返す', () => {
@@ -198,6 +204,23 @@ describe('alignLayers', () => {
     const changeB = outcome.changes.find((c) => c.layerId === 'b')!;
     expect(changeA.newPosition.x).toBeCloseTo(1000);
     expect(changeB.newPosition.x).toBeCloseTo(1000);
+  });
+
+  it('active基準では active を除いた移動対象が1件でも整列できる', () => {
+    const active = target('active', { position: { x: 1000, y: 1000 } });
+    const movable = target('movable', { position: { x: 100, y: 200 } });
+    const moveTargets = excludeActiveTarget([active, movable], 'active', active.id);
+    const referenceBounds = resolveReferenceBounds({
+      basis: 'active',
+      canvasSize: { width: 1, height: 1 },
+      selectionTargets: [],
+      activeTarget: active,
+    });
+
+    const outcome = alignLayers(moveTargets, referenceBounds, 'left');
+
+    expect(outcome.reason).toBeUndefined();
+    expect(outcome.changes).toEqual([{ layerId: 'movable', newPosition: { x: 1000, y: 200 } }]);
   });
 
   it('入力を変更しない（非破壊）', () => {

@@ -64,7 +64,7 @@ Phase 17 後は、旧 Phase 18〜28 の順番ではなく次を優先する。
 | `2D-1A-BASELINE` | 現行実装 baseline | 現行 version、型、schema、`.casproj`、IndexedDB、autosave、export ZIP、migration、fixture/test coverage を `docs/future/2D_1A_BASELINE_REPORT.md` に固定する。PR #50で完了・mainへマージ済み。 | Codex docs + Opus 4.8 review | product code、schema、version、保存形式、export ZIPを変更しない完了済み前段。 |
 | `2D-1a` | データ・座標・migration・復旧設計 | 5つのデータ層、Family / Variant、ID、座標、trim / flip / scale、animation / collider、target 拡張、provenance、検証、migration 契約を固定した。PR #52、#60、#62、#63、#65、#67、#68で完了し、ADR 0001〜0015がaccepted。 | 人間判断を Codex が ADR / fixture 化。完了済み。 | 完了済み。 |
 | `2D-1b` | 保存・migration・復旧実装 | 改訂単位の整合保存、履歴・backup・trash・rollback、容量警告、安全な staged `.casproj` import と旧形式互換を実装する。PR #53 は詳細契約 Gate より先に merge 済みの provisional 実装だったが、`2D-1B-GATE`の正式完了により該当範囲の再監査を完了した。 | ユーザーとChatGPTが範囲を確定し、実装担当がcode、tests、docsを同じDraft PRへ反映した。Opus 4.8 reviewと人間確認まで完了。 | 完了済み。PR #91 / CI Run #269、Opus 4.8 review問題なし、人間確認済み。 |
-| `2D-2` | 新規作成・取り込み・修正 | 複数Asset、空キャンバス、template、画像import、基本描画、非破壊修正、variant、一括変更、任意形式とAI境界を完成させる。独立Asset管理、残るCREATE A+B+X slice、RASTER Slice 1、REPAIR Slice 2は完了した。 | Codex | 現在の段階。次は同じ`2D-2-RASTER + 2D-2-REPAIR`内で、複数Layerのalign / distributeを契約監査する。 |
+| `2D-2` | 新規作成・取り込み・修正 | 複数Asset、空キャンバス、template、画像import、基本描画、非破壊修正、variant、一括変更、任意形式とAI境界を完成させる。独立Asset管理、残るCREATE A+B+X slice、RASTER Slice 1、REPAIR Slice 2は完了した。 | Codex | 現在の段階。`S1+R2+W1+D1+H1` acceptedの複数Layer align / distributeをPR #113で実装・検証中。 |
 | `2D-3` | 動き・ゲーム用情報 | timeline、可変時間、event、簡易 rig、origin / anchor / collider、素材種別 profile、ゲーム風 preview、理由付き検査、変更影響を完成させる。 | Codex。新しい仕様判断はユーザーとChatGPTへ戻す。 | `2D-3-TYPE-PROFILES + 2D-3-INSPECT`はPR #96、#97で完了。後続のTIMELINE / RIGは正式キューに従う。 |
 | `2D-4` | 共通書き出し・検査 | 決定的な再出力、sheet / atlas、scale、manifest / report / record、preflight、Generic Web / Canvas 2D / PixiJS / Phaser を完成させる。 | 契約を人間が固定し、Codexが実装、Opus 4.8が利用可能な場合にレビュー | `2D-5` の手順準備と `2D-6` だけ可。 |
 | `2D-5` | 対象別 preset・実ツール検証 | 証拠形式と対応ラベルを固定し、Unity 2D、Godot 2D、RPG Maker MZ への持ち込みを対象バージョン付きで検証する。 | Codex、Opus 4.8は利用可能な場合にレビュー | 共通 exporter 固定後、target PR を最大2本並行可。 |
@@ -93,8 +93,8 @@ Phase 17 後は、旧 Phase 18〜28 の順番ではなく次を優先する。
 - `2D-2-CREATE`の残るA+B+X sliceは完了した。契約PR #99に続き、実装PR #100はfinal head `0151295089a1259e4b4c27e2a64ac55816c5dedb`、merge commit `5f72c5f3f94df27a293b0131c88cc6550b5c76f0`、CI Run #306は全成功した。
 - PR #100マージ後のOpus 4.8監査は`BLOCKER 0 / MUST 0 / SHOULD 1 / NOTE 3`。軽微補強PR #101はfinal head `a5492c298baaf08f60773b61d4104a15ff91dc71`、merge commit `33ebb60c0f78e40439a4c16393ec3e82b4b532eb`、CI Run #308は全成功した。製品挙動、schema、保存形式、export形式の変更はない。
 - `2D-2-RASTER + 2D-2-REPAIR`は`A+X+P+M` accepted。契約PR #102、#103、実装PR #105〜#110により、Raster Slice 1とLayer Repair Slice 2を完了した。PR #110の最終head `788386abf20d2b95ee5141d20e97a03ea7c2ed53`に対するCI Run #371は全成功した。
-- 現在の正式work packageは引き続き`2D-2-RASTER + 2D-2-REPAIR`である。複数Layerのalign / distributeについて、一時選択範囲、整列基準、回転・負scaleを含むbounds、同率時の決定性、Undo / Redo、保存境界を固定した契約監査文書を提示済みであり、人間判断待ちとする。align / distributeの正本は`docs/future/2D_2_LAYER_ALIGN_PLAN.md`とし、`2D-2-RASTER + 2D-2-REPAIR`work package全体の正本は引き続き`docs/future/2D_2_RASTER_REPAIR_PLAN.md`とする。
-- align / distribute契約のaccept前にproduct code、schema、version、migration、`.casproj`、export ZIP、dependenciesを変更しない。
+- 現在の正式work packageは引き続き`2D-2-RASTER + 2D-2-REPAIR`である。複数Layerのalign / distributeはPR #112の契約監査後、`S1+R2+W1+D1+H1`が2026-07-17にacceptedとなり、PR #113で実装・検証中である。align / distributeの正本は`docs/future/2D_2_LAYER_ALIGN_PLAN.md`とし、`2D-2-RASTER + 2D-2-REPAIR`work package全体の正本は引き続き`docs/future/2D_2_RASTER_REPAIR_PLAN.md`とする。
+- PR #113ではschema、version、migration、`.casproj`、export ZIP、dependenciesを変更しない。CI成功後にOpus 4.8 reviewと人間確認へ渡す。
 - 2D Pro Gateを人間が承認するまで、旧Phase 22〜28の3D実装を開始しない。
 
 詳細な依存関係、同時に変更してはいけない契約、最大3本の PR レーンは `docs/future/2D_COMPLETION_ROADMAP.md` を参照する。

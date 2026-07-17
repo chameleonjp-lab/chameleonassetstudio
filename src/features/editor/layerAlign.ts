@@ -54,12 +54,14 @@ export interface AlignOutcome {
 
 export type DistributeOutcome = AlignOutcome;
 
-/** align は対象 2 枚以上が必要（canvas / active 基準も含めて統一。契約 §判断3 の許容範囲）。 */
+/** selection / canvas 基準の align は、複数選択として対象 2 枚以上が必要。 */
 export const MIN_ALIGN_TARGETS = 2;
+/** active 基準では active 自身を固定するため、移動対象は 1 枚以上でよい（R2）。 */
+export const MIN_ACTIVE_ALIGN_TARGETS = 1;
 /** distribute（等間隔配置）は対象 3 枚以上が必要（D1）。 */
 export const MIN_DISTRIBUTE_TARGETS = 3;
 
-export const ALIGN_MIN_TARGETS_REASON = `整列には対象レイヤーが${MIN_ALIGN_TARGETS}件以上必要です。`;
+export const ALIGN_NO_TARGETS_REASON = '整列する対象レイヤーがありません。';
 export const DISTRIBUTE_MIN_TARGETS_REASON = `等間隔配置には対象レイヤーが${MIN_DISTRIBUTE_TARGETS}件以上必要です。`;
 
 /**
@@ -139,7 +141,9 @@ export function resolveReferenceBounds(options: ResolveReferenceBoundsOptions): 
       : null;
   }
   return unionBounds(
-    options.selectionTargets.map((target) => layerWorldBounds(target.transform, target.textureSize)),
+    options.selectionTargets.map((target) =>
+      layerWorldBounds(target.transform, target.textureSize),
+    ),
   );
 }
 
@@ -158,15 +162,17 @@ export function excludeActiveTarget(
 /**
  * 6 方向 align（左 / 水平中央 / 右 / 上 / 垂直中央 / 下）。
  * 各対象の bounds を基準矩形（referenceBounds）に合わせて平行移動する position のみを返す。
- * 対象が MIN_ALIGN_TARGETS 未満、または referenceBounds が無ければ no-op（reason 付き）。
+ * 対象が 0 件、または referenceBounds が無ければ no-op（reason 付き）。
+ * selection / canvas 基準の「2 件以上」は UI 側で検査する。active 基準では active 自身を
+ * referenceBounds として固定し、残る 1 件だけを移動できるため、純関数は 1 件を許可する。
  */
 export function alignLayers(
   targets: AlignTarget[],
   referenceBounds: AABB | null,
   direction: AlignDirection,
 ): AlignOutcome {
-  if (targets.length < MIN_ALIGN_TARGETS) {
-    return { changes: [], reason: ALIGN_MIN_TARGETS_REASON };
+  if (targets.length === 0) {
+    return { changes: [], reason: ALIGN_NO_TARGETS_REASON };
   }
   if (!referenceBounds) {
     return { changes: [], reason: '整列基準の bounds を計算できません。' };
