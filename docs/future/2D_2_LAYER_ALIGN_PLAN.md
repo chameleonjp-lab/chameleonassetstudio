@@ -122,4 +122,4 @@ PR #113で次を実装した。
 
 CI Run #377はE2E成功、`format:check`失敗だった。Prettier適用、active基準契約、docs同期、mobile E2E補完後のhead `b4c58099cc8eff1791ea3c974786bb5a5d83fa6b`に対するCI Run #378は、classify、lint、format、build、unit test、E2Eが全成功した。最終head `a43d13a8fc82262495b2bfb8ab37eedefb1f4176`のCI Run #379も全成功し、PR #113はmerge commit `c6810487fd7dcd9e182f70c71fe7047c47b0ba0f`としてmainへmergeされた。
 
-後続のAsset canvas resize / game data追従は、契約監査PR #114をmerge commit `99a00d250532010c0bbafed82a33bff290aebf7e`としてmainへmergeした。2026-07-17に`B1+P1+G1+O1+V1+H1`がacceptedとなり、Draft PR #115で実装した。実装commitのCI Run #383は全成功し、Draft review待ちである。
+後続のAsset canvas resize / game data追従は、契約監査PR #114をmerge commit `99a00d250532010c0bbafed82a33bff290aebf7e`としてmainへmergeした。2026-07-17に`B1+P1+G1+O1+V1+H1`がacceptedとなり、PR #115で実装した。最終head `63d92a1dd56679edc047fa62ab450ad743323cfc`のCI Run #384は全成功し、merge commit `1838f58918a2958f9ebce2f8379f87a45fb17c26`としてmainへmerge済みである。GitHub上のreview / comment記録は0件で、Opus review完了とは扱わない。

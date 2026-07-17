@@ -1,7 +1,7 @@
 # 2D-2-RASTER + 2D-2-REPAIR 契約監査・実装計画
 
 作成日: 2026-07-16
-状態: `A+X+P+M accepted / Slice 1 + Slice 2 completed / align-distribute completed / canvas-resize implemented and implementation commit CI successful / Draft review pending`
+状態: `A+X+P+M accepted / current implementable scope merged / frame alignment deferred to 2D-3-TIMELINE / Group 10 contract audit started`
 正式work package: `2D-2-RASTER + 2D-2-REPAIR`
 基準main: `c6a18eb78637033ddeeb60dc5d645bf6d3347ed5`（PR #102 merge）
 直前slice: `2D-2-PROJECT + 2D-2-CREATE` accepted A+B+X completed
@@ -142,11 +142,11 @@ alpha trimは選択textureだけを切り詰め、Layer.positionを補正してw
 ### 後続slice
 
 - 複数layer align / distribute。`S1+R2+W1+D1+H1`を2026-07-17にacceptedとし、PR #113で実装・検証・mainへのmergeまで完了した。最終head `a43d13a8fc82262495b2bfb8ab37eedefb1f4176`のCI Run #379は全成功、merge commitは`c6810487fd7dcd9e182f70c71fe7047c47b0ba0f`。正本は`docs/future/2D_2_LAYER_ALIGN_PLAN.md`を参照する。
-- canvas resizeとgame data追従。PR #114で6判断を監査してmainへmergeし、2026-07-17の人間判断で`B1+P1+G1+O1+V1+H1`をacceptedとした。Draft PR #115でproduct code、unit、Desktop / touch E2E、docsを実装し、実装commitのCI Run #383は全成功、review待ち。正本は`docs/future/2D_2_CANVAS_RESIZE_PLAN.md`。
+- canvas resizeとgame data追従。PR #114で6判断を監査してmainへmergeし、2026-07-17の人間判断で`B1+P1+G1+O1+V1+H1`をacceptedとした。PR #115でproduct code、unit、Desktop / touch E2E、docsを実装した。最終head `63d92a1dd56679edc047fa62ab450ad743323cfc`のCI Run #384は全成功、merge commitは`1838f58918a2958f9ebce2f8379f87a45fb17c26`。GitHub上のreview / comment記録は0件。正本は`docs/future/2D_2_CANVAS_RESIZE_PLAN.md`。
 - timeline完成後のframeずれ修正
 - persistent shape / textを採用する場合の独立schema契約
 
-Slice 1とSlice 2はPR #105〜#110で完了した。align / distributeはPR #112で契約監査し、accepted後の実装・CI・mergeをPR #113で完了した。canvas resizeとgame data追従はPR #114の契約監査をmergeし、`B1+P1+G1+O1+V1+H1` accepted後の別実装Draft PRへ進んだ。
+Slice 1とSlice 2はPR #105〜#110で完了した。align / distributeはPR #112で契約監査し、accepted後の実装・CI・mergeをPR #113で完了した。canvas resizeとgame data追従はPR #114の契約監査後、`B1+P1+G1+O1+V1+H1` acceptedとしてPR #115で実装・CI・mergeまで完了した。frameずれ修正はaccepted `M`契約どおり`2D-3-TIMELINE`後へ保留し、Group 10の`2D-2-VARIANT + 2D-2-BATCH`契約監査へ進む。
 
 ## 11. 完了条件
 
@@ -159,3 +159,5 @@ Slice 1とSlice 2はPR #105〜#110で完了した。align / distributeはPR #112
 7. schema、version、migration、`.casproj`、export ZIP、dependenciesを変更しない。
 8. unit test、E2E、lint、format、build、GitHub Actionsが成功する。
 9. Opus reviewと人間確認前にready化、merge、auto-mergeを行わない。
+
+PR #115はGitHub上のreview / comment記録なしでmergeされたため、完了条件9に対する運用例外として記録する。これは後続PRのreview Gateを省略する前例ではない。
