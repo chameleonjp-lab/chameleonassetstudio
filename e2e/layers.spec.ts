@@ -191,8 +191,8 @@ test('レイヤーを削除するとパーツからの参照も外れる', async
     .setInputFiles({ name: 'arm.png', mimeType: 'image/png', buffer: overlay });
 
   // 両方のレイヤーでパーツを作る
-  await page.getByLabel('「main」をパーツ作成の対象にする').check();
-  await page.getByLabel('「arm」をパーツ作成の対象にする').check();
+  await page.getByLabel('「main」を複数レイヤー操作の対象にする').check();
+  await page.getByLabel('「arm」を複数レイヤー操作の対象にする').check();
   await page.getByRole('button', { name: /パーツを作成/ }).click();
   await expect.poll(async () => (await readStoredAsset(page)).parts[0]?.layerIds.length).toBe(2);
 
@@ -208,7 +208,7 @@ test('レイヤーを削除するとパーツからの参照も外れる', async
 test('パーツを作成して種別と pivot を設定でき、再読み込み後も残る', async ({ page }) => {
   await setupProjectWithImage(page, 'パーツテスト');
 
-  await page.getByLabel('「main」をパーツ作成の対象にする').check();
+  await page.getByLabel('「main」を複数レイヤー操作の対象にする').check();
   await page.getByLabel('新しいパーツ名').fill('剣');
   await page.getByLabel('パーツ種別').selectOption('weapon');
   await page.getByRole('button', { name: /パーツを作成/ }).click();

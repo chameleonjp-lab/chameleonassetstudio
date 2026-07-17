@@ -49,6 +49,29 @@ export function flipLayerHorizontal(asset: Asset, layerId: string): Asset {
   }));
 }
 
+export interface LayerPositionUpdate {
+  layerId: string;
+  newPosition: Vec2;
+}
+
+/**
+ * 複数レイヤーの position をまとめて更新する（align / distribute 用。2D-2-LAYER-ALIGN 契約 H1）。
+ * position 以外（scale / rotation / opacity 等）は変更しない。存在しない layerId は無視する。
+ */
+export function applyLayerPositions(asset: Asset, updates: LayerPositionUpdate[]): Asset {
+  const positionByLayerId = new Map(updates.map((update) => [update.layerId, update.newPosition]));
+  return touch({
+    ...asset,
+    layers: asset.layers.map((layer) => {
+      const newPosition = positionByLayerId.get(layer.id);
+      if (!newPosition) {
+        return layer;
+      }
+      return { ...layer, transform: { ...layer.transform, position: newPosition } };
+    }),
+  });
+}
+
 /**
  * 表示順を 1 段動かす。配列の先頭が最背面なので、
  * forward（前面へ）は index + 1、backward（背面へ）は index - 1。

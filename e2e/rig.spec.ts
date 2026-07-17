@@ -27,7 +27,7 @@ async function setupProjectWithImage(page: Page, name: string): Promise<void> {
 }
 
 async function createBodyPart(page: Page): Promise<void> {
-  await page.getByLabel('「main」をパーツ作成の対象にする').check();
+  await page.getByLabel('「main」を複数レイヤー操作の対象にする').check();
   await page.getByRole('button', { name: /パーツを作成/ }).click();
   await expect(page.getByLabel('パーツ一覧')).toBeVisible();
 }
