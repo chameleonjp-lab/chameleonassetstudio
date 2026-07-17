@@ -326,7 +326,17 @@ export function remapAssetFamilies(
   families: AssetFamily[],
   assetIdMap: Map<string, string>,
 ): AssetFamily[] {
-  const remapId = (id: string): string => assetIdMap.get(id) ?? id;
+  // 呼び出し元は families が参照する全 Asset ID を assetIdMap へ含める責任を持つ
+  // （現行の import 経路では validateProjectFamilies により参照先が project.assets に
+  // 実在することが保証され、project.assets は必ず assetIdMap へ登録される）。
+  // 対応が欠けている場合は呼び出し漏れであり、黙って元 ID を残さず理由付きで検出する。
+  const remapId = (id: string): string => {
+    const mapped = assetIdMap.get(id);
+    if (mapped === undefined) {
+      throw new Error(`remapAssetFamilies: assetIdMap に対応するAsset IDがありません: ${id}`);
+    }
+    return mapped;
+  };
 
   return families.map((family) => ({
     ...structuredClone(family),

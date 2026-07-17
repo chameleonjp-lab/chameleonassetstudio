@@ -111,6 +111,25 @@ describe('F1/V1: Family参照・linked recipe不変条件', () => {
     expect(validateProjectFamilies(cycle).join('\n')).toContain('複数Family');
   });
 
+  it('family idの空文字列とProject内重複を拒否する（SHOULD-4）', () => {
+    const valid = projectWithFamily();
+
+    const emptyFamilyId = structuredClone(valid);
+    emptyFamilyId.families![0].id = '';
+    expect(validateProjectFamilies(emptyFamilyId).join('\n')).toContain('family idが空です');
+
+    const duplicateFamilyId = structuredClone(valid);
+    duplicateFamilyId.families!.push({
+      id: duplicateFamilyId.families![0].id,
+      name: 'Duplicate Hero',
+      baseAssetId: 'asset_standalone',
+      variants: [],
+    });
+    expect(validateProjectFamilies(duplicateFamilyId).join('\n')).toContain(
+      'family idがProject内で重複しています',
+    );
+  });
+
   it('linkedのrecipe/fingerprint欠落とmanualのrecipe/fingerprint混入を拒否する', () => {
     const missingLinkedData = projectWithFamily();
     missingLinkedData.families![0].variants = [
@@ -187,6 +206,21 @@ describe('.casproj import用Family Asset ID remap', () => {
       expect(variant.fingerprint).toEqual(families[0].variants[0].fingerprint);
     }
     expect(remapped).not.toBe(families);
+  });
+
+  it('assetIdMapに対応が無い参照IDは黙って残さずthrowする（NOTE-1）', () => {
+    const families: AssetFamily[] = [
+      {
+        id: 'family_hero',
+        name: 'Hero',
+        baseAssetId: 'asset_base',
+        variants: [{ assetId: 'asset_variant', kind: 'manual' }],
+      },
+    ];
+
+    expect(() =>
+      remapAssetFamilies(families, new Map([['asset_base', 'asset_copy_1']])),
+    ).toThrow(/asset_variant/);
   });
 });
 
