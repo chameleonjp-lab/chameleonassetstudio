@@ -1,7 +1,7 @@
 # 2D-2-VARIANT + 2D-2-BATCH 契約監査・実装計画
 
 作成日: 2026-07-17
-状態: `contract audit / human decision pending / product implementation not started`
+状態: `F1+C1+V1+T1+B1+O1+H1+L1 accepted (2026-07-17) / Slice A in progress`
 正式work package: `2D-2-VARIANT + 2D-2-BATCH`（2D完成ロードマップ PR group 10）
 基準main: `1838f58918a2958f9ebce2f8379f87a45fb17c26`（PR #115 merge）
 前段: `2D-2-RASTER + 2D-2-REPAIR`の現在実装可能なsliceは完了。frameずれ修正はaccepted `M`契約どおり`2D-3-TIMELINE`後へ保留する。
@@ -214,8 +214,10 @@ accepted後の実装でも、次は別契約まで行わない。
 - source Blobの上書き・削除
 - Family metadataのengine向けexport
 
-## 8. 人間判断待ち
+## 8. 人間判断の記録
 
-product implementationを開始するには、推奨組み合わせ`F1+C1+V1+T1+B1+O1+H1+L1`を採用するか、各判断の代替案を指定する必要がある。
-
-判断後は本節へ日付、採用組み合わせ、非採用案、review条件を記録し、Slice Aの危険契約PRから開始する。判断前はdocs、fixture候補、対象ファイル調査だけを許可する。
+- 判断日: 2026-07-17
+- 採用: `F1 + C1 + V1 + T1 + B1 + O1 + H1 + L1`（推奨組み合わせをそのまま採用）
+- 非採用: F2 / F3、C2、V2 / V3、T2 / T3、B2 / B3、O2 / O3、H2、L2 / L3（各判断の代替案。理由は §4 の各判断に記載）
+- review条件: 各sliceはDraft PRで進め、CI全成功後にOpus 4.8レビューを実施し、指摘を同一PRで解消してから人間確認を得る。ready化・merge・auto-mergeは人間の明示指示まで行わない。sliceは§5の順（A → B → C → D）で直列に進め、前sliceのmerge前に次sliceを開始しない。
+- 本記録により、Slice A（Family / Variant additive contract、schema変更を含む危険契約PR）から実装を開始する。
