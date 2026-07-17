@@ -93,7 +93,7 @@ Phase 17 後は、旧 Phase 18〜28 の順番ではなく次を優先する。
 - `2D-2-CREATE`の残るA+B+X sliceは完了した。契約PR #99に続き、実装PR #100はfinal head `0151295089a1259e4b4c27e2a64ac55816c5dedb`、merge commit `5f72c5f3f94df27a293b0131c88cc6550b5c76f0`、CI Run #306は全成功した。
 - PR #100マージ後のOpus 4.8監査は`BLOCKER 0 / MUST 0 / SHOULD 1 / NOTE 3`。軽微補強PR #101はfinal head `a5492c298baaf08f60773b61d4104a15ff91dc71`、merge commit `33ebb60c0f78e40439a4c16393ec3e82b4b532eb`、CI Run #308は全成功した。製品挙動、schema、保存形式、export形式の変更はない。
 - `2D-2-RASTER + 2D-2-REPAIR`は`A+X+P+M` accepted。契約PR #102、#103、実装PR #105〜#110により、Raster Slice 1とLayer Repair Slice 2を完了した。PR #110の最終head `788386abf20d2b95ee5141d20e97a03ea7c2ed53`に対するCI Run #371は全成功した。
-- 現在の正式work packageは引き続き`2D-2-RASTER + 2D-2-REPAIR`である。次は複数Layerのalign / distributeを契約監査し、一時選択範囲、整列基準、回転・負scaleを含むbounds、Undo / Redo、保存境界を固定する。正本は`docs/future/2D_2_RASTER_REPAIR_PLAN.md`とする。
+- 現在の正式work packageは引き続き`2D-2-RASTER + 2D-2-REPAIR`である。複数Layerのalign / distributeについて、一時選択範囲、整列基準、回転・負scaleを含むbounds、同率時の決定性、Undo / Redo、保存境界を固定した契約監査文書を提示済みであり、人間判断待ちとする。align / distributeの正本は`docs/future/2D_2_LAYER_ALIGN_PLAN.md`とし、`2D-2-RASTER + 2D-2-REPAIR`work package全体の正本は引き続き`docs/future/2D_2_RASTER_REPAIR_PLAN.md`とする。
 - align / distribute契約のaccept前にproduct code、schema、version、migration、`.casproj`、export ZIP、dependenciesを変更しない。
 - 2D Pro Gateを人間が承認するまで、旧Phase 22〜28の3D実装を開始しない。
 
