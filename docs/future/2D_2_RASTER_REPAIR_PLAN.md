@@ -1,7 +1,7 @@
 # 2D-2-RASTER + 2D-2-REPAIR 契約監査・実装計画
 
 作成日: 2026-07-16
-状態: `A+X+P+M accepted / Slice 1 + Slice 2 completed / align-distribute S1+R2+W1+D1+H1 accepted / PR #113 verification in progress`
+状態: `A+X+P+M accepted / Slice 1 + Slice 2 completed / align-distribute S1+R2+W1+D1+H1 implemented / CI successful / review pending`
 正式work package: `2D-2-RASTER + 2D-2-REPAIR`
 基準main: `c6a18eb78637033ddeeb60dc5d645bf6d3347ed5`（PR #102 merge）
 直前slice: `2D-2-PROJECT + 2D-2-CREATE` accepted A+B+X completed
@@ -141,12 +141,12 @@ alpha trimは選択textureだけを切り詰め、Layer.positionを補正してw
 
 ### 後続slice
 
-- 複数layer align / distribute。`S1+R2+W1+D1+H1`を2026-07-17にacceptedとし、PR #113で実装・検証中。正本は`docs/future/2D_2_LAYER_ALIGN_PLAN.md`を参照する。
+- 複数layer align / distribute。`S1+R2+W1+D1+H1`を2026-07-17にacceptedとし、PR #113で実装した。head `b4c58099cc8eff1791ea3c974786bb5a5d83fa6b`のCI Run #378は全成功、review待ち。正本は`docs/future/2D_2_LAYER_ALIGN_PLAN.md`を参照する。
 - canvas resizeとgame data追従契約
 - timeline完成後のframeずれ修正
 - persistent shape / textを採用する場合の独立schema契約
 
-Slice 1とSlice 2はPR #105〜#110で完了した。align / distributeはPR #112で契約監査し、accepted後の実装をPR #113で行う。CI成功後にOpus 4.8 reviewと人間確認へ渡す。
+Slice 1とSlice 2はPR #105〜#110で完了した。align / distributeはPR #112で契約監査し、accepted後の実装とCI成功をPR #113で完了した。次はOpus 4.8 reviewと人間確認へ渡す。
 
 ## 11. 完了条件
 

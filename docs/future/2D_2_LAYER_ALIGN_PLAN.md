@@ -1,7 +1,7 @@
 # 複数Layer align / distribute 契約・実装記録
 
 作成日: 2026-07-17
-状態: `accepted (2026-07-17) / implementation verification in progress (PR #113)`。人間判断で`S1+R2+W1+D1+H1`がacceptされ、同日中に実装した。実装記録は§8。
+状態: `accepted (2026-07-17) / implemented / CI successful / review pending (PR #113)`。人間判断で`S1+R2+W1+D1+H1`がacceptされ、同日中に実装した。実装記録は§8。
 正式work package: `2D-2-RASTER + 2D-2-REPAIR`
 関連PR: PR #111 closeoutが本監査を次の正式作業として固定した。実装PRは`claude/2d2-layer-align-impl`ブランチ。
 採用組み合わせ: `S1+R2+W1+D1+H1`（2026-07-17に人間判断でaccepted）
@@ -108,7 +108,7 @@ file根拠付きで次を確認した。
 
 ## 7. 状態
 
-`S1+R2+W1+D1+H1 accepted / PR #113 implementation verification in progress`。PR #113はCI成功後にOpus 4.8 reviewと人間確認へ渡し、それまではready化、merge、auto-mergeを行わない。
+`S1+R2+W1+D1+H1 accepted / PR #113 implemented / CI successful / review pending`。PR #113はOpus 4.8 reviewと人間確認へ渡し、それまではready化、merge、auto-mergeを行わない。
 
 ## 8. 実装記録
 
@@ -120,4 +120,4 @@ PR #113で次を実装した。
 - position変更を既存`commitAssetChange`へまとめ、1 History entry、autosave、reload維持、選択・基準の非永続化を守った。
 - unit test、desktop E2E、touch context + iPhone SE級viewport E2Eを追加した。
 
-CI Run #377はE2E成功、`format:check`失敗だった。Prettier適用と契約・docs・mobile E2E補完後の最終CI結果を本節へ追記する。
+CI Run #377はE2E成功、`format:check`失敗だった。Prettier適用、active基準契約、docs同期、mobile E2E補完後のhead `b4c58099cc8eff1791ea3c974786bb5a5d83fa6b`に対するCI Run #378は、classify、lint、format、build、unit test、E2Eが全成功した。
