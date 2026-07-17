@@ -56,7 +56,7 @@ export function LayerPanel({
           >
             <input
               type="checkbox"
-              aria-label={`「${layer.name}」をパーツ作成の対象にする`}
+              aria-label={`「${layer.name}」を複数レイヤー操作の対象にする`}
               checked={checkedLayerIds.includes(layer.id)}
               onChange={() => onToggleChecked(layer.id)}
             />
