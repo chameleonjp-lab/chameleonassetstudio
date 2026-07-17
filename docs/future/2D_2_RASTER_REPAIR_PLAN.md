@@ -1,7 +1,7 @@
 # 2D-2-RASTER + 2D-2-REPAIR 契約監査・実装計画
 
 作成日: 2026-07-16
-状態: `A+X+P+M accepted / Slice 1 + Slice 2 completed / align-distribute completed / canvas-resize accepted and Draft implementation in progress`
+状態: `A+X+P+M accepted / Slice 1 + Slice 2 completed / align-distribute completed / canvas-resize implemented and implementation commit CI successful / Draft review pending`
 正式work package: `2D-2-RASTER + 2D-2-REPAIR`
 基準main: `c6a18eb78637033ddeeb60dc5d645bf6d3347ed5`（PR #102 merge）
 直前slice: `2D-2-PROJECT + 2D-2-CREATE` accepted A+B+X completed
@@ -142,7 +142,7 @@ alpha trimは選択textureだけを切り詰め、Layer.positionを補正してw
 ### 後続slice
 
 - 複数layer align / distribute。`S1+R2+W1+D1+H1`を2026-07-17にacceptedとし、PR #113で実装・検証・mainへのmergeまで完了した。最終head `a43d13a8fc82262495b2bfb8ab37eedefb1f4176`のCI Run #379は全成功、merge commitは`c6810487fd7dcd9e182f70c71fe7047c47b0ba0f`。正本は`docs/future/2D_2_LAYER_ALIGN_PLAN.md`を参照する。
-- canvas resizeとgame data追従。PR #114で6判断を監査してmainへmergeし、2026-07-17の人間判断で`B1+P1+G1+O1+V1+H1`をacceptedとした。現在は別Draft PRでproduct code、unit、Desktop / touch E2E、docsを実装中。正本は`docs/future/2D_2_CANVAS_RESIZE_PLAN.md`。
+- canvas resizeとgame data追従。PR #114で6判断を監査してmainへmergeし、2026-07-17の人間判断で`B1+P1+G1+O1+V1+H1`をacceptedとした。Draft PR #115でproduct code、unit、Desktop / touch E2E、docsを実装し、実装commitのCI Run #383は全成功、review待ち。正本は`docs/future/2D_2_CANVAS_RESIZE_PLAN.md`。
 - timeline完成後のframeずれ修正
 - persistent shape / textを採用する場合の独立schema契約
 
