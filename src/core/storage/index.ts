@@ -13,6 +13,7 @@ export {
   isQuotaExceededStorageError,
 } from './db';
 export {
+  MAX_ASSET_BATCH_REVISION_TARGETS,
   TRASH_LIMIT,
   deleteAssetBundle,
   deleteProject,
@@ -25,15 +26,19 @@ export {
   purgeAllTrash,
   purgeTrash,
   saveAsset,
+  saveAssetBatchRevision,
   saveAssetRevision,
   saveProject,
   saveProjectBundle,
   type AssetRevisionInput,
+  type AssetBatchBlobRevision,
+  type AssetBatchRevisionTarget,
   type DeleteAssetBundleInput,
   type LoadedAsset,
   type LoadedProject,
   type ProjectBundleBlobInput,
   type ProjectSummary,
+  type SaveAssetBatchRevisionInput,
   type SourceBlobTransitions,
   type TrashSummary,
 } from './projectStore';

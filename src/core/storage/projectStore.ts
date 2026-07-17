@@ -12,7 +12,12 @@ import {
   requestToPromise,
   runTransaction,
 } from './db';
-import { deleteSnapshotsForAssetInTx } from './snapshotStore';
+import {
+  deleteSnapshotsForAssetInTx,
+  prepareAssetSnapshot,
+  savePreparedAssetSnapshotInTx,
+  type PreparedAssetSnapshotInput,
+} from './snapshotStore';
 
 export interface ProjectSummary {
   id: string;
@@ -603,6 +608,368 @@ export async function saveAssetRevision({
       await requestToPromise(tx.objectStore(STORE_BLOBS).delete(key));
     }
   });
+}
+
+/** accepted L1: 既存の画像batchと同じ上限。0件は操作ミスとして拒否する。 */
+export const MAX_ASSET_BATCH_REVISION_TARGETS = 16;
+
+/**
+ * 1 Assetの既存edit Blobをbeforeからafterへ置き換えるCAS入力。
+ * source BlobとTextureRef topologyの変更はSlice Bの対象外。
+ */
+export interface AssetBatchBlobRevision {
+  key: string;
+  before: Blob;
+  after: Blob;
+}
+
+export interface AssetBatchRevisionTarget {
+  beforeAsset: Asset;
+  afterAsset: Asset;
+  /**
+   * 現行snapshot形式は1 Asset + 1 edit Blobの復旧点なので、Slice Bでは1 targetにつき
+   * 高々1件に制限する。複数Blob対応は永続形式を推測せず後続契約へ戻す。
+   */
+  blobs?: AssetBatchBlobRevision[];
+}
+
+export interface SaveAssetBatchRevisionInput {
+  beforeProject: Project;
+  afterProject: Project;
+  targets: AssetBatchRevisionTarget[];
+  /** Blob変更がある場合に作る永続復旧点の表示名。 */
+  snapshotLabel: string;
+}
+
+interface PreparedBatchBlobRevision {
+  key: string;
+  beforeMimeType: string;
+  beforeBytes: ArrayBuffer;
+  afterRecord: StoredBlobRecord;
+  snapshot: PreparedAssetSnapshotInput;
+}
+
+interface PreparedBatchTarget {
+  beforeAsset: Asset;
+  afterAsset: Asset;
+  blobs: PreparedBatchBlobRevision[];
+}
+
+function sameStructuredValue(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function sameArrayBuffer(left: ArrayBuffer, right: ArrayBuffer): boolean {
+  const a = new Uint8Array(left);
+  const b = new Uint8Array(right);
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
+function projectOutsideBatchFields(project: Project): Record<string, unknown> {
+  const value = structuredClone(project) as unknown as Record<string, unknown>;
+  delete value.assets;
+  delete value.families;
+  delete value.updatedAt;
+  return value;
+}
+
+function assertBatchProjectContract(
+  beforeProject: Project,
+  afterProject: Project,
+  targets: Array<{ beforeAsset: Asset; afterAsset: Asset }>,
+): void {
+  if (beforeProject.id !== afterProject.id) {
+    throw new StorageError('batch改訂の前後でProject IDを変更できません');
+  }
+  if (
+    !sameStructuredValue(
+      projectOutsideBatchFields(beforeProject),
+      projectOutsideBatchFields(afterProject),
+    )
+  ) {
+    throw new StorageError(
+      'batch改訂ではProjectのAsset要約・Family関係・updatedAt以外を変更できません',
+    );
+  }
+
+  const beforeIds = beforeProject.assets.map((entry) => entry.id);
+  const afterIds = afterProject.assets.map((entry) => entry.id);
+  if (!sameStructuredValue(beforeIds, afterIds)) {
+    throw new StorageError('batch改訂ではProjectのAsset集合や並び順を変更できません');
+  }
+
+  const targetIds = new Set(targets.map(({ beforeAsset }) => beforeAsset.id));
+  for (const { beforeAsset, afterAsset } of targets) {
+    if (beforeAsset.id !== afterAsset.id) {
+      throw new StorageError('batch改訂の前後でAsset IDを変更できません');
+    }
+    const beforeEntry = beforeProject.assets.find((entry) => entry.id === beforeAsset.id);
+    const afterEntry = afterProject.assets.find((entry) => entry.id === afterAsset.id);
+    if (!beforeEntry || !afterEntry) {
+      throw new StorageError(
+        `batch改訂対象AssetがProjectから参照されていません: ${beforeAsset.id}`,
+      );
+    }
+    assertProjectEntryMatchesAsset(beforeEntry, beforeAsset);
+    assertProjectEntryMatchesAsset(afterEntry, afterAsset);
+  }
+
+  for (let index = 0; index < beforeProject.assets.length; index += 1) {
+    const beforeEntry = beforeProject.assets[index];
+    if (
+      !targetIds.has(beforeEntry.id) &&
+      !sameStructuredValue(beforeEntry, afterProject.assets[index])
+    ) {
+      throw new StorageError(`batch改訂の非対象Asset要約を変更できません: ${beforeEntry.id}`);
+    }
+  }
+
+  // before / afterを入れ替えた同じAPIでgroup Undoを行うため、updatedAtの巻き戻しは許可する。
+  // schema上のdate-time妥当性と完全CASで、別時点の値を誤って上書きしないことを保証する。
+}
+
+function assertBatchTextureAndBlobContract(
+  target: AssetBatchRevisionTarget,
+  allBlobKeys: Set<string>,
+): void {
+  const blobs = target.blobs ?? [];
+  if (blobs.length > 1) {
+    throw new StorageError(
+      `現行の復旧点は1 Assetにつき1 edit Blobのため、同時変更は1件以下にしてください: ${target.beforeAsset.id}`,
+    );
+  }
+
+  const beforeIndex = buildTextureIndex(target.beforeAsset, 'batch保存前 Asset');
+  const afterIndex = buildTextureIndex(target.afterAsset, 'batch保存後 Asset');
+  assertDistinctBlobOperations(
+    blobs.map(({ key, after }) => ({ key, blob: after })),
+    [],
+  );
+  assertBlobOperationsBelongToAsset(
+    target.afterAsset.id,
+    blobs.map(({ key, after }) => ({ key, blob: after })),
+    [],
+  );
+
+  for (const blob of blobs) {
+    if (allBlobKeys.has(blob.key)) {
+      throw new StorageError(`同じ Blob key がbatch内で重複しています: ${blob.key}`);
+    }
+    allBlobKeys.add(blob.key);
+    const beforeTexture = beforeIndex.byKey.get(blob.key);
+    const afterTexture = afterIndex.byKey.get(blob.key);
+    if (!beforeTexture || !afterTexture) {
+      throw new StorageError(
+        `batchのBlob変更は前後両方に存在するTextureRefを対象にしてください: ${blob.key}`,
+      );
+    }
+    if (beforeTexture.kind !== 'edit' || afterTexture.kind !== 'edit') {
+      throw new StorageError(`batchで変更できるBlobは既存edit Blobだけです: ${blob.key}`);
+    }
+    if (beforeTexture.id !== afterTexture.id) {
+      throw new StorageError(`batch改訂で既存edit TextureRef IDを変更できません: ${blob.key}`);
+    }
+    if (blob.before.type !== beforeTexture.mimeType || blob.after.type !== afterTexture.mimeType) {
+      throw new StorageError(`batchのedit TextureRefとBlobのMIME typeが一致しません: ${blob.key}`);
+    }
+  }
+
+  assertTextureBlobTransitions({
+    previousAsset: target.beforeAsset,
+    nextAsset: target.afterAsset,
+    putBlobKeys: new Set(blobs.map(({ key }) => key)),
+    deleteBlobKeys: new Set(),
+    orphanDeleteKeys: new Set(),
+    transitions: {},
+  });
+}
+
+async function prepareBatchTargets(
+  projectId: string,
+  targets: AssetBatchRevisionTarget[],
+  snapshotLabel: string,
+): Promise<PreparedBatchTarget[]> {
+  const prepared: PreparedBatchTarget[] = [];
+  for (const target of targets) {
+    const blobs: PreparedBatchBlobRevision[] = [];
+    for (const revision of target.blobs ?? []) {
+      const beforeBytes = await revision.before.arrayBuffer();
+      const afterBytes = await revision.after.arrayBuffer();
+      const snapshot = await prepareAssetSnapshot({
+        projectId,
+        assetId: target.beforeAsset.id,
+        label: snapshotLabel,
+        asset: target.beforeAsset,
+        blobKey: revision.key,
+        blob: revision.before,
+      });
+      blobs.push({
+        key: revision.key,
+        beforeMimeType: revision.before.type,
+        beforeBytes,
+        afterRecord: {
+          key: revision.key,
+          projectId,
+          mimeType: revision.after.type,
+          bytes: afterBytes,
+          updatedAt: new Date().toISOString(),
+        },
+        snapshot,
+      });
+    }
+    prepared.push({
+      beforeAsset: target.beforeAsset,
+      afterAsset: target.afterAsset,
+      blobs,
+    });
+  }
+  return prepared;
+}
+
+/**
+ * accepted B1/H1/L1のstorage基盤。
+ * 複数の既存Asset、Project要約・Family、edit Blob、復旧点を単一transactionで確定する。
+ * before一式をtransaction内の正本と比較するため、同じAPIをgroup Undo / Redoにも使える。
+ */
+export async function saveAssetBatchRevision(input: SaveAssetBatchRevisionInput): Promise<void> {
+  // 呼び出し元がBlob変換中にobjectを変更しても保存内容が揺れないよう、最初のawait前にcloneする。
+  const beforeProject = structuredClone(input.beforeProject);
+  const afterProject = structuredClone(input.afterProject);
+  const targets: AssetBatchRevisionTarget[] = input.targets.map((target) => ({
+    beforeAsset: structuredClone(target.beforeAsset),
+    afterAsset: structuredClone(target.afterAsset),
+    blobs: [...(target.blobs ?? [])],
+  }));
+  const snapshotLabel = input.snapshotLabel.trim();
+
+  if (targets.length === 0 || targets.length > MAX_ASSET_BATCH_REVISION_TARGETS) {
+    throw new StorageError(
+      `batch改訂の対象数は1〜${MAX_ASSET_BATCH_REVISION_TARGETS}件である必要があります: ${targets.length}`,
+    );
+  }
+  const targetIds = new Set<string>();
+  const allBlobKeys = new Set<string>();
+  for (const target of targets) {
+    if (targetIds.has(target.beforeAsset.id)) {
+      throw new StorageError(`同じAsset IDがbatch内で重複しています: ${target.beforeAsset.id}`);
+    }
+    targetIds.add(target.beforeAsset.id);
+  }
+
+  for (const [label, project] of [
+    ['batch保存前 project', beforeProject],
+    ['batch保存後 project', afterProject],
+  ] as const) {
+    const result = validateProject(project);
+    if (!result.valid) {
+      throw new StorageError(formatValidationErrors(label, result.errors));
+    }
+    assertProjectFamiliesValid(project);
+  }
+  for (const target of targets) {
+    for (const [label, asset] of [
+      ['batch保存前 asset', target.beforeAsset],
+      ['batch保存後 asset', target.afterAsset],
+    ] as const) {
+      const result = validateAsset(asset);
+      if (!result.valid) {
+        throw new StorageError(formatValidationErrors(label, result.errors));
+      }
+    }
+    assertBatchTextureAndBlobContract(target, allBlobKeys);
+  }
+  assertBatchProjectContract(beforeProject, afterProject, targets);
+
+  if (allBlobKeys.size > 0 && !snapshotLabel) {
+    throw new StorageError('edit Blobを変更するbatchには復旧点のlabelが必要です');
+  }
+  const preparedTargets = await prepareBatchTargets(beforeProject.id, targets, snapshotLabel);
+
+  await runTransaction(
+    [STORE_PROJECTS, STORE_ASSETS, STORE_BLOBS, STORE_SNAPSHOTS],
+    'readwrite',
+    async (tx) => {
+      const projectStore = tx.objectStore(STORE_PROJECTS);
+      const assetStore = tx.objectStore(STORE_ASSETS);
+      const blobStore = tx.objectStore(STORE_BLOBS);
+      const storedProject = await requestToPromise(
+        projectStore.get(beforeProject.id) as IDBRequest<Project | undefined>,
+      );
+      if (!storedProject) {
+        throw new StorageError(`batch改訂対象Projectが保存されていません: ${beforeProject.id}`);
+      }
+      if (!sameStructuredValue(storedProject, beforeProject)) {
+        throw new StorageError('batch準備後にProjectが変更されたため、保存を中止しました');
+      }
+
+      for (const target of preparedTargets) {
+        const storedAsset = await requestToPromise(
+          assetStore.get(target.beforeAsset.id) as IDBRequest<StoredAssetRecord | undefined>,
+        );
+        if (!storedAsset) {
+          throw new StorageError(
+            `batch改訂対象Assetが保存されていません: ${target.beforeAsset.id}`,
+          );
+        }
+        if (storedAsset.projectId !== beforeProject.id) {
+          throw new StorageError(
+            `batch改訂対象Assetは指定Projectに属していません: ${target.beforeAsset.id}`,
+          );
+        }
+        if (!sameStructuredValue(storedAsset.data, target.beforeAsset)) {
+          throw new StorageError(
+            `batch準備後にAssetが変更されたため、保存を中止しました: ${target.beforeAsset.id}`,
+          );
+        }
+
+        const currentBlobs = new Map<string, StoredBlobRecord>();
+        for (const texture of target.beforeAsset.textures) {
+          const key = blobKeyForAssetPath(target.beforeAsset.id, texture.path);
+          const storedBlob = await requestToPromise(
+            blobStore.get(key) as IDBRequest<StoredBlobRecord | undefined>,
+          );
+          if (!storedBlob || storedBlob.projectId !== beforeProject.id) {
+            throw new StorageError(`batch改訂対象Assetが参照するBlobが見つかりません: ${key}`);
+          }
+          currentBlobs.set(key, storedBlob);
+        }
+        for (const blob of target.blobs) {
+          const storedBlob = currentBlobs.get(blob.key);
+          if (
+            !storedBlob ||
+            storedBlob.mimeType !== blob.beforeMimeType ||
+            !sameArrayBuffer(storedBlob.bytes, blob.beforeBytes)
+          ) {
+            throw new StorageError(
+              `batch準備後にedit Blobが変更されたため、保存を中止しました: ${blob.key}`,
+            );
+          }
+        }
+      }
+
+      // canonical更新より先に復旧点を作る。同じtransactionなので、以後の失敗では全て戻る。
+      for (const target of preparedTargets) {
+        for (const blob of target.blobs) {
+          await savePreparedAssetSnapshotInTx(tx, blob.snapshot);
+        }
+      }
+
+      await requestToPromise(projectStore.put(afterProject));
+      for (const target of preparedTargets) {
+        const record: StoredAssetRecord = {
+          id: target.afterAsset.id,
+          projectId: afterProject.id,
+          data: target.afterAsset,
+        };
+        await requestToPromise(assetStore.put(record));
+      }
+      for (const target of preparedTargets) {
+        for (const blob of target.blobs) {
+          await requestToPromise(blobStore.put(blob.afterRecord));
+        }
+      }
+    },
+  );
 }
 
 export interface LoadedProject {

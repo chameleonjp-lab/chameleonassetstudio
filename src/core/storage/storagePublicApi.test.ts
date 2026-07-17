@@ -12,6 +12,7 @@ describe('storage public API', () => {
   it('bundle、revision、snapshot復元の安全な入口を公開する', () => {
     expect(storage.saveProjectBundle).toBeTypeOf('function');
     expect(storage.saveAssetRevision).toBeTypeOf('function');
+    expect(storage.saveAssetBatchRevision).toBeTypeOf('function');
     expect(storage.deleteAssetBundle).toBeTypeOf('function');
     expect(storage.prepareSnapshotRestore).toBeTypeOf('function');
     expect(storage.commitSnapshotRestore).toBeTypeOf('function');

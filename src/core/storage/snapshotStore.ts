@@ -49,6 +49,14 @@ export interface SaveSnapshotInput {
   blob: Blob;
 }
 
+/**
+ * Blob の読み出しを IndexedDB transaction 開始前に終えた snapshot 入力。
+ * `saveAssetBatchRevision` も同じ検査・上限処理を再利用するが、storage barrel からは公開しない。
+ */
+export interface PreparedAssetSnapshotInput {
+  record: AssetSnapshotRecord;
+}
+
 function blobKeyForTexture(assetId: string, texture: TextureRef): string {
   return `${assetId}/${texture.path}`;
 }
@@ -160,8 +168,10 @@ function sameAsset(left: Asset, right: Asset): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-export async function saveSnapshot(input: SaveSnapshotInput): Promise<void> {
-  const snapshotEditTexture = assertValidSnapshotAsset(input.asset, input.assetId, input.blobKey);
+export async function prepareAssetSnapshot(
+  input: SaveSnapshotInput,
+): Promise<PreparedAssetSnapshotInput> {
+  assertValidSnapshotAsset(input.asset, input.assetId, input.blobKey);
   const bytes = await input.blob.arrayBuffer();
   const record: AssetSnapshotRecord = {
     id: generateId('snapshot'),
@@ -177,29 +187,56 @@ export async function saveSnapshot(input: SaveSnapshotInput): Promise<void> {
     },
   };
 
+  return { record };
+}
+
+/**
+ * 準備済みsnapshotを既存transactionへ保存する内部入口。
+ * Project / Asset / Blobの正本更新と同じtransactionで呼べるようにし、途中失敗時は
+ * snapshotだけを残さない。低水準入口のため `storage/index.ts` からはexportしない。
+ */
+export async function savePreparedAssetSnapshotInTx(
+  tx: IDBTransaction,
+  input: PreparedAssetSnapshotInput,
+): Promise<void> {
+  const { record } = input;
+  const snapshotEditTexture = assertValidSnapshotAsset(
+    record.asset,
+    record.assetId,
+    record.blob.key,
+  );
+
+  const storedAsset = await loadStoredAssetInTx(tx, record.assetId);
+  assertStoredAssetOwnership(storedAsset, record.projectId, record.assetId);
+  assertSourceTexturesUnchanged(storedAsset.data, record.asset);
+
+  const currentEditTexture = findEditTexture(storedAsset.data, record.blob.key);
+  if (!currentEditTexture || currentEditTexture.id !== snapshotEditTexture.id) {
+    throw new StorageError(
+      `復旧点の edit TextureRef が保存中アセットと一致しません: ${record.blob.key}`,
+    );
+  }
+  const storedBlob = await loadStoredBlobInTx(tx, record.blob.key);
+  if (!storedBlob || storedBlob.projectId !== record.projectId) {
+    throw new StorageError(`復旧点対象の edit Blob が見つかりません: ${record.blob.key}`);
+  }
+  if (
+    !sameBytes(storedBlob.bytes, record.blob.bytes) ||
+    storedBlob.mimeType !== record.blob.mimeType
+  ) {
+    throw new StorageError(
+      `復旧点へ渡された edit Blob が現在の保存済みBlobと一致しません: ${record.blob.key}`,
+    );
+  }
+
+  await requestToPromise(tx.objectStore(STORE_SNAPSHOTS).put(record));
+  await enforceSnapshotLimitInTx(tx, record.projectId, record.assetId);
+}
+
+export async function saveSnapshot(input: SaveSnapshotInput): Promise<void> {
+  const prepared = await prepareAssetSnapshot(input);
   await runTransaction([STORE_ASSETS, STORE_BLOBS, STORE_SNAPSHOTS], 'readwrite', async (tx) => {
-    const storedAsset = await loadStoredAssetInTx(tx, input.assetId);
-    assertStoredAssetOwnership(storedAsset, input.projectId, input.assetId);
-    assertSourceTexturesUnchanged(storedAsset.data, input.asset);
-
-    const currentEditTexture = findEditTexture(storedAsset.data, input.blobKey);
-    if (!currentEditTexture || currentEditTexture.id !== snapshotEditTexture.id) {
-      throw new StorageError(
-        `復旧点の edit TextureRef が保存中アセットと一致しません: ${input.blobKey}`,
-      );
-    }
-    const storedBlob = await loadStoredBlobInTx(tx, input.blobKey);
-    if (!storedBlob || storedBlob.projectId !== input.projectId) {
-      throw new StorageError(`復旧点対象の edit Blob が見つかりません: ${input.blobKey}`);
-    }
-    if (!sameBytes(storedBlob.bytes, bytes) || storedBlob.mimeType !== input.blob.type) {
-      throw new StorageError(
-        `復旧点へ渡された edit Blob が現在の保存済みBlobと一致しません: ${input.blobKey}`,
-      );
-    }
-
-    await requestToPromise(tx.objectStore(STORE_SNAPSHOTS).put(record));
-    await enforceSnapshotLimitInTx(tx, input.projectId, input.assetId);
+    await savePreparedAssetSnapshotInTx(tx, prepared);
   });
 }
 
