@@ -1,17 +1,17 @@
-# Asset canvas resize / game data追従 契約監査
+# Asset canvas resize / game data追従 契約・実装計画
 
 作成日: 2026-07-17
-状態: `human decision pending / docs-only audit`
+状態: `accepted (2026-07-17) / Draft implementation in progress`
 正式work package: `2D-2-RASTER + 2D-2-REPAIR`
-基準main: `c6810487fd7dcd9e182f70c71fe7047c47b0ba0f`（PR #113 merge）
+基準main: `99a00d250532010c0bbafed82a33bff290aebf7e`（PR #114 merge）
 前段: 複数Layer align / distribute `S1+R2+W1+D1+H1` completed（PR #113）
-推奨組み合わせ: `B1+P1+G1+O1+V1+H1`（未採用）
+採用組み合わせ: `B1+P1+G1+O1+V1+H1`（2026-07-17に人間判断でaccepted）
 
 ## 1. 目的
 
 Layer imageのtrim / padding / resizeは、PR #105〜#110でAsset canvasとgame dataを自動変更しない契約として完成した。次の後続sliceとして、既存textureやpixelを変更せずに`Asset.canvasSize`を変更するとき、旧canvasを新canvas内のどこへ置き、canvas座標を持つLayerとgame dataをどう追従させるかを監査する。
 
-本監査で固定候補にする判断は次の6点である。
+本監査で固定し、実装する判断は次の6点である。
 
 1. canvas resizeと画像scale / layer image resizeの境界
 2. 旧canvasを置く9点anchorと、奇数差分の決定的な丸め
@@ -20,7 +20,7 @@ Layer imageのtrim / padding / resizeは、PR #105〜#110でAsset canvasとgame 
 5. 寸法validationとno-op
 6. History、autosave、snapshot、exportへの影響
 
-この文書は監査結果と選択肢を提示するだけであり、推奨組み合わせをacceptしない。product codeへの実装は人間判断後の別Draft PRで行う。
+PR #114で監査結果と選択肢を提示し、mainへmergeした。その後、2026-07-17の人間による後続作業開始指示で推奨組み合わせをacceptした。product code、tests、docsはmainから分けた本実装Draft PRで扱う。
 
 ## 2. 現状監査
 
@@ -85,11 +85,11 @@ Layer imageのtrim / padding / resizeは、PR #105〜#110でAsset canvasとgame 
 - schema、data version、DB version、migration、`.casproj`構成、export ZIP構成は変更しない。再export時の画像 / cell寸法が新しい`canvasSize`へ変わることは、既存format内の期待結果としてE2Eで確認する。
 - H2: Blob snapshotを作る。Blobが変わらない操作には過剰であり非推奨。
 
-### 推奨組み合わせ
+### 採用組み合わせ
 
-`B1 + P1 + G1 + O1 + V1 + H1`を推奨する。ただし本PRでは採用せず、人間判断を待つ。
+`B1 + P1 + G1 + O1 + V1 + H1`を2026-07-17の人間判断で採用した。
 
-## 4. 実装スライス案（accept後）
+## 4. 実装スライス
 
 1. `canvasSize`、9点anchor、移動量から次のAssetを返す純関数を追加する。
 2. 全canvas座標fieldの追従、奇数差分、frame transform継承、非対象field不変、同size no-opをunit testで固定する。
@@ -97,7 +97,7 @@ Layer imageのtrim / padding / resizeは、PR #105〜#110でAsset canvasとgame 
 4. 変更を`commitAssetChange`へ1操作として接続し、Undo / Redo、autosave、reloadを確認する。
 5. export画像 / sprite sheet cellへの反映、mouse、touch、iPhone SE級viewportをE2Eで確認する。
 
-## 5. 受け入れ条件（accept後）
+## 5. 受け入れ条件
 
 ### unit
 
@@ -117,7 +117,7 @@ Layer imageのtrim / padding / resizeは、PR #105〜#110でAsset canvasとgame 
 
 ## 6. 安全境界
 
-accept後の実装でも次を変更しない。
+実装でも次を変更しない。
 
 - Asset / Project JSON Schema、data version、DB version、migration
 - IndexedDB store / index layout
@@ -134,6 +134,21 @@ accept後の実装でも次を変更しない。
 - Family / Variant、batch resize、linked更新
 - 3D、WebGPU
 
-## 7. 判断待ち
+## 7. 採用判断
 
-次の人間判断は、推奨`B1+P1+G1+O1+V1+H1`を採用するか、各判断の代替案へ差し替えるかである。採用前にproduct codeへ着手せず、ready化、merge、auto-mergeを行わない。
+2026-07-17、人間から計画書に従う後続作業開始の指示を受け、`B1+P1+G1+O1+V1+H1`をaccepted契約として固定した。代替案B2 / P2 / P3 / G2 / G3 / O2 / O3 / V2 / H2は採用しない。
+
+実装は別Draft PRで進め、CI成功、差分確認、必要なreviewが終わるまでready化、merge、auto-mergeを行わない。
+
+## 8. 実装状態
+
+本Draft PRで次を実装する。
+
+- `src/features/editor/canvasResize.ts`: 9点anchorの決定的offset、全canvas座標の原子的追従、種類別canvas外warning。
+- `src/features/editor/CanvasResizePanel.tsx`: 1〜4096の整数入力、中央既定の9点anchor、変更前後preview、種類別件数、明示確認。
+- `src/features/editor/EditorScreen.tsx`: 既存`commitAssetChange`へ接続し、Asset-onlyの1 History entryとして確定。
+- `src/features/editor/canvasResize.test.ts`: 偶数 / 奇数の拡大 / 縮小、G1の全対象、非対象不変、validation、no-op、warning分類。
+- `e2e/canvas-resize.spec.ts`: Desktopの保存 / reload / Undo / Redo / Blob不変 / PNG・atlas寸法、縮小取消 / 確認、touch + iPhone SE級viewport。
+- `docs/USER_GUIDE.md`と上位計画書: 利用方法、accepted状態、実装中状態を同期。
+
+ローカルではPrettier、対象unit、build、lint、format check、Playwright test collectionを確認済み。実ブラウザE2Eを含むGitHub Actionsの全成功は、このDraft PRの未完了Gateとして扱う。
