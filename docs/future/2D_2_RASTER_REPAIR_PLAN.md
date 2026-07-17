@@ -1,7 +1,7 @@
 # 2D-2-RASTER + 2D-2-REPAIR 契約監査・実装計画
 
 作成日: 2026-07-16
-状態: `A+X+P+M accepted / Slice 1 + Slice 2 completed / align-distribute S1+R2+W1+D1+H1 implemented / CI successful / review pending`
+状態: `A+X+P+M accepted / Slice 1 + Slice 2 completed / align-distribute completed / canvas-resize contract audit pending`
 正式work package: `2D-2-RASTER + 2D-2-REPAIR`
 基準main: `c6a18eb78637033ddeeb60dc5d645bf6d3347ed5`（PR #102 merge）
 直前slice: `2D-2-PROJECT + 2D-2-CREATE` accepted A+B+X completed
@@ -99,7 +99,7 @@ alpha trimは選択textureだけを切り詰め、Layer.positionを補正してw
 - layer resize後もAsset canvasとgame dataの座標を維持する。
 - 画像がcanvas外へ出る場合はpreviewとwarningを表示する。
 - 自動でcanvasを拡張しない。
-- Asset canvas resizeとgame data追従は別の座標契約まで保留する。
+- Asset canvas resizeとgame data追従は別の座標契約で扱い、本sliceのlayer image操作へ混在させない。
 
 ## 8. M: frameずれ修正はtimeline完成後
 
@@ -141,12 +141,12 @@ alpha trimは選択textureだけを切り詰め、Layer.positionを補正してw
 
 ### 後続slice
 
-- 複数layer align / distribute。`S1+R2+W1+D1+H1`を2026-07-17にacceptedとし、PR #113で実装した。head `b4c58099cc8eff1791ea3c974786bb5a5d83fa6b`のCI Run #378は全成功、review待ち。正本は`docs/future/2D_2_LAYER_ALIGN_PLAN.md`を参照する。
-- canvas resizeとgame data追従契約
+- 複数layer align / distribute。`S1+R2+W1+D1+H1`を2026-07-17にacceptedとし、PR #113で実装・検証・mainへのmergeまで完了した。最終head `a43d13a8fc82262495b2bfb8ab37eedefb1f4176`のCI Run #379は全成功、merge commitは`c6810487fd7dcd9e182f70c71fe7047c47b0ba0f`。正本は`docs/future/2D_2_LAYER_ALIGN_PLAN.md`を参照する。
+- canvas resizeとgame data追従契約。現状監査、6判断、推奨`B1+P1+G1+O1+V1+H1`を`docs/future/2D_2_CANVAS_RESIZE_PLAN.md`へ提示し、人間判断を待つ。accept前にproduct codeへ着手しない。
 - timeline完成後のframeずれ修正
 - persistent shape / textを採用する場合の独立schema契約
 
-Slice 1とSlice 2はPR #105〜#110で完了した。align / distributeはPR #112で契約監査し、accepted後の実装とCI成功をPR #113で完了した。次はOpus 4.8 reviewと人間確認へ渡す。
+Slice 1とSlice 2はPR #105〜#110で完了した。align / distributeはPR #112で契約監査し、accepted後の実装・CI・mergeをPR #113で完了した。次の正式作業はcanvas resizeとgame data追従の契約監査であり、判断確定後に別実装PRへ進む。
 
 ## 11. 完了条件
 

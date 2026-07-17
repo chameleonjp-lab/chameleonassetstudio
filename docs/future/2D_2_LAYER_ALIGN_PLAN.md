@@ -1,9 +1,9 @@
 # 複数Layer align / distribute 契約・実装記録
 
 作成日: 2026-07-17
-状態: `accepted (2026-07-17) / implemented / CI successful / review pending (PR #113)`。人間判断で`S1+R2+W1+D1+H1`がacceptされ、同日中に実装した。実装記録は§8。
+状態: `accepted (2026-07-17) / implemented / CI successful / merged (PR #113)`。人間判断で`S1+R2+W1+D1+H1`がacceptされ、同日中に実装・検証・mergeした。実装記録は§8。
 正式work package: `2D-2-RASTER + 2D-2-REPAIR`
-関連PR: PR #111 closeoutが本監査を次の正式作業として固定した。実装PRは`claude/2d2-layer-align-impl`ブランチ。
+関連PR: PR #111 closeoutが本監査を次の正式作業として固定した。実装PR #113は`claude/2d2-layer-align-impl`からmainへmerge済み。
 採用組み合わせ: `S1+R2+W1+D1+H1`（2026-07-17に人間判断でaccepted）
 
 ## 1. 目的
@@ -16,7 +16,7 @@
 4. 同率時の決定的な配置順
 5. snapshot・Undo/Redo・保存・reloadの境界
 
-採用組み合わせは`S1+R2+W1+D1+H1`である。実装は`docs/future/2D_2_RASTER_REPAIR_PLAN.md`の後続slice、PR #113として進める。
+採用組み合わせは`S1+R2+W1+D1+H1`である。実装は`docs/future/2D_2_RASTER_REPAIR_PLAN.md`の後続slice、PR #113として完了した。
 
 ## 2. 実装前の現状監査
 
@@ -108,7 +108,7 @@ file根拠付きで次を確認した。
 
 ## 7. 状態
 
-`S1+R2+W1+D1+H1 accepted / PR #113 implemented / CI successful / review pending`。PR #113はOpus 4.8 reviewと人間確認へ渡し、それまではready化、merge、auto-mergeを行わない。
+`S1+R2+W1+D1+H1 accepted / PR #113 implemented / CI successful / merged`。PR #113は2026-07-17にmainへmergeされ、本sliceのcloseoutは完了した。
 
 ## 8. 実装記録
 
@@ -120,4 +120,4 @@ PR #113で次を実装した。
 - position変更を既存`commitAssetChange`へまとめ、1 History entry、autosave、reload維持、選択・基準の非永続化を守った。
 - unit test、desktop E2E、touch context + iPhone SE級viewport E2Eを追加した。
 
-CI Run #377はE2E成功、`format:check`失敗だった。Prettier適用、active基準契約、docs同期、mobile E2E補完後のhead `b4c58099cc8eff1791ea3c974786bb5a5d83fa6b`に対するCI Run #378は、classify、lint、format、build、unit test、E2Eが全成功した。
+CI Run #377はE2E成功、`format:check`失敗だった。Prettier適用、active基準契約、docs同期、mobile E2E補完後のhead `b4c58099cc8eff1791ea3c974786bb5a5d83fa6b`に対するCI Run #378は、classify、lint、format、build、unit test、E2Eが全成功した。最終head `a43d13a8fc82262495b2bfb8ab37eedefb1f4176`のCI Run #379も全成功し、PR #113はmerge commit `c6810487fd7dcd9e182f70c71fe7047c47b0ba0f`としてmainへmergeされた。
