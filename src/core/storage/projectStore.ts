@@ -774,6 +774,14 @@ function assertBatchTextureAndBlobContract(
     }
   }
 
+  const revisedBlobKeys = new Set(blobs.map(({ key }) => key));
+  for (const [key, beforeTexture] of beforeIndex.byKey) {
+    const afterTexture = afterIndex.byKey.get(key);
+    if (afterTexture && !revisedBlobKeys.has(key) && !sameTextureRef(beforeTexture, afterTexture)) {
+      throw new StorageError(`batchでBlobを変更しないTextureRefは変更できません: ${key}`);
+    }
+  }
+
   assertTextureBlobTransitions({
     previousAsset: target.beforeAsset,
     nextAsset: target.afterAsset,
@@ -838,7 +846,9 @@ export async function saveAssetBatchRevision(input: SaveAssetBatchRevisionInput)
   const targets: AssetBatchRevisionTarget[] = input.targets.map((target) => ({
     beforeAsset: structuredClone(target.beforeAsset),
     afterAsset: structuredClone(target.afterAsset),
-    blobs: [...(target.blobs ?? [])],
+    // Blob自体はimmutableだがrevision objectは呼び出し元が書き換えられるため、
+    // arrayBuffer()待機中にkey / before / afterが差し替わらないよう同期copyする。
+    blobs: (target.blobs ?? []).map(({ key, before, after }) => ({ key, before, after })),
   }));
   const snapshotLabel = input.snapshotLabel.trim();
 

@@ -335,6 +335,75 @@ describe('Slice B saveAssetBatchRevision', () => {
     expect(await listSnapshots(fixture.base.id)).toEqual([]);
   });
 
+  it('Blob revisionのないTextureRef変更を拒否してAssetとBlobの整合を維持する', async () => {
+    const fixture = await seedBatchFixture();
+    const edit = editTexture(fixture.base);
+    const afterAsset: Asset = {
+      ...changedAsset(fixture.base, 'Invalid texture metadata'),
+      textures: fixture.base.textures.map((texture) =>
+        texture.id === edit.id ? { ...texture, mimeType: 'image/jpeg' } : texture,
+      ),
+    };
+    const afterProject: Project = {
+      ...structuredClone(fixture.beforeProject),
+      assets: fixture.beforeProject.assets.map((entry) =>
+        entry.id === afterAsset.id ? projectEntry(afterAsset) : entry,
+      ),
+      updatedAt: AFTER_TIME,
+    };
+
+    await expect(
+      saveAssetBatchRevision({
+        beforeProject: fixture.beforeProject,
+        afterProject,
+        targets: [{ beforeAsset: fixture.base, afterAsset, blobs: [] }],
+        snapshotLabel: '',
+      }),
+    ).rejects.toThrow(/Blobを変更しないTextureRef/);
+    await expectBeforeState(fixture);
+    expect(await listSnapshots(fixture.base.id)).toEqual([]);
+  });
+
+  it('Blob準備中に呼び出し元がrevision objectを書き換えても同期copyを保存する', async () => {
+    const fixture = await seedBatchFixture();
+    const revision = fixture.input.targets[0].blobs![0];
+    const originalBefore = revision.before;
+    const originalArrayBuffer = originalBefore.arrayBuffer.bind(originalBefore);
+    let markStarted!: () => void;
+    let release!: () => void;
+    const started = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const spy = vi.spyOn(originalBefore, 'arrayBuffer').mockImplementation(async () => {
+      markStarted();
+      await gate;
+      return originalArrayBuffer();
+    });
+
+    const saving = saveAssetBatchRevision(fixture.input);
+    await started;
+    revision.key = keyFor(fixture.variant, editTexture(fixture.variant));
+    revision.before = new Blob([new Uint8Array([201])], {
+      type: editTexture(fixture.variant).mimeType,
+    });
+    revision.after = new Blob([new Uint8Array([202])], {
+      type: editTexture(fixture.variant).mimeType,
+    });
+    release();
+
+    try {
+      await expect(saving).resolves.toBeUndefined();
+    } finally {
+      spy.mockRestore();
+    }
+    expect((await loadProject(fixture.beforeProject.id)).project).toEqual(fixture.afterProject);
+    expect(await bytesAt(keyFor(fixture.base, editTexture(fixture.base)))).toEqual([91]);
+    expect(await bytesAt(keyFor(fixture.variant, editTexture(fixture.variant)))).toEqual([92]);
+  });
+
   it('同じAPIを1つのHistory entryのgroup Undo / Redoに使う', async () => {
     const fixture = await seedBatchFixture();
     await saveAssetBatchRevision(fixture.input);
@@ -489,6 +558,20 @@ describe('Slice B saveAssetBatchRevision', () => {
     await expect(saveAssetBatchRevision(blobFixture.input)).rejects.toThrow(/edit Blobが変更/);
     expect(await bytesAt(blobKey)).toEqual([77]);
     expect((await loadAsset(blobFixture.base.id)).asset).toEqual(blobFixture.base);
+
+    await resetDbForTests();
+    const mimeFixture = await seedBatchFixture();
+    const mimeKey = keyFor(mimeFixture.variant, editTexture(mimeFixture.variant));
+    const unchangedBytes = await bytesAt(mimeKey);
+    await saveBlob(
+      mimeFixture.beforeProject.id,
+      mimeKey,
+      new Blob([new Uint8Array(unchangedBytes)], { type: 'image/jpeg' }),
+    );
+    await expect(saveAssetBatchRevision(mimeFixture.input)).rejects.toThrow(/edit Blobが変更/);
+    expect((await loadBlob(mimeKey))?.type).toBe('image/jpeg');
+    expect(await bytesAt(mimeKey)).toEqual(unchangedBytes);
+    expect((await loadAsset(mimeFixture.base.id)).asset).toEqual(mimeFixture.base);
   });
 
   it('不正な2件目Assetとsource変更をcommit前に拒否する', async () => {
