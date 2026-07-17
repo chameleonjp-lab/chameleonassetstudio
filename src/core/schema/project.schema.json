@@ -33,6 +33,52 @@
     "updatedAt": { "type": "string", "format": "date-time" }
   },
   "definitions": {
+    "idList": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "idMapRecord": {
+      "type": "object",
+      "propertyNames": { "type": "string", "minLength": 1 },
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "familyVariantIdMap": {
+      "type": "object",
+      "required": ["textures", "layers", "parts", "anchors", "colliders", "frames", "animations"],
+      "properties": {
+        "textures": { "$ref": "#/definitions/idMapRecord" },
+        "layers": { "$ref": "#/definitions/idMapRecord" },
+        "parts": { "$ref": "#/definitions/idMapRecord" },
+        "anchors": { "$ref": "#/definitions/idMapRecord" },
+        "colliders": { "$ref": "#/definitions/idMapRecord" },
+        "frames": { "$ref": "#/definitions/idMapRecord" },
+        "animations": { "$ref": "#/definitions/idMapRecord" }
+      }
+    },
+    "familyVariantWriteSet": {
+      "type": "object",
+      "required": [
+        "textures",
+        "layers",
+        "parts",
+        "anchors",
+        "colliders",
+        "frames",
+        "animations",
+        "blobPaths"
+      ],
+      "properties": {
+        "textures": { "$ref": "#/definitions/idList" },
+        "layers": { "$ref": "#/definitions/idList" },
+        "parts": { "$ref": "#/definitions/idList" },
+        "anchors": { "$ref": "#/definitions/idList" },
+        "colliders": { "$ref": "#/definitions/idList" },
+        "frames": { "$ref": "#/definitions/idList" },
+        "animations": { "$ref": "#/definitions/idList" },
+        "blobPaths": { "$ref": "#/definitions/idList" }
+      }
+    },
     "paletteReplacement": {
       "type": "object",
       "required": ["from", "to"],
@@ -41,26 +87,41 @@
         "to": { "type": "string", "pattern": "^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$" }
       }
     },
-    "familyVariantRecipe": {
+    "mirrorFamilyVariantRecipe": {
       "type": "object",
-      "required": ["type", "idMap"],
+      "required": ["type", "idMap", "writeSet"],
       "properties": {
-        "type": { "enum": ["mirror", "palette"] },
-        "idMap": {
-          "type": "object",
-          "additionalProperties": { "type": "string", "minLength": 1 }
+        "type": { "const": "mirror" },
+        "idMap": { "$ref": "#/definitions/familyVariantIdMap" },
+        "writeSet": { "$ref": "#/definitions/familyVariantWriteSet" }
+      },
+      "not": {
+        "anyOf": [
+          { "required": ["baseLayerIds"] },
+          { "required": ["replacements"] },
+          { "required": ["tolerance"] }
+        ]
+      }
+    },
+    "paletteFamilyVariantRecipe": {
+      "type": "object",
+      "required": ["type", "idMap", "baseLayerIds", "writeSet", "replacements", "tolerance"],
+      "properties": {
+        "type": { "const": "palette" },
+        "idMap": { "$ref": "#/definitions/familyVariantIdMap" },
+        "baseLayerIds": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "uniqueItems": true
         },
+        "writeSet": { "$ref": "#/definitions/familyVariantWriteSet" },
         "replacements": {
           "type": "array",
-          "items": { "$ref": "#/definitions/paletteReplacement" }
+          "items": { "$ref": "#/definitions/paletteReplacement" },
+          "minItems": 1
         },
-        "tolerance": { "type": "number", "minimum": 0 }
-      },
-      "if": {
-        "properties": { "type": { "const": "palette" } }
-      },
-      "then": {
-        "required": ["replacements"]
+        "tolerance": { "type": "number", "minimum": 0, "maximum": 255 }
       }
     },
     "familyVariantFingerprint": {
@@ -72,50 +133,42 @@
         "syncedAt": { "type": "string", "format": "date-time" }
       }
     },
-    "assetFamilyVariant": {
+    "linkedMirrorAssetFamilyVariant": {
+      "type": "object",
+      "required": ["assetId", "kind", "recipe", "fingerprint"],
+      "properties": {
+        "assetId": { "type": "string", "minLength": 1 },
+        "kind": { "const": "linked-mirror" },
+        "recipe": { "$ref": "#/definitions/mirrorFamilyVariantRecipe" },
+        "fingerprint": { "$ref": "#/definitions/familyVariantFingerprint" }
+      }
+    },
+    "linkedPaletteAssetFamilyVariant": {
+      "type": "object",
+      "required": ["assetId", "kind", "recipe", "fingerprint"],
+      "properties": {
+        "assetId": { "type": "string", "minLength": 1 },
+        "kind": { "const": "linked-palette" },
+        "recipe": { "$ref": "#/definitions/paletteFamilyVariantRecipe" },
+        "fingerprint": { "$ref": "#/definitions/familyVariantFingerprint" }
+      }
+    },
+    "manualAssetFamilyVariant": {
       "type": "object",
       "required": ["assetId", "kind"],
       "properties": {
         "assetId": { "type": "string", "minLength": 1 },
-        "kind": { "enum": ["linked-mirror", "linked-palette", "manual"] },
-        "recipe": { "$ref": "#/definitions/familyVariantRecipe" },
-        "fingerprint": { "$ref": "#/definitions/familyVariantFingerprint" }
+        "kind": { "const": "manual" }
       },
-      "allOf": [
-        {
-          "if": {
-            "properties": { "kind": { "const": "linked-mirror" } }
-          },
-          "then": {
-            "required": ["recipe"],
-            "properties": {
-              "recipe": {
-                "properties": { "type": { "const": "mirror" } }
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": { "kind": { "const": "linked-palette" } }
-          },
-          "then": {
-            "required": ["recipe"],
-            "properties": {
-              "recipe": {
-                "properties": { "type": { "const": "palette" } }
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": { "kind": { "const": "manual" } }
-          },
-          "then": {
-            "not": { "required": ["recipe"] }
-          }
-        }
+      "not": {
+        "anyOf": [{ "required": ["recipe"] }, { "required": ["fingerprint"] }]
+      }
+    },
+    "assetFamilyVariant": {
+      "oneOf": [
+        { "$ref": "#/definitions/linkedMirrorAssetFamilyVariant" },
+        { "$ref": "#/definitions/linkedPaletteAssetFamilyVariant" },
+        { "$ref": "#/definitions/manualAssetFamilyVariant" }
       ]
     },
     "assetFamily": {

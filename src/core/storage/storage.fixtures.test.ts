@@ -47,6 +47,8 @@ describe('旧 .casproj fixture の roundtrip（v0.1.0）', () => {
     const { bundle, appliedMigrations, warnings } = await importCasproj(zipped);
     // 現行バージョン（0.1.0）と一致するため migrate は発生しない
     expect(appliedMigrations).toEqual([]);
+    expect(bundle.project.version).toBe('0.1.0');
+    expect(bundle.project.families).toBeUndefined();
     // 画像ファイルが揃っているため警告も出ない
     expect(warnings).toEqual([]);
     expect(bundle.project).toEqual(fixtureProject);
@@ -61,6 +63,7 @@ describe('旧 .casproj fixture の roundtrip（v0.1.0）', () => {
     expect(reimported.appliedMigrations).toEqual([]);
     expect(reimported.warnings).toEqual([]);
     expect(reimported.bundle.project).toEqual(fixtureProject);
+    expect(reimported.bundle.project.families).toBeUndefined();
     expect(reimported.bundle.assets).toEqual([fixtureAsset]);
     expect(reimported.bundle.files).toHaveLength(1);
     expect(reimported.bundle.files[0].bytes).toEqual(pngBytes);

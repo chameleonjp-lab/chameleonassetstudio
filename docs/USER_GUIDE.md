@@ -1,6 +1,6 @@
 # Chameleon Asset Studio ユーザーガイド
 
-最終更新日: 2026-07-16
+最終更新日: 2026-07-17
 対象バージョン: 0.1.0
 
 このガイドは、Chameleon Asset Studio でゲーム用 2D アセットを作って書き出すまでの使い方を説明します。仕様の正本は `docs/REQUIREMENTS_SPECIFICATION.md`、データ形式は `docs/DATA_FORMAT.md` を参照してください。
@@ -42,9 +42,19 @@
 
 - Asset、TextureRef、レイヤー、パーツ、フレーム、アニメーションなどは新しいIDへ置き換えられ、画像Blobも新しいAsset用に複製されます。
 - コピー後は元と別のアセットです。片方の編集・削除はもう片方へ反映されません。
-- 現在はFamily / Variantやlinked variantではありません。自動追従や元への逆反映は行いません。
+- Project保存形式にはoptionalなFamily / Variant契約がありますが、この「独立コピー」は明示操作なしにFamilyへ登録されません。linked variantではなく、自動追従や元への逆反映も行いません。
 - Project単位の追加操作のため、**Undo / Redoの対象外**です。
 - アセット一覧には種別とキャンバスサイズが表示されます。種別変更はAsset本体とProject内の要約へまとめて保存されます。
+
+### 2.4 Family / Variantデータの現在の範囲（2D-2-VARIANT Slice A、2026-07）
+
+`.casproj`の`project.json`は、同じ素材のbaseと左右反転・palette・手修正版の関係をoptionalなFamily registryとして保持できます。fieldがない既存`0.1.0`ファイルは、従来どおり全Assetが独立したデータとして読み込まれます。
+
+- 現段階は保存・読み込み・参照検査までのデータ契約です。Familyの作成・解除・base付替え、manual variant登録、linked mirror / palette作成、更新preview、明示refreshの画面操作はまだありません（Slice Cで実装予定）。
+- linked variantはrecipeと最後の同期fingerprintを保存しますが、baseを編集しただけでbackground更新しません。
+- Family付き`.casproj`を読み込むとProject / Asset IDは衝突回避のため再採番され、Family参照も追従します。内部Layer等のID、recipe、fingerprintは保持されます。
+- Familyのbaseは、別baseへの付替えまたはFamily解除より先に削除できません。variant削除はFamily参照とAsset / Blobを同時に除去する必要があります。管理UIが追加されるまでは、Family付きファイルを編集する前に`.casproj`をバックアップしてください。
+- ゲーム向け`asset.json`、PNG / WebP、atlas、engine向けZIPへFamily metadataは追加されません。Family関係を含む再編集用保存には`.casproj`を使います。
 
 ## 3. 編集する
 

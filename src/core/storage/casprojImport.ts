@@ -259,8 +259,8 @@ export async function stageCasprojImport(
         assetType: asset.assetType,
       };
     }),
-    // families の baseAssetId / variants[].assetId / recipe.idMap の両側を、
-    // Asset ID 付替えと同じ assetIdMap で一貫して付替える（付替え漏れ = 欠落参照を防ぐ）。
+    // Project直下のAsset参照だけを付け替える。recipe内の内部要素ID、write-set、
+    // 相対Blob path、fingerprintはAsset本体と同じく維持する（Slice A, V1）。
     ...(result.bundle.project.families
       ? { families: remapAssetFamilies(result.bundle.project.families, assetIdMap) }
       : {}),

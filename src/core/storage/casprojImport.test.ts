@@ -2,13 +2,18 @@ import 'fake-indexeddb/auto';
 import { strToU8, zipSync, type Zippable } from 'fflate';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Asset, ExportPresetFile, Project } from '../model';
+import {
+  createFamilyVariantIdMap,
+  createFamilyVariantWriteSet,
+  createLinkedMirrorVariant,
+} from '../model/familyTestFixtures';
 import exportPresetsJson from '../samples/export-presets.sample.json';
 import v010AssetJson from './__fixtures__/v0.1.0-asset.json';
 import v010ProjectJson from './__fixtures__/v0.1.0-project.json';
-import { CasprojError } from './casproj';
+import { CasprojError, exportCasproj } from './casproj';
 import { commitStagedCasprojImport, importCasproj, stageCasprojImport } from './casprojImport';
 import { resetDbForTests } from './db';
-import { listProjects, loadAsset, loadBlob } from './projectStore';
+import { listProjects, loadAsset, loadBlob, loadProject } from './projectStore';
 
 const asset = v010AssetJson as unknown as Asset;
 const project = v010ProjectJson as unknown as Project;
@@ -241,5 +246,132 @@ describe('2D-1B-CASPROJ staged import', () => {
       expect.objectContaining({ id: 'project_copy_1', assetCount: 1 }),
     ]);
     expect((await loadAsset('asset_copy_1')).asset.id).toBe('asset_copy_1');
+  });
+
+  it('Family付きexport→import→save→exportでAsset参照だけを付替え、内部IDとstandaloneを保持する', async () => {
+    const variant: Asset = {
+      ...structuredClone(asset),
+      id: 'asset_family_variant',
+      name: 'family_variant',
+      displayName: 'Family Variant',
+    };
+    const standalone: Asset = {
+      ...structuredClone(asset),
+      id: 'asset_standalone',
+      name: 'standalone',
+      displayName: 'Standalone',
+    };
+    const linked = createLinkedMirrorVariant(variant.id);
+    linked.recipe.idMap = {
+      ...createFamilyVariantIdMap(),
+      // 内部IDが旧Asset IDと同じ文字列でもimport時に付替えないことを固定する。
+      layers: { [asset.id]: variant.id },
+    };
+    linked.recipe.writeSet = {
+      ...createFamilyVariantWriteSet(),
+      layers: [variant.id],
+    };
+    const familyProject = {
+      ...project,
+      assets: [asset, variant, standalone].map((item) => ({
+        id: item.id,
+        name: item.name,
+        displayName: item.displayName,
+        assetType: item.assetType,
+      })),
+      families: [
+        {
+          id: 'family_fixture',
+          name: 'Fixture Family',
+          baseAssetId: asset.id,
+          variants: [linked],
+        },
+      ],
+      futureProjectField: { preserved: true },
+    } as Project;
+
+    const staged = await stageCasprojImport(
+      makeCasproj({ projectValue: familyProject, assets: [asset, variant, standalone] }),
+      deterministicIds(),
+    );
+
+    expect(staged.project.assets.map((entry) => entry.id)).toEqual([
+      'asset_copy_1',
+      'asset_copy_2',
+      'asset_copy_3',
+    ]);
+    expect(staged.project.families?.[0]).toMatchObject({
+      id: 'family_fixture',
+      baseAssetId: 'asset_copy_1',
+      variants: [{ assetId: 'asset_copy_2' }],
+    });
+    const stagedVariant = staged.project.families?.[0].variants[0];
+    expect(stagedVariant?.kind).toBe('linked-mirror');
+    if (stagedVariant?.kind === 'linked-mirror') {
+      expect(stagedVariant.recipe.idMap.layers).toEqual({
+        [asset.id]: variant.id,
+      });
+      expect(stagedVariant.recipe.writeSet.layers).toEqual([variant.id]);
+      expect(stagedVariant.fingerprint).toEqual(linked.fingerprint);
+    }
+    expect(
+      staged.project.families?.some(
+        (family) =>
+          family.baseAssetId === 'asset_copy_3' ||
+          family.variants.some((item) => item.assetId === 'asset_copy_3'),
+      ),
+    ).toBe(false);
+
+    await commitStagedCasprojImport(staged);
+    const savedProject = (await loadProject(staged.project.id)).project;
+    const savedAssets = await Promise.all(
+      savedProject.assets.map(async (entry) => (await loadAsset(entry.id)).asset),
+    );
+    const savedFiles = await Promise.all(
+      savedAssets.flatMap((savedAsset) =>
+        savedAsset.textures.map(async (texture) => {
+          const blob = await loadBlob(`${savedAsset.id}/${texture.path}`);
+          if (!blob) {
+            throw new Error(`fixture Blob missing: ${savedAsset.id}/${texture.path}`);
+          }
+          return {
+            path: `assets/${savedAsset.id}/${texture.path}`,
+            bytes: new Uint8Array(await blob.arrayBuffer()),
+          };
+        }),
+      ),
+    );
+
+    const reexported = await exportCasproj({
+      project: savedProject,
+      assets: savedAssets,
+      files: savedFiles,
+    });
+    const reimported = await importCasproj(reexported);
+
+    expect(reimported.bundle.project).toEqual(savedProject);
+    expect(reimported.bundle.project.families).toEqual(staged.project.families);
+    expect(
+      (reimported.bundle.project as unknown as Record<string, unknown>).futureProjectField,
+    ).toEqual({ preserved: true });
+  });
+
+  it('不正なFamily参照をstageで拒否し、正本を変更しない', async () => {
+    const invalidProject: Project = {
+      ...project,
+      families: [
+        {
+          id: 'family_invalid',
+          name: 'Invalid',
+          baseAssetId: asset.id,
+          variants: [{ assetId: 'asset_missing', kind: 'manual' }],
+        },
+      ],
+    };
+
+    await expect(
+      stageCasprojImport(makeCasproj({ projectValue: invalidProject })),
+    ).rejects.toMatchObject({ code: 'inconsistent-bundle' });
+    expect(await listProjects()).toEqual([]);
   });
 });

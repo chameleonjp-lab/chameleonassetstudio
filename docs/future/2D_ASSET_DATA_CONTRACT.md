@@ -10,7 +10,7 @@
 ---
 
 > **現状:** 現在の正本は `docs/DATA_FORMAT.md`、`src/core/model/`、`src/core/schema/` であり、`asset.json` / `.casproj` の version は `0.1.0` である。
-> **本書の役割:** 2D 完成形で必要になるデータの意味と、形式変更前に必ず決める契約を定義する。本文だけで現在の型、schema、ZIP 構成、migration を変更してはいけない。
+> **本書の役割:** 2D 完成形で必要になるデータの意味と、形式変更前に必ず決める契約を定義する。本文だけで現在の型、schema、ZIP 構成、migration を変更してはいけない。Family / Variantは別契約`2D_2_VARIANT_BATCH_PLAN.md`の`F1+C1+V1+T1`が2026-07-17にacceptedされ、Slice Aのadditive Project fieldだけが実装対象になった。
 
 ## 1. 目的
 
@@ -66,7 +66,9 @@ Project
 │  │  └─ export records      preset と検査記録
 ```
 
-`Asset Family` と `Asset Variant` は、現在の `Project` / `Asset` 型には存在しない将来概念である。追加する場合は、次を明示した別 PR を作る。
+`Asset Family`と`Asset Variant`は当初の将来概念から、accepted `F1+C1+V1+T1`に基づくoptionalな`Project.families`契約へ進んだ。`Asset`型には関係metadataを置かず、field不在の既存`0.1.0`は全Asset standaloneとして無変換で読む。保存形式と後続実装の正本は`docs/future/2D_2_VARIANT_BATCH_PLAN.md`、再検討記録はADR-0003とする。
+
+別契約では次を明示した。
 
 - 現在の単独 `Asset` をどの Family / Variant と解釈するか。
 - 元を直したときに派生へ自動反映する範囲と、手動調整を保護する範囲。
@@ -161,6 +163,8 @@ Project
 | アニメーション差分 | 共有フレーム、追加フレーム、イベント。 | 元の時間・判定を無断で継承しない。 |
 
 「元を変えたらすべて自動更新」にはしない。更新対象、手動調整の保護、再生成の前後比較を表示し、ユーザーが選ぶ。
+
+accepted `V1+T1`では、linked mirror / paletteだけがrecipe、内部要素別ID対応、明示write-set、最後の同期fingerprintを持つ。base保存だけでは更新せず、手動変更があるwrite-setは既定除外する。装備違いと手修正版解像度はmanual variantとし、自動再生成しない。実際のfingerprint計算、preview、refresh UIはSlice Cまで未実装である。
 
 ## 8. アニメーションとイベントの契約
 

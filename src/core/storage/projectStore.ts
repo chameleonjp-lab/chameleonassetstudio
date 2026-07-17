@@ -170,6 +170,7 @@ async function syncProjectAssetEntryInTx(
   if (!result.valid) {
     throw new StorageError(formatValidationErrors('project', result.errors));
   }
+  assertProjectFamiliesValid(nextProject);
   await requestToPromise(tx.objectStore(STORE_PROJECTS).put(nextProject));
   return nextProject;
 }
@@ -621,7 +622,9 @@ export async function loadProject(id: string): Promise<LoadedProject> {
   if (!result.valid) {
     throw new StorageError(formatValidationErrors('project', result.errors));
   }
-  return { project: data as unknown as Project, appliedMigrations };
+  const project = data as unknown as Project;
+  assertProjectFamiliesValid(project);
+  return { project, appliedMigrations };
 }
 
 export async function listProjects(): Promise<ProjectSummary[]> {
