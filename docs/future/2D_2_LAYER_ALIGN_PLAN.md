@@ -1,10 +1,10 @@
 # 複数Layer align / distribute 契約監査
 
 作成日: 2026-07-17
-状態: `contract audit / human decision pending`
+状態: `accepted (2026-07-17) / implemented`。人間判断で`S1+R2+W1+D1+H1`がacceptされ、同日中に実装した。実装記録は§8。
 正式work package: `2D-2-RASTER + 2D-2-REPAIR`
-関連PR: PR #111 closeoutが本監査を次の正式作業として固定した
-推奨組み合わせ: `S1+R2+W1+D1+H1`（本文書ではacceptしない。人間判断待ち）
+関連PR: PR #111 closeoutが本監査を次の正式作業として固定した。実装PRは`claude/2d2-layer-align-impl`ブランチ。
+推奨組み合わせ: `S1+R2+W1+D1+H1`（2026-07-17に人間判断でaccepted）
 
 ## 1. 目的
 
