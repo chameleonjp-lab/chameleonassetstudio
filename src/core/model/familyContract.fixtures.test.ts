@@ -218,9 +218,9 @@ describe('.casproj import用Family Asset ID remap', () => {
       },
     ];
 
-    expect(() =>
-      remapAssetFamilies(families, new Map([['asset_base', 'asset_copy_1']])),
-    ).toThrow(/asset_variant/);
+    expect(() => remapAssetFamilies(families, new Map([['asset_base', 'asset_copy_1']]))).toThrow(
+      /asset_variant/,
+    );
   });
 });
 

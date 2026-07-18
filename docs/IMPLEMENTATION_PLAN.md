@@ -95,7 +95,8 @@ Phase 17 後は、旧 Phase 18〜28 の順番ではなく次を優先する。
 - `2D-2-RASTER + 2D-2-REPAIR`は`A+X+P+M` accepted。契約PR #102、#103、実装PR #105〜#110により、Raster Slice 1とLayer Repair Slice 2を完了した。PR #110の最終head `788386abf20d2b95ee5141d20e97a03ea7c2ed53`に対するCI Run #371は全成功した。
 - `2D-2-RASTER + 2D-2-REPAIR`の現在実装可能なaccepted範囲は完了した。複数Layerのalign / distributeはPR #113で、Asset canvas resize / game data追従はPR #115でmainへmerge済み。frameずれ修正はaccepted `M`契約どおり`2D-3-TIMELINE`後へ保留する。
 - PR #115の最終head `63d92a1dd56679edc047fa62ab450ad743323cfc`に対するCI Run #384は全成功し、merge commitは`1838f58918a2958f9ebce2f8379f87a45fb17c26`。GitHub上のreview、review thread、PR commentは0件であり、Opus review完了とは扱わない。schema、version、migration、`.casproj`、export ZIP構成、dependenciesは変更していない。
-- 現在の正式work packageは`2D-2-VARIANT + 2D-2-BATCH`である。契約監査はPR #116でmainへmerge済み、正本`docs/future/2D_2_VARIANT_BATCH_PLAN.md`の推奨`F1+C1+V1+T1+B1+O1+H1+L1`は2026-07-17に人間accepted済み。現在は危険契約PRの直列分割に従いSlice Aを実装し、B / C / Dは前Slice mergeまで開始しない。
+- 現在の正式work packageは`2D-2-VARIANT + 2D-2-BATCH`である。契約監査はPR #116でmainへmerge済み、正本`docs/future/2D_2_VARIANT_BATCH_PLAN.md`の推奨`F1+C1+V1+T1+B1+O1+H1+L1`は2026-07-17に人間accepted済み。危険契約PRの直列分割に従い、Slice A（Family / Variant additive contract）はPR #117でmainへmerge済み。
+- Slice B（Atomic revision and recovery foundation）を`claude/2d2-variant-slice-b`ブランチで実装中。`saveAssetBatchRevision` / `applyAssetBatchRevision`をstorage層のみへ追加し、UIは変更していない。詳細は`docs/future/2D_2_VARIANT_BATCH_PLAN.md`のSlice B実装記録を参照。Slice C / Dは本SliceのPR mergeまで開始しない。
 - 2D Pro Gateを人間が承認するまで、旧Phase 22〜28の3D実装を開始しない。
 
 詳細な依存関係、同時に変更してはいけない契約、最大3本の PR レーンは `docs/future/2D_COMPLETION_ROADMAP.md` を参照する。

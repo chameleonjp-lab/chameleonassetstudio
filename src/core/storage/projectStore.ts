@@ -692,7 +692,10 @@ async function prepareBatchTarget(
   const baselineResult = validateAsset(target.baselineAsset);
   if (!baselineResult.valid) {
     throw new StorageError(
-      formatValidationErrors(`baseline asset（id: ${target.baselineAsset.id}）`, baselineResult.errors),
+      formatValidationErrors(
+        `baseline asset（id: ${target.baselineAsset.id}）`,
+        baselineResult.errors,
+      ),
     );
   }
   buildTextureIndex(target.asset, `保存後 Asset（id: ${target.asset.id}）`);
@@ -807,7 +810,9 @@ export async function saveAssetBatchRevision({
     }
   }
 
-  const prepared = await Promise.all(targets.map((target) => prepareBatchTarget(projectId, target)));
+  const prepared = await Promise.all(
+    targets.map((target) => prepareBatchTarget(projectId, target)),
+  );
 
   // asset prefix と asset id の一意性から通常は自明だが、念のため cross-target でも
   // put/delete key の重複を拒否する。

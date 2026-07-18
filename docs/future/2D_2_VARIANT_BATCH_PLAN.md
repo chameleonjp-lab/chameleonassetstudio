@@ -1,7 +1,7 @@
 # 2D-2-VARIANT + 2D-2-BATCH 契約監査・実装計画
 
 作成日: 2026-07-17
-状態: `F1+C1+V1+T1+B1+O1+H1+L1 accepted (2026-07-17) / Slice A in progress`
+状態: `F1+C1+V1+T1+B1+O1+H1+L1 accepted (2026-07-17) / Slice A merged (PR #117) / Slice B in progress`
 正式work package: `2D-2-VARIANT + 2D-2-BATCH`（2D完成ロードマップ PR group 10）
 契約監査基準main: `1838f58918a2958f9ebce2f8379f87a45fb17c26`（PR #115 merge）
 Slice A実装基準main: `f08ec3f108e877dfbd6edc7106946f6e3519644a`（PR #116 merge）
@@ -153,6 +153,56 @@ C1の旧client再保存リスクは、現行`0.1.0`のmigration・schema・stora
 2. 保存前の正本一致を確認し、validation、欠落Blob、競合、容量不足、transaction abortで全件を無変更にする。
 3. 複数Asset / Blobの復旧点と、同じ原子APIを使うgroup Undo / Redoの基盤を追加する。
 4. 既存の単一Asset保存、source不変性、snapshot / recovery、`.casproj`を後退させないstorage testを追加する。
+
+#### Slice B 実装記録（storage層のみ、UIなし）
+
+実装branch: `claude/2d2-variant-slice-b`（PR #117 merge済みmain起点）。変更は`src/core/storage/projectStore.ts`（新規`saveAssetBatchRevision` / `applyAssetBatchRevision` / 補助関数）、`src/core/storage/index.ts`（公開exportの追加）、新規`src/core/storage/assetBatchRevision.test.ts`に閉じる。schema、version、migration、`.casproj`構成、export ZIP構成、DB store / indexは変更していない。
+
+**API形状**（Director確定の骨子どおり）:
+
+```ts
+interface AssetBatchTarget {
+  asset: Asset;                       // 改訂後のAsset全体
+  baselineAsset: Asset;               // 準備時点の正本（tx内一致検査用）
+  putBlobs?: Array<{ key: string; blob: Blob }>;
+  deleteBlobKeys?: string[];
+  baselineBlobs?: Array<{ key: string; bytes: ArrayBuffer }>; // 上書き・削除対象の準備時点bytes
+}
+interface SaveAssetBatchRevisionInput {
+  projectId: string;
+  project?: Project;                  // Family関係・Asset要約を同時更新する場合のみ渡す
+  baselineProject?: Project;          // projectを渡す場合は必須（tx内一致検査）
+  targets: AssetBatchTarget[];        // 1〜16件（`BATCH_TARGET_MIN_COUNT` / `BATCH_TARGET_MAX_COUNT`）
+}
+```
+
+`saveAssetBatchRevision(input)`が原子APIの本体。`applyAssetBatchRevision(input)`はgroup Undo/Redoの基盤として同じ関数へ委譲する薄いwrapperで、Undo（後→前）・Redo（前→後）のどちらも呼び出し元（Slice DでHistoryへ配線）が方向を入れ替えた`SaveAssetBatchRevisionInput`を組み立てて渡す想定。ロジックの複製はしない。
+
+**tx内一致検査の実装方式（awaitsをまたぐ原子性の担保）**:
+
+- `runTransaction`の既存契約（fn内ではIndexedDBリクエスト以外の非同期処理を待たない）を守るため、validation・`assertTextureBlobTransitions`によるTextureRef/Blob整合検査・Blob→ArrayBuffer変換・snapshot作成は**すべてtx開始前**に完了させる。
+- tx開始前に集めた`baselineAsset` / `baselineBlobs` / `baselineProject`を、tx内で`assetStore.get()` / `blobStore.get()` / `projectStore.get()`（IndexedDBリクエストのみ）で読み出した現行正本と比較する（Asset本体はJSON文字列比較、Blobは`Uint8Array`要素比較、Projectも同じJSON文字列比較）。これは既存`applySnapshotRestore`が`sameAsset` / `sameBytes`で行うtx内baseline比較と同型で、比較用ヘルパー名だけを`deepEqualJson` / `sameBlobBytes`として本ファイルに複製した。
+- 比較は全targetの読み出し・比較を終えてから書き込みを開始する2フェーズ構成にした。1つでも不一致（並行変更・欠落Asset・欠落Blob・Project drift）があれば、書き込みフェーズへ進む前に例外を投げてtxをabortさせるため、途中まで書いてしまう部分コミットが起きない。書き込みフェーズ自体でIndexedDBのput/deleteが失敗した場合も、`runTransaction`が捕捉して`tx.abort()`を呼ぶため、既に成功したように見えた前のtargetの書き込みも含めてロールバックされる（既存`saveProjectBundle` / `saveAssetRevision`と同じ保証)。
+
+**source Blob拒否の判定方法**:
+
+- batchには`saveAssetRevision`の`sourceBlobTransitions`（source create/delete許可リスト）に相当する入力がない。各targetについて既存`assertTextureBlobTransitions`を「常に空のtransitions（`{}`）・空のorphanDeleteKeys」で呼び出すことで、source TextureRef / Blobの作成・上書き・削除を一律拒否する。
+  - 既存source Blob keyへのput/deleteは、`previousTexture.kind === 'source'`かつ変更なしの分岐で「既存 source Blob は上書きできません / 削除できません」として拒否される。
+  - 新規source TextureRef追加は`addedSourceKeys`が空の許可集合と一致しないため「source create 許可が必要です」として拒否される。
+  - source TextureRefの削除も同様に「source delete 許可が必要です」として拒否される。
+  - 既存TextureRefのkindをsourceへ変更する試みは「既存 TextureRef を source へ変更できません」として拒否される。
+  - この関数だけで安全境界（§7: source Blobの作成・上書き・削除はbatch対象外）を満たすため、Blob key単位の重複チェックロジックを別途追加していない。
+
+**復旧点（H1）**: putBlobs / deleteBlobKeysが準備時点Assetの既存edit TextureRefを変更するtargetについてのみ、tx開始前に既存`saveSnapshot`で復旧点を作成する。呼び出し元は上書き・削除する既存Blobについて必ず`baselineBlobs`でbytesを渡す必要があり、欠落時は理由付きで拒否する。snapshot作成（`saveSnapshot`自体のtx）が1件でも失敗した場合、main batch txはまだ一切開始していないため、失敗したtargetより前に処理したtargetの復旧点だけが残ることはあっても、Asset / Blob / Projectの正本は全target無変更のまま維持される（テストでは失敗するtargetを先頭に置き、復旧点も一切作られないことまで固定した）。
+
+**新規Blob keyの一意性 / 上限**: target数は1〜16件（`BATCH_TARGET_MIN_COUNT=1` / `BATCH_TARGET_MAX_COUNT=16`、L1）。同一Asset IDの重複target、target内のput/delete key重複（既存`assertDistinctBlobOperations`）、target間のput/delete key重複（asset id prefixにより通常自明だが念のためcross-targetでも再検査）を拒否する。
+
+**検証結果**: `assetBatchRevision.test.ts`で成功系1件・拒否系9件（0件/17件以上/重複ID/欠落Asset/欠落Blob/validation失敗/source Blob拒否/write phase途中失敗によるtx abort/並行変更検知/snapshot作成失敗によるcommit中止）・group逆適用1件の計12件を追加し、全て成功した。既存の`saveAssetRevision`・snapshot restore・`.casproj` roundtrip等の既存storage testは期待値変更なしで全て成功する（`npm run test`で確認、詳細は実装PRの検証ログを参照）。
+
+**スコープ外として残した点**（Slice C / Dへ持ち越し、または将来必要になった場合に別途検討）:
+
+- `saveAssetRevision`が対応するorphan Blob削除（準備時点Assetが参照しないBlob keyの削除許容）は、batchでは対応しない。安全側に倒し、削除対象keyは常に`baselineAsset`が持つedit TextureRefに対応する必要がある。
+- `applyAssetBatchRevision`はHistoryへ配線していない（Slice Dで行う）。呼び出し元がforward/backwardそれぞれの`SaveAssetBatchRevisionInput`を組み立てる責任を持つ。
 
 ### Slice C: Variant management and recipes
 
