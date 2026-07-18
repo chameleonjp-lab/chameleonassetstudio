@@ -274,6 +274,33 @@ describe('2D-1B-LAYERS final storage invariants', () => {
     ).rejects.toThrow();
   });
 
+  it('rejects source kind downgrade without blob deletion even with delete permission (PR #118 review MUST-1)', async () => {
+    const { project, asset } = await seedAsset();
+    const source = asset.textures.find((texture) => texture.kind === 'source')!;
+    const sourceKey = keyFor(asset, source);
+    const next = {
+      ...asset,
+      textures: asset.textures.map((texture) =>
+        texture.id === source.id ? { ...texture, kind: 'edit' as const } : texture,
+      ),
+    };
+
+    // Blob 実削除（deleteBlobKeys）なしで「source delete 許可」だけを渡す降格単体。
+    // 許可されると source Blob が edit 扱いへ降格し、以後の通常改訂で上書き可能になる。
+    await expect(
+      saveAssetRevision({
+        projectId: project.id,
+        asset: next,
+        sourceBlobTransitions: { deleteKeys: [sourceKey] },
+      }),
+    ).rejects.toThrow(/既存 source TextureRef は通常改訂で変更できません/);
+
+    // 正本は無変更（source kind と Blob が残る）
+    const stored = await loadAsset(asset.id);
+    expect(stored.asset.textures.find((texture) => texture.id === source.id)?.kind).toBe('source');
+    expect(await loadBlob(sourceKey)).not.toBeNull();
+  });
+
   it('rejects source path, mimeType, and size changes with create/delete permissions', async () => {
     const variants = [
       (source: TextureRef) => ({ ...source, path: 'source/renamed.png' }),
