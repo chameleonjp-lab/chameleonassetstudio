@@ -492,20 +492,18 @@ function assertTextureBlobTransitions({
 
     const nextKey = blobKeyForAssetPath(nextAsset.id, nextTexture.path);
     if (previousTexture.kind === 'source') {
+      // source TextureRef が保存後も存在する限り、kind 降格（source → edit 等）を含む
+      // 一切の変更を拒否する。降格を許すと Blob 実削除なしに source が edit 扱いへ
+      // 変わり、以後の通常改訂で原本を上書き・削除できてしまう（PR #118 遡及レビュー
+      // MUST-1）。source の除去は TextureRef 自体の削除（Blob 削除必須の上記経路）のみ。
       if (!sameTextureRef(previousTexture, nextTexture)) {
-        if (nextTexture.kind !== 'source') {
-          removedSourceKeys.add(previousKey);
-        } else {
-          throw new StorageError(`既存 source TextureRef は通常改訂で変更できません: ${id}`);
-        }
+        throw new StorageError(`既存 source TextureRef は通常改訂で変更できません: ${id}`);
       }
-      if (nextTexture.kind === 'source') {
-        if (putBlobKeys.has(previousKey)) {
-          throw new StorageError(`既存 source Blob は上書きできません: ${previousKey}`);
-        }
-        if (deleteBlobKeys.has(previousKey)) {
-          throw new StorageError(`既存 source Blob は削除できません: ${previousKey}`);
-        }
+      if (putBlobKeys.has(previousKey)) {
+        throw new StorageError(`既存 source Blob は上書きできません: ${previousKey}`);
+      }
+      if (deleteBlobKeys.has(previousKey)) {
+        throw new StorageError(`既存 source Blob は削除できません: ${previousKey}`);
       }
     } else if (nextTexture.kind === 'source') {
       throw new StorageError(`既存 TextureRef を source へ変更できません: ${id}`);
@@ -655,8 +653,29 @@ interface PreparedBatchTarget {
   blobs: PreparedBatchBlobRevision[];
 }
 
+/**
+ * object の key 挿入順に依存しない決定的な構造比較。
+ * 呼び出し元が UI 状態から before 一式を再構築して key 順が保存時と変わっても、
+ * 内容が同じなら CAS を偽陽性で失敗させない（PR #118 遡及レビュー SHOULD-1）。
+ * undefined 値の key は JSON 化と同じく欠落と同一視する。
+ */
+function toCanonicalValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(toCanonicalValue);
+  }
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, entryValue]) => entryValue !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return Object.fromEntries(
+      entries.map(([key, entryValue]) => [key, toCanonicalValue(entryValue)]),
+    );
+  }
+  return value;
+}
+
 function sameStructuredValue(left: unknown, right: unknown): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
+  return JSON.stringify(toCanonicalValue(left)) === JSON.stringify(toCanonicalValue(right));
 }
 
 function sameArrayBuffer(left: ArrayBuffer, right: ArrayBuffer): boolean {
@@ -840,6 +859,14 @@ async function prepareBatchTargets(
  * before一式をtransaction内の正本と比較するため、同じAPIをgroup Undo / Redoにも使える。
  */
 export async function saveAssetBatchRevision(input: SaveAssetBatchRevisionInput): Promise<void> {
+  // 件数上限は clone より先に検査し、巨大 input の無駄な複製を避ける
+  // （PR #118 遡及レビュー NOTE-5）。
+  if (input.targets.length === 0 || input.targets.length > MAX_ASSET_BATCH_REVISION_TARGETS) {
+    throw new StorageError(
+      `batch改訂の対象数は1〜${MAX_ASSET_BATCH_REVISION_TARGETS}件である必要があります: ${input.targets.length}`,
+    );
+  }
+
   // 呼び出し元がBlob変換中にobjectを変更しても保存内容が揺れないよう、最初のawait前にcloneする。
   const beforeProject = structuredClone(input.beforeProject);
   const afterProject = structuredClone(input.afterProject);
@@ -851,12 +878,6 @@ export async function saveAssetBatchRevision(input: SaveAssetBatchRevisionInput)
     blobs: (target.blobs ?? []).map(({ key, before, after }) => ({ key, before, after })),
   }));
   const snapshotLabel = input.snapshotLabel.trim();
-
-  if (targets.length === 0 || targets.length > MAX_ASSET_BATCH_REVISION_TARGETS) {
-    throw new StorageError(
-      `batch改訂の対象数は1〜${MAX_ASSET_BATCH_REVISION_TARGETS}件である必要があります: ${targets.length}`,
-    );
-  }
   const targetIds = new Set<string>();
   const allBlobKeys = new Set<string>();
   for (const target of targets) {

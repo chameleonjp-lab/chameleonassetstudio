@@ -326,7 +326,15 @@ export function remapAssetFamilies(
   families: AssetFamily[],
   assetIdMap: Map<string, string>,
 ): AssetFamily[] {
-  const remapId = (id: string): string => assetIdMap.get(id) ?? id;
+  // 未知の参照 ID を黙って素通しすると付替え漏れが欠落参照として潜伏するため、
+  // 対応が無い場合は即座に失敗させる（呼び出し元は remap 前に families を検証済みの前提）。
+  const remapId = (id: string): string => {
+    const mapped = assetIdMap.get(id);
+    if (mapped === undefined) {
+      throw new Error(`families の参照 Asset ID に対応する付替え先がありません: ${id}`);
+    }
+    return mapped;
+  };
 
   return families.map((family) => ({
     ...structuredClone(family),

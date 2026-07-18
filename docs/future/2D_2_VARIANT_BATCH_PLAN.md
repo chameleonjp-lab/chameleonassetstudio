@@ -1,7 +1,7 @@
 # 2D-2-VARIANT + 2D-2-BATCH 契約監査・実装計画
 
 作成日: 2026-07-17
-状態: `F1+C1+V1+T1+B1+O1+H1+L1 accepted (2026-07-17) / Slice A merged / Slice B implementing`
+状態: `F1+C1+V1+T1+B1+O1+H1+L1 accepted (2026-07-17) / Slice A merged / Slice B merged (61a9b50) / retrospective Opus review BLOCKER 0 MUST 1 fixed / Slice C not started`
 正式work package: `2D-2-VARIANT + 2D-2-BATCH`（2D完成ロードマップ PR group 10）
 契約監査基準main: `1838f58918a2958f9ebce2f8379f87a45fb17c26`（PR #115 merge）
 Slice A実装基準main: `f08ec3f108e877dfbd6edc7106946f6e3519644a`（PR #116 merge）
@@ -22,7 +22,7 @@ Slice B実装基準main: `015064c6ae6b9e2a0f28e84c9ac447b9f9e0a8d1`（PR #117 me
 6. source Blob、snapshot、`.casproj`、exportへの影響。
 7. Desktop / touch / iPhone SE級viewportと性能上限。
 
-この文書は判断候補を提示したdocs-only監査を経て、§8で推奨組み合わせがaccepted済みである。Slice Aの型、schema、意味検査、fixture、文書同期はPR #117でmainへmerge済みである。現在は§5の直列順に従いSlice Bの原子revision / recovery基盤を実装し、Family / Variant UIとlinked refreshはSlice C、preview / progress / 取消を持つbatch体験はSlice Dまで開始しない。
+この文書は判断候補を提示したdocs-only監査を経て、§8で推奨組み合わせがaccepted済みである。Slice Aの型、schema、意味検査、fixture、文書同期はPR #117でmainへmerge済みである。Slice Bの原子revision / recovery基盤はPR #118（merge `61a9b50`）でmainへmerge済みである。merge後の遡及Opus 4.8レビューは`BLOCKER 0 / MUST 1 / SHOULD 1 / NOTE 5`で、MUST-1（source kind降格経路）・SHOULD-1（CASのkey順序依存）・NOTE-1（remapのsilent fallback）はfollow-up PRで修正した。NOTE-3（group Undo/Redo繰り返し時のsnapshot上限evict）はSlice DのUX設計対象、NOTE-4（tx内CASのbytes実体化コスト）は`2D-6-PERFORMANCE`の実測課題として記録する。Family / Variant UIとlinked refreshはSlice C、preview / progress / 取消を持つbatch体験はSlice Dまで開始しない。
 
 ## 2. 前段closeoutと開始条件
 

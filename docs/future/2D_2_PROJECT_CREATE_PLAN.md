@@ -1,7 +1,7 @@
 # 2D-2-PROJECT + 2D-2-CREATE 契約監査・実装計画
 
 作成日: 2026-07-16
-状態: `C slice completed / remaining CREATE A+B+X completed / Family-Variant Slice A merged / Slice B implementing`
+状態: `C slice completed / remaining CREATE A+B+X completed / Family-Variant Slice A merged / Slice B merged`
 正式work package: `2D-2-PROJECT + 2D-2-CREATE`
 基準main: `f1fcdf1fbd05f33810206ee0ebfbfd49cba784f0`（PR #92 merge）
 直前完了work package: `2D-3-TYPE-PROFILES + 2D-3-INSPECT`
