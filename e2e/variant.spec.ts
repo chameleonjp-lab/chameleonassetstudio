@@ -402,8 +402,23 @@ test.describe('スマホtouchでのFamily / Variant操作', () => {
     await panel.getByRole('button', { name: 'このvariantを明示refresh' }).tap();
     await expect(panel.getByText(/状態: 同期済み/)).toBeVisible();
 
+    await page
+      .getByRole('list', { name: 'レイヤー一覧' })
+      .getByRole('button', { name: 'main', exact: true })
+      .tap();
+    const variantX = properties.locator('.layer-fields').getByLabel('X', { exact: true });
+    await variantX.fill('17');
+    await variantX.blur();
+    await expect(panel.getByText(/状態: 手動調整あり/)).toBeVisible();
+    await panel.getByRole('button', { name: 'refresh前後をpreview' }).tap();
+    const overwriteConfirmation = panel.locator('.variant-confirm-overwrite');
+    await expect(overwriteConfirmation).toBeVisible();
+    expect((await overwriteConfirmation.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+
     const undersizedControls = await panel
-      .locator("button:visible, select:visible, input:not([type='checkbox']):visible")
+      .locator(
+        "button:visible, select:visible, input:not([type='checkbox']):visible, .variant-confirm-overwrite:visible",
+      )
       .evaluateAll((elements) =>
         elements
           .map((element) => ({

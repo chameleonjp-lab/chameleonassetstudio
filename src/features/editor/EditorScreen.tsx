@@ -72,6 +72,7 @@ import {
   listSnapshots,
   loadBlob,
   loadProject,
+  getStorageUsage,
   prepareSnapshotRestore,
   saveAsset,
   saveAssetBatchRevision,
@@ -85,7 +86,16 @@ import {
 } from '../../core/storage';
 import { layerWorldPoint } from '../../renderers/canvas2d/view';
 import { AlignPanel } from './AlignPanel';
+import { AssetBatchPanel } from './AssetBatchPanel';
 import { AssetTypePanel, BackgroundLayerFields } from './AssetTypePanel';
+import {
+  AssetBatchCancelledError,
+  buildAssetBatchRevisionPlan,
+  prepareAssetBatchPreview,
+  type AssetBatchConfig,
+  type AssetBatchPreview,
+  type AssetBatchProgress,
+} from './assetBatch';
 import { ASSET_TYPE_LABELS } from './assetTypeLabels';
 import {
   BLANK_CANVAS_PRESETS,
@@ -316,16 +326,35 @@ async function transformPaletteVariantBlob(
   replacements: readonly PaletteReplacement[],
   tolerance: number,
 ): Promise<Blob> {
+  return (await transformPaletteBatchBlob(source, replacements, tolerance)).blob;
+}
+
+async function transformPaletteBatchBlob(
+  source: Blob,
+  replacements: readonly PaletteReplacement[],
+  tolerance: number,
+  onProgress?: (progress: number) => void,
+): Promise<{ blob: Blob; changed: boolean }> {
   let buffer = await blobToPixelBuffer(source);
-  for (const replacement of replacements) {
-    buffer = await runImageOperation(buffer, {
-      type: 'replaceColor',
-      from: hexToRgb(replacement.from),
-      to: hexToRgb(replacement.to),
-      tolerance,
-    });
+  const beforePixels = new Uint8ClampedArray(buffer.data);
+  for (let index = 0; index < replacements.length; index += 1) {
+    const replacement = replacements[index];
+    buffer = await runImageOperation(
+      buffer,
+      {
+        type: 'replaceColor',
+        from: hexToRgb(replacement.from),
+        to: hexToRgb(replacement.to),
+        tolerance,
+      },
+      (progress) => onProgress?.((index + progress) / replacements.length),
+    );
   }
-  return pixelBufferToBlob(buffer);
+  const changed = buffer.data.some((value, index) => value !== beforePixels[index]);
+  onProgress?.(0.95);
+  const blob = await pixelBufferToBlob(buffer);
+  onProgress?.(1);
+  return { blob, changed };
 }
 
 export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
@@ -365,6 +394,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [mutationBusy, setMutationBusy] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [mobileView, setMobileView] = useState<MobileView>('canvas');
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
+  );
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const layerEditBeforeRef = useRef<Asset | null>(null);
@@ -508,6 +540,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const selectedAsset = assets.find((asset) => asset.id === selectedAssetId) ?? assets[0] ?? null;
   const selectedFamilyMembership =
     project && selectedAsset ? projectFamilyMembership(project, selectedAsset.id) : null;
+  const selectedFamilyId = selectedFamilyMembership?.family.id ?? null;
   const selectedLayer = selectedAsset?.layers.find((layer) => layer.id === selectedLayerId) ?? null;
   const selectedTextureSize =
     selectedAsset?.textures.find((texture) => texture.id === selectedLayer?.textureId)?.size ??
@@ -528,19 +561,29 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       : null;
 
   useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)');
+    const update = () => setIsMobileViewport(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     setVariantPreview(null);
-    if (!project) {
+    const panelVisible = isMobileViewport ? mobileView === 'properties' : rightOpen;
+    const selectedFamily = (project?.families ?? []).find(
+      (family) => family.id === selectedFamilyId,
+    );
+    if (!project || !panelVisible || !selectedFamily) {
       setVariantInspections({});
       return () => {
         cancelled = true;
       };
     }
-    const linked = (project.families ?? []).flatMap((family) =>
-      family.variants
-        .filter((variant): variant is LinkedAssetFamilyVariant => variant.kind !== 'manual')
-        .map((variant) => ({ family, variant })),
-    );
+    const linked = selectedFamily.variants
+      .filter((variant): variant is LinkedAssetFamilyVariant => variant.kind !== 'manual')
+      .map((variant) => ({ family: selectedFamily, variant }));
     setVariantInspections(
       Object.fromEntries(linked.map(({ variant }) => [variant.assetId, { state: 'checking' }])),
     );
@@ -582,7 +625,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     return () => {
       cancelled = true;
     };
-  }, [assets, project]);
+  }, [assets, isMobileViewport, mobileView, project, rightOpen, selectedFamilyId]);
   useEffect(() => {
     if (!selectedTextureSize) {
       return;
@@ -1911,11 +1954,14 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           },
         ],
         allowProjectUpdatedAtDrift: true,
-        snapshotLabel: 'linked variant refresh取消前',
+        historyReplay: true,
+        snapshotLabel: '',
       };
       const redoInput = {
         ...forwardInput,
         allowProjectUpdatedAtDrift: true,
+        historyReplay: true,
+        snapshotLabel: '',
       };
       const applyState = (nextProject: Project, nextAsset: Asset) => {
         setProject(nextProject);
@@ -1949,6 +1995,94 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       setEditorError(
         `linked variantをrefreshできませんでした: ${error instanceof Error ? error.message : String(error)} previewを作り直してください。`,
       );
+    } finally {
+      endEditorPersistentMutation();
+    }
+  };
+
+  const handlePrepareAssetBatch = async (
+    config: AssetBatchConfig,
+    signal: AbortSignal,
+    onProgress: (progress: AssetBatchProgress) => void,
+  ): Promise<AssetBatchPreview> => {
+    await history.waitForPending();
+    if (signal.aborted) {
+      throw new AssetBatchCancelledError();
+    }
+    if (!project) {
+      throw new Error('Projectを読み込めません。');
+    }
+    if (!beginEditorPersistentMutation()) {
+      throw new Error('別の保存処理が完了してからpreviewを作成してください。');
+    }
+    try {
+      await autosave.flush();
+      if (signal.aborted) {
+        throw new AssetBatchCancelledError();
+      }
+      return await prepareAssetBatchPreview({
+        project: structuredClone(project),
+        assets: assets.map((asset) => structuredClone(asset)),
+        config,
+        signal,
+        onProgress,
+        dependencies: {
+          loadAssetBlobs: loadAssetBlobMap,
+          loadBlob,
+          transformPaletteBlob: transformPaletteBatchBlob,
+          getStorageUsage,
+        },
+      });
+    } finally {
+      endEditorPersistentMutation();
+    }
+  };
+
+  const handleExecuteAssetBatch = async (
+    preview: AssetBatchPreview,
+    includedTargetIds: ReadonlySet<string>,
+  ): Promise<void> => {
+    await history.waitForPending();
+    if (!beginEditorPersistentMutation()) {
+      throw new Error('別の保存処理が完了してから一括変更を実行してください。');
+    }
+    try {
+      await autosave.flush();
+      const plan = buildAssetBatchRevisionPlan(preview, includedTargetIds);
+      const applyState = (nextProject: Project, nextAssets: Asset[]) => {
+        const byId = new Map(
+          nextAssets.map((asset) => [asset.id, { ...asset, textures: [...asset.textures] }]),
+        );
+        setProject(nextProject);
+        setAssets((current) => current.map((asset) => byId.get(asset.id) ?? asset));
+      };
+      const refreshVisibleSnapshots = async () => {
+        if (selectedAssetId && plan.targetIds.includes(selectedAssetId)) {
+          await reloadSnapshots(selectedAssetId);
+        }
+      };
+      await commitPersistentMutationWithHistory({
+        apply: async () => {
+          const committedProject = await saveAssetBatchRevision(plan.forward);
+          applyState(committedProject, plan.afterAssets);
+        },
+        history,
+        entry: {
+          label: plan.label,
+          undo: async () => {
+            const committedProject = await saveAssetBatchRevision(plan.undo);
+            applyState(committedProject, plan.beforeAssets);
+            await refreshVisibleSnapshots();
+          },
+          redo: async () => {
+            const committedProject = await saveAssetBatchRevision(plan.redo);
+            applyState(committedProject, plan.afterAssets);
+            await refreshVisibleSnapshots();
+          },
+        },
+      });
+      setVariantPreview(null);
+      await refreshVisibleSnapshots();
     } finally {
       endEditorPersistentMutation();
     }
@@ -2856,6 +2990,18 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               onDeleteVariantAsset={(familyId, assetId) =>
                 void handleDeleteVariantAsset(familyId, assetId)
               }
+            />
+          )}
+
+          {project && (
+            <AssetBatchPanel
+              project={project}
+              assets={assets}
+              selectedAsset={selectedAsset}
+              busy={persistentMutationBlocked || importing || creatingAsset || deletingAsset}
+              onPrepare={handlePrepareAssetBatch}
+              onExecute={handleExecuteAssetBatch}
+              onOpenBackup={() => setMobileView('export')}
             />
           )}
 

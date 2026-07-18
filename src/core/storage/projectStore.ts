@@ -647,6 +647,12 @@ export interface SaveAssetBatchRevisionInput {
    * 進んでいる場合、その現在時刻を保持してCASする。初回preview commitでは使わない。
    */
   allowProjectUpdatedAtDrift?: boolean;
+  /**
+   * 同じHistory entryのUndo / Redo再生専用。初回確定時に作成した復旧点を保持し、
+   * 履歴往復のたびに同内容のsnapshotを追加して3件上限から押し出さない。
+   * Blob変更を伴う通常commitでは指定しない。
+   */
+  historyReplay?: boolean;
   /** Blob変更がある場合に作る永続復旧点の表示名。 */
   snapshotLabel: string;
 }
@@ -666,7 +672,7 @@ interface PreparedBatchBlobRevision {
   beforeMimeType: string;
   beforeBytes: ArrayBuffer;
   afterRecord: StoredBlobRecord;
-  snapshot: PreparedAssetSnapshotInput;
+  snapshot?: PreparedAssetSnapshotInput;
 }
 
 interface PreparedBatchTarget {
@@ -854,6 +860,7 @@ async function prepareBatchTargets(
   projectId: string,
   targets: AssetBatchRevisionTarget[],
   snapshotLabel: string,
+  createSnapshots: boolean,
 ): Promise<PreparedBatchTarget[]> {
   const prepared: PreparedBatchTarget[] = [];
   for (const target of targets) {
@@ -861,14 +868,16 @@ async function prepareBatchTargets(
     for (const revision of target.blobs ?? []) {
       const beforeBytes = await revision.before.arrayBuffer();
       const afterBytes = await revision.after.arrayBuffer();
-      const snapshot = await prepareAssetSnapshot({
-        projectId,
-        assetId: target.beforeAsset.id,
-        label: snapshotLabel,
-        asset: target.beforeAsset,
-        blobKey: revision.key,
-        blob: revision.before,
-      });
+      const snapshot = createSnapshots
+        ? await prepareAssetSnapshot({
+            projectId,
+            assetId: target.beforeAsset.id,
+            label: snapshotLabel,
+            asset: target.beforeAsset,
+            blobKey: revision.key,
+            blob: revision.before,
+          })
+        : undefined;
       blobs.push({
         key: revision.key,
         beforeMimeType: revision.before.type,
@@ -943,6 +952,7 @@ export async function saveAssetBatchRevision(input: SaveAssetBatchRevisionInput)
   );
   const snapshotLabel = input.snapshotLabel.trim();
   const allowProjectUpdatedAtDrift = input.allowProjectUpdatedAtDrift === true;
+  const historyReplay = input.historyReplay === true;
   const targetIds = new Set<string>();
   const allBlobKeys = new Set<string>();
   for (const target of targets) {
@@ -1013,10 +1023,21 @@ export async function saveAssetBatchRevision(input: SaveAssetBatchRevisionInput)
   }
   assertBatchProjectContract(beforeProject, afterProject, targets);
 
-  if (allBlobKeys.size > 0 && !snapshotLabel) {
+  if (historyReplay && !allowProjectUpdatedAtDrift) {
+    throw new StorageError('History再生はProject updatedAt drift許可を伴う必要があります');
+  }
+  if (historyReplay && snapshotLabel) {
+    throw new StorageError('History再生では新しい復旧点labelを指定できません');
+  }
+  if (allBlobKeys.size > 0 && !historyReplay && !snapshotLabel) {
     throw new StorageError('edit Blobを変更するbatchには復旧点のlabelが必要です');
   }
-  const preparedTargets = await prepareBatchTargets(beforeProject.id, targets, snapshotLabel);
+  const preparedTargets = await prepareBatchTargets(
+    beforeProject.id,
+    targets,
+    snapshotLabel,
+    !historyReplay,
+  );
   const preparedReadExpectations = await prepareBatchReadExpectations(readExpectations);
 
   return runTransaction(
@@ -1120,7 +1141,9 @@ export async function saveAssetBatchRevision(input: SaveAssetBatchRevisionInput)
       // canonical更新より先に復旧点を作る。同じtransactionなので、以後の失敗では全て戻る。
       for (const target of preparedTargets) {
         for (const blob of target.blobs) {
-          await savePreparedAssetSnapshotInTx(tx, blob.snapshot);
+          if (blob.snapshot) {
+            await savePreparedAssetSnapshotInTx(tx, blob.snapshot);
+          }
         }
       }
 
