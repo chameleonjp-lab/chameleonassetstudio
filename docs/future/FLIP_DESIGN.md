@@ -11,7 +11,7 @@
 実装状況（2026-07-07 更新）:
 
 - **通常の左右反転（transform 反映）は実装済み**（`flipLayerHorizontal` / 「選択中レイヤー」パネルの「左右反転」ボタン / Unit・E2E。schema 変更なし）。
-- **左右反転コピー（アセット全体→新規アセット生成）は実装済み**（`flipCopyAsset` / 「アセット」欄の「左右反転コピーを作成」ボタン / Unit・E2E。schema 変更なし）。反転軸は `asset.origin.x`。layers・anchors・colliders・parts・frames・animations を反転し、左右 role / 名前を入れ替え、新規 id を採番、画像 Blob を新アセットのキーへ複製する。
+- **左右反転コピー（アセット全体→新規アセット生成）は実装済み**（`flipCopyAsset` / 「アセット」欄の「独立左右反転コピーを作成」ボタン / Unit・E2E。schema 変更なし）。反転軸は `asset.origin.x`。layers・anchors・colliders・parts・frames・animations を反転し、左右 role / 名前を入れ替え、新規 id を採番、画像 Blob を新アセットのキーへ複製する。
 - **未対応（将来スライス）**: リグ編集データ（`rigAnimations`・part の `bindPose` / `rotationLimit`）の反転。焼き込み済み `frames` は反転して保持されるため表示・書き出しは正しく反転される。リグのワールド鏡映（スケルトン数式）は焼き込み整合の検証を伴うため別 PR とし、着手前に `claude-opus-4-8` 設計レビューと人間確認を挟む。
 
 ---
@@ -20,7 +20,7 @@
 
 **通常の左右反転は `LayerTransform.scale.x` の符号反転（非破壊）を基本にする。**
 
-加えて、右向き・左向きを別々に編集したい用途のために、**「左右反転コピーを作成」を別コマンドとして将来実装する**。
+加えて、右向き・左向きを別々に編集したい用途のために、**「独立左右反転コピーを作成」**を別コマンドとして提供する。
 
 ---
 

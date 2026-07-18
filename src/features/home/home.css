@@ -92,9 +92,16 @@
   opacity: 0.7;
 }
 
+.home-family-recovery-warning {
+  color: #b45309;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
 .home-item-actions {
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .home-storage {
@@ -229,4 +236,24 @@
   padding: 0.35rem 0.7rem;
   font: inherit;
   font-size: 0.85rem;
+}
+
+@media (max-width: 767px) {
+  .home-create input,
+  .home-create button,
+  .home-item-actions button,
+  .home-import-button,
+  .home-storage button {
+    min-height: 44px;
+  }
+
+  .home-item-actions,
+  .home-item-actions button {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .home-item-actions button {
+    overflow-wrap: anywhere;
+  }
 }

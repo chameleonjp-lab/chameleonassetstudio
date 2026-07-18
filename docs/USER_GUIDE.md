@@ -46,14 +46,18 @@
 - Project単位の追加操作のため、**Undo / Redoの対象外**です。
 - アセット一覧には種別とキャンバスサイズが表示されます。種別変更はAsset本体とProject内の要約へまとめて保存されます。
 
-### 2.4 Family / Variantデータの現在の範囲（2D-2-VARIANT Slice A、2026-07）
+### 2.4 Family / Variantを管理する（2D-2-VARIANT Slice C、2026-07）
 
 `.casproj`の`project.json`は、同じ素材のbaseと左右反転・palette・手修正版の関係をoptionalなFamily registryとして保持できます。fieldがない既存`0.1.0`ファイルは、従来どおり全Assetが独立したデータとして読み込まれます。
 
-- 現段階は保存・読み込み・参照検査までのデータ契約です。Familyの作成・解除・base付替え、manual variant登録、linked mirror / palette作成、更新preview、明示refreshの画面操作はまだありません（Slice Cで実装予定）。
-- linked variantはrecipeと最後の同期fingerprintを保存しますが、baseを編集しただけでbackground更新しません。
+- プロパティの「Family / Variant」で、Family名とstandalone base Assetを選び「Familyを作成」します。1つのAssetは1つのFamilyにだけ所属できます。
+- base選択中は、既存standalone Assetを`manual` variantとして登録するか、`linked左右反転`、または対象image layerを1件選んだ`linked palette`を作成できます。manualは装備差分・手修正解像度などの追跡用で、自動refreshしません。
+- linked variantはrecipeと最後の同期fingerprintを保存しますが、baseを編集しただけでbackground更新しません。variantを選び、状態が「更新候補（stale）」または「手動調整あり」になったら「refresh前後をpreview」で変更対象・維持対象と画像差分を確認し、「このvariantを明示refresh」で確定します。
+- write-set内に手動調整がある場合、refresh buttonは確認checkboxを選ぶまで無効です。欠落画像、rig / bind pose / rotation limit、未対応の複数edit画像などは理由付きで更新不可になります。対象を安全に再生成できない場合はFamilyから外して作り直してください。
+- 「Familyから外す」はAssetを残してstandaloneへ戻します。「variantアセットを削除」はFamily参照・Asset・画像Blobを同時に削除します。「Familyを解除」は全member Assetを残します。現在の画面にbase付替えはないため、baseを変える場合はFamilyを解除して作り直してください。
+- 「独立コピーを作成」「独立左右反転コピーを作成」は従来どおりstandaloneで、Family登録も自動refreshも行いません。
 - Family付き`.casproj`を読み込むとProject / Asset IDは衝突回避のため再採番され、Family参照も追従します。内部Layer等のID、recipe、fingerprintは保持されます。
-- Familyのbaseは、別baseへの付替えまたはFamily解除より先に削除できません。variant削除はFamily参照とAsset / Blobを同時に除去する必要があります。管理UIが追加されるまでは、Family付きファイルを編集する前に`.casproj`をバックアップしてください。
+- FamilyのbaseはFamily解除より先に削除できません。Family情報だけが不正な保存済みProjectは通常openを無効にし、ホームの「隔離copyを作成」から元Projectを変更せず、全Assetを別IDのstandalone copyとして復旧できます。作成後はホームに隔離理由と未知参照の注意を表示するので、確認してから新しいcopyを開きます。Family以外も不正なProjectはこの導線の対象外です。不正なFamily参照を含む`.casproj`は正本へ保存せず、読み込み失敗データとしてquarantineします。
 - ゲーム向け`asset.json`、PNG / WebP、atlas、engine向けZIPへFamily metadataは追加されません。Family関係を含む再編集用保存には`.casproj`を使います。
 
 ## 3. 編集する

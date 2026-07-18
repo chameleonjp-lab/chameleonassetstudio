@@ -42,10 +42,20 @@ import {
   duplicateAsset,
   flipCopyAsset,
   flipLayerHorizontal,
+  createLinkedMirrorVariantDraft,
+  createLinkedPaletteVariantDraft,
+  createLinkedVariantFingerprint,
+  generateId,
+  inspectLinkedVariant,
+  prepareLinkedVariantRefresh,
   renameLayer,
   ASSET_TYPES,
   type AnchorRole,
   type Asset,
+  type AssetFamily,
+  type LinkedAssetFamilyVariant,
+  type LinkedVariantRefreshArtifact,
+  type PaletteReplacement,
   type AssetCreationTemplateId,
   type AssetType,
   type Layer,
@@ -64,6 +74,7 @@ import {
   loadProject,
   prepareSnapshotRestore,
   saveAsset,
+  saveAssetBatchRevision,
   saveAssetRevision,
   saveProject,
   saveProjectBundle,
@@ -103,6 +114,7 @@ import { LayerPanel } from './LayerPanel';
 import { PartPanel } from './PartPanel';
 import { RigPanel } from './RigPanel';
 import { TimelinePanel } from './TimelinePanel';
+import { VariantPanel, type VariantInspectionView } from './VariantPanel';
 import { applyEditSnap } from './snap';
 import './editor.css';
 
@@ -232,6 +244,90 @@ interface PaletteExtractionState {
   result: PaletteExtraction;
 }
 
+interface VariantRefreshPreviewState {
+  familyId: string;
+  assetId: string;
+  artifact: LinkedVariantRefreshArtifact;
+  beforeProject: Project;
+  afterProject: Project;
+  baseAsset: Asset;
+  beforeAsset: Asset;
+  baseBlobs: Map<string, Blob>;
+  variantBlobs: Map<string, Blob>;
+}
+
+function projectFamilyMembership(project: Project, assetId: string) {
+  for (const family of project.families ?? []) {
+    if (family.baseAssetId === assetId) {
+      return { family, role: 'base' as const, variant: null };
+    }
+    const variant = family.variants.find((candidate) => candidate.assetId === assetId);
+    if (variant) {
+      return { family, role: 'variant' as const, variant };
+    }
+  }
+  return null;
+}
+
+function projectFamilyStatusLabel(project: Project | null, assetId: string): string {
+  if (!project) {
+    return 'standalone';
+  }
+  const membership = projectFamilyMembership(project, assetId);
+  if (!membership) {
+    return 'standalone';
+  }
+  if (membership.role === 'base') {
+    return `${membership.family.name} · base`;
+  }
+  switch (membership.variant.kind) {
+    case 'manual':
+      return `${membership.family.name} · manual`;
+    case 'linked-mirror':
+      return `${membership.family.name} · linked mirror`;
+    case 'linked-palette':
+      return `${membership.family.name} · linked palette`;
+  }
+}
+
+function projectEntryForVariantAsset(asset: Asset) {
+  return {
+    id: asset.id,
+    name: asset.name,
+    displayName: asset.displayName,
+    assetType: asset.assetType,
+  };
+}
+
+async function loadAssetBlobMap(asset: Asset): Promise<Map<string, Blob>> {
+  const result = new Map<string, Blob>();
+  for (const texture of asset.textures) {
+    const blob = await loadBlob(blobKeyFor(asset.id, texture.path));
+    if (!blob) {
+      throw new Error(`画像Blobが見つかりません: ${asset.displayName} / ${texture.path}`);
+    }
+    result.set(texture.path, blob);
+  }
+  return result;
+}
+
+async function transformPaletteVariantBlob(
+  source: Blob,
+  replacements: readonly PaletteReplacement[],
+  tolerance: number,
+): Promise<Blob> {
+  let buffer = await blobToPixelBuffer(source);
+  for (const replacement of replacements) {
+    buffer = await runImageOperation(buffer, {
+      type: 'replaceColor',
+      from: hexToRgb(replacement.from),
+      to: hexToRgb(replacement.to),
+      tolerance,
+    });
+  }
+  return pixelBufferToBlob(buffer);
+}
+
 export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const autosaveRef = useRef<AutosaveQueue | null>(null);
   autosaveRef.current ??= new AutosaveQueue();
@@ -263,6 +359,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editorError, setEditorError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [importStatusLabel, setImportStatusLabel] = useState('画像を取り込み中…');
   const [imageProcessing, setImageProcessing] = useState<ImageProcessingState | null>(null);
   const mutationBusyRef = useRef(false);
   const [mutationBusy, setMutationBusy] = useState(false);
@@ -287,6 +384,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [creatingAsset, setCreatingAsset] = useState(false);
   const [duplicatingAsset, setDuplicatingAsset] = useState(false);
   const [deletingAsset, setDeletingAsset] = useState(false);
+  const [variantInspections, setVariantInspections] = useState<
+    Record<string, VariantInspectionView>
+  >({});
+  const [variantPreview, setVariantPreview] = useState<VariantRefreshPreviewState | null>(null);
 
   const handleNewAssetTypeChange = (assetType: AssetType) => {
     setNewAssetType(assetType);
@@ -405,6 +506,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     historyState.isBusy || mutationBusy || alphaInspecting || paletteInspecting;
 
   const selectedAsset = assets.find((asset) => asset.id === selectedAssetId) ?? assets[0] ?? null;
+  const selectedFamilyMembership =
+    project && selectedAsset ? projectFamilyMembership(project, selectedAsset.id) : null;
   const selectedLayer = selectedAsset?.layers.find((layer) => layer.id === selectedLayerId) ?? null;
   const selectedTextureSize =
     selectedAsset?.textures.find((texture) => texture.id === selectedLayer?.textureId)?.size ??
@@ -423,13 +526,70 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     paletteExtraction.textureId === selectedLayer?.textureId
       ? paletteExtraction.result
       : null;
+
+  useEffect(() => {
+    let cancelled = false;
+    setVariantPreview(null);
+    if (!project) {
+      setVariantInspections({});
+      return () => {
+        cancelled = true;
+      };
+    }
+    const linked = (project.families ?? []).flatMap((family) =>
+      family.variants
+        .filter((variant): variant is LinkedAssetFamilyVariant => variant.kind !== 'manual')
+        .map((variant) => ({ family, variant })),
+    );
+    setVariantInspections(
+      Object.fromEntries(linked.map(({ variant }) => [variant.assetId, { state: 'checking' }])),
+    );
+    void Promise.all(
+      linked.map(async ({ family, variant }) => {
+        const base = assets.find((asset) => asset.id === family.baseAssetId);
+        const variantAsset = assets.find((asset) => asset.id === variant.assetId);
+        if (!base || !variantAsset) {
+          return [
+            variant.assetId,
+            { state: 'error', error: 'Familyが参照するAssetを読み込めません。' },
+          ] as const;
+        }
+        try {
+          const [baseBlobs, variantBlobs] = await Promise.all([
+            loadAssetBlobMap(base),
+            loadAssetBlobMap(variantAsset),
+          ]);
+          const inspection = await inspectLinkedVariant({
+            base,
+            variantAsset,
+            variant,
+            baseBlobs,
+            variantBlobs,
+          });
+          return [variant.assetId, { state: 'ready', inspection }] as const;
+        } catch (error) {
+          return [
+            variant.assetId,
+            { state: 'error', error: error instanceof Error ? error.message : String(error) },
+          ] as const;
+        }
+      }),
+    ).then((entries) => {
+      if (!cancelled) {
+        setVariantInspections(Object.fromEntries(entries));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [assets, project]);
   useEffect(() => {
     if (!selectedTextureSize) {
       return;
     }
     setLayerResizeWidth(selectedTextureSize.width);
     setLayerResizeHeight(selectedTextureSize.height);
-  }, [selectedTextureSize?.height, selectedTextureSize?.width]);
+  }, [selectedTextureSize]);
 
   const paddingOutputSize = selectedTextureSize
     ? {
@@ -1282,6 +1442,582 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setTextDraft(null);
   };
 
+  const handleCreateFamily = async (name: string, baseAssetId: string) => {
+    if (!project || !assets.some((asset) => asset.id === baseAssetId)) {
+      return;
+    }
+    await history.waitForPending();
+    if (!beginEditorPersistentMutation()) {
+      return;
+    }
+    setEditorError(null);
+    try {
+      await autosave.flush();
+      if (projectFamilyMembership(project, baseAssetId)) {
+        throw new Error('選択したbase AssetはすでにFamilyへ所属しています。');
+      }
+      const now = new Date().toISOString();
+      const family: AssetFamily = {
+        id: generateId('family'),
+        name,
+        baseAssetId,
+        variants: [],
+      };
+      const nextProject: Project = {
+        ...project,
+        families: [...(project.families ?? []), family],
+        updatedAt: now,
+      };
+      await saveProject(nextProject);
+      setProject(nextProject);
+      setSelectedAssetId(baseAssetId);
+      history.clear();
+    } catch (error) {
+      setEditorError(
+        `Familyを作成できませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      endEditorPersistentMutation();
+    }
+  };
+
+  const handleAddManualVariant = async (familyId: string, assetId: string) => {
+    if (!project) {
+      return;
+    }
+    await history.waitForPending();
+    if (!beginEditorPersistentMutation()) {
+      return;
+    }
+    setEditorError(null);
+    try {
+      await autosave.flush();
+      if (projectFamilyMembership(project, assetId)) {
+        throw new Error('選択したAssetはすでにFamilyへ所属しています。');
+      }
+      const now = new Date().toISOString();
+      const nextProject: Project = {
+        ...project,
+        families: (project.families ?? []).map((family) =>
+          family.id === familyId
+            ? {
+                ...family,
+                variants: [...family.variants, { assetId, kind: 'manual' as const }],
+              }
+            : family,
+        ),
+        updatedAt: now,
+      };
+      await saveProject(nextProject);
+      setProject(nextProject);
+      setSelectedAssetId(assetId);
+      history.clear();
+    } catch (error) {
+      setEditorError(
+        `manual variantを登録できませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      endEditorPersistentMutation();
+    }
+  };
+
+  const handleCreateMirrorVariant = async (familyId: string) => {
+    if (!project) {
+      return;
+    }
+    const family = (project.families ?? []).find((candidate) => candidate.id === familyId);
+    const base = assets.find((asset) => asset.id === family?.baseAssetId);
+    if (!family || !base) {
+      return;
+    }
+    await history.waitForPending();
+    if (!beginEditorPersistentMutation()) {
+      return;
+    }
+    setEditorError(null);
+    setImportStatusLabel('linked左右反転variantを作成中…');
+    setImporting(true);
+    try {
+      await autosave.flush();
+      const now = new Date();
+      const draft = createLinkedMirrorVariantDraft(base, { now });
+      const baseBlobs = await loadAssetBlobMap(base);
+      const variantBlobs = new Map(baseBlobs);
+      const fingerprint = await createLinkedVariantFingerprint({
+        base,
+        variant: draft.asset,
+        recipe: draft.recipe,
+        baseBlobs,
+        variantBlobs,
+        now,
+      });
+      const linked: LinkedAssetFamilyVariant = {
+        assetId: draft.asset.id,
+        kind: 'linked-mirror',
+        recipe: draft.recipe,
+        fingerprint,
+      };
+      const nextProject: Project = {
+        ...project,
+        assets: [...project.assets, projectEntryForVariantAsset(draft.asset)],
+        families: (project.families ?? []).map((candidate) =>
+          candidate.id === familyId
+            ? { ...candidate, variants: [...candidate.variants, linked] }
+            : candidate,
+        ),
+        updatedAt: now.toISOString(),
+      };
+      await saveProjectBundle(
+        nextProject,
+        [draft.asset],
+        draft.asset.textures.map((texture) => ({
+          key: blobKeyFor(draft.asset.id, texture.path),
+          blob: variantBlobs.get(texture.path)!,
+        })),
+      );
+      setProject(nextProject);
+      setAssets((current) => [...current, draft.asset]);
+      setSelectedAssetId(draft.asset.id);
+      setSelectedLayerId(null);
+      history.clear();
+    } catch (error) {
+      setEditorError(
+        `linked左右反転を作成できませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setImporting(false);
+      endEditorPersistentMutation();
+    }
+  };
+
+  const handleCreatePaletteVariant = async (options: {
+    familyId: string;
+    baseLayerId: string;
+    from: string;
+    to: string;
+    tolerance: number;
+  }) => {
+    if (!project) {
+      return;
+    }
+    const family = (project.families ?? []).find((candidate) => candidate.id === options.familyId);
+    const base = assets.find((asset) => asset.id === family?.baseAssetId);
+    if (!family || !base) {
+      return;
+    }
+    await history.waitForPending();
+    if (!beginEditorPersistentMutation()) {
+      return;
+    }
+    setEditorError(null);
+    setImportStatusLabel('linked palette variantを作成中…');
+    setImporting(true);
+    try {
+      await autosave.flush();
+      const now = new Date();
+      const draft = createLinkedPaletteVariantDraft(base, {
+        baseLayerId: options.baseLayerId,
+        replacements: [{ from: options.from, to: options.to }],
+        tolerance: options.tolerance,
+        now,
+      });
+      const baseBlobs = await loadAssetBlobMap(base);
+      const variantBlobs = new Map(baseBlobs);
+      const targetPath = draft.recipe.writeSet.blobPaths[0];
+      const baseLayer = base.layers.find((layer) => layer.id === options.baseLayerId)!;
+      const baseTexture = base.textures.find((texture) => texture.id === baseLayer.textureId)!;
+      const transformed = await transformPaletteVariantBlob(
+        baseBlobs.get(baseTexture.path)!,
+        draft.recipe.replacements,
+        draft.recipe.tolerance,
+      );
+      const targetTexture = draft.asset.textures.find((texture) => texture.path === targetPath)!;
+      if (transformed.type !== targetTexture.mimeType) {
+        throw new Error(`palette変換後BlobのMIME typeが一致しません: ${targetPath}`);
+      }
+      variantBlobs.set(targetPath, transformed);
+      const fingerprint = await createLinkedVariantFingerprint({
+        base,
+        variant: draft.asset,
+        recipe: draft.recipe,
+        baseBlobs,
+        variantBlobs,
+        now,
+      });
+      const linked: LinkedAssetFamilyVariant = {
+        assetId: draft.asset.id,
+        kind: 'linked-palette',
+        recipe: draft.recipe,
+        fingerprint,
+      };
+      const nextProject: Project = {
+        ...project,
+        assets: [...project.assets, projectEntryForVariantAsset(draft.asset)],
+        families: (project.families ?? []).map((candidate) =>
+          candidate.id === options.familyId
+            ? { ...candidate, variants: [...candidate.variants, linked] }
+            : candidate,
+        ),
+        updatedAt: now.toISOString(),
+      };
+      await saveProjectBundle(
+        nextProject,
+        [draft.asset],
+        draft.asset.textures.map((texture) => ({
+          key: blobKeyFor(draft.asset.id, texture.path),
+          blob: variantBlobs.get(texture.path)!,
+        })),
+      );
+      setProject(nextProject);
+      setAssets((current) => [...current, draft.asset]);
+      setSelectedAssetId(draft.asset.id);
+      setSelectedLayerId(null);
+      history.clear();
+    } catch (error) {
+      setEditorError(
+        `linked paletteを作成できませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setImporting(false);
+      endEditorPersistentMutation();
+    }
+  };
+
+  const handleDetachVariant = async (familyId: string, assetId: string) => {
+    if (!project) {
+      return;
+    }
+    const family = (project.families ?? []).find((candidate) => candidate.id === familyId);
+    const asset = assets.find((candidate) => candidate.id === assetId);
+    const variant = family?.variants.find((candidate) => candidate.assetId === assetId);
+    const lostMetadata =
+      variant?.kind === 'manual'
+        ? 'manual variantとしての登録は失われます'
+        : 'linked recipeと同期情報は失われます';
+    if (
+      !family ||
+      !asset ||
+      !variant ||
+      !window.confirm(
+        `variant「${asset.displayName}」をFamily「${family.name}」から外します。${lostMetadata}が、Assetは残ります。`,
+      )
+    ) {
+      return;
+    }
+    await history.waitForPending();
+    if (!beginEditorPersistentMutation()) {
+      return;
+    }
+    setEditorError(null);
+    try {
+      await autosave.flush();
+      const nextProject: Project = {
+        ...project,
+        families: (project.families ?? []).map((family) =>
+          family.id === familyId
+            ? {
+                ...family,
+                variants: family.variants.filter((variant) => variant.assetId !== assetId),
+              }
+            : family,
+        ),
+        updatedAt: new Date().toISOString(),
+      };
+      await saveProject(nextProject);
+      setProject(nextProject);
+      setVariantPreview(null);
+      history.clear();
+    } catch (error) {
+      setEditorError(
+        `Familyから外せませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      endEditorPersistentMutation();
+    }
+  };
+
+  const handleRemoveFamily = async (familyId: string) => {
+    if (!project) {
+      return;
+    }
+    const family = (project.families ?? []).find((candidate) => candidate.id === familyId);
+    if (!family || !window.confirm(`Family「${family.name}」を解除します。Assetは削除しません。`)) {
+      return;
+    }
+    await history.waitForPending();
+    if (!beginEditorPersistentMutation()) {
+      return;
+    }
+    setEditorError(null);
+    try {
+      await autosave.flush();
+      const nextProject: Project = {
+        ...project,
+        families: (project.families ?? []).filter((candidate) => candidate.id !== familyId),
+        updatedAt: new Date().toISOString(),
+      };
+      await saveProject(nextProject);
+      setProject(nextProject);
+      setVariantPreview(null);
+      history.clear();
+    } catch (error) {
+      setEditorError(
+        `Familyを解除できませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      endEditorPersistentMutation();
+    }
+  };
+
+  const handlePreviewVariantRefresh = async (familyId: string, assetId: string) => {
+    if (!project) {
+      return;
+    }
+    const family = (project.families ?? []).find((candidate) => candidate.id === familyId);
+    const variant = family?.variants.find(
+      (candidate): candidate is LinkedAssetFamilyVariant =>
+        candidate.assetId === assetId && candidate.kind !== 'manual',
+    );
+    const base = assets.find((asset) => asset.id === family?.baseAssetId);
+    const variantAsset = assets.find((asset) => asset.id === assetId);
+    if (!family || !variant || !base || !variantAsset) {
+      return;
+    }
+    await history.waitForPending();
+    if (!beginEditorPersistentMutation()) {
+      return;
+    }
+    setEditorError(null);
+    try {
+      await autosave.flush();
+      const [baseBlobs, variantBlobs] = await Promise.all([
+        loadAssetBlobMap(base),
+        loadAssetBlobMap(variantAsset),
+      ]);
+      const artifact = await prepareLinkedVariantRefresh({
+        base,
+        variantAsset,
+        variant,
+        baseBlobs,
+        variantBlobs,
+        transformPaletteBlob: transformPaletteVariantBlob,
+      });
+      const afterProject: Project = {
+        ...project,
+        families: (project.families ?? []).map((candidate) =>
+          candidate.id === familyId
+            ? {
+                ...candidate,
+                variants: candidate.variants.map((entry) =>
+                  entry.assetId === assetId ? artifact.nextVariant : entry,
+                ),
+              }
+            : candidate,
+        ),
+        updatedAt: artifact.nextVariant.fingerprint.syncedAt,
+      };
+      setVariantPreview({
+        familyId,
+        assetId,
+        artifact,
+        beforeProject: structuredClone(project),
+        afterProject,
+        baseAsset: structuredClone(base),
+        beforeAsset: structuredClone(variantAsset),
+        baseBlobs,
+        variantBlobs,
+      });
+    } catch (error) {
+      setVariantPreview(null);
+      setEditorError(
+        `refresh previewを作成できませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      endEditorPersistentMutation();
+    }
+  };
+
+  const handleRefreshVariant = async (
+    familyId: string,
+    assetId: string,
+    artifact: LinkedVariantRefreshArtifact,
+  ) => {
+    const preview = variantPreview;
+    if (
+      !preview ||
+      preview.familyId !== familyId ||
+      preview.assetId !== assetId ||
+      preview.artifact !== artifact
+    ) {
+      setEditorError('previewが古いため、refresh前後をもう一度previewしてください。');
+      return;
+    }
+    await history.waitForPending();
+    if (!beginEditorPersistentMutation()) {
+      return;
+    }
+    setEditorError(null);
+    try {
+      await autosave.flush();
+      const changedVariantPaths = new Set(artifact.blobChanges.map((change) => change.targetPath));
+      const forwardInput = {
+        beforeProject: preview.beforeProject,
+        afterProject: preview.afterProject,
+        targets: [
+          {
+            beforeAsset: preview.beforeAsset,
+            afterAsset: artifact.afterAsset,
+            blobs: artifact.blobChanges.map((change) => ({
+              key: blobKeyFor(assetId, change.targetPath),
+              before: change.before,
+              after: change.after,
+            })),
+          },
+        ],
+        readExpectations: [
+          {
+            asset: preview.baseAsset,
+            blobs: artifact.baseReadBlobPaths.map((path) => ({
+              key: blobKeyFor(preview.baseAsset.id, path),
+              expected: preview.baseBlobs.get(path)!,
+            })),
+          },
+          {
+            // target Asset自身もsource / write対象外Blobをrecipe入力として読んでいる。
+            // 書き換えるedit Blobはtarget側CAS、それ以外はread expectationで再照合する。
+            asset: preview.beforeAsset,
+            blobs: artifact.variantReadBlobPaths
+              .filter((path) => !changedVariantPaths.has(path))
+              .map((path) => ({
+                key: blobKeyFor(preview.beforeAsset.id, path),
+                expected: preview.variantBlobs.get(path)!,
+              })),
+          },
+        ],
+        snapshotLabel: 'linked variant refresh前',
+      };
+      const reverseInput = {
+        beforeProject: preview.afterProject,
+        afterProject: preview.beforeProject,
+        targets: [
+          {
+            beforeAsset: artifact.afterAsset,
+            afterAsset: preview.beforeAsset,
+            blobs: artifact.blobChanges.map((change) => ({
+              key: blobKeyFor(assetId, change.targetPath),
+              before: change.after,
+              after: change.before,
+            })),
+          },
+        ],
+        allowProjectUpdatedAtDrift: true,
+        snapshotLabel: 'linked variant refresh取消前',
+      };
+      const redoInput = {
+        ...forwardInput,
+        allowProjectUpdatedAtDrift: true,
+      };
+      const applyState = (nextProject: Project, nextAsset: Asset) => {
+        setProject(nextProject);
+        setAssets((current) =>
+          current.map((asset) => (asset.id === nextAsset.id ? nextAsset : asset)),
+        );
+      };
+      await commitPersistentMutationWithHistory({
+        apply: async () => {
+          const committedProject = await saveAssetBatchRevision(forwardInput);
+          applyState(committedProject, artifact.afterAsset);
+        },
+        history,
+        entry: {
+          label: 'linked variant refresh',
+          undo: async () => {
+            const committedProject = await saveAssetBatchRevision(reverseInput);
+            applyState(committedProject, preview.beforeAsset);
+            await reloadSnapshots(assetId);
+          },
+          redo: async () => {
+            const committedProject = await saveAssetBatchRevision(redoInput);
+            applyState(committedProject, artifact.afterAsset);
+            await reloadSnapshots(assetId);
+          },
+        },
+      });
+      setVariantPreview(null);
+      await reloadSnapshots(assetId);
+    } catch (error) {
+      setEditorError(
+        `linked variantをrefreshできませんでした: ${error instanceof Error ? error.message : String(error)} previewを作り直してください。`,
+      );
+    } finally {
+      endEditorPersistentMutation();
+    }
+  };
+
+  const deleteAssetWithFamilyReferences = async (asset: Asset) => {
+    if (!project) {
+      return;
+    }
+    const membership = projectFamilyMembership(project, asset.id);
+    if (membership?.role === 'base') {
+      setEditorError('Family baseは削除できません。先にFamilyを解除してください。');
+      return;
+    }
+    await history.waitForPending();
+    if (!beginEditorPersistentMutation()) {
+      return;
+    }
+    setEditorError(null);
+    setDeletingAsset(true);
+    try {
+      await autosave.flush();
+      const nextProject: Project = {
+        ...project,
+        assets: project.assets.filter((entry) => entry.id !== asset.id),
+        ...(project.families
+          ? {
+              families: project.families.map((family) => ({
+                ...family,
+                variants: family.variants.filter((variant) => variant.assetId !== asset.id),
+              })),
+            }
+          : {}),
+        updatedAt: new Date().toISOString(),
+      };
+      await deleteAssetBundle({ project: nextProject, assetId: asset.id });
+      const remaining = assets.filter((candidate) => candidate.id !== asset.id);
+      setProject(nextProject);
+      setAssets(remaining);
+      setSelectedAssetId(remaining[0]?.id ?? null);
+      setSelectedLayerId(null);
+      setCheckedLayerIds([]);
+      setVariantPreview(null);
+      history.clear();
+    } catch (error) {
+      setEditorError(
+        `アセットを削除できませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setDeletingAsset(false);
+      endEditorPersistentMutation();
+    }
+  };
+
+  const handleDeleteVariantAsset = async (_familyId: string, assetId: string) => {
+    const asset = assets.find((candidate) => candidate.id === assetId);
+    if (!asset) {
+      return;
+    }
+    if (
+      !window.confirm(
+        `variantアセット「${asset.displayName}」をFamily参照・画像Blobごと削除します。この操作は元に戻せません。`,
+      )
+    ) {
+      return;
+    }
+    await deleteAssetWithFamilyReferences(asset);
+  };
+
   const handleFiles = async (files: Iterable<File>) => {
     const batch = Array.from(files);
     if (batch.length === 0) {
@@ -1295,6 +2031,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       return;
     }
     setEditorError(null);
+    setImportStatusLabel('画像を取り込み中…');
     setImporting(true);
     try {
       assertImageBatchCount(batch.length);
@@ -1325,6 +2062,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       setAssets((prev) => [...prev, ...stagedAssets]);
       setSelectedAssetId(stagedAssets.at(-1)?.id ?? null);
       setSelectedLayerId(null);
+      history.clear();
     } catch (error) {
       setEditorError(
         `${error instanceof Error ? error.message : String(error)} 選択した画像は1件も追加されていません。`,
@@ -1344,6 +2082,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       return;
     }
     setEditorError(null);
+    setImportStatusLabel('独立左右反転コピーを作成中…');
     setImporting(true);
     try {
       const flipped = flipCopyAsset(selectedAsset);
@@ -1375,6 +2114,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       setAssets((prev) => [...prev, flipped]);
       setSelectedAssetId(flipped.id);
       setSelectedLayerId(null);
+      history.clear();
     } catch (error) {
       setEditorError(error instanceof Error ? error.message : String(error));
     } finally {
@@ -1423,6 +2163,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       setSelectedAssetId(copy.id);
       setSelectedLayerId(null);
       setCheckedLayerIds([]);
+      history.clear();
     } catch (error) {
       setEditorError(
         `アセットを複製できませんでした: ${error instanceof Error ? error.message : String(error)}`,
@@ -1478,6 +2219,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       setAssets((prev) => [...prev, asset]);
       setSelectedAssetId(asset.id);
       setSelectedLayerId(null);
+      history.clear();
     } catch (error) {
       setEditorError(error instanceof Error ? error.message : String(error));
     } finally {
@@ -1500,41 +2242,17 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     if (!project || !selectedAsset) {
       return;
     }
+    if (selectedFamilyMembership?.role === 'base') {
+      setEditorError('Family baseは削除できません。先にFamilyを解除してください。');
+      return;
+    }
     const ok = window.confirm(
       `アセット「${selectedAsset.displayName}」を削除します。この操作は元に戻せません。よろしいですか？`,
     );
     if (!ok) {
       return;
     }
-    await history.waitForPending();
-    if (!beginEditorPersistentMutation()) {
-      return;
-    }
-    setEditorError(null);
-    setDeletingAsset(true);
-    try {
-      // 保留中の自動保存を先に終わらせてから削除する（上記コメント参照）。
-      await autosave.flush();
-      const nextProject: Project = {
-        ...project,
-        assets: project.assets.filter((entry) => entry.id !== selectedAsset.id),
-        updatedAt: new Date().toISOString(),
-      };
-      await deleteAssetBundle({ project: nextProject, assetId: selectedAsset.id });
-      const remaining = assets.filter((asset) => asset.id !== selectedAsset.id);
-      setProject(nextProject);
-      setAssets(remaining);
-      setSelectedAssetId(remaining[0]?.id ?? null);
-      setSelectedLayerId(null);
-      setCheckedLayerIds([]);
-    } catch (error) {
-      setEditorError(
-        `アセットを削除できませんでした: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    } finally {
-      setDeletingAsset(false);
-      endEditorPersistentMutation();
-    }
+    await deleteAssetWithFamilyReferences(selectedAsset);
   };
 
   const handleFileInput = (event: ChangeEvent<HTMLInputElement>) => {
@@ -1563,6 +2281,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     }
     const next: Project = { ...project, name, updatedAt: new Date().toISOString() };
     setProject(next);
+    history.clear();
     autosave.schedule(() => saveProject(next));
   };
 
@@ -1657,6 +2376,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       return;
     }
     setEditorError(null);
+    setImportStatusLabel('画像レイヤーを取り込み中…');
     setImporting(true);
     try {
       assertImageBatchCount(files.length);
@@ -1784,7 +2504,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
   const statusMessages = (
     <>
-      {importing && <p className="import-status">取り込み中…</p>}
+      {importing && <p className="import-status">{importStatusLabel}</p>}
       {imageProcessing && (
         <p className="import-status">
           {imageProcessing.label} 処理中… {Math.round(imageProcessing.progress * 100)}%
@@ -1835,6 +2555,12 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           </button>
         </div>
       </header>
+
+      {(importing || imageProcessing || editorError) && (
+        <div className="editor-global-status" aria-live="polite">
+          {statusMessages}
+        </div>
+      )}
 
       <div className="editor-body">
         <nav
@@ -1900,7 +2626,6 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 selectedColliderId={selectedColliderId}
                 onSelectCollider={setSelectedColliderId}
               />
-              {statusMessages}
             </div>
           ) : (
             <div className={`canvas-placeholder${dragOver ? ' drag-over' : ''}`}>
@@ -1920,7 +2645,6 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   PNG / JPG / WebP に対応。一度に16枚、1枚あたり25MiB、4096 x 4096までです。
                 </p>
               </div>
-              {statusMessages}
             </div>
           )}
         </section>
@@ -1961,17 +2685,27 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   disabled={importing || persistentMutationBlocked}
                   onClick={() => void handleFlipCopyAsset()}
                 >
-                  左右反転コピーを作成
+                  独立左右反転コピーを作成
                 </button>
                 <button
                   type="button"
                   className="asset-delete-button"
-                  disabled={deletingAsset || mutationBusy}
+                  disabled={
+                    deletingAsset || mutationBusy || selectedFamilyMembership?.role === 'base'
+                  }
                   onClick={() => void handleDeleteAsset()}
                 >
                   アセットを削除
                 </button>
               </div>
+              <p className="editor-note">
+                独立コピーはstandaloneです。Familyには登録されず、自動refreshも行いません。
+              </p>
+              {selectedFamilyMembership?.role === 'base' && (
+                <p className="variant-warning">
+                  baseを削除するには、先にFamilyを解除してください。
+                </p>
+              )}
             </>
           ) : (
             <p className="editor-note">アセットを選ぶと種別を設定できます。</p>
@@ -2087,6 +2821,43 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               新規アセットを作成
             </button>
           </fieldset>
+
+          {project && (
+            <VariantPanel
+              project={project}
+              assets={assets}
+              selectedAsset={selectedAsset}
+              busy={persistentMutationBlocked || importing || creatingAsset || deletingAsset}
+              inspections={variantInspections}
+              preview={
+                variantPreview
+                  ? { assetId: variantPreview.assetId, artifact: variantPreview.artifact }
+                  : null
+              }
+              onSelectAsset={(assetId) => {
+                setSelectedAssetId(assetId);
+                setSelectedLayerId(null);
+                setCheckedLayerIds([]);
+              }}
+              onCreateFamily={(name, baseAssetId) => void handleCreateFamily(name, baseAssetId)}
+              onAddManualVariant={(familyId, assetId) =>
+                void handleAddManualVariant(familyId, assetId)
+              }
+              onCreateMirrorVariant={(familyId) => void handleCreateMirrorVariant(familyId)}
+              onCreatePaletteVariant={(options) => void handleCreatePaletteVariant(options)}
+              onDetachVariant={(familyId, assetId) => void handleDetachVariant(familyId, assetId)}
+              onRemoveFamily={(familyId) => void handleRemoveFamily(familyId)}
+              onPreviewRefresh={(familyId, assetId) =>
+                void handlePreviewVariantRefresh(familyId, assetId)
+              }
+              onRefreshVariant={(familyId, assetId, artifact) =>
+                void handleRefreshVariant(familyId, assetId, artifact)
+              }
+              onDeleteVariantAsset={(familyId, assetId) =>
+                void handleDeleteVariantAsset(familyId, assetId)
+              }
+            />
+          )}
 
           {selectedAsset && snapshots.length > 0 && (
             <>
@@ -3001,7 +3772,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   </button>
                   <span className="asset-meta">
                     {ASSET_TYPE_LABELS[asset.assetType]} · {asset.canvasSize.width} x{' '}
-                    {asset.canvasSize.height}
+                    {asset.canvasSize.height} · {projectFamilyStatusLabel(project, asset.id)}
                   </span>
                 </li>
               ))}

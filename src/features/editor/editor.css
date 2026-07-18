@@ -40,6 +40,18 @@
   min-height: 1em;
 }
 
+.editor-global-status {
+  flex: none;
+  padding: 0.35rem 0.75rem;
+  border-bottom: 1px solid #8884;
+  background: color-mix(in srgb, Canvas 94%, #3a86ff 6%);
+  overflow-wrap: anywhere;
+}
+
+.editor-global-status p {
+  margin: 0;
+}
+
 .editor-panel-toggles {
   display: flex;
   gap: 0.4rem;
@@ -66,9 +78,32 @@
   flex-direction: column;
   gap: 0.75rem;
   width: 16rem;
+  min-width: 0;
   border-left: 1px solid #8884;
   padding: 0.75rem;
   overflow-y: auto;
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+}
+
+.editor-properties > *,
+.editor-properties fieldset,
+.editor-properties label {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.editor-properties input,
+.editor-properties select,
+.editor-properties button {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.editor-properties button {
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .editor-properties h2,
@@ -774,6 +809,256 @@
   margin-top: 0.6rem;
 }
 
+.variant-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #8885;
+}
+
+.variant-panel .editor-subheading,
+.variant-panel p,
+.variant-refresh-preview h4,
+.variant-refresh-preview h5 {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.variant-family-management,
+.variant-detail,
+.variant-linked-refresh,
+.variant-refresh-preview,
+.variant-current-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.variant-current-status > * {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.variant-current-status {
+  align-items: flex-start;
+  padding: 0.55rem;
+  border: 1px solid #8884;
+  border-radius: 6px;
+}
+
+.variant-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.15rem 0.45rem;
+  border: 1px solid #3a86ff88;
+  border-radius: 999px;
+  background: color-mix(in srgb, #3a86ff 10%, Canvas);
+  font-size: 0.72rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.variant-member-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+}
+
+.variant-member-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem;
+  border: 1px solid #8884;
+  border-radius: 6px;
+}
+
+.variant-member-list button,
+.variant-member-actions button,
+.variant-linked-refresh button {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.65rem;
+}
+
+.variant-member-name {
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.variant-state-text {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.variant-warning {
+  color: #b45309;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.variant-palette-colors,
+.variant-preview-columns,
+.variant-member-actions,
+.variant-image-comparison {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.variant-preview-columns > *,
+.variant-image-comparison figure {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.variant-refresh-preview {
+  padding: 0.6rem;
+  border: 1px solid #3a86ff88;
+  border-radius: 6px;
+  background: color-mix(in srgb, #3a86ff 5%, Canvas);
+}
+
+.variant-refresh-preview ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.8rem;
+}
+
+.variant-asset-snapshot {
+  padding: 0.45rem;
+  border: 1px solid #8884;
+  border-radius: 5px;
+  overflow-wrap: anywhere;
+}
+
+.variant-asset-snapshot dl {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0.35rem 0;
+  font-size: 0.78rem;
+}
+
+.variant-asset-snapshot dl > div {
+  display: grid;
+  grid-template-columns: minmax(3.5rem, auto) 1fr;
+  gap: 0.35rem;
+}
+
+.variant-asset-snapshot dt {
+  font-weight: 600;
+}
+
+.variant-asset-snapshot dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.variant-asset-snapshot ul,
+.variant-layer-diff {
+  overflow-wrap: anywhere;
+}
+
+.variant-structured-diff h6 {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 0.78rem;
+}
+
+.variant-structured-diff dl {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.variant-structured-diff dl > div {
+  min-width: 0;
+  padding: 0.4rem;
+  border: 1px solid #8884;
+  border-radius: 4px;
+}
+
+.variant-structured-diff dt {
+  overflow-wrap: anywhere;
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.variant-structured-diff dd {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.2rem 0.4rem;
+  min-width: 0;
+  margin: 0.3rem 0 0;
+  font-size: 0.72rem;
+}
+
+.variant-structured-diff code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.variant-image-comparison figure {
+  margin: 0;
+}
+
+.variant-image-comparison figcaption {
+  margin-bottom: 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.variant-image-comparison img {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+  border: 1px solid #8884;
+  border-radius: 4px;
+  background-image:
+    linear-gradient(45deg, #bbb4 25%, transparent 25%),
+    linear-gradient(-45deg, #bbb4 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #bbb4 75%),
+    linear-gradient(-45deg, transparent 75%, #bbb4 75%);
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+  background-size: 16px 16px;
+}
+
+.variant-confirm-overwrite {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.variant-confirm-overwrite input {
+  flex: none;
+  margin-top: 0.15rem;
+}
+
+.variant-danger-button {
+  color: #b3261e;
+  border-color: #b3261e;
+}
+
 .layer-name {
   margin: 0;
   font-size: 0.85rem;
@@ -864,18 +1149,27 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .asset-list li {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .asset-list button {
+  flex: 1 1 auto;
+  min-width: 0;
   font: inherit;
   font-size: 0.85rem;
   padding: 0.25rem 0.5rem;
+  overflow-wrap: anywhere;
+  text-align: left;
+  white-space: normal;
 }
 
 .asset-list button[aria-pressed='true'] {
@@ -925,8 +1219,11 @@
 }
 
 .asset-meta {
+  flex: 0 1 auto;
+  min-width: 0;
   font-size: 0.75rem;
   opacity: 0.7;
+  overflow-wrap: anywhere;
 }
 
 .editor-timeline {
@@ -1176,6 +1473,29 @@
   .editor-mobile-nav button[aria-pressed='true'] {
     font-weight: 700;
     text-decoration: underline;
+  }
+
+  .variant-image-comparison,
+  .variant-preview-columns {
+    flex-direction: column;
+  }
+
+  .variant-panel select,
+  .variant-panel input:not([type='checkbox']),
+  .variant-confirm-overwrite {
+    min-height: 44px;
+  }
+
+  .variant-confirm-overwrite {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .variant-confirm-overwrite input[type='checkbox'] {
+    width: 22px;
+    height: 22px;
+    flex: none;
   }
 
   /* スマホでは主要操作ボタンのタップ対象が小さすぎないようにする（Phase 12）。

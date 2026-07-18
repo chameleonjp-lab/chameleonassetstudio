@@ -165,6 +165,23 @@ describe('F1/V1: Family参照・linked recipe不変条件', () => {
     expect(errors).toContain('idMap.layers');
     expect(errors).toContain('writeSet.layers');
   });
+
+  it('writeSet.blobPathsのunsafe pathを意味検査でも理由付き拒否する', () => {
+    for (const path of [
+      'textures/../source.png',
+      'textures/\u0000.png',
+      'textures/\u007f.png',
+      'textures/\u0085.png',
+    ]) {
+      const project = projectWithFamily();
+      const variant = project.families![0].variants[0];
+      if (variant.kind !== 'linked-mirror') {
+        throw new Error('fixture kind mismatch');
+      }
+      variant.recipe.writeSet.blobPaths = [path];
+      expect(validateProjectFamilies(project).join('\n'), path).toContain('安全な相対path');
+    }
+  });
 });
 
 describe('.casproj import用Family Asset ID remap', () => {

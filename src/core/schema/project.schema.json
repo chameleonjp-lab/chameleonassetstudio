@@ -38,6 +38,15 @@
       "items": { "type": "string", "minLength": 1 },
       "uniqueItems": true
     },
+    "relativePathList": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^(?!/)(?!.*\\\\)(?!.*//)(?!.*\\/$)(?!\\.{1,2}(?:/|$))(?!.*/\\.{1,2}(?:/|$))[^\\u0000-\\u001F\\u007F-\\u009F]+$"
+      },
+      "uniqueItems": true
+    },
     "idMapRecord": {
       "type": "object",
       "propertyNames": { "type": "string", "minLength": 1 },
@@ -76,7 +85,7 @@
         "colliders": { "$ref": "#/definitions/idList" },
         "frames": { "$ref": "#/definitions/idList" },
         "animations": { "$ref": "#/definitions/idList" },
-        "blobPaths": { "$ref": "#/definitions/idList" }
+        "blobPaths": { "$ref": "#/definitions/relativePathList" }
       }
     },
     "paletteReplacement": {

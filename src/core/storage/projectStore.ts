@@ -1,5 +1,5 @@
 import type { Asset, Project, ProjectAssetEntry, TextureRef } from '../model';
-import { migrateAsset, migrateProject, validateProjectFamilies } from '../model';
+import { generateId, migrateAsset, migrateProject, validateProjectFamilies } from '../model';
 import { validateAsset, validateProject } from '../schema/validate';
 import {
   INDEX_BY_PROJECT,
@@ -25,6 +25,8 @@ export interface ProjectSummary {
   assetCount: number;
   createdAt: string;
   updatedAt: string;
+  /** Family registryだけを除けば安全なstandalone copyとして復旧できる場合の理由。 */
+  familyRecoveryError?: string;
 }
 
 interface StoredAssetRecord {
@@ -635,8 +637,28 @@ export interface SaveAssetBatchRevisionInput {
   beforeProject: Project;
   afterProject: Project;
   targets: AssetBatchRevisionTarget[];
+  /**
+   * recipe入力としてpreview時に読んだAsset / Blob。書き込まず、同じtransaction内で
+   * 現在値との一致だけを確認してpreview→refresh間のTOCTOUを防ぐ（Slice C）。
+   */
+  readExpectations?: AssetBatchReadExpectation[];
+  /**
+   * HistoryのUndo / Redo専用。Projectの内容が同一でupdatedAtだけが後続編集により
+   * 進んでいる場合、その現在時刻を保持してCASする。初回preview commitでは使わない。
+   */
+  allowProjectUpdatedAtDrift?: boolean;
   /** Blob変更がある場合に作る永続復旧点の表示名。 */
   snapshotLabel: string;
+}
+
+export interface AssetBatchReadBlobExpectation {
+  key: string;
+  expected: Blob;
+}
+
+export interface AssetBatchReadExpectation {
+  asset: Asset;
+  blobs?: AssetBatchReadBlobExpectation[];
 }
 
 interface PreparedBatchBlobRevision {
@@ -651,6 +673,15 @@ interface PreparedBatchTarget {
   beforeAsset: Asset;
   afterAsset: Asset;
   blobs: PreparedBatchBlobRevision[];
+}
+
+interface PreparedBatchReadExpectation {
+  asset: Asset;
+  blobs: Array<{
+    key: string;
+    mimeType: string;
+    bytes: ArrayBuffer;
+  }>;
 }
 
 /**
@@ -676,6 +707,14 @@ function toCanonicalValue(value: unknown): unknown {
 
 function sameStructuredValue(left: unknown, right: unknown): boolean {
   return JSON.stringify(toCanonicalValue(left)) === JSON.stringify(toCanonicalValue(right));
+}
+
+function sameProjectExceptUpdatedAt(left: Project, right: Project): boolean {
+  const leftValue = structuredClone(left) as unknown as Record<string, unknown>;
+  const rightValue = structuredClone(right) as unknown as Record<string, unknown>;
+  delete leftValue.updatedAt;
+  delete rightValue.updatedAt;
+  return sameStructuredValue(leftValue, rightValue);
 }
 
 function sameArrayBuffer(left: ArrayBuffer, right: ArrayBuffer): boolean {
@@ -853,12 +892,31 @@ async function prepareBatchTargets(
   return prepared;
 }
 
+async function prepareBatchReadExpectations(
+  expectations: AssetBatchReadExpectation[],
+): Promise<PreparedBatchReadExpectation[]> {
+  const prepared: PreparedBatchReadExpectation[] = [];
+  for (const expectation of expectations) {
+    prepared.push({
+      asset: expectation.asset,
+      blobs: await Promise.all(
+        (expectation.blobs ?? []).map(async ({ key, expected }) => ({
+          key,
+          mimeType: expected.type,
+          bytes: await expected.arrayBuffer(),
+        })),
+      ),
+    });
+  }
+  return prepared;
+}
+
 /**
  * accepted B1/H1/L1のstorage基盤。
  * 複数の既存Asset、Project要約・Family、edit Blob、復旧点を単一transactionで確定する。
  * before一式をtransaction内の正本と比較するため、同じAPIをgroup Undo / Redoにも使える。
  */
-export async function saveAssetBatchRevision(input: SaveAssetBatchRevisionInput): Promise<void> {
+export async function saveAssetBatchRevision(input: SaveAssetBatchRevisionInput): Promise<Project> {
   // 件数上限は clone より先に検査し、巨大 input の無駄な複製を避ける
   // （PR #118 遡及レビュー NOTE-5）。
   if (input.targets.length === 0 || input.targets.length > MAX_ASSET_BATCH_REVISION_TARGETS) {
@@ -877,7 +935,14 @@ export async function saveAssetBatchRevision(input: SaveAssetBatchRevisionInput)
     // arrayBuffer()待機中にkey / before / afterが差し替わらないよう同期copyする。
     blobs: (target.blobs ?? []).map(({ key, before, after }) => ({ key, before, after })),
   }));
+  const readExpectations: AssetBatchReadExpectation[] = (input.readExpectations ?? []).map(
+    ({ asset, blobs = [] }) => ({
+      asset: structuredClone(asset),
+      blobs: blobs.map(({ key, expected }) => ({ key, expected })),
+    }),
+  );
   const snapshotLabel = input.snapshotLabel.trim();
+  const allowProjectUpdatedAtDrift = input.allowProjectUpdatedAtDrift === true;
   const targetIds = new Set<string>();
   const allBlobKeys = new Set<string>();
   for (const target of targets) {
@@ -885,6 +950,43 @@ export async function saveAssetBatchRevision(input: SaveAssetBatchRevisionInput)
       throw new StorageError(`同じAsset IDがbatch内で重複しています: ${target.beforeAsset.id}`);
     }
     targetIds.add(target.beforeAsset.id);
+  }
+
+  const expectationAssetIds = new Set<string>();
+  const expectationBlobKeys = new Set<string>();
+  for (const expectation of readExpectations) {
+    if (expectationAssetIds.has(expectation.asset.id)) {
+      throw new StorageError(
+        `read expectationに同じAsset IDが重複しています: ${expectation.asset.id}`,
+      );
+    }
+    expectationAssetIds.add(expectation.asset.id);
+    const result = validateAsset(expectation.asset);
+    if (!result.valid) {
+      throw new StorageError(formatValidationErrors('batch read expectation asset', result.errors));
+    }
+    const projectEntry = beforeProject.assets.find((entry) => entry.id === expectation.asset.id);
+    if (!projectEntry) {
+      throw new StorageError(
+        `read expectation AssetがProjectから参照されていません: ${expectation.asset.id}`,
+      );
+    }
+    assertProjectEntryMatchesAsset(projectEntry, expectation.asset);
+    const textureIndex = buildTextureIndex(expectation.asset, 'batch read expectation Asset');
+    for (const { key, expected } of expectation.blobs ?? []) {
+      if (expectationBlobKeys.has(key)) {
+        throw new StorageError(`read expectationに同じBlob keyが重複しています: ${key}`);
+      }
+      expectationBlobKeys.add(key);
+      assertBlobOperationsBelongToAsset(expectation.asset.id, [{ key }], []);
+      const texture = textureIndex.byKey.get(key);
+      if (!texture) {
+        throw new StorageError(`read expectation Blobに対応するTextureRefがありません: ${key}`);
+      }
+      if (expected.type !== texture.mimeType) {
+        throw new StorageError(`read expectation BlobのMIME typeが一致しません: ${key}`);
+      }
+    }
   }
 
   for (const [label, project] of [
@@ -915,8 +1017,9 @@ export async function saveAssetBatchRevision(input: SaveAssetBatchRevisionInput)
     throw new StorageError('edit Blobを変更するbatchには復旧点のlabelが必要です');
   }
   const preparedTargets = await prepareBatchTargets(beforeProject.id, targets, snapshotLabel);
+  const preparedReadExpectations = await prepareBatchReadExpectations(readExpectations);
 
-  await runTransaction(
+  return runTransaction(
     [STORE_PROJECTS, STORE_ASSETS, STORE_BLOBS, STORE_SNAPSHOTS],
     'readwrite',
     async (tx) => {
@@ -929,9 +1032,16 @@ export async function saveAssetBatchRevision(input: SaveAssetBatchRevisionInput)
       if (!storedProject) {
         throw new StorageError(`batch改訂対象Projectが保存されていません: ${beforeProject.id}`);
       }
-      if (!sameStructuredValue(storedProject, beforeProject)) {
+      const projectMatches = sameStructuredValue(storedProject, beforeProject);
+      if (
+        !projectMatches &&
+        (!allowProjectUpdatedAtDrift || !sameProjectExceptUpdatedAt(storedProject, beforeProject))
+      ) {
         throw new StorageError('batch準備後にProjectが変更されたため、保存を中止しました');
       }
+      const committedAfterProject = allowProjectUpdatedAtDrift
+        ? { ...afterProject, updatedAt: storedProject.updatedAt }
+        : afterProject;
 
       for (const target of preparedTargets) {
         const storedAsset = await requestToPromise(
@@ -978,6 +1088,35 @@ export async function saveAssetBatchRevision(input: SaveAssetBatchRevisionInput)
         }
       }
 
+      for (const expectation of preparedReadExpectations) {
+        const storedAsset = await requestToPromise(
+          assetStore.get(expectation.asset.id) as IDBRequest<StoredAssetRecord | undefined>,
+        );
+        if (!storedAsset || storedAsset.projectId !== beforeProject.id) {
+          throw new StorageError(`refresh入力Assetが見つかりません: ${expectation.asset.id}`);
+        }
+        if (!sameStructuredValue(storedAsset.data, expectation.asset)) {
+          throw new StorageError(
+            `preview後にrefresh入力Assetが変更されたため、refreshを中止しました: ${expectation.asset.id}`,
+          );
+        }
+        for (const blob of expectation.blobs) {
+          const storedBlob = await requestToPromise(
+            blobStore.get(blob.key) as IDBRequest<StoredBlobRecord | undefined>,
+          );
+          if (
+            !storedBlob ||
+            storedBlob.projectId !== beforeProject.id ||
+            storedBlob.mimeType !== blob.mimeType ||
+            !sameArrayBuffer(storedBlob.bytes, blob.bytes)
+          ) {
+            throw new StorageError(
+              `preview後にrefresh入力Blobが変更されたため、refreshを中止しました: ${blob.key}`,
+            );
+          }
+        }
+      }
+
       // canonical更新より先に復旧点を作る。同じtransactionなので、以後の失敗では全て戻る。
       for (const target of preparedTargets) {
         for (const blob of target.blobs) {
@@ -985,7 +1124,7 @@ export async function saveAssetBatchRevision(input: SaveAssetBatchRevisionInput)
         }
       }
 
-      await requestToPromise(projectStore.put(afterProject));
+      await requestToPromise(projectStore.put(committedAfterProject));
       for (const target of preparedTargets) {
         const record: StoredAssetRecord = {
           id: target.afterAsset.id,
@@ -999,6 +1138,7 @@ export async function saveAssetBatchRevision(input: SaveAssetBatchRevisionInput)
           await requestToPromise(blobStore.put(blob.afterRecord));
         }
       }
+      return committedAfterProject;
     },
   );
 }
@@ -1025,19 +1165,199 @@ export async function loadProject(id: string): Promise<LoadedProject> {
   return { project, appliedMigrations };
 }
 
+interface FamilyRecoveryCandidate {
+  project: Project;
+  errorMessage: string;
+}
+
+/**
+ * Project本体は妥当で、optionalなfamiliesだけが不正な場合に限り、familiesを除いた
+ * recovery候補を返す。通常loadのstrict rejectや元データを変更しないための判定入口。
+ */
+function familyRecoveryCandidate(raw: unknown): FamilyRecoveryCandidate | null {
+  let data: unknown;
+  try {
+    data = migrateProject(raw).data;
+  } catch {
+    return null;
+  }
+  if (
+    data === null ||
+    typeof data !== 'object' ||
+    !Object.prototype.hasOwnProperty.call(data, 'families')
+  ) {
+    return null;
+  }
+  const fullValidation = validateProject(data);
+  const fullProject = data as Project;
+  // schema-invalidなfamiliesへtyped semantic validatorを実行すると、null familyや
+  // variants非arrayでthrowし一覧自体を失う。semantic検査はschema通過後だけ行う。
+  const familyErrors = fullValidation.valid ? validateProjectFamilies(fullProject) : [];
+  if (fullValidation.valid && familyErrors.length === 0) {
+    return null;
+  }
+
+  const recoveredValue = structuredClone(data) as Record<string, unknown>;
+  delete recoveredValue.families;
+  const recoveredValidation = validateProject(recoveredValue);
+  if (!recoveredValidation.valid) {
+    return null;
+  }
+  const project = recoveredValue as unknown as Project;
+  if (validateProjectFamilies(project).length > 0) {
+    return null;
+  }
+  const details = [
+    ...fullValidation.errors.filter((error) => error.includes('famil')),
+    ...familyErrors,
+  ];
+  return {
+    project,
+    errorMessage: `Family情報が不正です: ${[...new Set(details)].join(' / ') || 'familiesを検証できません'}`,
+  };
+}
+
+/** ごみ箱復元など、通常load前の境界で「familiesだけが不正」を安全に判定する。 */
+export function hasRecoverableInvalidFamilies(raw: unknown): boolean {
+  return familyRecoveryCandidate(raw) !== null;
+}
+
 export async function listProjects(): Promise<ProjectSummary[]> {
   const rows = await runTransaction([STORE_PROJECTS], 'readonly', (tx) =>
     requestToPromise(tx.objectStore(STORE_PROJECTS).getAll() as IDBRequest<Project[]>),
   );
   return rows
-    .map((project) => ({
-      id: project.id,
-      name: project.name,
-      assetCount: Array.isArray(project.assets) ? project.assets.length : 0,
-      createdAt: project.createdAt,
-      updatedAt: project.updatedAt,
-    }))
+    .map((project) => {
+      const recovery = familyRecoveryCandidate(project);
+      return {
+        id: project.id,
+        name: project.name,
+        assetCount: Array.isArray(project.assets) ? project.assets.length : 0,
+        createdAt: project.createdAt,
+        updatedAt: project.updatedAt,
+        ...(recovery ? { familyRecoveryError: recovery.errorMessage } : {}),
+      };
+    })
     .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+}
+
+export interface RecoveredFamilyProjectCopy {
+  projectId: string;
+  projectName: string;
+  warnings: string[];
+}
+
+/**
+ * 不正families付きの保存済みProjectを上書きせず、全Asset / Blobを別IDへcopyし、
+ * Family情報だけを除いたstandalone Projectとして保存する明示的な隔離復旧導線。
+ */
+export async function recoverProjectWithoutInvalidFamilies(
+  sourceProjectId: string,
+): Promise<RecoveredFamilyProjectCopy> {
+  const source = await runTransaction(
+    [STORE_PROJECTS, STORE_ASSETS, STORE_BLOBS],
+    'readonly',
+    async (tx) => {
+      const [rawProject, assetRecords, blobRecords] = await Promise.all([
+        requestToPromise(
+          tx.objectStore(STORE_PROJECTS).get(sourceProjectId) as IDBRequest<unknown>,
+        ),
+        requestToPromise(
+          tx
+            .objectStore(STORE_ASSETS)
+            .index(INDEX_BY_PROJECT)
+            .getAll(sourceProjectId) as IDBRequest<StoredAssetRecord[]>,
+        ),
+        requestToPromise(
+          tx.objectStore(STORE_BLOBS).index(INDEX_BY_PROJECT).getAll(sourceProjectId) as IDBRequest<
+            StoredBlobRecord[]
+          >,
+        ),
+      ]);
+      return { rawProject, assetRecords, blobRecords };
+    },
+  );
+  if (source.rawProject === undefined) {
+    throw new StorageError(`復旧元Project（id: ${sourceProjectId}）が見つかりません`);
+  }
+  const recovery = familyRecoveryCandidate(source.rawProject);
+  if (!recovery) {
+    throw new StorageError('Family情報だけを隔離して復旧できるProjectではありません');
+  }
+
+  const sourceAssetRecords = new Map(
+    source.assetRecords.map((record) => [record.id, record] as const),
+  );
+  if (sourceAssetRecords.size !== source.assetRecords.length) {
+    throw new StorageError('復旧元Projectに同じAsset IDの保存レコードが重複しています');
+  }
+  const sourceAssets = recovery.project.assets.map((entry) => {
+    const record = sourceAssetRecords.get(entry.id);
+    if (!record) {
+      throw new StorageError(`復旧元ProjectのAssetが保存されていません: ${entry.id}`);
+    }
+    const migrated = migrateAsset(record.data).data;
+    const result = validateAsset(migrated);
+    if (!result.valid) {
+      throw new StorageError(formatValidationErrors('復旧元 asset', result.errors));
+    }
+    const asset = migrated as unknown as Asset;
+    assertProjectEntryMatchesAsset(entry, asset);
+    return asset;
+  });
+  if (sourceAssetRecords.size !== recovery.project.assets.length) {
+    throw new StorageError('復旧元ProjectのAsset参照と保存済みAsset集合が一致しません');
+  }
+
+  const blobRecords = new Map(source.blobRecords.map((record) => [record.key, record]));
+  const now = new Date();
+  const iso = now.toISOString();
+  // Familyを外した別Asset namespaceなので内部IDの再採番は不要。unknown field内の
+  // 将来参照を壊さないよう、Asset IDと日時だけを変えて内容をverbatim保持する。
+  const copiedAssets = sourceAssets.map((asset) => ({
+    ...structuredClone(asset),
+    id: generateId('asset'),
+    createdAt: iso,
+    updatedAt: iso,
+  }));
+  const blobs: ProjectBundleBlobInput[] = [];
+  sourceAssets.forEach((asset, index) => {
+    const copy = copiedAssets[index];
+    for (const texture of asset.textures) {
+      const key = blobKeyForAssetPath(asset.id, texture.path);
+      const record = blobRecords.get(key);
+      if (!record || record.mimeType !== texture.mimeType) {
+        throw new StorageError(`復旧元AssetのBlobが不足または不整合です: ${key}`);
+      }
+      blobs.push({
+        key: blobKeyForAssetPath(copy.id, texture.path),
+        blob: new Blob([record.bytes.slice(0)], { type: record.mimeType }),
+      });
+    }
+  });
+
+  const projectName = `${recovery.project.name}（Family隔離copy）`;
+  const project: Project = {
+    ...structuredClone(recovery.project),
+    id: generateId('project'),
+    name: projectName,
+    assets: copiedAssets.map((asset, index) => ({
+      ...structuredClone(recovery.project.assets[index]),
+      ...projectEntryForAsset(asset),
+    })),
+    createdAt: iso,
+    updatedAt: iso,
+  };
+  await saveProjectBundle(project, copiedAssets, blobs);
+  return {
+    projectId: project.id,
+    projectName,
+    warnings: [
+      recovery.errorMessage,
+      '元のProjectは変更していません。Family関係を除いた全Assetのstandalone copyを作成しました。',
+      '未知のProject root field内にAsset ID参照がある場合、その未知参照は自動付替えしません。',
+    ],
+  };
 }
 
 async function assertTrashPurgeSafeInTx(tx: IDBTransaction, record: TrashRecord): Promise<void> {
