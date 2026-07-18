@@ -388,6 +388,55 @@ describe('validateProject', () => {
     (invalidRecipe.writeSet as Record<string, string[]>).layers = ['target', 'target'];
     expect(validateProject(invalidIds).valid).toBe(false);
   });
+
+  it('writeSet.blobPathsは安全なTextureRef相対pathだけを許可する', () => {
+    const project = clone(sampleProject) as Record<string, unknown>;
+    const assets = project.assets as Array<Record<string, unknown>>;
+    const base = assets[0];
+    assets.push({ ...base, id: 'asset_variant', name: 'variant', displayName: 'Variant' });
+    const variant = createLinkedMirrorVariant('asset_variant');
+    project.families = [
+      {
+        id: 'family_paths',
+        name: 'Paths',
+        baseAssetId: base.id,
+        variants: [variant],
+      },
+    ];
+
+    for (const validPath of ['textures/main.png', '日本 語/.hidden.png']) {
+      const valid = clone(project) as typeof project;
+      const recipe = (
+        (valid.families as Array<Record<string, unknown>>)[0].variants as Array<{
+          recipe: { writeSet: { blobPaths: string[] } };
+        }>
+      )[0].recipe;
+      recipe.writeSet.blobPaths = [validPath];
+      expect(validateProject(valid).valid, validPath).toBe(true);
+    }
+
+    for (const invalidPath of [
+      '/absolute.png',
+      '../main.png',
+      'textures/../main.png',
+      'textures/./main.png',
+      'textures//main.png',
+      'textures/',
+      'textures\\main.png',
+      'textures/\u0000.png',
+      'textures/\u007f.png',
+      'textures/\u0085.png',
+    ]) {
+      const invalid = clone(project) as typeof project;
+      const recipe = (
+        (invalid.families as Array<Record<string, unknown>>)[0].variants as Array<{
+          recipe: { writeSet: { blobPaths: string[] } };
+        }>
+      )[0].recipe;
+      recipe.writeSet.blobPaths = [invalidPath];
+      expect(validateProject(invalid).valid, invalidPath).toBe(false);
+    }
+  });
 });
 
 describe('validateExportPresets', () => {

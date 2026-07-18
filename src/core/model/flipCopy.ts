@@ -69,6 +69,8 @@ function mirrorTransform(
 
 export interface FlipCopyAssetOptions {
   now?: Date;
+  /** linked Family用。Asset namespaceが別なので内部IDと未知field内の参照を維持する。 */
+  preserveInternalIds?: boolean;
   /** 生成アセットの識別名。省略時は元 name の left/right 入替、無ければ `_flipped` 付与。 */
   name?: string;
   /** 生成アセットの表示名。省略時は元 displayName の left/right 入替、無ければ「 (左右反転)」付与。 */
@@ -102,9 +104,24 @@ export function flipCopyAsset(asset: Asset, options: FlipCopyAssetOptions = {}):
   }
 
   // id 再採番マップ（相互参照を張り替えるため先に作る）。
-  const layerIdMap = new Map(asset.layers.map((layer) => [layer.id, generateId('layer')]));
-  const partIdMap = new Map(asset.parts.map((part) => [part.id, generateId('part')]));
-  const frameIdMap = new Map((asset.frames ?? []).map((frame) => [frame.id, generateId('frame')]));
+  const layerIdMap = new Map(
+    asset.layers.map((layer) => [
+      layer.id,
+      options.preserveInternalIds ? layer.id : generateId('layer'),
+    ]),
+  );
+  const partIdMap = new Map(
+    asset.parts.map((part) => [
+      part.id,
+      options.preserveInternalIds ? part.id : generateId('part'),
+    ]),
+  );
+  const frameIdMap = new Map(
+    (asset.frames ?? []).map((frame) => [
+      frame.id,
+      options.preserveInternalIds ? frame.id : generateId('frame'),
+    ]),
+  );
 
   const layers: Layer[] = asset.layers.map((layer) => ({
     ...layer,
@@ -117,7 +134,7 @@ export function flipCopyAsset(asset: Asset, options: FlipCopyAssetOptions = {}):
 
   const anchors: Anchor[] = asset.anchors.map((anchor) => ({
     ...anchor,
-    id: generateId('anchor'),
+    id: options.preserveInternalIds ? anchor.id : generateId('anchor'),
     name: swapLeftRightLabel(anchor.name),
     role: ANCHOR_ROLE_MIRROR[anchor.role] ?? anchor.role,
     position: { x: reflectX(anchor.position.x), y: anchor.position.y },
@@ -127,7 +144,7 @@ export function flipCopyAsset(asset: Asset, options: FlipCopyAssetOptions = {}):
     if (collider.shape === 'rect') {
       return {
         ...collider,
-        id: generateId('col'),
+        id: options.preserveInternalIds ? collider.id : generateId('col'),
         name: swapLeftRightLabel(collider.name),
         // 左上 x + 幅を反射する（右端が新しい左端になる）。
         rect: { ...collider.rect, x: 2 * mirrorX - collider.rect.x - collider.rect.width },
@@ -135,14 +152,18 @@ export function flipCopyAsset(asset: Asset, options: FlipCopyAssetOptions = {}):
     }
     return {
       ...collider,
-      id: generateId('col'),
+      id: options.preserveInternalIds ? collider.id : generateId('col'),
       name: swapLeftRightLabel(collider.name),
       circle: { ...collider.circle, x: reflectX(collider.circle.x) },
     };
   });
 
   const parts: Part[] = asset.parts.map((part) => {
+    const preservedPart = structuredClone(part);
+    delete preservedPart.bindPose;
+    delete preservedPart.rotationLimit;
     const next: Part = {
+      ...preservedPart,
       id: partIdMap.get(part.id)!,
       name: swapLeftRightLabel(part.name),
       partType: PART_TYPE_MIRROR[part.partType] ?? part.partType,
@@ -173,7 +194,7 @@ export function flipCopyAsset(asset: Asset, options: FlipCopyAssetOptions = {}):
 
   const animations = asset.animations.map((animation) => ({
     ...animation,
-    id: generateId('anim'),
+    id: options.preserveInternalIds ? animation.id : generateId('anim'),
     name: swapLeftRightLabel(animation.name),
     frameIds: animation.frameIds.map((id) => frameIdMap.get(id) ?? id),
   }));

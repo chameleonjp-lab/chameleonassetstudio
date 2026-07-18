@@ -49,6 +49,23 @@ export interface FamilyVariantWriteSet {
   blobPaths: string[];
 }
 
+/**
+ * `TextureRef.path` と同じ相対 path として安全に扱える形式。
+ * Asset ID prefix、絶対 path、Windows separator、空 / `.` / `..` segment は許可しない。
+ */
+export const FAMILY_VARIANT_BLOB_PATH_PATTERN =
+  /^(?!\/)(?!.*\\)(?!.*\/\/)(?!.*\/$)(?!\.{1,2}(?:\/|$))(?!.*\/\.{1,2}(?:\/|$))[\s\S]+$/u;
+
+export function isFamilyVariantBlobPath(path: string): boolean {
+  return (
+    FAMILY_VARIANT_BLOB_PATH_PATTERN.test(path) &&
+    [...path].every((character) => {
+      const codePoint = character.codePointAt(0)!;
+      return codePoint > 0x1f && (codePoint < 0x7f || codePoint > 0x9f);
+    })
+  );
+}
+
 const FAMILY_VARIANT_ID_MAP_KEYS = [
   'textures',
   'layers',
@@ -85,8 +102,8 @@ export interface PaletteFamilyVariantRecipe {
 export type FamilyVariantRecipe = MirrorFamilyVariantRecipe | PaletteFamilyVariantRecipe;
 
 /**
- * 最終同期時の決定的hash。
- * アルゴリズムはSlice Cで確定するため、ここではopaqueな文字列として保持する。
+ * 最終同期時の決定的hash。Slice Cの新規生成値はsha256形式だが、
+ * Slice A以前のportable dataとのforward compatibilityのためschema上はopaque文字列も読む。
  */
 export interface FamilyVariantFingerprint {
   base: string;
@@ -213,11 +230,38 @@ function validateRecipeMappings(
       );
     }
   }
+  for (const kind of FAMILY_VARIANT_ID_MAP_KEYS) {
+    const mappedTargetIds = new Set(Object.values(runtimeVariant.recipe.idMap[kind]));
+    const unmappedWriteIds = runtimeVariant.recipe.writeSet[kind].filter(
+      (id) => !mappedTargetIds.has(id),
+    );
+    if (unmappedWriteIds.length > 0) {
+      errors.push(
+        `family(${familyLabelValue}) のvariant（${runtimeVariant.assetId}）のwriteSet.${kind}にidMapのtargetではないIDがあります: ${unmappedWriteIds.join(', ')}`,
+      );
+    }
+  }
+  for (const path of runtimeVariant.recipe.writeSet.blobPaths) {
+    if (!isFamilyVariantBlobPath(path)) {
+      errors.push(
+        `family(${familyLabelValue}) のvariant（${runtimeVariant.assetId}）のwriteSet.blobPathsが安全な相対pathではありません: ${path}`,
+      );
+    }
+  }
   if (runtimeVariant.recipe.type === 'palette') {
     const duplicates = duplicateStrings(runtimeVariant.recipe.baseLayerIds);
     if (duplicates.length > 0) {
       errors.push(
         `family(${familyLabelValue}) のvariant（${runtimeVariant.assetId}）のbaseLayerIdsが重複しています: ${duplicates.join(', ')}`,
+      );
+    }
+    const mappedBaseLayerIds = new Set(Object.keys(runtimeVariant.recipe.idMap.layers));
+    const unmappedBaseLayerIds = runtimeVariant.recipe.baseLayerIds.filter(
+      (id) => !mappedBaseLayerIds.has(id),
+    );
+    if (unmappedBaseLayerIds.length > 0) {
+      errors.push(
+        `family(${familyLabelValue}) のvariant（${runtimeVariant.assetId}）のbaseLayerIdsにidMap.layersのbaseではないIDがあります: ${unmappedBaseLayerIds.join(', ')}`,
       );
     }
   }

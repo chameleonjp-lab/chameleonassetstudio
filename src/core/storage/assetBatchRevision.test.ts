@@ -294,6 +294,186 @@ describe('Slice B saveAssetBatchRevision', () => {
     }
   });
 
+  it('History Undoでは内容一致を保ったまま後続Project updatedAtだけを維持する', async () => {
+    const fixture = await seedBatchFixture();
+    await saveAssetBatchRevision(fixture.input);
+    const laterTime = '2026-07-18T02:00:00.000Z';
+    await saveProject({ ...structuredClone(fixture.afterProject), updatedAt: laterTime });
+    const reverse = {
+      ...reverseInput(fixture.input, 'history undo before'),
+      allowProjectUpdatedAtDrift: true,
+    };
+
+    const committed = await saveAssetBatchRevision(reverse);
+    expect(committed).toEqual({ ...fixture.beforeProject, updatedAt: laterTime });
+    expect((await loadProject(fixture.beforeProject.id)).project).toEqual(committed);
+    expect((await loadAsset(fixture.base.id)).asset).toEqual(fixture.base);
+    expect((await loadAsset(fixture.variant.id)).asset).toEqual(fixture.variant);
+  });
+
+  it('History用updatedAt drift許可でもFamily等のProject変更はCAS拒否する', async () => {
+    const fixture = await seedBatchFixture();
+    await saveAssetBatchRevision(fixture.input);
+    await saveProject({
+      ...structuredClone(fixture.afterProject),
+      families: fixture.afterProject.families?.map((family) => ({
+        ...family,
+        name: 'concurrent family change',
+      })),
+      updatedAt: '2026-07-18T02:00:00.000Z',
+    });
+
+    await expect(
+      saveAssetBatchRevision({
+        ...reverseInput(fixture.input, 'history undo before'),
+        allowProjectUpdatedAtDrift: true,
+      }),
+    ).rejects.toThrow('Projectが変更');
+    expect((await loadAsset(fixture.base.id)).asset).toEqual(fixture.afterBase);
+  });
+
+  it('preview時に読んだbase Blobが変わったらread expectation CASで全書込を拒否する', async () => {
+    const fixture = await seedBatchFixture();
+    const variantEdit = editTexture(fixture.variant);
+    const baseEdit = editTexture(fixture.base);
+    const afterProject: Project = {
+      ...structuredClone(fixture.beforeProject),
+      assets: fixture.beforeProject.assets.map((entry) =>
+        entry.id === fixture.variant.id ? projectEntry(fixture.afterVariant) : entry,
+      ),
+      updatedAt: AFTER_TIME,
+    };
+    const expectedBaseBlob = blobForTexture(fixture.base, baseEdit, fixture.baseSeed);
+    const input: SaveAssetBatchRevisionInput = {
+      beforeProject: fixture.beforeProject,
+      afterProject,
+      targets: [
+        {
+          beforeAsset: fixture.variant,
+          afterAsset: fixture.afterVariant,
+          blobs: [
+            {
+              key: keyFor(fixture.variant, variantEdit),
+              before: blobForTexture(fixture.variant, variantEdit, fixture.variantSeed),
+              after: new Blob([new Uint8Array([99])], { type: variantEdit.mimeType }),
+            },
+          ],
+        },
+      ],
+      readExpectations: [
+        {
+          asset: fixture.base,
+          blobs: [{ key: keyFor(fixture.base, baseEdit), expected: expectedBaseBlob }],
+        },
+      ],
+      snapshotLabel: 'linked refresh before',
+    };
+
+    await saveBlob(
+      fixture.beforeProject.id,
+      keyFor(fixture.base, baseEdit),
+      new Blob([new Uint8Array([77])], { type: baseEdit.mimeType }),
+    );
+    await expect(saveAssetBatchRevision(input)).rejects.toThrow('refresh入力Blobが変更');
+    expect((await loadProject(fixture.beforeProject.id)).project).toEqual(fixture.beforeProject);
+    expect((await loadAsset(fixture.variant.id)).asset).toEqual(fixture.variant);
+    expect(await bytesAt(keyFor(fixture.variant, variantEdit))).toEqual([
+      fixture.variantSeed + fixture.variant.textures.indexOf(variantEdit),
+    ]);
+    expect(await listSnapshots(fixture.variant.id)).toEqual([]);
+  });
+
+  it('書込target自身のsource Blobもread expectation CASで保護する', async () => {
+    const fixture = await seedBatchFixture();
+    const variantEdit = editTexture(fixture.variant);
+    const variantSource = sourceTexture(fixture.variant);
+    const afterProject: Project = {
+      ...structuredClone(fixture.beforeProject),
+      assets: fixture.beforeProject.assets.map((entry) =>
+        entry.id === fixture.variant.id ? projectEntry(fixture.afterVariant) : entry,
+      ),
+      updatedAt: AFTER_TIME,
+    };
+    const input: SaveAssetBatchRevisionInput = {
+      beforeProject: fixture.beforeProject,
+      afterProject,
+      targets: [
+        {
+          beforeAsset: fixture.variant,
+          afterAsset: fixture.afterVariant,
+          blobs: [
+            {
+              key: keyFor(fixture.variant, variantEdit),
+              before: blobForTexture(fixture.variant, variantEdit, fixture.variantSeed),
+              after: new Blob([new Uint8Array([99])], { type: variantEdit.mimeType }),
+            },
+          ],
+        },
+      ],
+      readExpectations: [
+        {
+          asset: fixture.variant,
+          blobs: [
+            {
+              key: keyFor(fixture.variant, variantSource),
+              expected: blobForTexture(fixture.variant, variantSource, fixture.variantSeed),
+            },
+          ],
+        },
+      ],
+      snapshotLabel: 'linked refresh before',
+    };
+
+    await saveBlob(
+      fixture.beforeProject.id,
+      keyFor(fixture.variant, variantSource),
+      new Blob([new Uint8Array([77])], { type: variantSource.mimeType }),
+    );
+    await expect(saveAssetBatchRevision(input)).rejects.toThrow('refresh入力Blobが変更');
+    expect((await loadProject(fixture.beforeProject.id)).project).toEqual(fixture.beforeProject);
+    expect((await loadAsset(fixture.variant.id)).asset).toEqual(fixture.variant);
+    expect(await bytesAt(keyFor(fixture.variant, variantEdit))).toEqual([
+      fixture.variantSeed + fixture.variant.textures.indexOf(variantEdit),
+    ]);
+    expect(await listSnapshots(fixture.variant.id)).toEqual([]);
+  });
+
+  it('read expectationのAsset重複・非Texture Blobを事前拒否する', async () => {
+    const fixture = await seedBatchFixture();
+    await expect(
+      saveAssetBatchRevision({
+        ...fixture.input,
+        readExpectations: [{ asset: fixture.standalone }, { asset: fixture.standalone }],
+      }),
+    ).rejects.toThrow('同じAsset IDが重複');
+
+    const variantOnlyInput: SaveAssetBatchRevisionInput = {
+      ...fixture.input,
+      targets: [fixture.input.targets[1]],
+      afterProject: {
+        ...structuredClone(fixture.beforeProject),
+        assets: fixture.beforeProject.assets.map((entry) =>
+          entry.id === fixture.variant.id ? projectEntry(fixture.afterVariant) : entry,
+        ),
+        updatedAt: AFTER_TIME,
+      },
+      readExpectations: [
+        {
+          asset: fixture.base,
+          blobs: [
+            {
+              key: `${fixture.base.id}/textures/not-referenced.png`,
+              expected: new Blob([new Uint8Array([1])], { type: 'image/png' }),
+            },
+          ],
+        },
+      ],
+    };
+    await expect(saveAssetBatchRevision(variantOnlyInput)).rejects.toThrow(
+      '対応するTextureRefがありません',
+    );
+  });
+
   it('metadata-only targetを同じ原子APIで保存し、Blobと復旧点を変更しない', async () => {
     const fixture = await seedBatchFixture();
     const beforeBlobBytes = await Promise.all(
@@ -395,7 +575,7 @@ describe('Slice B saveAssetBatchRevision', () => {
     release();
 
     try {
-      await expect(saving).resolves.toBeUndefined();
+      await expect(saving).resolves.toEqual(fixture.afterProject);
     } finally {
       spy.mockRestore();
     }
@@ -413,8 +593,12 @@ describe('Slice B saveAssetBatchRevision', () => {
     expect(
       history.push({
         label: 'Batch revision',
-        undo: () => saveAssetBatchRevision(undoInput),
-        redo: () => saveAssetBatchRevision(fixture.input),
+        undo: async () => {
+          await saveAssetBatchRevision(undoInput);
+        },
+        redo: async () => {
+          await saveAssetBatchRevision(fixture.input);
+        },
       }),
     ).toBe(true);
     await history.waitForPending();
@@ -717,8 +901,12 @@ describe('Slice B saveAssetBatchRevision', () => {
     const undoInput = reverseInput(fixture.input, 'Undo failure');
     history.push({
       label: 'Batch revision',
-      undo: () => saveAssetBatchRevision(undoInput),
-      redo: () => saveAssetBatchRevision(fixture.input),
+      undo: async () => {
+        await saveAssetBatchRevision(undoInput);
+      },
+      redo: async () => {
+        await saveAssetBatchRevision(fixture.input);
+      },
     });
     await history.waitForPending();
 

@@ -1,5 +1,7 @@
 import type { Asset, Project } from '../model';
 import { validateProjectFamilies } from '../model';
+import { validateProject } from '../schema/validate';
+import { hasRecoverableInvalidFamilies } from './projectStore';
 import {
   STORE_ASSETS,
   STORE_PROJECTS,
@@ -45,8 +47,15 @@ export async function restoreProject(trashId: string): Promise<void> {
         `ごみ箱のProject IDが一致しないため復元できません: trash=${trashId}, project=${record.project.id}`,
       );
     }
-    const familyErrors = validateProjectFamilies(record.project);
-    if (familyErrors.length > 0) {
+    const projectValidation = validateProject(record.project);
+    const recoverableInvalidFamilies = hasRecoverableInvalidFamilies(record.project);
+    if (!projectValidation.valid && !recoverableInvalidFamilies) {
+      throw new StorageError(
+        `ごみ箱のProjectがschema不正なため復元できません: ${projectValidation.errors.join(' / ')}`,
+      );
+    }
+    const familyErrors = projectValidation.valid ? validateProjectFamilies(record.project) : [];
+    if (familyErrors.length > 0 && !recoverableInvalidFamilies) {
       throw new StorageError(
         `ごみ箱のProject familiesが不正なため復元できません: ${familyErrors.join(' / ')}`,
       );

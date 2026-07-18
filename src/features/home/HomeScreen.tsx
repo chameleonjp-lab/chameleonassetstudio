@@ -18,6 +18,7 @@ import {
   purgeAllTrash,
   purgeTrash,
   requestPersistentStorage,
+  recoverProjectWithoutInvalidFamilies,
   restoreProject,
   saveProject,
   saveQuarantineEntry,
@@ -77,6 +78,7 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
   const [newName, setNewName] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [recoveringProjectId, setRecoveringProjectId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const [importMigrations, setImportMigrations] = useState<string[]>([]);
@@ -220,6 +222,32 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
       await reload();
     } catch (error) {
       setErrorMessage(`プロジェクトを削除できませんでした: ${toErrorMessage(error)}`);
+    }
+  };
+
+  const handleRecoverInvalidFamilies = async (summary: ProjectSummary) => {
+    if (!summary.familyRecoveryError) {
+      return;
+    }
+    const ok = window.confirm(
+      `プロジェクト「${summary.name}」の不正なFamily情報だけを隔離し、全Assetをstandaloneの別copyとして作成します。元のProjectは変更しません。続けますか？`,
+    );
+    if (!ok) {
+      return;
+    }
+    setRecoveringProjectId(summary.id);
+    setErrorMessage(null);
+    try {
+      const recovered = await recoverProjectWithoutInvalidFamilies(summary.id);
+      await reload();
+      setStorageActionMessage({
+        type: 'status',
+        text: `${recovered.projectName}を作成しました。${recovered.warnings.join(' ')}`,
+      });
+    } catch (error) {
+      setErrorMessage(`Family情報を隔離したcopyを作成できませんでした: ${toErrorMessage(error)}`);
+    } finally {
+      setRecoveringProjectId(null);
     }
   };
 
@@ -449,15 +477,31 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
                     アセット {summary.assetCount} 件 / 更新{' '}
                     {new Date(summary.updatedAt).toLocaleString('ja-JP')}
                   </span>
+                  {summary.familyRecoveryError && (
+                    <span className="home-family-recovery-warning">
+                      通常どおり開けません。{summary.familyRecoveryError}
+                    </span>
+                  )}
                 </div>
                 <div className="home-item-actions">
-                  <button
-                    type="button"
-                    onClick={() => onOpenProject(summary.id)}
-                    aria-label={`「${summary.name}」を開く`}
-                  >
-                    開く
-                  </button>
+                  {summary.familyRecoveryError ? (
+                    <button
+                      type="button"
+                      disabled={recoveringProjectId !== null}
+                      onClick={() => void handleRecoverInvalidFamilies(summary)}
+                      aria-label={`「${summary.name}」のFamily情報を隔離してcopyを作成`}
+                    >
+                      {recoveringProjectId === summary.id ? '隔離copy作成中…' : '隔離copyを作成'}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onOpenProject(summary.id)}
+                      aria-label={`「${summary.name}」を開く`}
+                    >
+                      開く
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => handleDelete(summary)}
