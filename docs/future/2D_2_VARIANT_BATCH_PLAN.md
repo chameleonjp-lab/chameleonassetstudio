@@ -1,7 +1,7 @@
 # 2D-2-VARIANT + 2D-2-BATCH 契約監査・実装計画
 
 作成日: 2026-07-17
-状態: `F1+C1+V1+T1+B1+O1+H1+L1 accepted (2026-07-17) / Slice A merged / Slice B merged (61a9b50) / retrospective Opus review fixes merged (378d611) / Slice C merged (#121, 2216f0c) / Slice D implemented on current branch, review pending`
+状態: `F1+C1+V1+T1+B1+O1+H1+L1 accepted (2026-07-17) / Slice A merged / Slice B merged (61a9b50) / retrospective Opus review fixes merged (378d611) / Slice C merged (#121, 2216f0c) / Slice D merged (#122, e98bcf0) / group 10 closeout（review SHOULD対応 + docs同期）on current branch`
 正式work package: `2D-2-VARIANT + 2D-2-BATCH`（2D完成ロードマップ PR group 10）
 契約監査基準main: `1838f58918a2958f9ebce2f8379f87a45fb17c26`（PR #115 merge）
 Slice A実装基準main: `f08ec3f108e877dfbd6edc7106946f6e3519644a`（PR #116 merge）
@@ -24,7 +24,7 @@ Slice D実装基準main: `2216f0c7e76718824e65009c5100b62a31717c42`（PR #121 me
 6. source Blob、snapshot、`.casproj`、exportへの影響。
 7. Desktop / touch / iPhone SE級viewportと性能上限。
 
-この文書は判断候補を提示したdocs-only監査を経て、§8で推奨組み合わせがaccepted済みである。Slice Aの型、schema、意味検査、fixture、文書同期はPR #117、Slice Bの原子revision / recovery基盤はPR #118（merge `61a9b50`）、Family / Variant UIとlinked refreshのSlice CはPR #121（merge `2216f0c`）でmainへmerge済みである。Slice B merge後の遡及Opus 4.8レビューは`BLOCKER 0 / MUST 1 / SHOULD 1 / NOTE 5`で、MUST-1（source kind降格経路）・SHOULD-1（CASのkey順序依存）・NOTE-1（remapのsilent fallback）はfollow-up PR #120（merge `378d611`）で修正した。NOTE-3（group Undo/Redo繰り返し時のsnapshot上限evict）はSlice DでHistory再生時のsnapshot追加を止めて補修し、NOTE-4（tx内CASのbytes実体化コスト）は`2D-6-PERFORMANCE`の実測課題として維持する。Slice C reviewのSHOULD-A（全Family fingerprint再計算）は表示中の選択Familyだけに限定し、NOTE-3（mobile手動上書き確認）は44px E2EをSlice Dへ追加した。preview / progress / 取消を持つ複数target batch体験は現在のSlice D実装branchで検証中である。
+この文書は判断候補を提示したdocs-only監査を経て、§8で推奨組み合わせがaccepted済みである。Slice Aの型、schema、意味検査、fixture、文書同期はPR #117、Slice Bの原子revision / recovery基盤はPR #118（merge `61a9b50`）、Family / Variant UIとlinked refreshのSlice CはPR #121（merge `2216f0c`）でmainへmerge済みである。Slice B merge後の遡及Opus 4.8レビューは`BLOCKER 0 / MUST 1 / SHOULD 1 / NOTE 5`で、MUST-1（source kind降格経路）・SHOULD-1（CASのkey順序依存）・NOTE-1（remapのsilent fallback）はfollow-up PR #120（merge `378d611`）で修正した。NOTE-3（group Undo/Redo繰り返し時のsnapshot上限evict）はSlice DでHistory再生時のsnapshot追加を止めて補修し、NOTE-4（tx内CASのbytes実体化コスト）は`2D-6-PERFORMANCE`の実測課題として維持する。Slice C reviewのSHOULD-A（全Family fingerprint再計算）は表示中の選択Familyだけに限定し、NOTE-3（mobile手動上書き確認）は44px E2EをSlice Dへ追加した。preview / progress / 取消を持つ複数target batch体験はSlice DとしてPR #122（merge `e98bcf0`、CI Run #398全成功）でmainへmerge済みである。Slice D merge後の遡及Opus 4.8レビューは`BLOCKER 0 / MUST 0 / SHOULD 2 / NOTE 5`で、SHOULD-1（縮小canvas batchのwarning経路E2E欠落）とSHOULD-2（docs statusのmerge後同期）はgroup 10 closeout補修で対応した。
 
 ## 2. 前段closeoutと開始条件
 
@@ -181,7 +181,7 @@ Slice CはPR #121でmainへmerge済みである。次を同じ安全境界で実
 3. 保存失敗、容量不足、reload、snapshot、`.casproj`退避を確認する。
 4. Desktop / touch / iPhone SE級viewportで原子的成功・失敗・取消をE2E確認する。
 
-現在のSlice D実装branchでは、次を実装した。merge、CI、独立reviewが完了するまではmain完了扱いにしない。
+Slice DはPR #122（merge `e98bcf0`）でmainへmerge済みである。次を同じ安全境界で実装し、merge後の遡及Opus 4.8レビューは`BLOCKER 0 / MUST 0 / SHOULD 2 / NOTE 5`だった。SHOULD-1は縮小canvas batchのwarning経路E2E追加、SHOULD-2は本status同期で対応した。
 
 - `linked variant refresh`、明示したAsset / layerのpalette置換、Asset canvas resizeを同じtarget registryから選べる。一度に1〜16 Asset、同じAssetは1 targetまでとし、初期選択をProject全体へ広げない。
 - 全targetを1件ずつ準備し、`ready / warning / manual-adjusted / ineligible / up-to-date`、変更内容、理由、推定変更byte、推定保存使用率を正本変更前に表示する。ineligible / up-to-dateは実行対象にできず、manual-adjustedは既定除外、canvas warningは明示確認を必須とする。

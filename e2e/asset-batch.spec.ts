@@ -89,6 +89,43 @@ async function readAssetStates(page: Page): Promise<Record<string, StoredAssetSt
   });
 }
 
+async function readLayerPositions(page: Page): Promise<Record<string, { x: number; y: number }>> {
+  return page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('chameleon-asset-studio');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      const records = await new Promise<
+        Array<{
+          data: {
+            displayName: string;
+            layers: Array<{ transform: { position: { x: number; y: number } } }>;
+          };
+        }>
+      >((resolve, reject) => {
+        const request = db.transaction('assets', 'readonly').objectStore('assets').getAll();
+        request.onsuccess = () =>
+          resolve(
+            request.result as Array<{
+              data: {
+                displayName: string;
+                layers: Array<{ transform: { position: { x: number; y: number } } }>;
+              };
+            }>,
+          );
+        request.onerror = () => reject(request.error);
+      });
+      return Object.fromEntries(
+        records.map(({ data }) => [data.displayName, { ...data.layers[0].transform.position }]),
+      );
+    } finally {
+      db.close();
+    }
+  });
+}
+
 async function snapshotCount(page: Page, assetId: string): Promise<number> {
   return page.evaluate(async (id) => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -228,6 +265,47 @@ test('palette置換は明示した2 Asset / layerだけを変え、sourceと初�
   for (const name of ['palette-one', 'palette-two']) {
     expect(await snapshotCount(page, after[name].id)).toBe(1);
   }
+});
+
+test('縮小canvas resizeはwarningを提示し、明示確認まで実行できず、座標をclampしない', async ({
+  page,
+}) => {
+  const properties = await createProject(page, 'batch canvas warning');
+  await createBlankAsset(properties, 'warn-target');
+  const before = await readAssetStates(page);
+  const beforeLayers = await readLayerPositions(page);
+  const beforeSize = before['warn-target'].canvasSize;
+
+  const panel = batchPanel(page);
+  await panel.getByLabel('一括操作').selectOption('canvas-resize');
+  await selectPickerTarget(panel, 'warn-target');
+  await panel.getByLabel('一括canvas幅').fill('16');
+  await panel.getByLabel('一括canvas高さ').fill('16');
+  await panel.getByRole('button', { name: 'target previewを準備' }).click();
+
+  const preview = panel.getByRole('region', { name: '一括変更preview' });
+  await expect(preview.locator('.asset-batch-status.warning')).toBeVisible();
+  await expect(preview.getByText(/変更後にcanvas外へ出るデータが\d+件あります/)).toBeVisible();
+
+  const execute = preview.getByRole('button', { name: '選択targetを一括実行' });
+  await expect(execute).toBeDisabled();
+  await preview.getByRole('checkbox', { name: /warning対象を確認しました/ }).check();
+  await expect(execute).toBeEnabled();
+  await execute.click();
+
+  await expect
+    .poll(async () => (await readAssetStates(page))['warn-target'].canvasSize)
+    .toEqual({ width: 16, height: 16 });
+  const afterLayers = await readLayerPositions(page);
+  const expectedPosition = {
+    x: beforeLayers['warn-target'].x + (16 - beforeSize.width) / 2,
+    y: beforeLayers['warn-target'].y + (16 - beforeSize.height) / 2,
+  };
+  expect(afterLayers['warn-target']).toEqual(expectedPosition);
+  expect(expectedPosition.x).toBeLessThan(0);
+  const after = await readAssetStates(page);
+  expect(after['warn-target'].sourceDigest).toBe(before['warn-target'].sourceDigest);
+  expect(after['warn-target'].editDigest).toBe(before['warn-target'].editDigest);
 });
 
 test('2 target保存の途中失敗は全件rollbackしHistoryを追加しない', async ({ page }) => {
