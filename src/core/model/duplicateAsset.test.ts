@@ -88,4 +88,31 @@ describe('duplicateAsset', () => {
     expect(source.layers[0].transform.position.x).not.toBe(999);
     expect(source.gameAttributes).toEqual({ nested: { value: 1 } });
   });
+
+  it('texture IDの再採番に合わせてprovenance参照を更新し、未知fieldも独立copyする', () => {
+    const source = structuredClone(characterAsset) as unknown as Asset;
+    const sourceTextureId = source.textures.find((texture) => texture.kind === 'source')!.id;
+    source.provenance = [
+      {
+        sourceFileName: 'hero.png',
+        mimeType: 'image/png',
+        byteLength: 3,
+        hash: `sha256:${'a'.repeat(64)}`,
+        importedAt: '2026-07-20T00:00:00.000Z',
+        textureId: sourceTextureId,
+        future: { preserved: true },
+      },
+    ];
+
+    const copy = duplicateAsset(source);
+    const copiedRecord = copy.provenance?.[0];
+    expect(copiedRecord?.textureId).not.toBe(sourceTextureId);
+    expect(copy.textures.some((texture) => texture.id === copiedRecord?.textureId)).toBe(true);
+    expect(copy.textures.find((texture) => texture.id === copiedRecord?.textureId)?.kind).toBe(
+      'source',
+    );
+
+    (copiedRecord?.future as { preserved: boolean }).preserved = false;
+    expect(source.provenance[0].future).toEqual({ preserved: true });
+  });
 });

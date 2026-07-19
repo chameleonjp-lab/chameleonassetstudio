@@ -8,11 +8,14 @@
 import { describe, expect, it } from 'vitest';
 import minimalAsset from '../samples/asset.minimal.json';
 import sampleProject from '../samples/project.sample.json';
+import v010Asset from '../storage/__fixtures__/v0.1.0-asset.json';
 import type { Asset } from './asset';
 import type { Project } from './project';
+import { exportAssetJson } from '../export/exportAsset';
 import { buildAtlas, computeSheetLayout } from '../export/atlas';
 import { validateAsset } from '../schema/validate';
 import { exportCasproj, importCasproj, type CasprojBundle } from '../storage/casproj';
+import { migrateAsset } from './migrate';
 
 const baseAsset = minimalAsset as unknown as Asset;
 const baseProject = sampleProject as unknown as Project;
@@ -39,6 +42,32 @@ describe('ADR-0013: 未知 root フィールド provenance を持つ asset が�
 
     expect(result.valid).toBe(true);
     expect(result.errors).toEqual([]);
+  });
+});
+
+describe('Slice B P1: 正式source-file recordと旧0.1.0互換', () => {
+  it('正式fieldを持つrecordがschemaを通り、asset.jsonへverbatimで出る', async () => {
+    const record = {
+      sourceFileName: 'tomato.png',
+      mimeType: 'image/png',
+      byteLength: 1234,
+      hash: `sha256:${'c'.repeat(64)}`,
+      importedAt: '2026-07-20T00:00:00.000Z',
+      origin: 'local-file',
+      license: 'CC-BY-4.0',
+    };
+    const asset = { ...baseAsset, provenance: [record] } as Asset;
+
+    expect(validateAsset(asset)).toEqual({ valid: true, errors: [] });
+    const exported = JSON.parse(await exportAssetJson(asset).text()) as Asset;
+    expect(exported.provenance).toEqual([record]);
+  });
+
+  it('provenance不在のv0.1.0 Assetをmigrateしても遡及生成しない', () => {
+    const migrated = migrateAsset(v010Asset);
+    expect(migrated.appliedMigrations).toEqual([]);
+    expect(migrated.data).toEqual(v010Asset);
+    expect(migrated.data).not.toHaveProperty('provenance');
   });
 });
 

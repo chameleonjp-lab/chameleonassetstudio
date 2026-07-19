@@ -161,6 +161,7 @@ function inspectDuplicateNames(asset: Asset, push: PushIssue): void {
 
 function inspectReferences(asset: Asset, push: PushIssue): void {
   const textureIds = new Set(asset.textures.map((texture) => texture.id));
+  const textureById = new Map(asset.textures.map((texture) => [texture.id, texture]));
   const layerIds = new Set(asset.layers.map((layer) => layer.id));
   const frameIds = new Set((asset.frames ?? []).map((frame) => frame.id));
   const partIds = new Set(asset.parts.map((part) => part.id));
@@ -177,6 +178,44 @@ function inspectReferences(asset: Asset, push: PushIssue): void {
         target: {
           path: `layers[id=${layer.id}].textureId`,
           label: `レイヤー「${layer.name}」`,
+          panel: 'layers',
+        },
+      });
+    }
+  }
+
+  for (const [index, record] of (asset.provenance ?? []).entries()) {
+    if (typeof record.textureId !== 'string') {
+      continue;
+    }
+    const texture = textureById.get(record.textureId);
+    if (!texture) {
+      push({
+        code: 'reference.provenanceTextureMissing',
+        severity: 'error',
+        category: 'reference',
+        message: '取り込み元の画像参照が見つかりません。',
+        reason: `textureId「${record.textureId}」に対応するテクスチャがありません。`,
+        action: '元ファイルの来歴とテクスチャを確認し、参照切れを修復してください。',
+        target: {
+          path: `provenance[${index}].textureId`,
+          label: '素材検査 > 取り込み元',
+          panel: 'layers',
+        },
+      });
+      continue;
+    }
+    if (typeof record.sourceFileName === 'string' && texture.kind !== 'source') {
+      push({
+        code: 'reference.provenanceTextureNotSource',
+        severity: 'error',
+        category: 'reference',
+        message: '取り込み元の来歴がsource画像以外を参照しています。',
+        reason: `textureId「${record.textureId}」の種別は「${texture.kind}」です。`,
+        action: '対応するsourceテクスチャを参照するように来歴を修復してください。',
+        target: {
+          path: `provenance[${index}].textureId`,
+          label: '素材検査 > 取り込み元',
           panel: 'layers',
         },
       });

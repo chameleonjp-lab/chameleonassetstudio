@@ -2524,6 +2524,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         updatedAt: new Date().toISOString(),
         textures: [...before.textures, ...staged.flatMap(({ textures }) => textures)],
         layers: [...before.layers, ...staged.map(({ layer }) => layer)],
+        provenance: [...(before.provenance ?? []), ...staged.map(({ provenance }) => provenance)],
       };
       const blobs = staged.flatMap(({ blobs: resultBlobs }) => resultBlobs);
       const blobKeys = blobs.map(({ key }) => key);

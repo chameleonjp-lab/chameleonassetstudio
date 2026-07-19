@@ -82,6 +82,44 @@ describe('inspectAsset (A+B+X)', () => {
     ).toBe(true);
   });
 
+  it('provenanceのdangling参照とsource以外への正式参照をerrorとして報告する', () => {
+    const asset = blank('item');
+    const sourceTexture = asset.textures.find((texture) => texture.kind === 'source')!;
+    const editTexture = asset.textures.find((texture) => texture.kind === 'edit')!;
+    const withProvenance: Asset = {
+      ...asset,
+      provenance: [
+        {
+          sourceFileName: 'valid.png',
+          mimeType: 'image/png',
+          byteLength: 1,
+          hash: `sha256:${'a'.repeat(64)}`,
+          importedAt: '2026-07-20T00:00:00.000Z',
+          textureId: sourceTexture.id,
+        },
+        { textureId: 'missing_texture' },
+        {
+          sourceFileName: 'wrong.png',
+          mimeType: 'image/png',
+          byteLength: 1,
+          hash: `sha256:${'b'.repeat(64)}`,
+          importedAt: '2026-07-20T00:00:00.000Z',
+          textureId: editTexture.id,
+        },
+        { origin: 'ai' },
+      ],
+    };
+
+    const referenceIssues = inspectAsset(withProvenance).filter((issue) =>
+      issue.code.startsWith('reference.provenance'),
+    );
+    expect(referenceIssues.map((issue) => issue.code)).toEqual([
+      'reference.provenanceTextureMissing',
+      'reference.provenanceTextureNotSource',
+    ]);
+    expect(referenceIssues.every((issue) => issue.severity === 'error')).toBe(true);
+  });
+
   it('character separates recommended body, animation and anchor findings from required errors', () => {
     const asset: Asset = {
       ...blank('character'),

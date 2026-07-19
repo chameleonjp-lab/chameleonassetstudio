@@ -1,5 +1,12 @@
 import { decodeImageSource } from './decodeImageSource';
-import { createImageAsset, generateId, type Asset, type Layer, type TextureRef } from '../model';
+import {
+  createImageAsset,
+  generateId,
+  type Asset,
+  type Layer,
+  type SourceFileProvenanceRecord,
+  type TextureRef,
+} from '../model';
 import { formatBytes } from '../storage/storageUsage';
 import { assertFileImageSignature } from './imageInputSafety';
 
@@ -150,6 +157,38 @@ export function blobKeyFor(assetId: string, texturePath: string): string {
   return `${assetId}/${texturePath}`;
 }
 
+/** 保存するsource Blob原本のbytesをSHA-256で識別する。 */
+export async function sha256Blob(blob: Blob): Promise<`sha256:${string}`> {
+  if (!globalThis.crypto?.subtle) {
+    throw new ImageImportError('この環境では取り込み元のSHA-256を計算できません。');
+  }
+  try {
+    const digest = await globalThis.crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
+    const hex = [...new Uint8Array(digest)]
+      .map((value) => value.toString(16).padStart(2, '0'))
+      .join('');
+    return `sha256:${hex}`;
+  } catch (error) {
+    throw new ImageImportError('取り込み元のSHA-256計算に失敗しました。', { cause: error });
+  }
+}
+
+function sourceFileProvenance(
+  file: File,
+  hash: `sha256:${string}`,
+  importedAt: string,
+  textureId: string,
+): SourceFileProvenanceRecord {
+  return {
+    sourceFileName: file.name,
+    mimeType: file.type,
+    byteLength: file.size,
+    hash,
+    importedAt,
+    textureId,
+  };
+}
+
 export interface ImportImageResult {
   asset: Asset;
   /** 保存すべき Blob 一式（元画像・編集用・サムネイル）。 */
@@ -176,6 +215,7 @@ export async function importImageFile(file: File): Promise<ImportImageResult> {
     });
   }
   const mimeType = file.type as SupportedImportMimeType;
+  const sourceHash = await sha256Blob(file);
 
   const decoded = await decodeImage(file);
   try {
@@ -198,6 +238,7 @@ export async function importImageFile(file: File): Promise<ImportImageResult> {
     const thumbBlob = await encodeWithFallback(thumbTarget, ['image/webp', 'image/png'], 0.85);
 
     const name = assetNameFromFileName(file.name);
+    const importedAt = new Date();
     const asset = createImageAsset({
       name,
       displayName: name,
@@ -205,6 +246,8 @@ export async function importImageFile(file: File): Promise<ImportImageResult> {
       sourceMimeType: mimeType,
       sourceExtension: extensionForMimeType(mimeType),
       thumbnailMimeType: thumbBlob.type === 'image/webp' ? 'image/webp' : 'image/png',
+      thumbnailSize: { width: thumbWidth, height: thumbHeight },
+      now: importedAt,
     });
 
     const sourceTexture = asset.textures.find((tex) => tex.kind === 'source');
@@ -213,6 +256,9 @@ export async function importImageFile(file: File): Promise<ImportImageResult> {
     if (!sourceTexture || !editTexture || !thumbTexture) {
       throw new ImageImportError('アセットのテクスチャ定義が不正です。');
     }
+    asset.provenance = [
+      sourceFileProvenance(file, sourceHash, importedAt.toISOString(), sourceTexture.id),
+    ];
 
     return {
       asset,
@@ -235,6 +281,8 @@ export interface ImportLayerResult {
   layer: Layer;
   /** 保存すべき Blob 一式。 */
   blobs: Array<{ key: string; blob: Blob }>;
+  /** 追加したsource file 1件に対応する来歴 record。 */
+  provenance: SourceFileProvenanceRecord;
 }
 
 /**
@@ -255,6 +303,7 @@ export async function importImageAsLayer(file: File, asset: Asset): Promise<Impo
   }
   const mimeType = file.type as SupportedImportMimeType;
   const extension = extensionForMimeType(mimeType);
+  const sourceHash = await sha256Blob(file);
 
   const decoded = await decodeImage(file);
   try {
@@ -299,6 +348,12 @@ export async function importImageAsLayer(file: File, asset: Asset): Promise<Impo
     return {
       textures: [sourceTexture, editTexture],
       layer,
+      provenance: sourceFileProvenance(
+        file,
+        sourceHash,
+        new Date().toISOString(),
+        sourceTexture.id,
+      ),
       blobs: [
         { key: blobKeyFor(asset.id, sourceTexture.path), blob: file },
         { key: blobKeyFor(asset.id, editTexture.path), blob: editBlob },

@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 2D Asset Data Contract
 
-最終更新日: 2026-07-12
+最終更新日: 2026-07-20
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 2D 完成形の保存・座標・互換性契約
 状態: accepted（将来設計。docs-only）
@@ -10,7 +10,7 @@
 ---
 
 > **現状:** 現在の正本は `docs/DATA_FORMAT.md`、`src/core/model/`、`src/core/schema/` であり、`asset.json` / `.casproj` の version は `0.1.0` である。
-> **本書の役割:** 2D 完成形で必要になるデータの意味と、形式変更前に必ず決める契約を定義する。本文だけで現在の型、schema、ZIP 構成、migration を変更してはいけない。Family / Variantは別契約`2D_2_VARIANT_BATCH_PLAN.md`の`F1+C1+V1+T1`が2026-07-17にacceptedされ、Slice Aのadditive Project fieldだけが実装対象になった。
+> **本書の役割:** 2D 完成形で必要になるデータの意味と、形式変更前に必ず決める契約を定義する。本文だけで現在の型、schema、ZIP 構成、migration を変更してはいけない。Family / Variantは別契約`2D_2_VARIANT_BATCH_PLAN.md`で実装済み。来歴は`2D_2_IMPORT_PLAN.md`のP1に基づき、group 11 Slice Bでoptionalな`Asset.provenance?`として実装する。
 
 ## 1. 目的
 
@@ -247,9 +247,11 @@ extensions
 
 ## 11. 入力の来歴・安全性
 
-> この章のうち来歴・利用条件・AI 送信記録の保存境界は `docs/adr/0013-provenance-and-ai-record-boundary.md` で決定済み（境界確定のみ、実装は別 PR）。AI 境界（consent・外部送信・受け入れ経路・手動代替）は `docs/adr/0017-ai-boundary.md` で決定済み。不正入力検査は `2D-1A-VALIDATION` / `2D-1B-INPUT-SAFETY` で扱う。
+> この章のうち来歴・利用条件・AI 送信記録の保存境界は `docs/adr/0013-provenance-and-ai-record-boundary.md` で決定済み。source-file来歴の具体fieldとSHA-256対象は`docs/future/2D_2_IMPORT_PLAN.md`のP1としてacceptedされ、group 11 Slice Bで実装する。AI 境界（consent・外部送信・受け入れ経路・手動代替）は `docs/adr/0017-ai-boundary.md` で決定済み。不正入力検査は `2D-1A-VALIDATION` / `2D-1B-INPUT-SAFETY` で扱う。
 
 - 元データのファイル名、形式、ハッシュ、取得元、利用条件、作成日を任意で記録できるようにする。
+- source-file recordは`sourceFileName`、`mimeType`、`byteLength`、source Blob原本bytesの`sha256:<64 lowercase hex>`、`importedAt`を持ち、任意でsource `textureId`、手動入力の`origin` / `license`を持つ。1元file = 1 recordとし、旧dataへ遡及生成しない。
+- danglingな`provenance[].textureId`と、正式recordからsource以外への参照は読み取り専用素材検査で示す。検査結果は保存せず、保存・autosave・`.casproj`・exportを新たに停止しない。
 - AI 利用時は、送信先、モデル名、生成日時、承認状態を必要最小限で記録する。プロンプトや画像を外部へ送った事実を隠さない。
 - API key、アクセストークン、個人情報、外部サービスの秘密設定を保存しない。
 - SVG、atlas JSON、ZIP、画像は不正入力として検査する。任意コード実行、外部 URL の自動読込、zip bomb、巨大画像、パス外参照を許可しない。

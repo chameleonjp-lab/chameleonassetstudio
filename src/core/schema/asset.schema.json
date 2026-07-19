@@ -103,6 +103,12 @@
     "gameAttributes": {
       "type": "object"
     },
+    "provenance": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/provenanceRecord"
+      }
+    },
     "tile": {
       "$ref": "#/definitions/tileSettings"
     },
@@ -128,6 +134,53 @@
     }
   },
   "definitions": {
+    "provenanceRecord": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["sourceFileName", "mimeType", "byteLength", "hash", "importedAt"],
+          "properties": {
+            "sourceFileName": {
+              "type": "string"
+            },
+            "mimeType": {
+              "type": "string",
+              "minLength": 1
+            },
+            "byteLength": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "hash": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "importedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "textureId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin": {
+              "type": "string"
+            },
+            "license": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "not": {
+            "required": ["sourceFileName"]
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
     "vec2": {
       "type": "object",
       "required": ["x", "y"],

@@ -90,6 +90,39 @@ describe('validateAsset', () => {
     expect(result.valid).toBe(true);
   });
 
+  it('正式source-file provenanceを検証し、旧open recordとAI候補recordを保持する', () => {
+    const withProvenance = clone(minimalAsset) as Record<string, unknown>;
+    withProvenance.provenance = [
+      {
+        sourceFileName: 'hero.png',
+        mimeType: 'image/png',
+        byteLength: 123,
+        hash: `sha256:${'a'.repeat(64)}`,
+        importedAt: '2026-07-20T00:00:00.000Z',
+        textureId: 'tex_source',
+      },
+      { originalFileName: 'legacy.png', hash: 'sha256:legacy-value' },
+      { origin: 'ai', destination: 'https://example.invalid/ai' },
+    ];
+    expect(validateAsset(withProvenance)).toEqual({ valid: true, errors: [] });
+
+    const incomplete = clone(withProvenance) as Record<string, unknown>;
+    incomplete.provenance = [{ sourceFileName: 'missing-fields.png' }];
+    expect(validateAsset(incomplete).valid).toBe(false);
+
+    const badHash = clone(withProvenance) as Record<string, unknown>;
+    badHash.provenance = [
+      {
+        sourceFileName: 'hero.png',
+        mimeType: 'image/png',
+        byteLength: 123,
+        hash: 'sha256:deadbeef',
+        importedAt: '2026-07-20T00:00:00.000Z',
+      },
+    ];
+    expect(validateAsset(badHash).errors.join('\n')).toContain('/provenance/0');
+  });
+
   it('オブジェクトでない値は検証で落ちる', () => {
     expect(validateAsset(null).valid).toBe(false);
     expect(validateAsset('asset').valid).toBe(false);
