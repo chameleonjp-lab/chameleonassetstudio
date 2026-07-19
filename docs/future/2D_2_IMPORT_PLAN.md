@@ -1,7 +1,7 @@
 # 2D-2-IMPORT-GATE + 2D-2-IMPORT-OPTIONAL + 2D-2-AI-BOUNDARY 契約監査・実装計画
 
 作成日: 2026-07-19
-状態: `G1+L1+Q1+P1+F1+A1+W1+S1 accepted (2026-07-19) / Slice A未着手`
+状態: `G1+L1+Q1+P1+F1+A1+W1+S1 accepted (2026-07-19) / Slice A（ADR-0016 / ADR-0017 + fixture）を現在のbranchで実装、merge / CI / review待ち`
 正式work package: `2D-2-IMPORT-GATE` + `2D-2-IMPORT-OPTIONAL` + `2D-2-AI-BOUNDARY`（2D完成ロードマップ PR group 11）
 契約監査基準main: `88f40bb`（PR #123 merge、group 10 closeout）
 前段: `2D-2-VARIANT + 2D-2-BATCH`（group 10）は全slice merge・遡及Opus review・closeout補修まで完了。
