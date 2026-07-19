@@ -1063,9 +1063,14 @@ export async function prepareLinkedVariantRefresh(options: {
   baseBlobs: FamilyVariantBlobMap;
   variantBlobs: FamilyVariantBlobMap;
   transformPaletteBlob?: PaletteBlobTransformer;
+  /**
+   * 同じ入力から直前に算出済みの検査結果。複数target previewではfingerprintを
+   * 二重計算しないために渡す。省略時は従来どおり内部で検査する。
+   */
+  inspection?: LinkedVariantInspection;
   now?: Date;
 }): Promise<LinkedVariantRefreshArtifact> {
-  const inspection = await inspectLinkedVariant(options);
+  const inspection = options.inspection ?? (await inspectLinkedVariant(options));
   if (inspection.status === 'ineligible') {
     throw new FamilyVariantRecipeError(inspection.reasons.join(' '));
   }

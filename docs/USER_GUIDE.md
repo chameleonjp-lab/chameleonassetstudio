@@ -60,6 +60,20 @@
 - FamilyのbaseはFamily解除より先に削除できません。Family情報だけが不正な保存済みProjectは通常openを無効にし、ホームの「隔離copyを作成」から元Projectを変更せず、全Assetを別IDのstandalone copyとして復旧できます。作成後はホームに隔離理由と未知参照の注意を表示するので、確認してから新しいcopyを開きます。Family以外も不正なProjectはこの導線の対象外です。不正なFamily参照を含む`.casproj`は正本へ保存せず、読み込み失敗データとしてquarantineします。
 - ゲーム向け`asset.json`、PNG / WebP、atlas、engine向けZIPへFamily metadataは追加されません。Family関係を含む再編集用保存には`.casproj`を使います。
 
+### 2.5 複数Assetを安全に一括変更する（2D-2-BATCH Slice D、2026-07）
+
+プロパティの「Asset一括変更」で、linked variant refresh、明示したAsset / layerのpalette置換、Asset canvas resizeを最大16 Assetへ適用できます。
+
+1. 「一括操作」を選びます。Project全体は自動選択されないため、変更するAssetをcheckboxで明示します。paletteはAssetごとに1つのedit画像layerも選びます。
+2. 操作値を入力し「target previewを準備」を押します。画像を含む場合も1 targetずつ処理し、進捗を表示します。「準備を取消」は処理中targetを閉じてから停止し、この時点では正本を変更しません。
+3. targetごとの`実行可能 / warning / 手動調整あり / 対象外 / 変更なし`、変更内容、理由、推定変更量、推定保存使用量を確認します。不要なtargetはpreviewで除外できます。対象外と変更なしは選べません。
+4. `手動調整あり`は対象checkbox自体が明示上書き確認です。canvas warningを含める場合は、clamp、crop、削除を行わないことを別checkboxで確認します。
+5. 必要なら「.casproj退避を開く」から先にbackupし、「選択targetを一括実行」を押します。保存開始後は取消できません。
+
+選択targetはProject要約、Asset、edit Blob、復旧点を1つのtransactionで保存し、1回のUndo / Redoで全件を戻します。validation、容量不足、preview後の競合、保存失敗のどれかが起きた場合、途中までの結果を残さずHistoryも追加しません。paletteとlinked refreshはsource Blobを変更せず、previewで除外したAsset、standalone Asset、recipe対象外fieldも変更しません。初回の破壊的Blob変更では各Assetに復旧点を作りますが、同じ履歴のUndo / Redoを繰り返しても同内容の復旧点を追加しません。
+
+スマホでもtarget選択、進捗、取消へ到達できますが、大きな画像を多数処理する場合はPCまたはiPadを推奨します。保存容量を取得できないブラウザでは空き容量を推測せず、その旨をpreviewへ表示します。
+
 ## 3. 編集する
 
 - **キャンバス**: ズーム / パン、レイヤーの選択・ドラッグ移動・数値入力。Undo / Redo（Ctrl+Z / Ctrl+Y）対応。

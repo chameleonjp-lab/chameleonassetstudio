@@ -611,6 +611,62 @@ describe('Slice B saveAssetBatchRevision', () => {
     expect(await bytesAt(keyFor(fixture.variant, editTexture(fixture.variant)))).toEqual([92]);
   });
 
+  it('History Undo / Redoの往復では初回復旧点を増やさず上限から押し出さない', async () => {
+    const fixture = await seedBatchFixture();
+    await saveAssetBatchRevision(fixture.input);
+    const initialBaseSnapshots = await listSnapshots(fixture.base.id);
+    const initialVariantSnapshots = await listSnapshots(fixture.variant.id);
+    expect(initialBaseSnapshots).toHaveLength(1);
+    expect(initialVariantSnapshots).toHaveLength(1);
+
+    const history = new History();
+    const undoInput: SaveAssetBatchRevisionInput = {
+      ...reverseInput(fixture.input, ''),
+      allowProjectUpdatedAtDrift: true,
+      historyReplay: true,
+      snapshotLabel: '',
+    };
+    const redoInput: SaveAssetBatchRevisionInput = {
+      ...fixture.input,
+      allowProjectUpdatedAtDrift: true,
+      historyReplay: true,
+      snapshotLabel: '',
+    };
+    history.push({
+      label: 'Batch revision replay',
+      undo: async () => {
+        await saveAssetBatchRevision(undoInput);
+      },
+      redo: async () => {
+        await saveAssetBatchRevision(redoInput);
+      },
+    });
+    await history.waitForPending();
+
+    for (let index = 0; index < 4; index += 1) {
+      await expect(history.undo()).resolves.toBe(true);
+      expect(await listSnapshots(fixture.base.id)).toEqual(initialBaseSnapshots);
+      expect(await listSnapshots(fixture.variant.id)).toEqual(initialVariantSnapshots);
+      await expect(history.redo()).resolves.toBe(true);
+      expect(await listSnapshots(fixture.base.id)).toEqual(initialBaseSnapshots);
+      expect(await listSnapshots(fixture.variant.id)).toEqual(initialVariantSnapshots);
+    }
+  });
+
+  it('History再生flagはupdatedAt drift許可と空snapshot labelを必須にする', async () => {
+    const fixture = await seedBatchFixture();
+    await expect(
+      saveAssetBatchRevision({ ...fixture.input, historyReplay: true, snapshotLabel: '' }),
+    ).rejects.toThrow(/updatedAt drift許可/);
+    await expect(
+      saveAssetBatchRevision({
+        ...fixture.input,
+        historyReplay: true,
+        allowProjectUpdatedAtDrift: true,
+      }),
+    ).rejects.toThrow(/復旧点label/);
+  });
+
   it('0件・17件・重複Asset・重複Blob keyを理由付きで拒否する', async () => {
     const fixture = await seedBatchFixture();
     await expect(saveAssetBatchRevision({ ...fixture.input, targets: [] })).rejects.toThrow(
