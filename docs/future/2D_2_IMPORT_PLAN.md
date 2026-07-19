@@ -1,7 +1,7 @@
 # 2D-2-IMPORT-GATE + 2D-2-IMPORT-OPTIONAL + 2D-2-AI-BOUNDARY 契約監査・実装計画
 
 作成日: 2026-07-19
-状態: `判断候補提示（docs-only監査） / acceptance待ち`
+状態: `G1+L1+Q1+P1+F1+A1+W1+S1 accepted (2026-07-19) / Slice A未着手`
 正式work package: `2D-2-IMPORT-GATE` + `2D-2-IMPORT-OPTIONAL` + `2D-2-AI-BOUNDARY`（2D完成ロードマップ PR group 11）
 契約監査基準main: `88f40bb`（PR #123 merge、group 10 closeout）
 前段: `2D-2-VARIANT + 2D-2-BATCH`（group 10）は全slice merge・遡及Opus review・closeout補修まで完了。
@@ -140,6 +140,7 @@ accepted後の実装でも、次は別契約まで行わない。
 
 推奨組み合わせ: **G1 + L1 + Q1 + P1 + F1 + A1 + W1 + S1**
 
-- 状態: 未accepted（ユーザー確認待ち）
-- accepted日: -
-- 実装review条件: 各slice Draft PR → CI → 独立Opus review → 人間確認。A→B→C→D→Eの直列順。
+- 状態: **accepted**
+- accepted日: 2026-07-19（ユーザー承認）
+- 実装review条件: 各slice Draft PR → CI → 独立Opus review → 人間確認。A→B→C→D→Eの直列順。各sliceは前sliceのmerge後に最新mainからbranchを作る。
+- Slice Aは本監査PRのmerge後に開始し、ADR-0016 / ADR-0017の正式確定をもって判断必須項目の実装を解禁する。
