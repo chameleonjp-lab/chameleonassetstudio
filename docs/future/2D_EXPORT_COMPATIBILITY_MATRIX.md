@@ -64,11 +64,11 @@ Generic Web は対象ツール名ではないため、`generic-web-v1` のよう
 |---|---|---|---|
 | `.casproj` | `native-editable`。プロジェクトを再開、複製、移行できる。 | 実装済み。 | version / migration を守る。 |
 | PNG / JPEG / WebP | `editable-import`。元を残し、編集用画像・サムネイルを作る。 | 実装済み。 | JPEG に透明はない。 |
-| SVG | `editable-import` または `rasterized-import`。安全な図形 / 画像として扱う。 | 将来候補。 | スクリプト、外部 URL、任意コードを実行しない。 |
-| 連番、GIF、APNG | フレーム列として取り込み、animation を作る。 | 将来候補。 | 動画編集の代替にはしない。 |
-| sprite sheet + JSON | フレーム、名前、順番、切り抜き情報を確認しながら取り込む。 | 将来候補。 | JSON 形式ごとに対応範囲を明示する。 |
-| tileset / atlas bundle | タイル寸法、衝突、属性を確認して取り込む。 | 将来候補。 | タイル地図そのものの全編集を先に約束しない。 |
-| Aseprite、PSD、OpenRaster、Krita など | `editable-import`、`rasterized-import`、`reference-only` のどれかを形式ごとに決める。 | 調査・設計前。 | 全レイヤー・全効果・専用機能を完全に保つとは約束しない。 |
+| SVG | `rasterized-import`（ADR-0016 決定 1。ベクター保持の `editable-import` は将来の別 ADR）。 | ADR-0016 で分類確定。実装は import 計画 Slice E。 | スクリプト、外部 URL、任意コードを実行しない。 |
+| 連番、GIF、APNG | フレーム列として取り込み、animation を作る（GIF / APNG は ADR-0016 決定 2 の `rasterized-import`）。 | 連番 / sheet は import 計画 Slice C、GIF / APNG は ADR-0016 で分類確定・実装は Slice E。 | 動画編集の代替にはしない。decode 不可環境は先頭 frame + loss warning。 |
+| sprite sheet + JSON | フレーム、名前、順番、切り抜き情報を確認しながら取り込む。 | JSON は自形式と手動格子指定に限定して import 計画 Slice C / D で実装（W1）。 | JSON 形式ごとに対応範囲を明示する。外部 JSON 形式は別 ADR。 |
+| tileset / atlas bundle | タイル寸法、衝突、属性を確認して取り込む。 | 自形式 atlas roundtrip を import 計画 Slice D で実装（W1）。 | タイル地図そのものの全編集を先に約束しない。 |
+| Aseprite、PSD、OpenRaster、Krita など | `unsupported`（ADR-0016 決定 3 / 4。理由付き明示拒否 + PNG / JSON 経由の手順案内）。 | ADR-0016 で分類確定。OpenRaster は `editable-import` 昇格の最有力候補として再検討条件に記録。 | 全レイヤー・全効果・専用機能を完全に保つとは約束しない。 |
 | Spine / Rive / Live2D の専用形式 | 将来、原本参照や画像・atlas・焼き込みフレームの補助を別設計で検討する。 | `unsupported`。 | 現在は専用原本の保存・参照を実装していない。専用形式の完全編集・再出力を名乗らない。 |
 
 ### 4.2 取り込みの共通要件
