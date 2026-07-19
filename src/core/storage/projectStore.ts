@@ -1611,31 +1611,43 @@ export interface DeleteAssetBundleInput {
   assetId: string;
 }
 
-export async function deleteAssetBundle({
+export interface DeleteAssetsBundleInput {
+  project: Project;
+  assetIds: string[];
+}
+
+/** project更新と複数のAsset/Blob/snapshot削除を、1つのIndexedDB transactionで確定する。 */
+export async function deleteAssetsBundle({
   project,
-  assetId,
-}: DeleteAssetBundleInput): Promise<void> {
+  assetIds,
+}: DeleteAssetsBundleInput): Promise<void> {
   const projectResult = validateProject(project);
   if (!projectResult.valid) {
     throw new StorageError(formatValidationErrors('project', projectResult.errors));
   }
-  if (project.assets.some((entry) => entry.id === assetId)) {
-    throw new StorageError(`削除対象アセット（id: ${assetId}）が Project に残っています`);
+  if (assetIds.length === 0 || new Set(assetIds).size !== assetIds.length) {
+    throw new StorageError('削除対象Asset IDは重複のない1件以上を指定してください');
   }
-  // Family invariant enforce（Slice A, F1）。API 形状（{ project, assetId }）は変えず、
+  const deleting = new Set(assetIds);
+  const referenced = project.assets.find((entry) => deleting.has(entry.id));
+  if (referenced) {
+    throw new StorageError(`削除対象アセット（id: ${referenced.id}）が Project に残っています`);
+  }
+  // Family invariant enforce（Slice A, F1）。単一 / 複数どちらも、
   // project.assets の既存チェックと同じパターンで「呼び出し元が渡す更新後 Project」を検査する。
   // base の場合: 別 base への付替えまたは Family 解除を先に行うまで拒否する。
   // variant の場合: 呼び出し元が該当 variant エントリを除去した Project を渡す必要があり、
   // 除去済みでなければ理由付きで拒否する（family 自体は残 variants 0 でも維持してよい）。
   for (const family of project.families ?? []) {
-    if (family.baseAssetId === assetId) {
+    if (deleting.has(family.baseAssetId)) {
       throw new StorageError(
-        `削除対象アセット（id: ${assetId}）は Family（id: ${family.id}）の base です。先に別 base への付替えまたは Family 解除が必要です`,
+        `削除対象アセット（id: ${family.baseAssetId}）は Family（id: ${family.id}）の base です。先に別 base への付替えまたは Family 解除が必要です`,
       );
     }
-    if (family.variants.some((variant) => variant.assetId === assetId)) {
+    const referencedVariant = family.variants.find((variant) => deleting.has(variant.assetId));
+    if (referencedVariant) {
       throw new StorageError(
-        `削除対象アセット（id: ${assetId}）は Family（id: ${family.id}）の variant として残っています。先に variant エントリを除去した Project を渡してください`,
+        `削除対象アセット（id: ${referencedVariant.assetId}）は Family（id: ${family.id}）の variant として残っています。先に variant エントリを除去した Project を渡してください`,
       );
     }
   }
@@ -1645,31 +1657,43 @@ export async function deleteAssetBundle({
     [STORE_PROJECTS, STORE_ASSETS, STORE_BLOBS, STORE_SNAPSHOTS],
     'readwrite',
     async (tx) => {
-      const assetRecord = await requestToPromise(
-        tx.objectStore(STORE_ASSETS).get(assetId) as IDBRequest<StoredAssetRecord | undefined>,
-      );
-      if (assetRecord && assetRecord.projectId !== project.id) {
-        throw new StorageError(
-          `削除対象アセット（id: ${assetId}）は Project（id: ${project.id}）に属していません`,
+      const assetRecords: StoredAssetRecord[] = [];
+      for (const assetId of assetIds) {
+        const assetRecord = await requestToPromise(
+          tx.objectStore(STORE_ASSETS).get(assetId) as IDBRequest<StoredAssetRecord | undefined>,
         );
+        if (assetRecord && assetRecord.projectId !== project.id) {
+          throw new StorageError(
+            `削除対象アセット（id: ${assetId}）は Project（id: ${project.id}）に属していません`,
+          );
+        }
+        if (assetRecord) {
+          assetRecords.push(assetRecord);
+        }
       }
       await requestToPromise(tx.objectStore(STORE_PROJECTS).put(project));
-      if (!assetRecord) {
-        return;
-      }
-      await requestToPromise(tx.objectStore(STORE_ASSETS).delete(assetId));
-      await deleteSnapshotsForAssetInTx(tx, project.id, assetId);
-      const prefix = `${assetId}/`;
       const blobKeys = await requestToPromise(
-        tx.objectStore(STORE_BLOBS).index(INDEX_BY_PROJECT).getAllKeys(assetRecord.projectId),
+        tx.objectStore(STORE_BLOBS).index(INDEX_BY_PROJECT).getAllKeys(project.id),
       );
-      for (const key of blobKeys) {
-        if (typeof key === 'string' && key.startsWith(prefix)) {
-          await requestToPromise(tx.objectStore(STORE_BLOBS).delete(key));
+      for (const assetRecord of assetRecords) {
+        await requestToPromise(tx.objectStore(STORE_ASSETS).delete(assetRecord.id));
+        await deleteSnapshotsForAssetInTx(tx, project.id, assetRecord.id);
+        const prefix = `${assetRecord.id}/`;
+        for (const key of blobKeys) {
+          if (typeof key === 'string' && key.startsWith(prefix)) {
+            await requestToPromise(tx.objectStore(STORE_BLOBS).delete(key));
+          }
         }
       }
     },
   );
+}
+
+export async function deleteAssetBundle({
+  project,
+  assetId,
+}: DeleteAssetBundleInput): Promise<void> {
+  await deleteAssetsBundle({ project, assetIds: [assetId] });
 }
 
 export async function saveBlob(projectId: string, key: string, blob: Blob): Promise<void> {

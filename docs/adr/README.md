@@ -77,4 +77,4 @@ ADR は仕様を新しく作るものではない。`2D_ASSET_DATA_CONTRACT.md` 
 
 `2D-2-IMPORT-OPTIONAL` / `2D-2-AI-BOUNDARY`（ADR 0016〜0017、group 11 Slice A）も同じ変更範囲の原則に従う。任意取り込み形式の分類と AI 境界の**契約境界**を ADR として固定するのみで、rasterized-import の実装・consent UI・AI 連携・`Asset.provenance` の schema 追加は本 slice の範囲外である（provenance 導入は `docs/future/2D_2_IMPORT_PLAN.md` の Slice B、rasterized-import は Slice E）。上位文書が `2D_ASSET_DATA_CONTRACT.md` 以外（互換 matrix / import 計画）にまたがる点が 2D-1A 系と異なる。
 
-group 11 Slice Bは、ADR-0013の再検討条件とaccepted P1に従って`Asset.provenance?`をoptional / additiveに実装する。source-file recordだけを厳格化し、`sourceFileName`を持たない旧候補・AI候補recordはopen recordとして保持する。AIの具体field、外部送信、consent UIは引き続き範囲外である。
+group 11 Slice BはPR #126で、ADR-0013の再検討条件とaccepted P1に従って`Asset.provenance?`をoptional / additiveに実装済みである。source-file recordだけを厳格化し、`sourceFileName`を持たない旧候補・AI候補recordはopen recordとして保持する。AIの具体field、外部送信、consent UIは引き続き範囲外である。

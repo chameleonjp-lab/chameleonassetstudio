@@ -23,11 +23,35 @@ export const SUPPORTED_IMPORT_MIME_TYPES = ['image/png', 'image/jpeg', 'image/we
 
 export type SupportedImportMimeType = (typeof SUPPORTED_IMPORT_MIME_TYPES)[number];
 
+export type ImageImportFailureKind =
+  | 'unsupported-type'
+  | 'file-size'
+  | 'signature'
+  | 'decode'
+  | 'dimension'
+  | 'hash'
+  | 'encode'
+  | 'environment'
+  | 'asset';
+
 export class ImageImportError extends Error {
-  constructor(message: string, options?: ErrorOptions) {
+  readonly kind: ImageImportFailureKind;
+
+  constructor(message: string, options?: ErrorOptions & { kind?: ImageImportFailureKind }) {
     super(message, options);
     this.name = 'ImageImportError';
+    this.kind = options?.kind ?? 'environment';
   }
+}
+
+/** Q1で既存quarantineへ接続する、入力file自体に起因する3分類。 */
+export function isQuarantinableImageImportError(
+  error: unknown,
+): error is ImageImportError & { kind: 'signature' | 'decode' | 'dimension' } {
+  return (
+    error instanceof ImageImportError &&
+    (error.kind === 'signature' || error.kind === 'decode' || error.kind === 'dimension')
+  );
 }
 
 /** ファイル選択直後の制限チェック。問題があれば理由の文章を返す。 */
@@ -71,7 +95,7 @@ export function extensionForMimeType(mimeType: SupportedImportMimeType): 'png' |
   }
 }
 
-interface DecodedImage {
+export interface DecodedImage {
   source: CanvasImageSource;
   width: number;
   height: number;
@@ -88,7 +112,7 @@ async function decodeImage(blob: Blob): Promise<DecodedImage> {
   } catch (error) {
     throw new ImageImportError(
       '画像をデコードできませんでした。ファイルが壊れている可能性があります。',
-      { cause: error },
+      { cause: error, kind: 'decode' },
     );
   }
 }
@@ -111,7 +135,9 @@ function createDrawTarget(width: number, height: number): DrawTarget {
   canvas.height = height;
   const context = canvas.getContext('2d');
   if (!context) {
-    throw new ImageImportError('この環境では Canvas 2D が使えません。');
+    throw new ImageImportError('この環境では Canvas 2D が使えません。', {
+      kind: 'environment',
+    });
   }
   return { canvas, context };
 }
@@ -149,7 +175,71 @@ async function encodeWithFallback(
       return blob;
     }
   }
-  throw new ImageImportError('画像のエンコードに失敗しました。');
+  throw new ImageImportError('画像のエンコードに失敗しました。', { kind: 'encode' });
+}
+
+export interface DecodedImageRegion {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** decode済み画像の指定領域を透明維持のPNGへ変換する。 */
+export async function encodeDecodedImageRegion(
+  decoded: DecodedImage,
+  region: DecodedImageRegion,
+  outputSize: { width: number; height: number } = region,
+): Promise<Blob> {
+  const target = createDrawTarget(outputSize.width, outputSize.height);
+  target.context.drawImage(
+    decoded.source,
+    region.x,
+    region.y,
+    region.width,
+    region.height,
+    0,
+    0,
+    outputSize.width,
+    outputSize.height,
+  );
+  return encodeWithFallback(target, ['image/png']);
+}
+
+export interface EncodedThumbnail {
+  blob: Blob;
+  size: { width: number; height: number };
+}
+
+/** decode済み画像の指定領域から最大256pxのthumbnailを作る。 */
+export async function encodeDecodedThumbnail(
+  decoded: DecodedImage,
+  region: DecodedImageRegion = {
+    x: 0,
+    y: 0,
+    width: decoded.width,
+    height: decoded.height,
+  },
+): Promise<EncodedThumbnail> {
+  const scale = Math.min(1, THUMBNAIL_MAX_DIMENSION / Math.max(region.width, region.height));
+  const width = Math.max(1, Math.round(region.width * scale));
+  const height = Math.max(1, Math.round(region.height * scale));
+  const target = createDrawTarget(width, height);
+  target.context.drawImage(
+    decoded.source,
+    region.x,
+    region.y,
+    region.width,
+    region.height,
+    0,
+    0,
+    width,
+    height,
+  );
+  return {
+    blob: await encodeWithFallback(target, ['image/webp', 'image/png'], 0.85),
+    size: { width, height },
+  };
 }
 
 /** アセット ID とテクスチャ相対パスから、IndexedDB 用の Blob キーを作る。 */
@@ -160,7 +250,9 @@ export function blobKeyFor(assetId: string, texturePath: string): string {
 /** 保存するsource Blob原本のbytesをSHA-256で識別する。 */
 export async function sha256Blob(blob: Blob): Promise<`sha256:${string}`> {
   if (!globalThis.crypto?.subtle) {
-    throw new ImageImportError('この環境では取り込み元のSHA-256を計算できません。');
+    throw new ImageImportError('この環境では取り込み元のSHA-256を計算できません。', {
+      kind: 'hash',
+    });
   }
   try {
     const digest = await globalThis.crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
@@ -169,11 +261,14 @@ export async function sha256Blob(blob: Blob): Promise<`sha256:${string}`> {
       .join('');
     return `sha256:${hex}`;
   } catch (error) {
-    throw new ImageImportError('取り込み元のSHA-256計算に失敗しました。', { cause: error });
+    throw new ImageImportError('取り込み元のSHA-256計算に失敗しました。', {
+      cause: error,
+      kind: 'hash',
+    });
   }
 }
 
-function sourceFileProvenance(
+export function sourceFileProvenance(
   file: File,
   hash: `sha256:${string}`,
   importedAt: string,
@@ -187,6 +282,48 @@ function sourceFileProvenance(
     importedAt,
     textureId,
   };
+}
+
+export interface ValidatedImageFile {
+  decoded: DecodedImage;
+  mimeType: SupportedImportMimeType;
+  extension: 'png' | 'jpg' | 'webp';
+  hash: `sha256:${string}`;
+}
+
+/** signature・寸法・decode・hashを共通順序で検査し、呼び出し側へdecode結果を貸し出す。 */
+export async function decodeValidatedImageFile(file: File): Promise<ValidatedImageFile> {
+  const fileError = checkImportFile(file);
+  if (fileError) {
+    throw new ImageImportError(fileError, {
+      kind: file.size > MAX_IMPORT_FILE_BYTES ? 'file-size' : 'unsupported-type',
+    });
+  }
+  try {
+    await assertFileImageSignature(file);
+  } catch (error) {
+    throw new ImageImportError(error instanceof Error ? error.message : String(error), {
+      cause: error,
+      kind: 'signature',
+    });
+  }
+  const decoded = await decodeImage(file);
+  const dimensionError = checkImageDimensions(decoded.width, decoded.height);
+  if (dimensionError) {
+    decoded.close();
+    throw new ImageImportError(dimensionError, { kind: 'dimension' });
+  }
+  try {
+    return {
+      decoded,
+      mimeType: file.type as SupportedImportMimeType,
+      extension: extensionForMimeType(file.type as SupportedImportMimeType),
+      hash: await sha256Blob(file),
+    };
+  } catch (error) {
+    decoded.close();
+    throw error;
+  }
 }
 
 export interface ImportImageResult {
@@ -205,13 +342,16 @@ export interface ImportImageResult {
 export async function importImageFile(file: File): Promise<ImportImageResult> {
   const fileError = checkImportFile(file);
   if (fileError) {
-    throw new ImageImportError(fileError);
+    throw new ImageImportError(fileError, {
+      kind: file.size > MAX_IMPORT_FILE_BYTES ? 'file-size' : 'unsupported-type',
+    });
   }
   try {
     await assertFileImageSignature(file);
   } catch (error) {
     throw new ImageImportError(error instanceof Error ? error.message : String(error), {
       cause: error,
+      kind: 'signature',
     });
   }
   const mimeType = file.type as SupportedImportMimeType;
@@ -221,7 +361,7 @@ export async function importImageFile(file: File): Promise<ImportImageResult> {
   try {
     const dimensionError = checkImageDimensions(decoded.width, decoded.height);
     if (dimensionError) {
-      throw new ImageImportError(dimensionError);
+      throw new ImageImportError(dimensionError, { kind: 'dimension' });
     }
 
     // 編集用画像: PNG に正規化して透明情報を維持する
@@ -254,7 +394,9 @@ export async function importImageFile(file: File): Promise<ImportImageResult> {
     const editTexture = asset.textures.find((tex) => tex.kind === 'edit');
     const thumbTexture = asset.textures.find((tex) => tex.kind === 'thumbnail');
     if (!sourceTexture || !editTexture || !thumbTexture) {
-      throw new ImageImportError('アセットのテクスチャ定義が不正です。');
+      throw new ImageImportError('アセットのテクスチャ定義が不正です。', {
+        kind: 'asset',
+      });
     }
     asset.provenance = [
       sourceFileProvenance(file, sourceHash, importedAt.toISOString(), sourceTexture.id),
@@ -292,13 +434,16 @@ export interface ImportLayerResult {
 export async function importImageAsLayer(file: File, asset: Asset): Promise<ImportLayerResult> {
   const fileError = checkImportFile(file);
   if (fileError) {
-    throw new ImageImportError(fileError);
+    throw new ImageImportError(fileError, {
+      kind: file.size > MAX_IMPORT_FILE_BYTES ? 'file-size' : 'unsupported-type',
+    });
   }
   try {
     await assertFileImageSignature(file);
   } catch (error) {
     throw new ImageImportError(error instanceof Error ? error.message : String(error), {
       cause: error,
+      kind: 'signature',
     });
   }
   const mimeType = file.type as SupportedImportMimeType;
@@ -309,7 +454,7 @@ export async function importImageAsLayer(file: File, asset: Asset): Promise<Impo
   try {
     const dimensionError = checkImageDimensions(decoded.width, decoded.height);
     if (dimensionError) {
-      throw new ImageImportError(dimensionError);
+      throw new ImageImportError(dimensionError, { kind: 'dimension' });
     }
 
     const editTarget = createDrawTarget(decoded.width, decoded.height);

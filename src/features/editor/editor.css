@@ -1585,6 +1585,108 @@
   border-radius: 4px;
 }
 
+.import-frame-set-panel,
+.import-frame-set-config {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.import-frame-set-grid-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.import-frame-set-files,
+.import-preview-files {
+  margin: 0;
+  padding-left: 1.4rem;
+  overflow-wrap: anywhere;
+}
+
+.import-frame-set-file-name {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.import-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right))
+    max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+  background: rgb(0 0 0 / 62%);
+}
+
+.import-preview-dialog {
+  width: min(42rem, 100%);
+  max-height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #8888;
+  border-radius: 8px;
+  background: Canvas;
+  color: CanvasText;
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 35%);
+}
+
+.import-preview-dialog h2,
+.import-preview-dialog h3,
+.import-preview-dialog p,
+.import-preview-dialog ul,
+.import-preview-dialog ol {
+  margin-top: 0;
+  margin-bottom: 0.4rem;
+}
+
+.import-preview-mode {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: color-mix(in srgb, CanvasText 75%, #3a86ff 25%);
+}
+
+.import-preview-losses,
+.import-preview-warnings {
+  padding: 0.65rem;
+  border: 1px solid #c37a00;
+  border-radius: 5px;
+  background: color-mix(in srgb, Canvas 88%, #ffb703 12%);
+  overflow-wrap: anywhere;
+}
+
+.import-preview-warning-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  min-height: 44px;
+  padding: 0.55rem;
+  font-weight: 600;
+}
+
+.import-preview-warning-confirm input {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+
+.import-preview-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
+}
+
+.import-preview-actions button {
+  min-height: 44px;
+}
+
 /* iPad / PC: 折りたたみボタンで左右パネルを閉じられる */
 @media (min-width: 768px) {
   .editor-side.collapsed {
@@ -1708,6 +1810,35 @@
 
   .asset-batch-config-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .import-frame-set-grid-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .import-frame-set-panel input[type='number'],
+  .import-frame-set-panel select {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .import-frame-set-panel .import-button {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .import-preview-backdrop {
+    place-items: stretch;
+  }
+
+  .import-preview-dialog {
+    width: auto;
+  }
+
+  .import-preview-actions {
+    flex-direction: column-reverse;
   }
 
   /* スマホでは主要操作ボタンのタップ対象が小さすぎないようにする（Phase 12）。

@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { confirmImageImport } from './importTestHelpers';
 
 /** 単色 PNG を生成する。transparentRightHalf 指定時は右半分を透明にする。 */
 async function makePngBuffer(
@@ -29,6 +30,7 @@ async function setupProject(page: Page, name: string, png: Buffer): Promise<Loca
   await page
     .getByLabel('画像を選ぶ')
     .setInputFiles({ name: 'sprite.png', mimeType: 'image/png', buffer: png });
+  await confirmImageImport(page);
   const canvas = page.getByLabel('アセットキャンバス');
   await expect(canvas).toBeVisible();
   return canvas;

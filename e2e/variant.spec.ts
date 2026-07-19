@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { confirmImageImport } from './importTestHelpers';
 
 interface StoredVariant {
   assetId: string;
@@ -155,6 +156,7 @@ test('linked mirrorはbase変更をstale判定し、preview後の明示refresh�
   await page
     .getByLabel('画像を選ぶ')
     .setInputFiles({ name: 'hero.png', mimeType: 'image/png', buffer });
+  await confirmImageImport(page);
   await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
 
   const stateBefore = await readStoredState(page);
@@ -248,6 +250,7 @@ test('linked paletteはbase Blob変更をpreview画像で比較して明示refre
   await page
     .getByLabel('画像を選ぶ')
     .setInputFiles({ name: 'red.png', mimeType: 'image/png', buffer });
+  await confirmImageImport(page);
   await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
 
   const base = (await readStoredState(page)).assets[0];

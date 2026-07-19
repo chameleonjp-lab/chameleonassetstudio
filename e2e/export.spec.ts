@@ -1,6 +1,7 @@
 import { readFile, stat } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 import { unzipSync } from 'fflate';
+import { confirmImageImport } from './importTestHelpers';
 
 async function makePngBuffer(page: Page): Promise<Buffer> {
   const dataUrl = await page.evaluate(() => {
@@ -24,6 +25,7 @@ async function setupProjectWithImage(page: Page, name: string): Promise<void> {
   await page
     .getByLabel('画像を選ぶ')
     .setInputFiles({ name: 'base.png', mimeType: 'image/png', buffer });
+  await confirmImageImport(page);
   await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
 }
 

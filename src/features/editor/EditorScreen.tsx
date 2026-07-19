@@ -8,7 +8,19 @@ import {
   type DragEvent,
 } from 'react';
 import { History } from '../../core/history/history';
-import { blobKeyFor, importImageAsLayer, importImageFile } from '../../core/images/importImage';
+import {
+  blobKeyFor,
+  importImageAsLayer,
+  importImageFile,
+  isQuarantinableImageImportError,
+} from '../../core/images/importImage';
+import {
+  FrameSetImportError,
+  prepareSequenceImport,
+  prepareSpriteSheetImport,
+  type ManualGridInput,
+  type PreparedFrameSetImport,
+} from '../../core/images/importFrameSet';
 import { assertImageBatchCount } from '../../core/input/inputSafety';
 import {
   MAX_LAYER_IMAGE_EDGE,
@@ -68,6 +80,7 @@ import {
   cancelSnapshotRestore,
   commitSnapshotRestore,
   deleteAssetBundle,
+  deleteAssetsBundle,
   listProjectAssets,
   listSnapshots,
   loadBlob,
@@ -79,6 +92,7 @@ import {
   saveAssetRevision,
   saveProject,
   saveProjectBundle,
+  saveQuarantineEntry,
   saveSnapshot,
   type AssetSnapshotSummary,
   type SaveState,
@@ -120,6 +134,8 @@ import {
 import { ExportPanel } from './ExportPanel';
 import { GameAttributesPanel } from './GameAttributesPanel';
 import { GameDataPanel } from './GameDataPanel';
+import { ImportFrameSetPanel } from './ImportFrameSetPanel';
+import { ImportPreviewDialog, type ImportPreviewContent } from './ImportPreviewDialog';
 import { LayerPanel } from './LayerPanel';
 import { PartPanel } from './PartPanel';
 import { RigPanel } from './RigPanel';
@@ -266,6 +282,43 @@ interface VariantRefreshPreviewState {
   variantBlobs: Map<string, Blob>;
 }
 
+interface PendingNewAssetsImageImport {
+  kind: 'new-assets';
+  preview: ImportPreviewContent;
+  beforeProject: Project;
+  beforeSelectedAssetId: string | null;
+  stagedAssets: Asset[];
+  blobs: Array<{ key: string; blob: Blob }>;
+}
+
+interface PendingLayerImageImport {
+  kind: 'layers';
+  preview: ImportPreviewContent;
+  beforeAsset: Asset;
+  afterAsset: Asset;
+  blobs: Array<{ key: string; blob: Blob }>;
+  sourceCreateKeys: string[];
+  selectedLayerId: string | null;
+}
+
+type PendingImageImport = PendingNewAssetsImageImport | PendingLayerImageImport;
+
+function frameSetPreviewContent(result: PreparedFrameSetImport): ImportPreviewContent {
+  return {
+    id: generateId('import_preview'),
+    modeLabel: result.preview.mode === 'sequence' ? '連番画像' : 'Sprite Sheet（手動格子）',
+    title: result.preview.title,
+    fileNames: result.preview.fileNames,
+    assetCount: result.preview.assetCount,
+    layerCount: result.preview.layerCount,
+    frameCount: result.preview.frameCount,
+    animationCount: result.preview.animationCount,
+    details: result.preview.details,
+    losses: result.preview.losses,
+    warnings: result.preview.warnings,
+  };
+}
+
 function projectFamilyMembership(project: Project, assetId: string) {
   for (const family of project.families ?? []) {
     if (family.baseAssetId === assetId) {
@@ -389,6 +442,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [editorError, setEditorError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [importStatusLabel, setImportStatusLabel] = useState('画像を取り込み中…');
+  const [pendingImageImport, setPendingImageImport] = useState<PendingImageImport | null>(null);
   const [imageProcessing, setImageProcessing] = useState<ImageProcessingState | null>(null);
   const mutationBusyRef = useRef(false);
   const [mutationBusy, setMutationBusy] = useState(false);
@@ -535,7 +589,11 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   }, [projectId]);
 
   const persistentMutationBlocked =
-    historyState.isBusy || mutationBusy || alphaInspecting || paletteInspecting;
+    historyState.isBusy ||
+    mutationBusy ||
+    alphaInspecting ||
+    paletteInspecting ||
+    pendingImageImport !== null;
 
   const selectedAsset = assets.find((asset) => asset.id === selectedAssetId) ?? assets[0] ?? null;
   const selectedFamilyMembership =
@@ -2152,54 +2210,253 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     await deleteAssetWithFamilyReferences(asset);
   };
 
+  const quarantineFailedImage = async (file: File | undefined, error: unknown) => {
+    if (!file) {
+      return false;
+    }
+    const cause = error instanceof FrameSetImportError ? error.cause : error;
+    if (!isQuarantinableImageImportError(cause)) {
+      return false;
+    }
+    try {
+      await saveQuarantineEntry({
+        fileName: file.name,
+        errorMessage: cause.message,
+        bytes: await file.arrayBuffer(),
+      });
+      return true;
+    } catch {
+      // quarantine保存の失敗で、利用者が直すべき元の画像import errorを隠さない。
+      return false;
+    }
+  };
+
+  const stageFrameSetResult = (result: PreparedFrameSetImport) => {
+    if (!project) return;
+    setPendingImageImport({
+      kind: 'new-assets',
+      preview: frameSetPreviewContent(result),
+      beforeProject: project,
+      beforeSelectedAssetId: selectedAssetId,
+      stagedAssets: [result.asset],
+      blobs: result.blobs,
+    });
+  };
+
   const handleFiles = async (files: Iterable<File>) => {
     const batch = Array.from(files);
-    if (batch.length === 0) {
-      return;
-    }
-    if (!beginEditorPersistentMutation()) {
-      return;
-    }
-    if (!project) {
-      endEditorPersistentMutation();
+    if (batch.length === 0 || !project || !beginEditorPersistentMutation()) {
       return;
     }
     setEditorError(null);
-    setImportStatusLabel('画像を取り込み中…');
+    setImportStatusLabel('通常画像のpreviewを準備中…');
     setImporting(true);
+    let currentFile: File | undefined;
     try {
       assertImageBatchCount(batch.length);
       const staged = [];
       for (const file of batch) {
+        currentFile = file;
         staged.push(await importImageFile(file));
       }
       const stagedAssets = staged.map(({ asset }) => asset);
-      const nextProject: Project = {
-        ...project,
-        assets: [
-          ...project.assets,
-          ...stagedAssets.map((asset) => ({
-            id: asset.id,
-            name: asset.name,
-            displayName: asset.displayName,
-            assetType: asset.assetType,
-          })),
-        ],
-        updatedAt: new Date().toISOString(),
-      };
-      await saveProjectBundle(
-        nextProject,
+      setPendingImageImport({
+        kind: 'new-assets',
+        preview: {
+          id: generateId('import_preview'),
+          modeLabel: '通常画像（1 file = 1 Asset）',
+          title: `${stagedAssets.length}件の独立Asset`,
+          fileNames: batch.map((file) => file.name),
+          assetCount: stagedAssets.length,
+          layerCount: stagedAssets.reduce((sum, asset) => sum + asset.layers.length, 0),
+          frameCount: stagedAssets.reduce((sum, asset) => sum + (asset.frames?.length ?? 0), 0),
+          animationCount: stagedAssets.reduce((sum, asset) => sum + asset.animations.length, 0),
+          details: [
+            '各fileを独立したAssetとして作成します。連番としてまとめる場合は専用モードを使ってください。',
+            'source Blobは入力bytesのまま保持し、edit PNG・thumbnail・provenanceを作成します。',
+            '対応していない内容や失われる画像pixelはありません。',
+          ],
+          losses: [],
+          warnings: [],
+        },
+        beforeProject: project,
+        beforeSelectedAssetId: selectedAssetId,
         stagedAssets,
-        staged.flatMap(({ blobs }) => blobs),
+        blobs: staged.flatMap(({ blobs }) => blobs),
+      });
+    } catch (error) {
+      const quarantined = await quarantineFailedImage(currentFile, error);
+      setEditorError(
+        `${error instanceof Error ? error.message : String(error)} 選択した画像は1件も追加されていません。${
+          quarantined ? ' 失敗したfileを隔離しました。' : ''
+        }`,
       );
-      setProject(nextProject);
-      setAssets((prev) => [...prev, ...stagedAssets]);
-      setSelectedAssetId(stagedAssets.at(-1)?.id ?? null);
-      setSelectedLayerId(null);
-      history.clear();
+    } finally {
+      setImporting(false);
+      endEditorPersistentMutation();
+    }
+  };
+
+  const handlePrepareSequenceImport = async (files: File[]) => {
+    if (!project || files.length === 0 || !beginEditorPersistentMutation()) {
+      return;
+    }
+    setEditorError(null);
+    setImportStatusLabel('連番previewを準備中…');
+    setImporting(true);
+    try {
+      stageFrameSetResult(await prepareSequenceImport(files));
+    } catch (error) {
+      const failedFile = error instanceof FrameSetImportError ? error.file : undefined;
+      const quarantined = await quarantineFailedImage(failedFile, error);
+      setEditorError(
+        `${error instanceof Error ? error.message : String(error)} 正本は変更されていません。${
+          quarantined ? ' 失敗したfileを隔離しました。' : ''
+        }`,
+      );
+    } finally {
+      setImporting(false);
+      endEditorPersistentMutation();
+    }
+  };
+
+  const handlePrepareSpriteSheetImport = async (file: File, grid: ManualGridInput) => {
+    if (!project || !beginEditorPersistentMutation()) {
+      return;
+    }
+    setEditorError(null);
+    setImportStatusLabel('Sprite Sheet previewを準備中…');
+    setImporting(true);
+    try {
+      stageFrameSetResult(await prepareSpriteSheetImport(file, grid));
+    } catch (error) {
+      const quarantined = await quarantineFailedImage(file, error);
+      setEditorError(
+        `${error instanceof Error ? error.message : String(error)} 正本は変更されていません。${
+          quarantined ? ' 失敗したfileを隔離しました。' : ''
+        }`,
+      );
+    } finally {
+      setImporting(false);
+      endEditorPersistentMutation();
+    }
+  };
+
+  const handleCancelImageImport = () => {
+    if (importing) return;
+    setPendingImageImport(null);
+    setEditorError(null);
+  };
+
+  const handleConfirmImageImport = async () => {
+    const pending = pendingImageImport;
+    if (!pending || !project) {
+      return;
+    }
+    if (pending.kind === 'new-assets' && project.id !== pending.beforeProject.id) {
+      setEditorError('preview対象のProjectが変わりました。取り込みpreviewを作り直してください。');
+      return;
+    }
+    await history.waitForPending();
+    if (!beginEditorPersistentMutation()) {
+      return;
+    }
+    setEditorError(null);
+    setImportStatusLabel('取り込み内容を原子保存中…');
+    setImporting(true);
+    try {
+      if (pending.kind === 'new-assets') {
+        const beforeProject = pending.beforeProject;
+        const beforeAssets = assets;
+        const importedIds = new Set(pending.stagedAssets.map((asset) => asset.id));
+        const afterProject: Project = {
+          ...beforeProject,
+          assets: [
+            ...beforeProject.assets,
+            ...pending.stagedAssets.map((asset) => ({
+              id: asset.id,
+              name: asset.name,
+              displayName: asset.displayName,
+              assetType: asset.assetType,
+            })),
+          ],
+          updatedAt: new Date().toISOString(),
+        };
+        const afterAssets = [...beforeAssets, ...pending.stagedAssets];
+        const applyAfterState = () => {
+          setProject(afterProject);
+          setAssets(afterAssets);
+          setSelectedAssetId(pending.stagedAssets.at(-1)?.id ?? null);
+          setSelectedLayerId(null);
+          setCheckedLayerIds([]);
+          setVariantPreview(null);
+        };
+        const applyBeforeState = () => {
+          setProject(beforeProject);
+          setAssets(beforeAssets.filter((asset) => !importedIds.has(asset.id)));
+          setSelectedAssetId(
+            pending.beforeSelectedAssetId ??
+              beforeAssets.find((asset) => !importedIds.has(asset.id))?.id ??
+              null,
+          );
+          setSelectedLayerId(null);
+          setCheckedLayerIds([]);
+          setVariantPreview(null);
+        };
+        await autosave.flush();
+        await commitPersistentMutationWithHistory({
+          apply: async () => {
+            await saveProjectBundle(afterProject, pending.stagedAssets, pending.blobs);
+            applyAfterState();
+          },
+          history,
+          entry: {
+            label: '画像取り込み',
+            undo: async () => {
+              await autosave.flush();
+              await deleteAssetsBundle({
+                project: beforeProject,
+                assetIds: pending.stagedAssets.map((asset) => asset.id),
+              });
+              applyBeforeState();
+            },
+            redo: async () => {
+              await autosave.flush();
+              await saveProjectBundle(afterProject, pending.stagedAssets, pending.blobs);
+              applyAfterState();
+            },
+          },
+        });
+      } else {
+        const blobKeys = pending.blobs.map(({ key }) => key);
+        const redoBlobs = pending.blobs.map(({ key, blob }) => ({ key, blob }));
+        await commitPersistentMutationWithHistory({
+          apply: () =>
+            saveAssetRevisionAndApply(pending.afterAsset, {
+              putBlobs: pending.blobs,
+              sourceBlobTransitions: { createKeys: pending.sourceCreateKeys },
+            }),
+          history,
+          entry: {
+            label: '画像レイヤー一括追加',
+            undo: () =>
+              saveAssetRevisionAndApply(pending.beforeAsset, {
+                deleteBlobKeys: blobKeys,
+                sourceBlobTransitions: { deleteKeys: pending.sourceCreateKeys },
+              }),
+            redo: () =>
+              saveAssetRevisionAndApply(pending.afterAsset, {
+                putBlobs: redoBlobs,
+                sourceBlobTransitions: { createKeys: pending.sourceCreateKeys },
+              }),
+          },
+        });
+        setSelectedLayerId(pending.selectedLayerId);
+      }
+      setPendingImageImport(null);
     } catch (error) {
       setEditorError(
-        `${error instanceof Error ? error.message : String(error)} 選択した画像は1件も追加されていません。`,
+        `${error instanceof Error ? error.message : String(error)} 正本は部分更新されていません。previewを確認して再試行してください。`,
       );
     } finally {
       setImporting(false);
@@ -2510,12 +2767,14 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       return;
     }
     setEditorError(null);
-    setImportStatusLabel('画像レイヤーを取り込み中…');
+    setImportStatusLabel('画像レイヤーのpreviewを準備中…');
     setImporting(true);
+    let currentFile: File | undefined;
     try {
       assertImageBatchCount(files.length);
       const staged = [];
       for (const file of files) {
+        currentFile = file;
         staged.push(await importImageAsLayer(file, selectedAsset));
       }
       const before = selectedAsset;
@@ -2527,37 +2786,41 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         provenance: [...(before.provenance ?? []), ...staged.map(({ provenance }) => provenance)],
       };
       const blobs = staged.flatMap(({ blobs: resultBlobs }) => resultBlobs);
-      const blobKeys = blobs.map(({ key }) => key);
       const sourceCreateKeys = staged
         .flatMap(({ textures }) => textures)
         .filter((texture) => texture.kind === 'source')
         .map((texture) => blobKeyFor(before.id, texture.path));
-      const redoBlobs = blobs.map(({ key, blob }) => ({ key, blob }));
-      await commitPersistentMutationWithHistory({
-        apply: () =>
-          saveAssetRevisionAndApply(after, {
-            putBlobs: blobs,
-            sourceBlobTransitions: { createKeys: sourceCreateKeys },
-          }),
-        history,
-        entry: {
-          label: '画像レイヤー一括追加',
-          undo: () =>
-            saveAssetRevisionAndApply(before, {
-              deleteBlobKeys: blobKeys,
-              sourceBlobTransitions: { deleteKeys: sourceCreateKeys },
-            }),
-          redo: () =>
-            saveAssetRevisionAndApply(after, {
-              putBlobs: redoBlobs,
-              sourceBlobTransitions: { createKeys: sourceCreateKeys },
-            }),
+      setPendingImageImport({
+        kind: 'layers',
+        preview: {
+          id: generateId('import_preview'),
+          modeLabel: '選択Assetへの画像layer追加',
+          title: `「${before.displayName}」へ${files.length} layer追加`,
+          fileNames: files.map((file) => file.name),
+          assetCount: 0,
+          layerCount: staged.length,
+          frameCount: 0,
+          animationCount: 0,
+          details: [
+            '選択中Assetの最前面へ画像layerを追加します。canvasSizeは変更しません。',
+            '各fileをsource Blobとしてそのまま保持し、edit PNGとprovenanceを1件ずつ作成します。',
+            '対応していない内容や失われる画像pixelはありません。',
+          ],
+          losses: [],
+          warnings: [],
         },
+        beforeAsset: before,
+        afterAsset: after,
+        blobs,
+        sourceCreateKeys,
+        selectedLayerId: staged.at(-1)?.layer.id ?? null,
       });
-      setSelectedLayerId(staged.at(-1)?.layer.id ?? null);
     } catch (error) {
+      const quarantined = await quarantineFailedImage(currentFile, error);
       setEditorError(
-        `${error instanceof Error ? error.message : String(error)} 選択した画像レイヤーは1件も追加されていません。`,
+        `${error instanceof Error ? error.message : String(error)} 選択した画像レイヤーは1件も追加されていません。${
+          quarantined ? ' 失敗したfileを隔離しました。' : ''
+        }`,
       );
     } finally {
       setImporting(false);
@@ -2956,6 +3219,15 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               新規アセットを作成
             </button>
           </fieldset>
+
+          {project && (
+            <ImportFrameSetPanel
+              accept={IMPORT_ACCEPT}
+              busy={persistentMutationBlocked || importing || creatingAsset || deletingAsset}
+              onPrepareSequence={handlePrepareSequenceImport}
+              onPrepareSheet={handlePrepareSpriteSheetImport}
+            />
+          )}
 
           {project && (
             <VariantPanel
@@ -3991,6 +4263,15 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           </button>
         ))}
       </nav>
+
+      {pendingImageImport && (
+        <ImportPreviewDialog
+          preview={pendingImageImport.preview}
+          busy={importing || mutationBusy}
+          onConfirm={handleConfirmImageImport}
+          onCancel={handleCancelImageImport}
+        />
+      )}
     </div>
   );
 }

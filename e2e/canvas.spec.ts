@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { confirmImageImport } from './importTestHelpers';
 
 async function makePngBuffer(page: Page): Promise<Buffer> {
   const dataUrl = await page.evaluate(() => {
@@ -22,6 +23,7 @@ async function setupProjectWithImage(page: Page, name: string): Promise<Locator>
   await page
     .getByLabel('画像を選ぶ')
     .setInputFiles({ name: 'sprite.png', mimeType: 'image/png', buffer });
+  await confirmImageImport(page);
   const canvas = page.getByLabel('アセットキャンバス');
   await expect(canvas).toBeVisible();
   return canvas;

@@ -172,7 +172,7 @@ Slice CはPR #121でmainへmerge済みである。次を同じ安全境界で実
 - canonical JSONとSHA-256による`sha256:<64hex>` fingerprint、`stale` / `manual-adjusted` / `ineligible`判定、変更対象と維持対象のpreview、palette Blobのbefore / after画像、明示refresh、手動調整上書きcheckboxを実装する。base保存だけではvariantを変更しない。
 - preview時に読んだbase / variant Assetと全Blobをcommit transaction内で再照合し、preview後の入力変更を競合として全体abortする。refreshはProject、variant Asset、edit Blob、snapshotを1 revisionで確定し、1回のUndo / Redoで戻す。後続の通常編集をUndoしてrefresh履歴まで戻る場合は、Project内容の完全一致を維持したまま`updatedAt`の進みだけを許容・保持する。Family / Asset追加削除・Project名変更などHistory外のProject構造操作を確定した時点では、適用不能な旧Historyをclearする。
 - 持ち越しSHOULD-1としてvariant削除時のFamily参照とAsset / Blobの同時除去、SHOULD-2として不正families付き保存Projectの非破壊standalone隔離copyと不正`.casproj`のquarantine、SHOULD-3として`blobPaths`の安全な相対path patternを実装する。
-- source Blob、Project / Asset schema version、IndexedDB version / store / index、`.casproj` ZIP配置、product export、dependenciesは変更しない。base付替え、複数targetの除外 / progress / cancel、group batchはSlice D以降で扱う。
+- source Blob、Project / Asset schema version、IndexedDB version / store / index、`.casproj` ZIP配置、product export、dependenciesは変更しない。base付替えは未実装のまま維持し、複数targetの除外 / progress / cancel、group batchはSlice D（PR #122）で実装済みである。
 
 ### Slice D: Atomic batch experience
 

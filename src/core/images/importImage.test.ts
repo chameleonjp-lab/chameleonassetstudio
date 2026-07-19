@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createImageAsset } from '../model';
 import { validateAsset } from '../schema/validate';
 import {
+  ImageImportError,
   MAX_IMPORT_DIMENSION,
   MAX_IMPORT_FILE_BYTES,
   assetNameFromFileName,
@@ -9,6 +10,7 @@ import {
   checkImageDimensions,
   checkImportFile,
   extensionForMimeType,
+  isQuarantinableImageImportError,
   sha256Blob,
 } from './importImage';
 
@@ -60,6 +62,25 @@ describe('checkImageDimensions', () => {
 
   it('0 以下の寸法は理由を返す', () => {
     expect(checkImageDimensions(0, 100)).not.toBeNull();
+  });
+});
+
+describe('isQuarantinableImageImportError', () => {
+  it('入力file自体に起因するsignature・decode・dimensionだけを隔離対象にする', () => {
+    for (const kind of ['signature', 'decode', 'dimension'] as const) {
+      expect(isQuarantinableImageImportError(new ImageImportError(kind, { kind }))).toBe(true);
+    }
+    for (const kind of [
+      'unsupported-type',
+      'file-size',
+      'hash',
+      'encode',
+      'environment',
+      'asset',
+    ] as const) {
+      expect(isQuarantinableImageImportError(new ImageImportError(kind, { kind }))).toBe(false);
+    }
+    expect(isQuarantinableImageImportError(new Error('unknown'))).toBe(false);
   });
 });
 

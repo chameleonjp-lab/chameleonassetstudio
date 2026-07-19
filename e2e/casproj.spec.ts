@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
+import { confirmImageImport } from './importTestHelpers';
 
 async function makePngBuffer(page: Page, width = 64, height = 64): Promise<Buffer> {
   const dataUrl = await page.evaluate(
@@ -33,6 +34,7 @@ async function setupProjectWithImage(
   await page
     .getByLabel('画像を選ぶ')
     .setInputFiles({ name: 'base.png', mimeType: 'image/png', buffer });
+  await confirmImageImport(page);
   await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
   return buffer;
 }
