@@ -1,6 +1,6 @@
 # Chameleon Asset Studio データ形式書
 
-最終更新日: 2026-07-17
+最終更新日: 2026-07-20
 対象バージョン: 0.1.0  
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`
 
@@ -195,6 +195,7 @@ batchはsession内で1 History entryとなり、Undo / Redoも前後を入れ替
 | animations            | Animation[]                                                              | ✔    | アニメーション設定                       |
 | tags                  | string[]                                                                 | ✔    | タグ                                     |
 | gameAttributes        | object                                                                   | ✔    | ゲーム側で自由に使う属性                 |
+| provenance            | AssetProvenanceRecord[]                                                  | 任意 | 取り込み元fileと将来のAI送信記録の来歴   |
 | tile                  | TileSettings                                                             | 任意 | tile アセット用設定（6.7）               |
 | gimmick               | GimmickSettings                                                          | 任意 | gimmick アセット用設定（6.7）            |
 | effect                | EffectSettings                                                           | 任意 | effect アセット用設定（6.7）             |
@@ -203,6 +204,23 @@ batchはsession内で1 History entryとなり、Undo / Redoも前後を入れ替
 座標系は、キャンバス左上を原点とし、右方向 x+、下方向 y+ とする。単位はピクセル。回転の単位は度。
 
 ズーム倍率、選択状態、開いているパネルなどの UI 状態はアセット本体へ入れない。
+
+### Asset.provenance（2D-2-IMPORT Slice B）
+
+`provenance`はoptional・additive fieldであり、不在の0.1.0 Assetは無変換のまま読む。既存データや過去の取り込みへ推定値を遡及補完しない。新しい単枚画像取り込みとlayer追加は、1つの元fileにつき次のsource-file recordを1件作る。
+
+| field | 型 | 必須 | 意味 |
+| --- | --- | --- | --- |
+| `sourceFileName` | string | ✔ | 正規化前の元file名 |
+| `mimeType` | string | ✔ | 元fileの宣言MIME type |
+| `byteLength` | integer（0以上） | ✔ | source Blob原本のbyte数 |
+| `hash` | `sha256:<64 lowercase hex>` | ✔ | source Blob原本bytesのSHA-256 |
+| `importedAt` | string（date-time） | ✔ | 取り込み日時 |
+| `textureId` | string | 任意 | 対応する`kind: "source"`のTextureRef ID |
+| `origin` | string | 任意 | 手動入力する取得元。現行UIでは未実装 |
+| `license` | string | 任意 | 手動入力する利用条件。現行UIでは未実装 |
+
+将来のAI送信記録fieldは未確定である。read-preserve-ignoreを維持するため、`sourceFileName`を持たないrecordはopen recordとして未知fieldを保持する。`sourceFileName`を持つsource-file recordだけは上表の必須fieldとhash形式をschemaで検証する。複製でTextureRef IDを再採番するときは`textureId`も同じ対応表で更新し、flip copyや`.casproj`再取り込みのようにTextureRef IDを維持する経路では参照も維持する。参照切れと正式recordからsource以外への参照は読み取り専用`inspectAsset`で表示し、保存・autosave・`.casproj`・exportを新たに止めない。
 
 ### 6.1 TextureRef
 

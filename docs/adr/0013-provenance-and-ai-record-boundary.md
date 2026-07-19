@@ -4,13 +4,15 @@
 上位文書: `docs/future/2D_ASSET_DATA_CONTRACT.md`（§11 入力の来歴・安全性）
 関連 fixture: `src/core/model/provenanceContract.fixtures.test.ts`（ADR-0013）
 
+実装追跡（2026-07-20）: group 11 Slice BでP1を適用する。source file recordは`sourceFileName`、`mimeType`、`byteLength`、source Blob原本bytesの`sha256:<64hex>`、`importedAt`を必須、`textureId`、`origin`、`license`を任意とする。schemaはこのsource recordだけを厳密検証し、既存のADR-0013 candidate recordとADR-0017 AI recordはopen recordとして保持する。単枚 / layer追加は1 file = 1 record、複製は`textureId`を新IDへ付け替え、flip copyはtexture IDを保持し、`.casproj`はasset IDだけを付け替える既存規則に従う。dangling参照はread-only inspectorへ接続し、保存・書き出しを阻止しない。0.1.0、migration、schema version、AI fieldは変更しない。
+
 ---
 
 ## 文脈
 
 `2D_ASSET_DATA_CONTRACT.md` §11 は、元データの来歴（ファイル名・形式・ハッシュ・取得元・利用条件・作成日）と、AI 利用時の送信記録（送信先・モデル名・生成日時・承認状態）を任意で記録できるようにすること、および秘密情報を保存しないことを規範として定めている。同じ §11 には SVG / atlas JSON / ZIP / 画像の不正入力検査（任意コード実行・外部 URL 自動読込・zip bomb・巨大画像・パス外参照の禁止）も含まれるが、これは別の関心事（入力の安全性検査）であり、`2D-1A-VALIDATION` / `2D-1B-INPUT-SAFETY` の work package の範囲である。本 ADR は §11 のうち**来歴・利用条件・AI 送信記録の保存境界のみ**を対象とし、不正入力検査は対象外とする。
 
-現行実装には AI 連携・外部送信コードが存在しない。素材の来歴に相当する情報も、`Asset` 型には専用のフィールドが無いまま、`assetNameFromFileName` によるファイル名正規化・source Blob の verbatim 保持・`createdAt`/`updatedAt` という形で暗黙的に存在している。将来 `Asset.provenance?` を追加する前に、(a) 置き場所と単位、(b) 任意性と非捏造の原則、(c) AI 送信記録との境界、(d) 秘密情報の禁止、(e) export への反映範囲、(f) 導入時の共通条件、(g) quarantine との役割分担を、実装前に契約として固定する。`Asset.provenance` の実装・schema 追加は行わない。
+本ADR採択時の実装には AI 連携・外部送信コードが存在しなかった。素材の来歴に相当する情報も、`Asset` 型には専用のフィールドが無いまま、`assetNameFromFileName` によるファイル名正規化・source Blob の verbatim 保持・`createdAt`/`updatedAt` という形で暗黙的に存在していた。将来 `Asset.provenance?` を追加する前に、(a) 置き場所と単位、(b) 任意性と非捏造の原則、(c) AI 送信記録との境界、(d) 秘密情報の禁止、(e) export への反映範囲、(f) 導入時の共通条件、(g) quarantine との役割分担を、実装前に契約として固定する。本ADR自体では`Asset.provenance`の実装・schema追加を行わなかった。
 
 ## 決定
 
@@ -37,7 +39,7 @@
 ## 影響と fixture
 
 - 影響 docs: `docs/future/2D_ASSET_DATA_CONTRACT.md` §11（境界確定の注記のみ、本文は書き換えない）。
-- 影響実装: なし（今回は実装しない。将来 `Asset.provenance` を追加する PR が `src/core/model/asset.ts` / `asset.schema.json` / preflight 検証を変更する）。
+- 影響実装: ADR採択時はなし。group 11 Slice Bで`src/core/model/asset.ts` / `asset.schema.json` / import・複製・flip copy・read-only inspectorを変更する。保存 / exportを阻止するpreflightは追加しない。
 - fixture: `src/core/model/provenanceContract.fixtures.test.ts` の ADR-0013 セクションで次を固定する。
   - 未知 root フィールド `provenance`（§11 候補フィールドを持つレコード配列）を持つ asset が `validateAsset` を通ること。
   - `textures[0]` に未知フィールド（`provenance: { source: 'local-file' }`）を足した asset が `validateAsset` を通ること（入れ子レベルの未知フィールド許容を、texture について名指しで初めて固定した）。

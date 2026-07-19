@@ -79,6 +79,27 @@ export const ITEM_ATTRIBUTE_KEYS = [
 ] as const;
 
 /**
+ * Asset に紐づく来歴 record の互換受け皿。
+ * AI 送信記録など将来 field は未確定のため unknown field を保持する。
+ */
+export interface AssetProvenanceRecord {
+  textureId?: string;
+  [key: string]: unknown;
+}
+
+/** 1つの取り込み元 file に対応する、Slice B で確定した来歴 record。 */
+export interface SourceFileProvenanceRecord extends AssetProvenanceRecord {
+  sourceFileName: string;
+  mimeType: string;
+  byteLength: number;
+  hash: `sha256:${string}`;
+  importedAt: IsoDateTimeString;
+  textureId?: string;
+  origin?: string;
+  license?: string;
+}
+
+/**
  * ゲームに組み込む 1 つの素材。`asset.json` に対応する。
  * UI 状態（ズーム倍率、選択状態、開いているパネルなど）は含めない。
  */
@@ -105,6 +126,8 @@ export interface Asset {
   tags: string[];
   /** ゲーム側で自由に使う属性（例: maxHp、rarity）。 */
   gameAttributes: Record<string, unknown>;
+  /** 取り込み元や将来のAI送信記録。旧dataでは不在のoptional field。 */
+  provenance?: AssetProvenanceRecord[];
   /** tile アセット用設定（Phase 14）。 */
   tile?: TileSettings;
   /** gimmick アセット用設定（Phase 14）。 */

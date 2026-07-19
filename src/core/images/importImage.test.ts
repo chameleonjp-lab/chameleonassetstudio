@@ -9,6 +9,7 @@ import {
   checkImageDimensions,
   checkImportFile,
   extensionForMimeType,
+  sha256Blob,
 } from './importImage';
 
 describe('checkImportFile', () => {
@@ -80,6 +81,14 @@ describe('assetNameFromFileName / extensionForMimeType', () => {
   });
 });
 
+describe('sha256Blob', () => {
+  it('source Blob原本のbytesをlowercase SHA-256で返す', async () => {
+    await expect(sha256Blob(new Blob(['abc']))).resolves.toBe(
+      'sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+    );
+  });
+});
+
 describe('createImageAsset', () => {
   const options = {
     name: 'hero',
@@ -124,5 +133,16 @@ describe('createImageAsset', () => {
 
   it('blobKeyFor はアセット ID とパスを結合する', () => {
     expect(blobKeyFor('asset_1', 'textures/main.png')).toBe('asset_1/textures/main.png');
+  });
+
+  it('thumbnailには実際に縮小した寸法を記録できる', () => {
+    const asset = createImageAsset({
+      ...options,
+      thumbnailSize: { width: 256, height: 128 },
+    });
+    expect(asset.textures.find((texture) => texture.kind === 'thumbnail')?.size).toEqual({
+      width: 256,
+      height: 128,
+    });
   });
 });

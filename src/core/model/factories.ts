@@ -35,6 +35,8 @@ export interface CreateImageAssetOptions {
   sourceMimeType: TextureMimeType;
   sourceExtension: 'png' | 'jpg' | 'webp';
   thumbnailMimeType?: TextureMimeType;
+  /** 実際に縮小・encodeしたthumbnailのピクセルサイズ。 */
+  thumbnailSize?: Size;
   now?: Date;
 }
 
@@ -71,7 +73,7 @@ export function createImageAsset(options: CreateImageAssetOptions): Asset {
       kind: 'thumbnail',
       name: 'thumb',
       mimeType: thumbnailMimeType,
-      size: options.size,
+      size: options.thumbnailSize ?? options.size,
       path: `thumbnails/thumb.${thumbnailMimeType === 'image/webp' ? 'webp' : 'png'}`,
     },
   ];

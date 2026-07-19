@@ -222,6 +222,7 @@ export function flipCopyAsset(asset: Asset, options: FlipCopyAssetOptions = {}):
     animations,
     tags: [...asset.tags],
     gameAttributes: { ...asset.gameAttributes },
+    provenance: asset.provenance?.map((record) => structuredClone(record)),
     tile: asset.tile ? { ...asset.tile, tileSize: { ...asset.tile.tileSize } } : asset.tile,
     gimmick: asset.gimmick ? { ...asset.gimmick } : asset.gimmick,
     effect: asset.effect ? { ...asset.effect } : asset.effect,

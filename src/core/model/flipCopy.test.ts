@@ -142,4 +142,26 @@ describe('flipCopyAsset', () => {
     const flipped = flipCopyAsset(withRig);
     expect(flipped.rigAnimations).toBeUndefined();
   });
+
+  it('texture IDを維持するためprovenance参照も維持し、recordは独立copyする', () => {
+    const source = structuredClone(baseAsset);
+    const sourceTextureId = source.textures.find((texture) => texture.kind === 'source')!.id;
+    source.provenance = [
+      {
+        sourceFileName: 'hero.png',
+        mimeType: 'image/png',
+        byteLength: 3,
+        hash: `sha256:${'b'.repeat(64)}`,
+        importedAt: '2026-07-20T00:00:00.000Z',
+        textureId: sourceTextureId,
+        future: { preserved: true },
+      },
+    ];
+
+    const flipped = flipCopyAsset(source);
+    expect(flipped.provenance?.[0].textureId).toBe(sourceTextureId);
+    expect(flipped.textures.some((texture) => texture.id === sourceTextureId)).toBe(true);
+    (flipped.provenance?.[0].future as { preserved: boolean }).preserved = false;
+    expect(source.provenance[0].future).toEqual({ preserved: true });
+  });
 });

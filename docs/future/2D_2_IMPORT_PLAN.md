@@ -1,9 +1,9 @@
 # 2D-2-IMPORT-GATE + 2D-2-IMPORT-OPTIONAL + 2D-2-AI-BOUNDARY 契約監査・実装計画
 
-作成日: 2026-07-19
-状態: `G1+L1+Q1+P1+F1+A1+W1+S1 accepted (2026-07-19) / Slice A（ADR-0016 / ADR-0017 + fixture）を現在のbranchで実装、merge / CI / review待ち`
+作成日: 2026-07-19（最終更新: 2026-07-20）
+状態: `G1+L1+Q1+P1+F1+A1+W1+S1 accepted (2026-07-19) / Slice AはPR #125でmainへmerge済み / Slice B（provenance基盤）実装中`
 正式work package: `2D-2-IMPORT-GATE` + `2D-2-IMPORT-OPTIONAL` + `2D-2-AI-BOUNDARY`（2D完成ロードマップ PR group 11）
-契約監査基準main: `88f40bb`（PR #123 merge、group 10 closeout）
+Slice B基準main: `7018984`（PR #125 merge、Slice A closeout）
 前段: `2D-2-VARIANT + 2D-2-BATCH`（group 10）は全slice merge・遡及Opus review・closeout補修まで完了。
 
 ## 1. 目的
@@ -23,15 +23,15 @@
 ## 2. 前段closeoutと開始条件
 
 - group 10はPR #116〜#123で完了。CI Run #398 / PR #123 CIまで全成功。
-- 本監査はdocs-onlyで、product code / schema / fixtureを変更しない。
-- 判断必須項目（`2D-2-IMPORT-OPTIONAL` / `2D-2-AI-BOUNDARY`）は、本文書のacceptance後にADR-0016 / ADR-0017として正式確定し、ADRの確定までは実装を開始しない（ROADMAP §6.5）。
+- 契約監査はPR #124、Slice AはPR #125（merge `7018984` / CI Run #404全成功）でmainへmerge済み。PR #125のGitHub上のreview / comment / thread記録は0件であり、独立Opus review完了とは扱わない。
+- 判断必須項目（`2D-2-IMPORT-OPTIONAL` / `2D-2-AI-BOUNDARY`）はADR-0016 / ADR-0017として正式確定済み。Slice B以降はaccepted契約の範囲だけを直列実装する（ROADMAP §6.5）。
 
 ## 3. 現状実装の確認
 
 - 取り込み経路: `EditorScreen.tsx:236`の`IMPORT_ACCEPT`（`image/png,image/jpeg,image/webp`）、`handleFiles`（`:2155-2210`、`assertImageBatchCount`で最大16 file）、file input（`:2392`）とdrag & drop（`:2401`）。1 file = 1 Asset（`importImageFile`）または既存Assetへのlayer追加（`importImageAsLayer`）。
 - `src/core/images/importImage.ts`: 上限25MiB / 4096px（`:6-7`）、MIME 3種（`:15`）、署名一致検査（`imageInputSafety.ts:28-45`）、source Blob verbatim保持（`:212,303`）、edit BlobのPNG正規化、thumbnail生成。decodeは`createImageBitmap`→`HTMLImageElement` fallback（`decodeImageSource.ts:14-46`）で外部library不使用。
 - 失敗時: `ImageImportError` throw → `setEditorError`表示のみ。quarantine store（`quarantineStore.ts`、上限3件 / 50MiB超はbytes非保存）は`.casproj` / ZIP / JSON経路専用で、画像import失敗には未接続。
-- provenance: `Asset`型に専用fieldなし。ADR-0013が置き場所（optional / additiveな`Asset.provenance?`配列、1 record = 1取り込み元file、textureId任意参照）、非捏造、AI送信記録の同族性、秘密情報禁止、export反映範囲（engine向け派生出力へ出さない / `asset.json`はverbatim）、導入gate（ADR-0011の4条件）を確定済み。fixture: `provenanceContract.fixtures.test.ts`。
+- provenance: Slice Bでoptional / additiveな`Asset.provenance?`配列を正式導入する。P1 source recordは`sourceFileName` / `mimeType` / `byteLength` / source Blob原本bytesの`sha256:<64hex>` / `importedAt`を必須、`textureId` / `origin` / `license`を任意とする。既存のADR-0013 candidate recordとADR-0017 AI recordはopen recordとして保持し、version / migrationは変更しない。単枚・layer追加の両経路で1 file = 1 recordを記録する。
 - 受け皿schema: `Frame`（`layerStates[]`）、`Animation`（`fps / loop / frameIds`）、`Part`、tile系設定は既存。sheet分割・連番一括・tileset metadata・atlas bundle逆取り込みは未実装。`buildAtlas`（`export/atlas.ts:82`）は出力方向のみ。
 - dependencies: 画像処理は全てbrowser標準API。`fflate`は`.casproj` ZIP用。
 
@@ -143,4 +143,4 @@ accepted後の実装でも、次は別契約まで行わない。
 - 状態: **accepted**
 - accepted日: 2026-07-19（ユーザー承認）
 - 実装review条件: 各slice Draft PR → CI → 独立Opus review → 人間確認。A→B→C→D→Eの直列順。各sliceは前sliceのmerge後に最新mainからbranchを作る。
-- Slice Aは本監査PRのmerge後に開始し、ADR-0016 / ADR-0017の正式確定をもって判断必須項目の実装を解禁する。
+- Slice AはPR #125でmainへmerge済み。Slice Bは最新main `7018984`から開始し、Draft PR → CI → 独立review → 人間確認の順で進める。独立Opus reviewの証拠が得られるまでは、その工程を完了扱いにしない。

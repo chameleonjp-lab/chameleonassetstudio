@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 書き出し形式書
 
-最終更新日: 2026-07-04  
+最終更新日: 2026-07-20
 対象バージョン: 0.1.0  
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`
 
@@ -27,6 +27,8 @@
 | WebP       | `exportImage`     | `{asset.name}.webp`         | 同上の WebP 版（非対応環境では書き出しを中止する） |
 | asset.json | `exportAssetJson` | `{asset.name}.asset.json`   | アセットデータをそのまま整形した JSON             |
 | ZIP        | `exportZip`       | `{asset.name}-export.zip`   | 下記「3. ZIP 構成」一式                           |
+
+`Asset.provenance?`は保存正本の一部であるため、単体`asset.json`、product export ZIP内の`asset.json`、`.casproj`内の`assets/<id>/asset.json`へstripせず保持する。一方、engine向け派生出力である`atlas/atlas.json`、helpers、examples、engine guideには含めない。AI送信記録候補も同じ境界に従う。
 
 いずれも `downloadBlob(blob, filename)` が Blob URL によるダウンロードを開始する。保存先を直接選ぶ機能は対応ブラウザだけの追加機能とし、基本はこの Blob URL 方式で実装する（スマホでも動作する）。
 
