@@ -75,6 +75,12 @@ interface StoredFrameSetAsset {
     collisionType: string;
     visualType: string;
   };
+  effect?: {
+    effectType: string;
+    durationMs: number;
+    loop: boolean;
+    blendMode: string;
+  };
   provenance?: Array<{
     sourceFileName: string;
     mimeType: string;
@@ -169,6 +175,23 @@ async function readBlobRecords(page: Page): Promise<Array<{ key: string; mimeTyp
     );
     db.close();
     return records.map(({ key, mimeType }) => ({ key, mimeType }));
+  });
+}
+
+async function readQuarantineFileNames(page: Page): Promise<string[]> {
+  return page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('chameleon-asset-studio');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const records = await new Promise<Array<{ fileName: string }>>((resolve, reject) => {
+      const request = db.transaction('quarantine', 'readonly').objectStore('quarantine').getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    db.close();
+    return records.map(({ fileName }) => fileName).sort();
   });
 }
 
@@ -562,7 +585,117 @@ test('実exportの5-frame Chameleon Atlasを意味上roundtripし、空sheet cel
   expect((await readAssets(page)).find((asset) => asset.id === imported.id)).toEqual(imported);
 });
 
-test('外部Atlas JSONは理由付き拒否し、正本・quarantineを変更しない', async ({ page }) => {
+const atlasMetadataRoundtripCases = [
+  {
+    kind: 'tile',
+    settings: {
+      tileSize: { width: 4, height: 8 },
+      collisionType: 'one_way',
+      visualType: 'ledge',
+    },
+    color: '#38bdf8',
+  },
+  {
+    kind: 'effect',
+    settings: {
+      effectType: 'explosion',
+      durationMs: 750,
+      loop: false,
+      blendMode: 'screen',
+    },
+    color: '#fb7185',
+  },
+] as const;
+
+for (const metadataCase of atlasMetadataRoundtripCases) {
+  test(`Chameleon Atlasの${metadataCase.kind}設定を保存・reload・再exportまで意味上roundtripする`, async ({
+    page,
+  }) => {
+    const projectName = `${metadataCase.kind} atlas metadata`;
+    const assetName = `${metadataCase.kind}_roundtrip`;
+    const atlas = {
+      format: 'chameleon-atlas',
+      version: '0.1.0',
+      texture: 'spritesheet.png',
+      cellSize: { width: 8, height: 8 },
+      frames: [
+        { name: 'state_1', x: 0, y: 0, width: 8, height: 8 },
+        { name: 'state_2', x: 8, y: 0, width: 8, height: 8 },
+      ],
+      animations: [{ name: 'cycle', fps: 12, loop: true, frames: ['state_2', 'state_1'] }],
+      origin: { x: 4, y: 8 },
+      anchors: [],
+      colliders: [],
+      ...(metadataCase.kind === 'tile'
+        ? { tile: metadataCase.settings }
+        : { effect: metadataCase.settings }),
+    };
+
+    await createProject(page, projectName);
+    await page.getByLabel('frame列取り込みモード').selectOption('atlas');
+    await page.getByLabel('atlas.jsonを選ぶ').setInputFiles({
+      name: 'atlas.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(atlas)),
+    });
+    await page.getByLabel('spritesheet.pngを選ぶ').setInputFiles({
+      name: 'spritesheet.png',
+      mimeType: 'image/png',
+      buffer: await makeSolidPng(page, metadataCase.color, 16, 8),
+    });
+    await page.getByLabel('Atlas Asset名').fill(assetName);
+    await page.getByLabel('Atlas fallback Asset type').selectOption('item');
+    await page.getByRole('button', { name: 'Chameleon Atlas previewを準備' }).click();
+
+    const dialog = page.getByRole('dialog', { name: '取り込み確定前preview' });
+    await expect(dialog).toContainText(`Asset typeは「${metadataCase.kind}」`);
+    await expect(dialog).toContainText(`${metadataCase.kind}設定`);
+    await dialog.getByLabel(/loss・warningを確認/).check();
+    await dialog.getByRole('button', { name: '取り込みを確定' }).click();
+
+    const asset = (await readAssets(page))[0];
+    expect(asset.name).toBe(assetName);
+    expect(asset.assetType).toBe(metadataCase.kind);
+    expect(asset[metadataCase.kind]).toEqual(metadataCase.settings);
+    expect(asset[metadataCase.kind === 'tile' ? 'effect' : 'tile']).toBeUndefined();
+    expect(asset.frames.map((frame) => frame.name)).toEqual(['state_1', 'state_2']);
+    const frameNameById = new Map(asset.frames.map((frame) => [frame.id, frame.name]));
+    expect(
+      asset.animations.map((animation) => ({
+        name: animation.name,
+        fps: animation.fps,
+        loop: animation.loop,
+        frames: animation.frameIds.map((frameId) => frameNameById.get(frameId)),
+      })),
+    ).toEqual([{ name: 'cycle', fps: 12, loop: true, frames: ['state_2', 'state_1'] }]);
+
+    const [firstDownload] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'ZIP をダウンロード' }).click(),
+    ]);
+    const firstEntries = unzipSync(new Uint8Array(await readFile((await firstDownload.path())!)));
+    const firstExport = JSON.parse(Buffer.from(firstEntries['atlas/atlas.json']).toString('utf-8'));
+    expect(firstExport).toEqual(atlas);
+
+    await page.reload();
+    await page.getByRole('button', { name: `「${projectName}」を開く` }).click();
+    const reloaded = (await readAssets(page))[0];
+    expect(reloaded).toEqual(asset);
+
+    const [secondDownload] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'ZIP をダウンロード' }).click(),
+    ]);
+    const secondEntries = unzipSync(new Uint8Array(await readFile((await secondDownload.path())!)));
+    const secondExport = JSON.parse(
+      Buffer.from(secondEntries['atlas/atlas.json']).toString('utf-8'),
+    );
+    expect(secondExport).toEqual(atlas);
+    expect(secondExport).toEqual(firstExport);
+  });
+}
+
+test('外部・不整合Atlas JSONは理由付き拒否し、正本・quarantineを変更しない', async ({ page }) => {
   await createProject(page, 'atlas rejection');
   await page.getByLabel('frame列取り込みモード').selectOption('atlas');
   await page.getByLabel('atlas.jsonを選ぶ').setInputFiles({
@@ -591,6 +724,30 @@ test('外部Atlas JSONは理由付き拒否し、正本・quarantineを変更し
   await expect(page.getByRole('alert')).toContainText('Chameleon自形式');
   expect(await readAssets(page)).toEqual([]);
   expect(await readBlobRecords(page)).toEqual([]);
+  expect(await readQuarantineFileNames(page)).toEqual([]);
+
+  await page.getByLabel('atlas.jsonを選ぶ').setInputFiles({
+    name: 'atlas.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({
+        format: 'chameleon-atlas',
+        version: '0.1.0',
+        texture: 'spritesheet.png',
+        cellSize: { width: 8, height: 8 },
+        frames: [{ name: 'idle', x: 0, y: 0, width: 8, height: 8 }],
+        animations: [{ name: 'walk', fps: 8, loop: true, frames: ['missing'] }],
+        origin: { x: 0, y: 0 },
+        anchors: [],
+        colliders: [],
+      }),
+    ),
+  });
+  await page.getByRole('button', { name: 'Chameleon Atlas previewを準備' }).click();
+  await expect(page.getByRole('alert')).toContainText('存在しないframe');
+  expect(await readAssets(page)).toEqual([]);
+  expect(await readBlobRecords(page)).toEqual([]);
+  expect(await readQuarantineFileNames(page)).toEqual([]);
 });
 
 test('signature・dimension・decode失敗だけをquarantineし正本を変更しない', async ({ page }) => {
@@ -618,6 +775,11 @@ test('signature・dimension・decode失敗だけをquarantineし正本を変更�
   });
   await expect(page.getByRole('alert')).toContainText('画像をデコードできませんでした');
   expect(await readAssets(page)).toEqual([]);
+  expect(await readQuarantineFileNames(page)).toEqual([
+    'broken.png',
+    'spoofed.jpg',
+    'too-wide.png',
+  ]);
 
   await page.getByRole('button', { name: '← ホーム' }).click();
   const quarantine = page.getByRole('region', { name: '読み込みに失敗したファイル' });
