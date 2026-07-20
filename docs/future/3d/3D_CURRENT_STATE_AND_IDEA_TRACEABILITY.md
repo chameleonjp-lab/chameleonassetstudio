@@ -116,10 +116,10 @@
 
 | # | 案 | 出典 | 扱い | 対応先 / 理由 |
 |---:|---|---|---|---|
-| 20 | TripoSR（最初の外部実験） | REQ 7.1 / OPEN / PLAN 28 | 外部・確認待ち | Stage4-01/02 の adapter 対象候補。重み・商用条件未確認 |
-| 21 | Stable Fast 3D | REQ 7.2 | 外部・確認待ち | 同上。Stability AI 系ライセンス・売上制限の確認必須 |
+| 20 | TripoSR（最初の外部実験） | REQ 7.1 / OPEN / PLAN 28 | 外部・確認待ち（前進） | Stage4-01/02 の adapter 対象候補。**コード MIT を 2026-07-20 一次確認**。重み・商用条件は未確認 |
+| 21 | Stable Fast 3D | REQ 7.2 | 外部・確認待ち | 同上。Stability AI 系ライセンス・売上制限の確認必須（未確認） |
 | 22 | SPAR3D | REQ 7.2 | 外部・確認待ち | 同上 |
-| 23 | TRELLIS / TRELLIS.2 | REQ 7.2 | 外部・確認待ち（研究） | 高 GPU 前提。adapter 候補の将来枠 |
+| 23 | TRELLIS / TRELLIS.2 | REQ 7.2 | 外部・確認待ち（前進・研究） | 高 GPU 前提。**コード MIT を 2026-07-20 一次確認**。重み・依存は未確認 |
 | 24 | Hunyuan3D 系 | REQ 7.2 / OPEN | 外部・確認待ち（研究） | 地域条件の確認必須 |
 | 25 | Step1X-3D / 3DTopia-XL / InstantMesh / OpenLRM / CRM | REQ 7.2 | 調査（研究追跡のみ） | 本体・adapter とも接続計画に入れない。動向記録のみ |
 | 26 | RigAnything / UniRig（自動骨入れ） | REQ 7.3 | 外部・確認待ち（後期） | 完成形の非目標（rig 作成はしない)。外部処理の将来候補として記録のみ |
@@ -174,6 +174,19 @@
 | N8 | 2D bundle 非汚染の機械的 assert（ESLint + E2E） | 採用（計画） | アーキテクチャ 13 章 |
 | N9 | viewer 非依存の一覧・数値によるアクセシビリティ | 採用（計画） | UI 仕様 1/6 章 |
 | N10 | 限定的な作成・修正機能（primitive / 簡易 material 調整等）の第二段階以降検討 | 未決定（open） | `3D-OPEN-14` ほか |
+
+2026-07-20 改訂で追加した新提案（設計正本は `3D_INTEROP_VRM_VR_AND_CREATION_SPEC.md`）:
+
+| # | 案 | 扱い | 対応先 |
+|---:|---|---|---|
+| N11 | 他ツールとの差分分析（Blender / エンジン / VRoid / gltf.report 等とのすみ分け表） | 採用（計画） | interop 仕様 2 章 |
+| N12 | VRM 対応（V1/V2 = 検出・meta 利用条件表示・humanoid 検査。V3 描画は候補） | 採用（V1/V2）+ 候補（V3） | `3D-STAGE2-11` / `3D-DEC-VRM-01` / `3D-OPEN-22` |
+| N13 | vr 検品プリセットと WebXR preview | 採用（preset）+ 条件付き（preview） | `3D-STAGE2-06` / `3D-STAGE4-09` / `3D-OPEN-23` |
+| N14 | skeleton 検査拡張（B1）と humanoid ボーン対応付け（B2/B3、`humanoidMap`） | 採用 | `3D-STAGE2-11` / `3D-STAGE3-11` |
+| N15 | テクスチャ編集ブリッジ（2D 編集資産の再利用、baseColor 限定、derived 書き戻し） | 採用 | `3D-STAGE3-12`（旧 `3D-OPEN-14` の再定義） |
+| N16 | Blender / Unreal import notes + Mixamo supply notes | 採用 | `3D-STAGE2-08` 拡大 / `3D-OPEN-27` |
+| N17 | 外部生成 adapter のプロトコル詳細と 2D→3D ブリッジ（2D 画像を生成入力に） | 採用（設計） | `3D-STAGE4-01/-02` / interop 仕様 8 章 |
+| N18 | 外部リグ付け後の revision 再取り込み | 未決定（open。既定: 新規アセット扱い） | `3D-OPEN-24` |
 
 ## 7. 文書間の矛盾
 
