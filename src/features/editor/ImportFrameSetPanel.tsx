@@ -54,7 +54,7 @@ export function ImportFrameSetPanel({
       {mode === 'sequence' ? (
         <div className="import-frame-set-config">
           <label className="import-button">
-            連番画像を選ぶ
+            連番ファイルを選ぶ
             <input
               type="file"
               accept={accept}
@@ -85,7 +85,7 @@ export function ImportFrameSetPanel({
       ) : (
         <div className="import-frame-set-config">
           <label className="import-button">
-            Sprite Sheet画像を選ぶ
+            Sprite Sheetファイルを選ぶ
             <input
               type="file"
               accept={accept}
