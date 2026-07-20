@@ -1,9 +1,9 @@
 # 2D-2-IMPORT-GATE + 2D-2-IMPORT-OPTIONAL + 2D-2-AI-BOUNDARY 契約監査・実装計画
 
 作成日: 2026-07-19（最終更新: 2026-07-20）
-状態: `G1+L1+Q1+P1+F1+A1+W1+S1 accepted (2026-07-19) / Slice A・Bはmainへmerge済み / Slice C（連番・手動格子sheet・共通preview・quarantine）実装中`
+状態: `G1+L1+Q1+P1+F1+A1+W1+S1 accepted / Slice A〜Cはmainへmerge済み / Slice D（tileset + Chameleon atlas意味上roundtrip）実装中`
 正式work package: `2D-2-IMPORT-GATE` + `2D-2-IMPORT-OPTIONAL` + `2D-2-AI-BOUNDARY`（2D完成ロードマップ PR group 11）
-Slice C基準main: `5a1663b`（PR #126 merge、Slice B closeout）
+Slice D基準main: `be887a1`（PR #128 merge、Slice C preview guard補修closeout）
 前段: `2D-2-VARIANT + 2D-2-BATCH`（group 10）は全slice merge・遡及Opus review・closeout補修まで完了。
 
 ## 1. 目的
@@ -24,15 +24,17 @@ Slice C基準main: `5a1663b`（PR #126 merge、Slice B closeout）
 
 - group 10はPR #116〜#123で完了。CI Run #398 / PR #123 CIまで全成功。
 - 契約監査はPR #124、Slice AはPR #125（merge `7018984` / CI Run #404全成功）、Slice BはPR #126（final head `6e69621`、merge `5a1663b` / CI Run #407全成功）でmainへmerge済み。PR #126は独立read-only reviewで`BLOCKER 0 / MUST 0`を確認した一方、GitHub上のreview / comment / thread記録は0件であり、Opus review完了とは扱わない。
+- Slice C本体はPR #127（merge `eaeb110`）、preview中の背景永続変更・Undo / Redo防止補修はPR #128（final head `f9e0bc5`、merge `be887a1`）でmainへmerge済み。CI Run #413はlint / format / build / unit / Chromium E2E 125件を含め全成功。独立read-only再reviewは`BLOCKER 0 / MUST 0 / SHOULD 0 / NOTE 0`だがOpus reviewではなく、その事実と残リスクをPR #128へ記録した。
 - 判断必須項目（`2D-2-IMPORT-OPTIONAL` / `2D-2-AI-BOUNDARY`）はADR-0016 / ADR-0017として正式確定済み。Slice B以降はaccepted契約の範囲だけを直列実装する（ROADMAP §6.5）。
+- Slice D開始監査でADR-0007 / ADR-0015とW1の衝突、raw atlas JSONの保存先不在、完全roundtrip不能を確認した。2026-07-20の人間承認によりADR-0018をacceptedとし、現行Chameleon atlasの意味上roundtripを限定例外として固定した。
 
 ## 3. 現状実装の確認
 
-- 取り込み経路: `EditorScreen.tsx`の`IMPORT_ACCEPT`（`image/png,image/jpeg,image/webp`）、`handleFiles`（`assertImageBatchCount`で最大16 file）、file inputとdrag & drop。1 file = 1 Asset（`importImageFile`）または既存Assetへのlayer追加（`importImageAsLayer`）を維持し、Slice Cでは`ImportFrameSetPanel`から連番 / 手動格子sheetを別モードとして準備する。
+- 取り込み経路: `EditorScreen.tsx`の`IMPORT_ACCEPT`（`image/png,image/jpeg,image/webp`）、`handleFiles`（`assertImageBatchCount`で最大16 file）、file inputとdrag & drop。1 file = 1 Asset（`importImageFile`）または既存Assetへのlayer追加（`importImageAsLayer`）を維持し、`ImportFrameSetPanel`から連番 / 手動格子sheet / tileset / Chameleon atlasを明示的な別モードとして準備する。
 - `src/core/images/importImage.ts`: 上限25MiB / 4096px、MIME 3種、署名一致検査（`imageInputSafety.ts`）、source Blob verbatim保持、edit BlobのPNG正規化、thumbnail生成。decodeは`createImageBitmap`→`HTMLImageElement` fallback（`decodeImageSource.ts`）で外部library不使用。
 - 失敗時: Slice Cでは`ImageImportError.kind`で原因を分類し、署名不一致・寸法超過・decode失敗だけを既存quarantine store（上限3件 / 50MiB超はbytes非保存）へ接続する。unsupported MIME、file size上限、hash / encode / 環境 / 保存失敗は理由表示のみで、入力破損として隔離しない。
 - provenance: Slice Bでoptional / additiveな`Asset.provenance?`配列を実装済み。P1 source recordは`sourceFileName` / `mimeType` / `byteLength` / source Blob原本bytesの`sha256:<64hex>` / `importedAt`を必須、`textureId` / `origin` / `license`を任意とする。既存のADR-0013 candidate recordとADR-0017 AI recordはopen recordとして保持し、version / migrationは変更していない。単枚・layer追加の両経路で1 file = 1 recordを記録する。
-- 受け皿schema: `Frame`（`layerStates[]`）、`Animation`（`fps / loop / frameIds`）、`Part`、tile系設定は既存。Slice Cで連番一括と手動格子sheet分割を既存schemaの範囲に実装し、tileset metadata・atlas bundle逆取り込みはSlice Dに残す。`buildAtlas`（`export/atlas.ts`）は引き続き出力方向で再利用する。
+- 受け皿schema: `Frame`（`layerStates[]`）、`Animation`（`fps / loop / frameIds`）、`Part`、tile / effect設定は既存。Slice Cの連番・手動格子に続き、Slice Dは明示region stagingでtilesetとChameleon atlasの復元可能な意味を既存schemaへ写す。`buildAtlas`は出力生成とcanonical fixtureに再利用する。
 - dependencies: 画像処理は全てbrowser標準API。`fflate`は`.casproj` ZIP用。
 
 ## 4. 判断候補
@@ -62,7 +64,7 @@ Slice C基準main: `5a1663b`（PR #126 merge、Slice B closeout）
 - **F1（推奨）**:
   - SVG = `rasterized-import`。browser標準decodeでraster化し、script / 外部URL / 任意コードを実行しないことをfixtureで固定する。editable（ベクター保持）は将来の別ADR。
   - GIF / APNG = `rasterized-import`（frame列）。`ImageDecoder`（WebCodecs）が使える環境では全frame → layer + frames、使えない環境では先頭frame + loss warning。dependency追加なし。
-  - Aseprite（`.aseprite` / `.ase`）= `unsupported`。native parserはdependency + ライセンス評価が必要。Asepriteの標準PNG + JSON sprite sheet出力を経由する手順をimport-notesに明記する。
+  - Aseprite（`.aseprite` / `.ase`）= `unsupported`。native parserはdependency + ライセンス評価が必要。PNG sprite sheetを書き出して手動格子で取り込み、Aseprite JSON metadataは読み込まない手順をimport-notesに明記する。
   - PSD / OpenRaster（`.ora`）/ Krita（`.kra`）= `unsupported`（理由付き表示）。reference-only（原本Blob保存のみ）は容量と誤解リスクに対して利点が薄い。OpenRasterはZIP + PNG構造でfflateにより将来`editable-import`候補になり得ることをADRの再検討条件に記録する。
 - F2: OpenRasterを初回から`editable-import`にする。→ layer合成規則の互換検証が未了のため非推奨（将来候補として記録のみ）。
 - F3: 未対応形式を一律`reference-only`にする。→ 「保存されているのに編集できない」状態を量産するため非推奨。
@@ -80,7 +82,7 @@ Slice C基準main: `5a1663b`（PR #126 merge、Slice B closeout）
 
 ### W: 既知atlas bundleの範囲
 
-- **W1（推奨）**: 初期対象はChameleon独自atlas（`buildAtlas`出力のatlas.json + texture）の再取り込み（roundtrip）のみとする。sprite sheet + JSONのJSON対応も自形式と手動格子指定に限定する。Phaser atlas JSON / Aseprite JSONなど外部形式は将来の別ADRで形式ごとに対応範囲を明示する（互換matrix §4.1）。
+- **W1（accepted、ADR-0018で限定具体化）**: 初期対象はexactな`atlas.json + spritesheet.png`、`chameleon-atlas/0.1.0`のcanonical subsetだけとする。元Asset完全復元ではなく、新IDのflattened Assetへframes / animations / origin / anchors / colliders / tile / effectとpixelの意味を復元する。PNG原本はverbatim保持し、JSONはraw bytesを保存せずhash等をprovenanceへ記録してloss表示する。Phaser / Aseprite / Tiled等の外部JSONは理由付き拒否し、将来の別ADRまで対象外とする。
 - W2: Aseprite sprite sheet JSONを初回から対象にする。→ 形式検証・fixture整備の負担が大きく、W1完了後の追加が安全なため非推奨。
 
 ### S: slice分割と直列順
@@ -106,6 +108,18 @@ Slice C基準main: `5a1663b`（PR #126 merge、Slice B closeout）
 - 署名不一致、decode失敗、寸法超過だけを既存quarantineへ接続する。unsupported MIME、file size上限、hash / encode / 環境 / 保存失敗は入力破損と決めつけて隔離しない。
 - schema / version / migration、IndexedDB version / store / index、`.casproj`配置、product export ZIP構成、dependencyは変更しない。
 
+### Slice D 実行契約（2026-07-20 accepted、ADR-0018）
+
+- Tilesetは独立モードとし、手動格子の1〜16cellを各1 edit texture / layer / frameへ展開する。`assetType: tile`、`canvasSize = cellSize`、`tileSize = cellSize`を既定とし、tileSizeはcellSize以下を必須、非除算をwarningとする。
+- collisionType / visualTypeはAsset全体で1設定とし、colliderを自動生成しない。Tileset cell列をanimationとはみなさず、自動animationを作らない。margin / spacing / remainderはSlice Cと同じloss境界を使う。
+- Atlas入力はbasenameがexactな`atlas.json + spritesheet.png`の2 fileだけとする。ZIP、directory、外部URL、外部Atlas JSONを受理しない。
+- JSONは既存`parseBoundedJson`の4MiB / UTF-8 / depth 64を通し、exactなformat / version / texture、既知field、1〜16件の非空・一意frame名、正整数cell geometry、`computeSheetLayout`の行優先配置、実texture寸法、animation参照、anchor role、collider union、tile / effect設定をruntime validatorで検査する。
+- 5 frameの3 x 2 sheetなど末尾空cellを誤生成しないよう、manual gridではなくJSONの`frames[]` regionだけを切り出す。frame / animation / anchor / colliderの内部IDは新規生成する。
+- spritesheet PNGはsource Blobとしてverbatim保持する。atlas JSONは2件目のsource-file provenanceへfile名 / MIME / byte数 / SHA-256 / importedAtを記録するが、raw bytesは保存しない。この例外と元layer / part / tag / gameAttributes / rig / provenance / identity / animation durationMsの非復元を常時loss表示する。
+- tile / effect metadataがあればAsset typeを推定し、それ以外は利用者がnameとtypeを明示指定する。確定はSlice Cのcommon preview / stale guard / atomic save / History 1 entryを再利用する。
+- quarantineはspritesheet画像のsignature不一致・decode失敗・寸法超過だけとする。JSON parse / version / geometry / reference / external format違反は正本無変更の理由付き拒否とし、隔離しない。
+- schema / version / migration、IndexedDB version / store / index、`.casproj`配置、product export ZIP構成、dependencyは変更しない。
+
 ## 5. 受け入れ条件
 
 ### contract / fixture（Slice A、B）
@@ -117,11 +131,11 @@ Slice C基準main: `5a1663b`（PR #126 merge、Slice B closeout）
 
 ### import共通（Slice C以降）
 
-- source Blobをverbatim保持し、取り込み確定前にloss / warningを理由付き表示する。
+- 画像source Blobをverbatim保持し、取り込み確定前にloss / warningを理由付き表示する。ADR-0018のatlas JSONだけはhash provenanceを保持し、raw bytes非保持を常時loss表示する。
 - 失敗・中断・取消で正本Project / Asset / Blobを変更しない。preview中はfocusをdialog内へ保ち、背景操作とkeyboard Undo / Redoで準備済み状態を古くしない。取り込み確定は1回のUndoで全体が戻る。
 - 既存の署名検査・25MiB / 4096px上限・batch件数上限を維持し、失敗入力をquarantineへ記録する。
 - 連番 / sheet分割結果のframe / animationが保存・reload・flip・atlas出力後も意味を保つ。
-- tileset / 自形式atlas roundtripでframes / animations / origin / anchors / colliders / tile設定の意味が一致する。
+- tileset / 自形式atlasの意味上roundtripでframes / animations / origin / anchors / colliders / tile / effect設定とframe pixelが一致する。元編集構造・raw JSON・内部IDの完全一致は要求しない。
 - SVGでscript / 外部URLを実行しない。GIF / APNG decode不可環境では先頭frame + loss warningになる。unsupported形式は理由付きで明示拒否される。
 - Desktop / touch context / iPhone SE級viewportで取り込みpreview・warning・確定・Undo・reloadへ到達できる。
 - 各slice: lint、format、build、unit、該当E2E、GitHub Actionsが全成功する。
@@ -156,4 +170,4 @@ accepted後の実装でも、次は別契約まで行わない。
 - 状態: **accepted**
 - accepted日: 2026-07-19（ユーザー承認）
 - 実装review条件: 各slice Draft PR → CI → 独立Opus review → 人間確認。A→B→C→D→Eの直列順。各sliceは前sliceのmerge後に最新mainからbranchを作る。
-- Slice AはPR #125、Slice BはPR #126でmainへmerge済み。Slice Cは最新main `5a1663b`から開始し、Draft PR → CI → 独立review → 人間確認の順で進める。独立Opus reviewの証拠が得られるまでは、Opus review工程を完了扱いにしない。
+- Slice AはPR #125、Slice BはPR #126、Slice CはPR #127とrepair PR #128でmainへmerge済み。Slice Dはmain `be887a1`相当のtreeから開始し、ADR-0018の限定境界で実装する。Draft PR → CI → 独立review → 人間確認の順を維持し、独立Opus reviewの証拠が得られるまではOpus review工程を完了扱いにしない。

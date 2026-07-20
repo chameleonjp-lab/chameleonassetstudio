@@ -19,14 +19,18 @@
 - 最大サイズは 4096 x 4096 です。超えると理由が表示されます。
 - 元画像は破壊的編集をせずに保持されます（編集用・サムネイルと分けて保存）。
 
-### 2.1 通常画像・連番・Sprite Sheetを安全に取り込む（2D-2-IMPORT Slice C、2026-07）
+### 2.1 通常画像・連番・Sprite Sheet・Tileset・Chameleon Atlasを安全に取り込む（2D-2-IMPORT Slice C / D、2026-07）
 
 - 通常画像は従来どおり1 file = 1 Assetです。通常画像batchと既存Assetへの画像layer追加も、保存前previewでfile名・生成件数を確認してから「取り込みを確定」します。
-- 1つのアニメーションAssetへまとめる場合は、プロパティの「連番・Sprite Sheetを取り込む」を使います。通常画像とは別の明示モードです。
+- 1つのAssetへまとめる場合は、プロパティの「連番・Sheet・Tileset・Atlasを取り込む」を使います。通常画像とは別の明示モードです。
 - 連番は1〜16枚、すべて同じ寸法にします。ファイル名内の数字を数値として並べた確定順をpreviewに表示し、自動拡縮や余白追加はしません。各画像が1 layer / 1 frameになり、8fps・loop有効のanimationを作ります。
 - Sprite Sheetは1枚を選び、cell幅・高さ、uniformな外周margin、cell間spacingを整数で指定します。左上から行優先で完全に収まるcellだけを最大16件切り出します。margin、spacing、右端・下端の余りpixelは元sheetには残りますがframeへ入らないため、loss / warningを確認するcheckboxが必要です。
 - preview表示中は背景操作とUndo / Redoを一時停止し、確認dialog内だけを操作できます。「取り込みを取消」や準備失敗ではProject / Asset / 画像Blobを変更しません。確定前にProject / Assetが変わった場合は古いpreviewを保存せず、作り直しを案内します。確定後は今回の取り込み全体を1回のUndoで外し、Redoで同じ内容を戻せます。
 - 元fileのbytesとSHA-256来歴を保持します。署名不一致、画像decode失敗、4096px超過は正本へ保存せず既存quarantineへ隔離し、ホーム画面から理由を確認できます。
+- TilesetはSprite Sheetと同じ手動格子を使い、各cellをlayer + frameにします。tileSizeはcellSizeと同じ値が既定で、cellSize以下に限り変更できます。collisionと見た目タイプはAsset全体へ設定され、colliderとanimationは自動生成されません。
+- Chameleon Atlasは本製品が出力した名前どおりの`atlas.json`と`spritesheet.png`を2つ選びます。`chameleon-atlas/0.1.0`、最大16 frame、非空・一意frame名、正しい座標とanimation参照だけを受理します。ZIP、Phaser / Aseprite等の外部JSON、URL参照、future versionは理由付きで拒否します。
+- Atlas取込は元Assetの完全復元ではありません。frame pixel、animation、origin、anchor、collider、tile / effect設定を新しいIDのflattened Assetへ復元しますが、元layer構造、parts、tags、gameAttributes、rig、来歴は復元できません。spritesheet.png原本は保持し、atlas.jsonはraw fileを保存せずSHA-256等だけを来歴へ記録します。previewのlossを確認してから確定してください。
+- AsepriteはPNG sprite sheetを書き出し、手動格子で取り込んでください。Aseprite JSON metadataは読み込みません。
 
 ### 2.2 画像を取り込まずに新規アセットを作る（2D-2-CREATE-01、2026-07）
 

@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 2D Export Compatibility Matrix
 
-最終更新日: 2026-07-10
+最終更新日: 2026-07-20
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 2D 入出力・対象別書き出し・検証基準
 状態: accepted（設計と確認基準。docs-only）
@@ -9,7 +9,7 @@
 
 ---
 
-> **現状:** 現在の実装は PNG / JPEG / WebP の取り込み、PNG / WebP / Chameleon 独自 atlas / JSON / ZIP の書き出し、Canvas 2D / PixiJS / Phaser の sample・helper、Godot / Unity の取り込み説明を持つ。
+> **現状:** 現在の実装は PNG / JPEG / WebP、連番、手動格子 sprite sheet の取り込み、PNG / WebP / Chameleon 独自 atlas / JSON / ZIP の書き出し、Canvas 2D / PixiJS / Phaser の sample・helper、Godot / Unity の取り込み説明を持つ。Tileset と Chameleon 独自 atlas の限定再取り込みは Slice D で実装中である。
 > **重要:** 現行 `atlas.json` は Chameleon 独自形式であり、Phaser、PixiJS、Tiled、Unity、Godot の標準形式そのものではない。外部ツールで実行確認するまで `verified` と表示してはいけない。
 
 ## 1. 目的
@@ -66,14 +66,14 @@ Generic Web は対象ツール名ではないため、`generic-web-v1` のよう
 | PNG / JPEG / WebP | `editable-import`。元を残し、編集用画像・サムネイルを作る。 | 実装済み。 | JPEG に透明はない。 |
 | SVG | `rasterized-import`（ADR-0016 決定 1。ベクター保持の `editable-import` は将来の別 ADR）。 | ADR-0016 で分類確定。実装は import 計画 Slice E。 | スクリプト、外部 URL、任意コードを実行しない。 |
 | 連番、GIF、APNG | フレーム列として取り込み、animation を作る（GIF / APNG は ADR-0016 決定 2 の `rasterized-import`）。 | 同寸法の連番と手動格子sheetはSlice Cで実装。GIF / APNGはADR-0016で分類確定・実装はSlice E。 | 動画編集の代替にはしない。decode 不可環境は先頭 frame + loss warning。 |
-| sprite sheet + JSON | フレーム、名前、順番、切り抜き情報を確認しながら取り込む。 | 手動格子指定はSlice Cで実装。JSONはChameleon自形式に限定してSlice Dで実装（W1）。 | JSON 形式ごとに対応範囲を明示する。外部 JSON 形式は別 ADR。 |
-| tileset / atlas bundle | タイル寸法、衝突、属性を確認して取り込む。 | 自形式 atlas roundtrip を import 計画 Slice D で実装（W1）。 | タイル地図そのものの全編集を先に約束しない。 |
+| sprite sheet + JSON | フレーム、名前、順番、切り抜き情報を確認しながら取り込む。 | 手動格子指定はSlice Cで実装済み。JSONはADR-0018によりexactな`atlas.json + spritesheet.png`、`chameleon-atlas/0.1.0`のcanonical subsetだけをSlice Dで実装中。 | Chameleon自形式でも元Assetの完全復元ではなく意味上roundtrip。Phaser / Aseprite / Tiled等の外部JSON、旧版・future version、不整合JSONは理由付き拒否する。 |
+| tileset / atlas bundle | タイル寸法、衝突、属性を確認して取り込む。 | Tileset独立モードとChameleon自形式atlasの意味上roundtripをSlice Dで実装中（ADR-0018）。 | Tilesetは最大16cell、各cellをlayer + frame化し、Asset全体のcollision設定を使う。colliderは自動生成しない。AtlasはPNG原本を保持するがraw JSONは保持せず、hash等のprovenanceとloss表示を残す。タイル地図そのものの全編集は約束しない。 |
 | Aseprite、PSD、OpenRaster、Krita など | `unsupported`（ADR-0016 決定 3 / 4。理由付き明示拒否 + PNG / JSON 経由の手順案内）。 | ADR-0016 で分類確定。OpenRaster は `editable-import` 昇格の最有力候補として再検討条件に記録。 | 全レイヤー・全効果・専用機能を完全に保つとは約束しない。 |
 | Spine / Rive / Live2D の専用形式 | 将来、原本参照や画像・atlas・焼き込みフレームの補助を別設計で検討する。 | `unsupported`。 | 現在は専用原本の保存・参照を実装していない。専用形式の完全編集・再出力を名乗らない。 |
 
 ### 4.2 取り込みの共通要件
 
-- 元ファイルを保持し、変換後の編集用データと分ける。
+- 元ファイルを保持し、変換後の編集用データと分ける。ADR-0018のChameleon Atlas JSONだけは限定例外としてraw bytesを保持せず、原本hash等をprovenanceへ残してloss表示する。
 - 対応しないレイヤー、メタデータ、アニメーション、効果を取り込み前に表示する。
 - 壊れた画像、巨大画像、zip bomb、パス外参照、悪意ある SVG / JSON を拒否または隔離する。
 - 形式名だけで対応を表現しない。「レイヤーを保つ」「画像としてのみ取り込む」など、扱いを表示する。

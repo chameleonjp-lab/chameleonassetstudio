@@ -1,11 +1,19 @@
 import {
+  TILE_COLLISION_TYPES,
   createImageAsset,
   generateId,
+  type Anchor,
   type Animation,
   type Asset,
+  type AssetProvenanceRecord,
+  type AssetType,
+  type Collider,
+  type EffectSettings,
   type Frame,
   type Layer,
+  type TileSettings,
   type TextureRef,
+  type Vec2,
 } from '../model';
 import { INPUT_SAFETY_LIMITS } from '../input/inputSafety';
 import {
@@ -26,13 +34,13 @@ export const MAX_FRAME_SET_ITEMS = INPUT_SAFETY_LIMITS.maxImageBatchFiles;
 export const DEFAULT_FRAME_SET_FPS = 8;
 
 export interface FrameSetPreview {
-  mode: 'sequence' | 'sheet';
+  mode: 'sequence' | 'sheet' | 'tileset' | 'atlas';
   title: string;
   fileNames: string[];
   assetCount: 1;
   layerCount: number;
   frameCount: number;
-  animationCount: 1;
+  animationCount: number;
   details: string[];
   losses: string[];
   warnings: string[];
@@ -256,6 +264,51 @@ export interface ManualGridLayout {
   bottomRemainder: number;
 }
 
+export interface ExplicitFrameRegion {
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface FrameRegionAnimationInput {
+  name: string;
+  fps: number;
+  loop: boolean;
+  frameNames: string[];
+}
+
+export interface PrepareImageRegionsOptions {
+  mode: 'sheet' | 'tileset' | 'atlas';
+  sourceLabel: string;
+  assetName: string;
+  displayName?: string;
+  assetType?: AssetType;
+  regions: ExplicitFrameRegion[];
+  animations?: FrameRegionAnimationInput[];
+  origin?: Vec2;
+  anchors?: Array<Omit<Anchor, 'id'>>;
+  colliders?: Collider[];
+  tile?: TileSettings;
+  effect?: EffectSettings;
+  additionalProvenance?: AssetProvenanceRecord[];
+  preview: {
+    title: string;
+    fileNames: string[];
+    details: string[];
+    losses: string[];
+    warnings: string[];
+  };
+}
+
+export interface TileSetImportInput {
+  grid: ManualGridInput;
+  tileSize: { width: number; height: number };
+  collisionType: TileSettings['collisionType'];
+  visualType: string;
+}
+
 function assertGridInteger(value: number, label: string, minimum: number): void {
   if (!Number.isInteger(value) || value < minimum) {
     throw new FrameSetImportError(`${label}は${minimum}以上の整数で指定してください。`);
@@ -326,6 +379,227 @@ function sheetLosses(input: ManualGridInput, layout: ManualGridLayout): string[]
   return losses;
 }
 
+function assertExplicitRegions(
+  regions: readonly ExplicitFrameRegion[],
+  imageSize: { width: number; height: number },
+): void {
+  assertFrameSetCount(regions.length, '生成frame');
+  const names = new Set<string>();
+  for (const [index, region] of regions.entries()) {
+    if (region.name.trim() === '') {
+      throw new FrameSetImportError(`frame ${index + 1}のnameが空です。`);
+    }
+    if (names.has(region.name)) {
+      throw new FrameSetImportError(`frame nameが重複しています: ${region.name}`);
+    }
+    names.add(region.name);
+    for (const [label, value] of Object.entries({
+      x: region.x,
+      y: region.y,
+      width: region.width,
+      height: region.height,
+    })) {
+      const minimum = label === 'width' || label === 'height' ? 1 : 0;
+      if (!Number.isInteger(value) || value < minimum) {
+        throw new FrameSetImportError(
+          `frame「${region.name}」の${label}は${minimum}以上の整数で指定してください。`,
+        );
+      }
+    }
+    if (region.x + region.width > imageSize.width || region.y + region.height > imageSize.height) {
+      throw new FrameSetImportError(
+        `frame「${region.name}」の領域が画像範囲${imageSize.width} x ${imageSize.height}を超えています。`,
+      );
+    }
+  }
+}
+
+function cloneColliderWithNewId(collider: Collider): Collider {
+  if (collider.shape === 'rect') {
+    return {
+      id: generateId('collider'),
+      name: collider.name,
+      purpose: collider.purpose,
+      shape: 'rect',
+      visible: collider.visible,
+      rect: { ...collider.rect },
+    };
+  }
+  return {
+    id: generateId('collider'),
+    name: collider.name,
+    purpose: collider.purpose,
+    shape: 'circle',
+    visible: collider.visible,
+    circle: { ...collider.circle },
+  };
+}
+
+async function prepareValidatedImageRegions(
+  file: File,
+  validated: Awaited<ReturnType<typeof decodeValidatedImageFile>>,
+  options: PrepareImageRegionsOptions,
+): Promise<PreparedFrameSetImport> {
+  const { decoded, mimeType, extension, hash } = validated;
+  assertExplicitRegions(options.regions, { width: decoded.width, height: decoded.height });
+  const firstRegion = options.regions[0];
+  const thumbnail = await encodeDecodedThumbnail(decoded, firstRegion);
+  const now = new Date();
+  const base = createImageAsset({
+    name: options.assetName,
+    displayName: options.displayName ?? options.assetName,
+    size: { width: firstRegion.width, height: firstRegion.height },
+    sourceMimeType: mimeType,
+    sourceExtension: extension,
+    thumbnailMimeType: thumbnail.blob.type === 'image/webp' ? 'image/webp' : 'image/png',
+    thumbnailSize: thumbnail.size,
+    now,
+  });
+  const baseSource = base.textures.find((texture) => texture.kind === 'source');
+  const baseEdit = base.textures.find((texture) => texture.kind === 'edit');
+  const thumbnailTexture = base.textures.find((texture) => texture.kind === 'thumbnail');
+  const baseLayer = base.layers[0];
+  if (!baseSource || !baseEdit || !thumbnailTexture || !baseLayer) {
+    throw new FrameSetImportError(`${options.sourceLabel}用Assetのtexture/layer定義が不正です。`);
+  }
+
+  const sourceTexture: TextureRef = {
+    ...baseSource,
+    size: { width: decoded.width, height: decoded.height },
+  };
+  const textures: TextureRef[] = [sourceTexture, thumbnailTexture];
+  const layers: Layer[] = [];
+  const regionBlobs: Array<{ key: string; blob: Blob }> = [];
+
+  for (const [index, region] of options.regions.entries()) {
+    const layerId = index === 0 ? baseLayer.id : generateId('layer');
+    const texture: TextureRef =
+      index === 0
+        ? { ...baseEdit, name: region.name }
+        : {
+            id: generateId('tex'),
+            kind: 'edit',
+            name: region.name,
+            mimeType: 'image/png',
+            size: { width: region.width, height: region.height },
+            path: `textures/${layerId}.png`,
+          };
+    const layer: Layer = {
+      ...(index === 0 ? baseLayer : {}),
+      id: layerId,
+      name: region.name,
+      layerType: 'image',
+      visible: index === 0,
+      locked: false,
+      opacity: 1,
+      transform: { position: { x: 0, y: 0 }, scale: { x: 1, y: 1 }, rotation: 0 },
+      textureId: texture.id,
+    };
+    textures.push(texture);
+    layers.push(layer);
+    regionBlobs.push({
+      key: blobKeyFor(base.id, texture.path),
+      blob: await encodeDecodedImageRegion(decoded, region),
+    });
+  }
+
+  const frames = buildFrameSetFrames(
+    layers,
+    options.regions.map((region) => region.name),
+  );
+  const frameIdByName = new Map(frames.map((frame) => [frame.name, frame.id]));
+  const animations = options.animations?.map((animation) => ({
+    id: generateId('anim'),
+    name: animation.name,
+    fps: animation.fps,
+    loop: animation.loop,
+    frameIds: animation.frameNames.map((name) => {
+      const frameId = frameIdByName.get(name);
+      if (!frameId) {
+        throw new FrameSetImportError(
+          `animation「${animation.name}」が存在しないframe「${name}」を参照しています。`,
+        );
+      }
+      return frameId;
+    }),
+  })) ?? [animationFor(options.assetName, frames)];
+  const importedAt = now.toISOString();
+  const asset: Asset = {
+    ...base,
+    assetType: options.assetType ?? base.assetType,
+    textures,
+    layers,
+    frames,
+    animations,
+    origin: options.origin ? { ...options.origin } : base.origin,
+    anchors: (options.anchors ?? []).map((anchor) => ({
+      id: generateId('anchor'),
+      name: anchor.name,
+      role: anchor.role,
+      position: { ...anchor.position },
+    })),
+    colliders: (options.colliders ?? []).map(cloneColliderWithNewId),
+    provenance: [
+      sourceFileProvenance(file, hash, importedAt, sourceTexture.id),
+      ...(options.additionalProvenance ?? []),
+    ],
+    ...(options.tile
+      ? {
+          tile: {
+            tileSize: { ...options.tile.tileSize },
+            collisionType: options.tile.collisionType,
+            visualType: options.tile.visualType,
+          },
+        }
+      : {}),
+    ...(options.effect ? { effect: { ...options.effect } } : {}),
+  };
+
+  return {
+    asset,
+    blobs: [
+      { key: blobKeyFor(asset.id, sourceTexture.path), blob: file },
+      ...regionBlobs,
+      { key: blobKeyFor(asset.id, thumbnailTexture.path), blob: thumbnail.blob },
+    ],
+    preview: {
+      mode: options.mode,
+      title: options.preview.title,
+      fileNames: options.preview.fileNames,
+      assetCount: 1,
+      layerCount: layers.length,
+      frameCount: frames.length,
+      animationCount: animations.length,
+      details: options.preview.details,
+      losses: options.preview.losses,
+      warnings: options.preview.warnings,
+    },
+  };
+}
+
+/** decode済み画像の明示regionだけを、source/edit/layer/frameへ展開する共通入口。 */
+export async function prepareImageRegionsImport(
+  file: File,
+  options: PrepareImageRegionsOptions,
+): Promise<PreparedFrameSetImport> {
+  let validated;
+  try {
+    validated = await decodeValidatedImageFile(file);
+  } catch (error) {
+    throw new FrameSetImportError(
+      `${file.name}を${options.sourceLabel}として準備できませんでした: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      { cause: error, file },
+    );
+  }
+  try {
+    return await prepareValidatedImageRegions(file, validated, options);
+  } finally {
+    validated.decoded.close();
+  }
+}
+
 /** 1枚のsheet原本を保持しつつ、手動格子の各cellをedit/layer/frameへ展開する。 */
 export async function prepareSpriteSheetImport(
   file: File,
@@ -343,99 +617,22 @@ export async function prepareSpriteSheetImport(
     );
   }
 
-  const { decoded, mimeType, extension, hash } = validated;
+  const { decoded } = validated;
   try {
     const layout = computeManualGrid({ width: decoded.width, height: decoded.height }, gridInput);
-    const firstCell = layout.cells[0];
-    const thumbnail = await encodeDecodedThumbnail(decoded, firstCell);
-    const now = new Date();
     const assetName = assetNameFromFileName(file.name);
-    const base = createImageAsset({
-      name: assetName,
-      displayName: assetName,
-      size: { width: gridInput.cellWidth, height: gridInput.cellHeight },
-      sourceMimeType: mimeType,
-      sourceExtension: extension,
-      thumbnailMimeType: thumbnail.blob.type === 'image/webp' ? 'image/webp' : 'image/png',
-      thumbnailSize: thumbnail.size,
-      now,
-    });
-    const baseSource = base.textures.find((texture) => texture.kind === 'source');
-    const baseEdit = base.textures.find((texture) => texture.kind === 'edit');
-    const thumbnailTexture = base.textures.find((texture) => texture.kind === 'thumbnail');
-    const baseLayer = base.layers[0];
-    if (!baseSource || !baseEdit || !thumbnailTexture || !baseLayer) {
-      throw new FrameSetImportError('Sprite Sheet用Assetのtexture/layer定義が不正です。');
-    }
-
-    const sourceTexture: TextureRef = {
-      ...baseSource,
-      size: { width: decoded.width, height: decoded.height },
-    };
-    const textures: TextureRef[] = [sourceTexture, thumbnailTexture];
-    const layers: Layer[] = [];
-    const cellBlobs: Array<{ key: string; blob: Blob }> = [];
-
-    for (const cell of layout.cells) {
-      const name = `${assetName}_${String(cell.index + 1).padStart(3, '0')}`;
-      const layerId = cell.index === 0 ? baseLayer.id : generateId('layer');
-      const texture: TextureRef =
-        cell.index === 0
-          ? { ...baseEdit, name }
-          : {
-              id: generateId('tex'),
-              kind: 'edit',
-              name,
-              mimeType: 'image/png',
-              size: { width: cell.width, height: cell.height },
-              path: `textures/${layerId}.png`,
-            };
-      const layer: Layer = {
-        ...(cell.index === 0 ? baseLayer : {}),
-        id: layerId,
-        name,
-        layerType: 'image',
-        visible: cell.index === 0,
-        locked: false,
-        opacity: 1,
-        transform: { position: { x: 0, y: 0 }, scale: { x: 1, y: 1 }, rotation: 0 },
-        textureId: texture.id,
-      };
-      textures.push(texture);
-      layers.push(layer);
-      cellBlobs.push({
-        key: blobKeyFor(base.id, texture.path),
-        blob: await encodeDecodedImageRegion(decoded, cell),
-      });
-    }
-
-    const frameNames = layers.map((layer) => layer.name);
-    const frames = buildFrameSetFrames(layers, frameNames);
     const losses = sheetLosses(gridInput, layout);
-    const asset: Asset = {
-      ...base,
-      textures,
-      layers,
-      frames,
-      animations: [animationFor(assetName, frames)],
-      provenance: [sourceFileProvenance(file, hash, now.toISOString(), sourceTexture.id)],
-    };
-
-    return {
-      asset,
-      blobs: [
-        { key: blobKeyFor(asset.id, sourceTexture.path), blob: file },
-        ...cellBlobs,
-        { key: blobKeyFor(asset.id, thumbnailTexture.path), blob: thumbnail.blob },
-      ],
+    return await prepareValidatedImageRegions(file, validated, {
+      mode: 'sheet',
+      sourceLabel: 'Sprite Sheet',
+      assetName,
+      regions: layout.cells.map((cell) => ({
+        ...cell,
+        name: `${assetName}_${String(cell.index + 1).padStart(3, '0')}`,
+      })),
       preview: {
-        mode: 'sheet',
-        title: `Sprite Sheet「${asset.displayName}」`,
+        title: `Sprite Sheet「${assetName}」`,
         fileNames: [file.name],
-        assetCount: 1,
-        layerCount: layers.length,
-        frameCount: frames.length,
-        animationCount: 1,
         details: [
           `${decoded.width} x ${decoded.height}の原本から${layout.columns}列 x ${layout.rows}行を左上・行優先で切り出します。`,
           'sheet原本をsource Blobとしてそのまま保持し、provenanceは元sheet 1件だけを記録します。',
@@ -448,7 +645,111 @@ export async function prepareSpriteSheetImport(
             ? ['原本には残りますが、格子外のpixelは編集用frameへ反映されません。']
             : [],
       },
-    };
+    });
+  } finally {
+    decoded.close();
+  }
+}
+
+/** 手動格子を独立したtile Assetへ変換し、cellごとのlayer/frameとAsset全体設定を作る。 */
+export function assertTileSetImportInput(input: TileSetImportInput): void {
+  for (const [label, value] of Object.entries({
+    tile幅: input.tileSize.width,
+    tile高さ: input.tileSize.height,
+  })) {
+    if (!Number.isInteger(value) || value < 1) {
+      throw new FrameSetImportError(`${label}は1以上の整数で指定してください。`);
+    }
+  }
+  if (
+    input.tileSize.width > input.grid.cellWidth ||
+    input.tileSize.height > input.grid.cellHeight
+  ) {
+    throw new FrameSetImportError('tileSizeはcellSize以下にしてください。');
+  }
+  if (!(TILE_COLLISION_TYPES as readonly string[]).includes(input.collisionType)) {
+    throw new FrameSetImportError(`未対応のcollision設定です: ${input.collisionType}`);
+  }
+}
+
+export async function prepareTileSetImport(
+  file: File,
+  input: TileSetImportInput,
+): Promise<PreparedFrameSetImport> {
+  try {
+    assertTileSetImportInput(input);
+  } catch (error) {
+    throw new FrameSetImportError(error instanceof Error ? error.message : String(error), {
+      cause: error,
+      file,
+    });
+  }
+
+  let validated;
+  try {
+    validated = await decodeValidatedImageFile(file);
+  } catch (error) {
+    throw new FrameSetImportError(
+      `${file.name}をTilesetとして準備できませんでした: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      { cause: error, file },
+    );
+  }
+  const { decoded } = validated;
+  try {
+    const layout = computeManualGrid({ width: decoded.width, height: decoded.height }, input.grid);
+    const assetName = assetNameFromFileName(file.name);
+    const losses = sheetLosses(input.grid, layout);
+    const warnings: string[] = [];
+    if (
+      input.grid.cellWidth % input.tileSize.width !== 0 ||
+      input.grid.cellHeight % input.tileSize.height !== 0
+    ) {
+      warnings.push('cellSizeをtileSizeで割り切れないため、ゲーム側の分割に端数が残ります。');
+    }
+    if (input.collisionType === 'none' || input.collisionType === 'custom') {
+      warnings.push(
+        `collision「${input.collisionType}」がゲーム側の意図と一致するか確認してください。`,
+      );
+    }
+    if (input.visualType.trim() === '') {
+      warnings.push('見た目タイプが空です。用途を一覧やゲーム側で区別しにくくなります。');
+    }
+    return await prepareValidatedImageRegions(file, validated, {
+      mode: 'tileset',
+      sourceLabel: 'Tileset',
+      assetName,
+      assetType: 'tile',
+      regions: layout.cells.map((cell) => ({
+        ...cell,
+        name: `${assetName}_tile_${String(cell.index + 1).padStart(3, '0')}`,
+      })),
+      animations: [],
+      tile: {
+        tileSize: { ...input.tileSize },
+        collisionType: input.collisionType,
+        visualType: input.visualType,
+      },
+      preview: {
+        title: `Tileset「${assetName}」`,
+        fileNames: [file.name],
+        details: [
+          `${decoded.width} x ${decoded.height}の原本から${layout.columns}列 x ${layout.rows}行を左上・行優先で切り出します。`,
+          `Asset typeはtile、cellSizeは${input.grid.cellWidth} x ${input.grid.cellHeight}px、tileSizeは${input.tileSize.width} x ${input.tileSize.height}pxです。`,
+          `collisionはAsset全体で「${input.collisionType}」、visualTypeは「${input.visualType || '空'}」です。colliderは自動生成しません。`,
+          '各cellをedit PNG・layer・frameへ展開します。Tilesetとして自動animationは作成しません。',
+          'sheet原本をsource Blobとしてそのまま保持し、provenanceは元sheet 1件だけを記録します。',
+        ],
+        losses,
+        warnings: [
+          ...(losses.length > 0
+            ? ['原本には残りますが、格子外のpixelは編集用frameへ反映されません。']
+            : []),
+          ...warnings,
+        ],
+      },
+    });
   } finally {
     decoded.close();
   }

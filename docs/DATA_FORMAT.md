@@ -178,6 +178,16 @@ batchはsession内で1 History entryとなり、Undo / Redoも前後を入れ替
 
 このstagingは既存schema、version、migration、IndexedDB store、`.casproj`配置、product export ZIP構成を変更しない。署名不一致、decode失敗、寸法超過だけを既存quarantineへ記録する。
 
+### 5.4 Tileset / Chameleon Atlas取り込み（2D-2-IMPORT Slice D、ADR-0018）
+
+Tilesetは手動格子の1〜16cellを各1 edit TextureRef / layer / frameへ展開する。`assetType`は`tile`、`canvasSize`はcellSizeとし、`tile.tileSize`はcellSizeを既定値とする。tileSizeはcellSize以下、collisionType / visualTypeはAsset全体で1設定である。per-tile property、map、terrain、autotile、collider自動生成、自動animationは保存しない。
+
+Chameleon Atlasはexactな`atlas.json + spritesheet.png`、`chameleon-atlas/0.1.0`のcanonical subsetだけを受ける。frame矩形は`computeSheetLayout`の行優先配置と実texture寸法に一致し、1〜16件の非空・一意name、animation参照、anchor role、collider union、tile / effect設定をruntime検証する。JSONに記載されたframe矩形だけを切り出すため、5 frameを3 x 2へ配置したsheetの末尾空cellはframeにならない。
+
+spritesheet PNGは1件のsource TextureRef / Blobとprovenanceとしてverbatim保持する。atlas JSONはTextureRefやBlobとして保存せず、2件目のprovenanceに`sourceFileName: "atlas.json"`、MIME、byteLength、原本SHA-256、importedAt、`origin: "chameleon-atlas-metadata"`を記録する。このrecordは対応画像TextureRefを持たないため`textureId`を省略する。
+
+Atlasからはframe / animation / origin / anchors / colliders / tile / effectを新しいIDのflattened Assetへ復元する。元layer topology / transform / parts / tags / gameAttributes / rig / provenance / identity / animation durationMsとraw JSONは復元しない。previewで常時loss表示し、確認後だけSlice Cと同じ原子保存・History経路で確定する。
+
 ---
 
 ## 6. Asset
@@ -225,7 +235,7 @@ batchはsession内で1 History entryとなり、Undo / Redoも前後を入れ替
 | `hash` | `sha256:<64 lowercase hex>` | ✔ | source Blob原本bytesのSHA-256 |
 | `importedAt` | string（date-time） | ✔ | 取り込み日時 |
 | `textureId` | string | 任意 | 対応する`kind: "source"`のTextureRef ID |
-| `origin` | string | 任意 | 手動入力する取得元。現行UIでは未実装 |
+| `origin` | string | 任意 | 取得元。Atlas JSON hash recordでは`chameleon-atlas-metadata` |
 | `license` | string | 任意 | 手動入力する利用条件。現行UIでは未実装 |
 
 将来のAI送信記録fieldは未確定である。read-preserve-ignoreを維持するため、`sourceFileName`を持たないrecordはopen recordとして未知fieldを保持する。`sourceFileName`を持つsource-file recordだけは上表の必須fieldとhash形式をschemaで検証する。複製でTextureRef IDを再採番するときは`textureId`も同じ対応表で更新し、flip copyや`.casproj`再取り込みのようにTextureRef IDを維持する経路では参照も維持する。参照切れと正式recordからsource以外への参照は読み取り専用`inspectAsset`で表示し、保存・autosave・`.casproj`・exportを新たに止めない。

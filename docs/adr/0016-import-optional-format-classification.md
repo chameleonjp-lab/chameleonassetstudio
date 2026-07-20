@@ -16,7 +16,7 @@
 
 1. **SVG = `rasterized-import`**: browser 標準の画像 decode 経由で raster 化して取り込む。SVG 内の script / 外部 URL 参照 / 任意コードは実行しない decode 方式（`<img>` 要素系の sandbox された decode）に限定する。ベクター情報を保持する `editable-import` は将来の別 ADR とする。
 2. **GIF / APNG = `rasterized-import`（frame 列）**: frame 列として取り込み、既存の layers / frames / animations schema（G1）へ写像する。`ImageDecoder`（WebCodecs）が利用できる環境では全 frame を取り込み、利用できない環境では先頭 frame のみ + loss warning を表示する。動画編集の代替にはしない（互換 matrix §4.1）。
-3. **Aseprite（`.aseprite` / `.ase`）= `unsupported`**: native parser は dependency 追加とライセンス・商用利用条件の評価が必要であり、現段階では理由付きで明示拒否する。Aseprite の標準 PNG + JSON sprite sheet 出力を経由して取り込む手順を import-notes として案内する（sprite sheet 経路自体は `2D-2-IMPORT-GATE` の範囲）。
+3. **Aseprite（`.aseprite` / `.ase`）= `unsupported`**: native parser は dependency 追加とライセンス・商用利用条件の評価が必要であり、現段階では理由付きで明示拒否する。AsepriteからPNG sprite sheetを書き出し、Chameleonの手動格子で取り込む手順をimport-notesとして案内する。Aseprite JSON metadataは読み込まず、Phaser / Aseprite等の外部JSONは別ADRまで対象外とする。
 4. **PSD / OpenRaster（`.ora`）/ Krita（`.kra`）= `unsupported`**: 理由付きで明示拒否する。`reference-only`（原本 Blob 保存のみ）は保存容量を消費しながら編集できない状態を作り、対応していると誤解させるため採用しない。
 5. **表示原則**: 分類は形式名だけでなく「どう扱われるか」（画像として取り込む / frame 列として取り込む / 対応していない + 理由）として UI と docs に表示する（互換 matrix §4.2）。未実装の形式・環境で decode できない場合を「対応済み」と表現しない。
 6. **dependency 追加なし**: 本分類の実装（Slice E）は browser 標準 API のみで行う。外部 parser library の採用は、ライセンス・商用利用・browser 対応・bundle size の評価記録を伴う別 ADR とする。

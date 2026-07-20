@@ -1828,6 +1828,8 @@
   }
 
   .import-frame-set-panel input[type='number'],
+  .import-frame-set-panel input[type='text'],
+  .import-frame-set-panel button,
   .import-frame-set-panel select {
     min-height: 44px;
     font-size: 16px;
