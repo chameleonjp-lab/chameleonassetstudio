@@ -1,9 +1,9 @@
 # 2D-2-IMPORT-GATE + 2D-2-IMPORT-OPTIONAL + 2D-2-AI-BOUNDARY 契約監査・実装計画
 
-作成日: 2026-07-19（最終更新: 2026-07-20）
-状態: `G1+L1+Q1+P1+F1+A1+W1+S1 accepted / Slice A〜Cはmainへmerge済み / Slice D（tileset + Chameleon atlas意味上roundtrip）実装中`
+作成日: 2026-07-19（最終更新: 2026-07-21）
+状態: `G1+L1+Q1+P1+F1+A1+W1+S1 accepted / Slice A〜Dはmainへmerge済み / Slice D closeout・Slice E開始段階`
 正式work package: `2D-2-IMPORT-GATE` + `2D-2-IMPORT-OPTIONAL` + `2D-2-AI-BOUNDARY`（2D完成ロードマップ PR group 11）
-Slice D基準main: `be887a1`（PR #128 merge、Slice C preview guard補修closeout）
+Slice D実装基準main: `be887a1`（PR #128 merge、Slice C preview guard補修closeout）
 前段: `2D-2-VARIANT + 2D-2-BATCH`（group 10）は全slice merge・遡及Opus review・closeout補修まで完了。
 
 ## 1. 目的
@@ -27,6 +27,7 @@ Slice D基準main: `be887a1`（PR #128 merge、Slice C preview guard補修closeo
 - Slice C本体はPR #127（merge `eaeb110`）、preview中の背景永続変更・Undo / Redo防止補修はPR #128（final head `f9e0bc5`、merge `be887a1`）でmainへmerge済み。CI Run #413はlint / format / build / unit / Chromium E2E 125件を含め全成功。独立read-only再reviewは`BLOCKER 0 / MUST 0 / SHOULD 0 / NOTE 0`だがOpus reviewではなく、その事実と残リスクをPR #128へ記録した。
 - 判断必須項目（`2D-2-IMPORT-OPTIONAL` / `2D-2-AI-BOUNDARY`）はADR-0016 / ADR-0017として正式確定済み。Slice B以降はaccepted契約の範囲だけを直列実装する（ROADMAP §6.5）。
 - Slice D開始監査でADR-0007 / ADR-0015とW1の衝突、raw atlas JSONの保存先不在、完全roundtrip不能を確認した。2026-07-20の人間承認によりADR-0018をacceptedとし、現行Chameleon atlasの意味上roundtripを限定例外として固定した。
+- Slice DはPR #129（final head `5b98b24`、merge `33ebad4`）でmainへmerge済み。CI Run #415はlint / format / build / unit / Chromium E2Eを含め全成功した。独立read-only reviewは`BLOCKER 0 / MUST 0 / SHOULD 2 / NOTE 1`だがOpus reviewではない。SHOULD 2件のtile / effect Atlas意味比較E2Eと、外部・不整合Atlas拒否時のquarantine非追加直接assertをcloseout補修し、次はSlice Eをcloseout反映後の最新mainから開始する。
 
 ## 3. 現状実装の確認
 
@@ -170,4 +171,4 @@ accepted後の実装でも、次は別契約まで行わない。
 - 状態: **accepted**
 - accepted日: 2026-07-19（ユーザー承認）
 - 実装review条件: 各slice Draft PR → CI → 独立Opus review → 人間確認。A→B→C→D→Eの直列順。各sliceは前sliceのmerge後に最新mainからbranchを作る。
-- Slice AはPR #125、Slice BはPR #126、Slice CはPR #127とrepair PR #128でmainへmerge済み。Slice Dはmain `be887a1`相当のtreeから開始し、ADR-0018の限定境界で実装する。Draft PR → CI → 独立review → 人間確認の順を維持し、独立Opus reviewの証拠が得られるまではOpus review工程を完了扱いにしない。
+- Slice AはPR #125、Slice BはPR #126、Slice CはPR #127とrepair PR #128、Slice DはPR #129でmainへmerge済み。Slice Dの非Opus独立reviewで挙がったSHOULD 2件はcloseout補修で回帰検知を固定し、次はSlice Eを直列で進める。各sliceはDraft PR → CI → 独立review → 人間確認の順を維持し、独立Opus reviewの証拠が得られるまではOpus review工程を完了扱いにしない。
