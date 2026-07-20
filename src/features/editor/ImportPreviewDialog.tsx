@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export interface ImportPreviewContent {
   id: string;
@@ -28,22 +28,45 @@ export function ImportPreviewDialog({
   onConfirm,
   onCancel,
 }: ImportPreviewDialogProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const [warningsConfirmed, setWarningsConfirmed] = useState(false);
   const needsWarningConfirmation = preview.losses.length > 0 || preview.warnings.length > 0;
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) {
+      return;
+    }
+    if (!dialog.open) {
+      dialog.showModal();
+    }
+    cancelButtonRef.current?.focus();
+    return () => {
+      if (dialog.open) {
+        dialog.close();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     setWarningsConfirmed(false);
   }, [preview.id]);
 
   return (
-    <div className="import-preview-backdrop">
-      <section
-        className="import-preview-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="import-preview-title"
-        aria-describedby="import-preview-description"
-      >
+    <dialog
+      ref={dialogRef}
+      className="import-preview-backdrop"
+      aria-labelledby="import-preview-title"
+      aria-describedby="import-preview-description"
+      onCancel={(event) => {
+        event.preventDefault();
+        if (!busy) {
+          onCancel();
+        }
+      }}
+    >
+      <section className="import-preview-dialog">
         <header>
           <p className="import-preview-mode">{preview.modeLabel}</p>
           <h2 id="import-preview-title">取り込み確定前preview</h2>
@@ -105,7 +128,7 @@ export function ImportPreviewDialog({
         )}
 
         <div className="import-preview-actions">
-          <button type="button" disabled={busy} onClick={onCancel}>
+          <button ref={cancelButtonRef} type="button" disabled={busy} onClick={onCancel}>
             取り込みを取消
           </button>
           <button
@@ -120,6 +143,6 @@ export function ImportPreviewDialog({
           確定後は1回の「元に戻す」で今回の取り込み全体を削除し、「やり直す」で復元できます。
         </p>
       </section>
-    </div>
+    </dialog>
   );
 }

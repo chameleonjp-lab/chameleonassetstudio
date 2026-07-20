@@ -25,7 +25,7 @@
 - 1つのアニメーションAssetへまとめる場合は、プロパティの「連番・Sprite Sheetを取り込む」を使います。通常画像とは別の明示モードです。
 - 連番は1〜16枚、すべて同じ寸法にします。ファイル名内の数字を数値として並べた確定順をpreviewに表示し、自動拡縮や余白追加はしません。各画像が1 layer / 1 frameになり、8fps・loop有効のanimationを作ります。
 - Sprite Sheetは1枚を選び、cell幅・高さ、uniformな外周margin、cell間spacingを整数で指定します。左上から行優先で完全に収まるcellだけを最大16件切り出します。margin、spacing、右端・下端の余りpixelは元sheetには残りますがframeへ入らないため、loss / warningを確認するcheckboxが必要です。
-- previewの「取り込みを取消」や準備失敗ではProject / Asset / 画像Blobを変更しません。確定後は今回の取り込み全体を1回のUndoで外し、Redoで同じ内容を戻せます。
+- preview表示中は背景操作とUndo / Redoを一時停止し、確認dialog内だけを操作できます。「取り込みを取消」や準備失敗ではProject / Asset / 画像Blobを変更しません。確定前にProject / Assetが変わった場合は古いpreviewを保存せず、作り直しを案内します。確定後は今回の取り込み全体を1回のUndoで外し、Redoで同じ内容を戻せます。
 - 元fileのbytesとSHA-256来歴を保持します。署名不一致、画像decode失敗、4096px超過は正本へ保存せず既存quarantineへ隔離し、ホーム画面から理由を確認できます。
 
 ### 2.2 画像を取り込まずに新規アセットを作る（2D-2-CREATE-01、2026-07）

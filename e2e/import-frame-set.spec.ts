@@ -134,6 +134,42 @@ function visibleLayerIds(asset: StoredFrameSetAsset, frameIndex: number): string
   return [...visibility].filter(([, visible]) => visible).map(([id]) => id);
 }
 
+test('保存前previewは背景をmodal化し、Ctrl+Zでstaged stateを古くしない', async ({ page }) => {
+  await createProject(page, 'modal import guard');
+  const input = page.getByLabel('画像を選ぶ');
+  const base = await makeSolidPng(page, '#ff0000');
+  await input.setInputFiles({ name: 'base.png', mimeType: 'image/png', buffer: base });
+
+  const dialog = page.getByRole('dialog', { name: '取り込み確定前preview' });
+  const cancel = dialog.getByRole('button', { name: '取り込みを取消' });
+  await expect(cancel).toBeFocused();
+  await dialog.getByRole('button', { name: '取り込みを確定' }).click();
+  await expect.poll(async () => (await readAssets(page)).length).toBe(1);
+  const before = (await readAssets(page))[0];
+
+  const second = await makeSolidPng(page, '#00ff00');
+  await page
+    .getByLabel('画像を追加')
+    .setInputFiles({ name: 'second.png', mimeType: 'image/png', buffer: second });
+  await expect(dialog).toBeVisible();
+  await expect(cancel).toBeFocused();
+  await expect(page.getByRole('button', { name: '元に戻す' })).toBeDisabled();
+
+  await page.keyboard.press('Control+z');
+  await expect(dialog).toBeVisible();
+  await expect
+    .poll(async () => (await readAssets(page)).map((asset) => asset.id))
+    .toEqual([before.id]);
+  expect(await page.evaluate(() => document.activeElement?.closest('dialog') !== null)).toBe(true);
+
+  await dialog.getByRole('button', { name: '取り込みを確定' }).click();
+  await expect.poll(async () => (await readAssets(page)).length).toBe(2);
+  await page.getByRole('button', { name: '元に戻す' }).click();
+  await expect
+    .poll(async () => (await readAssets(page)).map((asset) => asset.id))
+    .toEqual([before.id]);
+});
+
 test('連番previewを自然数順で確定し、1 Undo/Redo・reload後もframe意味を保持する', async ({
   page,
 }) => {

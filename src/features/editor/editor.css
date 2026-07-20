@@ -1614,11 +1614,22 @@
 .import-preview-backdrop {
   position: fixed;
   inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  border: 0;
   z-index: 100;
   display: grid;
   place-items: center;
   padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right))
     max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+  background: transparent;
+  color: inherit;
+}
+
+.import-preview-backdrop::backdrop {
   background: rgb(0 0 0 / 62%);
 }
 
