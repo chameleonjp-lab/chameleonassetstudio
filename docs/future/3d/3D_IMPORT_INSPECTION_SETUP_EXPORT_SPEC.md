@@ -149,7 +149,18 @@
 | 3D-CHK-BONE-002 | 初期姿勢の T-pose / A-pose 推定表示（info） |
 | 3D-CHK-BONE-003 | 頂点ウェイト異常（合計が 1 でない / 影響 joint 数超過） |
 
+第二〜第三段階で追加（2026-07-20 第2改訂。生成モデル特有の品質問題への対応。背景は `3D_INTEROP_VRM_VR_AND_CREATION_SPEC.md` 8.2b）:
+
+| checkId | 内容 | 段階 |
+|---|---|---|
+| 3D-CHK-GEO-003 | 非多様体エッジ / 退化三角形 / 未閉合メッシュの検出（ウェイト計算・簡略化の品質低下要因） | 第二段階 |
+| 3D-CHK-GEO-004 | 重複頂点・未結合頂点（weld 推奨の根拠表示） | 第二段階 |
+| 3D-CHK-UV-003 | UV 重なり率・texel 密度の偏り（参考値表示。baked lighting は自動判定せずガイド文で注意） | 第三段階 |
+| 3D-CHK-TEX-004 | テクスチャ無し（頂点カラーのみ）の検出（info） | 第二段階 |
+
 第三段階で追加: 重複 mesh/material/texture 検出（3D-CHK-DUP-*）、未使用 resource（3D-CHK-UNUSED-*）、圧縮状態の表示（3D-CHK-COMP-*）。
+
+> ⚠️ 整合注意（`3D-RISK-03`）: 本章のしきい値・上限値はすべて「暫定の例」であり、実装の正は定数モジュール 1 か所 + `3D-STAGE2-06` の確定報告。文書の数値を直接実装へ写経しない。
 
 ### 4.4 プリセット（暫定しきい値）
 
@@ -272,6 +283,8 @@
 | `unsupported` | 対応しない | FBX 入力等（Mixamo 等の FBX は Blender 経由の supply notes で受ける） |
 
 **説明を書いただけの対象を `verified` と表示してはいけない**（2D 互換性表と同じ規則）。区分は export ZIP の README と import notes に明記する。
+
+⚠️ 整合注意（`3D-RISK-11`）: rigged / motion 付きモデルの書き出しでは、エンジン別の skin 制約（頂点あたり影響数 4・joint 数上限・ボーン命名）を「書き出し前検査」「import notes」「preset 検査」の 3 か所で**同じ定数**から参照する。別々に値を書くと必ずずれる。
 
 ### 8.7 ZIP 内の安全なパスとファイル名規則
 
