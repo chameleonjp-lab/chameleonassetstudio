@@ -1,8 +1,8 @@
 # 3D Interop / VRM / VR / Creation Spec（主要ツール連携・VRM・VR・ボーン・テクスチャ編集・画像→3D）
 
 状態: **draft / human review required**
-最終更新日: 2026-07-20
-調査基準commit: `96d63c5`（PR #130 マージ後の main。初版計画の基準は `7018984`）
+最終更新日: 2026-07-20（第2改訂: リグ作成 R2〜R4・モーション付与 M1〜M2・生成物特有検品・整合リスク参照を追加）
+調査基準commit: 第2改訂 `3dd4dd4`（PR #131 マージ後の main。第1改訂は `96d63c5`、初版は `7018984`）
 外部情報の確認日: 2026-07-20（9 章・11 章の表に個別記載）
 上位文書: `README.md`（本ディレクトリ）, `3D_COMPLETE_PRODUCT_SPEC.md`
 関連文書: `3D_FOUR_STAGE_IMPLEMENTATION_PLAN.md`（対応 work package）, `3D_IMPORT_INSPECTION_SETUP_EXPORT_SPEC.md`, `3D_ASSET_DATA_CONTRACT.md`, `3D_DECISION_LOG_AND_OPEN_ITEMS.md`
@@ -19,9 +19,9 @@
 2. 他の 3D・ゲーム作成ツールとの差分（Chameleon が持つもの / あえて持たないもの）
 3. VRM（人型アバター形式）への対応レベル
 4. VR（VR 向け素材準備と VR での確認）
-5. ボーン設定（スケルトン検査・humanoid 対応付け・ボーン追従）
+5. ボーン設定（スケルトン検査・humanoid 対応付け・**骨格作成・ウェイト割り当て**）とモーション付与（**テンプレート・retarget**）
 6. テクスチャ編集（既存 2D 編集機能の再利用による、3D テクスチャの修正）
-7. 画像から 3D モデルを作る外部生成との接続詳細
+7. 画像から 3D モデルを作る外部生成との接続詳細（2D 前処理・生成物特有の検品を含む）
 
 各機能の「どの段階で実装するか」は `3D_FOUR_STAGE_IMPLEMENTATION_PLAN.md` の work package（`3D-STAGE2-11` / `3D-STAGE3-11` / `3D-STAGE3-12` / `3D-STAGE4-09` ほか）を正とする。データ構造の正本は `3D_ASSET_DATA_CONTRACT.md`、検査 ID の正本は `3D_IMPORT_INSPECTION_SETUP_EXPORT_SPEC.md` である。
 
@@ -77,7 +77,9 @@
 
 ---
 
-## 4. ボーン設定（skeleton / humanoid）
+## 4. ボーン設定とモーション付与（skeleton / humanoid / rig / motion）
+
+> **2026-07-20 第2改訂**: 本章は「既にあるボーンの検査・対応付け」（B0〜B3）に加えて、**ボーンが無い静的モデルへの骨格作成（R2〜R4）とモーション付与（M1〜M2）**を含むよう拡張された。画像→3D 生成モデルは静的で出力されるため、この経路が無いと主要動線が完結しない。
 
 ### 4.1 対応レベル
 
@@ -87,18 +89,62 @@
 | B1: 検査 | joint 階層ツリー表示、bind pose の整合検査、初期姿勢の T-pose / A-pose 推定表示、ウェイト異常（合計≠1、影響ボーン数超過）の警告 | 第二段階（`3D-STAGE2-05` の拡張 + 検査 ID `3D-CHK-BONE-001〜003`） |
 | B2: humanoid 対応付け | glTF の node を標準 humanoid スロット（hips / spine / chest / neck / head / 左右の shoulder・upperArm・lowerArm・hand・upperLeg・lowerLeg・foot 等）へ対応付ける。名前からの自動推定 + 手動修正 UI。結果は `asset3d.json` の `humanoidMap` に保存（非破壊 metadata） | 第三段階（`3D-STAGE3-11`） |
 | B3: 利用 | humanoid スロットを使った anchor 追加補助（「右手に anchor」ワンクリック）、エンジン retarget notes への反映、VRM humanoid 完全性検査（5 章） | 第三段階（同 WP 内） |
-| 対象外 | リグ作成・ウェイトペイント・ボーンの追加/削除/変形（非目標。Blender / 自動リグ外部ツールの仕事） | - |
+| **R2: 骨格の作成**（2026-07-20 第2改訂で追加） | **ボーンが無い静的モデル**（画像→3D 生成物の標準状態）に、humanoid テンプレート骨格を配置・フィットする。bounds / feet / 左右対称からの初期自動配置 + ギズモ・数値によるボーン端点調整（対称編集つき） | 第三段階（`3D-STAGE3-13`） |
+| **R3: ウェイト割り当て** | 各頂点がどのボーンにどれだけ追従するか（skin weight）を自動計算（距離ベース envelope 方式）し、ヒートマップ表示で確認・ボーン単位の影響半径で調整する | 第三段階（`3D-STAGE3-14`） |
+| **R4: rigged derived 生成** | 骨格 + ウェイトを焼き込んだ **rigged モデルを derived として生成**（source 不変。`DerivedModel.kind: "rigged"`）。以後のモーション付与・node 追従はこの rigged derived を対象にする | 第三段階（同 WP 内） |
+| 対象外（変更なし） | 頂点単位のウェイトペイント（`3D-OPEN-29`）、ボーンの個別追加/削除による自由骨格編集、物理（揺れもの）ボーン作成、Blender 級の本格リグ作成 | 外部ツールの仕事 |
+
+> **設計判断（2026-07-20 第2改訂）**: 初版〜第1改訂は「リグ作成は外部の仕事」としていたが、**主対象である画像→3D 生成モデルは静的（ボーン無し）で出力される**ため、それではキャラクターを動かす動線がツール内で完結しない。ボーンはモーションの主軸であり、「テンプレート骨格 + 自動ウェイト」という限定形でツール内に持つ（完全なリグ作成は引き続き非目標）。旧決定の変更として追跡表・決定記録に記録した（`3D-DEC-RIG-01`）。
 
 ### 4.2 humanoid スロットの語彙
 
-- VRM 1.0 の humanoid ボーン一覧（必須 + 任意）を基準語彙として採用する（Unity Humanoid とほぼ相互対応でき、VRM 検査と共用できるため）。独自語彙は作らない。
+- VRM 1.0 の humanoid ボーン一覧（必須 + 任意）を基準語彙として採用する（Unity Humanoid とほぼ相互対応でき、VRM 検査・テンプレート骨格・モーション retarget で共用できるため）。独自語彙は作らない。
 - 対応付けは node index を正、node 名を表示・再検証用とする（anchor の `nodeRef` と同じ規則。`3D_ASSET_DATA_CONTRACT.md` 7.1）。
 - 自動推定は「候補の提示」までとし、確定は必ず利用者操作にする（推定精度の合格基準は `3D-OPEN-25`）。
 
-### 4.3 外部リグ付けとの往復
+### 4.3 骨格作成（R2）の設計
 
-- 自動リグ（Mixamo / RigAnything / UniRig 等）は外部の仕事のまま維持する。
-- 「リグ無しで取り込んだモデルを外部でリグ付けし、リグ付き GLB として**同じアセットの新しい source 改訂として再取り込み**する」流れを将来候補として定義する（revision 再取り込み。既定は不採用で、通常は新規アセットとして取り込む。`3D-OPEN-24`）。
+- **前提条件（動線順序の強制）**: Setup 完了（feet / forward / unitScale の確定）を骨格フィット開始の前提にする。正立・足元接地・正面向きが決まっていないと自動配置が成立しないため、未完了なら「先に Setup を完了してください」と誘導する。⚠️ 整合注意（`3D-RISK-12`）
+- テンプレートは humanoid 1 種から始める（四足・非人型の汎用カスタム骨格は `3D-OPEN-28`。既定: 対象外）。
+- 初期配置: bounds と feet から身長を推定し、標準比率で各ボーン端点を置く。左右対称は既定 ON。
+- 調整: viewer のギズモ + 数値入力（両対応。UI 仕様の規則どおり）。ボーン端点は model space で保存し、表示変換（rotationOffset 等）と混同しない。⚠️ 整合注意（`3D-RISK-09`）
+- 骨格定義は適用（R4）までは asset3d.json 内の一時的な編集データ（`rigDraft`。optional）として保存し、Undo / Redo に載せる。
+
+### 4.4 ウェイト割り当て（R3）の設計と制限
+
+- 方式: 距離ベースの envelope（各ボーンのカプセル状影響範囲と減衰）。heat diffusion 等の高品質方式は初期対象外（品質が必要な素材は外部ツールへ、と明記する）。
+- 計算は Worker で実行（`3D-STAGE3-10` の進捗・中断基盤に乗せる）。
+- **頂点あたり影響ボーン数は最大 4 を既定**とする（主要エンジン・glTF の一般的制約に合わせる。`3D-CHK-BONE-003` と整合）。⚠️ 整合注意（`3D-RISK-11`）
+- 確認手段: ウェイトのヒートマップ表示（ボーン選択で該当頂点が色づく）+ テストポーズ（各関節を軽く曲げた確認用ポーズ）での目視確認 + ウェイト検査（合計≠1・孤立頂点の警告）。
+- 調整はボーン単位の影響半径・減衰の変更 → 再計算まで。頂点単位ペイントはしない（`3D-OPEN-29`）。
+
+### 4.5 rigged derived（R4）と node 参照の再バインド
+
+- 適用すると、glTF-Transform で skeleton node 群 + skin + weights を書き込んだ **rigged derived** を生成する（`DerivedModel.kind: "rigged"`、recipe に骨格定義とウェイト設定を記録 = 再現可能）。
+- **⚠️ 最重要の整合注意（`3D-RISK-02`）**: rigged derived は node 構成が source と異なる（ボーン node が増える）。`nodeRef` / `humanoidMap` の node index は**どのバイト列に対する index か**を必ず `nodeBinding`（契約 7.3）で明示し、rigged derived 生成時に humanoidMap・node 追従 anchor / collider を rigged derived の index へ**再バインド**する。source 基準の記録を rigged derived に対して解釈してはいけない（実装時の最頻出バグ想定箇所）。
+- rigged derived 生成後も source は不変で、リグをやり直す場合は rigDraft から再生成する（rigged derived の直接編集はしない）。
+
+### 4.6 モーション付与（M0〜M3。2026-07-20 第2改訂で追加）
+
+静的モデルにボーンを付けただけではゲーム素材として未完である。「動かして初めて完成」まで計画に含める。
+
+| レベル | 内容 | 段階 |
+|---|---|---|
+| M0: 再生・検査 | 既存クリップの再生・保持チェック（既存計画: `3D-STAGE2-05` / `3D-STAGE3-07`） | 第二〜第三段階（既存） |
+| M1: モーションテンプレート | idle / walk / run / jump / attack / damage / dead 等の**手続き生成モーション**を、humanoid 対応付け済み骨格へ適用し、glTF animation clip として焼き込む（2D の「モーションテンプレート → フレーム焼き込み」の 3D 版。焼き込み先は rigged derived または `motion-baked` derived） | 第三段階（`3D-STAGE3-15`） |
+| M2: retarget | humanoid 対応付け済みの**別モデルのクリップ**（例: Mixamo→Blender→GLB 化した歩行モーション）を、対象モデルの骨格へ流し込む。骨長差はスロット単位の回転リターゲット + hips 位置スケールで吸収。必ずプレビュー → 承認 → 焼き込み | 第三段階（`3D-STAGE3-16`） |
+| M3: キーフレーム編集 | ボーンポーズの手付けキーフレーム編集 | 対象外候補（`3D-OPEN-30`。既定: 実装しない。テンプレート + retarget で不足する場合に再検討） |
+| 対象外 | 本格的なアニメーション制作（カーブエディタ・IK リグ・レイヤー合成）、物理シミュレーション | 外部ツールの仕事（非目標のまま） |
+
+- クリップ名は 2D の `ANIMATION_NAME_SUGGESTIONS`（idle / walk / run / jump / attack / damage / dead / win / lose）と同じ語彙を使い、2D / 3D で「ゲームに載せる動きの語彙」を揃える。⚠️ 整合注意（`3D-RISK-06`: 2D モーションテンプレートとは**名前が同じだけの別実装**。実装・テストを流用しない）
+- モーションテンプレートの中身は Chameleon 自作の手続き生成（外部モーションデータを同梱しない。同梱する場合はライセンス確認 = `3D-OPEN-31`）。
+- 焼き込み結果は通常の animation clip なので、既存の再生・保持チェック・書き出し・engine notes がそのまま適用される。
+
+### 4.7 外部リグ付け・外部モーションとの往復
+
+- 高品質が必要な場合の外部経路（Mixamo / RigAnything / UniRig / Blender）は引き続き有効。**内蔵リグは「速く・それなり」、外部は「時間をかけて高品質」**という分担を UI とガイドに明記する。
+- 外部でリグ付けした GLB は新規アセットとして取り込む（revision 再取り込みは `3D-OPEN-24` のまま）。
+- Mixamo クリップの持ち込み（FBX→Blender→GLB）は M2 retarget の主要な供給経路として supply notes に記載する（`3D-OPEN-27`）。
 
 ---
 
@@ -169,11 +215,35 @@ Chameleon には 2D で実証済みの画像編集基盤（トリミング・背
 
 原則は不変: **生成はブラウザ本体に入れない**。Python / GPU / モデル重みは外部。Chameleon は「入口（画像の用意）と出口（検品・整備）」を担う。初版計画の `3D-STAGE4-01/-02` を次のとおり詳細化する。
 
+### 8.0 端から端までの標準動線（2026-07-20 第2改訂で明文化）
+
+「画像 1 枚から、ゲーム内で歩くキャラクター」までの標準動線を次に固定する。各工程は既存 / 新設の work package に対応しており、**この動線のどこにも行き止まりがない**ことを完成条件に含める（10 章）。
+
+```mermaid
+flowchart LR
+  A["2D 画像の準備<br/>（2D Studio: 背景透過・正面立ち絵）"] --> B["外部 3D 生成<br/>（TripoSR 等。手動 or adapter）"]
+  B --> C["取り込み + 検品<br/>（静的メッシュ。生成物特有の検査 8.4）"]
+  C --> D["Setup<br/>（unit / feet / forward 確定）"]
+  D --> E["骨格フィット + 自動ウェイト<br/>（R2〜R4 → rigged derived）"]
+  E --> F["モーション付与<br/>（M1 テンプレ / M2 retarget → clip 焼き込み）"]
+  F --> G["Game Data<br/>（anchor / collider。骨追従含む）"]
+  G --> H["書き出し<br/>（ZIP + notes。エンジンへ）"]
+```
+
+- ボーン付きで入ってきたモデル（VRM・購入素材等）は E を「humanoid 対応付け（B2）」に読み替えて同じ動線に乗る。
+- 静止物（prop / environment）は D から H へ直行してよい（E〜G は任意）。
+
 ### 8.1 2D→3D ブリッジ（Chameleon 内の入口）
 
 - 3D プロジェクトの Import 画面に「画像から作る（外部生成）」入口を置き、**既存 2D プロジェクトのアセット画像（edit テクスチャ）または任意の画像ファイル**を生成用入力として選べるようにする。
 - 2D 側データへは**読み取り専用**でアクセスする（2D の store を変更しない。参照のみ）。
 - 選んだ画像・生成先・日時は provenance の生成元記録として保存する。
+- **2D 前処理ガイド**（生成品質は入力画像で決まるため、2D Studio で行う推奨前処理を UI 内ガイドとして提供する）:
+  1. 背景透過（2D の背景透過機能。生成器の背景誤認を防ぐ最重要処理）
+  2. 正面または 3/4 視点の全身立ち絵にする（切れ・重なりを避ける）
+  3. 輪郭を明瞭に（2D の輪郭線機能が使える）
+  4. 1 枚あたり 1 体（複数体・小物同居は分離する）
+- 複数視点入力（正面 + 側面 + 背面）に対応する生成器のため、adapter の `input` は画像**配列** + 視点ラベル（front / side / back / other）を許容する形に拡張する（対応可否は provider ごと）。
 
 ### 8.2 adapter プロトコル（ローカル外部処理。`3D-DEC-EXTGEN-01` の承認範囲）
 
@@ -192,6 +262,20 @@ Chameleon には 2D で実証済みの画像編集基盤（トリミング・背
 - job 状態は created → approved（利用者承認）→ running → succeeded / failed / cancelled。失敗しても入力画像と既存アセットは失われない。
 - 受領 GLB は**通常の検証パイプライン（入出力仕様 3 章）を必ず通す**。provenance は `origin: external-generator` + provider 情報を自動記録する。
 - 外部 API（クラウド）接続は、送信データの扱い・保存期間・学習利用の有無を provider 規約で確認できた場合のみ個別承認する（既定: 接続しない）。
+
+### 8.2b 生成物特有の検品（ポリゴン・テクスチャ観点の増強。2026-07-20 第2改訂）
+
+画像→3D 生成モデルには定型的な品質問題がある。次を前提知識として検品・ガイドに組み込む（検査 ID は入出力仕様 4.3）。
+
+| 生成物の典型問題 | 対応する検査 / 機能 |
+|---|---|
+| ボーン・アニメーションが無い（静的） | `3D-CHK-ANIM-001`（info）→ 骨格フィット（R2）への導線を警告文の fix に記載 |
+| 原点・向き・スケールが不定 | 既存 `3D-CHK-ORG/BND` + Setup |
+| 非多様体・退化三角形・穴 | **`3D-CHK-GEO-003`（新設）**: 非多様体エッジ / 退化三角形 / 未閉合の検出。ウェイト計算・簡略化の品質低下要因として警告 |
+| 重複頂点・未結合頂点 | **`3D-CHK-GEO-004`（新設）**: weld（`3D-STAGE3-03`）推奨の根拠として表示 |
+| テクスチャ無し（頂点カラーのみ） | **`3D-CHK-TEX-004`（新設）**: info。テクスチャ編集対象が無い旨を表示 |
+| 自動 UV の重なり・密度ムラ・巨大 atlas 1 枚 | **`3D-CHK-UV-003`（新設）**: UV 重なり率・texel 密度の偏りを参考値表示。焼き込み済み陰影（baked lighting）は自動判定せず、ガイド文で注意喚起 |
+| ポリゴン数過剰 / 過少 | 既存 `3D-CHK-TRI-001` + 簡略化（過少 = シルエット破綻は目視。Compare で確認） |
 
 ### 8.3 provider 候補の現状（2026-07-20 時点）
 
@@ -219,10 +303,12 @@ install は従来どおり Gate 承認後のみ。確認日はいずれも 2026-
 
 ## 10. 完成条件への影響
 
-- 本改訂で**完成条件（`3D_COMPLETE_PRODUCT_SPEC.md` 8 章の 12 項目）は変更しない**。
-- 追加機能のうち完成必須に含めるもの: vr プリセット、VRM V1/V2（検出・meta 表示・検査）、B1（skeleton 検査）、B2/B3（humanoid 対応付け）、テクスチャ編集（baseColor）、Blender / Unreal import notes、8.1〜8.2 の手動持ち込み + provenance。
-- 条件付き（無くても完成）: VRM V3 描画、WebXR preview、外部処理の実接続、material factor 調整、revision 再取り込み。
+- 第1改訂（2026-07-20 前半）は完成条件を変更しなかったが、**第2改訂で完成条件 1（一続きの体験）の範囲を拡張した**: 「画像→（外部生成）→静的モデル→骨格フィット→自動ウェイト→モーション付与→書き出し」の動線（8.0）が実機で完了できることを、完成条件 1 の確認内容に含める（`3D_COMPLETE_PRODUCT_SPEC.md` 3・8 章を同時更新済み）。
+- 完成必須に含めるもの: vr プリセット、VRM V1/V2、B1〜B3、**R2〜R4（骨格フィット・自動ウェイト・rigged derived）**、**M1〜M2（モーションテンプレート・retarget）**、テクスチャ編集（baseColor）、Blender / Unreal import notes、手動持ち込み + provenance、生成物特有の検査（8.2b）。
+- 条件付き（無くても完成）: VRM V3 描画、WebXR preview、外部処理の実接続、material factor 調整、revision 再取り込み、非人型カスタム骨格、キーフレーム編集。
 
 ## 11. 未決定事項（この文書の範囲）
 
-`3D_DECISION_LOG_AND_OPEN_ITEMS.md` に登録済み: `3D-DEC-VRM-01`（VRM 対応レベル）、`3D-OPEN-22`（VRM V3 描画）、`3D-OPEN-23`（WebXR preview）、`3D-OPEN-24`（revision 再取り込み）、`3D-OPEN-25`（humanoid 自動推定の合格基準）、`3D-OPEN-26`（テクスチャ編集の対象 map 拡大）、`3D-OPEN-27`（Mixamo 手順書の扱い）。8.3 の未確認ライセンス全件。
+`3D_DECISION_LOG_AND_OPEN_ITEMS.md` に登録済み: `3D-DEC-VRM-01`（VRM 対応レベル）、`3D-DEC-RIG-01`（リグ作成の採用レベル）、`3D-OPEN-22`（VRM V3 描画）、`3D-OPEN-23`（WebXR preview）、`3D-OPEN-24`（revision 再取り込み）、`3D-OPEN-25`（humanoid 自動推定の合格基準）、`3D-OPEN-26`（テクスチャ編集の対象 map 拡大）、`3D-OPEN-27`（Mixamo 手順書の扱い）、`3D-OPEN-28`（非人型カスタム骨格）、`3D-OPEN-29`（頂点単位ウェイトペイント）、`3D-OPEN-30`（キーフレーム編集）、`3D-OPEN-31`（モーションデータ同梱のライセンス）。8.3 の未確認ライセンス全件。
+
+整合リスク（⚠️ 3D-RISK-xx）の台帳は `3D_DECISION_LOG_AND_OPEN_ITEMS.md` 7 章を正本とする。

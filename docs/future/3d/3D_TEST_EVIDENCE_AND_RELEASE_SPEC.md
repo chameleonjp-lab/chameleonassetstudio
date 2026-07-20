@@ -24,6 +24,7 @@
 | storage テスト | db3d の CRUD / トランザクション / quota エラー | CI 毎回 | fake-indexeddb |
 | recovery テスト | trash3d / snapshots3d / quarantine3d / 中断 | CI 毎回 | |
 | import / export / round-trip テスト | `.cas3dproj` と export ZIP の往復、hash 一致 | CI 毎回 | |
+| rig / motion テスト（第2改訂） | 骨格自動配置（bounds 内・接地）、ウェイト（合計=1・最大4影響・左右対称）、**nodeBinding 再バインド**（⚠️ `3D-RISK-02` 専用）、retarget 恒等（同一骨格）・鏡像対称、clip 焼き込みの round-trip | CI 毎回 | fixture: unrigged-character / motion-source |
 | renderer テスト | adapter 契約（mount/load/dispose/screenshot）のモック + 実ブラウザ | E2E 枠 | |
 | visual regression | 代表 fixture の screenshot 比較（許容差分つき） | E2E 枠 | Playwright の screenshot 比較を利用 |
 | E2E | 取り込み→検品→設定→保存→再読込→書き出しの動線 | CI（e2e job） | role / accessible name / DOM / IndexedDB 読み取りで安定化。canvas 座標依存は最小限（既存方針） |
@@ -66,6 +67,9 @@
 | vrm-0x.vrm / vrm-10.vrm（2026-07-20 改訂で追加） | VRM 検出・meta 読取・humanoid 検査（meta に商用不可を設定した版も用意） | 自作（生成スクリプトで glTF に VRM 拡張 JSON を付与） | Stage2 |
 | humanoid-named.glb（Mixamo 系命名）/ humanoid-unnamed.glb | humanoid 自動推定の成功系・不成功系 | 自作 | Stage3 |
 | dirty-texture.glb（背景ゴミ入り baseColor） | テクスチャ編集ブリッジの round-trip | 自作 | Stage3 |
+| unrigged-character.glb（ボーン無し人型。左右対称）/ unrigged-asym.glb（非対称の難系） | 骨格フィット・自動ウェイト（`3D-STAGE3-13/-14`。2026-07-20 第2改訂） | 自作 | Stage3 |
+| bad-geometry.glb（非多様体・退化三角形・重複頂点） | 3D-CHK-GEO-003/-004 と weld・ウェイト品質警告 | 自作（バイト構築） | Stage2〜3 |
+| motion-source.glb（humanoid + テンプレ生成クリップ持ち。骨長の異なる 2 体目つき） | retarget（`3D-STAGE3-16`）の元・先。**外部モーションデータは使わない**（ライセンス） | 自作 | Stage3 |
 
 fixture 台帳の必須記録項目: 目的 / 出所 / ライセンス / 再配布可否 / 期待結果（stats・警告 ID）/ 検査値 / 使用するテスト / 更新規則（生成スクリプトの場所）。台帳は `e2e/fixtures-3d/README.md`（予定）に置く。
 

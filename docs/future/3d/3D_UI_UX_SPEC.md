@@ -40,6 +40,8 @@
 | VRM 情報パネル（Inspect 内） | 2 | VRM 検出時のみ表示: 版・meta（利用条件）・humanoid 一覧・spring bone / expression の有無（2026-07-20 改訂。`3D-STAGE2-11`） |
 | Skeleton / Humanoid（Scene 内タブ） | 2〜3 | joint ツリー（B1 = 第二段階）、humanoid 対応付け UI（B2 = 第三段階 `3D-STAGE3-11`）。「右手に anchor」補助 |
 | Texture 編集ビュー | 3 | baseColor テクスチャの編集（UV overlay・2D と同じ操作感・適用で derived 生成。`3D-STAGE3-12`） |
+| Rig（骨格フィット + ウェイト） | 3 | humanoid テンプレート骨格の配置・対称編集（ギズモ + 数値）→ 自動ウェイト・ヒートマップ・テストポーズ確認 → rigged derived 生成（`3D-STAGE3-13/-14`。2026-07-20 第2改訂）。Setup 未完了時は開始ブロック（⚠️ `3D-RISK-12`）。骨端点の保存は model space（⚠️ `3D-RISK-09`） |
+| Motion（テンプレ + retarget） | 3 | モーションテンプレの選択・パラメータ・プレビュー → 承認で clip 焼き込み、外部クリップの retarget（`3D-STAGE3-15/-16`）。motion reduction 有効時は自動再生しない |
 | WebXR preview（条件付き） | 4 | VR 実寸確認（閲覧専用・対応環境のみボタン表示。`3D-STAGE4-09`） |
 
 - 第一段階の 5 画面（Import / Inspect / Setup / Game Data / Export)は旧 3D 要件 10 章の 5 画面構成を踏襲する。
