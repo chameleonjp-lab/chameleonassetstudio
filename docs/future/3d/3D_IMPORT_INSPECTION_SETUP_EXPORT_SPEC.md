@@ -22,6 +22,8 @@
 
 - 第一段階を GLB だけに限定する理由: 単一ファイルで外部参照が無く、安全検証が単純になる。生成 AI 系ツールの主要出力でもある。glTF bundle は「外部 URI」という攻撃面が増えるため、検証設計（3.4）を伴う第二段階に回す。
 
+**export ZIP の再読み込みについて**: 書き出した ZIP そのものは、Chameleon の通常の取り込み経路の入力形式ではない（正式な取り込みは GLB / glTF bundle / `.cas3dproj`）。契約 15 章の round-trip 条件 2「export ZIP 内の `asset3d.json` を再度読み込んだ場合、anchors / colliders / settings が同値で読める」は、**テストが ZIP を展開して `model/` の GLB を通常経路で取り込み、同梱の `asset3d.json` を `validateAsset3d` で読んで値を照合する**ことを指す（利用者が ZIP を直接開く UI 経路を作る意味ではない）。この照合は `3D-STAGE1-10` の round-trip テストで行う。
+
 ---
 
 ## 2. import bundle の受け取り方（第二段階）
@@ -211,6 +213,8 @@
 第二段階で追加: `engines/README-threejs.md` ほか import notes、`thumbnails/thumb.webp`。
 第三段階で追加: `model/model.optimized.glb`（選択した derived）、verification record。
 
+**glTF bundle（`source.kind = "gltf-bundle"`）の場合（第二段階 `3D-STAGE2-01` の範囲）**: `model/` 配下に source の `files[]` 全件（`.gltf` + `.bin` + textures）を、取り込み時の相対構成を保って複製する。各ファイルは export-manifest の `files[]` に `role: "source-copy"` で列挙し、それぞれ byteLength / sha256 を記録する。`.gltf` 内の相対 URI は複製後も同一集合内で解決できる配置にする（外部 URI は取り込み時に既に欠落扱いのため複製対象に無い）。
+
 ### 8.2 変換の扱い
 
 - 第一段階: モデルは**常に source のまま**出す。settings は metadata として同梱し、変換はゲーム側 / エンジン側の作業として import notes に書く。
@@ -233,6 +237,8 @@
   "deterministic": true            // 8.5 の条件を満たす場合のみ true
 }
 ```
+
+- `deterministic` フィールドは第一段階から出力する。第一段階〜第二段階の書き出しは source 複製 + JSON 整形のみで決定性を満たせるため、`3D-STAGE1-10` で 8.5 のタイムスタンプ・順序固定を実装した時点で `true` にできる。焼き込み・最適化を含む出力（第三段階）で決定性を保証できない操作を含む場合のみ `false` とし、理由を併記する。決定性の自己検証（同一入力から 2 回書き出して hash 一致を確認）の自動化は `3D-STAGE3-08` で行う。
 
 ### 8.4 README（ZIP 同梱）
 

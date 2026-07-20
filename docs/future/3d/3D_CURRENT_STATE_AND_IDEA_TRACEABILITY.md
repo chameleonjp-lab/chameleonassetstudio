@@ -85,7 +85,7 @@
 
 | # | 案 | 出典 | 扱い | 対応先 / 理由 |
 |---:|---|---|---|---|
-| 6 | `ThreeDAssetSettings`（unit/upAxis/forwardAxis/originMode/scale/bounds/stats） | REQ 4 | 修正採用 | `3D_ASSET_DATA_CONTRACT.md` 6 章。source/derived/provenance/license/unknown data を追加し、`qualityWarnings: string[]` は構造化した inspection report へ変更 |
+| 6 | `ThreeDAssetSettings`（unit/upAxis/forwardAxis/originMode/scale/bounds/stats） | REQ 4 | 修正採用 | `3D_ASSET_DATA_CONTRACT.md` 6 章。source/derived/provenance/license/unknown data を追加し、`qualityWarnings: string[]` は構造化した inspection report へ変更。**旧 `unit` の候補値 `'pixel_like'` は削除**（2D の pixel 座標と 3D の unit を同一視しない原則 [`../PRODUCT_DIRECTION_2D_TO_3D.md` 6.2] に反し、3D で pixel を単位とする意味が定義できないため。`unit` は `meter` / `centimeter` / `unknown` の 3 値とし、非標準スケールは `unitScale` で表す） |
 | 7 | `ThreeDAnchor`（role 語彙付き） | REQ 4.1 | 修正採用 | 契約 7.1。space / nodeRef を追加（node 追従は Stage2） |
 | 8 | `ThreeDCollider`（box/sphere/capsule） | REQ 4.2 | 修正採用 | 契約 7.2。box/sphere は Stage1、capsule は Stage2 |
 | 9 | mesh collider は作らない | REQ 4.2 | 採用 | 完成形でも非目標 |
@@ -109,6 +109,8 @@
 | 17 | 自動で破壊的最適化しない・元ファイル保持・前後差表示・プレビュー必須 | REQ 6 | 採用 | Stage3 の不変原則 + Compare 画面 |
 | 18 | glTF-Transform（すぐ調査する候補） | REQ 7.1 / OPEN | 採用（確認済み開始） | Stage3-01。ライセンス MIT を 2026-07-19 一次確認。版・bundle 実測は Gate 後 |
 | 19 | meshoptimizer / gltfpack | REQ 7.1 / OPEN | 採用（確認待ち一部） | Stage3。meshoptimizer MIT 確認済み。gltfpack 同梱物の構成は未確認（8 章） |
+| 19b | 軽量化の実行場所（旧 Phase 27 の CLI/Node vs ブラウザ比較） | PLAN 27 | 修正採用 | **ブラウザの Worker 内に確定**（`3D_ARCHITECTURE_AND_BOUNDARIES.md` 8 章・Stage3-01）。完全ローカル動作・オフライン動作・Python/外部処理を持たない方針のため、CLI/Node 実行は採らない（重い外部処理は第四段階の外部 adapter 経由に限定） |
+| 19c | 「重い再メッシュ / mesh simplification は外部処理」 | REQ 2.3 | 修正採用（境界を再定義） | mesh simplification は **ブラウザ Worker 内**（Stage3-06）へ移す。ただし preview 必須・自動適用禁止・元モデル保持を条件とする。REQ 2.3 が外部処理に分類した「重い再メッシュ（トポロジ再構築）」自体は引き続き対象外（外部処理）で、simplification（三角形削減）とは区別する |
 
 ### 6.5 外部生成・骨入れ（AI 候補）
 
@@ -181,6 +183,7 @@
 |---|---|---|---|
 | 揺れ 1 | REQ 3.1 は OBJ を「後続候補」とするが、STRAT は 3D 入力を GLB/glTF 中心と記載 | STRAT（現行有効）を優先 | 本計画では OBJ を延期扱いにし、`3D-OPEN-20` で再判断。旧文書は修正しない（履歴） |
 | 揺れ 2 | REQ 4 の `scale: number` と REQ 5 の「pivot / origin 必須」は、glTF に単一の pivot 概念が無い点が未定義 | 新契約 13 章の定義を優先 | 実装時は新契約を正とする。旧文書は修正しない |
+| 揺れ 3 | ROAD 9 章「2D の操作画面を 3D 都合で変更しない」と、本計画が Home 画面へ 3D 入口・サムネイルを追加する点（`3D-STAGE1-01/-09`・`3D-STAGE2-09`）が表面上衝突 | ADR-2026-07-07-004（同じ Home / Project Dashboard を共有してよい）を優先 | ROAD 9 章の「操作画面」は 2D の**編集画面**を指すと解釈する（編集画面は完全分離を維持）。Home は 2D/3D 共通の入口領域であり、追加は入口ボタンとサムネイル表示に限定。この 2D 接点 PR は 2D E2E 全件 + bundle 非汚染 assert を必須にする（アーキテクチャ 13 章） |
 
 ## 8. 未確認事項（区分 5）
 
