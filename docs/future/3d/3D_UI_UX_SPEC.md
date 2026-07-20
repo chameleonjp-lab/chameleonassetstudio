@@ -36,7 +36,11 @@
 | Animation | 2 | クリップ一覧・再生・停止・ループ・速度 |
 | Optimize | 3 | 最適化の選択・実行・派生管理 |
 | Compare | 3 | 最適化前後の比較 |
-| Project Settings | 2 | プリセット選択、license / provenance の記録編集 |
+| Project Settings | 2 | プリセット選択（mobile / generic-web / desktop / vr）、license / provenance の記録編集 |
+| VRM 情報パネル（Inspect 内） | 2 | VRM 検出時のみ表示: 版・meta（利用条件）・humanoid 一覧・spring bone / expression の有無（2026-07-20 改訂。`3D-STAGE2-11`） |
+| Skeleton / Humanoid（Scene 内タブ） | 2〜3 | joint ツリー（B1 = 第二段階）、humanoid 対応付け UI（B2 = 第三段階 `3D-STAGE3-11`）。「右手に anchor」補助 |
+| Texture 編集ビュー | 3 | baseColor テクスチャの編集（UV overlay・2D と同じ操作感・適用で derived 生成。`3D-STAGE3-12`） |
+| WebXR preview（条件付き） | 4 | VR 実寸確認（閲覧専用・対応環境のみボタン表示。`3D-STAGE4-09`） |
 
 - 第一段階の 5 画面（Import / Inspect / Setup / Game Data / Export)は旧 3D 要件 10 章の 5 画面構成を踏襲する。
 - 画面はすべて `editor3d` route 内のタブとして実装する（`3D_ARCHITECTURE_AND_BOUNDARIES.md` 5 章）。
@@ -100,7 +104,7 @@
 ### 3.7 Scene / Materials / Animation（第二段階）
 
 - Scene: node ツリー（ツリービュー + 検索）、選択と viewer ハイライトの相互連動、表示/非表示、mesh / primitive / material / texture の一覧タブ。ツリーはキーボード（矢印 / Enter）で操作可能。
-- Materials: material 一覧（名前 / 種類 / texture 割り当て / alphaMode / doubleSided / 色空間の検査結果）。編集は第二段階では行わない（読み取りと検査のみ。簡易調整は `3D-OPEN-14`）。
+- Materials: material 一覧（名前 / 種類 / texture 割り当て / alphaMode / doubleSided / 色空間の検査結果）。編集は第二段階では行わない（読み取りと検査のみ。第三段階でテクスチャ編集ビューへの導線「このテクスチャを編集」が付く = `3D-STAGE3-12`。factor 調整は `3D-OPEN-14` の残余判断）。
 - Animation: クリップ一覧（名前 / 長さ / channel 数）、再生 / 停止 / ループ / 速度（0.25〜2x）、再生位置スライダー。motion reduction 有効時は自動再生しない（7 章）。
 
 ### 3.8 Optimize / Compare（第三段階）
@@ -180,6 +184,6 @@
 
 ## 9. 未決定事項（この文書の範囲）
 
-- `3D-OPEN-14`: Materials 画面での簡易編集（factor 調整・texture 差し替え）を第二段階に含めるか（既定: 含めない。読み取りと検査のみ）。
+- `3D-OPEN-14`（2026-07-20 再定義後の残余）: material factor 調整を `3D-STAGE3-12` の任意拡張に含めるか（既定: 含めない。テクスチャ編集自体は採用済み）。
 - `3D-OPEN-12`: カメラ初期位置の保存（既定: 保存しない）。
 - ギズモ実装をライブラリ付属（TransformControls 等）にするか自作にするか（`3D-GATE-02` の評価項目に含める）。

@@ -1,8 +1,8 @@
 # 3D Planning Index（3D 計画文書の入口）
 
 状態: **draft / human review required**（このディレクトリの全文書に共通）
-最終更新日: 2026-07-19
-調査基準commit: `7018984ba9e6867c6fab12fb313308218a35c22b`（2026-07-19 時点の main 先端。調査日の Git 状態: clean）
+最終更新日: 2026-07-20（初版 2026-07-19 = 11 文書。2026-07-20 改訂で主要ツール連携 / VRM / VR / ボーン / テクスチャ編集 / 画像→3D の観点を追加し 12 文書）
+調査基準commit: 初版 `7018984ba9e6867c6fab12fb313308218a35c22b`、改訂 `96d63c5`（いずれも調査日の Git 状態: clean）
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 
 > **重要: この計画一式の存在は、3D 実装開始の承認ではない。**
@@ -31,6 +31,8 @@ Chameleon Asset Studio の 3D 機能は、**3D モデルを「作る」道具で
 
 守ること: 既存の 2D 機能・保存データを一切壊さない。元の 3D モデルを絶対に上書きしない。生成 AI をアプリ本体に入れない。ライセンス未確認のものを使わない。
 
+2026-07-20 の改訂で追加した内容: VRM（VRoid 等の人型アバター形式）の検出と利用条件表示、VR 向け検品プリセット、骨（スケルトン）の検査と「右手・頭」などの対応付け、テクスチャの修正（2D 編集機能の再利用）、Blender / Unreal への持ち込み手順書、画像から 3D を作る外部ツールとの接続詳細。いずれも「作るのは外部・整えるのは Chameleon」という役割分担は変えていない（詳細: `3D_INTEROP_VRM_VR_AND_CREATION_SPEC.md`）。
+
 ## 2. 文書一覧と読む順番
 
 | 順 | 文書 | 内容 |
@@ -44,10 +46,11 @@ Chameleon Asset Studio の 3D 機能は、**3D モデルを「作る」道具で
 | 7 | `3D_UI_UX_SPEC.md` | 画面・操作・PC/iPad/iPhone・アクセシビリティ |
 | 8 | `3D_PERFORMANCE_DEVICE_SECURITY_LICENSE_SPEC.md` | 性能予算・端末・安全・依存関係・ライセンス・外部生成境界 |
 | 9 | `3D_TEST_EVIDENCE_AND_RELEASE_SPEC.md` | テスト階層・fixture 台帳・証拠形式・リリース判定 |
-| 10 | `3D_FOUR_STAGE_IMPLEMENTATION_PLAN.md` | **中心文書**。開始前 Gate と四段階の全 work package（依存関係図つき） |
-| 11 | `3D_DECISION_LOG_AND_OPEN_ITEMS.md` | 決定済み・推奨・実測待ち・ライセンス待ち・open 項目 |
+| 10 | `3D_INTEROP_VRM_VR_AND_CREATION_SPEC.md` | 主要ツール連携・他ツールとの差分・VRM・VR・ボーン設定・テクスチャ編集・画像→3D（2026-07-20 改訂で追加。6 の後に読む） |
+| 11 | `3D_FOUR_STAGE_IMPLEMENTATION_PLAN.md` | **中心文書**。開始前 Gate と四段階の全 work package（依存関係図つき） |
+| 12 | `3D_DECISION_LOG_AND_OPEN_ITEMS.md` | 決定済み・推奨・実測待ち・ライセンス待ち・open 項目 |
 
-実装を依頼するときは、10 の該当 work package（各 WP 末尾の「依頼要約」）から始め、根拠列の仕様文書を添える。
+実装を依頼するときは、11 の該当 work package（各 WP 末尾の「依頼要約」）から始め、根拠列の仕様文書を添える。
 
 ## 3. 現在の Gate と、人間が次に判断すること
 

@@ -138,19 +138,30 @@
 | 3D-CHK-EXT-001 | 未対応 extension の列挙（KHR_* の既知/未知を区別） |
 | 3D-CHK-LGT-001 / CAM-001 | light / camera の同梱（ゲーム素材では通常不要の info） |
 
+第二段階で追加（2026-07-20 改訂。`3D-STAGE2-11`。定義は `3D_INTEROP_VRM_VR_AND_CREATION_SPEC.md` 4〜5 章）:
+
+| checkId | 内容 |
+|---|---|
+| 3D-CHK-VRM-001 | VRM 拡張の検出と版（0.x / 1.0）・meta 記入状況（未記入は warning） |
+| 3D-CHK-VRM-002 | VRM humanoid 必須ボーンの欠落 |
+| 3D-CHK-VRM-003 | spring bone / expression の有無（info。Chameleon では編集不可の明示） |
+| 3D-CHK-BONE-001 | bind pose（inverseBindMatrices）と node 階層の整合 |
+| 3D-CHK-BONE-002 | 初期姿勢の T-pose / A-pose 推定表示（info） |
+| 3D-CHK-BONE-003 | 頂点ウェイト異常（合計が 1 でない / 影響 joint 数超過） |
+
 第三段階で追加: 重複 mesh/material/texture 検出（3D-CHK-DUP-*）、未使用 resource（3D-CHK-UNUSED-*）、圧縮状態の表示（3D-CHK-COMP-*）。
 
 ### 4.4 プリセット（暫定しきい値）
 
-`mobile` / `generic-web` / `desktop` の 3 プリセット。**下表の数値はすべて暫定**であり、`3D-STAGE2-06` で fixture 実測とともに確定する。根拠の無い断定を避けるため、UI にも「暫定基準」と表示する。
+`mobile` / `generic-web` / `desktop` / `vr` の 4 プリセット（`vr` は 2026-07-20 改訂で追加。`3D_INTEROP_VRM_VR_AND_CREATION_SPEC.md` 6.1）。**下表の数値はすべて暫定**であり、`3D-STAGE2-06` で fixture 実測とともに確定する（vr は VR 実機が用意できるまで暫定のままと明示して残してよい）。根拠の無い断定を避けるため、UI にも「暫定基準」と表示する。
 
-| 項目 | mobile 暫定 | generic-web 暫定 | desktop 暫定 |
-|---|---|---|---|
-| ファイルサイズ warning | 8MB | 25MB | 100MB |
-| 三角形数 warning | 100,000 | 300,000 | 1,000,000 |
-| texture 最大辺 warning | 2048 | 4096 | 8192 |
-| material 数 warning | 8 | 16 | 64 |
-| joint 数 warning | 64 | 128 | 256 |
+| 項目 | mobile 暫定 | generic-web 暫定 | desktop 暫定 | vr 暫定 |
+|---|---|---|---|---|
+| ファイルサイズ warning | 8MB | 25MB | 100MB | 15MB |
+| 三角形数 warning | 100,000 | 300,000 | 1,000,000 | 50,000 |
+| texture 最大辺 warning | 2048 | 4096 | 8192 | 2048 |
+| material 数 warning | 8 | 16 | 64 | 4 |
+| joint 数 warning | 64 | 128 | 256 | 64 |
 
 ---
 
@@ -257,8 +268,8 @@
 |---|---|---|
 | `verified` | 実際にそのエンジンで fixture を読み込み、表示・スケール・向き・（あれば）animation を確認した証拠がある | 第四段階で Three.js / Babylon.js を目標 |
 | `candidate` | 対応作業中。証拠が揃っていない | - |
-| `import notes only` | 手順書のみ提供。実行検証はしていない | 第二段階の Godot / Unity / Three.js / Babylon.js |
-| `unsupported` | 対応しない | FBX 入力等 |
+| `import notes only` | 手順書のみ提供。実行検証はしていない | 第二段階の Godot / Unity / Three.js / Babylon.js + Blender / Unreal（2026-07-20 改訂で追加。連携マトリクスは `3D_INTEROP_VRM_VR_AND_CREATION_SPEC.md` 3 章） |
+| `unsupported` | 対応しない | FBX 入力等（Mixamo 等の FBX は Blender 経由の supply notes で受ける） |
 
 **説明を書いただけの対象を `verified` と表示してはいけない**（2D 互換性表と同じ規則）。区分は export ZIP の README と import notes に明記する。
 

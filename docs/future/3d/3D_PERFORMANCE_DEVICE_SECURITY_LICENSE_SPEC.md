@@ -68,7 +68,7 @@
 | TypeScript | 型定義あり（@types/three） | 本体 TypeScript |
 | React との接続 | 手書き adapter（react-three-fiber は不採用候補: 依存を増やすため） | 手書き adapter |
 | コミュニティ・保守 | 活発（月次リリース） | 活発（Microsoft 支援） |
-| 実測が必要な項目 | gzip 後 bundle 実測、Safari/iPad での GLB 表示、context loss 挙動、dispose 後のメモリ、screenshot 取得 | 同左 |
+| 実測が必要な項目 | gzip 後 bundle 実測、Safari/iPad での GLB 表示、context loss 挙動、dispose 後のメモリ、screenshot 取得、WebXR 対応の成熟度（`3D-STAGE4-09` 候補の判断材料。2026-07-20 改訂で追加） | 同左 |
 
 - 事前の推奨は **Three.js**（bundle を絞りやすい・採用事例・GLTFLoader の実績）。ただし断定せず、`3D-GATE-02` で両者の同一 fixture 実測（bundle・初回表示・fps・メモリ・context loss・dispose）を行い、評価記録を作って人間承認で確定する。
 - その他候補（PlayCanvas 等）は要件（ライセンス・エディタ非依存・bundle）で初期比較から除外。理由は `3D_DECISION_LOG_AND_OPEN_ITEMS.md` に記録。
@@ -109,6 +109,7 @@
 | meshoptimizer（js/wasm） | 圧縮 decode/encode、simplify | 任意 | Stage3 | MIT（2026-07-19） | 有 | 対応 | 中（遅延取得） | Draco のみ運用 | decoder 単位で削除可 |
 | draco3d decoder | Draco 圧縮 GLB の decode | 任意 | Stage3 | Apache-2.0（2026-07-19。特許条項あり） | 有 | 対応 | 中（遅延取得） | 非対応と表示 | 同上 |
 | Basis Universal / KTX2 transcoder | KTX2 texture の transcode | 任意 | Stage3 | Apache-2.0（basis_universal LICENSE、2026-07-19） | 有 | 対応 | 中（遅延取得） | 非対応と表示 | 同上 |
+| @pixiv/three-vrm | VRM の spring bone / expression 反映 preview（V3） | 任意 | Stage4 候補（`3D-OPEN-22` 採用時のみ） | MIT（2026-07-20） | 無 | 主 thread | 中（3D chunk 内の任意ロード） | 通常 glTF 表示のみ | 単独削除可 |
 
 未確認（外部確認できなかった/今回確認しなかった項目。採用前 `3D-GATE-04` で必ず確認する）:
 
@@ -126,7 +127,7 @@
 
 ## 10. external generator（外部 3D 生成）との境界
 
-第四段階の設計対象（`3D-STAGE4-01/02`）。原則のみここで固定する。
+第四段階の設計対象（`3D-STAGE4-01/02`）。原則のみここで固定する。adapter プロトコル・2D→3D ブリッジ・provider 候補の確認状況（2026-07-20 時点）は `3D_INTEROP_VRM_VR_AND_CREATION_SPEC.md` 8 章を正本とする。
 
 - Python / GPU / モデル重みをブラウザ本体・本リポジトリに入れない（既存決定の維持）。
 - 手動持ち込み（利用者が外部ツールの出力ファイルを Import する）は常に可能で、追加実装を要しない。provenance に external-generator と記録できる。

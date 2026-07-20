@@ -163,6 +163,12 @@
   "anchors": [ /* ThreeDAnchor（7.1） */ ],
   "colliders": [ /* ThreeDCollider（7.2） */ ],
 
+  "humanoidMap": {                      // optional（2026-07-20 改訂で追加。第三段階 3D-STAGE3-11）
+    // 人型モデルの標準スロット → node の対応付け。語彙は VRM 1.0 humanoid ボーン一覧を採用
+    // 例: "hips": { "nodeIndex": 3, "nodeName": "mixamorig:Hips" }
+    // 不在 = 未対応付け。additive field のため version は 0.1.0 のまま
+  },
+
   "derived": [ /* DerivedModel（8章）。第一段階は常に空配列 */ ],
 
   "inspection": {                       // 最新検査の要約。詳細は reports/
@@ -247,7 +253,7 @@
 ```jsonc
 {
   "id": "drv_xxxxxxxx",
-  "kind": "optimized",           // optimized | transformed-bake | thumbnail-render
+  "kind": "optimized",           // optimized | transformed-bake | thumbnail-render | texture-replaced（2026-07-20 改訂で追加。3D-STAGE3-12）
   "label": "mobile向け最適化",
   "files": [
     { "path": "derived/drv_xxxxxxxx/model.glb", "mimeType": "model/gltf-binary", "byteLength": 345678, "sha256": "…" }
@@ -288,6 +294,7 @@
 - `declared` は利用者が選ぶ: `unknown`（既定） / `cc0` / `cc-by` / `proprietary-own` / `proprietary-licensed` / `other`。
 - `unknown` のまま書き出した場合、export ZIP の README に「利用条件が未確認である」旨を必ず記載する（`3D_IMPORT_INSPECTION_SETUP_EXPORT_SPEC.md` 8 章）。
 - Chameleon はライセンスの判定・検証を行わない。記録と注意喚起のみを行う。
+- VRM 素材の場合（2026-07-20 改訂）: VRM meta の利用許諾（商用可否・改変可否・再配布可否等）を読み取り、`license.notes` へ自動転記して表示する（`3D-STAGE2-11`。転記であって検証ではない。詳細は `3D_INTEROP_VRM_VR_AND_CREATION_SPEC.md` 5.2）。
 
 ---
 

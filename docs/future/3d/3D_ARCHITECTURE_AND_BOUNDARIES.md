@@ -63,6 +63,8 @@
 
 再利用の原則: **2D のファイルを 3D のために変更しない**。汎用クラス（`History` / `AutosaveQueue` / fflate ラッパー）は import して使うだけにし、変更が必要になったら 3D 側にコピーまたはラップして解決する。既存ファイルの変更が避けられない場合は、その work package を「2D 接点あり」と明示し、Opus レビューと 2D 回帰 E2E を必須にする（`3D_FOUR_STAGE_IMPLEMENTATION_PLAN.md` の共通規則）。
 
+2026-07-20 改訂の追加規則: `src/core/images` の**純関数（画像 ops・解析）も読み取り専用 import で再利用してよい**（テクスチャ編集ブリッジ `3D-STAGE3-12` が使用。interop 仕様 7 章）。2D 側関数のシグネチャ・挙動の変更が必要になった場合は 2D を変更せず、core3d 側にラップまたはコピーする。ESLint の import 制限は「2D → 3D の import 禁止」のままとし、逆方向（3D → 2D の純関数 import）は許可リストで管理する。VRM 用ライブラリ（three-vrm。採用時）と WebXR 関連コードは 3D chunk 内に置き、通常の 3D 利用でも未使用時は動的ロードしない。
+
 ---
 
 ## 4. module 構成（候補）
