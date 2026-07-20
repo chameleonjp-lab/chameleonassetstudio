@@ -653,6 +653,7 @@ for (const metadataCase of atlasMetadataRoundtripCases) {
     await dialog.getByLabel(/loss・warningを確認/).check();
     await dialog.getByRole('button', { name: '取り込みを確定' }).click();
 
+    await expect.poll(async () => (await readAssets(page)).length).toBe(1);
     const asset = (await readAssets(page))[0];
     expect(asset.name).toBe(assetName);
     expect(asset.assetType).toBe(metadataCase.kind);
