@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { confirmImageImport } from './importTestHelpers';
 
 async function makePngBuffer(page: Page, color: string): Promise<Buffer> {
   const dataUrl = await page.evaluate((fill) => {
@@ -50,6 +51,7 @@ test('アセットの左右反転コピーを作成すると、反転した新�
   await page
     .getByLabel('画像を選ぶ')
     .setInputFiles({ name: 'hero.png', mimeType: 'image/png', buffer });
+  await confirmImageImport(page);
   await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
 
   // 左右反転コピーを作成

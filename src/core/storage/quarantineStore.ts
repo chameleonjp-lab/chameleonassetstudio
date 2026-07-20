@@ -27,7 +27,7 @@ export interface SaveQuarantineEntryInput {
   size?: number;
 }
 
-/** 読み込みに失敗した .casproj を隔離領域へ保存する（最新 QUARANTINE_LIMIT 件のみ保持）。 */
+/** 読み込みに失敗した信頼しない入力を隔離領域へ保存する（最新 QUARANTINE_LIMIT 件のみ保持）。 */
 export async function saveQuarantineEntry(input: SaveQuarantineEntryInput): Promise<void> {
   const size = input.bytes?.byteLength ?? input.size;
   if (size === undefined || !Number.isFinite(size) || size < 0) {

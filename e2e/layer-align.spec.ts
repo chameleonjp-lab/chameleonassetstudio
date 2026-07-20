@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { confirmImageImport } from './importTestHelpers';
 
 async function makePngBuffer(page: Page, color: string): Promise<Buffer> {
   const dataUrl = await page.evaluate((fill) => {
@@ -22,6 +23,7 @@ async function setupProjectWithImage(page: Page, name: string): Promise<void> {
   await page
     .getByLabel('画像を選ぶ')
     .setInputFiles({ name: 'base.png', mimeType: 'image/png', buffer });
+  await confirmImageImport(page);
   await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
 }
 
@@ -84,6 +86,7 @@ async function addImageLayers(
     inputs.push({ name: file.name, mimeType: 'image/png' as const, buffer });
   }
   await page.getByLabel('画像レイヤーを追加').setInputFiles(inputs);
+  await confirmImageImport(page);
 }
 
 test('3つのレイヤーを左揃えでき、保存・reload後も位置が残る（選択状態・整列基準は残らない）', async ({

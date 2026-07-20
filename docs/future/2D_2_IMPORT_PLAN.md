@@ -1,9 +1,9 @@
 # 2D-2-IMPORT-GATE + 2D-2-IMPORT-OPTIONAL + 2D-2-AI-BOUNDARY 契約監査・実装計画
 
 作成日: 2026-07-19（最終更新: 2026-07-20）
-状態: `G1+L1+Q1+P1+F1+A1+W1+S1 accepted (2026-07-19) / Slice AはPR #125でmainへmerge済み / Slice B（provenance基盤）実装中`
+状態: `G1+L1+Q1+P1+F1+A1+W1+S1 accepted (2026-07-19) / Slice A・Bはmainへmerge済み / Slice C（連番・手動格子sheet・共通preview・quarantine）実装中`
 正式work package: `2D-2-IMPORT-GATE` + `2D-2-IMPORT-OPTIONAL` + `2D-2-AI-BOUNDARY`（2D完成ロードマップ PR group 11）
-Slice B基準main: `7018984`（PR #125 merge、Slice A closeout）
+Slice C基準main: `5a1663b`（PR #126 merge、Slice B closeout）
 前段: `2D-2-VARIANT + 2D-2-BATCH`（group 10）は全slice merge・遡及Opus review・closeout補修まで完了。
 
 ## 1. 目的
@@ -23,16 +23,16 @@ Slice B基準main: `7018984`（PR #125 merge、Slice A closeout）
 ## 2. 前段closeoutと開始条件
 
 - group 10はPR #116〜#123で完了。CI Run #398 / PR #123 CIまで全成功。
-- 契約監査はPR #124、Slice AはPR #125（merge `7018984` / CI Run #404全成功）でmainへmerge済み。PR #125のGitHub上のreview / comment / thread記録は0件であり、独立Opus review完了とは扱わない。
+- 契約監査はPR #124、Slice AはPR #125（merge `7018984` / CI Run #404全成功）、Slice BはPR #126（final head `6e69621`、merge `5a1663b` / CI Run #407全成功）でmainへmerge済み。PR #126は独立read-only reviewで`BLOCKER 0 / MUST 0`を確認した一方、GitHub上のreview / comment / thread記録は0件であり、Opus review完了とは扱わない。
 - 判断必須項目（`2D-2-IMPORT-OPTIONAL` / `2D-2-AI-BOUNDARY`）はADR-0016 / ADR-0017として正式確定済み。Slice B以降はaccepted契約の範囲だけを直列実装する（ROADMAP §6.5）。
 
 ## 3. 現状実装の確認
 
-- 取り込み経路: `EditorScreen.tsx:236`の`IMPORT_ACCEPT`（`image/png,image/jpeg,image/webp`）、`handleFiles`（`:2155-2210`、`assertImageBatchCount`で最大16 file）、file input（`:2392`）とdrag & drop（`:2401`）。1 file = 1 Asset（`importImageFile`）または既存Assetへのlayer追加（`importImageAsLayer`）。
-- `src/core/images/importImage.ts`: 上限25MiB / 4096px（`:6-7`）、MIME 3種（`:15`）、署名一致検査（`imageInputSafety.ts:28-45`）、source Blob verbatim保持（`:212,303`）、edit BlobのPNG正規化、thumbnail生成。decodeは`createImageBitmap`→`HTMLImageElement` fallback（`decodeImageSource.ts:14-46`）で外部library不使用。
-- 失敗時: `ImageImportError` throw → `setEditorError`表示のみ。quarantine store（`quarantineStore.ts`、上限3件 / 50MiB超はbytes非保存）は`.casproj` / ZIP / JSON経路専用で、画像import失敗には未接続。
-- provenance: Slice Bでoptional / additiveな`Asset.provenance?`配列を正式導入する。P1 source recordは`sourceFileName` / `mimeType` / `byteLength` / source Blob原本bytesの`sha256:<64hex>` / `importedAt`を必須、`textureId` / `origin` / `license`を任意とする。既存のADR-0013 candidate recordとADR-0017 AI recordはopen recordとして保持し、version / migrationは変更しない。単枚・layer追加の両経路で1 file = 1 recordを記録する。
-- 受け皿schema: `Frame`（`layerStates[]`）、`Animation`（`fps / loop / frameIds`）、`Part`、tile系設定は既存。sheet分割・連番一括・tileset metadata・atlas bundle逆取り込みは未実装。`buildAtlas`（`export/atlas.ts:82`）は出力方向のみ。
+- 取り込み経路: `EditorScreen.tsx`の`IMPORT_ACCEPT`（`image/png,image/jpeg,image/webp`）、`handleFiles`（`assertImageBatchCount`で最大16 file）、file inputとdrag & drop。1 file = 1 Asset（`importImageFile`）または既存Assetへのlayer追加（`importImageAsLayer`）を維持し、Slice Cでは`ImportFrameSetPanel`から連番 / 手動格子sheetを別モードとして準備する。
+- `src/core/images/importImage.ts`: 上限25MiB / 4096px、MIME 3種、署名一致検査（`imageInputSafety.ts`）、source Blob verbatim保持、edit BlobのPNG正規化、thumbnail生成。decodeは`createImageBitmap`→`HTMLImageElement` fallback（`decodeImageSource.ts`）で外部library不使用。
+- 失敗時: Slice Cでは`ImageImportError.kind`で原因を分類し、署名不一致・寸法超過・decode失敗だけを既存quarantine store（上限3件 / 50MiB超はbytes非保存）へ接続する。unsupported MIME、file size上限、hash / encode / 環境 / 保存失敗は理由表示のみで、入力破損として隔離しない。
+- provenance: Slice Bでoptional / additiveな`Asset.provenance?`配列を実装済み。P1 source recordは`sourceFileName` / `mimeType` / `byteLength` / source Blob原本bytesの`sha256:<64hex>` / `importedAt`を必須、`textureId` / `origin` / `license`を任意とする。既存のADR-0013 candidate recordとADR-0017 AI recordはopen recordとして保持し、version / migrationは変更していない。単枚・layer追加の両経路で1 file = 1 recordを記録する。
+- 受け皿schema: `Frame`（`layerStates[]`）、`Animation`（`fps / loop / frameIds`）、`Part`、tile系設定は既存。Slice Cで連番一括と手動格子sheet分割を既存schemaの範囲に実装し、tileset metadata・atlas bundle逆取り込みはSlice Dに残す。`buildAtlas`（`export/atlas.ts`）は引き続き出力方向で再利用する。
 - dependencies: 画像処理は全てbrowser標準API。`fflate`は`.casproj` ZIP用。
 
 ## 4. 判断候補
@@ -93,6 +93,19 @@ Slice B基準main: `7018984`（PR #125 merge、Slice A closeout）
   - **Slice E**: optional形式（F1: SVG / GIF / APNG rasterized + unsupported表示）。E2E。
 - S2: provenanceを最後のsliceにする。→ 取り込みsliceのretrofitが必要になるため非推奨。
 
+### Slice C 実行契約（2026-07-20 accepted）
+
+本SliceはG1 / L1 / Q1を次の追加条件で具体化する。
+
+- 通常画像（1 file = 1 Asset）、連番画像、Sprite Sheet（手動格子）は明示的に別モードとし、既存の通常画像の意味を変更しない。
+- 連番は1〜16 file。同じ寸法だけを受け入れ、自動拡縮・paddingは行わない。ASCII数字を数値として扱う決定的な自然順で並べ、数値表記の先頭0や英字の大小だけが異なる同順位を含め、比較が同値なら選択順を維持する。
+- sheetはuniformな外周marginとcell間spacingを用い、左上から行優先で完全に収まるcellだけを1〜16件切り出す。margin、spacing、右端・下端の余りpixelはsource原本へ残し、編集frameへ入らないlossとして確定前に表示する。
+- 連番は元fileごとにsource / edit / layer / frame / provenanceを1件、sheetは原本source / provenanceを1件とcellごとのedit / layer / frameを作る。各frameは対応layerだけを可視にする完全な`layerStates`を持つ。
+- 自動animationは8fps、loop有効、frame順はpreview順。thumbnailは先頭file / 先頭cellから作る。
+- 通常画像batch、既存Assetへのlayer追加、連番、sheetの全経路を共通L1 previewへ通す。取消・準備失敗では正本を変更せず、確定は原子保存し、session内の1回のUndo / Redoで取り込み全体を往復する。
+- 署名不一致、decode失敗、寸法超過だけを既存quarantineへ接続する。unsupported MIME、file size上限、hash / encode / 環境 / 保存失敗は入力破損と決めつけて隔離しない。
+- schema / version / migration、IndexedDB version / store / index、`.casproj`配置、product export ZIP構成、dependencyは変更しない。
+
 ## 5. 受け入れ条件
 
 ### contract / fixture（Slice A、B）
@@ -143,4 +156,4 @@ accepted後の実装でも、次は別契約まで行わない。
 - 状態: **accepted**
 - accepted日: 2026-07-19（ユーザー承認）
 - 実装review条件: 各slice Draft PR → CI → 独立Opus review → 人間確認。A→B→C→D→Eの直列順。各sliceは前sliceのmerge後に最新mainからbranchを作る。
-- Slice AはPR #125でmainへmerge済み。Slice Bは最新main `7018984`から開始し、Draft PR → CI → 独立review → 人間確認の順で進める。独立Opus reviewの証拠が得られるまでは、その工程を完了扱いにしない。
+- Slice AはPR #125、Slice BはPR #126でmainへmerge済み。Slice Cは最新main `5a1663b`から開始し、Draft PR → CI → 独立review → 人間確認の順で進める。独立Opus reviewの証拠が得られるまでは、Opus review工程を完了扱いにしない。

@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { confirmImageImport } from './importTestHelpers';
 
 interface StoredAsset {
   id: string;
@@ -229,6 +230,7 @@ test('palette置換は明示した2 Asset / layerだけを変え、sourceと初�
     { name: 'palette-one.png', mimeType: 'image/png', buffer: red },
     { name: 'palette-two.png', mimeType: 'image/png', buffer: red },
   ]);
+  await confirmImageImport(page);
   await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
   const before = await readAssetStates(page);
 

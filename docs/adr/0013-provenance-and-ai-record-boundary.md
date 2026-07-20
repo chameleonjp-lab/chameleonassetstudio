@@ -4,7 +4,7 @@
 上位文書: `docs/future/2D_ASSET_DATA_CONTRACT.md`（§11 入力の来歴・安全性）
 関連 fixture: `src/core/model/provenanceContract.fixtures.test.ts`（ADR-0013）
 
-実装追跡（2026-07-20）: group 11 Slice BでP1を適用する。source file recordは`sourceFileName`、`mimeType`、`byteLength`、source Blob原本bytesの`sha256:<64hex>`、`importedAt`を必須、`textureId`、`origin`、`license`を任意とする。schemaはこのsource recordだけを厳密検証し、既存のADR-0013 candidate recordとADR-0017 AI recordはopen recordとして保持する。単枚 / layer追加は1 file = 1 record、複製は`textureId`を新IDへ付け替え、flip copyはtexture IDを保持し、`.casproj`はasset IDだけを付け替える既存規則に従う。dangling参照はread-only inspectorへ接続し、保存・書き出しを阻止しない。0.1.0、migration、schema version、AI fieldは変更しない。
+実装追跡（2026-07-20）: group 11 Slice BのPR #126でP1を実装済み。source file recordは`sourceFileName`、`mimeType`、`byteLength`、source Blob原本bytesの`sha256:<64hex>`、`importedAt`を必須、`textureId`、`origin`、`license`を任意とする。schemaはこのsource recordだけを厳密検証し、既存のADR-0013 candidate recordとADR-0017 AI recordはopen recordとして保持する。単枚 / layer追加は1 file = 1 record、複製は`textureId`を新IDへ付け替え、flip copyはtexture IDを保持し、`.casproj`はasset IDだけを付け替える既存規則に従う。dangling参照はread-only inspectorへ接続し、保存・書き出しを阻止しない。0.1.0、migration、schema version、AI fieldは変更していない。
 
 ---
 
@@ -39,7 +39,7 @@
 ## 影響と fixture
 
 - 影響 docs: `docs/future/2D_ASSET_DATA_CONTRACT.md` §11（境界確定の注記のみ、本文は書き換えない）。
-- 影響実装: ADR採択時はなし。group 11 Slice Bで`src/core/model/asset.ts` / `asset.schema.json` / import・複製・flip copy・read-only inspectorを変更する。保存 / exportを阻止するpreflightは追加しない。
+- 影響実装: ADR採択時はなし。group 11 Slice BのPR #126で`src/core/model/asset.ts` / `asset.schema.json` / import・複製・flip copy・read-only inspectorを変更した。保存 / exportを阻止するpreflightは追加していない。
 - fixture: `src/core/model/provenanceContract.fixtures.test.ts` の ADR-0013 セクションで次を固定する。
   - 未知 root フィールド `provenance`（§11 候補フィールドを持つレコード配列）を持つ asset が `validateAsset` を通ること。
   - `textures[0]` に未知フィールド（`provenance: { source: 'local-file' }`）を足した asset が `validateAsset` を通ること（入れ子レベルの未知フィールド許容を、texture について名指しで初めて固定した）。

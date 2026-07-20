@@ -3,14 +3,14 @@
 最終更新日: 2026-07-20
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 2D 完成形の保存・座標・互換性契約
-状態: accepted（将来設計。docs-only）
+状態: accepted（保存契約。Family / Variantとsource provenanceは実装済み、後続項目を含む）
 上位文書: `2D_COMPLETE_PRODUCT_SPEC.md`
 関連文書: `docs/DATA_FORMAT.md`, `docs/EXPORT_FORMATS.md`, `docs/future/FLIP_DESIGN.md`, `docs/future/COLLIDER_EDITING_DESIGN.md`, `2D_EXPORT_COMPATIBILITY_MATRIX.md`
 
 ---
 
 > **現状:** 現在の正本は `docs/DATA_FORMAT.md`、`src/core/model/`、`src/core/schema/` であり、`asset.json` / `.casproj` の version は `0.1.0` である。
-> **本書の役割:** 2D 完成形で必要になるデータの意味と、形式変更前に必ず決める契約を定義する。本文だけで現在の型、schema、ZIP 構成、migration を変更してはいけない。Family / Variantは別契約`2D_2_VARIANT_BATCH_PLAN.md`で実装済み。来歴は`2D_2_IMPORT_PLAN.md`のP1に基づき、group 11 Slice Bでoptionalな`Asset.provenance?`として実装する。
+> **本書の役割:** 2D 完成形で必要になるデータの意味と、形式変更前に必ず決める契約を定義する。本文だけで現在の型、schema、ZIP 構成、migration を変更してはいけない。Family / Variantは別契約`2D_2_VARIANT_BATCH_PLAN.md`で実装済み。来歴は`2D_2_IMPORT_PLAN.md`のP1に基づき、group 11 Slice B（PR #126）でoptionalな`Asset.provenance?`として実装済みである。
 
 ## 1. 目的
 
@@ -164,7 +164,7 @@ Project
 
 「元を変えたらすべて自動更新」にはしない。更新対象、手動調整の保護、再生成の前後比較を表示し、ユーザーが選ぶ。
 
-accepted `V1+T1`では、linked mirror / paletteだけがrecipe、内部要素別ID対応、明示write-set、最後の同期fingerprintを持つ。base保存だけでは更新せず、手動変更があるwrite-setは既定除外する。装備違いと手修正版解像度はmanual variantとし、自動再生成しない。実際のfingerprint計算、preview、refresh UIはSlice Cまで未実装である。
+accepted `V1+T1`では、linked mirror / paletteだけがrecipe、内部要素別ID対応、明示write-set、最後の同期fingerprintを持つ。base保存だけでは更新せず、手動変更があるwrite-setは既定除外する。装備違いと手修正版解像度はmanual variantとし、自動再生成しない。fingerprint計算、preview、refresh UIはgroup 10 Slice C（PR #121）で実装済みである。
 
 ## 8. アニメーションとイベントの契約
 
@@ -247,7 +247,7 @@ extensions
 
 ## 11. 入力の来歴・安全性
 
-> この章のうち来歴・利用条件・AI 送信記録の保存境界は `docs/adr/0013-provenance-and-ai-record-boundary.md` で決定済み。source-file来歴の具体fieldとSHA-256対象は`docs/future/2D_2_IMPORT_PLAN.md`のP1としてacceptedされ、group 11 Slice Bで実装する。AI 境界（consent・外部送信・受け入れ経路・手動代替）は `docs/adr/0017-ai-boundary.md` で決定済み。不正入力検査は `2D-1A-VALIDATION` / `2D-1B-INPUT-SAFETY` で扱う。
+> この章のうち来歴・利用条件・AI 送信記録の保存境界は `docs/adr/0013-provenance-and-ai-record-boundary.md` で決定済み。source-file来歴の具体fieldとSHA-256対象は`docs/future/2D_2_IMPORT_PLAN.md`のP1としてacceptedされ、group 11 Slice B（PR #126）で実装済みである。AI 境界（consent・外部送信・受け入れ経路・手動代替）は `docs/adr/0017-ai-boundary.md` で決定済み。不正入力検査は `2D-1A-VALIDATION` / `2D-1B-INPUT-SAFETY` で扱う。
 
 - 元データのファイル名、形式、ハッシュ、取得元、利用条件、作成日を任意で記録できるようにする。
 - source-file recordは`sourceFileName`、`mimeType`、`byteLength`、source Blob原本bytesの`sha256:<64 lowercase hex>`、`importedAt`を持ち、任意でsource `textureId`、手動入力の`origin` / `license`を持つ。1元file = 1 recordとし、旧dataへ遡及生成しない。

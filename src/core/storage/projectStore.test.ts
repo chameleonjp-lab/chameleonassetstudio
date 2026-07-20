@@ -10,6 +10,7 @@ import {
   TRASH_LIMIT,
   deleteAsset,
   deleteAssetBundle,
+  deleteAssetsBundle,
   deleteProject,
   listProjectAssets,
   listProjects,
@@ -289,6 +290,65 @@ describe('Slice A Family保存・削除境界', () => {
 });
 
 describe('saveProjectBundle guard', () => {
+  it('複数の新規Asset・BlobをProject更新と同じtransactionで削除する', async () => {
+    const first = assetWithId('asset_multi_delete_first');
+    const second = assetWithId('asset_multi_delete_second');
+    const project = projectWithAssets('multi delete', [first, second]);
+    await saveProjectBundle(
+      project,
+      [first, second],
+      [first, second].flatMap((asset, index) => blobsForAsset(asset, 30 + index * 10)),
+    );
+    const beforeProject: Project = { ...project, assets: [], updatedAt: project.createdAt };
+
+    await deleteAssetsBundle({
+      project: beforeProject,
+      assetIds: [first.id, second.id],
+    });
+
+    expect((await loadProject(project.id)).project).toEqual(beforeProject);
+    await expect(loadAsset(first.id)).rejects.toThrow(/見つかりません/);
+    await expect(loadAsset(second.id)).rejects.toThrow(/見つかりません/);
+    expect(await loadBlob(`${first.id}/${first.textures[0].path}`)).toBeNull();
+    expect(await loadBlob(`${second.id}/${second.textures[0].path}`)).toBeNull();
+  });
+
+  it('複数Asset削除の途中で失敗したらProject・全Asset・全Blobを維持する', async () => {
+    const first = assetWithId('asset_multi_delete_rollback_first');
+    const second = assetWithId('asset_multi_delete_rollback_second');
+    const project = projectWithAssets('multi delete rollback', [first, second]);
+    await saveProjectBundle(
+      project,
+      [first, second],
+      [first, second].flatMap((asset, index) => blobsForAsset(asset, 50 + index * 10)),
+    );
+    const nextProject: Project = { ...project, assets: [], updatedAt: project.createdAt };
+    const originalDelete = IDBObjectStore.prototype.delete;
+    const spy = vi.spyOn(IDBObjectStore.prototype, 'delete').mockImplementation(function (
+      this: IDBObjectStore,
+      key: IDBValidKey | IDBKeyRange,
+    ) {
+      if (this.name === 'assets' && key === second.id) {
+        throw new DOMException('fail injection', 'DataError');
+      }
+      return originalDelete.call(this, key);
+    });
+
+    try {
+      await expect(
+        deleteAssetsBundle({ project: nextProject, assetIds: [first.id, second.id] }),
+      ).rejects.toThrow();
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect((await loadProject(project.id)).project).toEqual(project);
+    expect((await loadAsset(first.id)).asset).toEqual(first);
+    expect((await loadAsset(second.id)).asset).toEqual(second);
+    expect(await loadBlob(`${first.id}/${first.textures[0].path}`)).not.toBeNull();
+    expect(await loadBlob(`${second.id}/${second.textures[0].path}`)).not.toBeNull();
+  });
+
   it('Project参照・Asset・全Texture Blobを原子的に保存する', async () => {
     const asset = assetWithId('asset_bundle');
     const project = projectWithAssets('bundle', [asset]);
