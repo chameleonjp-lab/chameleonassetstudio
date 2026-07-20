@@ -21,14 +21,14 @@ Slice E は SVG / GIF / APNG を `rasterized-import` として扱いながら、
 4. **APNG の canonical MIME は `image/png` とする。** APNG は PNG コンテナなので、source TextureRef / Blob / `.casproj` path は `image/png` / `.png` として保持する。元 file の宣言 MIME が `image/apng` だった事実は `Asset.provenance[].mimeType` に保持できる。実体署名検査では PNG 実体と `image/apng` 宣言を同一コンテナとして扱う。
 5. **source bytes を変換せず保存する。** SVG / GIF source の Blob bytes は取り込みから IndexedDB、`.casproj` export / import まで verbatim に維持する。新規bundle、通常改訂、snapshotを含むcanonical保存ではTextureRefのMIMEとBlobのMIMEが一致しなければ拒否する。
 6. **実体署名検査を保存層まで先行実装する。** GIF87a / GIF89a と UTF-8 SVG root を識別し、`.casproj` の staged import でも宣言 MIME、実体、decode 寸法を検証する。SVG root 確認のため先頭 4096 bytes を検査する。ユーザー向け通常 import の許可 MIME はこの PR では PNG / JPEG / WebP のままとする。
-7. **Slice E の製品機能は別 PR とする。** SVG の安全な rasterize、GIF / APNG の全 frame decode と fallback、loss preview、unsupported 形式の理由表示、UI、E2E はこの契約補正に含めない。dependency、IndexedDB version / store / index、`.casproj` の配置、product export ZIP は変更しない。
+7. **Slice E の製品機能は別 PR とする。** SVG の安全な rasterize、GIF / APNG の全 frame decode と fallback、loss preview、unsupported 形式の理由表示、製品 UI とそれらの回帰 E2E はこの契約補正に含めない。ただし、保存契約の証拠となる SVG / GIF `.casproj` の実ブラウザー decode は最小 E2E として本 PR に含める。dependency、IndexedDB version / store / index、`.casproj` の配置、product export ZIP は変更しない。
 
 ## 根拠
 
 - ADR-0007 は source を取り込んだ元データとして不変・verbatim に保持する。
 - ADR-0015 は version を上げる変更に migration と旧 fixture roundtrip を必須とし、各文書の version を独立に進める。
 - ADR-0016 は SVG / GIF / APNG を `rasterized-import` と分類し、原本保持と rasterized edit data の分離を前提にする。
-- SVG を画像として読み込む browser context では script 実行や外部 resource 読み込みが制限される。ただし実際の安全な decode と回帰 E2E は Slice E で固定する。参考: <https://developer.mozilla.org/en-US/docs/Web/SVG/Guides/SVG_as_an_image>
+- SVG を画像として読み込む browser context では script 実行や外部 resource 読み込みが制限される。本 PR は `.casproj` の最小 decode E2E だけを固定し、SVG 構造の安全性検査、rasterize、通常 import を含む製品フローの回帰 E2E は Slice E で固定する。参考: <https://developer.mozilla.org/en-US/docs/Web/SVG/Guides/SVG_as_an_image>
 - `ImageDecoder` は利用可能環境が限定されるため、Slice E では機能検出と先頭 frame fallback を維持する。参考: <https://developer.mozilla.org/en-US/docs/Web/API/ImageDecoder>
 
 ## 影響と fixture
