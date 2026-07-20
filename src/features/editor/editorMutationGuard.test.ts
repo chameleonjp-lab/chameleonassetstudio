@@ -5,6 +5,7 @@ import {
   commitPersistentMutationWithHistory,
   PERSISTENT_MUTATION_BUSY_MESSAGE,
   PERSISTENT_MUTATION_IN_PROGRESS_MESSAGE,
+  PERSISTENT_MUTATION_PREVIEW_MESSAGE,
 } from './editorMutationGuard';
 
 describe('canStartPersistentMutation', () => {
@@ -43,6 +44,24 @@ describe('canStartPersistentMutation', () => {
     expect(onReject).toHaveBeenCalledWith(PERSISTENT_MUTATION_IN_PROGRESS_MESSAGE);
     expect(assetMutator).not.toHaveBeenCalled();
     expect(autosave).not.toHaveBeenCalled();
+  });
+
+  it('保存前preview中は拒否し、背景の永続変更を開始しない', () => {
+    const history = new History();
+    const onReject = vi.fn();
+    const assetMutator = vi.fn();
+    if (
+      canStartPersistentMutation({
+        history,
+        mutationBusy: false,
+        previewPending: true,
+        onReject,
+      })
+    ) {
+      assetMutator();
+    }
+    expect(onReject).toHaveBeenCalledWith(PERSISTENT_MUTATION_PREVIEW_MESSAGE);
+    expect(assetMutator).not.toHaveBeenCalled();
   });
 });
 

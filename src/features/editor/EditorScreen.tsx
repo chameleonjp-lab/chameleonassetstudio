@@ -286,6 +286,7 @@ interface PendingNewAssetsImageImport {
   kind: 'new-assets';
   preview: ImportPreviewContent;
   beforeProject: Project;
+  beforeAssets: Asset[];
   beforeSelectedAssetId: string | null;
   stagedAssets: Asset[];
   blobs: Array<{ key: string; blob: Blob }>;
@@ -294,6 +295,8 @@ interface PendingNewAssetsImageImport {
 interface PendingLayerImageImport {
   kind: 'layers';
   preview: ImportPreviewContent;
+  beforeProject: Project;
+  beforeAssets: Asset[];
   beforeAsset: Asset;
   afterAsset: Asset;
   blobs: Array<{ key: string; blob: Blob }>;
@@ -302,6 +305,10 @@ interface PendingLayerImageImport {
 }
 
 type PendingImageImport = PendingNewAssetsImageImport | PendingLayerImageImport;
+
+interface EditorPersistentMutationOptions {
+  allowPendingImageImport?: boolean;
+}
 
 function frameSetPreviewContent(result: PreparedFrameSetImport): ImportPreviewContent {
   return {
@@ -781,22 +788,29 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     }
   }, [selectedAsset, selectedColliderId]);
 
-  const canStartEditorPersistentMutation = useCallback(() => {
-    return canStartPersistentMutation({
-      history,
-      mutationBusy: mutationBusyRef.current,
-      onReject: setEditorError,
-    });
-  }, [history]);
+  const canStartEditorPersistentMutation = useCallback(
+    ({ allowPendingImageImport = false }: EditorPersistentMutationOptions = {}) => {
+      return canStartPersistentMutation({
+        history,
+        mutationBusy: mutationBusyRef.current,
+        previewPending: pendingImageImport !== null && !allowPendingImageImport,
+        onReject: setEditorError,
+      });
+    },
+    [history, pendingImageImport],
+  );
 
-  const beginEditorPersistentMutation = useCallback(() => {
-    if (!canStartEditorPersistentMutation()) {
-      return false;
-    }
-    mutationBusyRef.current = true;
-    setMutationBusy(true);
-    return true;
-  }, [canStartEditorPersistentMutation]);
+  const beginEditorPersistentMutation = useCallback(
+    (options: EditorPersistentMutationOptions = {}) => {
+      if (!canStartEditorPersistentMutation(options)) {
+        return false;
+      }
+      mutationBusyRef.current = true;
+      setMutationBusy(true);
+      return true;
+    },
+    [canStartEditorPersistentMutation],
+  );
 
   const endEditorPersistentMutation = useCallback(() => {
     mutationBusyRef.current = false;
@@ -838,13 +852,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   );
 
   const handleHistoryUndo = useCallback(async () => {
-    if (
-      !canStartPersistentMutation({
-        history,
-        mutationBusy: mutationBusyRef.current,
-        onReject: setEditorError,
-      })
-    ) {
+    if (!canStartEditorPersistentMutation()) {
       return;
     }
     try {
@@ -855,16 +863,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         `元に戻せませんでした: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
-  }, [history]);
+  }, [canStartEditorPersistentMutation, history]);
 
   const handleHistoryRedo = useCallback(async () => {
-    if (
-      !canStartPersistentMutation({
-        history,
-        mutationBusy: mutationBusyRef.current,
-        onReject: setEditorError,
-      })
-    ) {
+    if (!canStartEditorPersistentMutation()) {
       return;
     }
     try {
@@ -875,7 +877,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         `やり直せませんでした: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
-  }, [history]);
+  }, [canStartEditorPersistentMutation, history]);
 
   /** 変更を適用し、履歴へ積む。 */
   const commitAssetChange = useCallback(
@@ -2237,6 +2239,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       kind: 'new-assets',
       preview: frameSetPreviewContent(result),
       beforeProject: project,
+      beforeAssets: assets,
       beforeSelectedAssetId: selectedAssetId,
       stagedAssets: [result.asset],
       blobs: result.blobs,
@@ -2280,6 +2283,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           warnings: [],
         },
         beforeProject: project,
+        beforeAssets: assets,
         beforeSelectedAssetId: selectedAssetId,
         stagedAssets,
         blobs: staged.flatMap(({ blobs }) => blobs),
@@ -2353,12 +2357,23 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     if (!pending || !project) {
       return;
     }
-    if (pending.kind === 'new-assets' && project.id !== pending.beforeProject.id) {
-      setEditorError('preview対象のProjectが変わりました。取り込みpreviewを作り直してください。');
+    const beforeAssetStillCurrent =
+      pending.kind === 'new-assets' ||
+      pending.beforeAssets.find((asset) => asset.id === pending.beforeAsset.id) ===
+        pending.beforeAsset;
+    if (
+      project !== pending.beforeProject ||
+      assets !== pending.beforeAssets ||
+      !beforeAssetStillCurrent
+    ) {
+      setPendingImageImport(null);
+      setEditorError(
+        'preview準備後にProjectまたはAssetが変わりました。取り込みpreviewを作り直してください。',
+      );
       return;
     }
     await history.waitForPending();
-    if (!beginEditorPersistentMutation()) {
+    if (!beginEditorPersistentMutation({ allowPendingImageImport: true })) {
       return;
     }
     setEditorError(null);
@@ -2367,8 +2382,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     try {
       if (pending.kind === 'new-assets') {
         const beforeProject = pending.beforeProject;
-        const beforeAssets = assets;
-        const importedIds = new Set(pending.stagedAssets.map((asset) => asset.id));
+        const beforeAssets = pending.beforeAssets;
         const afterProject: Project = {
           ...beforeProject,
           assets: [
@@ -2393,12 +2407,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         };
         const applyBeforeState = () => {
           setProject(beforeProject);
-          setAssets(beforeAssets.filter((asset) => !importedIds.has(asset.id)));
-          setSelectedAssetId(
-            pending.beforeSelectedAssetId ??
-              beforeAssets.find((asset) => !importedIds.has(asset.id))?.id ??
-              null,
-          );
+          setAssets(beforeAssets);
+          setSelectedAssetId(pending.beforeSelectedAssetId ?? beforeAssets[0]?.id ?? null);
           setSelectedLayerId(null);
           setCheckedLayerIds([]);
           setVariantPreview(null);
@@ -2760,7 +2770,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     // value のリセットで FileList が空になる前に配列へ写す
     const files = event.target.files ? Array.from(event.target.files) : [];
     event.target.value = '';
-    if (files.length === 0 || !selectedAsset) {
+    if (files.length === 0 || !selectedAsset || !project) {
       return;
     }
     if (!beginEditorPersistentMutation()) {
@@ -2809,6 +2819,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           losses: [],
           warnings: [],
         },
+        beforeProject: project,
+        beforeAssets: assets,
         beforeAsset: before,
         afterAsset: after,
         blobs,

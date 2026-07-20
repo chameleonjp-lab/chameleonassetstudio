@@ -102,7 +102,7 @@ Slice C基準main: `5a1663b`（PR #126 merge、Slice B closeout）
 - sheetはuniformな外周marginとcell間spacingを用い、左上から行優先で完全に収まるcellだけを1〜16件切り出す。margin、spacing、右端・下端の余りpixelはsource原本へ残し、編集frameへ入らないlossとして確定前に表示する。
 - 連番は元fileごとにsource / edit / layer / frame / provenanceを1件、sheetは原本source / provenanceを1件とcellごとのedit / layer / frameを作る。各frameは対応layerだけを可視にする完全な`layerStates`を持つ。
 - 自動animationは8fps、loop有効、frame順はpreview順。thumbnailは先頭file / 先頭cellから作る。
-- 通常画像batch、既存Assetへのlayer追加、連番、sheetの全経路を共通L1 previewへ通す。取消・準備失敗では正本を変更せず、確定は原子保存し、session内の1回のUndo / Redoで取り込み全体を往復する。
+- 通常画像batch、既存Assetへのlayer追加、連番、sheetの全経路を共通L1 previewへ通す。preview表示中は背景をmodal化し、背景の永続変更とUndo / Redo（button・keyboard shortcut）を拒否する。確定時はpreview準備時のProject / Asset状態が現在も一致することを検証する。取消・準備失敗では正本を変更せず、確定は原子保存し、session内の1回のUndo / Redoで取り込み全体を往復する。
 - 署名不一致、decode失敗、寸法超過だけを既存quarantineへ接続する。unsupported MIME、file size上限、hash / encode / 環境 / 保存失敗は入力破損と決めつけて隔離しない。
 - schema / version / migration、IndexedDB version / store / index、`.casproj`配置、product export ZIP構成、dependencyは変更しない。
 
@@ -118,7 +118,7 @@ Slice C基準main: `5a1663b`（PR #126 merge、Slice B closeout）
 ### import共通（Slice C以降）
 
 - source Blobをverbatim保持し、取り込み確定前にloss / warningを理由付き表示する。
-- 失敗・中断・取消で正本Project / Asset / Blobを変更しない。取り込み確定は1回のUndoで全体が戻る。
+- 失敗・中断・取消で正本Project / Asset / Blobを変更しない。preview中はfocusをdialog内へ保ち、背景操作とkeyboard Undo / Redoで準備済み状態を古くしない。取り込み確定は1回のUndoで全体が戻る。
 - 既存の署名検査・25MiB / 4096px上限・batch件数上限を維持し、失敗入力をquarantineへ記録する。
 - 連番 / sheet分割結果のframe / animationが保存・reload・flip・atlas出力後も意味を保つ。
 - tileset / 自形式atlas roundtripでframes / animations / origin / anchors / colliders / tile設定の意味が一致する。
