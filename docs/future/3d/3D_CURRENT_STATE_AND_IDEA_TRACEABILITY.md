@@ -1,9 +1,10 @@
 # 3D Current State and Idea Traceability（現状と既存 3D 案の追跡表）
 
 状態: **draft / human review required**
-最終更新日: 2026-07-19
+最終更新日: 2026-07-21（補足: Three.js Object Sculptor を参照資料として追記）
 調査基準commit: `7018984ba9e6867c6fab12fb313308218a35c22b`（ブランチ `claude/chameleon-3d-four-stage-plan-yjpqlt`。origin/main と同一コミット）
 調査日: 2026-07-19（リポジトリ内全文検索 + 主要文書精読。作業開始時の Git 状態: working tree clean・未commit変更なし）
+補足調査日: 2026-07-21（Three.js Object Sculptor の README / LICENSE / upstream commit を確認。既存の実装禁止 Gate は変更しない）
 上位文書: `README.md`（本ディレクトリ）
 
 > この文書は「今なにが実装されていて、3D について過去に何が計画され、それらを新しい四段階計画でどう扱うか」を 1 か所で追跡する。**どの案も理由なしに消していない。**
@@ -199,6 +200,7 @@
 | N23 | 生成モデル特有の幾何・UV・テクスチャ検査（非多様体・重複頂点・UV 重なり・頂点カラーのみ） | 採用 | `3D-CHK-GEO-003/-004`・`UV-003`・`TEX-004` |
 | N24 | 端から端までの標準動線の明文化（画像→動くキャラクター）と 2D 前処理ガイド | 採用 | interop 仕様 8.0〜8.1 / 完成条件 1 |
 | N25 | 整合リスク台帳（3D-RISK-01〜12）と ⚠️ 印の運用 | 採用 | `3D_DECISION_LOG_AND_OPEN_ITEMS.md` 7 章 |
+| N26 | Three.js Object Sculptor（画像から code-only Three.js model + `ObjectSculptSpec` を作る Codex plugin）を外部生成設計の参照資料へ追加 | **参照採用（実装未承認）** | `3D-STAGE4-01` / interop 仕様 8.4。spec-first、階層・pivot / socket、visual evidence が Chameleon と近い。標準出力は GLB ではないため外部隔離変換を必須とし、Chameleon 本体で生成コードを実行しない |
 
 ## 7. 文書間の矛盾
 
@@ -214,6 +216,7 @@
 
 - 外部ライブラリの現在の安定版バージョン・gltfpack 同梱物・KTX-Software ライセンス詳細・three.js examples 配布単位（`3D_PERFORMANCE_DEVICE_SECURITY_LICENSE_SPEC.md` 8 章）。
 - 生成 AI 候補（TripoSR 等 6.5 の全候補）の重みライセンス・商用条件・地域制限（今回は外部確認を行っていない）。
+- Three.js Object Sculptor の upstream 更新追従、Three.js code → GLB の見た目・階層・animation / material 変換精度、iPhone 級性能、Codex / vision reviewer と入出力の権利条件（詳細は interop 仕様 8.4）。
 - 過去の Pull Request・issue・commit message の全文検索（GitHub API 側の調査は今回実施していない。リポジトリ内文書・コードの全文検索で代替した。過去 PR にのみ存在し文書に残っていない 3D 案があれば本表から漏れている可能性がある）。
 - Safari の IndexedDB 大容量 Blob・OffscreenCanvas + WebGL の実挙動（Gate 後実測）。
 - CI（Playwright Chromium）での WebGL 動作（`3D-STAGE1-11` で確認）。
