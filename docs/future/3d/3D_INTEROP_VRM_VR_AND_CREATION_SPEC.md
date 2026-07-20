@@ -1,9 +1,9 @@
 # 3D Interop / VRM / VR / Creation Spec（主要ツール連携・VRM・VR・ボーン・テクスチャ編集・画像→3D）
 
 状態: **draft / human review required**
-最終更新日: 2026-07-20（第2改訂: リグ作成 R2〜R4・モーション付与 M1〜M2・生成物特有検品・整合リスク参照を追加）
+最終更新日: 2026-07-21（第2改訂への補足: Three.js Object Sculptor を参照資料として追加。実装段階・Gate は変更しない）
 調査基準commit: 第2改訂 `3dd4dd4`（PR #131 マージ後の main。第1改訂は `96d63c5`、初版は `7018984`）
-外部情報の確認日: 2026-07-20（9 章・11 章の表に個別記載）
+外部情報の確認日: 2026-07-21（Three.js Object Sculptor は 8.3〜8.4、その他は各表に個別記載）
 上位文書: `README.md`（本ディレクトリ）, `3D_COMPLETE_PRODUCT_SPEC.md`
 関連文書: `3D_FOUR_STAGE_IMPLEMENTATION_PLAN.md`（対応 work package）, `3D_IMPORT_INSPECTION_SETUP_EXPORT_SPEC.md`, `3D_ASSET_DATA_CONTRACT.md`, `3D_DECISION_LOG_AND_OPEN_ITEMS.md`
 
@@ -222,7 +222,7 @@ Chameleon には 2D で実証済みの画像編集基盤（トリミング・背
 ```mermaid
 flowchart LR
   A["2D 画像の準備<br/>（2D Studio: 背景透過・正面立ち絵）"] --> B["外部 3D 生成<br/>（TripoSR 等。手動 or adapter）"]
-  B --> C["取り込み + 検品<br/>（静的メッシュ。生成物特有の検査 8.4）"]
+  B --> C["取り込み + 検品<br/>（静的メッシュ。生成物特有の検査 8.2b）"]
   C --> D["Setup<br/>（unit / feet / forward 確定）"]
   D --> E["骨格フィット + 自動ウェイト<br/>（R2〜R4 → rigged derived）"]
   E --> F["モーション付与<br/>（M1 テンプレ / M2 retarget → clip 焼き込み）"]
@@ -277,15 +277,47 @@ flowchart LR
 | 自動 UV の重なり・密度ムラ・巨大 atlas 1 枚 | **`3D-CHK-UV-003`（新設）**: UV 重なり率・texel 密度の偏りを参考値表示。焼き込み済み陰影（baked lighting）は自動判定せず、ガイド文で注意喚起 |
 | ポリゴン数過剰 / 過少 | 既存 `3D-CHK-TRI-001` + 簡略化（過少 = シルエット破綻は目視。Compare で確認） |
 
-### 8.3 provider 候補の現状（2026-07-20 時点）
+### 8.3 provider 候補の現状（2026-07-21 時点）
 
 | provider | コードのライセンス | 重み / 商用条件 | 現在の扱い |
 |---|---|---|---|
 | TripoSR | **MIT（2026-07-20 一次確認済み）** | 重みのモデルカードは未確認 | 最初の実験候補（ローカル） |
+| [Three.js Object Sculptor](https://github.com/vinhhien112/Three.js-Object-Sculptor-Codex-Plugin/tree/543da1fc0e45a703b0ac037fb040ce082c79a1c2) | **MIT（2026-07-21 LICENSE 一次確認済み）** | リポジトリにモデル重みは含まれない。Codex / AI vision reviewer の利用条件、入力画像と生成物の権利は別確認 | **参照資料 / 条件付き実験候補**。出力が Three.js code + `ObjectSculptSpec` で GLB ではないため、外部の隔離変換が成立する場合だけ adapter 候補に進める |
 | TRELLIS | **MIT（2026-07-20 一次確認済み）** | 重み・依存モデルの条件は未確認 | 高品質候補（要 GPU） |
 | Stable Fast 3D / SPAR3D | 未確認（Stability AI community license 系と報告されるが一次未確認） | 売上条件の確認必須 | 確認待ち |
 | Hunyuan3D 系 | **未確認**（2026-07-20 に GitHub の LICENSE 取得を試行したが 404。リポジトリ所在含め要再調査） | 地域・MAU 条件の報告あり（未検証） | 確認待ち |
 | その他（Step1X-3D 等） | 未確認 | - | 研究追跡のみ（既定変更なし） |
+
+### 8.4 参照資料: Three.js Object Sculptor（2026-07-21 追記）
+
+- 参照先: [repository](https://github.com/vinhhien112/Three.js-Object-Sculptor-Codex-Plugin) / [README（確認基準 commit）](https://github.com/vinhhien112/Three.js-Object-Sculptor-Codex-Plugin/blob/543da1fc0e45a703b0ac037fb040ce082c79a1c2/README.md) / [LICENSE（確認基準 commit）](https://github.com/vinhhien112/Three.js-Object-Sculptor-Codex-Plugin/blob/543da1fc0e45a703b0ac037fb040ce082c79a1c2/LICENSE)
+- 確認基準: upstream commit `543da1fc0e45a703b0ac037fb040ce082c79a1c2`（2026-07-17）。2026-07-21 の GitHub 表示では 10 commits、release 未作成。成熟度を断定せず、評価時に commit を再固定する。
+- 上流の主な出力: code-only の Three.js model factory と `ObjectSculptSpec`。標準では GLB を生成しない。
+
+#### 8.4.1 参照する理由
+
+1. 実装より先に対象物の構造、複雑さ、材質、品質目標を設計データへ固定し、段階ごとに検証する。これは Chameleon の docs-first、schema / validation、Gate 運用と近い。
+2. assembly / part の階層、pivot、socket、animation anchor、collider proxy を先に設計するため、将来の `asset3d.json`、anchor / collider、node binding を考える参考になる。
+3. 元画像と描画結果の比較画像、重要部位ごとの合否、hash で結び付いた review 証拠を扱うため、Chameleon の inspection report / evidence / provenance を改善する参考になる。
+4. ブラウザ向け Three.js の real-time prop、樹木、機械部品、破壊可能オブジェクトを主対象とし、Chameleon のブラウザゲーム用途と近い。
+5. 学習済み 3D 生成モデルだけに依存せず、形の組み立て手順をコードとして生成する別経路を示す。外部生成 adapter を 1 種類の mesh 生成方式へ固定しないために参照する。
+
+#### 8.4.2 Chameleon へ適用する場合の境界
+
+- 本追記は参照採用だけであり、3D 実装開始、plugin install、dependency 追加、fork、接続実装を承認しない。2D Pro Gate と `3D-DEC-EXTGEN-01` を維持する。
+- 現行 adapter 契約の受領物は GLB である。Object Sculptor を候補に進めるには、外部 processor が生成コードを隔離環境で検査・実行し、`model.glb`、`object-sculpt-spec.json`、metadata mapping、比較 evidence、provenance を返す wrapper が必要である。
+- AI が生成した TypeScript / JavaScript は信頼しない入力として扱う。Chameleon の画面、Worker、Service Worker、同一 origin 内で直接実行してはいけない。
+- procedural material、custom shader、instancing、runtime animation などは GLB へ同じ意味で変換できない場合がある。GLB 化の成功だけで合格にせず、元の Three.js 描画との見た目、階層、animation、material の差を比較する。
+- 上流の「animation-ready hierarchy」は humanoid skin / bone / weight 完成を意味しない。character は取り込み後も R2〜R4、M1〜M2、`nodeBinding` 再バインド規則を通常どおり適用する。
+- MIT の確認対象は上流リポジトリのコードである。入力画像、Codex / vision reviewer の利用条件、生成コードと生成物の権利は、採用判断時に別々に記録する。
+
+#### 8.4.3 Gate 後の評価条件
+
+- `3D-STAGE3-GATE` 承認後、`3D-STAGE4-01` の設計調査としてのみ開始し、使用する upstream commit と変更差分を固定する。
+- mechanical prop、organic prop / tree、humanoid の 3 fixture で、生成時間、手動修正量、三角形数、material / texture 数、GLB 変換 loss、iPhone 級表示性能を比較する。
+- 返却 bundle は最低でも `model.glb`、`object-sculpt-spec.json`、spec→GLB node mapping、reference / render comparison、provider / commit / license provenance を含める。
+- 通常の 3D 検証パイプライン、敵対入力検査、Three.js / Babylon.js 実行検証を通し、Chameleon 本体で生成コードを実行せずに一続きの動線を完了できた場合だけ、条件付き adapter 候補へ昇格する。
+- 変換不能な表現が多い、iPhone 級で予算を超える、上流変更の追従負担が大きい、または権利条件を確定できない場合は、参照資料のまま維持して実装しない。
 
 ---
 
