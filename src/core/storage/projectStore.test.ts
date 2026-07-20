@@ -4,7 +4,13 @@ import type { Asset, Project } from '../model';
 import { createEmptyProject } from '../model';
 import { createLinkedMirrorVariant } from '../model/familyTestFixtures';
 import characterAsset from '../samples/asset.character.json';
-import { requestToPromise, resetDbForTests, runTransaction, STORE_PROJECTS } from './db';
+import {
+  requestToPromise,
+  resetDbForTests,
+  runTransaction,
+  STORE_ASSETS,
+  STORE_PROJECTS,
+} from './db';
 import { restoreProject } from './index';
 import {
   TRASH_LIMIT,
@@ -21,6 +27,7 @@ import {
   purgeAllTrash,
   purgeTrash,
   saveAsset,
+  saveAssetBatchRevision,
   saveAssetRevision,
   saveBlob,
   saveProject,
@@ -100,6 +107,83 @@ describe('project / asset 基本保存', () => {
     expect((await loadAsset(asset.id)).asset).toEqual(asset);
     expect(await listProjects()).toHaveLength(1);
     expect(await listProjectAssets(project.id)).toEqual([asset]);
+  });
+
+  it('旧IndexedDB Assetを一覧読込時に0.2.0へ原子的に移行し、直後のbatch保存で使える', async () => {
+    const current = assetWithId('asset_legacy_indexeddb');
+    const legacy = {
+      ...structuredClone(current),
+      version: '0.1.0',
+      legacyRoot: { keep: true },
+      textures: current.textures.map((texture, index) =>
+        index === 0 ? { ...structuredClone(texture), legacyTexture: 'keep' } : texture,
+      ),
+    } as unknown as Asset;
+    const project = projectWithAssets('legacy indexeddb', [legacy]);
+    await saveProject(project);
+    await runTransaction([STORE_ASSETS], 'readwrite', (tx) =>
+      requestToPromise(
+        tx.objectStore(STORE_ASSETS).put({
+          id: legacy.id,
+          projectId: project.id,
+          data: legacy,
+        }),
+      ),
+    );
+    for (const [index, texture] of legacy.textures.entries()) {
+      await saveBlob(
+        project.id,
+        `${legacy.id}/${texture.path}`,
+        new Blob([new Uint8Array([index + 1])], { type: texture.mimeType }),
+      );
+    }
+
+    const [migrated] = await listProjectAssets(project.id);
+    expect(migrated.version).toBe('0.2.0');
+    expect(migrated).not.toHaveProperty('provenance');
+    expect(migrated).toMatchObject({ legacyRoot: { keep: true } });
+    expect(migrated.textures[0]).toMatchObject({ legacyTexture: 'keep' });
+
+    const stored = await runTransaction([STORE_ASSETS], 'readonly', (tx) =>
+      requestToPromise(tx.objectStore(STORE_ASSETS).get(legacy.id)),
+    );
+    expect(stored).toMatchObject({ data: { version: '0.2.0', legacyRoot: { keep: true } } });
+
+    const afterAsset: Asset = { ...migrated, tags: [...migrated.tags, 'after-migration'] };
+    await expect(
+      saveAssetBatchRevision({
+        beforeProject: project,
+        afterProject: project,
+        targets: [{ beforeAsset: migrated, afterAsset }],
+        snapshotLabel: '',
+      }),
+    ).resolves.toEqual(project);
+    expect((await loadAsset(legacy.id)).asset.tags).toContain('after-migration');
+  });
+
+  it('一覧内にfuture Assetがあれば旧Assetも部分migrationせず正本を温存する', async () => {
+    const legacy = {
+      ...assetWithId('asset_atomic_legacy'),
+      version: '0.1.0',
+    } as unknown as Asset;
+    const future = {
+      ...assetWithId('asset_atomic_future'),
+      version: '0.2.1',
+    } as unknown as Asset;
+    const project = projectWithAssets('atomic migration failure', [legacy, future]);
+    await saveProject(project);
+    await runTransaction([STORE_ASSETS], 'readwrite', async (tx) => {
+      const store = tx.objectStore(STORE_ASSETS);
+      await requestToPromise(store.put({ id: legacy.id, projectId: project.id, data: legacy }));
+      await requestToPromise(store.put({ id: future.id, projectId: project.id, data: future }));
+    });
+
+    await expect(listProjectAssets(project.id)).rejects.toThrow(/新しい形式/);
+
+    const storedLegacy = (await runTransaction([STORE_ASSETS], 'readonly', (tx) =>
+      requestToPromise(tx.objectStore(STORE_ASSETS).get(legacy.id)),
+    )) as { data: Asset };
+    expect(storedLegacy.data.version).toBe('0.1.0');
   });
 
   it('別Project所有の既存Assetをmetadata保存で上書きしない', async () => {
@@ -380,6 +464,57 @@ describe('saveProjectBundle guard', () => {
         [...complete, { key: `${asset.id}/orphan.bin`, blob: new Blob([new Uint8Array([9])]) }],
       ),
     ).rejects.toThrow(/対応する TextureRef/);
+  });
+
+  it('TextureRefとBlobのMIME type不一致を拒否する', async () => {
+    const asset = assetWithId('asset_bundle_mime_mismatch');
+    const project = projectWithAssets('mime guard', [asset]);
+    const blobs = blobsForAsset(asset);
+    blobs[0] = {
+      ...blobs[0],
+      blob: new Blob([new Uint8Array([1])], { type: 'image/gif' }),
+    };
+
+    await expect(saveProjectBundle(project, [asset], blobs)).rejects.toThrow(/MIME type/);
+  });
+
+  it('通常改訂でも既存edit・新規sourceのBlob MIME不一致を拒否する', async () => {
+    const asset = assetWithId('asset_revision_mime_mismatch');
+    const project = projectWithAssets('revision mime guard', [asset]);
+    await saveProjectBundle(project, [asset], blobsForAsset(asset));
+    const edit = asset.textures.find((texture) => texture.kind === 'edit')!;
+    const editKey = `${asset.id}/${edit.path}`;
+
+    await expect(
+      saveAssetRevision({
+        projectId: project.id,
+        asset,
+        putBlobs: [{ key: editKey, blob: new Blob([new Uint8Array([9])], { type: 'image/gif' }) }],
+      }),
+    ).rejects.toThrow(/MIME type/);
+    expect((await loadBlob(editKey))?.type).toBe('image/png');
+
+    const source = {
+      id: 'tex_svg_source_added',
+      kind: 'source' as const,
+      name: 'svg source',
+      mimeType: 'image/svg+xml' as const,
+      size: { width: 8, height: 8 },
+      path: 'source/added.svg',
+    };
+    const withSource: Asset = { ...asset, textures: [...asset.textures, source] };
+    const sourceKey = `${asset.id}/${source.path}`;
+    await expect(
+      saveAssetRevision({
+        projectId: project.id,
+        asset: withSource,
+        putBlobs: [
+          { key: sourceKey, blob: new Blob([new Uint8Array([1])], { type: 'image/gif' }) },
+        ],
+        sourceBlobTransitions: { createKeys: [sourceKey] },
+      }),
+    ).rejects.toThrow(/MIME type/);
+    expect(await loadBlob(sourceKey)).toBeNull();
   });
 
   it('Project要約と新規Asset metadataの不一致を拒否する', async () => {

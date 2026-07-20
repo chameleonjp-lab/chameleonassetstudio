@@ -103,7 +103,7 @@ describe('2D-1B-LAYERS final storage invariants', () => {
     const { project, asset } = await seedAsset();
     const source = asset.textures.find((texture) => texture.kind === 'source')!;
     const variants: TextureRef[] = [
-      { ...source, kind: 'edit' },
+      { ...source, kind: 'edit', mimeType: 'image/png' },
       { ...source, path: 'source/renamed.png' },
       { ...source, mimeType: 'image/jpeg' },
       {
@@ -260,7 +260,9 @@ describe('2D-1B-LAYERS final storage invariants', () => {
     const next = {
       ...asset,
       textures: asset.textures.map((texture) =>
-        texture.id === source.id ? { ...texture, kind: 'edit' as const } : texture,
+        texture.id === source.id
+          ? { ...texture, kind: 'edit' as const, mimeType: 'image/png' as const }
+          : texture,
       ),
     };
 
@@ -281,7 +283,9 @@ describe('2D-1B-LAYERS final storage invariants', () => {
     const next = {
       ...asset,
       textures: asset.textures.map((texture) =>
-        texture.id === source.id ? { ...texture, kind: 'edit' as const } : texture,
+        texture.id === source.id
+          ? { ...texture, kind: 'edit' as const, mimeType: 'image/png' as const }
+          : texture,
       ),
     };
 
@@ -343,6 +347,7 @@ describe('2D-1B-LAYERS final storage invariants', () => {
       ...source,
       id: 'tex_replacement',
       kind: 'edit',
+      mimeType: 'image/png',
     };
     const next = {
       ...asset,

@@ -3,7 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEmptyProject, type Asset } from '../model';
 import characterAsset from '../samples/asset.character.json';
 import { AutosaveQueue } from './autosave';
-import { resetDbForTests } from './db';
+import {
+  requestToPromise,
+  resetDbForTests,
+  runTransaction,
+  STORE_ASSETS,
+  STORE_SNAPSHOTS,
+} from './db';
 import {
   loadAsset,
   loadBlob,
@@ -219,5 +225,104 @@ describe('snapshot復元の保存層調整', () => {
     );
     expect((await loadAsset(fixture.currentAsset.id)).asset).toEqual(fixture.snapshotAsset);
     expect(await readBytes(fixture.editKey)).toEqual(fixture.snapshotBytes);
+  });
+
+  it('旧0.1.0の正本とsnapshotを準備時に0.2.0へ移行し、復元後も逆戻りしない', async () => {
+    const fixture = await seedCoordinatorFlow();
+    await runTransaction([STORE_ASSETS, STORE_SNAPSHOTS], 'readwrite', async (tx) => {
+      const assetStore = tx.objectStore(STORE_ASSETS);
+      const snapshotStore = tx.objectStore(STORE_SNAPSHOTS);
+      const assetRecord = (await requestToPromise(assetStore.get(fixture.currentAsset.id))) as {
+        data: Asset;
+      };
+      const snapshotRecord = (await requestToPromise(snapshotStore.get(fixture.snapshotId))) as {
+        asset: Asset;
+      };
+      await requestToPromise(
+        assetStore.put({
+          ...assetRecord,
+          data: {
+            ...assetRecord.data,
+            version: '0.1.0',
+            legacyCurrent: { keep: true },
+          },
+        }),
+      );
+      await requestToPromise(
+        snapshotStore.put({
+          ...snapshotRecord,
+          asset: {
+            ...snapshotRecord.asset,
+            version: '0.1.0',
+            legacySnapshot: { keep: true },
+          },
+        }),
+      );
+    });
+
+    const restored = await prepareSnapshotRestore(fixture.snapshotId);
+    expect(restored.beforeAsset).toMatchObject({
+      version: '0.2.0',
+      legacyCurrent: { keep: true },
+    });
+    expect(restored.asset).toMatchObject({
+      version: '0.2.0',
+      legacySnapshot: { keep: true },
+    });
+    expect(restored.asset).not.toHaveProperty('provenance');
+
+    await commitSnapshotRestore(restored.restoreToken);
+
+    expect((await loadAsset(fixture.currentAsset.id)).asset).toMatchObject({
+      version: '0.2.0',
+      legacySnapshot: { keep: true },
+    });
+    expect(await readBytes(fixture.editKey)).toEqual(fixture.snapshotBytes);
+  });
+
+  it('future snapshotを拒否した場合は旧正本もsnapshotも部分migrationしない', async () => {
+    const fixture = await seedCoordinatorFlow();
+    await runTransaction([STORE_ASSETS, STORE_SNAPSHOTS], 'readwrite', async (tx) => {
+      const assetStore = tx.objectStore(STORE_ASSETS);
+      const snapshotStore = tx.objectStore(STORE_SNAPSHOTS);
+      const assetRecord = (await requestToPromise(assetStore.get(fixture.currentAsset.id))) as {
+        data: Asset;
+      };
+      const snapshotRecord = (await requestToPromise(snapshotStore.get(fixture.snapshotId))) as {
+        asset: Asset;
+      };
+      await requestToPromise(
+        assetStore.put({
+          ...assetRecord,
+          data: { ...assetRecord.data, version: '0.1.0' },
+        }),
+      );
+      await requestToPromise(
+        snapshotStore.put({
+          ...snapshotRecord,
+          asset: { ...snapshotRecord.asset, version: '0.2.1' },
+        }),
+      );
+    });
+
+    await expect(prepareSnapshotRestore(fixture.snapshotId)).rejects.toThrow(/新しい形式/);
+
+    const versions = await runTransaction(
+      [STORE_ASSETS, STORE_SNAPSHOTS],
+      'readonly',
+      async (tx) => {
+        const assetRecord = (await requestToPromise(
+          tx.objectStore(STORE_ASSETS).get(fixture.currentAsset.id),
+        )) as { data: Asset };
+        const snapshotRecord = (await requestToPromise(
+          tx.objectStore(STORE_SNAPSHOTS).get(fixture.snapshotId),
+        )) as { asset: Asset };
+        return {
+          asset: assetRecord.data.version,
+          snapshot: snapshotRecord.asset.version,
+        };
+      },
+    );
+    expect(versions).toEqual({ asset: '0.1.0', snapshot: '0.2.1' });
   });
 });

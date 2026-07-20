@@ -7,7 +7,7 @@ import {
   type ProjectAssetEntry,
 } from '../model';
 import { decodeImageSource, type DecodedImageSource } from '../images/decodeImageSource';
-import { detectImageMimeType } from '../images/imageInputSafety';
+import { detectImageMimeType, IMAGE_SIGNATURE_SNIFF_BYTES } from '../images/imageInputSafety';
 import { MAX_IMPORT_FILE_BYTES, checkImageDimensions } from '../images/importImage';
 import {
   CasprojError,
@@ -140,7 +140,10 @@ async function validateCanonicalImages(
           code: 'input-limit',
         });
       }
-      const detectedMimeType = detectImageMimeType(file.bytes.subarray(0, 16));
+      const detectedMimeType = detectImageMimeType(
+        file.bytes.subarray(0, IMAGE_SIGNATURE_SNIFF_BYTES),
+        { isTruncatedPrefix: file.bytes.byteLength > IMAGE_SIGNATURE_SNIFF_BYTES },
+      );
       if (!detectedMimeType) {
         throw new CasprojError(`画像の実体形式を確認できません: ${path}`, {
           code: 'unsafe-input',

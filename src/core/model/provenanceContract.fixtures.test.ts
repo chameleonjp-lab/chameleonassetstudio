@@ -65,8 +65,8 @@ describe('Slice B P1: 正式source-file recordと旧0.1.0互換', () => {
 
   it('provenance不在のv0.1.0 Assetをmigrateしても遡及生成しない', () => {
     const migrated = migrateAsset(v010Asset);
-    expect(migrated.appliedMigrations).toEqual([]);
-    expect(migrated.data).toEqual(v010Asset);
+    expect(migrated.appliedMigrations).toEqual([expect.stringContaining('0.1.0 -> 0.2.0')]);
+    expect(migrated.data).toEqual({ ...v010Asset, version: '0.2.0' });
     expect(migrated.data).not.toHaveProperty('provenance');
   });
 });

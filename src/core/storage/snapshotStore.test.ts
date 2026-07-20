@@ -106,6 +106,21 @@ describe('復旧点（snapshot）の所有境界', () => {
     expect(await listSnapshots(asset.id)).toEqual([]);
   });
 
+  it('edit TextureRefとMIME typeが異なるBlobを復旧点へ保存しない', async () => {
+    const { project, asset, key, bytes } = await seedStoredAsset();
+    await expect(
+      saveSnapshot({
+        projectId: project.id,
+        assetId: asset.id,
+        label: 'mime mismatch',
+        asset,
+        blobKey: key,
+        blob: new Blob([bytes], { type: 'image/gif' }),
+      }),
+    ).rejects.toThrow(/MIME type/);
+    expect(await listSnapshots(asset.id)).toEqual([]);
+  });
+
   it('存在しない復旧点の復元は理由付きで失敗する', async () => {
     await expect(restoreSnapshot('snapshot_missing')).rejects.toThrow(StorageError);
     await expect(restoreSnapshot('snapshot_missing')).rejects.toThrow(/見つかりません/);
@@ -119,7 +134,7 @@ describe('復旧点（snapshot）の所有境界', () => {
         label: '不正',
         asset: baseAsset,
         blobKey: editBlobKey(baseAsset),
-        blob: new Blob([new Uint8Array([1])]),
+        blob: new Blob([new Uint8Array([1])], { type: 'image/png' }),
       }),
     ).rejects.toThrow(/復旧対象アセット/);
 

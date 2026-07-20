@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 要件仕様書
 
-最終更新日: 2026-07-10
+最終更新日: 2026-07-21
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 要件仕様書
 優先度: 実装計画書よりも上位の正本
@@ -204,7 +204,7 @@ project.casproj
 ```json
 {
   "format": "chameleon-asset",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "id": "asset_001",
   "assetType": "character",
   "name": "tomato_player",

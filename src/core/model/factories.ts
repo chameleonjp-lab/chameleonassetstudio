@@ -2,7 +2,7 @@ import { ASSET_FORMAT, CURRENT_ASSET_VERSION, type Asset, type AssetType } from 
 import type { ColliderPurpose, RectCollider } from './collider';
 import type { Size } from './common';
 import { CURRENT_PROJECT_VERSION, PROJECT_FORMAT, type Project } from './project';
-import type { TextureMimeType, TextureRef } from './texture';
+import type { RasterTextureMimeType, TextureMimeType, TextureRef } from './texture';
 
 /** 一意な ID を作る（例: project_5f3e...）。 */
 export function generateId(prefix: string): string {
@@ -33,8 +33,8 @@ export interface CreateImageAssetOptions {
   /** 取り込んだ画像のピクセルサイズ。キャンバスサイズにもなる。 */
   size: Size;
   sourceMimeType: TextureMimeType;
-  sourceExtension: 'png' | 'jpg' | 'webp';
-  thumbnailMimeType?: TextureMimeType;
+  sourceExtension: 'png' | 'jpg' | 'webp' | 'svg' | 'gif';
+  thumbnailMimeType?: RasterTextureMimeType;
   /** 実際に縮小・encodeしたthumbnailのピクセルサイズ。 */
   thumbnailSize?: Size;
   now?: Date;

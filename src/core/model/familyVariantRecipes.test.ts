@@ -588,6 +588,7 @@ describe('Slice C family variant recipe / fingerprint', () => {
       id: 'texture_thumbnail',
       kind: 'thumbnail',
       name: 'preview',
+      mimeType: 'image/png',
       path: 'thumbnails/preview.png',
     });
     thumbnailBase.layers.push({

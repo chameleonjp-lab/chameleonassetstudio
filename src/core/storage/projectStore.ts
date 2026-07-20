@@ -1,6 +1,7 @@
 import type { Asset, Project, ProjectAssetEntry, TextureRef } from '../model';
-import { generateId, migrateAsset, migrateProject, validateProjectFamilies } from '../model';
+import { generateId, migrateProject, validateProjectFamilies } from '../model';
 import { validateAsset, validateProject } from '../schema/validate';
+import { migrateAndValidateAssetDocument } from './assetDocument';
 import {
   INDEX_BY_PROJECT,
   STORE_ASSETS,
@@ -256,6 +257,21 @@ function assertBlobOperationsBelongToAsset(
   }
 }
 
+function assertBlobMimeTypesMatchTextureRefs(asset: Asset, blobs: ProjectBundleBlobInput[]): void {
+  const textures = buildTextureIndex(asset, '保存後 Asset');
+  for (const { key, blob } of blobs) {
+    const texture = textures.byKey.get(key);
+    if (!texture) {
+      throw new StorageError(`保存対象 Blob に対応する TextureRef がありません: ${key}`);
+    }
+    if (blob.type !== texture.mimeType) {
+      throw new StorageError(
+        `TextureRef と Blob の MIME type が一致しません: ${key}（TextureRef ${texture.mimeType} / Blob ${blob.type || '不明'}）`,
+      );
+    }
+  }
+}
+
 async function prepareBlobRecords(blobs: PreparedBlobRecordInput[]): Promise<StoredBlobRecord[]> {
   const updatedAt = new Date().toISOString();
   return Promise.all(
@@ -283,7 +299,7 @@ function assertBundleReferences(
   }
 
   const inputAssetIds = new Set<string>();
-  const expectedBlobKeys = new Set<string>();
+  const expectedBlobs = new Map<string, TextureRef>();
   for (const asset of assets) {
     if (inputAssetIds.has(asset.id)) {
       throw new StorageError(`保存対象に同じ Asset ID が複数指定されています: ${asset.id}`);
@@ -295,18 +311,24 @@ function assertBundleReferences(
     const entry = project.assets.find((candidate) => candidate.id === asset.id)!;
     assertProjectEntryMatchesAsset(entry, asset);
     const textureIndex = buildTextureIndex(asset, `Asset（id: ${asset.id}）`);
-    for (const key of textureIndex.byKey.keys()) {
-      expectedBlobKeys.add(key);
+    for (const [key, texture] of textureIndex.byKey) {
+      expectedBlobs.set(key, texture);
     }
   }
 
   const actualBlobKeys = new Set(blobs.map(({ key }) => key));
-  for (const key of actualBlobKeys) {
-    if (!expectedBlobKeys.has(key)) {
+  for (const { key, blob } of blobs) {
+    const texture = expectedBlobs.get(key);
+    if (!texture) {
       throw new StorageError(`保存対象 Blob に対応する TextureRef がありません: ${key}`);
     }
+    if (blob.type !== texture.mimeType) {
+      throw new StorageError(
+        `TextureRef と Blob の MIME type が一致しません: ${key}（TextureRef ${texture.mimeType} / Blob ${blob.type || '不明'}）`,
+      );
+    }
   }
-  for (const key of expectedBlobKeys) {
+  for (const key of expectedBlobs.keys()) {
     if (!actualBlobKeys.has(key)) {
       throw new StorageError(`TextureRef に対応する Blob が保存対象にありません: ${key}`);
     }
@@ -560,6 +582,7 @@ export async function saveAssetRevision({
   buildTextureIndex(asset, '保存後 Asset');
   assertDistinctBlobOperations(putBlobs, deleteBlobKeys);
   assertBlobOperationsBelongToAsset(asset.id, putBlobs, deleteBlobKeys);
+  assertBlobMimeTypesMatchTextureRefs(asset, putBlobs);
   const blobRecords = await prepareBlobRecords(
     putBlobs.map(({ key, blob }) => ({ key, projectId, blob })),
   );
@@ -1319,12 +1342,7 @@ export async function recoverProjectWithoutInvalidFamilies(
     if (!record) {
       throw new StorageError(`復旧元ProjectのAssetが保存されていません: ${entry.id}`);
     }
-    const migrated = migrateAsset(record.data).data;
-    const result = validateAsset(migrated);
-    if (!result.valid) {
-      throw new StorageError(formatValidationErrors('復旧元 asset', result.errors));
-    }
-    const asset = migrated as unknown as Asset;
+    const { asset } = migrateAndValidateAssetDocument(record.data, '復旧元 asset');
     assertProjectEntryMatchesAsset(entry, asset);
     return asset;
   });
@@ -1559,29 +1577,39 @@ export interface LoadedAsset {
 }
 
 export async function loadAsset(id: string): Promise<LoadedAsset> {
-  const record = await runTransaction([STORE_ASSETS], 'readonly', (tx) =>
-    requestToPromise(tx.objectStore(STORE_ASSETS).get(id) as IDBRequest<StoredAssetRecord>),
-  );
-  if (record === undefined) {
-    throw new StorageError(`アセット（id: ${id}）が見つかりません`);
-  }
-  const { data, appliedMigrations } = migrateAsset(record.data);
-  const result = validateAsset(data);
-  if (!result.valid) {
-    throw new StorageError(formatValidationErrors('asset', result.errors));
-  }
-  return { asset: data as unknown as Asset, appliedMigrations };
+  return runTransaction([STORE_ASSETS], 'readwrite', async (tx) => {
+    const store = tx.objectStore(STORE_ASSETS);
+    const record = await requestToPromise(
+      store.get(id) as IDBRequest<StoredAssetRecord | undefined>,
+    );
+    if (record === undefined) {
+      throw new StorageError(`アセット（id: ${id}）が見つかりません`);
+    }
+    const migrated = migrateAndValidateAssetDocument(record.data);
+    if (migrated.appliedMigrations.length > 0) {
+      await requestToPromise(store.put({ ...record, data: migrated.asset }));
+    }
+    return migrated;
+  });
 }
 
 export async function listProjectAssets(projectId: string): Promise<Asset[]> {
-  const records = await runTransaction([STORE_ASSETS], 'readonly', (tx) =>
-    requestToPromise(
-      tx.objectStore(STORE_ASSETS).index(INDEX_BY_PROJECT).getAll(projectId) as IDBRequest<
-        StoredAssetRecord[]
-      >,
-    ),
-  );
-  return records.map((record) => record.data);
+  return runTransaction([STORE_ASSETS], 'readwrite', async (tx) => {
+    const store = tx.objectStore(STORE_ASSETS);
+    const records = await requestToPromise(
+      store.index(INDEX_BY_PROJECT).getAll(projectId) as IDBRequest<StoredAssetRecord[]>,
+    );
+    const migrated = records.map((record) => ({
+      record,
+      result: migrateAndValidateAssetDocument(record.data),
+    }));
+    for (const { record, result } of migrated) {
+      if (result.appliedMigrations.length > 0) {
+        await requestToPromise(store.put({ ...record, data: result.asset }));
+      }
+    }
+    return migrated.map(({ result }) => result.asset);
+  });
 }
 
 export async function deleteAsset(id: string): Promise<void> {

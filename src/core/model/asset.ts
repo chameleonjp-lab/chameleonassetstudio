@@ -10,7 +10,7 @@ import type { TextureRef } from './texture';
 export const ASSET_FORMAT = 'chameleon-asset' as const;
 
 /** asset.json の現行バージョン。破壊的変更時は上げて migrate を用意する。 */
-export const CURRENT_ASSET_VERSION: VersionString = '0.1.0';
+export const CURRENT_ASSET_VERSION: VersionString = '0.2.0';
 
 export const ASSET_TYPES = [
   'character',

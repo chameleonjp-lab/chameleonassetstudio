@@ -24,7 +24,16 @@ export interface MigrationResult {
 }
 
 /** asset.json の移行手順。破壊的変更を入れるときにここへ追加する。 */
-export const ASSET_MIGRATIONS: Migration[] = [];
+export const ASSET_MIGRATIONS: Migration[] = [
+  {
+    from: '0.1.0',
+    to: '0.2.0',
+    description: 'source TextureRef の SVG / GIF 対応（既存フィールドは変更しない）',
+    apply(data) {
+      return data;
+    },
+  },
+];
 
 /** project.json の移行手順。 */
 export const PROJECT_MIGRATIONS: Migration[] = [];

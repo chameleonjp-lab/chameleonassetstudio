@@ -29,8 +29,7 @@
       "const": "chameleon-asset"
     },
     "version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+      "const": "0.2.0"
     },
     "id": {
       "type": "string",
@@ -237,7 +236,7 @@
           "type": "string"
         },
         "mimeType": {
-          "enum": ["image/png", "image/webp", "image/jpeg"]
+          "enum": ["image/png", "image/webp", "image/jpeg", "image/svg+xml", "image/gif"]
         },
         "size": {
           "$ref": "#/definitions/size"
@@ -246,7 +245,26 @@
           "type": "string",
           "minLength": 1
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": ["edit", "thumbnail"]
+              }
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "mimeType": {
+                "enum": ["image/png", "image/webp", "image/jpeg"]
+              }
+            }
+          }
+        }
+      ]
     },
     "layer": {
       "type": "object",
