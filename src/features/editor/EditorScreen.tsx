@@ -15,11 +15,17 @@ import {
   isQuarantinableImageImportError,
 } from '../../core/images/importImage';
 import {
+  prepareChameleonAtlasBundleImport,
+  type ChameleonAtlasBundleInput,
+} from '../../core/images/importAtlasBundle';
+import {
   FrameSetImportError,
   prepareSequenceImport,
   prepareSpriteSheetImport,
+  prepareTileSetImport,
   type ManualGridInput,
   type PreparedFrameSetImport,
+  type TileSetImportInput,
 } from '../../core/images/importFrameSet';
 import { assertImageBatchCount } from '../../core/input/inputSafety';
 import {
@@ -310,10 +316,17 @@ interface EditorPersistentMutationOptions {
   allowPendingImageImport?: boolean;
 }
 
+const FRAME_SET_PREVIEW_MODE_LABELS: Record<PreparedFrameSetImport['preview']['mode'], string> = {
+  sequence: '連番画像',
+  sheet: 'Sprite Sheet（手動格子）',
+  tileset: 'Tileset（手動格子）',
+  atlas: 'Chameleon Atlas 0.1.0',
+};
+
 function frameSetPreviewContent(result: PreparedFrameSetImport): ImportPreviewContent {
   return {
     id: generateId('import_preview'),
-    modeLabel: result.preview.mode === 'sequence' ? '連番画像' : 'Sprite Sheet（手動格子）',
+    modeLabel: FRAME_SET_PREVIEW_MODE_LABELS[result.preview.mode],
     title: result.preview.title,
     fileNames: result.preview.fileNames,
     assetCount: result.preview.assetCount,
@@ -2346,6 +2359,55 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     }
   };
 
+  const handlePrepareTileSetImport = async (file: File, input: TileSetImportInput) => {
+    if (!project || !beginEditorPersistentMutation()) {
+      return;
+    }
+    setEditorError(null);
+    setImportStatusLabel('Tileset previewを準備中…');
+    setImporting(true);
+    try {
+      stageFrameSetResult(await prepareTileSetImport(file, input));
+    } catch (error) {
+      const quarantined = await quarantineFailedImage(file, error);
+      setEditorError(
+        `${error instanceof Error ? error.message : String(error)} 正本は変更されていません。${
+          quarantined ? ' 失敗したfileを隔離しました。' : ''
+        }`,
+      );
+    } finally {
+      setImporting(false);
+      endEditorPersistentMutation();
+    }
+  };
+
+  const handlePrepareAtlasImport = async (
+    jsonFile: File,
+    textureFile: File,
+    input: ChameleonAtlasBundleInput,
+  ) => {
+    if (!project || !beginEditorPersistentMutation()) {
+      return;
+    }
+    setEditorError(null);
+    setImportStatusLabel('Chameleon Atlas previewを準備中…');
+    setImporting(true);
+    try {
+      stageFrameSetResult(await prepareChameleonAtlasBundleImport(jsonFile, textureFile, input));
+    } catch (error) {
+      const failedFile = error instanceof FrameSetImportError ? error.file : textureFile;
+      const quarantined = await quarantineFailedImage(failedFile, error);
+      setEditorError(
+        `${error instanceof Error ? error.message : String(error)} 正本は変更されていません。${
+          quarantined ? ' 失敗した画像fileを隔離しました。' : ''
+        }`,
+      );
+    } finally {
+      setImporting(false);
+      endEditorPersistentMutation();
+    }
+  };
+
   const handleCancelImageImport = () => {
     if (importing) return;
     setPendingImageImport(null);
@@ -3238,6 +3300,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               busy={persistentMutationBlocked || importing || creatingAsset || deletingAsset}
               onPrepareSequence={handlePrepareSequenceImport}
               onPrepareSheet={handlePrepareSpriteSheetImport}
+              onPrepareTileset={handlePrepareTileSetImport}
+              onPrepareAtlas={handlePrepareAtlasImport}
             />
           )}
 

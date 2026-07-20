@@ -2,7 +2,7 @@
 
 最終更新日: 2026-07-20
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
-文書種別: ADR インデックス（work package `2D-1A-CONTRACT`, `2D-1A-MOTION`, `2D-1A-TARGET`, `2D-1A-PROVENANCE`, `2D-1A-VALIDATION`, `2D-1A-MIGRATION`）
+文書種別: ADR インデックス（2D-1a契約群、group 11 import判断を含む）
 上位文書: `docs/future/2D_ASSET_DATA_CONTRACT.md`, `docs/future/2D_COMPLETION_ROADMAP.md`（2D-1a）
 関連: `docs/future/DECISION_LOG.md`, `docs/future/README.md`
 
@@ -10,9 +10,9 @@
 
 ## 1. このディレクトリの目的
 
-`docs/future/2D_ASSET_DATA_CONTRACT.md` は将来契約の上位仕様であり、docs-only の accepted 文書である。この `docs/adr/` は、その契約のうち **2D-1a（データ層、ID・参照・variant、座標・trim・flip・scale、migration・復旧境界）で先に固定すべき決定**を、現行実装の挙動と対応づけて 1 決定 1 ファイルの ADR として残す。
+`docs/future/2D_ASSET_DATA_CONTRACT.md` は将来契約の上位仕様であり、docs-only の accepted 文書である。この `docs/adr/` は、まず **2D-1a（データ層、ID・参照・variant、座標・trim・flip・scale、migration・復旧境界）で先に固定した決定**を収め、後続work packageで人間承認したimport境界（ADR-0016〜0018等）も1決定1ファイルで追記する。
 
-ADR は仕様を新しく作るものではない。`2D_ASSET_DATA_CONTRACT.md` の該当章を規範とし、**現行コード（`src/`）のどの関数がその意味を実装しているか**を明示し、fixture テストで数値を固定する。ADR と現行コードが食い違う場合は、ADR側に「現状の制限」として食い違いを記録し、製品コードは変更しない（`2D-1A-CONTRACT` の変更範囲は docs と新規テストのみ）。
+ADRは上位仕様・計画の判断を追跡可能にする記録である。対応する上位文書を規範とし、**現行コード（`src/`）のどの関数がその意味を実装しているか**を明示し、fixtureテストで境界を固定する。2D-1a契約群ではADRと現行コードの食い違いを「現状の制限」として記録し製品コードを変更しない。後続work packageでは、そのpackageで承認された変更範囲に限って実装し、各ADRの「影響とfixture」「再検討条件」に境界を残す。
 
 ## 2. 形式
 
@@ -60,6 +60,7 @@ ADR は仕様を新しく作るものではない。`2D_ASSET_DATA_CONTRACT.md` 
 | [0015](./0015-migration-detailed-contract.md) | version 採番・移行手順・独立 version・新形式拒否の詳細契約 | §13 | `src/core/model/migrationContract.fixtures.test.ts`（ADR-0015） |
 | [0016](./0016-import-optional-format-classification.md) | 任意取り込み形式（SVG / GIF / APNG / Aseprite / PSD / OpenRaster / Krita）の分類 | 互換 matrix §4.1 | `src/core/images/importOptionalContract.fixtures.test.ts`（ADR-0016） |
 | [0017](./0017-ai-boundary.md) | AI 境界（consent・外部送信・受け入れ経路・手動代替） | §11 | `src/core/model/aiBoundaryContract.fixtures.test.ts`（ADR-0017） |
+| [0018](./0018-chameleon-atlas-semantic-reimport.md) | Chameleon自形式atlasの意味上再取り込み限定例外 | import計画 W1 / データ層 §3 | `src/core/images/importAtlasBundle.test.ts`（ADR-0018） |
 
 ## 4. 変更してよいもの・してはいけないもの
 
@@ -78,3 +79,5 @@ ADR は仕様を新しく作るものではない。`2D_ASSET_DATA_CONTRACT.md` 
 `2D-2-IMPORT-OPTIONAL` / `2D-2-AI-BOUNDARY`（ADR 0016〜0017、group 11 Slice A）も同じ変更範囲の原則に従う。任意取り込み形式の分類と AI 境界の**契約境界**を ADR として固定するのみで、rasterized-import の実装・consent UI・AI 連携・`Asset.provenance` の schema 追加は本 slice の範囲外である（provenance 導入は `docs/future/2D_2_IMPORT_PLAN.md` の Slice B、rasterized-import は Slice E）。上位文書が `2D_ASSET_DATA_CONTRACT.md` 以外（互換 matrix / import 計画）にまたがる点が 2D-1A 系と異なる。
 
 group 11 Slice BはPR #126で、ADR-0013の再検討条件とaccepted P1に従って`Asset.provenance?`をoptional / additiveに実装済みである。source-file recordだけを厳格化し、`sourceFileName`を持たない旧候補・AI候補recordはopen recordとして保持する。AIの具体field、外部送信、consent UIは引き続き範囲外である。
+
+group 11 Slice DのADR-0018は、ADR-0007 / ADR-0015へ限定例外を追加する。配布物を正本へ戻す一般機能ではなく、exactな現行Chameleon atlasを厳格検証し、新しいflattened Assetへゲーム上の意味を復元する。schema / version / migration / `.casproj` / export ZIP / dependencyは変更しない。

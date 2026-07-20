@@ -79,6 +79,17 @@
 
 Sprite Sheet のセル配置は `computeSheetLayout`（`src/core/export/atlas.ts`）が計算する。フレーム数を n としたとき、列数は `ceil(sqrt(n))`、行数は `ceil(n / 列数)` とし、左上から行優先で並べる。
 
+### 4.1 Chameleon Atlasの限定再取り込み（ADR-0018）
+
+Slice Dでは、`atlas.json + spritesheet.png`、`chameleon-atlas/0.1.0`のcanonical subsetを新規flattened Assetへ意味上roundtripできる。これは配布物を元Asset正本へ完全復元する機能ではない。
+
+- 受理: 1〜16件の非空・一意frame名、canonical行優先座標、実texture寸法一致、解決可能なanimation参照、既知anchor / collider / tile / effect値。
+- 拒否: future version、17件以上、重複・空frame名、外部JSON、URL参照、packed / multi-page / 非canonical座標、未知field。
+- 保持: spritesheet PNG原本、frame pixel、Atlasが持つゲーム上のmetadata。
+- 非保持: raw atlas JSON、元layer / part / tag / gameAttributes / rig / provenance / identity / animation durationMs。JSON原本のSHA-256等だけをprovenanceへ記録する。
+
+Atlas versionは引き続きmigration対象ではない。現行versionだけをruntime validatorで受理し、別versionを変換しない。
+
 ---
 
 ## 5. 座標系

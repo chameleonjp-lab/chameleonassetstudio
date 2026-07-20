@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { applyFrameToAsset, createImageAsset, type Layer } from '../model';
 import {
   MAX_FRAME_SET_ITEMS,
+  assertTileSetImportInput,
   buildFrameSetFrames,
   compareNaturalFileNames,
   computeManualGrid,
@@ -113,5 +114,39 @@ describe('buildFrameSetFrames', () => {
         applyFrameToAsset(asset, frame.id).layers.filter((layer) => layer.visible),
       ).toHaveLength(1);
     }
+  });
+});
+
+describe('assertTileSetImportInput', () => {
+  const base = {
+    grid: { cellWidth: 32, cellHeight: 16, margin: 0, spacing: 0 },
+    tileSize: { width: 32, height: 16 },
+    collisionType: 'solid' as const,
+    visualType: 'floor',
+  };
+
+  it('cellSizeと同じ既定tileSizeおよびcellSize以下の値を受け入れる', () => {
+    expect(() => assertTileSetImportInput(base)).not.toThrow();
+    expect(() =>
+      assertTileSetImportInput({ ...base, tileSize: { width: 8, height: 8 } }),
+    ).not.toThrow();
+  });
+
+  it('0・非整数・cellSize超過・未知collisionを拒否する', () => {
+    expect(() => assertTileSetImportInput({ ...base, tileSize: { width: 0, height: 16 } })).toThrow(
+      '1以上の整数',
+    );
+    expect(() =>
+      assertTileSetImportInput({ ...base, tileSize: { width: 1.5, height: 16 } }),
+    ).toThrow('1以上の整数');
+    expect(() =>
+      assertTileSetImportInput({ ...base, tileSize: { width: 33, height: 16 } }),
+    ).toThrow('cellSize以下');
+    expect(() =>
+      assertTileSetImportInput({
+        ...base,
+        collisionType: 'unknown' as typeof base.collisionType,
+      }),
+    ).toThrow('未対応のcollision');
   });
 });
