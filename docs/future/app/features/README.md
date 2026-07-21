@@ -80,7 +80,7 @@
 | F-CORE-01 | Project & Document ライフサイクル（新規・開く・保存・再開） | D-DONE-8, T-DONE-9, S-DONE-1 | **詳** |
 | F-CORE-02 | 自動保存 & クラッシュ復旧 | D-DONE-8 | 未 |
 | F-CORE-03 | 非破壊編集モデル（source 保持・派生分離） | D-DONE-2, T-DONE-6/9 | **詳** |
-| F-CORE-04 | Undo / Redo & 履歴 | D-DONE-2 | 未 |
+| F-CORE-04 | Undo / Redo & 履歴 | D-DONE-2 | **詳** |
 | F-CORE-05 | 保存形式・バージョニング・migration | D-DONE-8, S-DONE-5 | **詳** |
 | F-CORE-06 | 検品 / Inspection フレーム | D-DONE-6, T-DONE-3 | 未 |
 | F-CORE-07 | 書き出しフレーム（ZIP + README + import notes の器） | D-DONE-7, T-DONE-8 | 未 |
@@ -223,5 +223,5 @@
 
 ## 6. 現在の状況
 
-- 詳細化済み: **F-CORE-01**、**F-CORE-05**、**F-CORE-03**（`features/F-CORE-03-non-destructive-edit-model.md`）。
-- 次候補: **F-CORE-04**（Undo/Redo & 履歴）。非破壊モデル（F-CORE-03）の上を航法する履歴管理。その後 F-MOD 群（install-on-demand の中核）を 1 機能ずつ。
+- 詳細化済み: **F-CORE-01**、**F-CORE-05**、**F-CORE-03**、**F-CORE-04**（`features/F-CORE-04-undo-redo-history.md`）。Core 土台（ライフサイクル・保存/移行・非破壊・履歴）がひと通り揃った。
+- 次候補: **F-MOD-01**（モジュールカタログ & 発見）。install-on-demand の中核を F-MOD 群として 1 機能ずつ（F-MOD-01 → 02 導入/アンインストール → 03 依存解決/footprint → 04 ライセンス検証）。

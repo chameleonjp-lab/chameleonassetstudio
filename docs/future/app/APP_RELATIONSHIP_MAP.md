@@ -187,6 +187,7 @@ flowchart TB
 | F-CORE-01 | Project & Document ライフサイクル | `features/F-CORE-01-project-lifecycle.md` | 詳 | —（第 1 号の worked example） |
 | F-CORE-05 | 保存形式・バージョニング・migration | `features/F-CORE-05-save-format-versioning-migration.md` | 詳 | —（D1/D2/D4 の正本） |
 | F-CORE-03 | 非破壊編集モデル（source 保持・派生分離） | `features/F-CORE-03-non-destructive-edit-model.md` | 詳 | —（G5 の正本） |
+| F-CORE-04 | Undo/Redo & 履歴 | `features/F-CORE-04-undo-redo-history.md` | 詳 | —（非破壊派生の上を航法） |
 
 ---
 
@@ -245,6 +246,9 @@ flowchart TB
 | E47 | F-CORE-03 | 実現 | G5 | 非破壊・元データ保持の原則を編集モデルとして実体化 |
 | E48 | F-CORE-03 | 依存 | F-CORE-05 | Source + 派生を versioned 器へ永続化（名前空間分離） |
 | E49 | F-CORE-03 | 尊重 | D4 | 派生は Source を参照し、名前空間境界に従う |
+| E50 | F-CORE-04 | 依存 | F-CORE-03 | 履歴は非破壊派生の上を航法する |
+| E51 | F-CORE-04 | 尊重 | G5 | Undo/Redo は Source を変更しない |
+| E52 | F-CORE-04 | 依存 | A9 | モジュール操作の履歴登録を Extension Host が保証 |
 
 ---
 
@@ -265,7 +269,7 @@ flowchart TB
 
 > 詳細化の順序自体は `APP_ROADMAP_DECISIONS_OPEN_ITEMS.md` の Stage と整合させる。表の「前提」列は、上流を先に固めるための依存である。
 >
-> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01**, **F-CORE-05**, **F-CORE-03**。
+> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01**, **F-CORE-05**, **F-CORE-03**, **F-CORE-04**。
 
 ---
 
