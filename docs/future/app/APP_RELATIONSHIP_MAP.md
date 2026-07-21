@@ -166,10 +166,10 @@ flowchart TB
 | A7 | 依存解決 | Arch 3・4 章 | 粗 | `APP_MODULE_MANIFEST_SPEC.md` *(予定)* |
 | A8 | capability 権限 | Arch 3 章 | 粗 | `APP_CORE_CONTRACT.md` *(予定)* |
 | A9 | Extension Host | Arch 2 章 | 粗 | `APP_CORE_CONTRACT.md` *(予定)* |
-| D1 | 保存形式 versioned | Arch 5 章 | 中 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-01 が参照） |
-| D2 | migration | Arch 5 章 | 粗 | `APP_DATA_CONTRACT.md` *(予定)* |
-| D3 | 構成非依存の不変条件 | Arch 5 章 | 中 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-01 AC-3 で具体化） |
-| D4 | 名前空間拡張 | Arch 5 章 | 粗 | `APP_DATA_CONTRACT.md` *(予定)* |
+| D1 | 保存形式 versioned | Arch 5 章 | 詳 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-05 で正本化） |
+| D2 | migration | Arch 5 章 | 詳 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-05 で正本化） |
+| D3 | 構成非依存の不変条件 | Arch 5 章 | 中 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-01/05 で具体化） |
+| D4 | 名前空間拡張 | Arch 5 章 | 中 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-05 で境界規則） |
 | PF1 | 性能予算 | Arch 7 章 | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* |
 | PF2 | 計測・退行検知 | Arch 7 章 | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* |
 | PF3 | 重い処理 offload | Arch 6 章 | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* |
@@ -185,6 +185,7 @@ flowchart TB
 | S0–S5 | 段階 | Roadmap 1 章 | 粗 | Roadmap |
 | RK | APP-RISK 台帳 | Roadmap 5 章 | 中 | Roadmap（更新継続） |
 | F-CORE-01 | Project & Document ライフサイクル | `features/F-CORE-01-project-lifecycle.md` | 詳 | —（第 1 号の worked example） |
+| F-CORE-05 | 保存形式・バージョニング・migration | `features/F-CORE-05-save-format-versioning-migration.md` | 詳 | —（D1/D2/D4 の正本） |
 
 ---
 
@@ -234,6 +235,12 @@ flowchart TB
 | E38 | F-CORE-01 | 依存 | D1 | 保存の器の形式に依存（正本は F-CORE-05） |
 | E39 | F-CORE-01 | 尊重 | D3 | 構成非依存・未知データ非破壊を満たす |
 | E40 | F-CORE-01 | 尊重 | G5 | 元素材を上書きしない |
+| E41 | F-CORE-05 | 実現 | D1 | 保存形式の正本を定義 |
+| E42 | F-CORE-05 | 実現 | D2 | migration（段階・非破壊・決定的）の正本を定義 |
+| E43 | F-CORE-05 | 尊重 | D3 | 未知データ往復・構成非依存を満たす |
+| E44 | F-CORE-05 | 制約 | D4 | 名前空間拡張の境界規則を定義 |
+| E45 | F-CORE-05 | 依存 | A2 | 形式・移行は Core 契約が所有 |
+| E46 | F-CORE-01 | 依存 | F-CORE-05 | ライフサイクルは本器の正本に依存（E38 の機能間依存を明示） |
 
 ---
 
@@ -246,7 +253,7 @@ flowchart TB
 | `APP_MODULE_CATALOG.md` *(予定)* | P3, A4, A5 | A6/A2 の骨格 | 未着手 |
 | `APP_MODULE_MANIFEST_SPEC.md` *(予定)* | A6, A7 | A2, A8 | 未着手 |
 | `APP_CORE_CONTRACT.md` *(予定)* | A2, A8, A9 | P4（ゼロコスト） | 未着手 |
-| `APP_DATA_CONTRACT.md` *(予定)* | D1, D2, D3, D4, G5 | A2 | 未着手 |
+| `APP_DATA_CONTRACT.md` *(予定)* | D1, D2, D3, D4, G5 | A2 | 一部（F-CORE-05 で D1/D2/D4 の規則を具体化。物理形式は未決 `APP-O-01`） |
 | `APP_2D_EDITION_SPEC.md` *(予定)* | A3(2D), PF4(2D), P5 | A4, A2 | 未着手 |
 | `APP_3D_EDITION_SPEC.md` *(予定)* | A3(3D), PF4(3D), P5 | A4, A2 | 未着手 |
 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* | P4, PF1, PF2, PF3, PF5, A1 | 実測材料 C1 | 未着手 |
@@ -254,7 +261,7 @@ flowchart TB
 
 > 詳細化の順序自体は `APP_ROADMAP_DECISIONS_OPEN_ITEMS.md` の Stage と整合させる。表の「前提」列は、上流を先に固めるための依存である。
 >
-> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01**。
+> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01**, **F-CORE-05**。
 
 ---
 

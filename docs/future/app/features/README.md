@@ -81,7 +81,7 @@
 | F-CORE-02 | 自動保存 & クラッシュ復旧 | D-DONE-8 | 未 |
 | F-CORE-03 | 非破壊編集モデル（source 保持・派生分離） | D-DONE-2, T-DONE-6/9 | 未 |
 | F-CORE-04 | Undo / Redo & 履歴 | D-DONE-2 | 未 |
-| F-CORE-05 | 保存形式・バージョニング・migration | D-DONE-8, S-DONE-5 | 未 |
+| F-CORE-05 | 保存形式・バージョニング・migration | D-DONE-8, S-DONE-5 | **詳** |
 | F-CORE-06 | 検品 / Inspection フレーム | D-DONE-6, T-DONE-3 | 未 |
 | F-CORE-07 | 書き出しフレーム（ZIP + README + import notes の器） | D-DONE-7, T-DONE-8 | 未 |
 | F-CORE-08 | Home / Project Dashboard | S-DONE-1 | 未 |
@@ -223,5 +223,5 @@
 
 ## 6. 現在の状況
 
-- 詳細化済み: **F-CORE-01**（`features/F-CORE-01-project-lifecycle.md`）。逆算の worked example であり、以後の機能仕様の型。
-- 次候補: F-CORE-05（保存形式・migration）。F-CORE-01 が前提として参照している土台のため。
+- 詳細化済み: **F-CORE-01**（`features/F-CORE-01-project-lifecycle.md`）、**F-CORE-05**（`features/F-CORE-05-save-format-versioning-migration.md`）。
+- 次候補: **F-CORE-03**（非破壊編集モデル）。F-CORE-01/05 が前提とする「元素材を壊さない・派生を分離する」土台のため。その後 F-CORE-04（Undo/Redo）→ F-MOD 群（install-on-demand の中核）。
