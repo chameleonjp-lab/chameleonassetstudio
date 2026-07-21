@@ -41,8 +41,10 @@
 | 3 | `APP_MODULAR_ARCHITECTURE.md` | **中心文書**。多機能と軽量の両立、Core/Runtime/Modules 構成、manifest 契約、install-on-demand、性能規律、ネイティブ外殻の方向 |
 | 4 | `APP_COMPETITIVE_LANDSCAPE.md` | GitHub スター付き OSS 調査、差別化仮説、価値ベンチマーク（出典つき） |
 | 5 | `APP_ROADMAP_DECISIONS_OPEN_ITEMS.md` | 段階（Stage）計画、決定/推奨/保留、Open Items、リスク台帳（APP-RISK） |
+| ★ | `APP_RELATIONSHIP_MAP.md` | **詳細化フェーズの中枢（living document）**。仕様間の影響関係を可視化する関係マップ（mermaid 図＋ノード／エッジのレジストリ＋カバレッジ表）。以後の具体化は、この地図を更新しながら「もれなく」進める |
+| ▶ | `features/`（`features/README.md` が入口） | **機能仕様（詳細化の本体）**。完成系から逆算した機能インベントリ（53 機能）と、1 機能 1 ファイルの仕様・要件。着手済み: F-CORE-01 |
 
-はじめてなら 1 → 2 → 3 の順で「なぜ・何を・どう」を掴み、4 で外部事例、5 で段取りと未決事項を確認する。
+はじめてなら 1 → 2 → 3 の順で「なぜ・何を・どう」を掴み、4 で外部事例、5 で段取りと未決事項を確認する。粗い大枠を具体化していく詳細化フェーズでは、`APP_RELATIONSHIP_MAP.md`（★）を中枢に据え、どの仕様が何に波及するかを見ながら更新していく。
 
 ---
 
