@@ -1,6 +1,6 @@
 # Future Planning Index
 
-最終更新日: 2026-07-20
+最終更新日: 2026-07-21
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 将来計画インデックス
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
@@ -44,6 +44,7 @@ Chameleon Asset Studio は、画像取り込み専用の変換ツールに限定
 | `POST_PHASE17_IMPLEMENTATION_PLAN.md` | Phase 17 後の段階的な実装計画 |
 | `THREE_D_ASSET_PREPARATION_REQUIREMENTS.md` | 将来の 3D Asset Preparation Mode の要件 |
 | `3d/`（`3d/README.md` が入口） | 3D 化の四段階実装計画一式（**draft / human review required**。2D Pro Gate 承認までは計画のみで、3D 実装開始の承認ではない） |
+| `app/`（`app/README.md` が入口） | ネイティブ・モジュラー化の将来コンセプト一式（**draft / concept only / human review required**。現行製品の後続対応ではない別系統の思考記録。実装・dependency・schema・価格をいっさい承認しない） |
 | `OPEN_ITEMS.md` | 今すぐ実装しないが今後検討すべき項目の一覧（Phase 18 整合確認の成果物） |
 | `FLIP_DESIGN.md` | Phase 19「左右反転」の設計方針（通常は transform 反映、反転コピーは別コマンド） |
 | `COLLIDER_EDITING_DESIGN.md` | Phase 19-C「判定編集強化」の docs-first 設計（rect / circle を壊さず、多角形判定の影響を整理） |
