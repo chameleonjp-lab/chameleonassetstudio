@@ -305,7 +305,7 @@ test('safe SVGをrasterizeし、source原本・Undo・reloadを維持する', as
   const input = page.getByLabel('画像を選ぶ');
   await input.setInputFiles({ name: 'safe.svg', mimeType: 'image/svg+xml', buffer: svg });
   const dialog = page.getByRole('dialog', { name: '取り込み確定前preview' });
-  await expect(dialog).toContainText('SVG rasterized import');
+  await expect(dialog).toContainText('safe.svgをbrowser画像contextで8 x 8のPNGへrasterizeします');
   await expect(dialog).toContainText('ベクター構造は編集対象にせず');
   await dialog.getByRole('button', { name: '取り込みを取消' }).click();
   await expect.poll(async () => (await readAssets(page)).length).toBe(0);
@@ -408,7 +408,9 @@ test('image/png宣言のAPNGをacTLで判別し、canonical source MIMEの全fra
     buffer: apng,
   });
   const dialog = page.getByRole('dialog', { name: '取り込み確定前preview' });
-  await expect(dialog).toContainText('APNG rasterized frame import');
+  await expect(dialog).toContainText(
+    'signal.pngから2件のedit PNG・layer・frameとanimationを作成します',
+  );
   await expect(dialog).toContainText('10fps');
   await confirmLossPreview(page);
 
