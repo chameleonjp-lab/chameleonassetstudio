@@ -34,6 +34,7 @@
 | `G` | ガバナンス・価値（Governance/Value） | Vision 5・7 章／Arch 3 章 |
 | `C` | 外部根拠（Competitive evidence） | `APP_COMPETITIVE_LANDSCAPE.md` |
 | `S` | 段階・ゲート（Stage/Gate） | `APP_ROADMAP_DECISIONS_OPEN_ITEMS.md` |
+| `F` | 機能（Feature 単位の仕様・要件） | `features/`（`features/README.md` が入口） |
 
 ### 1.2 エッジ（関係）種別
 
@@ -157,7 +158,7 @@ flowchart TB
 | P5 | 目的分離 2D/3D | Vision 4 章 | 粗 | `APP_2D_EDITION_SPEC.md` / `APP_3D_EDITION_SPEC.md` *(予定)* |
 | G5 | 非破壊・元データ保持 | Vision 6 章 / Arch 5 章 | 粗 | `APP_DATA_CONTRACT.md` *(予定)* |
 | A1 | Shell 外殻 | Arch 2・6 章 | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* |
-| A2 | Core 契約 | Arch 2 章 | 粗 | `APP_CORE_CONTRACT.md` *(予定)* |
+| A2 | Core 契約 | Arch 2 章 | 中 | `APP_CORE_CONTRACT.md` *(予定)*（F-CORE-01 で一部具体化） |
 | A3 | Edition Runtime | Arch 2 章 | 粗 | `APP_2D_EDITION_SPEC.md` / `APP_3D_EDITION_SPEC.md` *(予定)* |
 | A4 | Feature Modules | Arch 2 章 | 粗 | `APP_MODULE_CATALOG.md` *(予定)* |
 | A5 | Catalog | Arch 2 章 | 粗 | `APP_MODULE_CATALOG.md` *(予定)* |
@@ -165,9 +166,9 @@ flowchart TB
 | A7 | 依存解決 | Arch 3・4 章 | 粗 | `APP_MODULE_MANIFEST_SPEC.md` *(予定)* |
 | A8 | capability 権限 | Arch 3 章 | 粗 | `APP_CORE_CONTRACT.md` *(予定)* |
 | A9 | Extension Host | Arch 2 章 | 粗 | `APP_CORE_CONTRACT.md` *(予定)* |
-| D1 | 保存形式 versioned | Arch 5 章 | 粗 | `APP_DATA_CONTRACT.md` *(予定)* |
+| D1 | 保存形式 versioned | Arch 5 章 | 中 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-01 が参照） |
 | D2 | migration | Arch 5 章 | 粗 | `APP_DATA_CONTRACT.md` *(予定)* |
-| D3 | 構成非依存の不変条件 | Arch 5 章 | 粗 | `APP_DATA_CONTRACT.md` *(予定)* |
+| D3 | 構成非依存の不変条件 | Arch 5 章 | 中 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-01 AC-3 で具体化） |
 | D4 | 名前空間拡張 | Arch 5 章 | 粗 | `APP_DATA_CONTRACT.md` *(予定)* |
 | PF1 | 性能予算 | Arch 7 章 | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* |
 | PF2 | 計測・退行検知 | Arch 7 章 | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* |
@@ -183,6 +184,7 @@ flowchart TB
 | CG | Concept Gate | Roadmap 2 章 | 粗 | Roadmap |
 | S0–S5 | 段階 | Roadmap 1 章 | 粗 | Roadmap |
 | RK | APP-RISK 台帳 | Roadmap 5 章 | 中 | Roadmap（更新継続） |
+| F-CORE-01 | Project & Document ライフサイクル | `features/F-CORE-01-project-lifecycle.md` | 詳 | —（第 1 号の worked example） |
 
 ---
 
@@ -228,6 +230,10 @@ flowchart TB
 | E34 | RK | 監視 | D3 | APP-RISK-04 が構成差のデータ破壊を監視 |
 | E35 | RK | 監視 | G1 | APP-RISK-05 がライセンス未確認採用を監視 |
 | E36 | P5 | トレードオフ | A2 | 2D/3D 別最適化と Core 共通化の釣り合い（共通しすぎず・分断しすぎず） |
+| E37 | F-CORE-01 | 実現 | A2 | プロジェクトのライフサイクル契約が Core 契約の一部を具体化 |
+| E38 | F-CORE-01 | 依存 | D1 | 保存の器の形式に依存（正本は F-CORE-05） |
+| E39 | F-CORE-01 | 尊重 | D3 | 構成非依存・未知データ非破壊を満たす |
+| E40 | F-CORE-01 | 尊重 | G5 | 元素材を上書きしない |
 
 ---
 
@@ -247,6 +253,8 @@ flowchart TB
 | ライセンス評価記録群 *(予定)* | G1 | 採用候補確定 | 未着手 |
 
 > 詳細化の順序自体は `APP_ROADMAP_DECISIONS_OPEN_ITEMS.md` の Stage と整合させる。表の「前提」列は、上流を先に固めるための依存である。
+>
+> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01**。
 
 ---
 
@@ -275,3 +283,4 @@ flowchart TB
 4. ノードが「詳」になったら、カバレッジ表（5 章）の状態を更新し、残ギャップを可視化し続ける。
 5. マスター図（2 章）は可読性優先で主要エッジのみ。増えすぎたら領域別のサブ図に分割してよいが、**4 章のレジストリは常に完全**に保つ。
 6. 最終更新日を必ず更新する。
+7. `features/` の各機能仕様は末尾に「関係マップ linkage」を持ち、touch する node / edge を宣言する。新しい影響は 4 章へ昇格登録し、孤立させない。
