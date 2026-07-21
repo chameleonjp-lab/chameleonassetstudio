@@ -244,12 +244,14 @@ project.casproj
 ### 11.2 画像取り込み
 
 - PNG / JPG / WebP を取り込める。
+- 新規Asset入口ではSVGを安全検査後のrasterized画像、GIF / APNGを最大16件のrasterized frame列として取り込める。既存Assetへのlayer追加等のPNG / JPG / WebP gateは変更しない。
 - 取り込んだ画像は元画像として保持する。
 - 編集用画像は別に保持する。
 - 透明 PNG の透明情報を維持する。
 - 1 枚あたり最大 25MB、最大 4096 x 4096 を初期制限にする。
 - スマホ編集プレビューでは長辺 2048 を上限にできる。
 - 制限超過時は理由を表示する。
+- optional形式のvector構造、可変frame時間、有限repeat、decoder fallback、unsupported内容を確定前に理由付き表示し、失敗・取消では正本を変更しない。
 
 ### 11.3 キャンバス編集
 
@@ -348,7 +350,7 @@ MVP 後に拡張する。
 - 初期版ではアカウントを作らない。
 - 初期版ではクラウド同期をしない。
 - 初期版ではローカル処理を基本にする。
-- SVG を扱う場合は画像として読み込み、編集データ内で任意コードとして扱わない。
+- SVG を扱う場合は画像として読み込み、編集データ内で任意コードとして扱わない。script / SVG animation等のactive要素、event handler、埋め込みHTML、DOCTYPE、外部href / src、base URL、外部CSS / URLはsanitizeせず拒否し、外部通信を発生させない。
 - 書き出し ZIP にはユーザーが選んだデータだけを含める。
 
 ### 12.4 アクセシビリティ

@@ -11,9 +11,13 @@ import { History } from '../../core/history/history';
 import {
   blobKeyFor,
   importImageAsLayer,
-  importImageFile,
   isQuarantinableImageImportError,
 } from '../../core/images/importImage';
+import {
+  NEW_ASSET_IMPORT_ACCEPT,
+  RASTER_IMPORT_ACCEPT,
+  prepareNewAssetImageImport,
+} from '../../core/images/importOptionalImage';
 import {
   prepareChameleonAtlasBundleImport,
   type ChameleonAtlasBundleInput,
@@ -254,8 +258,6 @@ function syncProjectAssetSummary(project: Project | null, asset: Asset): Project
     updatedAt: project.updatedAt < asset.updatedAt ? asset.updatedAt : project.updatedAt,
   };
 }
-
-const IMPORT_ACCEPT = 'image/png,image/jpeg,image/webp';
 
 interface ImageProcessingState {
   label: string;
@@ -2265,7 +2267,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       return;
     }
     setEditorError(null);
-    setImportStatusLabel('通常画像のpreviewを準備中…');
+    setImportStatusLabel('画像のpreviewを準備中…');
     setImporting(true);
     let currentFile: File | undefined;
     try {
@@ -2273,14 +2275,17 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       const staged = [];
       for (const file of batch) {
         currentFile = file;
-        staged.push(await importImageFile(file));
+        staged.push(await prepareNewAssetImageImport(file));
       }
       const stagedAssets = staged.map(({ asset }) => asset);
+      const containsOptionalFormat = staged.some(({ preview }) => preview.format !== 'standard');
       setPendingImageImport({
         kind: 'new-assets',
         preview: {
           id: generateId('import_preview'),
-          modeLabel: '通常画像（1 file = 1 Asset）',
+          modeLabel: containsOptionalFormat
+            ? '新規Asset画像（通常 + optional形式）'
+            : '通常画像（1 file = 1 Asset）',
           title: `${stagedAssets.length}件の独立Asset`,
           fileNames: batch.map((file) => file.name),
           assetCount: stagedAssets.length,
@@ -2289,11 +2294,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           animationCount: stagedAssets.reduce((sum, asset) => sum + asset.animations.length, 0),
           details: [
             '各fileを独立したAssetとして作成します。連番としてまとめる場合は専用モードを使ってください。',
-            'source Blobは入力bytesのまま保持し、edit PNG・thumbnail・provenanceを作成します。',
-            '対応していない内容や失われる画像pixelはありません。',
+            ...staged.flatMap(({ preview }) => preview.details),
           ],
-          losses: [],
-          warnings: [],
+          losses: staged.flatMap(({ preview }) => preview.losses),
+          warnings: staged.flatMap(({ preview }) => preview.warnings),
         },
         beforeProject: project,
         beforeAssets: assets,
@@ -3107,14 +3111,16 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   画像を選ぶ
                   <input
                     type="file"
-                    accept={IMPORT_ACCEPT}
+                    accept={NEW_ASSET_IMPORT_ACCEPT}
                     multiple
                     onChange={handleFileInput}
                     className="visually-hidden-input"
                   />
                 </label>
                 <p className="editor-note">
-                  PNG / JPG / WebP に対応。一度に16枚、1枚あたり25MiB、4096 x 4096までです。
+                  PNG / JPG / WebPは通常画像、SVGはPNG pixel、GIF /
+                  APNGは最大16frameのAssetとして取り込みます。一度に16file、1fileあたり25MiB、4096 x
+                  4096までです。
                 </p>
               </div>
             </div>
@@ -3296,7 +3302,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
           {project && (
             <ImportFrameSetPanel
-              accept={IMPORT_ACCEPT}
+              accept={RASTER_IMPORT_ACCEPT}
               busy={persistentMutationBlocked || importing || creatingAsset || deletingAsset}
               onPrepareSequence={handlePrepareSequenceImport}
               onPrepareSheet={handlePrepareSpriteSheetImport}
@@ -3398,7 +3404,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               asset={selectedAsset}
               selectedLayerId={selectedLayerId}
               checkedLayerIds={checkedLayerIds}
-              importAccept={IMPORT_ACCEPT}
+              importAccept={RASTER_IMPORT_ACCEPT}
               onSelectLayer={setSelectedLayerId}
               onToggleChecked={handleToggleChecked}
               onCommit={commitPanelChange}
@@ -4277,12 +4283,22 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             画像を追加
             <input
               type="file"
-              accept={IMPORT_ACCEPT}
+              accept={NEW_ASSET_IMPORT_ACCEPT}
               multiple
               onChange={handleFileInput}
               className="visually-hidden-input"
             />
           </label>
+          <div className="editor-note" aria-label="画像取り込み対応状況">
+            <p>
+              PNG / JPG / WebPは通常画像、SVGはrasterized画像、GIF /
+              APNGはframe列として新規Assetへ取り込みます。
+            </p>
+            <p>
+              AsepriteはPNG Sprite Sheet、PSD / Krita /
+              OpenRasterはPNGまたはWebPへ書き出してから取り込んでください。専用原本だけのreference保存は行いません。
+            </p>
+          </div>
         </aside>
       </div>
 

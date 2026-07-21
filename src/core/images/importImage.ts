@@ -29,6 +29,8 @@ export type ImageImportFailureKind =
   | 'signature'
   | 'decode'
   | 'dimension'
+  | 'frame-count'
+  | 'unsafe-svg'
   | 'hash'
   | 'encode'
   | 'environment'

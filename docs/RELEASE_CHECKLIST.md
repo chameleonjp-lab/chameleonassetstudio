@@ -25,6 +25,15 @@
 - [x] 画像 Blob 欠落が書き出し・`.casproj` 書き出しで検出される
 - [x] 旧Asset 0.1.0を既存フィールド不変で0.2.0へ移行し、`.casproj`とIndexedDB live / trash / snapshotで互換性・原子性を検証する（Project・export-presets・atlas・appは0.1.0維持）
 
+### 1.1 Slice E optional import merge gate（進行中）
+
+- [x] 1A + 2A + 3A / ADR-0020で入口、frame / 時間 / repeat写像、SVG安全境界を人間承認済み
+- [ ] 新規AssetだけがSVG / GIF / APNGを受け、layer / 連番 / sheet / tileset / atlasのPNG / JPEG / WebP gateが変わらない
+- [ ] safe SVGのrasterize・source原本、active / external SVGの非実行・非通信・非quarantineをChromium E2Eで確認する
+- [ ] GIF / APNGの最大16frame、全frame pixel、uniform fps / duration、loop、APNG canonical sourceをChromium E2Eで確認する
+- [ ] `ImageDecoder`不在時の先頭frame + 8fps + loss、17frame / unsupported拒否、取消 / Undo / Redo / reload、375 x 667 touchをChromium E2Eで確認する
+- [ ] Slice E製品PRのlint / format / build / unit / Chromium E2E / GitHub Actionsが全成功し、固定headの独立read-only reviewでBLOCKER 0 / MUST 0を確認する
+
 ## 2. 文書（完了）
 
 - [x] `docs/REQUIREMENTS_SPECIFICATION.md`
@@ -46,6 +55,8 @@
 - [ ] Edge（PC）
 - [ ] Firefox（PC）
 - [ ] Android Chrome
+
+Slice Eについては各実機で、Files pickerからSVG / GIF / APNGを選んだときのMIME、SVG rasterize、animated全frameまたは明示fallback、loss確認、Undo / Redo、reload、外部通信なしを確認する。Safariで`ImageDecoder`または対象MIMEが非対応の場合、先頭frame fallbackが理由付きで表示されれば仕様どおりである。
 
 ## 4. 性能・メモリ計測（今回の完了条件に含めない・将来課題）
 

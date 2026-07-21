@@ -73,6 +73,8 @@ describe('isQuarantinableImageImportError', () => {
     for (const kind of [
       'unsupported-type',
       'file-size',
+      'frame-count',
+      'unsafe-svg',
       'hash',
       'encode',
       'environment',
