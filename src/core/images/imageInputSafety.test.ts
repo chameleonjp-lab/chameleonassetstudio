@@ -3,7 +3,84 @@ import {
   assertFileImageSignature,
   detectImageMimeType,
   imageMimeTypesMatch,
+  inspectGifAnimation,
+  inspectPngAnimation,
+  svgSafetyViolation,
 } from './imageInputSafety';
+
+function uint32(value: number): number[] {
+  return [(value >>> 24) & 0xff, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff];
+}
+
+function pngChunk(type: string, data: number[] = []): number[] {
+  return [...uint32(data.length), ...new TextEncoder().encode(type), ...data, 0, 0, 0, 0];
+}
+
+function pngBytes(options: { frames?: number; plays?: number; frameControls?: number } = {}) {
+  const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  const ihdr = pngChunk('IHDR', [...uint32(1), ...uint32(1), 8, 6, 0, 0, 0]);
+  const animation =
+    options.frames === undefined
+      ? []
+      : [
+          ...pngChunk('acTL', [...uint32(options.frames), ...uint32(options.plays ?? 0)]),
+          ...Array.from({ length: options.frameControls ?? options.frames }, (_, index) =>
+            pngChunk('fcTL', [
+              ...uint32(index),
+              ...uint32(1),
+              ...uint32(1),
+              ...uint32(0),
+              ...uint32(0),
+              0,
+              1,
+              0,
+              10,
+              0,
+              0,
+            ]),
+          ).flat(),
+        ];
+  return new Uint8Array([
+    ...signature,
+    ...ihdr,
+    ...animation,
+    ...pngChunk('IDAT', [0]),
+    ...pngChunk('IEND'),
+  ]);
+}
+
+function gifBytes(frameCount: number, loopCount: number | null): Uint8Array {
+  const images = Array.from({ length: frameCount }, () => [
+    0x2c, 0, 0, 0, 0, 1, 0, 1, 0, 0, 2, 1, 0, 0,
+  ]).flat();
+  const loop =
+    loopCount === null
+      ? []
+      : [
+          0x21,
+          0xff,
+          0x0b,
+          ...new TextEncoder().encode('NETSCAPE2.0'),
+          3,
+          1,
+          loopCount & 0xff,
+          (loopCount >> 8) & 0xff,
+          0,
+        ];
+  return new Uint8Array([
+    ...new TextEncoder().encode('GIF89a'),
+    1,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    ...loop,
+    ...images,
+    0x3b,
+  ]);
+}
 
 describe('image input signature', () => {
   it('PNG / JPEG / WebP / GIF / SVGを実体から識別する', () => {
@@ -67,5 +144,108 @@ describe('image input signature', () => {
         isTruncatedPrefix: true,
       }),
     ).toBeNull();
+  });
+});
+
+describe('optional animated image preflight', () => {
+  it('通常PNGとAPNGをacTLで区別し、frame数とrepeatを返す', () => {
+    expect(inspectPngAnimation(pngBytes())).toEqual({
+      animated: false,
+      frameCount: 1,
+      repetition: 'none',
+    });
+    expect(inspectPngAnimation(pngBytes({ frames: 2, plays: 0 }))).toEqual({
+      animated: true,
+      frameCount: 2,
+      repetition: 'infinite',
+    });
+    expect(inspectPngAnimation(pngBytes({ frames: 3, plays: 2 }))).toEqual({
+      animated: true,
+      frameCount: 3,
+      repetition: 'finite',
+    });
+  });
+
+  it('APNGの宣言frame数とfcTL件数が違えば拒否する', () => {
+    expect(() => inspectPngAnimation(pngBytes({ frames: 2, frameControls: 1 }))).toThrow(
+      /一致しません/,
+    );
+  });
+
+  it('acTLの重複・IDAT後配置と終端を超えるchunkをboundedに拒否する', () => {
+    const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    const control = pngChunk('acTL', [...uint32(1), ...uint32(0)]);
+    const frame = pngChunk('fcTL', [
+      ...uint32(0),
+      ...uint32(1),
+      ...uint32(1),
+      ...uint32(0),
+      ...uint32(0),
+      0,
+      1,
+      0,
+      10,
+      0,
+      0,
+    ]);
+    expect(() =>
+      inspectPngAnimation(
+        new Uint8Array([...signature, ...control, ...control, ...frame, ...pngChunk('IEND')]),
+      ),
+    ).toThrow(/複数/);
+    expect(() =>
+      inspectPngAnimation(
+        new Uint8Array([
+          ...signature,
+          ...pngChunk('IDAT', [0]),
+          ...control,
+          ...frame,
+          ...pngChunk('IEND'),
+        ]),
+      ),
+    ).toThrow(/IDATより前/);
+    expect(() => inspectPngAnimation(pngBytes({ frames: 1 }).subarray(0, -2))).toThrow(/終端/);
+  });
+
+  it('GIFのimage descriptorを数え、loop metadataを分類する', () => {
+    expect(inspectGifAnimation(gifBytes(2, 0))).toEqual({
+      frameCount: 2,
+      repetition: 'infinite',
+    });
+    expect(inspectGifAnimation(gifBytes(3, 2))).toEqual({
+      frameCount: 3,
+      repetition: 'finite',
+    });
+    expect(inspectGifAnimation(gifBytes(1, null))).toEqual({
+      frameCount: 1,
+      repetition: 'none',
+    });
+  });
+});
+
+describe('SVG safety profile', () => {
+  it('self-containedなshapeとlocal fragment参照を許可する', () => {
+    expect(
+      svgSafetyViolation(
+        '<svg xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g"/></defs><rect fill="url(#g)"/></svg>',
+      ),
+    ).toBeNull();
+  });
+
+  it.each([
+    ['script', '<svg><script>alert(1)</script></svg>'],
+    [
+      'animated external href',
+      '<svg><image id="target" href="#safe"/><animate href="#target" attributeName="href" values="#safe;https://example.invalid/a.png"/></svg>',
+    ],
+    ['event', '<svg onload="alert(1)"></svg>'],
+    ['foreignObject', '<svg><foreignObject><div>html</div></foreignObject></svg>'],
+    ['DOCTYPE', '<!DOCTYPE svg><svg></svg>'],
+    ['external href', '<svg><image href="https://example.invalid/a.png"/></svg>'],
+    ['base URL', '<svg xml:base="https://example.invalid/"><use href="#safe"/></svg>'],
+    ['CSS import', '<svg><style>@import "https://example.invalid/a.css";</style></svg>'],
+    ['external CSS url', '<svg><rect fill="url(https://example.invalid/a.svg#x)"/></svg>'],
+  ])('%sを理由付きで拒否する', (_label, svg) => {
+    expect(svgSafetyViolation(svg)).not.toBeNull();
   });
 });

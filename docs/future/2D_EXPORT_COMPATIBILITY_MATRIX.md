@@ -9,7 +9,7 @@
 
 ---
 
-> **現状:** 現在の実装は PNG / JPEG / WebP、連番、手動格子 sprite sheet、Tileset、Chameleon独自atlasの限定再取り込み、PNG / WebP / Chameleon 独自 atlas / JSON / ZIP の書き出し、Canvas 2D / PixiJS / Phaser の sample・helper、Godot / Unity の取り込み説明を持つ。SVG / GIF source保存のAsset 0.2.0基盤はADR-0019、通常import UI / rasterize / animated decodeはSlice Eの次PRで扱う。
+> **現状:** mainはPNG / JPEG / WebP、連番、手動格子 sprite sheet、Tileset、Chameleon独自atlasの限定再取り込み、PNG / WebP / Chameleon 独自 atlas / JSON / ZIP の書き出し、Canvas 2D / PixiJS / Phaser の sample・helper、Godot / Unity の取り込み説明を持つ。SVG / GIF source保存のAsset 0.2.0基盤はADR-0019 / PR #135でmainへ反映済み。SVG / GIF / APNGの新規Asset製品入口は1A + 2A + 3A / ADR-0020に従うSlice E製品PRで実装中であり、merge前はmain実装済みと数えない。
 > **重要:** 現行 `atlas.json` は Chameleon 独自形式であり、Phaser、PixiJS、Tiled、Unity、Godot の標準形式そのものではない。外部ツールで実行確認するまで `verified` と表示してはいけない。
 
 ## 1. 目的
@@ -64,11 +64,11 @@ Generic Web は対象ツール名ではないため、`generic-web-v1` のよう
 |---|---|---|---|
 | `.casproj` | `native-editable`。プロジェクトを再開、複製、移行できる。 | 実装済み。 | version / migration を守る。 |
 | PNG / JPEG / WebP | `editable-import`。元を残し、編集用画像・サムネイルを作る。 | 実装済み。 | JPEG に透明はない。 |
-| SVG | `rasterized-import`（ADR-0016 決定 1。ベクター保持の `editable-import` は将来の別 ADR）。 | ADR-0019でAsset 0.2.0のsource MIME・署名・verbatim保存基盤を実装。通常import UI / rasterizeはSlice Eの次PR。 | スクリプト、外部 URL、任意コードを実行しない。 |
-| 連番、GIF、APNG | フレーム列として取り込み、animation を作る（GIF / APNG は ADR-0016 決定 2 の `rasterized-import`）。 | 同寸法の連番と手動格子sheetはSlice Cで実装。GIF source MIME / 署名とAPNGのPNG canonical表現はADR-0019。animated decode / UIはSlice Eの次PR。 | 動画編集の代替にはしない。decode 不可環境は先頭 frame + loss warning。 |
+| SVG | `rasterized-import`（ADR-0016 決定 1。ベクター保持の `editable-import` は将来の別 ADR）。 | ADR-0019 / PR #135でAsset 0.2.0のsource MIME・署名・verbatim保存基盤を実装済み。ADR-0020の新規Asset入口・厳格構造検査・PNG rasterizeをSlice E製品PRで実装中。 | 原本をsanitizeせず、script、event、埋め込みHTML、DOCTYPE、外部href / src、base URL、外部CSS / URLを拒否する。vector構造は編集できない。 |
+| 連番、GIF、APNG | フレーム列として取り込み、animation を作る（GIF / APNG は ADR-0016 決定 2 の `rasterized-import`）。 | 同寸法の連番と手動格子sheetはSlice Cで実装済み。GIF source MIME / 署名とAPNGのPNG canonical表現はADR-0019 / PR #135で実装済み。ADR-0020のbounded検査・最大16frame・全frame decode / fallback・時間 / loop写像をSlice E製品PRで実装中。 | 動画編集の代替にはしない。API / MIME非対応環境は先頭frame + 8fps + loss warning。可変時間と有限repeat回数は保持せず、有限repeatはloop無効。 |
 | sprite sheet + JSON | フレーム、名前、順番、切り抜き情報を確認しながら取り込む。 | 手動格子指定はSlice Cで実装済み。JSONはADR-0018によりexactな`atlas.json + spritesheet.png`、`chameleon-atlas/0.1.0`のcanonical subsetだけをSlice Dで実装済み。 | Chameleon自形式でも元Assetの完全復元ではなく意味上roundtrip。Phaser / Aseprite / Tiled等の外部JSON、旧版・future version、不整合JSONは理由付き拒否する。 |
 | tileset / atlas bundle | タイル寸法、衝突、属性を確認して取り込む。 | Tileset独立モードとChameleon自形式atlasの意味上roundtripをSlice D / closeout PR #133で実装・補修済み（ADR-0018）。 | Tilesetは最大16cell、各cellをlayer + frame化し、Asset全体のcollision設定を使う。colliderは自動生成しない。AtlasはPNG原本を保持するがraw JSONは保持せず、hash等のprovenanceとloss表示を残す。タイル地図そのものの全編集は約束しない。 |
-| Aseprite、PSD、OpenRaster、Krita など | `unsupported`（ADR-0016 決定 3 / 4。理由付き明示拒否 + PNG / JSON 経由の手順案内）。 | ADR-0016 で分類確定。OpenRaster は `editable-import` 昇格の最有力候補として再検討条件に記録。 | 全レイヤー・全効果・専用機能を完全に保つとは約束しない。 |
+| Aseprite、PSD、OpenRaster、Krita など | `unsupported`（ADR-0016 決定 3 / 4。理由付き明示拒否 + PNG / JSON 経由の手順案内）。 | ADR-0016で分類確定。ADR-0020の形式別理由とPNG / WebP / 手動格子Sheet経由の代替表示をSlice E製品PRで実装中。OpenRasterは`editable-import`昇格の最有力候補として再検討条件に記録。 | 専用原本のreference保存や、全レイヤー・全効果・専用機能の保持は行わない。 |
 | Spine / Rive / Live2D の専用形式 | 将来、原本参照や画像・atlas・焼き込みフレームの補助を別設計で検討する。 | `unsupported`。 | 現在は専用原本の保存・参照を実装していない。専用形式の完全編集・再出力を名乗らない。 |
 
 ### 4.2 取り込みの共通要件

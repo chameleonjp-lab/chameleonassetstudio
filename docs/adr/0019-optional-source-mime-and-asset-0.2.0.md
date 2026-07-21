@@ -41,6 +41,8 @@ Slice E は SVG / GIF / APNG を `rasterized-import` として扱いながら、
 
 ## 現状の制限
 
+以下は本ADRとsource契約補正PR #135単体の制限である。後続の製品挙動はADR-0020でacceptedとなり、Slice E製品PRで実装する。
+
 - 通常の file picker / drag and drop はまだ SVG / GIF / APNG を許可しない。
 - SVG 構造の安全性検査、animated frame の列挙、frame duration の扱い、fallback warning はまだ実装しない。
 - UTF-16 等の SVG は署名検査対象外であり、UTF-8 の SVG root だけを受ける。

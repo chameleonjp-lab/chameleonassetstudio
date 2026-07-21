@@ -1,6 +1,6 @@
 # Chameleon Asset Studio ユーザーガイド
 
-最終更新日: 2026-07-20
+最終更新日: 2026-07-21
 対象バージョン: 0.1.0
 
 このガイドは、Chameleon Asset Studio でゲーム用 2D アセットを作って書き出すまでの使い方を説明します。仕様の正本は `docs/REQUIREMENTS_SPECIFICATION.md`、データ形式は `docs/DATA_FORMAT.md` を参照してください。
@@ -15,7 +15,7 @@
 
 ## 2. 画像を取り込む
 
-- 編集画面へ PNG / JPG / WebP をドラッグ&ドロップするか、「画像を選ぶ」から選択します。
+- 新規Assetとして追加する場合は、編集画面へPNG / JPG / WebP / SVG / GIF / APNGをドラッグ&ドロップするか、「画像を選ぶ」から選択します。
 - 最大サイズは 4096 x 4096 です。超えると理由が表示されます。
 - 元画像は破壊的編集をせずに保持されます（編集用・サムネイルと分けて保存）。
 
@@ -32,7 +32,18 @@
 - Atlas取込は元Assetの完全復元ではありません。frame pixel、animation、origin、anchor、collider、tile / effect設定を新しいIDのflattened Assetへ復元しますが、元layer構造、parts、tags、gameAttributes、rig、来歴は復元できません。spritesheet.png原本は保持し、atlas.jsonはraw fileを保存せずSHA-256等だけを来歴へ記録します。previewのlossを確認してから確定してください。
 - AsepriteはPNG sprite sheetを書き出し、手動格子で取り込んでください。Aseprite JSON metadataは読み込みません。
 
-### 2.2 画像を取り込まずに新規アセットを作る（2D-2-CREATE-01、2026-07）
+### 2.2 SVG / GIF / APNGを新規Assetへ取り込む（2D-2-IMPORT Slice E、2026-07）
+
+SVG / GIF / APNGは、新規Assetを作る「画像を選ぶ」またはdrag & dropから取り込みます。PNG / JPG / WebPとの混在を含めて一度に最大16 fileまで選べます。全fileを安全に準備できた場合だけ確定前previewへ進み、1件でも失敗した場合は何も追加しません。既存Assetへの画像layer追加、連番、Sprite Sheet、Tileset、Chameleon Atlasでは引き続きPNG / JPG / WebPだけを選べます。
+
+- SVGは原本bytesと来歴をsourceへ保持し、編集用画像をPNG pixelとして作ります。path / shape / style等のvector構造は編集できません。script、SVG animation、event handler、埋め込みHTML、DOCTYPE、外部画像・外部CSS・外部URL等を含むSVGは、内容を削除して受理せず理由付きで拒否します。
+- GIF / APNGは1〜16frameを各1 layer / frameへ変換し、animationを作ります。対応browserでは全frame、`ImageDecoder`または対象MIMEに対応しないbrowserでは先頭frameだけを8fpsで取り込みます。いずれもGIF / APNG原本をsourceへ保持します。
+- 全frameの表示時間を取得できる場合は、合計時間から1〜240の整数fpsへ変換します。元の合計時間は情報として残りますが、frameごとの可変時間は保持されません。表示時間を取得できない場合は8fpsです。
+- 無限repeatだけがloop有効になります。repeatなしと有限repeatはloop無効です。有限回数そのものは保存できません。
+- SVGのvector構造、GIF / APNG固有metadata、可変時間、有限repeat、先頭frame fallback等はloss / warningに表示されます。内容を確認するcheckboxを選ぶまで確定できません。取消、上限超過、危険なSVG、unsupported形式ではProject / Asset / Blobを変更しません。
+- AsepriteはPNG Sprite Sheetを書き出して「Sprite Sheet（手動格子）」を使います。PSD / Krita / OpenRasterはPNGまたはWebPへ書き出してから取り込んでください。これらの専用原本だけを保存するreference機能はありません。
+
+### 2.3 画像を取り込まずに新規アセットを作る（2D-2-CREATE-01、2026-07）
 
 プロパティパネルの「アセット」欄にある「新規アセットを作成」フォームで、画像を取り込まなくても空キャンバスのアセットを作れます。
 
@@ -41,7 +52,7 @@
 - **character** を選んだときだけ、当たり判定「body」（矩形）が最初から付きます。他の種別は空キャンバスのみです。この対応表はコードで管理しており、`.casproj` / asset.json には「テンプレートを適用した結果」（当たり判定そのもの）だけが通常のフィールドとして保存されます。テンプレートという概念自体は保存データには現れません。
 - 作成したアセットはすぐに選択状態になり保存されます。プロジェクト単位の操作のため、**Undo / Redo の対象外**です。
 
-### 2.3 アセットを削除する（2D-2-CREATE-01、2026-07）
+### 2.4 アセットを削除する（2D-2-CREATE-01、2026-07）
 
 プロパティパネルの「アセット」欄の「アセットを削除」で、選択中のアセットを削除できます。
 
@@ -49,7 +60,7 @@
 - 最後の 1 件を削除してもアセット 0 件の状態になり、「アセットがありません。画像を取り込むか、新規アセットを作成してください。」という空状態が表示されます（0 件でも画面は壊れません）。
 - 確認ダイアログで誤操作を防ぐ設計のため、**Undo / Redo の対象外**です。
 
-### 2.4 選択中のアセットを独立コピーする（2D-2-PROJECT、2026-07）
+### 2.5 選択中のアセットを独立コピーする（2D-2-PROJECT、2026-07）
 
 プロパティパネルの「独立コピーを作成」で、選択中のアセットを同じProject内へ複製できます。
 
@@ -59,7 +70,7 @@
 - Project単位の追加操作のため、**Undo / Redoの対象外**です。
 - アセット一覧には種別とキャンバスサイズが表示されます。種別変更はAsset本体とProject内の要約へまとめて保存されます。
 
-### 2.5 Family / Variantを管理する（2D-2-VARIANT Slice C、2026-07）
+### 2.6 Family / Variantを管理する（2D-2-VARIANT Slice C、2026-07）
 
 `.casproj`の`project.json`は、同じ素材のbaseと左右反転・palette・手修正版の関係をoptionalなFamily registryとして保持できます。fieldがない既存`0.1.0`ファイルは、従来どおり全Assetが独立したデータとして読み込まれます。
 
@@ -73,7 +84,7 @@
 - FamilyのbaseはFamily解除より先に削除できません。Family情報だけが不正な保存済みProjectは通常openを無効にし、ホームの「隔離copyを作成」から元Projectを変更せず、全Assetを別IDのstandalone copyとして復旧できます。作成後はホームに隔離理由と未知参照の注意を表示するので、確認してから新しいcopyを開きます。Family以外も不正なProjectはこの導線の対象外です。不正なFamily参照を含む`.casproj`は正本へ保存せず、読み込み失敗データとしてquarantineします。
 - ゲーム向け`asset.json`、PNG / WebP、atlas、engine向けZIPへFamily metadataは追加されません。Family関係を含む再編集用保存には`.casproj`を使います。
 
-### 2.6 複数Assetを安全に一括変更する（2D-2-BATCH Slice D、2026-07）
+### 2.7 複数Assetを安全に一括変更する（2D-2-BATCH Slice D、2026-07）
 
 プロパティの「Asset一括変更」で、linked variant refresh、明示したAsset / layerのpalette置換、Asset canvas resizeを最大16 Assetへ適用できます。
 
@@ -144,6 +155,7 @@ ZIP の中身と使い方は `docs/EXPORT_FORMATS.md`、Godot / Unity / Rive / S
 | 「画像サイズが大きすぎます」 | 4096 x 4096 以下に縮小してから取り込んでください |
 | 「この環境では WebP 書き出しに対応していません」 | ブラウザが WebP エンコード非対応です。PNG を使ってください（ZIP は WebP だけ省いて生成されます） |
 | 「画像 Blob が見つかりません」 | 参照画像がブラウザ保存領域から失われています。該当レイヤーの画像を取り込み直してください（画像欠けのままの書き出しは安全のため停止します） |
+| GIF / APNGが先頭frameだけになる | 利用中のbrowserが`ImageDecoder`または対象形式に対応していません。source原本は保持されるため、全frameが必要なら対応browserで同じ元fileを新規Assetとして取り込み直してください |
 | サンプル HTML で画像が出ない | `file://` では動きません。フォルダをローカルサーバーで開いてください |
 | ブラウザのデータ消去で作品が消えた | IndexedDB 保存のため消去で失われます。重要な作品は定期的に `.casproj` を書き出して保管してください |
 | プロジェクトを誤って削除した | ホーム画面の「ごみ箱」から復元できます（8.1 参照） |

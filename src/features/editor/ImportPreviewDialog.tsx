@@ -87,8 +87,8 @@ export function ImportPreviewDialog({
             ))}
           </ol>
           <ul>
-            {preview.details.map((detail) => (
-              <li key={detail}>{detail}</li>
+            {preview.details.map((detail, index) => (
+              <li key={`${index}:${detail}`}>{detail}</li>
             ))}
           </ul>
         </section>
@@ -97,8 +97,8 @@ export function ImportPreviewDialog({
           <section className="import-preview-losses" aria-label="編集対象外になる内容">
             <h3>失われる・編集対象外になる内容</h3>
             <ul>
-              {preview.losses.map((loss) => (
-                <li key={loss}>{loss}</li>
+              {preview.losses.map((loss, index) => (
+                <li key={`${index}:${loss}`}>{loss}</li>
               ))}
             </ul>
           </section>
@@ -108,8 +108,8 @@ export function ImportPreviewDialog({
           <section className="import-preview-warnings" aria-label="取り込みwarning">
             <h3>warning</h3>
             <ul>
-              {preview.warnings.map((warning) => (
-                <li key={warning}>{warning}</li>
+              {preview.warnings.map((warning, index) => (
+                <li key={`${index}:${warning}`}>{warning}</li>
               ))}
             </ul>
           </section>
