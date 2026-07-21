@@ -1,6 +1,6 @@
 # Chameleon Asset Studio リリースチェックリスト
 
-最終更新日: 2026-07-21
+最終更新日: 2026-07-22
 対象: v1.0.0 判定
 上位文書: `docs/implementation/TEST_AND_RELEASE.md` / `docs/implementation/PHASES_14_17.md`（Phase 17）
 
@@ -25,14 +25,16 @@
 - [x] 画像 Blob 欠落が書き出し・`.casproj` 書き出しで検出される
 - [x] 旧Asset 0.1.0を既存フィールド不変で0.2.0へ移行し、`.casproj`とIndexedDB live / trash / snapshotで互換性・原子性を検証する（Project・export-presets・atlas・appは0.1.0維持）
 
-### 1.1 Slice E optional import merge gate（進行中）
+### 1.1 Slice E optional import post-merge review-fix gate（進行中）
+
+製品実装PR #138はmerge `c188e17`でmainへ反映済みだが、独立レビュー補修前のheadだった。補修は最新main `0d539ee`を基準とするDraft PR #144で行う。PR #144の初回head `0544e0b`に対するCI Run #449は全成功し、その固定headレビューで残ったmalformed SVG分類順を同じPRで補修する。最終head / CI Run / 独立レビュー結果はPR #144本文へ記録し、merge後のcloseoutで本節を完了へ更新する。
 
 - [x] 1A + 2A + 3A / ADR-0020で入口、frame / 時間 / repeat写像、SVG安全境界を人間承認済み
-- [ ] 新規AssetだけがSVG / GIF / APNGを受け、layer / 連番 / sheet / tileset / atlasのPNG / JPEG / WebP gateが変わらない
-- [ ] safe SVGのrasterize・source原本、active / external CSS / font SVGの非実行・非通信・非quarantine、malformed SVGのquarantineをChromium E2Eで確認する
-- [ ] GIF / APNGのcodec前寸法検査、最大16frame、全frame pixel、uniform fps / duration、preflight由来loop、APNG canonical sourceをChromium E2Eで確認する
-- [ ] `ImageDecoder`不在時の先頭frame + 8fps + loss、17frame / unsupported拒否、取消 / Undo / Redo / reload、375 x 667 touchをChromium E2Eで確認する
-- [ ] Slice E製品PRのlint / format / build / unit / Chromium E2E / GitHub Actionsが全成功し、固定headの独立read-only reviewでBLOCKER 0 / MUST 0を確認する
+- [x] PR #138 / `c188e17`で新規AssetだけがSVG / GIF / APNGを受け、layer / 連番 / sheet / tileset / atlasのPNG / JPEG / WebP gateを維持する製品実装をmainへ反映済み
+- [x] Run #449でsafe SVGのrasterize・source原本、active / external CSS / font SVGの非実行・非通信・非quarantine、malformed SVGのquarantineをChromium E2Eで確認した
+- [x] Run #449でGIF / APNGのcodec前寸法検査、最大16frame、全frame pixel、uniform fps / duration、preflight由来loop、APNG canonical sourceを確認した
+- [x] Run #449で`ImageDecoder`不在時の先頭frame + 8fps + loss、17frame / unsupported拒否、取消 / Undo / Redo / reload、375 x 667 touchを確認した
+- [ ] PR #144の最終headでmalformedかつactiveなSVGのsignature quarantine、CI全成功、固定head独立reviewの`BLOCKER 0 / MUST 0`を確認し、人間判断後にmainへmergeする
 
 ## 2. 文書（完了）
 

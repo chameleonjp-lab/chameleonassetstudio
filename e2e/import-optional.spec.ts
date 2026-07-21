@@ -399,6 +399,13 @@ test('malformed・invalid UTF-8 SVGはsignature失敗としてquarantineする',
   await createProject(page, 'malformed SVG');
   const input = page.getByLabel('画像を選ぶ');
   await input.setInputFiles({
+    name: 'malformed-active.svg',
+    mimeType: 'image/svg+xml',
+    buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script></svg>'),
+  });
+  await expect(page.getByRole('alert')).toContainText('SVGのXML構造を解析できませんでした');
+
+  await input.setInputFiles({
     name: 'malformed.svg',
     mimeType: 'image/svg+xml',
     buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><g></svg>'),
@@ -418,7 +425,7 @@ test('malformed・invalid UTF-8 SVGはsignature失敗としてquarantineする',
   });
   await expect(page.getByRole('alert')).toContainText('SVGはUTF-8で保存してください');
   expect(await readAssets(page)).toHaveLength(0);
-  expect(await readQuarantineCount(page)).toBe(2);
+  expect(await readQuarantineCount(page)).toBe(3);
 });
 
 test('animated GIFを全frame化し、総durationをuniform fpsへ写像する', async ({ page }) => {

@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   assertFileImageSignature,
   detectImageMimeType,
   imageMimeTypesMatch,
+  inspectSvgSafety,
   inspectGifAnimation,
   inspectPngAnimation,
   svgSafetyViolation,
@@ -278,6 +279,29 @@ describe('optional animated image preflight', () => {
 });
 
 describe('SVG safety profile', () => {
+  it('active構造を含むmalformed XMLもunsafeより先にmalformedへ分類する', () => {
+    vi.stubGlobal(
+      'DOMParser',
+      class {
+        parseFromString(): Document {
+          return {
+            documentElement: { localName: 'svg' },
+            querySelector: (selector: string) => (selector === 'parsererror' ? {} : null),
+          } as unknown as Document;
+        }
+      },
+    );
+
+    try {
+      expect(inspectSvgSafety('<svg><script></svg>')).toEqual({
+        kind: 'malformed',
+        message: 'SVGのXML構造を解析できませんでした。',
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('self-containedなshapeとlocal fragment参照を許可する', () => {
     expect(
       svgSafetyViolation(

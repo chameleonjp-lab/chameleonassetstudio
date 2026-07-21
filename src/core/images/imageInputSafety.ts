@@ -359,6 +359,14 @@ export interface SvgSafetyInspection {
  * browserではDOMParserによる属性値decode後の検査も行い、Node fixtureでは字句検査を固定する。
  */
 export function svgSafetyViolation(text: string): string | null {
+  let document: Document | null = null;
+  if (typeof DOMParser !== 'undefined') {
+    document = new DOMParser().parseFromString(text, 'image/svg+xml');
+    if (document.querySelector('parsererror') || document.documentElement.localName !== 'svg') {
+      return MALFORMED_SVG_MESSAGE;
+    }
+  }
+
   if (/<!DOCTYPE\b/i.test(text)) {
     return 'DOCTYPEを含むSVGには対応していません。';
   }
@@ -386,12 +394,8 @@ export function svgSafetyViolation(text: string): string | null {
     return lexicalCssViolation;
   }
 
-  if (typeof DOMParser === 'undefined') {
+  if (document === null) {
     return null;
-  }
-  const document = new DOMParser().parseFromString(text, 'image/svg+xml');
-  if (document.querySelector('parsererror') || document.documentElement.localName !== 'svg') {
-    return MALFORMED_SVG_MESSAGE;
   }
   for (const element of document.querySelectorAll('*')) {
     if (BANNED_SVG_ELEMENTS.has(element.localName.toLowerCase())) {

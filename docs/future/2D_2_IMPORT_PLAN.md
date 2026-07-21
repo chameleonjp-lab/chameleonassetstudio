@@ -1,9 +1,10 @@
 # 2D-2-IMPORT-GATE + 2D-2-IMPORT-OPTIONAL + 2D-2-AI-BOUNDARY 契約監査・実装計画
 
-作成日: 2026-07-19（最終更新: 2026-07-21）
-状態: `G1+L1+Q1+P1+F1+A1+W1+S1 accepted / Slice A〜D・Slice E source契約補正はmainへmerge済み / Slice E製品実装中`
+作成日: 2026-07-19（最終更新: 2026-07-22）
+状態: `G1+L1+Q1+P1+F1+A1+W1+S1 accepted / Slice A〜D・Slice E source契約補正・製品実装はmainへmerge済み / Slice E post-merge review fixes中`
 正式work package: `2D-2-IMPORT-GATE` + `2D-2-IMPORT-OPTIONAL` + `2D-2-AI-BOUNDARY`（2D完成ロードマップ PR group 11）
-Slice E製品実装基準main: `f5bb322`（PR #135 merge、source契約補正）
+Slice E製品実装: PR #138（merge `c188e17`。独立レビュー補修前のheadでmainへmerge済み）
+Slice E post-merge review fixes基準main: `0d539ee`（Draft PR #144）
 前段: `2D-2-VARIANT + 2D-2-BATCH`（group 10）は全slice merge・遡及Opus review・closeout補修まで完了。
 
 ## 1. 目的
@@ -29,6 +30,7 @@ Slice E製品実装基準main: `f5bb322`（PR #135 merge、source契約補正）
 - Slice D開始監査でADR-0007 / ADR-0015とW1の衝突、raw atlas JSONの保存先不在、完全roundtrip不能を確認した。2026-07-20の人間承認によりADR-0018をacceptedとし、現行Chameleon atlasの意味上roundtripを限定例外として固定した。
 - Slice DはPR #129（final head `5b98b24`、merge `33ebad4`）でmainへmerge済み。CI Run #415はlint / format / build / unit / Chromium E2Eを含め全成功した。独立read-only reviewのSHOULD 2件（tile / effect Atlas意味比較E2E、外部・不整合Atlas拒否時のquarantine非追加直接assert）はPR #133（merge `55750d2`）でcloseoutした。次はこのmainを基準にSlice Eを進める。
 - Slice Eのsource保存契約補正はADR-0019とPR #135（merge `f5bb322`）でmainへ反映済み。Asset 0.2.0 migration、source-only SVG / GIF MIME、APNGのPNG canonical化、verbatim保存と実ブラウザーdecodeの前提が成立した。製品挙動は2026-07-21の人間承認1A + 2A + 3AとADR-0020だけを実装する。
+- Slice E製品実装PR #138はmerge `c188e17`でmainへ入ったが、独立レビュー補修前のheadだった。post-merge review fixesは最新main `0d539ee`からDraft PR #144へ分離し、初回head `0544e0b`のCI Run #449（lint / format / build / unit 675件 / Chromium E2E 142件）は全成功した。固定head再レビューで見つかったmalformed SVG分類順と本状態記録のMUSTは、同じPR #144で補修・再CI・再レビューする。
 
 ## 3. 現状実装の確認
 
@@ -198,4 +200,4 @@ accepted後の実装でも、次は別契約まで行わない。
 - 状態: **accepted**
 - accepted日: 2026-07-19（ユーザー承認）
 - 実装review条件: 各slice Draft PR → CI → 独立Opus review → 人間確認。A→B→C→D→Eの直列順。各sliceは前sliceのmerge後に最新mainからbranchを作る。
-- Slice AはPR #125、Slice BはPR #126、Slice CはPR #127とrepair PR #128、Slice DはPR #129、Slice D closeoutはPR #133、Slice E source契約補正はPR #135でmainへmerge済み。Slice E製品挙動は1A + 2A + 3A / ADR-0020 acceptedで実装中。Draft PR → CI → 固定headの独立read-only review → 人間確認の順を維持し、独立Opus reviewの証拠が得られるまではOpus review工程を完了扱いにしない。
+- Slice AはPR #125、Slice BはPR #126、Slice CはPR #127とrepair PR #128、Slice DはPR #129、Slice D closeoutはPR #133、Slice E source契約補正はPR #135、Slice E製品実装はPR #138（merge `c188e17`）でmainへmerge済み。PR #138は独立レビュー補修前にmergeされたため、PR #144をpost-merge review fixesとして扱う。PR #144の最終head / CI Run / 固定head独立read-only review結果はPR本文を正本とし、`BLOCKER 0 / MUST 0`と人間確認が揃うまでSlice E closeoutおよびOpus review完了とは扱わない。
