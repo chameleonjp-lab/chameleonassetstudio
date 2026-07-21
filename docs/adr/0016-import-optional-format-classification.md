@@ -10,7 +10,7 @@
 
 2D 完成ロードマップの `2D-2-IMPORT-OPTIONAL` は判断必須 work package であり、SVG / GIF / APNG / Aseprite / PSD / OpenRaster / Krita を `editable-import` / `rasterized-import` / `reference-only` / `unsupported` のどれにするかを ADR で決めるまで実装を開始しない（ROADMAP §6.5）。互換 matrix §4.1 はこれらを「将来候補」「調査・設計前」とし、製品仕様 §5.2 は「SVG は任意コードとして実行せず、安全な画像またはベクター情報として扱う」「外部制作形式は、完全に再編集できる形式、画像として取り込む形式、元ファイルを保存して参照する形式を区別する」ことを求めている。
 
-現行実装の取り込みは PNG / JPEG / WebP の 3 形式のみで、宣言 MIME type の検査（`checkImportFile`）とファイル先頭バイトの実体署名検査（`detectImageMimeType` / `assertFileImageSignature`）の両方で他形式を拒否する。画像 decode は browser 標準 API のみで、外部 library への依存はない。
+ユーザー向け通常取り込みは PNG / JPEG / WebP の 3 形式のみで、宣言 MIME type の検査（`checkImportFile`）は他形式を拒否する。ADR-0019のSlice E前提補正により、保存層の実体署名検査（`detectImageMimeType` / `assertFileImageSignature`）はSVG / GIFを識別し、APNG宣言をPNGコンテナとして扱えるようになった。画像 decode は browser 標準 API のみで、外部 library への依存はない。
 
 ## 決定
 
@@ -25,7 +25,7 @@
 ## 根拠
 
 - 現行の宣言 MIME 検査: `SUPPORTED_IMPORT_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp']`（`src/core/images/importImage.ts:15`）と `checkImportFile`（`:27-37`）が、他形式を「対応していないファイル形式です」の理由付きで拒否する現行実装。
-- 現行の実体署名検査: `detectImageMimeType`（`src/core/images/imageInputSafety.ts:11-26`）は PNG / JPEG / WebP の 3 署名のみを判定し、SVG / GIF などのバイト列には null を返す。`assertFileImageSignature`（`:28-45`）が宣言と実体の不一致を `InputSafetyError` で拒否する。
+- source保存層の実体署名検査: `detectImageMimeType`はPNG / JPEG / WebP / GIF87a / GIF89a / UTF-8 SVG rootを判定する。`assertFileImageSignature`は宣言と実体の不一致を`InputSafetyError`で拒否し、PNG実体と`image/apng`宣言だけを同じコンテナとして許可する（ADR-0019）。
 - dependency 不使用: 画像 decode は `createImageBitmap` → `HTMLImageElement` fallback（`src/core/images/decodeImageSource.ts:14-46`）のみで、`package.json` の dependencies に画像 parser はない（`fflate` は `.casproj` ZIP 用、`ajv` は JSON Schema 検証用）。
 - 受け皿 schema: `Frame`（`layerStates[]`）と `Animation`（`fps` / `loop` / `frameIds`）が既存であり（`src/core/model/animation.ts:13-41`）、GIF / APNG の frame 列は G1（既存 schema の範囲で受ける）に従い新 field なしで写像できる。
 - 安全要件: 製品仕様 §5.2（SVG は任意コードとして実行しない）、互換 matrix §4.2（悪意ある SVG / JSON の拒否または隔離、対応しない内容の取り込み前表示）。
@@ -33,16 +33,16 @@
 ## 影響と fixture
 
 - 影響 docs: `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md` §4.1（状態列に本 ADR の分類を反映）、`docs/future/2D_2_IMPORT_PLAN.md`（状態行）。
-- 影響実装: なし（本 ADR は分類の確定のみ。rasterized-import の実装は Slice E、sprite sheet 経路は Slice C / D）。
+- 影響実装: 本ADR自体は分類の確定のみ。ADR-0019でsource MIME / signature / Asset migrationの前提を先行実装し、rasterized-import UIとanimated decodeはSlice Eの別PRで扱う。
 - fixture: `src/core/images/importOptionalContract.fixtures.test.ts` の ADR-0016 セクションで次を固定する。
   - `SUPPORTED_IMPORT_MIME_TYPES` が PNG / JPEG / WebP の 3 形式のままであること（Slice E での拡張を意図的な変更にする）。
   - `checkImportFile` が SVG / GIF / PSD / 不明形式を理由付きで拒否すること。
-  - `detectImageMimeType` が SVG / GIF のバイト列に null を返すこと（実体署名でも拒否される）。
+  - `detectImageMimeType` が SVG / GIF を識別し、APNGをPNGコンテナとして扱うこと。通常importの宣言MIME gateは別PRまで3形式を維持すること。
 
 ## 現状の制限
 
-- APNG は PNG と同一署名のため、実体署名検査では PNG と区別されない。現行実装では静止 PNG として decode される（`createImageBitmap` は先頭 frame を返す）。Slice E で APNG の frame 列取り込みを実装するまで、この挙動が現状である。
-- `ImageDecoder`（WebCodecs）の browser 対応状況は Slice E 実装時に再確認し、利用できない環境の fallback（先頭 frame + loss warning）を必須とする。
+- APNG は PNG と同一署名のため、source TextureRef / Blobでは`image/png`へcanonical化し、元の`image/apng`宣言はprovenanceへ保持する。通常importはSlice EまでAPNGを許可せず、frame列取り込みも未実装である。
+- `ImageDecoder`（WebCodecs）は2026-07-21時点でもlimited availabilityであるため、Slice Eでは機能検出と利用できない環境のfallback（先頭 frame + loss warning）を必須とする。
 
 ## 再検討条件
 

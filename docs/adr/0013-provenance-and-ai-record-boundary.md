@@ -6,6 +6,8 @@
 
 実装追跡（2026-07-20）: group 11 Slice BのPR #126でP1を実装済み。source file recordは`sourceFileName`、`mimeType`、`byteLength`、source Blob原本bytesの`sha256:<64hex>`、`importedAt`を必須、`textureId`、`origin`、`license`を任意とする。schemaはこのsource recordだけを厳密検証し、既存のADR-0013 candidate recordとADR-0017 AI recordはopen recordとして保持する。単枚 / layer追加は1 file = 1 record、複製は`textureId`を新IDへ付け替え、flip copyはtexture IDを保持し、`.casproj`はasset IDだけを付け替える既存規則に従う。dangling参照はread-only inspectorへ接続し、保存・書き出しを阻止しない。0.1.0、migration、schema version、AI fieldは変更していない。
 
+後続契約追跡（2026-07-21）: ADR-0019によりAssetは0.2.0へ進み、0.1.0→0.2.0のidentity migrationを持つ。これは既存fieldを変更せずframeworkがversionだけを更新するため、本ADRのprovenance非遡及生成・未知field保持は維持される。以下の「0.1.0無変換」「migrateは恒等」は本ADR採択時とPR #126導入時の履歴を表し、現行version挙動はADR-0019を優先する。
+
 ---
 
 ## 文脈
@@ -17,7 +19,7 @@
 ## 決定
 
 1. **置き場所と単位**: 来歴は将来の `Asset.provenance?`（optional / additive な配列）とする。1 レコード = 取り込み元ファイル 1 つに対応させる。各レコードは source texture（`kind: 'source'`）の id を任意で参照できるようにする。フィールド候補は §11 の列挙（元ファイル名・形式・ハッシュ・取得元・利用条件・作成日）とし、具体的なフィールド名・ハッシュアルゴリズムは導入 PR で確定する（本 ADR は決めすぎない）。`gameAttributes`（ゲーム内で意味を持つユーザー定義値専用）や `extensions`（target 固有メタデータ用の名前空間付き領域）に来歴を混ぜない（ADR-0012 が固定した境界と一貫させる）。なお ADR-0007 の層をまたぐ規則にある「編集元の schema を変えない置き場所（別ファイルまたは名前空間付き領域）」の例示に対しては、本決定が来歴の置き場所を optional / additive な第一級フィールドとして明示的に確定・上書きする（`extensions` は ADR-0012 により target 固有メタデータ専用であり来歴を混ぜると別の矛盾が生じること、別ファイル化は `.casproj` のフォルダ構成変更＝契約 §13 gate を要すること、optional フィールドには `tile` / `gimmick` / `effect` / `rigAnimations` の確立済み前例があることによる）。ADR-0007 側にも同旨の明確化を追記した。
-2. **任意性と非捏造**: 記録は任意とする。不在時の挙動は現行と一致させる。既存データ・過去の取り込みへ遡って推定値を自動補完しない（migrate は恒等のまま。ADR-0011 の共通条件の系）。現行実装が既に持つ「暗黙の来歴」（`assetNameFromFileName` によるファイル名正規化、source Blob の verbatim 保持、`Asset.createdAt`/`updatedAt`）は事実として記録するが、これらの値を `provenance` へ自動昇格・自動転記しない。
+2. **任意性と非捏造**: 記録は任意とする。不在時の挙動は現行と一致させる。既存データ・過去の取り込みへ遡って推定値を自動補完しない（本ADR採択時のmigrateは恒等。ADR-0019後もversion以外は変更しない）。現行実装が既に持つ「暗黙の来歴」（`assetNameFromFileName` によるファイル名正規化、source Blob の verbatim 保持、`Asset.createdAt`/`updatedAt`）は事実として記録するが、これらの値を `provenance` へ自動昇格・自動転記しない。
 3. **AI 送信記録の境界**: 現行アプリに AI 連携・外部送信コードは存在しない（根拠に記載の確認結果を参照）。AI 送信記録（送信先・モデル名・生成日時・承認状態）の具体的なフィールド・保存形式は `2D-2-AI-BOUNDARY` の ADR で確定する。本 ADR は保存境界のみを固定する: 記録する場合は provenance と同じ族（asset に紐づく任意メタデータ）として保存データに残し、外部送信の事実を隠さない（§11 と一貫）。エンジン向け派生出力（atlas.json、helper API、examples）へは出さない。
 4. **秘密情報の禁止**: provenance / AI 送信記録の値にも ADR-0012 の決定 2 と同一の禁止を適用する。API key・アクセストークン・個人情報・外部サービスの秘密設定を保存しない。JSON として安全に検証できる値（プリミティブと浅いオブジェクト / 配列）のみを許容する。認証情報付き URL（例: クエリにトークンを含む URL）を取得元として保存しない。検出は `2D-1A-VALIDATION` の preflight に接続する。
 5. **export への反映（「既定で出さない」の適用範囲の明確化）**: 「既定で出さない」とは**エンジン向け派生出力**（atlas.json、helper API、examples）に出さないことを指す。保存正本 `asset.json` の複製が同梱される場所（`.casproj` 内 `assets/<id>/asset.json`、export ZIP 内 `asset.json`）では **strip せず verbatim を維持**する（strip する新変換を導入しない。roundtrip 同一性と read-preserve-ignore を優先する）。利用条件など配布物へ意図的に含める opt-in 出力は将来の export 設計 PR で扱う。
@@ -34,7 +36,7 @@
 - export への反映範囲の前例: `exportAssetJson`（`src/core/export/exportAsset.ts:176-178`）が `asset.json` をそのまま整形して書き出す処理であり、export ZIP 内の `asset.json` は保存正本の verbatim コピーであることを示す。`.casproj` 側も `entries[\`assets/${asset.id}/asset.json\`] = toJsonBytes(asset)`（`src/core/storage/casproj.ts:139`）が同様に asset オブジェクト全体を整形するのみで strip しない。一方 `buildAtlas`（`src/core/export/atlas.ts:82-119`）はエンジン向け派生出力であり、`format` / `version` / `texture` / `cellSize` / `frames` / `animations` / `origin` / `anchors` / `colliders`（および tile / effect アセットのみ条件付きで `tile` / `effect`）のみを明示的に組み立てる関数で、`provenance` に相当するキーを含む経路が無い。
 - 0.1.0 無変換条件・導入 gate の前例: `docs/adr/0011-motion-forward-compatibility.md` が固定した「0.1.0 データは無変換のまま」「導入 PR は docs 同時更新・旧データ fixture + roundtrip・flip / 複製 / export 影響テスト・Opus 4.8 レビュー + 人間確認を満たす」という共通条件を、本 ADR も踏襲する。
 - quarantine との層分離の前例: `QuarantineRecord { id, fileName, importedAt, errorMessage, size, bytes? }`（`src/core/storage/quarantineStore.ts:11-19`）が、`STORE_QUARANTINE`（IndexedDB 専用ストア）にのみ保存され、`asset.json` / `.casproj` / export ZIP のいずれにも含まれないことの実装箇所である。
-- unknown data の read-preserve-ignore 規範と、texture 配列要素内の未知フィールド（入れ子レベル）の保持事実: `src/core/model/migrate.ts` の `migrateDocument`（`data = { ...source }` によるオブジェクトスプレッド、`ASSET_MIGRATIONS` は空配列のため実質恒等）と `src/core/schema/validate.ts` の `new Ajv({ allErrors: true })`（`removeAdditional` 未設定）により、root の未知フィールドだけでなく `textures[]` 要素内の未知フィールドも失われない実挙動を、`src/core/model/provenanceContract.fixtures.test.ts` で確認して固定した（下記「現状の制限」参照）。`texture` の schema 定義（`src/core/schema/asset.schema.json:172-197`）に `additionalProperties` の指定が無いことが、この挙動の schema 側の裏付けである。
+- unknown data の read-preserve-ignore 規範と、texture 配列要素内の未知フィールド（入れ子レベル）の保持事実: `src/core/model/migrate.ts` の `migrateDocument`は`data = { ...source }`で入力を複製し、現行`ASSET_MIGRATIONS`の0.1.0→0.2.0も既存fieldを変更しない。`src/core/schema/validate.ts` のAjvは`removeAdditional`未設定なので、rootだけでなく`textures[]`要素内の未知fieldも失わない実挙動を`src/core/model/provenanceContract.fixtures.test.ts`で確認して固定した（下記「現状の制限」参照）。
 
 ## 影響と fixture
 
@@ -43,7 +45,7 @@
 - fixture: `src/core/model/provenanceContract.fixtures.test.ts` の ADR-0013 セクションで次を固定する。
   - 未知 root フィールド `provenance`（§11 候補フィールドを持つレコード配列）を持つ asset が `validateAsset` を通ること。
   - `textures[0]` に未知フィールド（`provenance: { source: 'local-file' }`）を足した asset が `validateAsset` を通ること（入れ子レベルの未知フィールド許容を、texture について名指しで初めて固定した）。
-  - root `provenance` と `textures[0]` の未知フィールドの両方を持つ asset を `exportCasproj` → `importCasproj` した実挙動として、**両方とも保持される**ことと、`appliedMigrations` が空であることを固定した。
+  - root `provenance` と `textures[0]` の未知フィールドの両方を持つ現行Assetを`exportCasproj` → `importCasproj`した実挙動として、**両方とも保持される**ことと、追加migrationが発生しないことを固定した。別fixtureで、provenance不在の0.1.0 Assetはversionだけ0.2.0へ進み、provenanceを遡及生成しないことを固定する。
   - `buildAtlas` の出力トップレベルキー集合に `provenance` が含まれないこと。
 
 ## 現状の制限

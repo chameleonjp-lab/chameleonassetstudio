@@ -20,6 +20,92 @@ const project = v010ProjectJson as unknown as Project;
 const exportPresets = exportPresetsJson as unknown as ExportPresetFile;
 const imageBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
+function sourceOnlyAsset(
+  id: string,
+  mimeType: 'image/svg+xml' | 'image/gif',
+  extension: 'svg' | 'gif',
+): Asset {
+  const sourceTexture = {
+    ...structuredClone(asset.textures[0]),
+    id: `tex_${extension}_source`,
+    kind: 'source' as const,
+    name: 'original',
+    mimeType,
+    path: `source/original.${extension}`,
+  };
+  return {
+    ...structuredClone(asset),
+    version: '0.2.0',
+    id,
+    name: id,
+    displayName: id,
+    textures: [sourceTexture],
+    layers: asset.layers.map((layer) => ({
+      ...structuredClone(layer),
+      textureId: sourceTexture.id,
+    })),
+  };
+}
+
+/** GIF89aの単色画像。clear codeを各pixel前に置き、code幅を3bitのまま保つ。 */
+function solidGifBytes(width: number, height: number): Uint8Array {
+  const codes = Array.from({ length: width * height }, () => [4, 0]).flat();
+  codes.push(5);
+
+  const imageData: number[] = [];
+  let buffer = 0;
+  let bitCount = 0;
+  for (const code of codes) {
+    buffer |= code << bitCount;
+    bitCount += 3;
+    while (bitCount >= 8) {
+      imageData.push(buffer & 0xff);
+      buffer >>= 8;
+      bitCount -= 8;
+    }
+  }
+  if (bitCount > 0) {
+    imageData.push(buffer & 0xff);
+  }
+
+  return new Uint8Array([
+    0x47,
+    0x49,
+    0x46,
+    0x38,
+    0x39,
+    0x61,
+    width & 0xff,
+    width >> 8,
+    height & 0xff,
+    height >> 8,
+    0x80,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0xff,
+    0xff,
+    0xff,
+    0x2c,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    width & 0xff,
+    width >> 8,
+    height & 0xff,
+    height >> 8,
+    0x00,
+    0x02,
+    imageData.length,
+    ...imageData,
+    0x00,
+    0x3b,
+  ]);
+}
+
 function jsonBytes(value: unknown): Uint8Array {
   return strToU8(`${JSON.stringify(value, null, 2)}\n`);
 }
@@ -89,7 +175,9 @@ describe('2D-1B-CASPROJ staged import', () => {
     expect(staged.blobs.map((entry) => entry.key)).toEqual([
       `asset_copy_1/${asset.textures[0].path}`,
     ]);
-    expect(staged.appliedMigrations).toEqual([]);
+    expect(staged.appliedMigrations).toEqual([
+      expect.stringMatching(/asset\.json: 0\.1\.0 -> 0\.2\.0/),
+    ]);
 
     await commitStagedCasprojImport(staged);
 
@@ -145,6 +233,70 @@ describe('2D-1B-CASPROJ staged import', () => {
     await expect(stageCasprojImport(makeCasproj())).rejects.toMatchObject({
       code: 'unsafe-input',
     });
+  });
+
+  it('SVG / GIF sourceの宣言MIME・実体・verbatim bytesをstageから正本保存まで保持する', async () => {
+    const svgAsset = sourceOnlyAsset('asset_svg_source', 'image/svg+xml', 'svg');
+    const gifAsset = sourceOnlyAsset('asset_gif_source', 'image/gif', 'gif');
+    const sourceProject: Project = {
+      ...project,
+      assets: [svgAsset, gifAsset].map((item) => ({
+        id: item.id,
+        name: item.name,
+        displayName: item.displayName,
+        assetType: item.assetType,
+      })),
+    };
+    const svgBytes = new TextEncoder().encode(
+      '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"></svg>',
+    );
+    const gifBytes = solidGifBytes(8, 8);
+    const files = {
+      [`assets/${svgAsset.id}/${svgAsset.textures[0].path}`]: svgBytes,
+      [`assets/${gifAsset.id}/${gifAsset.textures[0].path}`]: gifBytes,
+    };
+
+    const staged = await stageCasprojImport(
+      makeCasproj({ projectValue: sourceProject, assets: [svgAsset, gifAsset], files }),
+      deterministicIds(),
+    );
+
+    expect(staged.appliedMigrations).toEqual([]);
+    expect(staged.blobs.map(({ blob }) => blob.type)).toEqual(['image/svg+xml', 'image/gif']);
+    expect(new Uint8Array(await staged.blobs[0].blob.arrayBuffer())).toEqual(svgBytes);
+    expect(new Uint8Array(await staged.blobs[1].blob.arrayBuffer())).toEqual(gifBytes);
+
+    await commitStagedCasprojImport(staged);
+    const savedSvg = await loadBlob(`asset_copy_1/${svgAsset.textures[0].path}`);
+    const savedGif = await loadBlob(`asset_copy_2/${gifAsset.textures[0].path}`);
+    expect(savedSvg?.type).toBe('image/svg+xml');
+    expect(savedGif?.type).toBe('image/gif');
+    expect(new Uint8Array(await savedSvg!.arrayBuffer())).toEqual(svgBytes);
+    expect(new Uint8Array(await savedGif!.arrayBuffer())).toEqual(gifBytes);
+
+    const savedProject = (await loadProject(staged.project.id)).project;
+    const savedAssets = await Promise.all(
+      staged.assets.map(async (item) => (await loadAsset(item.id)).asset),
+    );
+    const reexported = await exportCasproj({
+      project: savedProject,
+      assets: savedAssets,
+      files: [
+        {
+          path: `assets/asset_copy_1/${svgAsset.textures[0].path}`,
+          bytes: new Uint8Array(await savedSvg!.arrayBuffer()),
+        },
+        {
+          path: `assets/asset_copy_2/${gifAsset.textures[0].path}`,
+          bytes: new Uint8Array(await savedGif!.arrayBuffer()),
+        },
+      ],
+    });
+    const restaged = await stageCasprojImport(reexported, deterministicIds());
+    expect(restaged.appliedMigrations).toEqual([]);
+    expect(restaged.blobs.map(({ blob }) => blob.type)).toEqual(['image/svg+xml', 'image/gif']);
+    expect(new Uint8Array(await restaged.blobs[0].blob.arrayBuffer())).toEqual(svgBytes);
+    expect(new Uint8Array(await restaged.blobs[1].blob.arrayBuffer())).toEqual(gifBytes);
   });
 
   it('canonical storeに保存できないexport presetsは検証後にwarningを返す', async () => {

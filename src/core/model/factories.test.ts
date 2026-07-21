@@ -2,7 +2,30 @@ import { describe, expect, it } from 'vitest';
 import { validateAsset } from '../schema/validate';
 import { ASSET_TYPES, type AssetType } from './asset';
 import { addRectCollider } from './assetOps';
-import { createBlankAsset } from './factories';
+import { createBlankAsset, createImageAsset } from './factories';
+
+describe('createImageAsset source MIME contract', () => {
+  it('SVG原本をsourceだけに保持し、edit / thumbnailはraster MIMEで作る', () => {
+    const asset = createImageAsset({
+      name: 'svg_source',
+      size: { width: 64, height: 32 },
+      sourceMimeType: 'image/svg+xml',
+      sourceExtension: 'svg',
+    });
+
+    expect(asset.version).toBe('0.2.0');
+    expect(asset.textures.find((texture) => texture.kind === 'source')).toMatchObject({
+      mimeType: 'image/svg+xml',
+      path: 'source/original.svg',
+    });
+    expect(
+      asset.textures
+        .filter((texture) => texture.kind !== 'source')
+        .map((texture) => texture.mimeType),
+    ).toEqual(['image/png', 'image/webp']);
+    expect(validateAsset(asset)).toEqual({ valid: true, errors: [] });
+  });
+});
 
 describe('createBlankAsset（2D-2-CREATE-01）', () => {
   it('validateAsset を通る Asset JSON を作る', () => {

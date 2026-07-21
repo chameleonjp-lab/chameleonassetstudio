@@ -1,7 +1,7 @@
 # 3D Current State and Idea Traceability（現状と既存 3D 案の追跡表）
 
 状態: **draft / human review required**
-最終更新日: 2026-07-21（補足: Three.js Object Sculptor を参照資料として追記）
+最終更新日: 2026-07-21（Three.js Object Sculptor の参照追記と 2D Asset 0.2.0 参照を同期。調査基準日は変更しない）
 調査基準commit: `7018984ba9e6867c6fab12fb313308218a35c22b`（ブランチ `claude/chameleon-3d-four-stage-plan-yjpqlt`。origin/main と同一コミット）
 調査日: 2026-07-19（リポジトリ内全文検索 + 主要文書精読。作業開始時の Git 状態: working tree clean・未commit変更なし）
 補足調査日: 2026-07-21（Three.js Object Sculptor の README / LICENSE / upstream commit を確認。既存の実装禁止 Gate は変更しない）
@@ -26,7 +26,7 @@
 2026-07-19 のコード調査（担当 A 報告）より。詳細は `3D_ARCHITECTURE_AND_BOUNDARIES.md` 2 章。
 
 - **src 内に 3D 関連のコード・型・route・feature flag は存在しない**（検索語 3D / glTF / GLB / Three / Babylon / mesh / asset3d / cas3dproj 等で確認）。3D は完全に未実装であり、「未実装の入口」も無い。
-- 2D は Phase 0〜17 + 2D-1a/1b + 2D-2/2D-3 の一部まで実装済み。データ契約（asset.json / project.json / `.casproj` / export ZIP / atlas.json いずれも 0.1.0）、IndexedDB v2（6 store）、migration 機構（現在は空配列）、安全読み込み（magic number・上限・quarantine）、Undo/Redo（History）、AutosaveQueue、Worker 2 本、unit 61+ / E2E 28 ファイル、CI（md のみ変更は build スキップ）が存在する。
+- 2D は Phase 0〜17 + 2D-1a/1b + 2D-2/2D-3 の一部まで実装済み。2026-07-19の調査時点では全保存文書が0.1.0・migration配列は空だったが、ADR-0019（2026-07-21）でAssetだけが0.2.0へ進み、0.1.0→0.2.0 migrationを持つ。Project / export-presets / atlas / appは0.1.0、IndexedDB v2（6 store）、安全読み込み（magic number・上限・quarantine）、Undo/Redo（History）、AutosaveQueue、Worker 2 本、unit / E2E、CI（md のみ変更は build スキップ）が存在する。
 - 3D が再利用できる基盤と分離すべき領域は `3D_ARCHITECTURE_AND_BOUNDARIES.md` 3 章に整理した。
 
 ## 3. 現在有効な決定（3D に関係するもの）

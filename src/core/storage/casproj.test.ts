@@ -156,11 +156,12 @@ describe('casproj の書き出しと読み込み', () => {
 
     const futureAsset = await zipAsync({
       'project.json': strToU8(JSON.stringify(project)),
-      [`assets/${asset.id}/asset.json`]: strToU8(JSON.stringify({ ...asset, version: '0.1.1' })),
+      [`assets/${asset.id}/asset.json`]: strToU8(JSON.stringify({ ...asset, version: '0.2.1' })),
     });
     await expect(importCasproj(futureAsset)).rejects.toMatchObject({
       code: 'unsupported-version',
     });
+    await expect(importCasproj(futureAsset)).rejects.toThrow(/新しい形式/);
 
     const futurePresets = await zipAsync({
       'project.json': strToU8(JSON.stringify({ ...project, assets: [] })),

@@ -1,9 +1,9 @@
 # 2D-2-IMPORT-GATE + 2D-2-IMPORT-OPTIONAL + 2D-2-AI-BOUNDARY 契約監査・実装計画
 
 作成日: 2026-07-19（最終更新: 2026-07-21）
-状態: `G1+L1+Q1+P1+F1+A1+W1+S1 accepted / Slice A〜Dはmainへmerge済み / Slice D closeout・Slice E開始段階`
+状態: `G1+L1+Q1+P1+F1+A1+W1+S1 accepted / Slice A〜D・Slice D closeoutはmainへmerge済み / Slice E source契約補正中`
 正式work package: `2D-2-IMPORT-GATE` + `2D-2-IMPORT-OPTIONAL` + `2D-2-AI-BOUNDARY`（2D完成ロードマップ PR group 11）
-Slice D実装基準main: `be887a1`（PR #128 merge、Slice C preview guard補修closeout）
+Slice E契約補正基準main: `55750d2`（PR #133 merge、Slice D closeout）
 前段: `2D-2-VARIANT + 2D-2-BATCH`（group 10）は全slice merge・遡及Opus review・closeout補修まで完了。
 
 ## 1. 目的
@@ -27,7 +27,7 @@ Slice D実装基準main: `be887a1`（PR #128 merge、Slice C preview guard補修
 - Slice C本体はPR #127（merge `eaeb110`）、preview中の背景永続変更・Undo / Redo防止補修はPR #128（final head `f9e0bc5`、merge `be887a1`）でmainへmerge済み。CI Run #413はlint / format / build / unit / Chromium E2E 125件を含め全成功。独立read-only再reviewは`BLOCKER 0 / MUST 0 / SHOULD 0 / NOTE 0`だがOpus reviewではなく、その事実と残リスクをPR #128へ記録した。
 - 判断必須項目（`2D-2-IMPORT-OPTIONAL` / `2D-2-AI-BOUNDARY`）はADR-0016 / ADR-0017として正式確定済み。Slice B以降はaccepted契約の範囲だけを直列実装する（ROADMAP §6.5）。
 - Slice D開始監査でADR-0007 / ADR-0015とW1の衝突、raw atlas JSONの保存先不在、完全roundtrip不能を確認した。2026-07-20の人間承認によりADR-0018をacceptedとし、現行Chameleon atlasの意味上roundtripを限定例外として固定した。
-- Slice DはPR #129（final head `5b98b24`、merge `33ebad4`）でmainへmerge済み。CI Run #415はlint / format / build / unit / Chromium E2Eを含め全成功した。独立read-only reviewは`BLOCKER 0 / MUST 0 / SHOULD 2 / NOTE 1`だがOpus reviewではない。SHOULD 2件のtile / effect Atlas意味比較E2Eと、外部・不整合Atlas拒否時のquarantine非追加直接assertをcloseout補修し、次はSlice Eをcloseout反映後の最新mainから開始する。
+- Slice DはPR #129（final head `5b98b24`、merge `33ebad4`）でmainへmerge済み。CI Run #415はlint / format / build / unit / Chromium E2Eを含め全成功した。独立read-only reviewのSHOULD 2件（tile / effect Atlas意味比較E2E、外部・不整合Atlas拒否時のquarantine非追加直接assert）はPR #133（merge `55750d2`）でcloseoutした。次はこのmainを基準にSlice Eを進める。
 
 ## 3. 現状実装の確認
 
@@ -121,12 +121,22 @@ Slice D実装基準main: `be887a1`（PR #128 merge、Slice C preview guard補修
 - quarantineはspritesheet画像のsignature不一致・decode失敗・寸法超過だけとする。JSON parse / version / geometry / reference / external format違反は正本無変更の理由付き拒否とし、隔離しない。
 - schema / version / migration、IndexedDB version / store / index、`.casproj`配置、product export ZIP構成、dependencyは変更しない。
 
+### Slice E source保存契約補正（2026-07-21 accepted、ADR-0019）
+
+Slice Eの実装前監査で、SVG / GIFの原本をverbatim source Blobとして保持するF1と、PNG / JPEG / WebPしか許可しないAsset 0.1.0の`TextureRef.mimeType` / schemaが両立しないことを確認した。2026-07-21に人間が選択肢Aを承認したため、UI / animated decodeより先に次を独立PRで固定する。
+
+- Assetだけを`0.2.0`へ進め、既存フィールドを変更しない`0.1.0 -> 0.2.0` migrationを追加する。Project / export-presets / atlas / app versionは`0.1.0`を維持する。
+- source TextureRefへ`image/svg+xml` / `image/gif`を追加し、edit / thumbnailはPNG / JPEG / WebPだけに制限する。
+- APNGはPNGコンテナとしてsource TextureRef / Blobを`image/png`へcanonical化し、元の`image/apng`宣言はprovenanceへ保持する。
+- SVG / GIFの実体署名、`.casproj` staged import、TextureRef / Blob MIME一致、verbatim bytes、旧fixture roundtripを固定する。
+- 通常importの許可MIME、SVG安全rasterize、GIF / APNG全frame decodeとfallback、loss / unsupported UIとそれらの製品フロー回帰E2Eは変更せず、次のSlice E製品実装PRへ分ける。ただし、保存契約の証拠となるSVG / GIF `.casproj`の実ブラウザーdecodeは、本契約補正PRの最小E2Eに含める。
+
 ## 5. 受け入れ条件
 
 ### contract / fixture（Slice A、B）
 
 - ADR-0016 / ADR-0017がacceptedになり、fixtureで固定される。
-- `provenance`不在の既存0.1.0 Assetが無変換・意味不変で読める。`provenance`付きAssetが`.casproj` export → import → save → exportで保持される。
+- `provenance`不在の既存0.1.0 Assetが、既存フィールドを変えず0.2.0へ移行し、provenanceを遡及生成しない。`provenance`付きAssetが`.casproj` export → import → save → exportで保持される。
 - `buildAtlas`出力・engine向け派生出力に`provenance` / AI送信記録が含まれない（既存fixture維持 + 拡張）。
 - flip copy / 複製 / `.casproj`再取り込みのID付替え時に`provenance[].textureId`が一貫して更新され、dangling参照が意味検証で検出される。
 
@@ -143,9 +153,9 @@ Slice D実装基準main: `be887a1`（PR #128 merge、Slice C preview guard補修
 
 ## 6. 安全境界
 
-本監査PRではdocs以外を変更しない。accepted後の実装でも次を変更しない。
+契約監査PR #124ではdocs以外を変更しなかった。後続実装の原則は次のとおりだが、source原本保持との矛盾を解消するため、2026-07-21の人間承認とADR-0019に限りAsset schema / version / migrationを独立した契約補正PRで変更する。
 
-- Project / Asset schema version、migration（provenanceはoptional / additiveでversion維持。ADR-0011 gate 4条件を適用）
+- Project schema / version / migration。AssetはADR-0019のsource MIME追加と0.1.0→0.2.0 migrationだけを例外とし、それ以外の構造を変更しない
 - IndexedDB version / store / index（quarantine storeの形式・上限を含む）
 - `.casproj` ZIP配置、product export ZIP構成、engine向けmanifest
 - source / edit / thumbnail Blobの既存意味、既存Asset / Projectデータ
@@ -160,7 +170,8 @@ accepted後の実装でも、次は別契約まで行わない。
 
 ## 7. 検証方針
 
-- 本監査PR: docs-only。内容確認のみ（コード用testは不要）。
+- 契約監査PR #124: docs-only。内容確認のみ（コード用testは不要）。
+- ADR-0019契約補正PR: Asset migration、source MIME、保存・復旧fixture、実ブラウザーdecode E2Eを含め、lint / format / build / unit / E2E + CIを必須とする。
 - Slice A: fixture追加 + `npm run test`。
 - Slice B以降: lint / format / build / unit / E2E + CI。schema・保存への影響はcompatibility reviewと人間確認。
 
@@ -171,4 +182,4 @@ accepted後の実装でも、次は別契約まで行わない。
 - 状態: **accepted**
 - accepted日: 2026-07-19（ユーザー承認）
 - 実装review条件: 各slice Draft PR → CI → 独立Opus review → 人間確認。A→B→C→D→Eの直列順。各sliceは前sliceのmerge後に最新mainからbranchを作る。
-- Slice AはPR #125、Slice BはPR #126、Slice CはPR #127とrepair PR #128、Slice DはPR #129でmainへmerge済み。Slice Dの非Opus独立reviewで挙がったSHOULD 2件はcloseout補修で回帰検知を固定し、次はSlice Eを直列で進める。各sliceはDraft PR → CI → 独立review → 人間確認の順を維持し、独立Opus reviewの証拠が得られるまではOpus review工程を完了扱いにしない。
+- Slice AはPR #125、Slice BはPR #126、Slice CはPR #127とrepair PR #128、Slice DはPR #129、Slice D closeoutはPR #133でmainへmerge済み。Slice EはADR-0019のsource契約補正PRを先行し、そのmerge後にUI / decode実装PRを直列で進める。各sliceはDraft PR → CI → 独立review → 人間確認の順を維持し、独立Opus reviewの証拠が得られるまではOpus review工程を完了扱いにしない。

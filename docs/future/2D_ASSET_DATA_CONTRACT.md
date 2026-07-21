@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 2D Asset Data Contract
 
-最終更新日: 2026-07-20
+最終更新日: 2026-07-21
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 2D 完成形の保存・座標・互換性契約
 状態: accepted（保存契約。Family / Variantとsource provenanceは実装済み、後続項目を含む）
@@ -9,7 +9,7 @@
 
 ---
 
-> **現状:** 現在の正本は `docs/DATA_FORMAT.md`、`src/core/model/`、`src/core/schema/` であり、`asset.json` / `.casproj` の version は `0.1.0` である。
+> **現状:** 現在の正本は `docs/DATA_FORMAT.md`、`src/core/model/`、`src/core/schema/` である。ADR-0019によりAssetは`0.2.0`、Project / export-presets / Chameleon Atlas / アプリは`0.1.0`で、`.casproj`は各文書を独立にmigrateする。
 > **本書の役割:** 2D 完成形で必要になるデータの意味と、形式変更前に必ず決める契約を定義する。本文だけで現在の型、schema、ZIP 構成、migration を変更してはいけない。Family / Variantは別契約`2D_2_VARIANT_BATCH_PLAN.md`で実装済み。来歴は`2D_2_IMPORT_PLAN.md`のP1に基づき、group 11 Slice B（PR #126）でoptionalな`Asset.provenance?`として実装済みである。
 
 ## 1. 目的
@@ -66,7 +66,7 @@ Project
 │  │  └─ export records      preset と検査記録
 ```
 
-`Asset Family`と`Asset Variant`は当初の将来概念から、accepted `F1+C1+V1+T1`に基づくoptionalな`Project.families`契約へ進んだ。`Asset`型には関係metadataを置かず、field不在の既存`0.1.0`は全Asset standaloneとして無変換で読む。保存形式と後続実装の正本は`docs/future/2D_2_VARIANT_BATCH_PLAN.md`、再検討記録はADR-0003とする。
+`Asset Family`と`Asset Variant`は当初の将来概念から、accepted `F1+C1+V1+T1`に基づくoptionalな`Project.families`契約へ進んだ。`Asset`型には関係metadataを置かず、field不在の既存`0.1.0`はversionだけ0.2.0へ移行し、Familyを遡及生成せず全Asset standaloneとして読む。保存形式と後続実装の正本は`docs/future/2D_2_VARIANT_BATCH_PLAN.md`、再検討記録はADR-0003とする。
 
 別契約では次を明示した。
 
@@ -77,7 +77,7 @@ Project
 
 ## 5. 現在の形式との互換性
 
-現行 `0.1.0` の意味を守る。
+旧Asset `0.1.0` と現行Asset `0.2.0` の意味を守る。0.1.0→0.2.0 migrationはversion以外の既存フィールドを変えない。
 
 | 現在の要素 | 維持する意味 | 将来拡張時の注意 |
 |---|---|---|
@@ -247,7 +247,7 @@ extensions
 
 ## 11. 入力の来歴・安全性
 
-> この章のうち来歴・利用条件・AI 送信記録の保存境界は `docs/adr/0013-provenance-and-ai-record-boundary.md` で決定済み。source-file来歴の具体fieldとSHA-256対象は`docs/future/2D_2_IMPORT_PLAN.md`のP1としてacceptedされ、group 11 Slice B（PR #126）で実装済みである。AI 境界（consent・外部送信・受け入れ経路・手動代替）は `docs/adr/0017-ai-boundary.md` で決定済み。不正入力検査は `2D-1A-VALIDATION` / `2D-1B-INPUT-SAFETY` で扱う。
+> この章のうち来歴・利用条件・AI 送信記録の保存境界は `docs/adr/0013-provenance-and-ai-record-boundary.md` で決定済み。source-file来歴の具体fieldとSHA-256対象は`docs/future/2D_2_IMPORT_PLAN.md`のP1としてacceptedされ、group 11 Slice B（PR #126）で実装済みである。SVG / GIF source MIME、APNGのPNG canonical化、Asset 0.2.0 migrationは`docs/adr/0019-optional-source-mime-and-asset-0.2.0.md`で決定済み。AI 境界（consent・外部送信・受け入れ経路・手動代替）は `docs/adr/0017-ai-boundary.md` で決定済み。不正入力検査は `2D-1A-VALIDATION` / `2D-1B-INPUT-SAFETY` で扱う。
 
 - 元データのファイル名、形式、ハッシュ、取得元、利用条件、作成日を任意で記録できるようにする。
 - source-file recordは`sourceFileName`、`mimeType`、`byteLength`、source Blob原本bytesの`sha256:<64 lowercase hex>`、`importedAt`を持ち、任意でsource `textureId`、手動入力の`origin` / `license`を持つ。1元file = 1 recordとし、旧dataへ遡及生成しない。
@@ -272,7 +272,9 @@ extensions
 
 ## 13. 形式変更と migration の gate
 
-> この章の migration 詳細契約（version 採番・移行手順の不変条件・独立 version・新形式の拒否・migrate と検証の順序）の境界は `docs/adr/0015-migration-detailed-contract.md` で決定済み。入口挙動と復旧境界は `docs/adr/0006-migration-and-recovery-boundaries.md`（実装は別 PR）。
+> この章の migration 詳細契約（version 採番・移行手順の不変条件・独立 version・新形式の拒否・migrate と検証の順序）の境界は `docs/adr/0015-migration-detailed-contract.md` で決定済み。最初の適用であるAsset 0.1.0→0.2.0はADR-0019、入口挙動と復旧境界はADR-0006で固定する。
+
+Asset 0.1.0→0.2.0は`.casproj`だけでなく、IndexedDBのlive Asset、trash、snapshotに残るcopyにも適用する。現行正本へ置く前にmigrate→現行schema検証を行い、失敗時は同一transaction内の全copyを温存する。
 
 次のいずれかに触れる場合は、docs-only の次に別の設計 / migration PR を作り、Opus 4.8 の設計レビューと人間確認を通す。
 

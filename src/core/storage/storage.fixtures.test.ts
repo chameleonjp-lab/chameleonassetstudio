@@ -22,7 +22,7 @@ function readFixturePngBytes(): Uint8Array {
 }
 
 /**
- * 旧形式（v0.1.0、現行の最初の形式）の最小プロジェクトを固定 fixture として持ち、
+ * 旧形式（v0.1.0、最初の形式）の最小プロジェクトを固定 fixture として持ち、
  * .casproj の読み込み → 書き出し → 再読み込みで主要フィールドが変化しないことを確認する
  * （2D-1B-STORAGE §F、ADR-0006 が要求する「旧データ fixture・unit test・roundtrip 確認」）。
  */
@@ -45,14 +45,14 @@ describe('旧 .casproj fixture の roundtrip（v0.1.0）', () => {
     });
 
     const { bundle, appliedMigrations, warnings } = await importCasproj(zipped);
-    // 現行バージョン（0.1.0）と一致するため migrate は発生しない
-    expect(appliedMigrations).toEqual([]);
+    expect(appliedMigrations).toEqual([expect.stringMatching(/asset\.json: 0\.1\.0 -> 0\.2\.0/)]);
     expect(bundle.project.version).toBe('0.1.0');
     expect(bundle.project.families).toBeUndefined();
     // 画像ファイルが揃っているため警告も出ない
     expect(warnings).toEqual([]);
     expect(bundle.project).toEqual(fixtureProject);
-    expect(bundle.assets).toEqual([fixtureAsset]);
+    const migratedAsset = { ...fixtureAsset, version: '0.2.0' };
+    expect(bundle.assets).toEqual([migratedAsset]);
     expect(bundle.files).toHaveLength(1);
     expect(bundle.files[0].path).toBe(`assets/${fixtureAsset.id}/textures/main.png`);
     expect(bundle.files[0].bytes).toEqual(pngBytes);
@@ -64,7 +64,7 @@ describe('旧 .casproj fixture の roundtrip（v0.1.0）', () => {
     expect(reimported.warnings).toEqual([]);
     expect(reimported.bundle.project).toEqual(fixtureProject);
     expect(reimported.bundle.project.families).toBeUndefined();
-    expect(reimported.bundle.assets).toEqual([fixtureAsset]);
+    expect(reimported.bundle.assets).toEqual([migratedAsset]);
     expect(reimported.bundle.files).toHaveLength(1);
     expect(reimported.bundle.files[0].bytes).toEqual(pngBytes);
   });

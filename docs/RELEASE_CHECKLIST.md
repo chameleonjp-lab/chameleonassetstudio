@@ -1,6 +1,6 @@
 # Chameleon Asset Studio リリースチェックリスト
 
-最終更新日: 2026-07-04
+最終更新日: 2026-07-21
 対象: v1.0.0 判定
 上位文書: `docs/implementation/TEST_AND_RELEASE.md` / `docs/implementation/PHASES_14_17.md`（Phase 17）
 
@@ -23,7 +23,7 @@
 - [x] 画像処理中に進捗が表示される（Web Worker 実行）
 - [x] Blob URL の解放が管理されている（decodeImageSource の close 一元化 / downloadBlob の遅延 revoke）
 - [x] 画像 Blob 欠落が書き出し・`.casproj` 書き出しで検出される
-- [x] 既存プロジェクトを壊さない形式拡張のみ（version 0.1.0 のまま、migrate 入口あり）
+- [x] 旧Asset 0.1.0を既存フィールド不変で0.2.0へ移行し、`.casproj`とIndexedDB live / trash / snapshotで互換性・原子性を検証する（Project・export-presets・atlas・appは0.1.0維持）
 
 ## 2. 文書（完了）
 

@@ -1,6 +1,7 @@
 import type { Asset, Project } from '../model';
 import { validateProjectFamilies } from '../model';
 import { validateProject } from '../schema/validate';
+import { migrateAndValidateAssetDocument } from './assetDocument';
 import { hasRecoverableInvalidFamilies } from './projectStore';
 import {
   STORE_ASSETS,
@@ -61,6 +62,10 @@ export async function restoreProject(trashId: string): Promise<void> {
       );
     }
 
+    const migratedAssets = record.assets.map(
+      (asset) => migrateAndValidateAssetDocument(asset, 'ごみ箱のasset').asset,
+    );
+
     const existingProject = await requestToPromise(
       projectStore.get(record.project.id) as IDBRequest<Project | undefined>,
     );
@@ -71,7 +76,7 @@ export async function restoreProject(trashId: string): Promise<void> {
     }
 
     const assetIds = new Set<string>();
-    for (const asset of record.assets) {
+    for (const asset of migratedAssets) {
       if (assetIds.has(asset.id)) {
         throw new StorageError(`ごみ箱内で同じAsset IDが重複しています: ${asset.id}`);
       }
@@ -88,7 +93,7 @@ export async function restoreProject(trashId: string): Promise<void> {
     }
 
     await requestToPromise(projectStore.put(record.project));
-    for (const asset of record.assets) {
+    for (const asset of migratedAssets) {
       const assetRecord: StoredAssetRecord = {
         id: asset.id,
         projectId: record.project.id,

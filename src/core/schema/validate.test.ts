@@ -49,6 +49,13 @@ describe('validateAsset', () => {
     expect(result.errors.join('\n')).toContain('version');
   });
 
+  it('現行schemaはmigrate後のAsset 0.2.0だけを受け付ける', () => {
+    for (const version of ['0.1.0', '0.2.1']) {
+      const nonCurrent = { ...clone(minimalAsset), version };
+      expect(validateAsset(nonCurrent).valid).toBe(false);
+    }
+  });
+
   it('不正な assetType は検証で落ちる', () => {
     const broken = clone(minimalAsset) as Record<string, unknown>;
     broken.assetType = 'spaceship';
@@ -88,6 +95,56 @@ describe('validateAsset', () => {
     extended.futureFeature = { bones: [] };
     const result = validateAsset(extended);
     expect(result.valid).toBe(true);
+  });
+
+  it('SVG / GIF は source TextureRef だけで許可する', () => {
+    for (const [mimeType, extension] of [
+      ['image/svg+xml', 'svg'],
+      ['image/gif', 'gif'],
+    ] as const) {
+      const sourceAsset = clone(minimalAsset) as Record<string, unknown>;
+      sourceAsset.textures = [
+        {
+          id: `tex_source_${extension}`,
+          kind: 'source',
+          name: 'original',
+          mimeType,
+          size: { width: 8, height: 8 },
+          path: `source/original.${extension}`,
+        },
+      ];
+      expect(validateAsset(sourceAsset)).toEqual({ valid: true, errors: [] });
+
+      const editAsset = clone(sourceAsset) as Record<string, unknown>;
+      (editAsset.textures as Array<Record<string, unknown>>)[0].kind = 'edit';
+      expect(validateAsset(editAsset).valid).toBe(false);
+
+      const thumbnailAsset = clone(sourceAsset) as Record<string, unknown>;
+      (thumbnailAsset.textures as Array<Record<string, unknown>>)[0].kind = 'thumbnail';
+      expect(validateAsset(thumbnailAsset).valid).toBe(false);
+    }
+  });
+
+  it('APNGはsource TextureRefでimage/pngへcanonical化し、元宣言はprovenanceに保持する', () => {
+    const canonical = clone(characterAsset) as Record<string, unknown>;
+    canonical.provenance = [
+      {
+        sourceFileName: 'animated.png',
+        mimeType: 'image/apng',
+        byteLength: 123,
+        hash: `sha256:${'a'.repeat(64)}`,
+        importedAt: '2026-07-21T00:00:00.000Z',
+        textureId: 'tex_source',
+      },
+    ];
+    expect(validateAsset(canonical)).toEqual({ valid: true, errors: [] });
+
+    const nonCanonical = clone(canonical) as Record<string, unknown>;
+    const source = (nonCanonical.textures as Array<Record<string, unknown>>).find(
+      (texture) => texture.kind === 'source',
+    )!;
+    source.mimeType = 'image/apng';
+    expect(validateAsset(nonCanonical).valid).toBe(false);
   });
 
   it('正式source-file provenanceを検証し、旧open recordとAI候補recordを保持する', () => {

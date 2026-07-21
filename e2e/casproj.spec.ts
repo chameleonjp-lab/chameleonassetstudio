@@ -20,6 +20,60 @@ async function makePngBuffer(page: Page, width = 64, height = 64): Promise<Buffe
   return Buffer.from(dataUrl.split(',')[1], 'base64');
 }
 
+function solidGifBytes(width: number, height: number): Uint8Array {
+  const codes = Array.from({ length: width * height }, () => [4, 0]).flat();
+  codes.push(5);
+  const imageData: number[] = [];
+  let buffer = 0;
+  let bitCount = 0;
+  for (const code of codes) {
+    buffer |= code << bitCount;
+    bitCount += 3;
+    while (bitCount >= 8) {
+      imageData.push(buffer & 0xff);
+      buffer >>= 8;
+      bitCount -= 8;
+    }
+  }
+  if (bitCount > 0) imageData.push(buffer & 0xff);
+  return new Uint8Array([
+    0x47,
+    0x49,
+    0x46,
+    0x38,
+    0x39,
+    0x61,
+    width & 0xff,
+    width >> 8,
+    height & 0xff,
+    height >> 8,
+    0x80,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0xff,
+    0xff,
+    0xff,
+    0x2c,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    width & 0xff,
+    width >> 8,
+    height & 0xff,
+    height >> 8,
+    0x00,
+    0x02,
+    imageData.length,
+    ...imageData,
+    0x00,
+    0x3b,
+  ]);
+}
+
 async function setupProjectWithImage(
   page: Page,
   name: string,
@@ -126,6 +180,109 @@ test('.casproj を書き出し、削除後に読み込むと画像ごと復元�
     buffer: reexportBytes,
   });
   await expect(page.getByRole('button', { name: '「casproj-rt」を開く' })).toBeVisible();
+});
+
+test('SVG / GIF sourceを実ブラウザーでdecodeし、.casproj再書き出しでも原本bytesを保持する', async ({
+  page,
+}) => {
+  const [projectText, assetText] = await Promise.all([
+    readFile('src/core/storage/__fixtures__/v0.1.0-project.json', 'utf-8'),
+    readFile('src/core/storage/__fixtures__/v0.1.0-asset.json', 'utf-8'),
+  ]);
+  const baseAsset = JSON.parse(assetText) as Record<string, unknown>;
+  const makeSourceAsset = (input: {
+    id: string;
+    mimeType: 'image/svg+xml' | 'image/gif';
+    extension: 'svg' | 'gif';
+  }) => {
+    const asset = structuredClone(baseAsset) as {
+      [key: string]: unknown;
+      textures: Array<Record<string, unknown>>;
+      layers: Array<Record<string, unknown>>;
+    };
+    const textureId = `tex_${input.extension}_source`;
+    asset.version = '0.2.0';
+    asset.id = input.id;
+    asset.name = input.id;
+    asset.displayName = input.id;
+    asset.textures = [
+      {
+        ...asset.textures[0],
+        id: textureId,
+        kind: 'source',
+        name: 'original',
+        mimeType: input.mimeType,
+        path: `source/original.${input.extension}`,
+      },
+    ];
+    asset.layers = asset.layers.map((layer) => ({ ...layer, textureId }));
+    return asset;
+  };
+  const svgAsset = makeSourceAsset({
+    id: 'asset_svg_browser_source',
+    mimeType: 'image/svg+xml',
+    extension: 'svg',
+  });
+  const gifAsset = makeSourceAsset({
+    id: 'asset_gif_browser_source',
+    mimeType: 'image/gif',
+    extension: 'gif',
+  });
+  const project = JSON.parse(projectText) as Record<string, unknown>;
+  project.name = 'source-contract-browser';
+  project.assets = [svgAsset, gifAsset].map((asset) => ({
+    id: asset.id,
+    name: asset.name,
+    displayName: asset.displayName,
+    assetType: asset.assetType,
+  }));
+  const svgBytes = strToU8(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#663399"/></svg>',
+  );
+  const gifBytes = solidGifBytes(8, 8);
+  const zipped = zipSync({
+    'project.json': strToU8(JSON.stringify(project)),
+    [`assets/${svgAsset.id}/asset.json`]: strToU8(JSON.stringify(svgAsset)),
+    [`assets/${svgAsset.id}/source/original.svg`]: svgBytes,
+    [`assets/${gifAsset.id}/asset.json`]: strToU8(JSON.stringify(gifAsset)),
+    [`assets/${gifAsset.id}/source/original.gif`]: gifBytes,
+  });
+
+  await page.goto('/');
+  await page.getByLabel('.casproj を読み込む').setInputFiles({
+    name: 'source-contract.casproj',
+    mimeType: 'application/zip',
+    buffer: Buffer.from(zipped),
+  });
+  const openButton = page.getByRole('button', { name: '「source-contract-browser」を開く' });
+  await expect(openButton).toBeVisible();
+  await openButton.click();
+  await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: '.casproj をダウンロード' }).click(),
+  ]);
+  const path = await download.path();
+  const reexported = unzipSync(await readFile(path!));
+  const svgPath = Object.keys(reexported).find((candidate) => candidate.endsWith('/original.svg'));
+  const gifPath = Object.keys(reexported).find((candidate) => candidate.endsWith('/original.gif'));
+  expect(svgPath).toBeTruthy();
+  expect(gifPath).toBeTruthy();
+  expect(reexported[svgPath!]).toEqual(svgBytes);
+  expect(reexported[gifPath!]).toEqual(gifBytes);
+
+  page.on('dialog', (dialog) => void dialog.accept());
+  await page.goto('/');
+  await page.getByRole('button', { name: '「source-contract-browser」を削除' }).click();
+  await page.getByLabel('.casproj を読み込む').setInputFiles({
+    name: 'source-contract-reexport.casproj',
+    mimeType: 'application/zip',
+    buffer: await readFile(path!),
+  });
+  await expect(
+    page.getByRole('button', { name: '「source-contract-browser」を開く' }),
+  ).toBeVisible();
 });
 
 test('casproj ではないファイルを読み込むと理由が表示される', async ({ page }) => {

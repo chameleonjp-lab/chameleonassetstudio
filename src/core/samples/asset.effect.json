@@ -1,6 +1,6 @@
 {
   "format": "chameleon-asset",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "id": "asset_effect_sample",
   "assetType": "effect",
   "name": "hit_spark",

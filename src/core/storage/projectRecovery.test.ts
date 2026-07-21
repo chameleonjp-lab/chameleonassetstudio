@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createEmptyProject, type Asset, type Project } from '../model';
 import characterAsset from '../samples/asset.character.json';
-import { resetDbForTests } from './db';
+import { requestToPromise, resetDbForTests, runTransaction, STORE_ASSETS } from './db';
 import { restoreProject } from './index';
 import {
   deleteProject,
@@ -43,6 +43,60 @@ describe('Project trash復元のID衝突拒否', () => {
     expect((await loadProject(project.id)).project).toEqual(project);
     expect((await loadAsset(asset.id)).asset).toEqual(asset);
     expect(await listTrash()).toEqual([]);
+  });
+
+  it('旧0.1.0 Assetをごみ箱から復元すると0.2.0へ移行し、未知fieldを保持する', async () => {
+    const current = characterAsset as unknown as Asset;
+    const legacy = {
+      ...structuredClone(current),
+      id: 'asset_legacy_trash',
+      version: '0.1.0',
+      legacyRoot: { keep: true },
+    } as unknown as Asset;
+    const project = projectWithAssets('旧Asset復元', [legacy]);
+    await saveProject(project);
+    await runTransaction([STORE_ASSETS], 'readwrite', (tx) =>
+      requestToPromise(
+        tx.objectStore(STORE_ASSETS).put({
+          id: legacy.id,
+          projectId: project.id,
+          data: legacy,
+        }),
+      ),
+    );
+    await deleteProject(project.id);
+
+    await restoreProject(project.id);
+
+    const restored = await runTransaction([STORE_ASSETS], 'readonly', (tx) =>
+      requestToPromise(tx.objectStore(STORE_ASSETS).get(legacy.id)),
+    );
+    expect(restored).toMatchObject({
+      data: { version: '0.2.0', legacyRoot: { keep: true } },
+    });
+    expect((restored as { data: Record<string, unknown> }).data).not.toHaveProperty('provenance');
+    expect(await listTrash()).toEqual([]);
+  });
+
+  it('ごみ箱内にfuture AssetがあればProjectも旧Assetも部分復元しない', async () => {
+    const base = characterAsset as unknown as Asset;
+    const legacy = { ...base, id: 'asset_trash_legacy', version: '0.1.0' } as unknown as Asset;
+    const future = { ...base, id: 'asset_trash_future', version: '0.2.1' } as unknown as Asset;
+    const project = projectWithAssets('復元migration失敗', [legacy, future]);
+    await saveProject(project);
+    await runTransaction([STORE_ASSETS], 'readwrite', async (tx) => {
+      const store = tx.objectStore(STORE_ASSETS);
+      await requestToPromise(store.put({ id: legacy.id, projectId: project.id, data: legacy }));
+      await requestToPromise(store.put({ id: future.id, projectId: project.id, data: future }));
+    });
+    await deleteProject(project.id);
+
+    await expect(restoreProject(project.id)).rejects.toThrow(/新しい形式/);
+
+    await expect(loadProject(project.id)).rejects.toThrow(/見つかりません/);
+    await expect(loadAsset(legacy.id)).rejects.toThrow(/見つかりません/);
+    await expect(loadAsset(future.id)).rejects.toThrow(/見つかりません/);
+    expect(await listTrash()).toHaveLength(1);
   });
 
   it('同じProject IDが正本storeに存在する場合は既存Projectを上書きせずtrashを残す', async () => {

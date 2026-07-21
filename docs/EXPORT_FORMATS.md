@@ -1,7 +1,7 @@
 # Chameleon Asset Studio 書き出し形式書
 
-最終更新日: 2026-07-20
-対象バージョン: 0.1.0  
+最終更新日: 2026-07-21
+対象バージョン: アプリ 0.1.0 / Asset 0.2.0 / atlas 0.1.0
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`
 
 ---

@@ -1,7 +1,7 @@
 # 3D Asset Data Contract（3D データ契約・候補案）
 
 状態: **draft / human review required**
-最終更新日: 2026-07-20（第2改訂: nodeBinding / rigDraft / derived 連鎖 parentRef / rigged・motion-baked kind を追加）
+最終更新日: 2026-07-21（2D Asset 0.2.0参照を同期。3D案の調査基準commitは変更しない）
 調査基準commit: `7018984ba9e6867c6fab12fb313308218a35c22b`
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 上位文書: `README.md`（本ディレクトリ）, `3D_ARCHITECTURE_AND_BOUNDARIES.md`
@@ -41,7 +41,7 @@
 
 | 既存 2D 契約 | 3D 導入後の扱い |
 |---|---|
-| `asset.json`（`chameleon-asset` 0.1.0） | 変更しない。3D の型・フィールドを追加しない |
+| `asset.json`（`chameleon-asset` 0.2.0。旧0.1.0はmigration） | 変更しない。3D の型・フィールドを追加しない |
 | `project.json`（`chameleon-project` 0.1.0） | 変更しない。3D アセットを既存 Project へ混ぜない |
 | `.casproj` | 変更しない。3D は別拡張子 `.cas3dproj` を使う（推奨案。12 章） |
 | 2D export ZIP / `atlas.json` | 変更しない |
