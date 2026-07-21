@@ -153,7 +153,7 @@ flowchart TB
 |---|---|---|---|---|
 | P1 | 非採用の法則（使われない理由） | Vision 3 章 | 粗 | Vision（確定寄り） |
 | P2 | 多機能×軽量の矛盾 | Vision 3 章 / Arch 1 章 | 粗 | Arch（確定寄り） |
-| P3 | install-on-demand | Arch 1・4 章 | 粗 | `APP_MODULE_CATALOG.md` *(予定)* |
+| P3 | install-on-demand | Arch 1・4 章 | 中 | `APP_MODULE_CATALOG.md` *(予定)*（F-MOD-01 発見/02 導入で具体化） |
 | P4 | 未使用ゼロコスト不変条件 | Arch 1・7 章 | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* |
 | P5 | 目的分離 2D/3D | Vision 4 章 | 粗 | `APP_2D_EDITION_SPEC.md` / `APP_3D_EDITION_SPEC.md` *(予定)* |
 | G5 | 非破壊・元データ保持 | Vision 6 章 / Arch 5 章 | 詳 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-03 で正本化） |
@@ -161,7 +161,7 @@ flowchart TB
 | A2 | Core 契約 | Arch 2 章 | 中 | `APP_CORE_CONTRACT.md` *(予定)*（F-CORE-01 で一部具体化） |
 | A3 | Edition Runtime | Arch 2 章 | 粗 | `APP_2D_EDITION_SPEC.md` / `APP_3D_EDITION_SPEC.md` *(予定)* |
 | A4 | Feature Modules | Arch 2 章 | 粗 | `APP_MODULE_CATALOG.md` *(予定)* |
-| A5 | Catalog | Arch 2 章 | 粗 | `APP_MODULE_CATALOG.md` *(予定)* |
+| A5 | Catalog | Arch 2 章 | 詳 | `APP_MODULE_CATALOG.md` *(予定)*（F-MOD-01 で正本化） |
 | A6 | Manifest 契約 | Arch 3 章 | 粗 | `APP_MODULE_MANIFEST_SPEC.md` *(予定)* |
 | A7 | 依存解決 | Arch 3・4 章 | 粗 | `APP_MODULE_MANIFEST_SPEC.md` *(予定)* |
 | A8 | capability 権限 | Arch 3 章 | 粗 | `APP_CORE_CONTRACT.md` *(予定)* |
@@ -188,6 +188,7 @@ flowchart TB
 | F-CORE-05 | 保存形式・バージョニング・migration | `features/F-CORE-05-save-format-versioning-migration.md` | 詳 | —（D1/D2/D4 の正本） |
 | F-CORE-03 | 非破壊編集モデル（source 保持・派生分離） | `features/F-CORE-03-non-destructive-edit-model.md` | 詳 | —（G5 の正本） |
 | F-CORE-04 | Undo/Redo & 履歴 | `features/F-CORE-04-undo-redo-history.md` | 詳 | —（非破壊派生の上を航法） |
+| F-MOD-01 | モジュールカタログ & 発見 | `features/F-MOD-01-module-catalog-discovery.md` | 詳 | —（A5 の正本） |
 
 ---
 
@@ -249,6 +250,11 @@ flowchart TB
 | E50 | F-CORE-04 | 依存 | F-CORE-03 | 履歴は非破壊派生の上を航法する |
 | E51 | F-CORE-04 | 尊重 | G5 | Undo/Redo は Source を変更しない |
 | E52 | F-CORE-04 | 依存 | A9 | モジュール操作の履歴登録を Extension Host が保証 |
+| E53 | F-MOD-01 | 実現 | A5 | 軽量メタの Catalog を正本化 |
+| E54 | F-MOD-01 | 依存 | A6 | 一覧するメタは manifest 契約に由来 |
+| E55 | F-MOD-01 | 実現 | P3 | install-on-demand の「発見」半分を担う |
+| E56 | F-MOD-01 | 尊重 | P4 | カタログ閲覧は実体を読まずゼロコスト |
+| E57 | F-MOD-01 | 尊重 | G1 | 未検証は表示のみ・インストール導線を出さない |
 
 ---
 
@@ -269,7 +275,7 @@ flowchart TB
 
 > 詳細化の順序自体は `APP_ROADMAP_DECISIONS_OPEN_ITEMS.md` の Stage と整合させる。表の「前提」列は、上流を先に固めるための依存である。
 >
-> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01**, **F-CORE-05**, **F-CORE-03**, **F-CORE-04**。
+> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01**, **F-CORE-05**, **F-CORE-03**, **F-CORE-04**, **F-MOD-01**。
 
 ---
 
