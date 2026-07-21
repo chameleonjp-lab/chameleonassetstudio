@@ -137,11 +137,12 @@ PR #135（merge `f5bb322`）で上記source保存契約補正はmainへ反映済
 ### Slice E製品実行契約（2026-07-21 accepted、1A + 2A + 3A、ADR-0020）
 
 - 新規Assetのpicker / drag & dropだけをSVG / GIF / APNGへ拡張する。通常画像とのmixed batchは最大16 fileで、全件準備成功時だけ共通previewへ進む。layer追加、連番、sheet、tileset、atlasの画像gateはPNG / JPEG / WebPを維持する。
-- SVGはUTF-8原本をverbatim sourceとして残し、script、SVG animation、event handler、埋め込みHTML、DOCTYPE、外部href / src、base URL、外部CSS / URL等を厳格拒否してからbrowser画像contextでPNG pixelへrasterizeする。sourceをsanitizeせず、active構造の拒否はquarantineへ入れない。
-- GIF block列とPNG chunk列をboundedに走査し、APNGはIDAT前の一意な`acTL`と`fcTL`件数を検査する。animated画像は1〜16frameだけを受け、17frame以上をtruncateしない。
+- SVGはUTF-8原本をverbatim sourceとして残し、script、SVG / CSS animation、font、event handler、埋め込みHTML、DOCTYPE、外部href / src、base URL、外部CSS / URL・CSS画像関数等を厳格拒否してからbrowser画像contextでPNG pixelへrasterizeする。sourceをsanitizeせず、active構造の拒否はquarantineへ入れない。malformed XML / invalid UTF-8はsignature失敗として隔離する。
+- GIF block列とPNG chunk列をboundedに走査し、logical screen / IHDRと各frame範囲を4096px上限とともにcodec起動前に検査する。APNGはIDAT前の一意な`acTL`と`fcTL`件数を検査する。animated画像は1〜16frameだけを受け、17frame以上をtruncateしない。
 - `ImageDecoder`対応時は全frameを順次decodeし、宣言件数と照合してresourceを即時解放する。API不在・MIME非対応だけは先頭frameへfallbackし、対応decoderのbad data / 途中失敗はdecode失敗としてquarantineへ接続する。
 - 全durationが有効なら`round(frameCount * 1000 / totalDurationMs)`を1〜240へclampしたuniform fpsとし、元総時間だけをinformationalな`Animation.durationMs`へ残す。duration欠損は8fpsとし`durationMs`を追加しない。可変時間・丸め・clampはloss表示する。
-- 無限repeatだけを`loop: true`とし、repeatなしと有限repeatは`loop: false`にする。有限回数を無限loopへ変えず、回数非保持をloss表示する。
+- 無限repeatだけを`loop: true`とし、repeatなしと有限repeatは`loop: false`にする。有限回数を無限loopへ変えず、回数非保持をloss表示する。対応decoderの値で上書きせず、preflightのrepeat分類を全環境で正本とする。
+- 空または`application/octet-stream`のMIMEは、既知拡張子と実体signatureが一致する場合だけ既知MIMEへ正規化する。矛盾する実体やその他の非空MIMEは許可しない。
 - Aseprite / PSD / OpenRaster / Kritaは形式別の理由とPNG / WebP / 手動格子Sheet経由の代替手順を常時表示する。専用原本だけのreference保存は行わない。
 - schema / version / migration、IndexedDB version / store / index、`.casproj`配置、product export ZIP、dependencyは変更しない。
 

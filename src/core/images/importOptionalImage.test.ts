@@ -4,6 +4,7 @@ import {
   RASTER_IMPORT_ACCEPT,
   animationLoopForRepetition,
   explainUnsupportedNewAssetFile,
+  genericFileMimeTypeMatches,
 } from './importOptionalImage';
 
 describe('new Asset optional import gate', () => {
@@ -27,5 +28,22 @@ describe('new Asset optional import gate', () => {
     expect(animationLoopForRepetition('none')).toBe(false);
     expect(animationLoopForRepetition('finite')).toBe(false);
     expect(animationLoopForRepetition('infinite')).toBe(true);
+  });
+
+  it.each([
+    ['safe.svg', 'image/svg+xml'],
+    ['anim.gif', 'image/gif'],
+    ['anim.apng', 'image/png'],
+    ['still.png', 'image/png'],
+    ['photo.jpg', 'image/jpeg'],
+    ['photo.jpeg', 'image/jpeg'],
+    ['image.webp', 'image/webp'],
+  ] as const)('generic MIMEの%sは拡張子と%s実体が一致する場合だけ許可する', (name, detected) => {
+    expect(genericFileMimeTypeMatches(name, detected)).toBe(true);
+  });
+
+  it('generic MIMEでも拡張子と実体が矛盾するfileを拒否する', () => {
+    expect(genericFileMimeTypeMatches('spoofed.svg', 'image/gif')).toBe(false);
+    expect(genericFileMimeTypeMatches('unknown.bin', 'image/png')).toBe(false);
   });
 });

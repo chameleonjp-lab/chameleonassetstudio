@@ -29,8 +29,8 @@
 
 - [x] 1A + 2A + 3A / ADR-0020で入口、frame / 時間 / repeat写像、SVG安全境界を人間承認済み
 - [ ] 新規AssetだけがSVG / GIF / APNGを受け、layer / 連番 / sheet / tileset / atlasのPNG / JPEG / WebP gateが変わらない
-- [ ] safe SVGのrasterize・source原本、active / external SVGの非実行・非通信・非quarantineをChromium E2Eで確認する
-- [ ] GIF / APNGの最大16frame、全frame pixel、uniform fps / duration、loop、APNG canonical sourceをChromium E2Eで確認する
+- [ ] safe SVGのrasterize・source原本、active / external CSS / font SVGの非実行・非通信・非quarantine、malformed SVGのquarantineをChromium E2Eで確認する
+- [ ] GIF / APNGのcodec前寸法検査、最大16frame、全frame pixel、uniform fps / duration、preflight由来loop、APNG canonical sourceをChromium E2Eで確認する
 - [ ] `ImageDecoder`不在時の先頭frame + 8fps + loss、17frame / unsupported拒否、取消 / Undo / Redo / reload、375 x 667 touchをChromium E2Eで確認する
 - [ ] Slice E製品PRのlint / format / build / unit / Chromium E2E / GitHub Actionsが全成功し、固定headの独立read-only reviewでBLOCKER 0 / MUST 0を確認する
 

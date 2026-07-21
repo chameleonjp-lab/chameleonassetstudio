@@ -303,7 +303,7 @@ test('safe SVGをrasterizeし、source原本・Undo・reloadを維持する', as
     '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#663399"/></svg>',
   );
   const input = page.getByLabel('画像を選ぶ');
-  await input.setInputFiles({ name: 'safe.svg', mimeType: 'image/svg+xml', buffer: svg });
+  await input.setInputFiles({ name: 'safe.svg', mimeType: '', buffer: svg });
   const dialog = page.getByRole('dialog', { name: '取り込み確定前preview' });
   await expect(dialog).toContainText('safe.svgをbrowser画像contextで8 x 8のPNGへrasterizeします');
   await expect(dialog).toContainText('ベクター構造は編集対象にせず');
@@ -368,6 +368,57 @@ test('active/external SVGをdecode前に拒否し、script・通信・正本・q
   expect(externalRequests).toEqual([]);
   expect(await readAssets(page)).toHaveLength(0);
   expect(await readQuarantineCount(page)).toBe(0);
+
+  for (const [name, source] of [
+    [
+      'external-css.svg',
+      '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><style>rect{mask-image:image-set("https://example.invalid/mask.png" 1x)}</style><rect width="8" height="8"/></svg>',
+    ],
+    [
+      'animated-css.svg',
+      '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><style>@keyframes pulse{to{opacity:0}}rect{animation:pulse 1s infinite}</style><rect width="8" height="8"/></svg>',
+    ],
+    [
+      'font.svg',
+      '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><text font-family="serif">font</text></svg>',
+    ],
+  ] as const) {
+    await page.getByLabel('画像を選ぶ').setInputFiles({
+      name,
+      mimeType: 'image/svg+xml',
+      buffer: Buffer.from(source),
+    });
+    await expect(page.getByRole('alert')).toContainText('安全のためSVGを取り込めません');
+  }
+  expect(externalRequests).toEqual([]);
+  expect(await readAssets(page)).toHaveLength(0);
+  expect(await readQuarantineCount(page)).toBe(0);
+});
+
+test('malformed・invalid UTF-8 SVGはsignature失敗としてquarantineする', async ({ page }) => {
+  await createProject(page, 'malformed SVG');
+  const input = page.getByLabel('画像を選ぶ');
+  await input.setInputFiles({
+    name: 'malformed.svg',
+    mimeType: 'image/svg+xml',
+    buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><g></svg>'),
+  });
+  await expect(page.getByRole('alert')).toContainText('SVGのXML構造を解析できませんでした');
+
+  const opening = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><desc>');
+  await input.setInputFiles({
+    name: 'invalid-utf8.svg',
+    mimeType: 'image/svg+xml',
+    buffer: Buffer.concat([
+      opening,
+      Buffer.alloc(4096 - opening.length, 0x61),
+      Buffer.from([0xff]),
+      Buffer.from('</desc></svg>'),
+    ]),
+  });
+  await expect(page.getByRole('alert')).toContainText('SVGはUTF-8で保存してください');
+  expect(await readAssets(page)).toHaveLength(0);
+  expect(await readQuarantineCount(page)).toBe(2);
 });
 
 test('animated GIFを全frame化し、総durationをuniform fpsへ写像する', async ({ page }) => {
@@ -440,7 +491,7 @@ test('ImageDecoder非対応環境では先頭frame + 必須loss確認へfallback
   await createProject(page, 'animated fallback');
   await page.getByLabel('画像を選ぶ').setInputFiles({
     name: 'fallback.gif',
-    mimeType: 'image/gif',
+    mimeType: 'application/octet-stream',
     buffer: animatedGifBuffer(),
   });
   const dialog = page.getByRole('dialog', { name: '取り込み確定前preview' });
@@ -452,6 +503,20 @@ test('ImageDecoder非対応環境では先頭frame + 必須loss確認へfallback
   expect(asset.animations[0]).toMatchObject({ fps: 8, loop: true });
   expect(asset.animations[0].durationMs).toBeUndefined();
   expect(await readQuarantineCount(page)).toBe(0);
+});
+
+test('animated画像の巨大宣言canvasをcodec起動前に拒否してquarantineする', async ({ page }) => {
+  await createProject(page, 'oversized animation');
+  const gif = animatedGifBuffer();
+  gif.writeUInt16LE(5000, 6);
+  await page.getByLabel('画像を選ぶ').setInputFiles({
+    name: 'oversized.gif',
+    mimeType: 'image/gif',
+    buffer: gif,
+  });
+  await expect(page.getByRole('alert')).toContainText('画像サイズが大きすぎます（5000 x 2）');
+  expect(await readAssets(page)).toHaveLength(0);
+  expect(await readQuarantineCount(page)).toBe(1);
 });
 
 test('unsupported形式と17frame GIFを理由付き拒否し、正本・quarantineを変更しない', async ({

@@ -16,12 +16,12 @@ export type AnimationRepetition = 'none' | 'finite' | 'infinite';
 export interface AnimatedImagePreflight {
   frameCount: number;
   repetition: AnimationRepetition;
+  width: number;
+  height: number;
 }
 
-export interface PngAnimationInspection {
+export interface PngAnimationInspection extends AnimatedImagePreflight {
   animated: boolean;
-  frameCount: number;
-  repetition: AnimationRepetition;
 }
 
 function matches(bytes: Uint8Array, expected: readonly number[], offset = 0): boolean {
@@ -39,6 +39,10 @@ function readUint32BigEndian(bytes: Uint8Array, offset: number): number {
     (bytes[offset + 2] << 8) +
     bytes[offset + 3]
   );
+}
+
+function readUint16LittleEndian(bytes: Uint8Array, offset: number): number {
+  return bytes[offset] | (bytes[offset + 1] << 8);
 }
 
 function ascii(bytes: Uint8Array, offset: number, length: number): string {
@@ -66,6 +70,8 @@ export function inspectPngAnimation(bytes: Uint8Array): PngAnimationInspection {
   let offset = PNG_SIGNATURE.length;
   let sawIdat = false;
   let sawIend = false;
+  let width: number | null = null;
+  let height: number | null = null;
   let frameCount: number | null = null;
   let frameControlCount = 0;
   let repetition: AnimationRepetition = 'none';
@@ -77,7 +83,22 @@ export function inspectPngAnimation(bytes: Uint8Array): PngAnimationInspection {
     const dataOffset = offset + 8;
     assertByteRange(bytes, dataOffset, dataLength + 4, `PNG ${type} chunk`);
 
-    if (type === 'acTL') {
+    if (width === null && type !== 'IHDR') {
+      unsafeImage('PNGの先頭chunkがIHDRではありません。');
+    }
+    if (type === 'IHDR') {
+      if (width !== null || offset !== PNG_SIGNATURE.length) {
+        unsafeImage('PNGのIHDR chunk位置または件数が不正です。');
+      }
+      if (dataLength !== 13) {
+        unsafeImage('PNGのIHDR chunk lengthが13ではありません。');
+      }
+      width = readUint32BigEndian(bytes, dataOffset);
+      height = readUint32BigEndian(bytes, dataOffset + 4);
+      if (width < 1 || height < 1) {
+        unsafeImage('PNGのIHDR画像サイズは1以上必要です。');
+      }
+    } else if (type === 'acTL') {
       if (frameCount !== null) {
         unsafeImage('APNGのacTL chunkが複数あります。');
       }
@@ -94,6 +115,24 @@ export function inspectPngAnimation(bytes: Uint8Array): PngAnimationInspection {
       }
       repetition = playCount === 0 ? 'infinite' : playCount === 1 ? 'none' : 'finite';
     } else if (type === 'fcTL') {
+      if (dataLength !== 26) {
+        unsafeImage('APNGのfcTL chunk lengthが26ではありません。');
+      }
+      const frameWidth = readUint32BigEndian(bytes, dataOffset + 4);
+      const frameHeight = readUint32BigEndian(bytes, dataOffset + 8);
+      const frameX = readUint32BigEndian(bytes, dataOffset + 12);
+      const frameY = readUint32BigEndian(bytes, dataOffset + 16);
+      if (frameWidth < 1 || frameHeight < 1) {
+        unsafeImage('APNGのframe寸法は1以上必要です。');
+      }
+      if (
+        width === null ||
+        height === null ||
+        frameX + frameWidth > width ||
+        frameY + frameHeight > height
+      ) {
+        unsafeImage('APNGのframe範囲がIHDR canvasを超えています。');
+      }
       frameControlCount += 1;
     } else if (type === 'IDAT') {
       sawIdat = true;
@@ -112,15 +151,18 @@ export function inspectPngAnimation(bytes: Uint8Array): PngAnimationInspection {
   if (!sawIend) {
     unsafeImage('PNGのIEND chunkがありません。');
   }
+  if (width === null || height === null) {
+    unsafeImage('PNGのIHDR chunkがありません。');
+  }
   if (frameCount === null) {
-    return { animated: false, frameCount: 1, repetition: 'none' };
+    return { animated: false, frameCount: 1, repetition: 'none', width, height };
   }
   if (frameControlCount !== frameCount) {
     unsafeImage(
       `APNGの宣言frame数とfcTL件数が一致しません（宣言 ${frameCount} / fcTL ${frameControlCount}）。`,
     );
   }
-  return { animated: true, frameCount, repetition };
+  return { animated: true, frameCount, repetition, width, height };
 }
 
 interface GifSubBlocks {
@@ -160,6 +202,12 @@ export function inspectGifAnimation(bytes: Uint8Array): AnimatedImagePreflight {
     unsafeImage('GIF署名またはlogical screen descriptorを確認できませんでした。');
   }
 
+  const width = readUint16LittleEndian(bytes, 6);
+  const height = readUint16LittleEndian(bytes, 8);
+  if (width < 1 || height < 1) {
+    unsafeImage('GIFのlogical screen寸法は1以上必要です。');
+  }
+
   let offset = 13;
   const packed = bytes[10];
   if ((packed & 0x80) !== 0) {
@@ -181,6 +229,16 @@ export function inspectGifAnimation(bytes: Uint8Array): AnimatedImagePreflight {
     }
     if (marker === 0x2c) {
       assertByteRange(bytes, offset, 9, 'GIF image descriptor');
+      const frameX = readUint16LittleEndian(bytes, offset);
+      const frameY = readUint16LittleEndian(bytes, offset + 2);
+      const frameWidth = readUint16LittleEndian(bytes, offset + 4);
+      const frameHeight = readUint16LittleEndian(bytes, offset + 6);
+      if (frameWidth < 1 || frameHeight < 1) {
+        unsafeImage('GIFのframe寸法は1以上必要です。');
+      }
+      if (frameX + frameWidth > width || frameY + frameHeight > height) {
+        unsafeImage('GIFのframe範囲がlogical screenを超えています。');
+      }
       const localPacked = bytes[offset + 8];
       offset += 9;
       if ((localPacked & 0x80) !== 0) {
@@ -226,7 +284,7 @@ export function inspectGifAnimation(bytes: Uint8Array): AnimatedImagePreflight {
   if (frameCount < 1) {
     unsafeImage('GIFに画像frameがありません。');
   }
-  return { frameCount, repetition };
+  return { frameCount, repetition, width, height };
 }
 
 const BANNED_SVG_ELEMENT_NAMES = [
@@ -248,6 +306,13 @@ const BANNED_SVG_ELEMENT_NAMES = [
   'video',
   'source',
   'meta',
+  'text',
+  'tspan',
+  'textpath',
+  'font',
+  'font-face',
+  'glyph',
+  'missing-glyph',
 ] as const;
 const BANNED_SVG_ELEMENTS = new Set<string>(BANNED_SVG_ELEMENT_NAMES);
 const BANNED_SVG_ELEMENT_PATTERN = new RegExp(
@@ -255,16 +320,38 @@ const BANNED_SVG_ELEMENT_PATTERN = new RegExp(
   'i',
 );
 
-function externalCssReference(value: string): boolean {
-  if (/@import\b/i.test(value) || value.includes('\\')) {
-    return true;
+function svgCssSafetyViolation(value: string): string | null {
+  if (value.includes('\\')) {
+    return 'CSS escapeによる難読化を含むSVGには対応していません。';
+  }
+  if (/@import\b/i.test(value)) {
+    return '外部CSSまたは外部URL参照を含むSVGには対応していません。';
+  }
+  if (
+    /@(?:-[a-z0-9]+-)?keyframes\b/i.test(value) ||
+    /(?:^|[;{])\s*(?:-[a-z0-9]+-)?(?:animation|transition)(?:-[a-z0-9-]+)?\s*:/i.test(value)
+  ) {
+    return 'CSS animationまたはtransitionを含むSVGには対応していません。';
+  }
+  if (/@font-face\b/i.test(value) || /(?:^|[;{])\s*font(?:-[a-z0-9-]+)?\s*:/i.test(value)) {
+    return 'fontに依存するSVGには対応していません。';
+  }
+  if (/(?:^|[^a-z0-9_-])(?:-[a-z0-9]+-)?(?:image-set|cross-fade|image|paint)\s*\(/i.test(value)) {
+    return '外部resourceを参照できるCSS画像関数を含むSVGには対応していません。';
   }
   for (const match of value.matchAll(/url\s*\(\s*(['"]?)(.*?)\1\s*\)/gi)) {
     if (!match[2].trim().startsWith('#')) {
-      return true;
+      return '外部CSSまたは外部URL参照を含むSVGには対応していません。';
     }
   }
-  return false;
+  return null;
+}
+
+const MALFORMED_SVG_MESSAGE = 'SVGのXML構造を解析できませんでした。';
+
+export interface SvgSafetyInspection {
+  message: string | null;
+  kind: 'safe' | 'unsafe' | 'malformed';
 }
 
 /**
@@ -294,8 +381,9 @@ export function svgSafetyViolation(text: string): string | null {
   if (/\s(?:xml:)?base\s*=\s*(['"])(.*?)\1/i.test(text)) {
     return 'base URLを指定するSVGには対応していません。';
   }
-  if (externalCssReference(text)) {
-    return '外部CSSまたは外部URL参照を含むSVGには対応していません。';
+  const lexicalCssViolation = svgCssSafetyViolation(text);
+  if (lexicalCssViolation) {
+    return lexicalCssViolation;
   }
 
   if (typeof DOMParser === 'undefined') {
@@ -303,7 +391,7 @@ export function svgSafetyViolation(text: string): string | null {
   }
   const document = new DOMParser().parseFromString(text, 'image/svg+xml');
   if (document.querySelector('parsererror') || document.documentElement.localName !== 'svg') {
-    return 'SVGのXML構造を解析できませんでした。';
+    return MALFORMED_SVG_MESSAGE;
   }
   for (const element of document.querySelectorAll('*')) {
     if (BANNED_SVG_ELEMENTS.has(element.localName.toLowerCase())) {
@@ -311,9 +399,9 @@ export function svgSafetyViolation(text: string): string | null {
     }
     if (
       element.localName.toLowerCase() === 'style' &&
-      externalCssReference(element.textContent ?? '')
+      svgCssSafetyViolation(element.textContent ?? '')
     ) {
-      return '外部CSSまたは外部URL参照を含むSVGには対応していません。';
+      return svgCssSafetyViolation(element.textContent ?? '');
     }
     for (const attribute of element.attributes) {
       const name = attribute.localName.toLowerCase();
@@ -327,12 +415,34 @@ export function svgSafetyViolation(text: string): string | null {
       if (name === 'base') {
         return `base URLを指定するSVGには対応していません（${attribute.name}）。`;
       }
-      if (externalCssReference(value)) {
-        return `外部URL参照を含むSVG属性には対応していません（${attribute.name}）。`;
+      if (
+        name === 'font' ||
+        name.startsWith('font-') ||
+        name === 'animation' ||
+        name.startsWith('animation-') ||
+        name === 'transition' ||
+        name.startsWith('transition-')
+      ) {
+        return `fontまたはCSS animation属性を含むSVGには対応していません（${attribute.name}）。`;
+      }
+      const attributeCssViolation = svgCssSafetyViolation(value);
+      if (attributeCssViolation) {
+        return `${attributeCssViolation}（${attribute.name}）`;
       }
     }
   }
   return null;
+}
+
+export function inspectSvgSafety(text: string): SvgSafetyInspection {
+  const message = svgSafetyViolation(text);
+  if (message === null) {
+    return { kind: 'safe', message: null };
+  }
+  return {
+    kind: message === MALFORMED_SVG_MESSAGE ? 'malformed' : 'unsafe',
+    message,
+  };
 }
 
 function hasSvgRoot(bytes: Uint8Array, isTruncatedPrefix: boolean): boolean {
@@ -387,7 +497,7 @@ export function imageMimeTypesMatch(detected: DetectedImageMimeType, declared: s
   return detected === declared || (detected === 'image/png' && declared === 'image/apng');
 }
 
-export async function assertFileImageSignature(file: File): Promise<void> {
+export async function detectFileImageMimeType(file: File): Promise<DetectedImageMimeType> {
   const header = new Uint8Array(await file.slice(0, IMAGE_SIGNATURE_SNIFF_BYTES).arrayBuffer());
   const detected = detectImageMimeType(header, {
     isTruncatedPrefix: file.size > header.byteLength,
@@ -398,6 +508,11 @@ export async function assertFileImageSignature(file: File): Promise<void> {
       'unsafe-input',
     );
   }
+  return detected;
+}
+
+export async function assertFileImageSignature(file: File): Promise<DetectedImageMimeType> {
+  const detected = await detectFileImageMimeType(file);
   if (!imageMimeTypesMatch(detected, file.type)) {
     throw new InputSafetyError(
       `画像の宣言形式と実体が一致しません: ${file.name}（宣言 ${
@@ -406,4 +521,5 @@ export async function assertFileImageSignature(file: File): Promise<void> {
       'unsafe-input',
     );
   }
+  return detected;
 }

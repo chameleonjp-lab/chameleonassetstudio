@@ -16,9 +16,23 @@ function pngChunk(type: string, data: number[] = []): number[] {
   return [...uint32(data.length), ...new TextEncoder().encode(type), ...data, 0, 0, 0, 0];
 }
 
-function pngBytes(options: { frames?: number; plays?: number; frameControls?: number } = {}) {
+function pngBytes(
+  options: {
+    width?: number;
+    height?: number;
+    frames?: number;
+    plays?: number;
+    frameControls?: number;
+    frameWidth?: number;
+    frameHeight?: number;
+    frameX?: number;
+    frameY?: number;
+  } = {},
+) {
   const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-  const ihdr = pngChunk('IHDR', [...uint32(1), ...uint32(1), 8, 6, 0, 0, 0]);
+  const width = options.width ?? 1;
+  const height = options.height ?? 1;
+  const ihdr = pngChunk('IHDR', [...uint32(width), ...uint32(height), 8, 6, 0, 0, 0]);
   const animation =
     options.frames === undefined
       ? []
@@ -27,10 +41,10 @@ function pngBytes(options: { frames?: number; plays?: number; frameControls?: nu
           ...Array.from({ length: options.frameControls ?? options.frames }, (_, index) =>
             pngChunk('fcTL', [
               ...uint32(index),
-              ...uint32(1),
-              ...uint32(1),
-              ...uint32(0),
-              ...uint32(0),
+              ...uint32(options.frameWidth ?? width),
+              ...uint32(options.frameHeight ?? height),
+              ...uint32(options.frameX ?? 0),
+              ...uint32(options.frameY ?? 0),
               0,
               1,
               0,
@@ -126,7 +140,7 @@ describe('image input signature', () => {
       'animated.png',
       { type: 'image/apng' },
     );
-    await expect(assertFileImageSignature(apng)).resolves.toBeUndefined();
+    await expect(assertFileImageSignature(apng)).resolves.toBe('image/png');
   });
 
   it('SVG root確認後のUTF-8文字がsniff末尾で分断されてもprefixとして識別する', () => {
@@ -153,16 +167,22 @@ describe('optional animated image preflight', () => {
       animated: false,
       frameCount: 1,
       repetition: 'none',
+      width: 1,
+      height: 1,
     });
     expect(inspectPngAnimation(pngBytes({ frames: 2, plays: 0 }))).toEqual({
       animated: true,
       frameCount: 2,
       repetition: 'infinite',
+      width: 1,
+      height: 1,
     });
     expect(inspectPngAnimation(pngBytes({ frames: 3, plays: 2 }))).toEqual({
       animated: true,
       frameCount: 3,
       repetition: 'finite',
+      width: 1,
+      height: 1,
     });
   });
 
@@ -174,6 +194,7 @@ describe('optional animated image preflight', () => {
 
   it('acTLの重複・IDAT後配置と終端を超えるchunkをboundedに拒否する', () => {
     const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    const ihdr = pngChunk('IHDR', [...uint32(1), ...uint32(1), 8, 6, 0, 0, 0]);
     const control = pngChunk('acTL', [...uint32(1), ...uint32(0)]);
     const frame = pngChunk('fcTL', [
       ...uint32(0),
@@ -190,13 +211,21 @@ describe('optional animated image preflight', () => {
     ]);
     expect(() =>
       inspectPngAnimation(
-        new Uint8Array([...signature, ...control, ...control, ...frame, ...pngChunk('IEND')]),
+        new Uint8Array([
+          ...signature,
+          ...ihdr,
+          ...control,
+          ...control,
+          ...frame,
+          ...pngChunk('IEND'),
+        ]),
       ),
     ).toThrow(/複数/);
     expect(() =>
       inspectPngAnimation(
         new Uint8Array([
           ...signature,
+          ...ihdr,
           ...pngChunk('IDAT', [0]),
           ...control,
           ...frame,
@@ -211,15 +240,40 @@ describe('optional animated image preflight', () => {
     expect(inspectGifAnimation(gifBytes(2, 0))).toEqual({
       frameCount: 2,
       repetition: 'infinite',
+      width: 1,
+      height: 1,
     });
     expect(inspectGifAnimation(gifBytes(3, 2))).toEqual({
       frameCount: 3,
       repetition: 'finite',
+      width: 1,
+      height: 1,
     });
     expect(inspectGifAnimation(gifBytes(1, null))).toEqual({
       frameCount: 1,
       repetition: 'none',
+      width: 1,
+      height: 1,
     });
+  });
+
+  it('codec起動前にcanvas寸法を返し、canvas外frameを拒否する', () => {
+    expect(inspectPngAnimation(pngBytes({ width: 5000, height: 3 }))).toMatchObject({
+      width: 5000,
+      height: 3,
+    });
+    expect(() =>
+      inspectPngAnimation(pngBytes({ width: 2, height: 2, frames: 1, frameWidth: 2, frameX: 1 })),
+    ).toThrow(/canvasを超えています/);
+
+    const oversizedGif = gifBytes(1, null);
+    oversizedGif[6] = 0x88;
+    oversizedGif[7] = 0x13;
+    expect(inspectGifAnimation(oversizedGif)).toMatchObject({ width: 5000, height: 1 });
+
+    const outsideGif = gifBytes(1, null);
+    outsideGif[15] = 1;
+    expect(() => inspectGifAnimation(outsideGif)).toThrow(/logical screenを超えています/);
   });
 });
 
@@ -245,6 +299,16 @@ describe('SVG safety profile', () => {
     ['base URL', '<svg xml:base="https://example.invalid/"><use href="#safe"/></svg>'],
     ['CSS import', '<svg><style>@import "https://example.invalid/a.css";</style></svg>'],
     ['external CSS url', '<svg><rect fill="url(https://example.invalid/a.svg#x)"/></svg>'],
+    [
+      'external CSS image-set',
+      '<svg><style>rect{mask-image:image-set("https://example.invalid/a.png" 1x)}</style><rect/></svg>',
+    ],
+    [
+      'CSS animation',
+      '<svg><style>@keyframes pulse{to{opacity:0}}rect{animation:pulse 1s infinite}</style><rect/></svg>',
+    ],
+    ['font-face', '<svg><style>@font-face{font-family:x;src:local(Arial)}</style></svg>'],
+    ['rendered text', '<svg><text font-family="serif">unsafe font</text></svg>'],
   ])('%sを理由付きで拒否する', (_label, svg) => {
     expect(svgSafetyViolation(svg)).not.toBeNull();
   });

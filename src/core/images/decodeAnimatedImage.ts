@@ -127,13 +127,6 @@ async function decodeFirstFrameFallback(
   }
 }
 
-function repetitionFromTrack(track: ImageTrack): AnimationRepetition {
-  if (track.repetitionCount === Number.POSITIVE_INFINITY) {
-    return 'infinite';
-  }
-  return track.repetitionCount > 0 ? 'finite' : 'none';
-}
-
 function isNotSupportedError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'NotSupportedError';
 }
@@ -235,7 +228,8 @@ export async function decodeAnimatedImage(
       thumbnail,
       size,
       durationsMicroseconds,
-      repetition: repetitionFromTrack(track),
+      // repeatの正本はcodec解釈ではなく、decode前のbounded preflight結果とする。
+      repetition: preflight.repetition,
       usedFallback: false,
     };
   } catch (error) {
