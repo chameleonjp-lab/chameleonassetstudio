@@ -153,7 +153,7 @@ flowchart TB
 |---|---|---|---|---|
 | P1 | 非採用の法則（使われない理由） | Vision 3 章 | 粗 | Vision（確定寄り） |
 | P2 | 多機能×軽量の矛盾 | Vision 3 章 / Arch 1 章 | 粗 | Arch（確定寄り） |
-| P3 | install-on-demand | Arch 1・4 章 | 中 | `APP_MODULE_CATALOG.md` *(予定)*（F-MOD-01 発見/02 導入で具体化） |
+| P3 | install-on-demand | Arch 1・4 章 | 詳 | `APP_MODULE_CATALOG.md` *(予定)*（F-MOD-01 発見＋F-MOD-02 導入で中核確定） |
 | P4 | 未使用ゼロコスト不変条件 | Arch 1・7 章 | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* |
 | P5 | 目的分離 2D/3D | Vision 4 章 | 粗 | `APP_2D_EDITION_SPEC.md` / `APP_3D_EDITION_SPEC.md` *(予定)* |
 | G5 | 非破壊・元データ保持 | Vision 6 章 / Arch 5 章 | 詳 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-03 で正本化） |
@@ -165,7 +165,7 @@ flowchart TB
 | A6 | Manifest 契約 | Arch 3 章 | 粗 | `APP_MODULE_MANIFEST_SPEC.md` *(予定)* |
 | A7 | 依存解決 | Arch 3・4 章 | 粗 | `APP_MODULE_MANIFEST_SPEC.md` *(予定)* |
 | A8 | capability 権限 | Arch 3 章 | 粗 | `APP_CORE_CONTRACT.md` *(予定)* |
-| A9 | Extension Host | Arch 2 章 | 粗 | `APP_CORE_CONTRACT.md` *(予定)* |
+| A9 | Extension Host | Arch 2 章 | 中 | `APP_CORE_CONTRACT.md` *(予定)*（F-CORE-04 履歴登録＋F-MOD-02 有効化/無効化の要件が集約） |
 | D1 | 保存形式 versioned | Arch 5 章 | 詳 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-05 で正本化） |
 | D2 | migration | Arch 5 章 | 詳 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-05 で正本化） |
 | D3 | 構成非依存の不変条件 | Arch 5 章 | 中 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-01/05 で具体化） |
@@ -189,6 +189,7 @@ flowchart TB
 | F-CORE-03 | 非破壊編集モデル（source 保持・派生分離） | `features/F-CORE-03-non-destructive-edit-model.md` | 詳 | —（G5 の正本） |
 | F-CORE-04 | Undo/Redo & 履歴 | `features/F-CORE-04-undo-redo-history.md` | 詳 | —（非破壊派生の上を航法） |
 | F-MOD-01 | モジュールカタログ & 発見 | `features/F-MOD-01-module-catalog-discovery.md` | 詳 | —（A5 の正本） |
+| F-MOD-02 | インストール/アンインストール（可逆・コスト戻り） | `features/F-MOD-02-install-uninstall.md` | 詳 | —（P3 導入半分） |
 
 ---
 
@@ -255,6 +256,12 @@ flowchart TB
 | E55 | F-MOD-01 | 実現 | P3 | install-on-demand の「発見」半分を担う |
 | E56 | F-MOD-01 | 尊重 | P4 | カタログ閲覧は実体を読まずゼロコスト |
 | E57 | F-MOD-01 | 尊重 | G1 | 未検証は表示のみ・インストール導線を出さない |
+| E58 | F-MOD-02 | 実現 | P3 | install-on-demand の導入/撤去半分を担う |
+| E59 | F-MOD-02 | 尊重 | P4 | 撤去でコストが戻り、残渣を残さない |
+| E60 | F-MOD-02 | 依存 | F-MOD-01 | カタログを入口・導入状態の反映先とする |
+| E61 | F-MOD-02 | 尊重 | D3 | 撤去してもプロジェクトデータを保持（往復） |
+| E62 | F-MOD-02 | 依存 | A9 | 有効化/無効化ライフサイクルを Extension Host が担う |
+| E63 | F-MOD-02 | 尊重 | G1 | verified のみ導入可 |
 
 ---
 
@@ -275,7 +282,7 @@ flowchart TB
 
 > 詳細化の順序自体は `APP_ROADMAP_DECISIONS_OPEN_ITEMS.md` の Stage と整合させる。表の「前提」列は、上流を先に固めるための依存である。
 >
-> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01**, **F-CORE-05**, **F-CORE-03**, **F-CORE-04**, **F-MOD-01**。
+> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01**, **F-CORE-05**, **F-CORE-03**, **F-CORE-04**, **F-MOD-01**, **F-MOD-02**。
 
 ---
 
