@@ -5,11 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && vite build --config tools/h3/vite.config.ts",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
+    "measure:h3:node": "vite-node tools/h3/measure-node.ts",
+    "measure:h3:build": "tsc --noEmit && vite build --config tools/h3/vite.config.ts",
+    "measure:h3:serve": "vite --config tools/h3/vite.config.ts",
+    "measure:h3:preview": "vite preview --config tools/h3/vite.config.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

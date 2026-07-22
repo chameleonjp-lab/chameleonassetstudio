@@ -11,7 +11,7 @@
 
 > **現状:** mainはPNG / JPEG / WebP、連番、手動格子 sprite sheet、Tileset、Chameleon独自atlasの限定再取り込み、PNG / WebP / Chameleon 独自 atlas / JSON / ZIP の書き出し、Canvas 2D / PixiJS / Phaser の sample・helper、Godot / Unity の取り込み説明を持つ。SVG / GIF source保存のAsset 0.2.0基盤はADR-0019 / PR #135、SVG / GIF / APNGの新規Asset製品入口は1A + 2A + 3A / ADR-0020 / PR #138、安全境界のpost-merge補修はPR #144でmainへ反映済みである。
 > **重要:** 現行 `atlas.json` は Chameleon 独自形式であり、Phaser、PixiJS、Tiled、Unity、Godot の標準形式そのものではない。外部ツールで実行確認するまで `verified` と表示してはいけない。
-> **Group 12:** T1 / ADR-0021のFrame単位durationとeventは未実装で、現行atlas / sample / helperは固定fpsだけを表現する。黙った均一化は禁止までacceptedだが、派生出力を止めるか明示loss確認を許すかはH1の人間判断待ちである。
+> **Group 12:** T1 / ADR-0021のFrame単位durationとeventは未実装で、現行atlas / sample / helperは固定fpsだけを表現する。H1=E1を採用し、対象Animationにlossがある場合は固定fps atlas / product ZIP / helper / exampleを理由付きで拒否する。PNG / WebP、単体`asset.json`、`.casproj`は許可する。製品挙動はまだ変更していない。
 
 ## 1. 目的
 
@@ -88,7 +88,7 @@ Generic Web は対象ツール名ではないため、`generic-web-v1` のよう
 | PNG | もっとも持ち込みやすい見た目の画像。 | 透明、サイズ、命名。 |
 | WebP | Web 向けの軽量画像。 | 対応しない対象には PNG を使う。 |
 | 連番 PNG | フレームを個別に使う対象向け。 | 順番、時間、名前。 |
-| sprite sheet + generic manifest | アニメーション・タイル用。 | frame rect、source size、trim、origin、anchors、colliders、animations。可変時間・event対応はH1 / 2D-4後。 |
+| sprite sheet + generic manifest | アニメーション・タイル用。 | frame rect、source size、trim、origin、anchors、colliders、animations。可変時間・eventを表せない現行形式はH1=E1で理由付き拒否し、形式対応は2D-4後。 |
 | atlas PNG + Chameleon manifest | Chameleon のゲーム用情報を保つ。 | padding、extrude、scale、multi-page の情報。 |
 | tile package | tileset と属性を持ち込む。 | tileSize、collision、visual type、必要な map 情報。 |
 | `asset.json` / 将来の manifest | Chameleon の共通データ。 | format / version、座標、警告、対象固有の拡張。 |
