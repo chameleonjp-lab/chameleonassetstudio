@@ -1,6 +1,6 @@
 # Chameleon Asset Studio リリースチェックリスト
 
-最終更新日: 2026-07-22
+最終更新日: 2026-07-23
 対象: v1.0.0 判定
 上位文書: `docs/implementation/TEST_AND_RELEASE.md` / `docs/implementation/PHASES_14_17.md`（Phase 17）
 
@@ -79,9 +79,9 @@ Slice Eについては各実機で、Files pickerからSVG / GIF / APNGを選ん
 - Rive / Spine の取り込み補助（docs 上の関係説明のみ。互換は名乗らない）
 - 大画像（4096²）連続編集のメモリ計測（4 章）
 - Group 12契約監査PR #146はmerge `cb21ea4`で完了し、T1 / R1 / P1とH1=E1 / H2=L1 / H3=M1をacceptedとした。製品実装とH3数値budgetは未着手
-- PR #147 final head `1ba671f7`、merge `24a089c`でH3計測準備をmainへ反映済み。CI Run #460 / #461は全job成功し、次はPagesの`publish-24h`をmainから手動実行する
+- PR #147 final head `1ba671f7`、merge `24a089c`でH3計測準備をmainへ反映済み。PR #148 final head `0cfc1ea`、merge `fbdeb357`で24時間配信基盤を反映し、CI Run #462 / #463は全job成功した
 - H3は`docs/future/2D_3_H3_MEASUREMENT_PROTOCOL.md`に従い、PC Chromium、iPhone 17 Pro / 11 Pro Safari、iPad Pro 2018 Safariのcore結果を先に記録する。120 / 240 Frameは未採用候補
-- 初回配信前にPages sourceが`GitHub Actions`であること、画面のsource commit、開始 / 終了時刻、HTTPSを確認する。JSON保存後は`close-now`を実行する。未完了でも24時間後に新規計測を拒否することを確認し、その後`close-now`またはUnpublishを行う
+- 配信前にPages sourceが`GitHub Actions`であること、本体rootとH3 `/h3/`、画面のsource commit、開始 / 終了時刻、HTTPSを確認する。JSON保存後は`close-now`を実行してH3だけを閉じる。未完了でも24時間後に新規計測を拒否することを確認する。サービス本体も止める明示判断がない限りUnpublishしない
 - 公開workflowのChromium baselineと結果schema確認が成功していることを確認する。これは参考値であり、iPhone / iPad Safari結果の代替にしない
 - Group 12実装後はiPhone / iPad SafariでTimeline入力、safe area、software keyboard、44px touch target、後続承認した上限のrig bake、保存・reload、memoryをproduct-pathの別Gateとして確認する
 
