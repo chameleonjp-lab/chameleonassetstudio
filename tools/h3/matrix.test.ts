@@ -63,10 +63,46 @@ describe('H3 measurement matrix', () => {
     expect(validate(falseMeasuredResult)).toBe(false);
 
     const definition = H3_CASES[0];
-    const core = await runH3CoreCase(definition, {
+    const incompleteCore = await runH3CoreCase(definition, {
       warmupIterations: 0,
       recordedIterations: 1,
     });
+    expect(incompleteCore.warmupIterations).toBe(0);
+    expect(incompleteCore.recordedIterations).toBe(1);
+    expect(() =>
+      makeMeasuredResult({
+        sourceCommit: '20871f7',
+        definition,
+        environment: {
+          runtime: 'node',
+          recordedAt: '2026-07-22T00:00:00.000Z',
+          device: 'fixture',
+          os: 'fixture',
+          browser: null,
+          userAgent: 'Node fixture',
+          viewport: null,
+          devicePixelRatio: null,
+          orientation: null,
+          lowPowerMode: null,
+          thermalState: null,
+          cpu: 'fixture',
+          logicalCpuCount: 1,
+          totalMemoryBytes: 1,
+        },
+        capabilities: { longTask: 'not-run', jsHeap: 'not-run', storageEstimate: 'not-run' },
+        core: incompleteCore,
+        observations: {
+          longTaskCount: null,
+          longTaskTotalMs: null,
+          jsHeapBeforeBytes: null,
+          jsHeapAfterBytes: null,
+          storageUsageBytes: null,
+          storageQuotaBytes: null,
+        },
+      }),
+    ).toThrow(/3 warmups, and 10 recorded samples/);
+
+    const core = await runH3CoreCase(definition);
     const result = makeMeasuredResult({
       sourceCommit: '20871f7',
       definition,
@@ -97,8 +133,30 @@ describe('H3 measurement matrix', () => {
         storageQuotaBytes: null,
       },
     });
-    result.run.warmupIterations = 0;
-    result.run.recordedIterations = 1;
+    expect(result.run).toMatchObject({ warmupIterations: 3, recordedIterations: 10 });
+    expect(result.samples).toHaveLength(10);
     expect(validate(result), validate.errors?.map((error) => error.message).join(', ')).toBe(true);
+
+    for (const mutate of [
+      (candidate: typeof result) => {
+        candidate.run.warmupIterations = 2;
+      },
+      (candidate: typeof result) => {
+        candidate.run.recordedIterations = 9;
+      },
+      (candidate: typeof result) => {
+        candidate.samples.pop();
+      },
+      (candidate: typeof result) => {
+        candidate.fixture.l1Valid = false;
+      },
+      (candidate: typeof result) => {
+        candidate.recordComplete = false;
+      },
+    ]) {
+      const invalid = structuredClone(result);
+      mutate(invalid);
+      expect(validate(invalid)).toBe(false);
+    }
   });
 });

@@ -115,14 +115,19 @@ async function runSelectedCase(): Promise<void> {
     localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
     setStatus(`Running ${caseId}: 3 warmups + 10 recorded iterations...`);
 
-    const longTasks: number[] = [];
+    const longTaskEntries: PerformanceEntry[] = [];
     let longTaskCapability: H3Capabilities['longTask'] = 'unsupported';
-    if ('PerformanceObserver' in window) {
+    const supportedEntryTypes =
+      'PerformanceObserver' in window
+        ? (PerformanceObserver as unknown as { supportedEntryTypes?: readonly string[] })
+            .supportedEntryTypes
+        : undefined;
+    if (supportedEntryTypes?.includes('longtask')) {
       try {
         observer = new PerformanceObserver((list) => {
-          longTasks.push(...list.getEntries().map((entry) => entry.duration));
+          longTaskEntries.push(...list.getEntries());
         });
-        observer.observe({ type: 'longtask', buffered: true });
+        observer.observe({ type: 'longtask' });
         longTaskCapability = 'supported';
       } catch {
         observer = null;
@@ -130,14 +135,19 @@ async function runSelectedCase(): Promise<void> {
     }
 
     const heapBefore = heapBytes();
+    const measurementStartedAt = performance.now();
     const core = await runH3CoreCase(definition, { betweenIterations: animationFrame });
+    const measurementEndedAt = performance.now();
     const heapAfter = heapBytes();
     const storage = await navigator.storage?.estimate?.();
     if (observer) {
-      longTasks.push(...observer.takeRecords().map((entry) => entry.duration));
+      longTaskEntries.push(...observer.takeRecords());
     }
     observer?.disconnect();
     observer = null;
+    const measuredLongTasks = longTaskEntries.filter(
+      (entry) => entry.startTime >= measurementStartedAt && entry.startTime < measurementEndedAt,
+    );
 
     const capabilities: H3Capabilities = {
       longTask: longTaskCapability,
@@ -145,10 +155,10 @@ async function runSelectedCase(): Promise<void> {
       storageEstimate: storage ? 'supported' : 'unsupported',
     };
     const observations: H3Observations = {
-      longTaskCount: longTaskCapability === 'supported' ? longTasks.length : null,
+      longTaskCount: longTaskCapability === 'supported' ? measuredLongTasks.length : null,
       longTaskTotalMs:
         longTaskCapability === 'supported'
-          ? longTasks.reduce((total, duration) => total + duration, 0)
+          ? measuredLongTasks.reduce((total, entry) => total + entry.duration, 0)
           : null,
       jsHeapBeforeBytes: heapBefore,
       jsHeapAfterBytes: heapAfter,

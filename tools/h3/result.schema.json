@@ -109,16 +109,24 @@
             "type": "object",
             "properties": { "runtime": { "enum": ["node", "browser"] } }
           },
+          "run": {
+            "type": "object",
+            "properties": {
+              "warmupIterations": { "const": 3 },
+              "recordedIterations": { "const": 10 }
+            }
+          },
           "fixture": {
             "type": "object",
             "properties": {
               "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-              "l1Valid": { "type": "boolean" }
+              "l1Valid": { "const": true }
             }
           },
-          "samples": { "type": "array", "minItems": 1 },
+          "samples": { "type": "array", "minItems": 10, "maxItems": 10 },
           "summary": { "$ref": "#/$defs/summary" },
-          "counts": { "$ref": "#/$defs/counts" }
+          "counts": { "$ref": "#/$defs/counts" },
+          "recordComplete": { "const": true }
         }
       }
     }

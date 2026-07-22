@@ -152,6 +152,8 @@ export interface H3SummaryMetric {
 export interface H3CoreRun {
   fixtureSha256: string;
   l1Valid: boolean;
+  warmupIterations: number;
+  recordedIterations: number;
   samples: H3Sample[];
   summary: {
     bakeMs: H3SummaryMetric;
@@ -424,8 +426,15 @@ export async function runH3CoreCase(
 ): Promise<H3CoreRun> {
   const warmupIterations = options.warmupIterations ?? H3_WARMUP_ITERATIONS;
   const recordedIterations = options.recordedIterations ?? H3_RECORDED_ITERATIONS;
-  if (warmupIterations < 0 || recordedIterations < 1) {
-    throw new Error('warmupIterations must be >= 0 and recordedIterations must be >= 1');
+  if (
+    !Number.isInteger(warmupIterations) ||
+    !Number.isInteger(recordedIterations) ||
+    warmupIterations < 0 ||
+    recordedIterations < 1
+  ) {
+    throw new Error(
+      'warmupIterations must be an integer >= 0 and recordedIterations must be an integer >= 1',
+    );
   }
 
   const fixture = createH3Fixture(definition);
@@ -453,6 +462,8 @@ export async function runH3CoreCase(
   return {
     fixtureSha256,
     l1Valid: isL1Fixture(fixture.asset),
+    warmupIterations,
+    recordedIterations,
     samples,
     summary: {
       bakeMs: summarize(samples.map((sample) => sample.bakeMs)),
@@ -473,6 +484,17 @@ export function makeMeasuredResult(input: {
   interruptedPreviousRun?: { caseId: string; startedAt: string } | null;
   notes?: string[];
 }): H3MeasurementResult {
+  const recordComplete =
+    input.core.l1Valid &&
+    input.core.warmupIterations === H3_WARMUP_ITERATIONS &&
+    input.core.recordedIterations === H3_RECORDED_ITERATIONS &&
+    input.core.samples.length === input.core.recordedIterations;
+  if (!recordComplete) {
+    throw new Error(
+      `Measured H3 evidence requires an L1-valid fixture, ${H3_WARMUP_ITERATIONS} warmups, and ${H3_RECORDED_ITERATIONS} recorded samples`,
+    );
+  }
+
   return {
     schemaVersion: H3_SCHEMA_VERSION,
     status: 'measured',
@@ -485,8 +507,8 @@ export function makeMeasuredResult(input: {
     environment: input.environment,
     capabilities: input.capabilities,
     run: {
-      warmupIterations: H3_WARMUP_ITERATIONS,
-      recordedIterations: H3_RECORDED_ITERATIONS,
+      warmupIterations: input.core.warmupIterations,
+      recordedIterations: input.core.recordedIterations,
       freshFixtureEachIteration: true,
       sequential: true,
     },
@@ -496,7 +518,7 @@ export function makeMeasuredResult(input: {
     counts: input.core.counts,
     observations: input.observations,
     interruptedPreviousRun: input.interruptedPreviousRun ?? null,
-    recordComplete: input.core.l1Valid,
+    recordComplete: true,
     notes: input.notes ?? [],
   };
 }
