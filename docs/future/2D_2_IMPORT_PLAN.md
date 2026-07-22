@@ -1,10 +1,10 @@
 # 2D-2-IMPORT-GATE + 2D-2-IMPORT-OPTIONAL + 2D-2-AI-BOUNDARY 契約監査・実装計画
 
 作成日: 2026-07-19（最終更新: 2026-07-22）
-状態: `G1+L1+Q1+P1+F1+A1+W1+S1 accepted / Slice A〜D・Slice E source契約補正・製品実装はmainへmerge済み / Slice E post-merge review fixes中`
+状態: `G1+L1+Q1+P1+F1+A1+W1+S1 accepted / Slice A〜E・post-merge review fixesまでmainへmerge済み / group 11 completed`
 正式work package: `2D-2-IMPORT-GATE` + `2D-2-IMPORT-OPTIONAL` + `2D-2-AI-BOUNDARY`（2D完成ロードマップ PR group 11）
 Slice E製品実装: PR #138（merge `c188e17`。独立レビュー補修前のheadでmainへmerge済み）
-Slice E post-merge review fixes基準main: `0d539ee`（Draft PR #144）
+Slice E post-merge review fixes: PR #144 final head `1980ae6`（merge `616d225`）
 前段: `2D-2-VARIANT + 2D-2-BATCH`（group 10）は全slice merge・遡及Opus review・closeout補修まで完了。
 
 ## 1. 目的
@@ -28,9 +28,9 @@ Slice E post-merge review fixes基準main: `0d539ee`（Draft PR #144）
 - Slice C本体はPR #127（merge `eaeb110`）、preview中の背景永続変更・Undo / Redo防止補修はPR #128（final head `f9e0bc5`、merge `be887a1`）でmainへmerge済み。CI Run #413はlint / format / build / unit / Chromium E2E 125件を含め全成功。独立read-only再reviewは`BLOCKER 0 / MUST 0 / SHOULD 0 / NOTE 0`だがOpus reviewではなく、その事実と残リスクをPR #128へ記録した。
 - 判断必須項目（`2D-2-IMPORT-OPTIONAL` / `2D-2-AI-BOUNDARY`）はADR-0016 / ADR-0017として正式確定済み。Slice B以降はaccepted契約の範囲だけを直列実装する（ROADMAP §6.5）。
 - Slice D開始監査でADR-0007 / ADR-0015とW1の衝突、raw atlas JSONの保存先不在、完全roundtrip不能を確認した。2026-07-20の人間承認によりADR-0018をacceptedとし、現行Chameleon atlasの意味上roundtripを限定例外として固定した。
-- Slice DはPR #129（final head `5b98b24`、merge `33ebad4`）でmainへmerge済み。CI Run #415はlint / format / build / unit / Chromium E2Eを含め全成功した。独立read-only reviewのSHOULD 2件（tile / effect Atlas意味比較E2E、外部・不整合Atlas拒否時のquarantine非追加直接assert）はPR #133（merge `55750d2`）でcloseoutした。次はこのmainを基準にSlice Eを進める。
+- Slice DはPR #129（final head `5b98b24`、merge `33ebad4`）でmainへmerge済み。CI Run #415はlint / format / build / unit / Chromium E2Eを含め全成功した。独立read-only reviewのSHOULD 2件（tile / effect Atlas意味比較E2E、外部・不整合Atlas拒否時のquarantine非追加直接assert）はPR #133（merge `55750d2`）でcloseoutし、このmainを基準にSlice Eへ進んだ。
 - Slice Eのsource保存契約補正はADR-0019とPR #135（merge `f5bb322`）でmainへ反映済み。Asset 0.2.0 migration、source-only SVG / GIF MIME、APNGのPNG canonical化、verbatim保存と実ブラウザーdecodeの前提が成立した。製品挙動は2026-07-21の人間承認1A + 2A + 3AとADR-0020だけを実装する。
-- Slice E製品実装PR #138はmerge `c188e17`でmainへ入ったが、独立レビュー補修前のheadだった。post-merge review fixesは最新main `0d539ee`からDraft PR #144へ分離し、初回head `0544e0b`のCI Run #449（lint / format / build / unit 675件 / Chromium E2E 142件）は全成功した。固定head再レビューで見つかったmalformed SVG分類順と本状態記録のMUSTは、同じPR #144で補修・再CI・再レビューする。
+- Slice E製品実装PR #138はmerge `c188e17`でmainへ入ったが、独立レビュー補修前のheadだった。post-merge review fixesはmain `0d539ee`からPR #144へ分離し、最終head `1980ae6`のCI Run #450（lint / format / build / unit 676件 / Chromium E2E 142件、失敗・skip・retry 0）は全成功した。malformedかつactiveなSVGの分類順と状態記録を同じPRで補修し、固定headの独立read-only reviewで`BLOCKER 0 / MUST 0 / SHOULD 2 / NOTE 1`を確認したうえでmerge `616d225`としてmainへ反映した。レビューはOpus 4.8ではないため、Opus review完了とは扱わない。
 
 ## 3. 現状実装の確認
 
@@ -91,7 +91,7 @@ Slice E post-merge review fixes基準main: `0d539ee`（Draft PR #144）
 
 ### S: slice分割と直列順
 
-- **S1（推奨）**: 直列5 slice。各sliceは最新mainからbranchを作り、Draft PR → CI → 独立Opus review → 人間確認で進める。
+- **S1（推奨）**: 直列5 slice。各sliceは最新mainからbranchを作り、Draft PR → CI → 独立Opus review → 人間確認で進める。Opus 4.8を利用できない場合の代替は§8のreview条件に従う。
   - **Slice A**: 契約確定。ADR-0016（IMPORT-OPTIONAL分類）+ ADR-0017（AI境界）の新規作成、関連fixture、互換matrix / データ契約 / DATA_FORMATの同期。docs + fixture-only。
   - **Slice B**: provenance基盤（P1）。schema additive追加、意味検査接続、roundtrip fixture、既存単枚import経路への記録開始。
   - **Slice C**: 連番 + sprite sheet（手動格子）取り込み。loss preview（L1）、quarantine接続（Q1）、Desktop / touch / iPhone SE E2E。
@@ -199,5 +199,9 @@ accepted後の実装でも、次は別契約まで行わない。
 
 - 状態: **accepted**
 - accepted日: 2026-07-19（ユーザー承認）
-- 実装review条件: 各slice Draft PR → CI → 独立Opus review → 人間確認。A→B→C→D→Eの直列順。各sliceは前sliceのmerge後に最新mainからbranchを作る。
-- Slice AはPR #125、Slice BはPR #126、Slice CはPR #127とrepair PR #128、Slice DはPR #129、Slice D closeoutはPR #133、Slice E source契約補正はPR #135、Slice E製品実装はPR #138（merge `c188e17`）でmainへmerge済み。PR #138は独立レビュー補修前にmergeされたため、PR #144をpost-merge review fixesとして扱う。PR #144の最終head / CI Run / 固定head独立read-only review結果はPR本文を正本とし、`BLOCKER 0 / MUST 0`と人間確認が揃うまでSlice E closeoutおよびOpus review完了とは扱わない。
+- 実装review条件: 各slice Draft PR → CI → 独立Opus review → 人間確認を既定とする。Opus 4.8を利用できない場合は、ユーザー提供のWork運用仕様どおり、未実施範囲を記録し、writer以外の複数担当による固定headの独立read-only reviewで代替したうえで、人間が残リスクとmergeを明示確認する。A→B→C→D→Eの直列順。各sliceは前sliceのmerge後に最新mainからbranchを作る。
+- 実装状態: Slice AはPR #125、Slice BはPR #126、Slice CはPR #127とrepair PR #128、Slice DはPR #129、Slice D closeoutはPR #133、Slice E source契約補正はPR #135、Slice E製品実装はPR #138、post-merge補修はPR #144で実装済み。
+- 検証状態: PR #144 final head `1980ae6`のCI Run #450は全成功した。Opus 4.8を利用できなかったため、仕様、実装・データ安全、テスト・端末の3担当が同じheadを独立read-only reviewし、`BLOCKER 0 / MUST 0 / SHOULD 2 / NOTE 1`を確認した。これはOpus review完了とは扱わず、代替範囲と残リスクを本節へ記録する。
+- PR状態: PR #138はmerge `c188e17`、PR #144は人間のmerge判断によりmerge `616d225`としてmainへ反映済み。merge後のユーザー指示「#144更新されました。後続対応開始」を人間確認として、代替reviewの結果と残リスクを維持したままgroup 11をcompletedとする。
+- 残るSHOULD: generic MIMEと不一致signatureのalert・Asset不変・quarantineを通す製品E2E、および`ImageDecoder.isTypeSupported() === false` / constructor `NotSupportedError`のfallback製品E2Eを`docs/TEST_PLAN.md`のtest debtとして残す。group 11の完了条件には戻さない。
+- 残るNOTE: iPhone SafariのFiles MIME、native picker、safe area、下部バー、software keyboardは未確認であり、`docs/RELEASE_CHECKLIST.md` §3の実機Gateへ残す。実機memoryは同文書§4の非blockingな性能・メモリ将来課題へ残し、group 11の完了Gateには含めない。

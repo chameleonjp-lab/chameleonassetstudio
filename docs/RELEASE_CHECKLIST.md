@@ -12,8 +12,8 @@
 
 - [x] Phase 0〜17（+ 15.5 品質補修）が main にマージ済み
 - [x] `npm run build` / `npm run lint` / `npm run format:check` が成功する
-- [x] Unit テスト（200 件）が成功する
-- [x] E2E テスト（56 件、Chromium）が成功する
+- [x] Phase 0〜17当時の最低証拠としてUnit テスト200件が成功した（現在のSlice E証拠は§1.1）
+- [x] Phase 0〜17当時の最低証拠としてE2Eテスト56件（Chromium）が成功した（現在のSlice E証拠は§1.1）
 - [x] 画像取り込み / 保存・再読み込み / `.casproj` roundtrip（欠落警告含む）
 - [x] PNG / WebP / ZIP export（examples / helpers / engines guide 同梱）
 - [x] effect アセットの作成・設定・書き出し
@@ -25,16 +25,16 @@
 - [x] 画像 Blob 欠落が書き出し・`.casproj` 書き出しで検出される
 - [x] 旧Asset 0.1.0を既存フィールド不変で0.2.0へ移行し、`.casproj`とIndexedDB live / trash / snapshotで互換性・原子性を検証する（Project・export-presets・atlas・appは0.1.0維持）
 
-### 1.1 Slice E optional import post-merge review-fix gate（進行中）
+### 1.1 Slice E optional import post-merge review-fix gate（完了）
 
-製品実装PR #138はmerge `c188e17`でmainへ反映済みだが、独立レビュー補修前のheadだった。補修は最新main `0d539ee`を基準とするDraft PR #144で行う。PR #144の初回head `0544e0b`に対するCI Run #449は全成功し、その固定headレビューで残ったmalformed SVG分類順を同じPRで補修する。最終head / CI Run / 独立レビュー結果はPR #144本文へ記録し、merge後のcloseoutで本節を完了へ更新する。
+製品実装PR #138はmerge `c188e17`でmainへ反映済みだが、独立レビュー補修前のheadだった。補修はmain `0d539ee`を基準とするPR #144で行い、最終head `1980ae6`のCI Run #450はunit 676件とChromium E2E 142件を含め全成功した。Opus 4.8を利用できなかったため、ユーザー提供のWork運用仕様に従い、仕様、実装・データ安全、テスト・端末の3担当が同じheadを独立read-only reviewし、`BLOCKER 0 / MUST 0 / SHOULD 2 / NOTE 1`を確認した。これはOpus review完了とは扱わない。PR #144は人間のmerge判断によりmerge `616d225`としてmainへ反映され、merge後のユーザー指示「#144更新されました。後続対応開始」を人間確認として記録する。
 
 - [x] 1A + 2A + 3A / ADR-0020で入口、frame / 時間 / repeat写像、SVG安全境界を人間承認済み
 - [x] PR #138 / `c188e17`で新規AssetだけがSVG / GIF / APNGを受け、layer / 連番 / sheet / tileset / atlasのPNG / JPEG / WebP gateを維持する製品実装をmainへ反映済み
-- [x] Run #449でsafe SVGのrasterize・source原本、active / external CSS / font SVGの非実行・非通信・非quarantine、malformed SVGのquarantineをChromium E2Eで確認した
-- [x] Run #449でGIF / APNGのcodec前寸法検査、最大16frame、全frame pixel、uniform fps / duration、preflight由来loop、APNG canonical sourceを確認した
-- [x] Run #449で`ImageDecoder`不在時の先頭frame + 8fps + loss、17frame / unsupported拒否、取消 / Undo / Redo / reload、375 x 667 touchを確認した
-- [ ] PR #144の最終headでmalformedかつactiveなSVGのsignature quarantine、CI全成功、固定head独立reviewの`BLOCKER 0 / MUST 0`を確認し、人間判断後にmainへmergeする
+- [x] Run #450でsafe SVGのrasterize・source原本、active / external CSS / font SVGの非実行・非通信・非quarantine、malformed SVGのquarantineをChromium E2Eで確認した
+- [x] Run #450でGIF / APNGのcodec前寸法検査、最大16frame、全frame pixel、uniform fps / duration、preflight由来loop、APNG canonical sourceを確認した
+- [x] Run #450で`ImageDecoder`不在時の先頭frame + 8fps + loss、17frame / unsupported拒否、取消 / Undo / Redo / reload、375 x 667 viewportを確認した
+- [x] PR #144の最終headでmalformedかつactiveなSVGのsignature quarantine、CI全成功、固定head独立reviewの`BLOCKER 0 / MUST 0`を確認し、merge `616d225`としてmainへ反映した
 
 ## 2. 文書（完了）
 
@@ -60,12 +60,17 @@
 
 Slice Eについては各実機で、Files pickerからSVG / GIF / APNGを選んだときのMIME、SVG rasterize、animated全frameまたは明示fallback、loss確認、Undo / Redo、reload、外部通信なしを確認する。Safariで`ImageDecoder`または対象MIMEが非対応の場合、先頭frame fallbackが理由付きで表示されれば仕様どおりである。
 
+- [ ] iPhone SafariでFiles picker / native pickerからSVG / GIF / APNGを選び、渡されるMIMEとfallback理由を記録する
+- [ ] iPhone Safariでsafe areaと下部操作バーが重ならず、確定・取消・loss確認を操作できる
+- [ ] iPhone Safariでsoftware keyboard表示中も入力、focus、確定・取消、横overflowに問題がない
+
 ## 4. 性能・メモリ計測（今回の完了条件に含めない・将来課題）
 
 - [ ] 4096 x 4096 画像の取り込み〜編集〜書き出しが実機でクラッシュしない
 - [ ] 連続編集でメモリが増え続けない（開発者ツールで確認）
 - [ ] レイヤー多数（20+）でも編集可能なフレームレートを保つ
 - [ ] スマホ実機で重い処理中も UI が完全停止しない
+- [ ] iPhone SafariでSVG / GIF / APNGを連続取り込みしても実機memoryが増え続けない
 
 ## 5. 既知の残課題（リリースを妨げないが記録する）
 
