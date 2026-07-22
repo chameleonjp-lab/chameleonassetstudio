@@ -6,11 +6,14 @@ import {
 } from './decodeAnimatedImage';
 import {
   assertFileImageSignature,
+  detectFileImageMimeType,
+  imageMimeTypesMatch,
+  inspectSvgSafety,
   inspectGifAnimation,
   inspectPngAnimation,
-  svgSafetyViolation,
   type AnimatedImagePreflight,
   type AnimationRepetition,
+  type DetectedImageMimeType,
 } from './imageInputSafety';
 import {
   ImageImportError,
@@ -62,6 +65,67 @@ export function animationLoopForRepetition(repetition: AnimationRepetition): boo
 
 function fileExtension(fileName: string): string {
   return fileName.toLowerCase().match(/\.([^.]+)$/)?.[1] ?? '';
+}
+
+const GENERIC_FILE_MIME_TYPES = new Set(['', 'application/octet-stream']);
+
+function expectedMimeTypeForGenericFile(fileName: string): string | null {
+  switch (fileExtension(fileName)) {
+    case 'png':
+      return 'image/png';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'webp':
+      return 'image/webp';
+    case 'svg':
+      return 'image/svg+xml';
+    case 'gif':
+      return 'image/gif';
+    case 'apng':
+      return 'image/apng';
+    default:
+      return null;
+  }
+}
+
+export function genericFileMimeTypeMatches(
+  fileName: string,
+  detected: DetectedImageMimeType,
+): boolean {
+  const expected = expectedMimeTypeForGenericFile(fileName);
+  return expected !== null && imageMimeTypesMatch(detected, expected);
+}
+
+async function normalizeGenericFileMimeType(file: File): Promise<File> {
+  if (!GENERIC_FILE_MIME_TYPES.has(file.type.toLowerCase())) {
+    return file;
+  }
+  const expected = expectedMimeTypeForGenericFile(file.name);
+  if (expected === null) {
+    return file;
+  }
+  let detected: DetectedImageMimeType;
+  try {
+    detected = await detectFileImageMimeType(file);
+  } catch (error) {
+    throw new ImageImportError(error instanceof Error ? error.message : String(error), {
+      cause: error,
+      kind: 'signature',
+    });
+  }
+  if (!imageMimeTypesMatch(detected, expected)) {
+    throw new ImageImportError(
+      `画像の拡張子と実体が一致しません: ${file.name}（拡張子 ${
+        fileExtension(file.name) || '不明'
+      } / 実体 ${detected}）`,
+      { kind: 'signature' },
+    );
+  }
+  return new File([file], file.name, {
+    type: expected,
+    lastModified: file.lastModified,
+  });
 }
 
 function unsupportedFormatMessage(file: Pick<File, 'name' | 'type'>): string | null {
@@ -139,12 +203,17 @@ async function prepareSvgImport(file: File): Promise<PreparedNewAssetImageImport
   } catch (error) {
     throw new ImageImportError('SVGはUTF-8で保存してください。', {
       cause: error,
-      kind: 'unsafe-svg',
+      kind: 'signature',
     });
   }
-  const violation = svgSafetyViolation(svgText);
-  if (violation) {
-    throw new ImageImportError(`安全のためSVGを取り込めません: ${violation}`, {
+  const inspection = inspectSvgSafety(svgText);
+  if (inspection.kind === 'malformed') {
+    throw new ImageImportError(inspection.message ?? 'SVGのXML構造を解析できませんでした。', {
+      kind: 'signature',
+    });
+  }
+  if (inspection.kind === 'unsafe') {
+    throw new ImageImportError(`安全のためSVGを取り込めません: ${inspection.message}`, {
       kind: 'unsafe-svg',
     });
   }
@@ -202,7 +271,7 @@ async function prepareSvgImport(file: File): Promise<PreparedNewAssetImageImport
         details: [
           `${file.name}をbrowser画像contextで${decoded.width} x ${decoded.height}のPNGへrasterizeします。`,
           'SVG原本bytes・SHA-256・provenanceをsourceとして保持します。',
-          'script・event handler・外部URL・埋め込みHTMLを含むSVGは、原本を書き換えず取り込み前に拒否します。',
+          'script・CSS animation・font・event handler・外部URL・埋め込みHTMLを含むSVGは、原本を書き換えず取り込み前に拒否します。',
         ],
         losses: [
           `${file.name}: path・shape・style等のベクター構造は編集対象にせず、edit画像はPNG pixelになります。`,
@@ -256,6 +325,10 @@ async function prepareAnimatedImport(
   bytes: Uint8Array,
   preflight: AnimatedImagePreflight,
 ): Promise<PreparedNewAssetImageImport> {
+  const preflightDimensionError = checkImageDimensions(preflight.width, preflight.height);
+  if (preflightDimensionError) {
+    throw new ImageImportError(preflightDimensionError, { kind: 'dimension' });
+  }
   if (preflight.frameCount > MAX_FRAME_SET_ITEMS) {
     throw new ImageImportError(
       `${format.toUpperCase()}は最大${MAX_FRAME_SET_ITEMS}frameです（宣言 ${preflight.frameCount}frame）。先頭だけを切り捨て取り込みはしません。`,
@@ -270,6 +343,12 @@ async function prepareAnimatedImport(
     decodeAnimatedImage(sourceBlob, bytes, canonicalMimeType, preflight),
     sha256Blob(file),
   ]);
+  if (decoded.size.width !== preflight.width || decoded.size.height !== preflight.height) {
+    throw new ImageImportError(
+      `画像の宣言canvas寸法とdecoder結果が一致しません（宣言 ${preflight.width} x ${preflight.height} / decode ${decoded.size.width} x ${decoded.size.height}）。`,
+      { kind: 'decode' },
+    );
+  }
   const timing = decoded.usedFallback
     ? deriveUniformAnimationTiming([null])
     : deriveUniformAnimationTiming(decoded.durationsMicroseconds);
@@ -398,6 +477,7 @@ export async function prepareNewAssetImageImport(file: File): Promise<PreparedNe
     throw new ImageImportError(unsupportedMessage, { kind: 'unsupported-type' });
   }
   assertOptionalFileSize(file);
+  file = await normalizeGenericFileMimeType(file);
 
   if (file.type === 'image/svg+xml') {
     return prepareSvgImport(file);
@@ -427,6 +507,10 @@ export async function prepareNewAssetImageImport(file: File): Promise<PreparedNe
         cause: error,
         kind: 'signature',
       });
+    }
+    const dimensionError = checkImageDimensions(inspection.width, inspection.height);
+    if (dimensionError) {
+      throw new ImageImportError(dimensionError, { kind: 'dimension' });
     }
     if (inspection.animated) {
       return prepareAnimatedImport(file, 'apng', bytes, inspection);

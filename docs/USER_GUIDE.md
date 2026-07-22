@@ -34,10 +34,10 @@
 
 ### 2.2 SVG / GIF / APNGを新規Assetへ取り込む（2D-2-IMPORT Slice E、2026-07）
 
-SVG / GIF / APNGは、新規Assetを作る「画像を選ぶ」またはdrag & dropから取り込みます。PNG / JPG / WebPとの混在を含めて一度に最大16 fileまで選べます。全fileを安全に準備できた場合だけ確定前previewへ進み、1件でも失敗した場合は何も追加しません。既存Assetへの画像layer追加、連番、Sprite Sheet、Tileset、Chameleon Atlasでは引き続きPNG / JPG / WebPだけを選べます。
+SVG / GIF / APNGは、新規Assetを作る「画像を選ぶ」またはdrag & dropから取り込みます。PNG / JPG / WebPとの混在を含めて一度に最大16 fileまで選べます。iOS等がMIMEを空またはgenericで渡しても、既知拡張子と画像実体が一致するfileだけは自動判別します。全fileを安全に準備できた場合だけ確定前previewへ進み、1件でも失敗した場合は何も追加しません。既存Assetへの画像layer追加、連番、Sprite Sheet、Tileset、Chameleon Atlasでは引き続きPNG / JPG / WebPだけを選べます。
 
-- SVGは原本bytesと来歴をsourceへ保持し、編集用画像をPNG pixelとして作ります。path / shape / style等のvector構造は編集できません。script、SVG animation、event handler、埋め込みHTML、DOCTYPE、外部画像・外部CSS・外部URL等を含むSVGは、内容を削除して受理せず理由付きで拒否します。
-- GIF / APNGは1〜16frameを各1 layer / frameへ変換し、animationを作ります。対応browserでは全frame、`ImageDecoder`または対象MIMEに対応しないbrowserでは先頭frameだけを8fpsで取り込みます。いずれもGIF / APNG原本をsourceへ保持します。
+- SVGは原本bytesと来歴をsourceへ保持し、編集用画像をPNG pixelとして作ります。path / shape / style等のvector構造は編集できません。script、SVG / CSS animation、font、event handler、埋め込みHTML、DOCTYPE、外部画像・外部CSS・外部URL等を含むSVGは、内容を削除して受理せず理由付きで拒否します。壊れたXMLやUTF-8ではないSVGは、危険なSVGとは分けて読み込み失敗fileとして隔離します。
+- GIF / APNGはcodec起動前に宣言canvas・frame範囲・最大4096pxを検査し、1〜16frameを各1 layer / frameへ変換してanimationを作ります。対応browserでは全frame、`ImageDecoder`または対象MIMEに対応しないbrowserでは先頭frameだけを8fpsで取り込みます。loop判定はbrowser差を避けるため元fileのpreflight結果を使います。いずれもGIF / APNG原本をsourceへ保持します。
 - 全frameの表示時間を取得できる場合は、合計時間から1〜240の整数fpsへ変換します。元の合計時間は情報として残りますが、frameごとの可変時間は保持されません。表示時間を取得できない場合は8fpsです。
 - 無限repeatだけがloop有効になります。repeatなしと有限repeatはloop無効です。有限回数そのものは保存できません。
 - SVGのvector構造、GIF / APNG固有metadata、可変時間、有限repeat、先頭frame fallback等はloss / warningに表示されます。内容を確認するcheckboxを選ぶまで確定できません。取消、上限超過、危険なSVG、unsupported形式ではProject / Asset / Blobを変更しません。

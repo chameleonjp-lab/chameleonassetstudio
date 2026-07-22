@@ -1,9 +1,10 @@
 # 2D-2-IMPORT-GATE + 2D-2-IMPORT-OPTIONAL + 2D-2-AI-BOUNDARY 契約監査・実装計画
 
-作成日: 2026-07-19（最終更新: 2026-07-21）
-状態: `G1+L1+Q1+P1+F1+A1+W1+S1 accepted / Slice A〜D・Slice E source契約補正はmainへmerge済み / Slice E製品実装中`
+作成日: 2026-07-19（最終更新: 2026-07-22）
+状態: `G1+L1+Q1+P1+F1+A1+W1+S1 accepted / Slice A〜D・Slice E source契約補正・製品実装はmainへmerge済み / Slice E post-merge review fixes中`
 正式work package: `2D-2-IMPORT-GATE` + `2D-2-IMPORT-OPTIONAL` + `2D-2-AI-BOUNDARY`（2D完成ロードマップ PR group 11）
-Slice E製品実装基準main: `f5bb322`（PR #135 merge、source契約補正）
+Slice E製品実装: PR #138（merge `c188e17`。独立レビュー補修前のheadでmainへmerge済み）
+Slice E post-merge review fixes基準main: `0d539ee`（Draft PR #144）
 前段: `2D-2-VARIANT + 2D-2-BATCH`（group 10）は全slice merge・遡及Opus review・closeout補修まで完了。
 
 ## 1. 目的
@@ -29,6 +30,7 @@ Slice E製品実装基準main: `f5bb322`（PR #135 merge、source契約補正）
 - Slice D開始監査でADR-0007 / ADR-0015とW1の衝突、raw atlas JSONの保存先不在、完全roundtrip不能を確認した。2026-07-20の人間承認によりADR-0018をacceptedとし、現行Chameleon atlasの意味上roundtripを限定例外として固定した。
 - Slice DはPR #129（final head `5b98b24`、merge `33ebad4`）でmainへmerge済み。CI Run #415はlint / format / build / unit / Chromium E2Eを含め全成功した。独立read-only reviewのSHOULD 2件（tile / effect Atlas意味比較E2E、外部・不整合Atlas拒否時のquarantine非追加直接assert）はPR #133（merge `55750d2`）でcloseoutした。次はこのmainを基準にSlice Eを進める。
 - Slice Eのsource保存契約補正はADR-0019とPR #135（merge `f5bb322`）でmainへ反映済み。Asset 0.2.0 migration、source-only SVG / GIF MIME、APNGのPNG canonical化、verbatim保存と実ブラウザーdecodeの前提が成立した。製品挙動は2026-07-21の人間承認1A + 2A + 3AとADR-0020だけを実装する。
+- Slice E製品実装PR #138はmerge `c188e17`でmainへ入ったが、独立レビュー補修前のheadだった。post-merge review fixesは最新main `0d539ee`からDraft PR #144へ分離し、初回head `0544e0b`のCI Run #449（lint / format / build / unit 675件 / Chromium E2E 142件）は全成功した。固定head再レビューで見つかったmalformed SVG分類順と本状態記録のMUSTは、同じPR #144で補修・再CI・再レビューする。
 
 ## 3. 現状実装の確認
 
@@ -137,11 +139,12 @@ PR #135（merge `f5bb322`）で上記source保存契約補正はmainへ反映済
 ### Slice E製品実行契約（2026-07-21 accepted、1A + 2A + 3A、ADR-0020）
 
 - 新規Assetのpicker / drag & dropだけをSVG / GIF / APNGへ拡張する。通常画像とのmixed batchは最大16 fileで、全件準備成功時だけ共通previewへ進む。layer追加、連番、sheet、tileset、atlasの画像gateはPNG / JPEG / WebPを維持する。
-- SVGはUTF-8原本をverbatim sourceとして残し、script、SVG animation、event handler、埋め込みHTML、DOCTYPE、外部href / src、base URL、外部CSS / URL等を厳格拒否してからbrowser画像contextでPNG pixelへrasterizeする。sourceをsanitizeせず、active構造の拒否はquarantineへ入れない。
-- GIF block列とPNG chunk列をboundedに走査し、APNGはIDAT前の一意な`acTL`と`fcTL`件数を検査する。animated画像は1〜16frameだけを受け、17frame以上をtruncateしない。
+- SVGはUTF-8原本をverbatim sourceとして残し、script、SVG / CSS animation、font、event handler、埋め込みHTML、DOCTYPE、外部href / src、base URL、外部CSS / URL・CSS画像関数等を厳格拒否してからbrowser画像contextでPNG pixelへrasterizeする。sourceをsanitizeせず、active構造の拒否はquarantineへ入れない。malformed XML / invalid UTF-8はsignature失敗として隔離する。
+- GIF block列とPNG chunk列をboundedに走査し、logical screen / IHDRと各frame範囲を4096px上限とともにcodec起動前に検査する。APNGはIDAT前の一意な`acTL`と`fcTL`件数を検査する。animated画像は1〜16frameだけを受け、17frame以上をtruncateしない。
 - `ImageDecoder`対応時は全frameを順次decodeし、宣言件数と照合してresourceを即時解放する。API不在・MIME非対応だけは先頭frameへfallbackし、対応decoderのbad data / 途中失敗はdecode失敗としてquarantineへ接続する。
 - 全durationが有効なら`round(frameCount * 1000 / totalDurationMs)`を1〜240へclampしたuniform fpsとし、元総時間だけをinformationalな`Animation.durationMs`へ残す。duration欠損は8fpsとし`durationMs`を追加しない。可変時間・丸め・clampはloss表示する。
-- 無限repeatだけを`loop: true`とし、repeatなしと有限repeatは`loop: false`にする。有限回数を無限loopへ変えず、回数非保持をloss表示する。
+- 無限repeatだけを`loop: true`とし、repeatなしと有限repeatは`loop: false`にする。有限回数を無限loopへ変えず、回数非保持をloss表示する。対応decoderの値で上書きせず、preflightのrepeat分類を全環境で正本とする。
+- 空または`application/octet-stream`のMIMEは、既知拡張子と実体signatureが一致する場合だけ既知MIMEへ正規化する。矛盾する実体やその他の非空MIMEは許可しない。
 - Aseprite / PSD / OpenRaster / Kritaは形式別の理由とPNG / WebP / 手動格子Sheet経由の代替手順を常時表示する。専用原本だけのreference保存は行わない。
 - schema / version / migration、IndexedDB version / store / index、`.casproj`配置、product export ZIP、dependencyは変更しない。
 
@@ -197,4 +200,4 @@ accepted後の実装でも、次は別契約まで行わない。
 - 状態: **accepted**
 - accepted日: 2026-07-19（ユーザー承認）
 - 実装review条件: 各slice Draft PR → CI → 独立Opus review → 人間確認。A→B→C→D→Eの直列順。各sliceは前sliceのmerge後に最新mainからbranchを作る。
-- Slice AはPR #125、Slice BはPR #126、Slice CはPR #127とrepair PR #128、Slice DはPR #129、Slice D closeoutはPR #133、Slice E source契約補正はPR #135でmainへmerge済み。Slice E製品挙動は1A + 2A + 3A / ADR-0020 acceptedで実装中。Draft PR → CI → 固定headの独立read-only review → 人間確認の順を維持し、独立Opus reviewの証拠が得られるまではOpus review工程を完了扱いにしない。
+- Slice AはPR #125、Slice BはPR #126、Slice CはPR #127とrepair PR #128、Slice DはPR #129、Slice D closeoutはPR #133、Slice E source契約補正はPR #135、Slice E製品実装はPR #138（merge `c188e17`）でmainへmerge済み。PR #138は独立レビュー補修前にmergeされたため、PR #144をpost-merge review fixesとして扱う。PR #144の最終head / CI Run / 固定head独立read-only review結果はPR本文を正本とし、`BLOCKER 0 / MUST 0`と人間確認が揃うまでSlice E closeoutおよびOpus review完了とは扱わない。
