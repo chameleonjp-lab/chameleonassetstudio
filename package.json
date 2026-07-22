@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && vite build --config tools/h3/vite.config.ts",
+    "build": "npm run build:app && vite build --config tools/h3/vite.config.ts",
+    "build:app": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -15,6 +16,9 @@
     "measure:h3:serve": "vite --config tools/h3/vite.config.ts",
     "measure:h3:preview": "vite preview --config tools/h3/vite.config.ts",
     "measure:h3:chromium": "playwright test --config tools/h3/playwright.config.ts",
+    "pages:assemble": "node tools/pages/assemble.mjs",
+    "pages:preview": "vite preview --host 127.0.0.1 --port 4175 --strictPort",
+    "pages:chromium": "playwright test --config tools/pages/playwright.config.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

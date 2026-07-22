@@ -1,6 +1,6 @@
 # 2D-3 Timeline + Rig 契約計画
 
-最終更新日: 2026-07-22
+最終更新日: 2026-07-23
 work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 監査基準: `main@236571c241bf84747f71f260f3bea99e6abe7f25`
 マージ後基準: PR #146 merge `cb21ea4` / PR #147 final head `1ba671f7` / merge `24a089c`
@@ -17,7 +17,7 @@ work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 - **R1**: rig flipは既存flipとは別sliceとする。ID参照、位置、回転、可動域を鏡映し、bake前後の結果一致を必須にする。
 - **P1**: 初回part replaceは既存`Part.layerIds`の静的な差し替えだけとする。時間依存の衣装・状態切替は別ADRへ分離する。
 
-PR #146の契約監査は17文書、製品コード変更なしでmainへ反映済みである。後続の人間判断H1=E1、H2=L1、H3=M1と計測専用`tools/h3/`はPR #147 final head `1ba671f7`、merge `24a089c`でmainへ反映された。CI Run #460とmerge後CI Run #461は全job成功し、固定headの最終独立reviewは全3系統`BLOCKER 0 / MUST 0`だった。次は同一main commitを24時間だけHTTPS配信してB0実機結果を集める。型、schema、製品UI、保存、product export、dependencyは変更しない。
+PR #146の契約監査は17文書、製品コード変更なしでmainへ反映済みである。後続の人間判断H1=E1、H2=L1、H3=M1と計測専用`tools/h3/`はPR #147 final head `1ba671f7`、merge `24a089c`でmainへ反映された。CI Run #460とmerge後CI Run #461は全job成功し、固定headの最終独立reviewは全3系統`BLOCKER 0 / MUST 0`だった。PR #148 final head `0cfc1ea`、merge `fbdeb357`では24時間配信基盤を追加し、CI Run #462 / #463が全成功した。次はサービス本体をPages root、H3を`/h3/`として同一main commitを配信し、移設後の新しい24時間枠でB0実機結果を集める。型、schema、製品UI、保存、product export、dependencyは変更しない。
 
 ## 2. 監査方法と現状
 
@@ -156,7 +156,7 @@ Frameを1件も割り当てる前に、UI、意味検証、bake関数が同じpr
 | Slice | 内容 | 変更予定 | 完了Gate |
 | --- | --- | --- | --- |
 | A | T1 model / schema / scheduler / event / inspection | `Frame.durationMs?`と`Animation.events?`のoptional追加、consumer統一 | E1拒否、旧data roundtrip、mock clock、保存・export Gate |
-| B0 | H3測定 | mainの同一commitを24時間限定HTTPS配信し、現行coreを固定matrixでPC / Safari実機測定 | M1 protocol、raw sample、環境、期限後停止、後続数値人間承認 |
+| B0 | H3測定 | mainの同一commitをPages rootの本体と`/h3/`の24時間限定H3として配信し、現行coreを固定matrixでPC / Safari実機測定 | M1 protocol、raw sample、環境、H3期限後停止、本体公開維持、後続数値人間承認 |
 | B | bake安全化とR1 | 座標修正、共通preflight、承認後の上限、rig flip / ID remap | H3数値決定、bake parity、原子的拒否、iPhone product-path実測 |
 | C | P1 | `Part.layerIds`だけの置換UIとinspection | L1拒否、exact write-set、1 History、次回bakeのみ反映 |
 | D | Timeline UX | onion skin、loop / event編集、frame alignment後続の接続 | A〜Cの契約を変えず、touch / keyboard / 44px Gate |

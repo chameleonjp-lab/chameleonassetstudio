@@ -43,7 +43,7 @@ jobs:
             esac
 
             case "$file" in
-              src/* | e2e/* | public/* | index.html | package.json | package-lock.json | playwright.config.* | vite.config.* | .github/workflows/*)
+              src/* | e2e/* | tools/h3/* | tools/pages/* | public/* | index.html | package.json | package-lock.json | playwright.config.* | vite.config.* | .github/workflows/*)
                 e2e=true
                 ;;
             esac
@@ -82,3 +82,23 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e
       - run: npm run measure:h3:chromium
+      - name: Build the GitHub Pages layout
+        env:
+          APP_BASE_PATH: /chameleonassetstudio/
+          H3_BASE_PATH: /chameleonassetstudio/h3/
+        run: |
+          npm run build:app
+          npm run measure:h3:build
+          npm run pages:assemble
+      - name: Verify the application and H3 Pages routes
+        env:
+          APP_BASE_PATH: /chameleonassetstudio/
+        run: npm run pages:chromium
+      - name: Assemble the closed H3 route
+        env:
+          PAGES_H3_SOURCE: tools/h3/closed
+        run: npm run pages:assemble
+      - name: Verify closing H3 keeps the application available
+        env:
+          APP_BASE_PATH: /chameleonassetstudio/
+        run: npm run pages:chromium
