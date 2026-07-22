@@ -5,11 +5,29 @@ import {
   type H3Capabilities,
   type H3Observations,
 } from './matrix';
+import {
+  createH3PublicationWindow,
+  getH3PublicationState,
+  type H3PublicationWindow,
+} from './publication';
 import './style.css';
 
 declare const __H3_SOURCE_COMMIT__: string;
+declare const __H3_PUBLISHED_AT__: string | null;
+declare const __H3_EXPIRES_AT__: string | null;
 
 const PENDING_KEY = 'chameleon-h3-pending-run-v1';
+const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+let running = false;
+let publicationConfigurationError: string | null = null;
+let publicationWindow: H3PublicationWindow | null = null;
+
+try {
+  publicationWindow = createH3PublicationWindow(__H3_PUBLISHED_AT__, __H3_EXPIRES_AT__);
+} catch (error) {
+  publicationConfigurationError = error instanceof Error ? error.message : String(error);
+}
 
 interface MemoryPerformance extends Performance {
   memory?: { usedJSHeapSize?: number };
@@ -73,6 +91,70 @@ function setStatus(message: string, kind: 'normal' | 'error' = 'normal'): void {
   status.dataset.kind = kind;
 }
 
+function isLocalPreview(): boolean {
+  return LOCAL_HOSTNAMES.has(location.hostname);
+}
+
+function remainingTime(milliseconds: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${hours}h ${minutes}m ${seconds}s`;
+}
+
+function publicationAccess(nowMs = Date.now()): { allowed: boolean; message: string } {
+  if (publicationConfigurationError) {
+    return {
+      allowed: false,
+      message: `Publication configuration error: ${publicationConfigurationError}`,
+    };
+  }
+  if (!publicationWindow) {
+    return isLocalPreview()
+      ? { allowed: true, message: 'Local preview mode. This is not physical-device evidence.' }
+      : {
+          allowed: false,
+          message: 'Public measurement is closed because no publication window is configured.',
+        };
+  }
+
+  const state = getH3PublicationState(publicationWindow, nowMs);
+  if (state === 'pending') {
+    return {
+      allowed: false,
+      message: `Measurement opens at ${new Date(publicationWindow.publishedAtMs).toLocaleString()}.`,
+    };
+  }
+  if (state === 'expired') {
+    return {
+      allowed: false,
+      message: `The 24-hour measurement window closed at ${new Date(
+        publicationWindow.expiresAtMs,
+      ).toLocaleString()}.`,
+    };
+  }
+  return {
+    allowed: true,
+    message: `Open for ${remainingTime(publicationWindow.expiresAtMs - nowMs)} more.`,
+  };
+}
+
+function refreshPublicationGate(): void {
+  const access = publicationAccess();
+  const status = element<HTMLElement>('publication-status');
+  status.textContent = access.message;
+  status.dataset.kind = access.allowed ? 'normal' : 'error';
+  element<HTMLFieldSetElement>('measurement-controls').disabled = running || !access.allowed;
+
+  const windowLabel = element<HTMLElement>('publication-window');
+  windowLabel.textContent = publicationWindow
+    ? `Published: ${new Date(publicationWindow.publishedAtMs).toLocaleString()} · Expires: ${new Date(
+        publicationWindow.expiresAtMs,
+      ).toLocaleString()}`
+    : 'Public deployments must embed an exact 24-hour start and end time.';
+}
+
 function renderDownload(value: unknown, filename: string): void {
   const output = element<HTMLTextAreaElement>('output');
   const json = JSON.stringify(value, null, 2);
@@ -87,8 +169,15 @@ function renderDownload(value: unknown, filename: string): void {
 }
 
 async function runSelectedCase(): Promise<void> {
-  const button = element<HTMLButtonElement>('run');
-  button.disabled = true;
+  const access = publicationAccess();
+  if (!access.allowed) {
+    refreshPublicationGate();
+    setStatus(access.message, 'error');
+    return;
+  }
+
+  running = true;
+  refreshPublicationGate();
   const previous = priorPendingRun();
   let observer: PerformanceObserver | null = null;
 
@@ -206,7 +295,8 @@ async function runSelectedCase(): Promise<void> {
     setStatus(message, 'error');
   } finally {
     observer?.disconnect();
-    button.disabled = false;
+    running = false;
+    refreshPublicationGate();
   }
 }
 
@@ -226,6 +316,8 @@ function initialize(): void {
       'Keep this as reload/crash evidence; the next result will reference it.';
   }
   element<HTMLButtonElement>('run').addEventListener('click', () => void runSelectedCase());
+  refreshPublicationGate();
+  window.setInterval(refreshPublicationGate, 1000);
 }
 
 initialize();
