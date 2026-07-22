@@ -47,7 +47,7 @@ test('serves the application at the Pages root and H3 under /h3/', async ({ page
 
   await page.goto('./h3/');
   if (expectedStatus === 'open') {
-    await expect(page).toHaveTitle('Chameleon H3 measurement');
+    await expect(page).toHaveTitle('Chameleon H3 measurement harness');
     await expect(page.locator('body')).toContainText('H3 measurement harness');
     await expect(page.locator('#publication-status')).toContainText('Open for');
     await expect(page.locator('#measurement-controls')).toBeEnabled();
