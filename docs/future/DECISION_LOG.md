@@ -857,3 +857,43 @@ ADR-0016でSVG / GIF / APNGの`rasterized-import`分類、ADR-0019 / PR #135でA
 
 - iPhone / iPad SafariのFiles picker MIME、`ImageDecoder`対応、native dialog、safe-area、memoryの実機結果。
 - SVG vector編集、外部resource、17frame以上、frame単位duration、有限repeat回数を将来採用するか。採用時は別ADR、保存・version・security監査、独立review、人間承認を必要とする。
+
+## ADR-2026-07-22-022: Group 12 Timeline / RigのT1 + R1 + P1中核契約を確定
+
+### 状態
+
+- accepted core（2026-07-22 人間承認、T1 + R1 + P1）
+- H1 + H2 + H3 human decision required
+- product implementation not started
+
+### 背景
+
+PR #145をhead `9048b11`からReady化し、merge `236571c`としてmainへ反映した後、同じmain SHAを仕様、実装・データ安全、テスト・端末の3担当が独立にread-only監査した。Frame / Animation / Part / RigAnimation / bake基盤は再利用できる一方、可変時間consumer、固定fps派生export、rig flip数式、Layer所属、同期bakeの資源上限を製品実装前に固定する必要があった。Opus 4.8 review済みとは扱わない。
+
+### 決定
+
+- `docs/future/2D_3_TIMELINE_RIG_PLAN.md`をGroup 12契約の正本とする。
+- T1 / ADR-0021: `Frame.durationMs?`をoptional・additiveとし、各出現の実効時間を`frame.durationMs ?? 1000 / animation.fps`とする。旧fps-only Asset 0.2.0とinformationalな`Animation.durationMs`を変えず、派生exportで黙って均一化しない。
+- R1 / ADR-0022: rig flipを既存flipとは別sliceとし、Part / pose / limitの鏡映式、完全ID map、`flip(bake(original))`と`bake(flipRig(original))`の同値をGateにする。
+- P1 / ADR-0023: 初回part replaceを既存`Part.layerIds`だけの静的置換に限定し、他field、既存bake、schema、version、Family recipeを変えない。時間依存状態は別ADRへ送る。
+- 現行実装・ADR・fixtureの`max(1, round(...))`をbake frame数の正本とし、`DATA_FORMAT.md`の旧`ceil`記載を訂正する。
+- 固定SHA監査のMUSTを契約計画、ADR、data / export / flip / test / roadmap文書へ同期する。本PRはdocs-onlyとする。
+
+### しないこと
+
+- 製品コード、型、schema、version、migration、IndexedDB、`.casproj`配置、Atlas / ZIP形式、dependencyの変更。
+- Group 12製品実装、Group 12契約PRのReady化・merge。
+- GIF / APNG importの可変時間保持、Atlasへのduration / event追加、resample、linked rig refresh、時間依存衣装、native rig export、collider override / polygon、IK / mesh / physics / state machine。
+
+### 影響する文書
+
+- `docs/future/2D_3_TIMELINE_RIG_PLAN.md`
+- `docs/adr/0021-frame-duration-semantics.md`, `0022-rig-flip-and-bake-parity.md`, `0023-part-layer-replacement.md`, `docs/adr/README.md`
+- `docs/future/2D_ASSET_DATA_CONTRACT.md`, `FLIP_DESIGN.md`, `2D_EXPORT_COMPATIBILITY_MATRIX.md`, `2D_COMPLETION_ROADMAP.md`
+- `docs/DATA_FORMAT.md`, `docs/EXPORT_FORMATS.md`, `docs/IMPLEMENTATION_PLAN.md`, `docs/TEST_PLAN.md`, `docs/RELEASE_CHECKLIST.md`
+
+### 未確定事項
+
+- H1: 可変時間 / eventを持つAnimationについて固定fps派生exportを理由付きで止めるE1か、明示loss確認後に限るE2か。
+- H2: `Part.layerIds`を非空・1 Layer 1 Partにし、他Part所有Layerを暗黙移動せず拒否するL1か、空detachを許すL2か。複数Part共有L3はbake競合のため非推奨。採用規則決定前はR1 / P1を実装しない。
+- H3: 120 Frame超warning / 240 Frame hard cap候補と、LayerState / serialized bytes / sheet pixel上限。PC Chromium、iPad Safari、iPhone Safariの実測後に人間が決める。

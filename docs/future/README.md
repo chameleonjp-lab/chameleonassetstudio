@@ -1,6 +1,6 @@
 # Future Planning Index
 
-最終更新日: 2026-07-21
+最終更新日: 2026-07-22
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 将来計画インデックス
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
@@ -29,7 +29,8 @@ Chameleon Asset Studio は、画像取り込み専用の変換ツールに限定
 |---|---|
 | `2D_COMPLETE_PRODUCT_SPEC.md` | 2D 完成形、対象利用者、完了条件、AI と 3D の境界を定義する上位仕様 |
 | `2D_ASSET_DATA_CONTRACT.md` | 保存形式、座標、派生素材、動き、判定、migration の将来契約 |
-| `../adr/` | 2D-1aで先に固定したデータ契約と、後続work packageで人間承認した限定判断（ADR-0016〜0018を含む）を、現行実装対応とfixtureテストつきで記録するADR群 |
+| `../adr/` | 2D-1aで先に固定したデータ契約と、後続work packageで人間承認した限定判断（group 11のADR-0016〜0020、group 12のADR-0021〜0023を含む）を、現行実装対応とfixture計画つきで記録するADR群 |
+| `2D_3_TIMELINE_RIG_PLAN.md` | Group 12のT1可変時間、R1 rig flip、P1 part replace、bake安全Gate、未決定H1〜H3を固定するdocs-only契約計画 |
 | `2D_EXPORT_COMPATIBILITY_MATRIX.md` | 入出力形式、対象別 preset、`verified` の条件、未対応範囲 |
 | `2D_DEVICE_RELIABILITY_SPEC.md` | PC / iPad / スマホ、保存、復旧、性能、アクセシビリティ、安全性 |
 | `2D_COMPLETION_ROADMAP.md` | 2D Pro Gate までの実装順、PR 分割、品質 gate、3D 再開条件 |
