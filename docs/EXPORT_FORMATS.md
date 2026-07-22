@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 書き出し形式書
 
-最終更新日: 2026-07-21
+最終更新日: 2026-07-22
 対象バージョン: アプリ 0.1.0 / Asset 0.2.0 / atlas 0.1.0
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`
 
@@ -89,6 +89,18 @@ Slice Dでは、`atlas.json + spritesheet.png`、`chameleon-atlas/0.1.0`のcanon
 - 非保持: raw atlas JSON、元layer / part / tag / gameAttributes / rig / provenance / identity / animation durationMs。JSON原本のSHA-256等だけをprovenanceへ記録する。
 
 Atlas versionは引き続きmigration対象ではない。現行versionだけをruntime validatorで受理し、別versionを変換しない。
+
+### 4.2 Group 12の可変時間・event境界（未実装）
+
+現行`atlas.json`、helpers、examplesは`fps / loop / frames`だけで再生し、Frame単位durationとeventを表現できない。T1 / ADR-0021は、これらを黙って均一化・削除しないことまでacceptedである。
+
+- PNG / WebPは静止画なので、Timeline metadataの有無だけを理由に止めない。
+- 単体`asset.json`と`.casproj`はcanonical dataを保持できる。
+- product export ZIPにはcanonical `asset.json`と固定fps派生物が同居するため、可変時間またはeventを持つAnimationの扱いをH1で決める必要がある。
+- H1の推奨E1は、`atlas.json`、それを含むZIP、helpers、examplesを理由付きで止める案である。E2は明示loss確認後だけ現行fpsへ均一化しeventを除外する案である。
+- Atlas 0.1.0へduration / eventを追加したり、Frameをresampleしたりする変更はGroup 12で先取りせず、2D-4の形式version契約へ送る。
+
+H1が未決定の間はT1製品実装を開始しない。本docs-only監査時点のexport挙動は変更されていない。
 
 ---
 
