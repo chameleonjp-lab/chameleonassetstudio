@@ -17,9 +17,12 @@
 - bind poseとkeyframe poseは`localPosition.x' = -x`、`localRotation' = -rotation`、`localScale' = localScale`とする。
 - `rotationLimit {min,max}`は`{min: -max, max: -min}`へ変換する。
 - keyframe time、fps、loop、durationは変えない。
-- Part ID、`parentId`、`layerIds`、rig poseのpart ID key、RigAnimation ID、Frame ID、eventの`frameId`を完全mapで張り替える。event名は自動変更しない。
-- 未解決参照、重複Layer所属、親子循環、非有限値を黙って落としたり旧IDのまま残したりせず、理由付きで拒否する。
-- ID、日時、表示名を正規化した上で、`flip(bake(original))`と`bake(flipRig(original))`の全Frame transformと最終pixelが許容誤差内で一致することを完了条件にする。
+- Part ID、`parentId`、`layerIds`、rig poseのpart ID key、RigAnimation ID、Frame ID、event IDとeventの`frameId`を完全mapで張り替える。event名は自動変更しない。linked mirrorの内部ID維持modeは既存規則に従う。
+- 未解決参照、親子循環、非有限値、H2で採用したLayer所属規則に反するdataを黙って落としたり旧IDのまま残したりせず、理由付きで拒否する。H2決定前は実装しない。
+- 対応Layerのposition x / y、scale x / y、`[-180, 180)`へ正規化したrotationは絶対差`1e-6`以下、配列順、visible、opacity、参照、時間はexact一致とする。relative toleranceは使わない。
+- pixelは同寸法RGBA bufferの全alpha差を1以下、どちらかのalphaが0より大きいpixelのRGB各channel差を1以下とする。両方が完全透明のpixelだけRGBを比較対象外にする。
+- parityで正規化できるのは完全mapで対応が証明された各ID、`createdAt / updatedAt`、自動copy表示名だけとし、配列順、参照、時間、transform、visible、opacity、pixelは正規化しない。
+- `.casproj` export→import後のcanonical `asset.json`とBlob hashはexport直前とexact一致させ、roundtrip後にもbake parityを再実行する。このroundtripではID・日時を正規化しない。
 - bake前に有限値、参照、循環、生成Frame / LayerState / serialized bytes / sheet pixelを共通preflightで検査し、上限超過は1件も割り当てる前に原子的に拒否する。
 
 ## 根拠
@@ -31,8 +34,8 @@
 ## 影響と fixture
 
 - 将来の実装: rig flip、完全ID remap、bake座標修正、共通preflight、inspector、Undo / Redo、保存roundtrip。
-- fixture: 親子3段以上、非zero pivot、bind pose、rotation limit、部分keyframe、負scale、非等方scale、double flip、source不変、全Frame parityを含める。
-- 現行`bakeRigAnimation`のLayer中心計算はaccepted座標契約と不一致であるため、R1実装より先にrendererと同じ式へ直す。
+- fixture: 親子3段以上、非zero pivot、bind pose、rotation limit、部分keyframe、負scale、非等方scale、double flip、source不変、全Frame parity、`.casproj` roundtripを含める。
+- 現行`bakeRigAnimation`は入力中心と出力positionの両方がaccepted座標契約と不一致である。入力を`center0 = position + textureSize / 2`、world pose適用後を`center1`、出力を`next.position = center1 - textureSize / 2`として、R1実装より先にrendererと同じ式へ直す。
 - 本docs-only PRでは製品コード、schema、上限定数を変更しない。
 
 ## 再検討条件

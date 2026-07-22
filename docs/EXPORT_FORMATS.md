@@ -96,7 +96,7 @@ Atlas versionは引き続きmigration対象ではない。現行versionだけを
 
 - PNG / WebPは静止画なので、Timeline metadataの有無だけを理由に止めない。
 - 単体`asset.json`と`.casproj`はcanonical dataを保持できる。
-- product export ZIPにはcanonical `asset.json`と固定fps派生物が同居するため、可変時間またはeventを持つAnimationの扱いをH1で決める必要がある。
+- product export ZIPにはcanonical `asset.json`と固定fps派生物が同居するため、export対象Animationが参照するFrameの可変時間または対象AnimationのeventをH1で扱う必要がある。どのAnimationも参照しないFrameのoverrideだけでは派生出力を止めない。
 - H1の推奨E1は、`atlas.json`、それを含むZIP、helpers、examplesを理由付きで止める案である。E2は明示loss確認後だけ現行fpsへ均一化しeventを除外する案である。
 - Atlas 0.1.0へduration / eventを追加したり、Frameをresampleしたりする変更はGroup 12で先取りせず、2D-4の形式version契約へ送る。
 

@@ -47,13 +47,13 @@ work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 - 同じFrameを複数Animationが参照する場合も同じoverrideを使う。出現ごとに違う時間が必要ならFrameを複製する。
 - 既存`Animation.durationMs`はinformationalのままにし、再生・event・派生exportの正本へ昇格せず、自動更新もしない。
 - 既存Asset 0.2.0へ値を補完せず、fps-onlyの意味を変えない。optional・additiveなのでAsset versionは0.2.0、migrationなしを維持する。
-- Frame複製は`durationMs`を複製し、新規captureはoverrideを持たない。旧GIF / APNG importから失われた可変時間を遡及復元しない。
+- Frame単体複製は`durationMs`とFrame内容だけを複製し、どのAnimationの`frameIds`もeventも変更しない。既存eventは元Frameを参照したまま残し、複製FrameをAnimationへ追加した後に必要なeventを明示作成する。新規captureはoverrideを持たない。旧GIF / APNG importから失われた可変時間を遡及復元しない。
 
 ### 3.2 再生、event、検査
 
 - 固定`setInterval`ではなく、現在Frameの実効時間を読む取消可能な逐次schedulerを使う。
 - eventはADR-0009どおりFrameの表示開始時に発火し、同じFrameの各出現・loopの各周回で発火する。
-- event参照はFrame IDとし、複製・flipでは張り替える。削除後のdangling参照は黙って削除せず意味検証エラーにする。
+- event参照はFrame IDとする。Frame単体複製ではeventを複製・移動しない。独立Asset複製と独立rig flipでは各eventに新しいevent IDを採番し、`frameId`を新しいFrame IDへ張り替える。linked mirrorの内部ID維持modeではevent IDとFrame IDを既存規則どおり維持する。削除後のdangling参照は黙って削除せず意味検証エラーにする。
 - payloadはプリミティブ、プリミティブ配列、値がプリミティブの平坦objectまでとし、実行、URL自動読込、秘密情報の格納を許可しない。
 - effect時間検査を含む全consumerは同じ実効時間関数を使う。
 
@@ -74,13 +74,16 @@ work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 | `rotationLimit {min,max}` | `{ min: -max, max: -min }` |
 | keyframe `time` / fps / loop / duration | 変更しない |
 
-- Part ID、`parentId`、`layerIds`、rig poseのpart ID key、RigAnimation ID、Frame ID、eventの`frameId`を、先に作った完全mapで張り替える。
+- Part ID、`parentId`、`layerIds`、rig poseのpart ID key、RigAnimation ID、Frame ID、event IDとeventの`frameId`を、先に作った完全mapで張り替える。linked mirrorの内部ID維持modeは既存規則に従う。
 - event名はゲーム用文字列なのでleft / rightを自動変更しない。既存のPart type、anchor role、表示名の左右交換規則だけを維持する。
-- 参照切れ、重複Layer所属、親子循環、非有限値を旧IDの保持や値の削除で回避せず、理由付きでflip / bakeを拒否する。
-- ID、日時、表示名を正規化した上で、`flip(bake(original))`と`bake(flipRig(original))`の全Frame・全Layer transform・最終pixelが許容誤差内で一致することを完了条件にする。
+- 参照切れ、親子循環、非有限値、H2で採用したLayer所属規則に反するdataを、旧IDの保持や値の削除で回避せず、理由付きでflip / bakeを拒否する。H2決定前はR1 / P1を実装しない。
+- 対応Layerを完全ID mapで照合し、position x / y、scale x / y、`[-180, 180)`へ正規化したrotationの絶対差をそれぞれ`1e-6`以下とする。relative toleranceは使わず、配列順、visible、opacity、参照、時間はexact一致とする。
+- pixel oracleは同じrenderer・同じfixtureから得た同寸法RGBA bufferを比較する。全pixelのalpha差を1以下、どちらかのalphaが0より大きいpixelのRGB各channel差を1以下とし、両方が完全透明のpixelだけRGBを比較対象外にする。
+- parity比較で正規化できるのは、完全mapで対応が証明されたAsset / Part / Layer / Frame / Animation / RigAnimation / event ID、`createdAt / updatedAt`、自動生成されたcopy表示名だけとする。配列順、参照、時間、transform、visible、opacity、pixelを正規化してはならない。
+- `.casproj` export→import後のcanonical `asset.json`とBlob hashは、export直前とexact一致させる。このroundtripではID・日時を正規化せず、reload後にも`flip(bake(original))`と`bake(flipRig(original))`のparityを再実行する。
 - 親子3段以上、非zero pivot、bind pose、rotation limit、部分keyframe、負scale、非等方scaleをfixtureへ含める。
 
-現行`bakeRigAnimation`はLayer中心を`position + textureSize * scale / 2`で求めるが、accepted座標契約は`position + textureSize / 2`を中心とする。非等方scaleと回転でparityを壊すため、R1製品実装より先に数式を修正し、rendererと同じfixtureで固定する。
+現行`bakeRigAnimation`は入力中心と出力positionの両方にtexture scaleを掛けるが、accepted座標契約はscale非依存の中心を使う。入力は`center0 = position + textureSize / 2`、world pose適用後の中心を`center1`として、出力は`next.position = center1 - textureSize / 2`とする。非等方scaleと回転でparityを壊さないよう、R1製品実装より先に両式を修正し、rendererと同じfixtureで固定する。
 
 ## 5. P1: 静的part replace
 
@@ -89,6 +92,8 @@ work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 ```text
 before.parts[target].layerIds -> validatedReplacementLayerIds
 ```
+
+永続dataの例外は通常のcommitで更新する`Asset.updatedAt`だけとする。History labelやUI選択状態はAssetのwrite-setに含めず、対象外Partの`layerIds`を含むその他のdomain fieldを変更しない。
 
 - Partの`id / name / partType / parentId / pivot / bindPose / rotationLimit`を維持する。
 - Layer、Texture、Blob、Frame、Animation、RigAnimationを作成、削除、再採番しない。
@@ -104,7 +109,7 @@ before.parts[target].layerIds -> validatedReplacementLayerIds
 
 | 選択肢 | 契約 | 評価 |
 | --- | --- | --- |
-| **E1（推奨）** | `Frame.durationMs`またはeventを持つAnimationがある場合、`atlas.json`、それを含むZIP、helpers、examplesを理由付きで止める。PNG / WebP、単体`asset.json`、`.casproj`は許可する。 | 情報を失わず、誤ったゲーム再生を作らない。 |
+| **E1（推奨）** | export対象Animationが参照するFrameに`durationMs`がある、または対象Animationにeventがある場合、`atlas.json`、それを含むZIP、helpers、examplesを理由付きで止める。未参照Frameのoverrideだけでは止めない。PNG / WebP、単体`asset.json`、`.casproj`は許可する。 | 情報を失わず、誤ったゲーム再生を作らない。 |
 | E2 | 明示loss確認後だけ、現行fpsへ均一化しeventを除外して派生出力する。 | 互換は保てるが、確認後でも時間・eventを失う。 |
 | E3 | frameをresampleして近似する。 | Frame数とevent時刻を変えるためGroup 12では採らず、2D-4へ送る。 |
 
@@ -114,17 +119,19 @@ T1の「黙って均一化しない」はacceptedだが、E1 / E2の選択は未
 
 | 選択肢 | 契約 | 評価 |
 | --- | --- | --- |
-| **L1（推奨）** | `layerIds`は1件以上、各Layerは高々1 Partに所属。別Partで使用中なら確認後に同一操作で移す。 | bake結果がPart順に依存しない。 |
+| **L1（推奨）** | `layerIds`は1件以上、各Layerは高々1 Partに所属。別Partで使用中のLayerは理由付きで拒否し、対象外Partを暗黙変更・移動しない。 | P1の1 Partだけというexact write-setを守り、bake結果がPart順に依存しない。 |
 | L2 | 空集合をdetachとして許可するが、1 Layer 1 Partは維持する。 | 空Partの意味とUI表示を追加で定義する必要がある。 |
 | L3 | 複数Part所属を許可し、bake優先順位を定義する。 | 現行の後勝ち競合を正本化するため非推奨。 |
 
-既存の重複・空データを自動migrationしない。新規操作のpreflightとread-only inspectionで理由を表示し、競合するdataのbakeを止める。
+既存の重複・空データを自動migrationしない。新規操作のpreflightとread-only inspectionで理由を表示し、H2で採用した所属規則に反するdataのbakeを止める。
 
 ### H3: rig bake資源上限
 
 現行bakeは同期処理で、`max(1, round(durationMs / 1000 * fps))`個のFrameと、概ね`frameCount * sum(part.layerIds.length)`個のLayerStateを一括生成する。fps、duration、生成Frame、生成Stateに実効上限がない。
 
 ローカルNodeで実コードを使った参考計測は次のとおりだった。これはbrowser、History、autosave、画像合成、iPhone Safariの合格証拠ではない。
+
+計測環境は一時的なLinux x86_64 container、AMD EPYC 9V74、Node v24.14.0。256 x 256 Asset、1 Part = 1 Layer、Part数と同じ深さのparent chain、正規化時刻0 / 0.5 / 1の3 keyframeを使い、各caseを別Assetで5回実行したmedianである。専用warm-up、heap差分、p95、browser処理は測っておらず、計測scriptも製品repositoryへ保存していないため、上限採用の再現証拠には使わない。
 
 | Frame | Part / LayerState per Frame | median | serialized JSON |
 | ---: | ---: | ---: | ---: |
@@ -143,7 +150,7 @@ Frameを1件も割り当てる前に、UI、意味検証、bake関数が同じpr
 
 - fps / durationは有限かつ正、keyframe timeは0〜1、pose数値は有限。
 - `rotationLimit.min <= max`、Part / Layer / Texture / parent / pose参照が解決可能、親子循環なし。
-- 重複keyframe時刻、重複Part ownership、重複FrameLayerStateを理由付きで検出する。
+- 重複keyframe時刻、H2で採用した所属規則への違反、重複FrameLayerStateを理由付きで検出する。
 - 生成Frame、LayerState、推定serialized bytes、sheet pixelを表示し、上限超過を原子的に拒否する。
 - 拒否時はAsset、Blob、History、autosaveを変更しない。
 
@@ -164,8 +171,8 @@ Frameを1件も割り当てる前に、UI、意味検証、bake関数が同じpr
 
 | Slice | Unit / contract | Chromium E2E・保存 | 実機 |
 | --- | --- | --- | --- |
-| T1 | fallback、override、反復Frame、loop / event、安全payload、duplicate / delete / flip | mock clock順序、Undo / Redo、reload、IndexedDB、`.casproj`、H1のloss / 拒否 | 長いtimeline、keyboard、入力zoom、44px、縦横 |
-| R1 | 完全ID graph、鏡映式、source不変、double flip、親子 / pivot / bind / limit / scale | 全Frame bake parity、Undo / Redo、reload、上限超過の原子的拒否 | 採用上限でbake、応答、Safari reload / crashなし |
+| T1 | fallback、override、反復Frame、loop / event、安全payload、Frame単体複製はevent不変、Asset複製 / flipはevent ID再採番とframeId張替え、delete | mock clock順序、event ID一意性・発火回数、Undo / Redo、reload、IndexedDB、`.casproj`、H1のloss / 拒否 | 長いtimeline、keyboard、入力zoom、44px、縦横 |
+| R1 | 完全ID graph、鏡映式、source不変、double flip、親子 / pivot / bind / limit / scale、`1e-6` transform / RGBA oracle | 全Frame bake parity、Undo / Redo、reload、`.casproj` exact roundtrip後の再parity、上限超過の原子的拒否 | 採用上限でbake、応答、Safari reload / crashなし |
 | P1 | missing / duplicate / empty / order / ownership、他field不変 | 既存bake不変、次回bake反映、1 History、Undo / Redo、reload | touch選択、長いLayer一覧、keyboard後の確定 / 取消 |
 
 Playwrightのmobile viewportは実iPhone Safariの代替にしない。Group 12完了前にsafe area、software keyboard、入力zoom、orientation、touch target、bake時のmemoryとreloadを実機で記録する。

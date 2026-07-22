@@ -17,6 +17,7 @@
 - Layer、Texture、Blob、Frame、Animation、RigAnimationを作成、削除、再採番しない。
 - すでにbakeしたFrameを変更せず、次回bakeだけが新しいLayer集合を使う。
 - 置換IDは存在と一意性をpreflightで検査し、保存時は`Asset.layers`順へ正規化する。
+- 永続dataのwrite-setは対象Partの`layerIds`と通常のcommitで更新する`Asset.updatedAt`だけとし、対象外Partを含むその他のdomain fieldを変更しない。
 - 1回の確定を1 History操作とし、取消、Undo / Redo、保存・reloadを原子的に扱う。
 - schema、version、migration、Family recipe、product exportを変更しない。装備違いはmanual variantのままにする。
 - 時間依存の衣装、表情、状態切替、keyframe別所属、state machineは別ADRへ分離する。
@@ -30,7 +31,7 @@
 ## 影響と fixture
 
 - 将来の実装: Part編集UI、preflight、inspection、次回bake、History、保存roundtrip。
-- fixture: missing / duplicate / empty / order / ownership境界、他field不変、既存bake不変、次回bakeだけへの反映、1 History、Undo / Redo、`.casproj`を固定する。
+- fixture: missing / duplicate / empty / order / ownership境界、対象Partの`layerIds`と`Asset.updatedAt`以外のfield不変、既存bake不変、次回bakeだけへの反映、1 History、Undo / Redo、`.casproj`を固定する。
 - 既存dataを自動migrationせず、新規操作のpreflightとread-only inspectionから導入する。
 - 本docs-only PRでは型、schema、製品UI、保存処理を変更しない。
 

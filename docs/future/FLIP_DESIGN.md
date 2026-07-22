@@ -144,9 +144,9 @@ leg_left  <-> leg_right
 | `rotationLimit {min,max}` | `{ min: -max, max: -min }` |
 | keyframe `time` / fps / loop / duration | 変更しない |
 
-- Part ID、`parentId`、`layerIds`、rig poseのpart ID key、RigAnimation ID、Frame ID、eventの`frameId`を完全mapで張り替える。event名は自動変更しない。
-- 未解決参照、重複Layer所属、親子循環、非有限値を理由付きで拒否し、rigだけを削除して成功扱いにしない。
-- ID、日時、表示名を正規化した上で、`flip(bake(original))`と`bake(flipRig(original))`の全Frame transformと最終pixelが許容誤差内で一致することをGateにする。
-- 現行bakeのLayer中心計算とaccepted座標契約の不一致をR1より先に修正する。上限値はGroup 12計画H3の実機測定・人間承認後に固定する。
+- Part ID、`parentId`、`layerIds`、rig poseのpart ID key、RigAnimation ID、Frame ID、event IDとeventの`frameId`を完全mapで張り替える。event名は自動変更しない。linked mirrorの内部ID維持modeは既存規則に従う。
+- 未解決参照、親子循環、非有限値、H2で採用したLayer所属規則に反するdataを理由付きで拒否し、rigだけを削除して成功扱いにしない。H2決定前は実装しない。
+- transformは絶対差`1e-6`以下、pixelは同寸法RGBA bufferのalphaと非透明pixelのRGB各channel差1以下をGateにする。正規化対象と`.casproj` roundtripの詳細はADR-0022を正本とする。
+- 現行bakeは入力中心と出力positionの両方を修正する。入力は`center0 = position + textureSize / 2`、world pose適用後を`center1`、出力は`next.position = center1 - textureSize / 2`とする。上限値はGroup 12計画H3の実機測定・人間承認後に固定する。
 
 正本は`docs/adr/0022-rig-flip-and-bake-parity.md`と`docs/future/2D_3_TIMELINE_RIG_PLAN.md`である。

@@ -145,7 +145,7 @@ Project
 Group 12のR1ではrig編集データを既存flipとは別sliceで扱い、次を固定する。
 
 - `Part.pivot.x`は`2 * asset.origin.x - x`、bind pose / keyframeの`localPosition.x`と`localRotation`は符号反転、`localScale`は不変とする。
-- `rotationLimit {min,max}`は`{-max,-min}`とし、Part / parent / layer / pose / rig / frame / event参照を完全mapで張り替える。
+- `rotationLimit {min,max}`は`{-max,-min}`とし、Part / parent / layer / pose / rig / frame / event IDと参照を完全mapで張り替える。H2で採用したLayer所属規則に反するdataは理由付きで拒否する。
 - `flip(bake(original))`と`bake(flipRig(original))`の全Frame transformと最終pixelを同じfixtureで比較する。
 
 詳細と実装停止条件はADR-0022と`2D_3_TIMELINE_RIG_PLAN.md`を正本とする。polygonの頂点順、frame別判定上書きはGroup 13へ残す。
@@ -201,7 +201,7 @@ Spine、Rive、Live2D の専用形式を直接再現するのではなく、Cham
 - 部品差し替え、表情、色違い。
 - 状態の候補と遷移条件を、必要になった時に共通データとして設計する。
 
-Group 12のP1 / ADR-0023では、初回の部品差し替えを既存Partの`layerIds`だけを既存Layer ID集合へ置き換える静的操作に限定する。Partのその他のfield、Layer / Texture / Blob、Frame / Animation / RigAnimation、既存bake済みFrameを変えず、次回bakeだけが新しい所属を使う。空集合と1 Layerの複数Part所属はGroup 12計画H2で人間が決める。時間依存の衣装・表情・状態切替は別ADRへ送る。
+Group 12のP1 / ADR-0023では、初回の部品差し替えを既存Partの`layerIds`だけを既存Layer ID集合へ置き換える静的操作に限定する。永続dataの例外は通常のcommitで更新する`Asset.updatedAt`だけとする。Partのその他のfield、対象外Part、Layer / Texture / Blob、Frame / Animation / RigAnimation、既存bake済みFrameを変えず、次回bakeだけが新しい所属を使う。空集合と1 Layerの複数Part所属はGroup 12計画H2で人間が決める。時間依存の衣装・表情・状態切替は別ADRへ送る。
 
 Group 12のbakeは、有限値、参照、循環、生成Frame / LayerState / serialized bytes / sheet pixelを割当前にpreflightし、上限超過を原子的に拒否する。上限値はbrowserとiPhone Safariで測定し、H3として人間承認するまでacceptedにしない。
 
