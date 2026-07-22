@@ -22,7 +22,8 @@
 - 対応Layerのposition x / y、scale x / y、`[-180, 180)`へ正規化したrotationは絶対差`1e-6`以下、配列順、visible、opacity、参照、時間はexact一致とする。relative toleranceは使わない。
 - pixelは同寸法RGBA bufferの全alpha差を1以下、どちらかのalphaが0より大きいpixelのRGB各channel差を1以下とする。両方が完全透明のpixelだけRGBを比較対象外にする。
 - parityで正規化できるのは完全mapで対応が証明された各ID、`createdAt / updatedAt`、自動copy表示名だけとし、配列順、参照、時間、transform、visible、opacity、pixelは正規化しない。
-- `.casproj` export→import後のcanonical `asset.json`とBlob hashはexport直前とexact一致させ、roundtrip後にもbake parityを再実行する。このroundtripではID・日時を正規化しない。
+- `.casproj` ZIP decode直後・製品namespace再採番前はcanonical `asset.json`とBlob bytes / hashをexport直前とexact一致させる。製品import後は、既存契約が要求するProject ID / Asset ID、FamilyのAsset参照、Asset IDをprefixに持つBlob storage keyの対応mapだけを許可する。
+- 製品import後もPart / Layer / Frame / Animation / RigAnimation / eventの内部ID、参照、時間、transform、配列順、Blob bytes / hashはexact一致とする。許可したcontainer mapを逆適用してcanonical Assetを比較し、reload後にもbake parityを再実行する。
 - bake前に有限値、参照、循環、生成Frame / LayerState / serialized bytes / sheet pixelを共通preflightで検査し、上限超過は1件も割り当てる前に原子的に拒否する。
 
 ## 根拠

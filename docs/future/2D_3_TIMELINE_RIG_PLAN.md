@@ -80,7 +80,8 @@ work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 - 対応Layerを完全ID mapで照合し、position x / y、scale x / y、`[-180, 180)`へ正規化したrotationの絶対差をそれぞれ`1e-6`以下とする。relative toleranceは使わず、配列順、visible、opacity、参照、時間はexact一致とする。
 - pixel oracleは同じrenderer・同じfixtureから得た同寸法RGBA bufferを比較する。全pixelのalpha差を1以下、どちらかのalphaが0より大きいpixelのRGB各channel差を1以下とし、両方が完全透明のpixelだけRGBを比較対象外にする。
 - parity比較で正規化できるのは、完全mapで対応が証明されたAsset / Part / Layer / Frame / Animation / RigAnimation / event ID、`createdAt / updatedAt`、自動生成されたcopy表示名だけとする。配列順、参照、時間、transform、visible、opacity、pixelを正規化してはならない。
-- `.casproj` export→import後のcanonical `asset.json`とBlob hashは、export直前とexact一致させる。このroundtripではID・日時を正規化せず、reload後にも`flip(bake(original))`と`bake(flipRig(original))`のparityを再実行する。
+- `.casproj` roundtripは2段階で検証する。ZIP decode直後・製品namespace再採番前はcanonical `asset.json`とBlob bytes / hashをexport直前とexact一致させる。製品import後は、既存契約が要求するProject ID / Asset ID、FamilyのAsset参照、Asset IDをprefixに持つBlob storage keyの対応mapだけを許可する。
+- 製品import後もPart / Layer / Frame / Animation / RigAnimation / eventの内部ID、参照、時間、transform、配列順、Blob bytes / hashはexact一致とする。許可したcontainer mapを逆適用してcanonical Assetを比較し、reload後にも`flip(bake(original))`と`bake(flipRig(original))`のparityを再実行する。
 - 親子3段以上、非zero pivot、bind pose、rotation limit、部分keyframe、負scale、非等方scaleをfixtureへ含める。
 
 現行`bakeRigAnimation`は入力中心と出力positionの両方にtexture scaleを掛けるが、accepted座標契約はscale非依存の中心を使う。入力は`center0 = position + textureSize / 2`、world pose適用後の中心を`center1`として、出力は`next.position = center1 - textureSize / 2`とする。非等方scaleと回転でparityを壊さないよう、R1製品実装より先に両式を修正し、rendererと同じfixtureで固定する。
@@ -172,7 +173,7 @@ Frameを1件も割り当てる前に、UI、意味検証、bake関数が同じpr
 | Slice | Unit / contract | Chromium E2E・保存 | 実機 |
 | --- | --- | --- | --- |
 | T1 | fallback、override、反復Frame、loop / event、安全payload、Frame単体複製はevent不変、Asset複製 / flipはevent ID再採番とframeId張替え、delete | mock clock順序、event ID一意性・発火回数、Undo / Redo、reload、IndexedDB、`.casproj`、H1のloss / 拒否 | 長いtimeline、keyboard、入力zoom、44px、縦横 |
-| R1 | 完全ID graph、鏡映式、source不変、double flip、親子 / pivot / bind / limit / scale、`1e-6` transform / RGBA oracle | 全Frame bake parity、Undo / Redo、reload、`.casproj` exact roundtrip後の再parity、上限超過の原子的拒否 | 採用上限でbake、応答、Safari reload / crashなし |
+| R1 | 完全ID graph、鏡映式、source不変、double flip、親子 / pivot / bind / limit / scale、`1e-6` transform / RGBA oracle | 全Frame bake parity、Undo / Redo、reload、`.casproj` decode直後exact＋製品importのcontainer ID map適用後exact＋再parity、上限超過の原子的拒否 | 採用上限でbake、応答、Safari reload / crashなし |
 | P1 | missing / duplicate / empty / order / ownership、他field不変 | 既存bake不変、次回bake反映、1 History、Undo / Redo、reload | touch選択、長いLayer一覧、keyboard後の確定 / 取消 |
 
 Playwrightのmobile viewportは実iPhone Safariの代替にしない。Group 12完了前にsafe area、software keyboard、入力zoom、orientation、touch target、bake時のmemoryとreloadを実機で記録する。
