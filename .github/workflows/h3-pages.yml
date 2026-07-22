@@ -1,0 +1,116 @@
+name: H3 24-hour measurement page
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Publish for 24 hours or close the current measurement page
+        required: true
+        default: publish-24h
+        type: choice
+        options:
+          - publish-24h
+          - close-now
+
+concurrency:
+  group: h3-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+    outputs:
+      mode: ${{ steps.publication.outputs.mode }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Define the publication window
+        id: publication
+        shell: bash
+        env:
+          OPERATION: ${{ inputs.operation }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "H3 Pages publication must run from main." >&2
+            exit 1
+          fi
+
+          if [[ "$OPERATION" == "publish-24h" ]]; then
+            published_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+            expires_at="$(date -u -d "$published_at + 24 hours" '+%Y-%m-%dT%H:%M:%SZ')"
+            {
+              echo "mode=open"
+              echo "published_at=$published_at"
+              echo "expires_at=$expires_at"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "$OPERATION" == "close-now" ]]; then
+            {
+              echo "mode=closed"
+              echo "published_at="
+              echo "expires_at="
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Unsupported operation: $OPERATION" >&2
+          exit 1
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v5
+      - name: Set up Node.js
+        if: steps.publication.outputs.mode == 'open'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        if: steps.publication.outputs.mode == 'open'
+        run: npm ci
+      - name: Build the 24-hour measurement page
+        if: steps.publication.outputs.mode == 'open'
+        env:
+          H3_BASE_PATH: ${{ steps.pages.outputs.base_path }}/
+          H3_PUBLISHED_AT: ${{ steps.publication.outputs.published_at }}
+          H3_EXPIRES_AT: ${{ steps.publication.outputs.expires_at }}
+        run: npm run measure:h3:build
+      - name: Install Chromium
+        if: steps.publication.outputs.mode == 'open'
+        run: npx playwright install --with-deps chromium
+      - name: Run the Chromium reference measurement
+        if: steps.publication.outputs.mode == 'open'
+        env:
+          H3_BASE_PATH: ${{ steps.pages.outputs.base_path }}/
+          H3_PUBLISHED_AT: ${{ steps.publication.outputs.published_at }}
+          H3_EXPIRES_AT: ${{ steps.publication.outputs.expires_at }}
+        run: npm run measure:h3:chromium
+      - name: Build the closed page
+        if: steps.publication.outputs.mode == 'closed'
+        run: |
+          rm -rf dist-h3
+          mkdir -p dist-h3
+          cp -R tools/h3/closed/. dist-h3/
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist-h3
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
