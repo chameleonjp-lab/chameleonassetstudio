@@ -109,7 +109,7 @@ rootから`/h3/`へ移した後の正式B0結果は、移設後の同一source c
 
 Pagesは結果を受信しない。結果JSONは端末へdownloadし、この会話へ添付して非公開保管する。workflow artifactへ結果、端末名、OS状態、user agentをuploadしない。公開資産にsecret、token、Project data、画像を含めない。
 
-公開workflowとPR CIはPlaywright Chromiumで`baseline-60x4x64`を1件実行し、3 warm-up / 10 sample、L1、source commit、結果schemaを確認する。さらに同じPages成果物を開き、rootのサービス本体と`/h3/`の計測画面が描画され、必要な資産が404にならないことを確認する。raw JSONと端末情報はartifactへ保存せず、成功 / 失敗だけをCI証拠にする。これは配信資産の動作確認とPC Chromiumの参考計測であり、PC実機の正式raw値、Safari実機、製品pathの代替ではない。
+公開workflowとPR CIはPlaywright Chromiumで`baseline-60x4x64`を1件実行し、3 warm-up / 10 sample、L1、source commit、結果schemaを確認する。さらに同じPages成果物を開き、rootのサービス本体と`/h3/`の計測画面が描画され、必要な資産が404にならないことを確認する。openとclosedは期待状態を明示して別々に検査し、openでは`publication.json`の開始・終了時刻、正確な24時間、source commit、画面の利用可能状態をbuild入力へ完全一致させる。raw JSONと端末情報はartifactへ保存せず、成功 / 失敗だけをCI証拠にする。これは配信資産の動作確認とPC Chromiumの参考計測であり、PC実機の正式raw値、Safari実機、製品pathの代替ではない。
 
 ## 7. 製品pathの後段Gate
 

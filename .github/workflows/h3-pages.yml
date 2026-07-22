@@ -102,6 +102,10 @@ jobs:
       - name: Verify the application and H3 Pages routes
         env:
           APP_BASE_PATH: ${{ steps.pages.outputs.base_path }}/
+          H3_PUBLISHED_AT: ${{ steps.publication.outputs.published_at }}
+          H3_EXPIRES_AT: ${{ steps.publication.outputs.expires_at }}
+          PAGES_EXPECTED_H3_STATUS: ${{ steps.publication.outputs.mode }}
+          PAGES_EXPECTED_SOURCE_COMMIT: ${{ github.sha }}
         run: npm run pages:chromium
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v4

@@ -1,6 +1,35 @@
 import { expect, test } from '@playwright/test';
 
+type ExpectedH3Status = 'open' | 'closed';
+
+interface H3PublicationRecord {
+  schemaVersion?: string;
+  status?: string;
+  publishedAt?: string | null;
+  expiresAt?: string | null;
+  sourceCommit?: string | null;
+}
+
+const H3_PUBLICATION_DURATION_MS = 24 * 60 * 60 * 1000;
+
+function requiredEnvironment(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`${name} must be set for the Pages route test`);
+  }
+  return value;
+}
+
+function expectedH3Status(): ExpectedH3Status {
+  const value = requiredEnvironment('PAGES_EXPECTED_H3_STATUS');
+  if (value !== 'open' && value !== 'closed') {
+    throw new Error('PAGES_EXPECTED_H3_STATUS must be open or closed');
+  }
+  return value;
+}
+
 test('serves the application at the Pages root and H3 under /h3/', async ({ page, request }) => {
+  const expectedStatus = expectedH3Status();
   const failedResponses: string[] = [];
   const pageErrors: string[] = [];
   const criticalResourceTypes = new Set(['document', 'script', 'stylesheet']);
@@ -17,15 +46,47 @@ test('serves the application at the Pages root and H3 under /h3/', async ({ page
   await expect(page.locator('#root')).not.toBeEmpty();
 
   await page.goto('./h3/');
-  await expect(page).toHaveTitle(/Chameleon H3 measurement/);
-  await expect(page.locator('body')).toContainText(/H3 measurement (harness|is closed)/);
+  if (expectedStatus === 'open') {
+    await expect(page).toHaveTitle('Chameleon H3 measurement');
+    await expect(page.locator('body')).toContainText('H3 measurement harness');
+    await expect(page.locator('#publication-status')).toContainText('Open for');
+    await expect(page.locator('#measurement-controls')).toBeEnabled();
+  } else {
+    await expect(page).toHaveTitle('Chameleon H3 measurement closed');
+    await expect(page.locator('body')).toContainText('H3 measurement is closed');
+  }
 
   const publicationResponse = await request.get('./h3/publication.json');
   expect(publicationResponse.ok()).toBe(true);
-  const publication = (await publicationResponse.json()) as { status?: string };
-  expect(['open', 'local-build', 'closed']).toContain(publication.status);
-  if (publication.status !== 'closed') {
-    await expect(page.locator('#publication-status')).not.toBeEmpty();
+  const publication = (await publicationResponse.json()) as H3PublicationRecord;
+
+  if (expectedStatus === 'open') {
+    const expectedPublishedAt = requiredEnvironment('H3_PUBLISHED_AT');
+    const expectedExpiresAt = requiredEnvironment('H3_EXPIRES_AT');
+    const expectedSourceCommit = requiredEnvironment('PAGES_EXPECTED_SOURCE_COMMIT');
+    expect(publication).toEqual({
+      schemaVersion: 'h3-publication-1',
+      status: 'open',
+      publishedAt: expectedPublishedAt,
+      expiresAt: expectedExpiresAt,
+      sourceCommit: expectedSourceCommit,
+    });
+
+    const publishedAtMs = Date.parse(expectedPublishedAt);
+    const expiresAtMs = Date.parse(expectedExpiresAt);
+    expect(Number.isFinite(publishedAtMs)).toBe(true);
+    expect(Number.isFinite(expiresAtMs)).toBe(true);
+    expect(expiresAtMs - publishedAtMs).toBe(H3_PUBLICATION_DURATION_MS);
+    expect(Date.now()).toBeGreaterThanOrEqual(publishedAtMs);
+    expect(Date.now()).toBeLessThan(expiresAtMs);
+  } else {
+    expect(publication).toEqual({
+      schemaVersion: 'h3-publication-1',
+      status: 'closed',
+      publishedAt: null,
+      expiresAt: null,
+      sourceCommit: null,
+    });
   }
 
   expect(failedResponses).toEqual([]);

@@ -82,6 +82,16 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e
       - run: npm run measure:h3:chromium
+      - name: Define the CI H3 publication window
+        shell: bash
+        run: |
+          set -euo pipefail
+          published_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          expires_at="$(date -u -d "$published_at + 24 hours" '+%Y-%m-%dT%H:%M:%SZ')"
+          {
+            echo "H3_PUBLISHED_AT=$published_at"
+            echo "H3_EXPIRES_AT=$expires_at"
+          } >> "$GITHUB_ENV"
       - name: Build the GitHub Pages layout
         env:
           APP_BASE_PATH: /chameleonassetstudio/
@@ -93,6 +103,8 @@ jobs:
       - name: Verify the application and H3 Pages routes
         env:
           APP_BASE_PATH: /chameleonassetstudio/
+          PAGES_EXPECTED_H3_STATUS: open
+          PAGES_EXPECTED_SOURCE_COMMIT: ${{ github.sha }}
         run: npm run pages:chromium
       - name: Assemble the closed H3 route
         env:
@@ -101,4 +113,5 @@ jobs:
       - name: Verify closing H3 keeps the application available
         env:
           APP_BASE_PATH: /chameleonassetstudio/
+          PAGES_EXPECTED_H3_STATUS: closed
         run: npm run pages:chromium
