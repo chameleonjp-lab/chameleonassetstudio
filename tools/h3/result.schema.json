@@ -1,0 +1,301 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chameleonassetstudio.local/schemas/h3-measurement-1.json",
+  "title": "Chameleon H3 measurement result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "status",
+    "source",
+    "case",
+    "environment",
+    "capabilities",
+    "run",
+    "fixture",
+    "samples",
+    "summary",
+    "counts",
+    "observations",
+    "interruptedPreviousRun",
+    "recordComplete",
+    "notes"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "h3-measurement-1" },
+    "status": { "enum": ["measured", "measurement-not-run"] },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit", "harnessPath"],
+      "properties": {
+        "repository": { "const": "chameleonjp-lab/chameleonassetstudio" },
+        "commit": { "type": ["string", "null"], "pattern": "^[0-9a-fA-F]{7,40}$" },
+        "harnessPath": { "const": "tools/h3" }
+      }
+    },
+    "case": { "$ref": "#/$defs/case" },
+    "environment": { "$ref": "#/$defs/environment" },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["longTask", "jsHeap", "storageEstimate"],
+      "properties": {
+        "longTask": { "$ref": "#/$defs/capability" },
+        "jsHeap": { "$ref": "#/$defs/capability" },
+        "storageEstimate": { "$ref": "#/$defs/capability" }
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "warmupIterations",
+        "recordedIterations",
+        "freshFixtureEachIteration",
+        "sequential"
+      ],
+      "properties": {
+        "warmupIterations": { "type": "integer", "minimum": 0 },
+        "recordedIterations": { "type": "integer", "minimum": 0 },
+        "freshFixtureEachIteration": { "const": true },
+        "sequential": { "const": true }
+      }
+    },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "l1Valid"],
+      "properties": {
+        "sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "l1Valid": { "type": ["boolean", "null"] }
+      }
+    },
+    "samples": { "type": "array", "items": { "$ref": "#/$defs/sample" } },
+    "summary": {
+      "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/summary" }]
+    },
+    "counts": {
+      "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/counts" }]
+    },
+    "observations": { "$ref": "#/$defs/observations" },
+    "interruptedPreviousRun": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["caseId", "startedAt"],
+          "properties": {
+            "caseId": { "type": "string", "minLength": 1 },
+            "startedAt": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "recordComplete": { "type": "boolean" },
+    "notes": { "type": "array", "items": { "type": "string" } }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "measured" } } },
+      "then": {
+        "properties": {
+          "source": {
+            "type": "object",
+            "properties": { "commit": { "type": "string", "pattern": "^[0-9a-fA-F]{7,40}$" } }
+          },
+          "environment": {
+            "type": "object",
+            "properties": { "runtime": { "enum": ["node", "browser"] } }
+          },
+          "run": {
+            "type": "object",
+            "properties": {
+              "warmupIterations": { "const": 3 },
+              "recordedIterations": { "const": 10 }
+            }
+          },
+          "fixture": {
+            "type": "object",
+            "properties": {
+              "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "l1Valid": { "const": true }
+            }
+          },
+          "samples": { "type": "array", "minItems": 10, "maxItems": 10 },
+          "summary": { "$ref": "#/$defs/summary" },
+          "counts": { "$ref": "#/$defs/counts" },
+          "recordComplete": { "const": true }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "nullableNumber": { "type": ["number", "null"] },
+    "capability": { "enum": ["supported", "unsupported", "not-run"] },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "frameCount",
+        "partCount",
+        "textureSize",
+        "fps",
+        "hierarchy",
+        "tier",
+        "note"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "frameCount": { "type": "integer", "minimum": 1 },
+        "partCount": { "type": "integer", "minimum": 1 },
+        "textureSize": { "type": "integer", "minimum": 1 },
+        "fps": { "type": "number", "exclusiveMinimum": 0 },
+        "hierarchy": { "enum": ["chain", "flat"] },
+        "tier": { "enum": ["device-core", "node-escalation"] },
+        "note": { "type": "string" }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtime",
+        "recordedAt",
+        "device",
+        "os",
+        "browser",
+        "userAgent",
+        "viewport",
+        "devicePixelRatio",
+        "orientation",
+        "lowPowerMode",
+        "thermalState",
+        "cpu",
+        "logicalCpuCount",
+        "totalMemoryBytes"
+      ],
+      "properties": {
+        "runtime": { "enum": ["node", "browser", "not-run"] },
+        "recordedAt": { "type": ["string", "null"] },
+        "device": { "type": ["string", "null"] },
+        "os": { "type": ["string", "null"] },
+        "browser": { "type": ["string", "null"] },
+        "userAgent": { "type": ["string", "null"] },
+        "viewport": {
+          "anyOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["width", "height"],
+              "properties": {
+                "width": { "type": "number", "minimum": 0 },
+                "height": { "type": "number", "minimum": 0 }
+              }
+            }
+          ]
+        },
+        "devicePixelRatio": { "$ref": "#/$defs/nullableNumber" },
+        "orientation": { "type": ["string", "null"] },
+        "lowPowerMode": { "enum": ["on", "off", "unknown", null] },
+        "thermalState": { "enum": ["normal", "warm", "hot", "unknown", null] },
+        "cpu": { "type": ["string", "null"] },
+        "logicalCpuCount": { "type": ["integer", "null"], "minimum": 1 },
+        "totalMemoryBytes": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bakeMs", "serializeMs", "totalMs"],
+      "properties": {
+        "bakeMs": { "type": "number", "minimum": 0 },
+        "serializeMs": { "type": "number", "minimum": 0 },
+        "totalMs": { "type": "number", "minimum": 0 }
+      }
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["median", "p95"],
+      "properties": {
+        "median": { "type": "number", "minimum": 0 },
+        "p95": { "type": "number", "minimum": 0 }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bakeMs", "serializeMs", "totalMs"],
+      "properties": {
+        "bakeMs": { "$ref": "#/$defs/metric" },
+        "serializeMs": { "$ref": "#/$defs/metric" },
+        "totalMs": { "$ref": "#/$defs/metric" }
+      }
+    },
+    "sheet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["columns", "rows", "width", "height", "pixels", "estimatedRgbaBytes"],
+      "properties": {
+        "columns": { "type": "integer", "minimum": 0 },
+        "rows": { "type": "integer", "minimum": 0 },
+        "width": { "type": "number", "minimum": 0 },
+        "height": { "type": "number", "minimum": 0 },
+        "pixels": { "type": "number", "minimum": 0 },
+        "estimatedRgbaBytes": { "type": "number", "minimum": 0 }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "generatedFrames",
+        "finalFrames",
+        "generatedLayerStates",
+        "finalLayerStates",
+        "textures",
+        "compactAssetJsonBytes",
+        "prettyAssetJsonBytes",
+        "sheet",
+        "estimatedDecodedTextureRgbaBytes"
+      ],
+      "properties": {
+        "generatedFrames": { "type": "integer", "minimum": 0 },
+        "finalFrames": { "type": "integer", "minimum": 0 },
+        "generatedLayerStates": { "type": "integer", "minimum": 0 },
+        "finalLayerStates": { "type": "integer", "minimum": 0 },
+        "textures": { "type": "integer", "minimum": 0 },
+        "compactAssetJsonBytes": { "type": "integer", "minimum": 0 },
+        "prettyAssetJsonBytes": { "type": "integer", "minimum": 0 },
+        "sheet": { "$ref": "#/$defs/sheet" },
+        "estimatedDecodedTextureRgbaBytes": { "type": "number", "minimum": 0 }
+      }
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "longTaskCount",
+        "longTaskTotalMs",
+        "jsHeapBeforeBytes",
+        "jsHeapAfterBytes",
+        "storageUsageBytes",
+        "storageQuotaBytes"
+      ],
+      "properties": {
+        "longTaskCount": { "type": ["integer", "null"], "minimum": 0 },
+        "longTaskTotalMs": { "$ref": "#/$defs/nullableNumber" },
+        "jsHeapBeforeBytes": { "$ref": "#/$defs/nullableNumber" },
+        "jsHeapAfterBytes": { "$ref": "#/$defs/nullableNumber" },
+        "storageUsageBytes": { "$ref": "#/$defs/nullableNumber" },
+        "storageQuotaBytes": { "$ref": "#/$defs/nullableNumber" }
+      }
+    }
+  }
+}

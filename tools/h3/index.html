@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Chameleon H3 measurement harness</title>
+  </head>
+  <body>
+    <main>
+      <h1>H3 measurement harness</h1>
+      <p>
+        This page measures the current core bake and serialization path. It does not set a warning
+        or hard cap, and it is not product-path evidence.
+      </p>
+
+      <p id="interrupted" class="notice" aria-live="polite"></p>
+
+      <section class="grid" aria-label="Environment">
+        <label>
+          Source commit
+          <input
+            id="source-commit"
+            autocomplete="off"
+            aria-describedby="source-commit-note"
+            readonly
+            required
+          />
+          <small id="source-commit-note">Embedded when this static harness is built.</small>
+        </label>
+        <label>
+          Device
+          <input id="device" autocomplete="off" placeholder="iPhone 17 Pro" required />
+        </label>
+        <label>
+          OS
+          <input id="os" autocomplete="off" placeholder="iOS 19.x" required />
+        </label>
+        <label>
+          Browser
+          <input id="browser" autocomplete="off" placeholder="Safari 19.x" required />
+        </label>
+        <label>
+          Low Power Mode
+          <select id="low-power">
+            <option value="unknown">unknown</option>
+            <option value="off">off</option>
+            <option value="on">on</option>
+          </select>
+        </label>
+        <label>
+          Thermal state
+          <select id="thermal">
+            <option value="unknown">unknown</option>
+            <option value="normal">normal</option>
+            <option value="warm">warm</option>
+            <option value="hot">hot</option>
+          </select>
+        </label>
+      </section>
+
+      <label class="case-label">
+        One case only
+        <select id="case"></select>
+      </label>
+      <button id="run" type="button">Run selected case</button>
+      <p id="status" aria-live="polite">Ready. Use HTTPS on physical iPhone and iPad devices.</p>
+      <a id="download" hidden>Download result JSON</a>
+      <label class="output-label">
+        Result JSON
+        <textarea id="output" readonly spellcheck="false"></textarea>
+      </label>
+    </main>
+    <script type="module" src="/browser.ts"></script>
+  </body>
+</html>

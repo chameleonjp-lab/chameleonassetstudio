@@ -1,6 +1,6 @@
 # 0022-rig-flip-and-bake-parity
 
-ステータス: accepted（2026-07-22 人間承認、R1）
+ステータス: accepted（2026-07-22 人間承認、R1 + H2=L1 + H3=M1 method）
 上位文書: `docs/future/2D_3_TIMELINE_RIG_PLAN.md`（§4、§6 H3、§7）、`docs/future/FLIP_DESIGN.md`
 関連 fixture: 将来のR1実装sliceで追加（本ADRはdocs-only）
 
@@ -18,7 +18,7 @@
 - `rotationLimit {min,max}`は`{min: -max, max: -min}`へ変換する。
 - keyframe time、fps、loop、durationは変えない。
 - Part ID、`parentId`、`layerIds`、rig poseのpart ID key、RigAnimation ID、Frame ID、event IDとeventの`frameId`を完全mapで張り替える。event名は自動変更しない。linked mirrorの内部ID維持modeは既存規則に従う。
-- 未解決参照、親子循環、非有限値、H2で採用したLayer所属規則に反するdataを黙って落としたり旧IDのまま残したりせず、理由付きで拒否する。H2決定前は実装しない。
+- 未解決参照、親子循環、非有限値、H2=L1（各Partは非空、各Layerは高々1 Partへ所属）に反するdataを黙って落としたり旧IDのまま残したりせず、理由付きで拒否する。未所属Layerは許可し、既存違反dataを自動migrationしない。
 - 対応Layerのposition x / y、scale x / y、`[-180, 180)`へ正規化したrotationは絶対差`1e-6`以下、配列順、visible、opacity、参照、時間はexact一致とする。relative toleranceは使わない。
 - pixelは同寸法RGBA bufferの全alpha差を1以下、どちらかのalphaが0より大きいpixelのRGB各channel差を1以下とする。両方が完全透明のpixelだけRGBを比較対象外にする。
 - parityで正規化できるのは完全mapで対応が証明された各ID、`createdAt / updatedAt`、自動copy表示名だけとし、配列順、参照、時間、transform、visible、opacity、pixelは正規化しない。
@@ -41,4 +41,4 @@
 
 ## 再検討条件
 
-最大Frame数と関連資源上限は`2D_3_TIMELINE_RIG_PLAN.md`のH3で、browserとiPhone Safariの測定後に人間が決める。H3未決定の間はR1製品実装を開始しない。shearの永続表現、linked Familyのrig refresh、rebake置換、native rig export、IK、mesh、physicsを追加する場合は別ADRとする。
+H3=M1により測定先行の方法は決定したが、最大Frame / LayerState / serialized bytes / sheet pixelの数値は未決定である。`2D_3_H3_MEASUREMENT_PROTOCOL.md`に従うbrowserとiPhone / iPad Safari測定、および後続の数値人間承認まで、R1のnumeric preflightと上限定数を実装しない。shearの永続表現、linked Familyのrig refresh、rebake置換、native rig export、IK、mesh、physicsを追加する場合は別ADRとする。

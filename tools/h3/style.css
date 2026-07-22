@@ -1,0 +1,65 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  box-sizing: border-box;
+  margin: 0 auto;
+  max-width: 900px;
+  padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
+    max(32px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+}
+
+.grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+label,
+.case-label,
+.output-label {
+  display: grid;
+  gap: 6px;
+  margin-block: 12px;
+}
+
+input,
+select,
+button,
+textarea,
+a {
+  box-sizing: border-box;
+  font: inherit;
+  min-height: 44px;
+  padding: 10px 12px;
+}
+
+button {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+button:disabled {
+  cursor: wait;
+}
+
+textarea {
+  min-height: 320px;
+  resize: vertical;
+}
+
+.notice,
+#status {
+  min-height: 1.5em;
+}
+
+#status[data-kind='error'] {
+  color: #d33;
+  font-weight: 700;
+}

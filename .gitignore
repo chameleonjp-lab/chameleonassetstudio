@@ -1,5 +1,6 @@
 node_modules
 dist
+dist-h3
 coverage
 playwright-report
 test-results

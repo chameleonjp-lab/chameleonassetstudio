@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "h3-measurement-1",
+  "status": "measurement-not-run",
+  "source": {
+    "repository": "chameleonjp-lab/chameleonassetstudio",
+    "commit": null,
+    "harnessPath": "tools/h3"
+  },
+  "case": {
+    "id": "baseline-60x4x64",
+    "label": "Baseline: 60 frames / 4 parts / 64 px",
+    "frameCount": 60,
+    "partCount": 4,
+    "textureSize": 64,
+    "fps": 30,
+    "hierarchy": "chain",
+    "tier": "device-core",
+    "note": "Template only; no measurement has been run."
+  },
+  "environment": {
+    "runtime": "not-run",
+    "recordedAt": null,
+    "device": null,
+    "os": null,
+    "browser": null,
+    "userAgent": null,
+    "viewport": null,
+    "devicePixelRatio": null,
+    "orientation": null,
+    "lowPowerMode": null,
+    "thermalState": null,
+    "cpu": null,
+    "logicalCpuCount": null,
+    "totalMemoryBytes": null
+  },
+  "capabilities": {
+    "longTask": "not-run",
+    "jsHeap": "not-run",
+    "storageEstimate": "not-run"
+  },
+  "run": {
+    "warmupIterations": 3,
+    "recordedIterations": 10,
+    "freshFixtureEachIteration": true,
+    "sequential": true
+  },
+  "fixture": { "sha256": null, "l1Valid": null },
+  "samples": [],
+  "summary": null,
+  "counts": null,
+  "observations": {
+    "longTaskCount": null,
+    "longTaskTotalMs": null,
+    "jsHeapBeforeBytes": null,
+    "jsHeapAfterBytes": null,
+    "storageUsageBytes": null,
+    "storageQuotaBytes": null
+  },
+  "interruptedPreviousRun": null,
+  "recordComplete": false,
+  "notes": [
+    "This committed file is a schema-valid template, not performance evidence.",
+    "Do not infer an H3 warning or hard cap from null values."
+  ]
+}

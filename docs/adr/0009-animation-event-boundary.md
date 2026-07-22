@@ -17,7 +17,7 @@
 - 参照は frame の **id**（ADR-0002 の「参照は id」規則に従う）。frame 削除により dangling になった event は、保存時に拒否せず、`2D-1A-VALIDATION` の意味検証（§12 の「意味検証」段階）で検出する。
 - `name` は自由文字列とする。`attack_start` / `attack_end` / `projectile_spawn` / `footstep` / `damage_start` 等を UI 候補として提示してよいが、名前によってアプリ内部でゲームロジックを実行しない（契約 §8.1「`idle`、`walk`、`attack` のような名前は候補であり、内部で特別なゲームロジックを実行しない」を event 名にも適用する規範化）。
 - `payload` は JSON として安全に検証できる値（プリミティブと浅いオブジェクト / 配列）のみを許可する。実行可能コード文字列、外部 URL の自動読み込み、API key・秘密情報の格納を禁止する（契約 §8.2、§11 と一貫）。
-- export への反映は既定で「出さない」から開始する。atlas.json 等の出力へ含めるかどうかは `2D-1A-TARGET` / `2D-4` の出力契約側で決定する。本 ADR は event を export へ出すことを先取りしない。
+- export形式へのevent field追加は既定で「出さない」から開始する。H1=E1により、export対象Animationにeventがある場合は、eventを表現できない固定fpsのatlas、product ZIP、helpers、examplesを理由付きで拒否する。単体`asset.json`と`.casproj`はcanonical eventを保持できるため許可する。本ADRはatlasへのevent field追加を先取りしない。
 
 ## 根拠
 

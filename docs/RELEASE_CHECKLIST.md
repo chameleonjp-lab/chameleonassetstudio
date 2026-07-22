@@ -78,8 +78,9 @@ Slice Eについては各実機で、Files pickerからSVG / GIF / APNGを選ん
 - 本格的なエフェクトエディタ / パーティクル（effect はメタデータの最小対応のみ）
 - Rive / Spine の取り込み補助（docs 上の関係説明のみ。互換は名乗らない）
 - 大画像（4096²）連続編集のメモリ計測（4 章）
-- Group 12 `2D-3-TIMELINE + 2D-3-RIG`はdocs-only契約監査中。T1 / R1 / P1中核はacceptedだが、H1派生export、H2 Layer所属・空集合、H3 bake上限は人間判断待ちで、製品実装は未着手
-- Group 12実装後はiPhone / iPad SafariでTimeline入力、safe area、software keyboard、44px touch target、採用上限のrig bake、保存・reload、memoryを別Gateとして確認する
+- Group 12契約監査PR #146はmerge `cb21ea4`で完了し、T1 / R1 / P1とH1=E1 / H2=L1 / H3=M1をacceptedとした。製品実装とH3数値budgetは未着手
+- H3は`docs/future/2D_3_H3_MEASUREMENT_PROTOCOL.md`に従い、PC Chromium、iPhone 17 Pro / 11 Pro Safari、iPad Pro 2018 Safariのcore結果を先に記録する。120 / 240 Frameは未採用候補
+- Group 12実装後はiPhone / iPad SafariでTimeline入力、safe area、software keyboard、44px touch target、後続承認した上限のrig bake、保存・reload、memoryをproduct-pathの別Gateとして確認する
 
 ## 6. リリース手順（3 の手動確認後。4 は任意）
 
