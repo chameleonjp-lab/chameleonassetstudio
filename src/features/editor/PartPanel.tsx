@@ -3,6 +3,7 @@ import {
   PART_TYPES,
   createPart,
   removePart,
+  replacePartLayerIds,
   setPartBindPose,
   setPartParent,
   setPartRotationLimit,
@@ -10,6 +11,13 @@ import {
   type Asset,
   type PartType,
 } from '../../core/model';
+
+interface PartLayerEditorState {
+  assetId: string;
+  partId: string;
+  selectedLayerIds: string[];
+  error?: string;
+}
 
 interface PartPanelProps {
   asset: Asset;
@@ -50,6 +58,7 @@ export function PartPanel({
 }: PartPanelProps) {
   const [newPartName, setNewPartName] = useState('');
   const [newPartType, setNewPartType] = useState<PartType>('body');
+  const [layerEditor, setLayerEditor] = useState<PartLayerEditorState | null>(null);
 
   const handleCreate = () => {
     const name = newPartName.trim() || PART_TYPE_LABELS[newPartType];
@@ -69,6 +78,52 @@ export function PartPanel({
     onCommit('パーツ削除', removePart(asset, partId));
   };
 
+  const openLayerEditor = (partId: string, currentLayerIds: string[]) => {
+    const current = new Set(currentLayerIds);
+    const selectedLayerIds = asset.layers
+      .filter(
+        (layer, index) =>
+          current.has(layer.id) &&
+          asset.layers.findIndex((candidate) => candidate.id === layer.id) === index,
+      )
+      .map((layer) => layer.id);
+    setLayerEditor({ assetId: asset.id, partId, selectedLayerIds });
+  };
+
+  const toggleLayer = (partId: string, layerId: string, checked: boolean) => {
+    setLayerEditor((current) => {
+      if (!current || current.assetId !== asset.id || current.partId !== partId) {
+        return current;
+      }
+      const selected = new Set(current.selectedLayerIds);
+      if (checked) {
+        selected.add(layerId);
+      } else {
+        selected.delete(layerId);
+      }
+      return { ...current, selectedLayerIds: [...selected], error: undefined };
+    });
+  };
+
+  const confirmLayerReplacement = (partId: string) => {
+    if (!layerEditor || layerEditor.assetId !== asset.id || layerEditor.partId !== partId) {
+      return;
+    }
+    const result = replacePartLayerIds(asset, partId, layerEditor.selectedLayerIds);
+    if (!result.ok) {
+      setLayerEditor((current) =>
+        current && current.assetId === asset.id && current.partId === partId
+          ? { ...current, error: result.error.message }
+          : current,
+      );
+      return;
+    }
+    setLayerEditor(null);
+    if (result.changed) {
+      onCommit('パーツ構成レイヤー変更', result.asset);
+    }
+  };
+
   return (
     <div className="part-panel">
       {asset.parts.length === 0 ? (
@@ -78,7 +133,7 @@ export function PartPanel({
       ) : (
         <ul className="part-list" aria-label="パーツ一覧">
           {asset.parts.map((part) => (
-            <li key={part.id} className="part-row">
+            <li key={part.id} className="part-row" aria-label={`パーツ「${part.name}」`}>
               <div className="part-row-header">
                 <label className="editor-field">
                   パーツ名
@@ -344,6 +399,81 @@ export function PartPanel({
                 </button>
               )}
               <p className="part-row-meta">レイヤー {part.layerIds.length} 件</p>
+              {layerEditor?.assetId === asset.id && layerEditor.partId === part.id ? (
+                <fieldset className="part-layer-editor">
+                  <legend>「{part.name}」の構成レイヤー</legend>
+                  <p className="editor-note">
+                    1件以上を選択してください。別のパーツで使用中のレイヤーは移動せず拒否します。
+                  </p>
+                  {asset.layers.length === 0 ? (
+                    <p className="editor-note">選択できるレイヤーがありません。</p>
+                  ) : (
+                    <div
+                      className="part-layer-options"
+                      aria-label={`「${part.name}」の構成レイヤー候補`}
+                    >
+                      {asset.layers.map((layer, index) => {
+                        const selected = layerEditor.selectedLayerIds.includes(layer.id);
+                        const duplicateId =
+                          asset.layers.filter((candidate) => candidate.id === layer.id).length > 1;
+                        const otherOwners = asset.parts.filter(
+                          (candidate) =>
+                            candidate !== part && candidate.layerIds.includes(layer.id),
+                        );
+                        const unavailableReason = duplicateId
+                          ? '同じレイヤーIDが複数あります'
+                          : otherOwners.length > 0
+                            ? `「${otherOwners.map((owner) => owner.name).join('、')}」で使用中`
+                            : undefined;
+                        const disabled = Boolean(unavailableReason) && !selected;
+                        return (
+                          <label
+                            key={`${layer.id}:${index}`}
+                            className={`part-layer-option${disabled ? ' unavailable' : ''}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              disabled={disabled}
+                              onChange={(event) =>
+                                toggleLayer(part.id, layer.id, event.target.checked)
+                              }
+                            />
+                            <span className="part-layer-option-name">{layer.name}</span>
+                            {unavailableReason ? (
+                              <span className="part-layer-option-reason">{unavailableReason}</span>
+                            ) : null}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <p className="part-layer-selection-count" aria-live="polite">
+                    選択中: {layerEditor.selectedLayerIds.length}件
+                  </p>
+                  {layerEditor.error ? (
+                    <p className="part-layer-error" role="alert">
+                      {layerEditor.error}
+                    </p>
+                  ) : null}
+                  <div className="part-layer-editor-actions">
+                    <button type="button" onClick={() => confirmLayerReplacement(part.id)}>
+                      構成レイヤーを確定
+                    </button>
+                    <button type="button" onClick={() => setLayerEditor(null)}>
+                      取消
+                    </button>
+                  </div>
+                </fieldset>
+              ) : (
+                <button
+                  type="button"
+                  aria-expanded="false"
+                  onClick={() => openLayerEditor(part.id, part.layerIds)}
+                >
+                  構成レイヤーを変更
+                </button>
+              )}
             </li>
           ))}
         </ul>

@@ -32,12 +32,27 @@ async function createBodyPart(page: Page): Promise<void> {
   await page.getByLabel('「main」を複数レイヤー操作の対象にする').check();
   await page.getByRole('button', { name: /パーツを作成/ }).click();
   await expect(page.getByLabel('パーツ一覧')).toBeVisible();
+  await expect(page.getByRole('button', { name: '元に戻す' })).toHaveAttribute(
+    'title',
+    'パーツ作成',
+  );
 }
 
-async function downloadAssetJson(page: Page): Promise<{
-  frames?: unknown[];
+interface ExportedAsset {
+  layers: Array<{ id: string; name: string }>;
+  parts: Array<{ id: string; name: string; layerIds: string[] }>;
+  frames?: Array<{
+    id: string;
+    name: string;
+    layerStates: Array<{
+      layerId: string;
+      transform?: { scale?: { x: number; y: number } };
+    }>;
+  }>;
   animations: Array<{ name: string }>;
-}> {
+}
+
+async function downloadAssetJson(page: Page): Promise<ExportedAsset> {
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: 'asset.json をダウンロード' }).click(),
@@ -101,4 +116,70 @@ test('jump_squash の scale を手動調整して焼き込むと frame に反映
     frame.layerStates.map((state) => state.transform?.scale?.x ?? 1),
   );
   expect(scaleXs.some((x) => Math.abs(x - 1) > 0.05)).toBe(true);
+});
+
+test('Part差し替えは既存bakeを維持し、次回bakeだけを新しいLayerへ切り替える', async ({ page }) => {
+  await setupProjectWithImage(page, 'rig-part-replacement-e2e');
+  await page.getByLabel('画像レイヤーを追加').setInputFiles({
+    name: 'spare.png',
+    mimeType: 'image/png',
+    buffer: await makePngBuffer(page),
+  });
+  await confirmImageImport(page);
+  await createBodyPart(page);
+
+  await page.getByLabel('モーションテンプレート').selectOption('idle_sway');
+  await page.getByRole('button', { name: 'テンプレートを適用' }).click();
+  await page.getByRole('button', { name: 'フレームへ焼き込み' }).click();
+
+  const first = await downloadAssetJson(page);
+  const existingFrames = structuredClone(first.frames ?? []);
+  const mainLayerId = first.layers.find((layer) => layer.name === 'main')!.id;
+  const spareLayerId = first.layers.find((layer) => layer.name === 'spare')!.id;
+  expect(
+    existingFrames.flatMap((frame) => frame.layerStates.map((state) => state.layerId)),
+  ).toContain(mainLayerId);
+
+  const bodyRow = page.getByRole('listitem', { name: 'パーツ「胴体」' });
+  await bodyRow.getByRole('button', { name: '構成レイヤーを変更' }).click();
+  await bodyRow.getByRole('checkbox', { name: /main/ }).uncheck();
+  await bodyRow.getByRole('checkbox', { name: /spare/ }).check();
+  await bodyRow.getByRole('button', { name: '構成レイヤーを確定' }).click();
+  await expect(page.getByRole('button', { name: '元に戻す' })).toHaveAttribute(
+    'title',
+    'パーツ構成レイヤー変更',
+  );
+
+  const afterReplacement = await downloadAssetJson(page);
+  expect(afterReplacement.frames).toEqual(existingFrames);
+  expect(afterReplacement.parts[0].layerIds).toEqual([spareLayerId]);
+
+  await page.getByRole('button', { name: 'フレームへ焼き込み' }).click();
+  const second = await downloadAssetJson(page);
+  const newFrames = second.frames?.slice(existingFrames.length) ?? [];
+  expect(newFrames.length).toBeGreaterThan(0);
+  expect(newFrames.flatMap((frame) => frame.layerStates.map((state) => state.layerId))).toEqual(
+    Array(newFrames.length).fill(spareLayerId),
+  );
+});
+
+test('H2=L1違反のPartは理由を表示してbakeを拒否する', async ({ page }) => {
+  await setupProjectWithImage(page, 'rig-part-l1-refusal-e2e');
+  await createBodyPart(page);
+  await page.getByLabel('モーションテンプレート').selectOption('idle_sway');
+  await page.getByRole('button', { name: 'テンプレートを適用' }).click();
+  await expect(page.getByRole('button', { name: '元に戻す' })).toHaveAttribute(
+    'title',
+    'テンプレート適用',
+  );
+
+  page.on('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: '「main」を削除' }).click();
+  await page.getByRole('button', { name: 'フレームへ焼き込み' }).click();
+
+  await expect(page.locator('.rig-panel').getByRole('alert')).toContainText(
+    '構成レイヤーがありません',
+  );
+  const data = await downloadAssetJson(page);
+  expect(data.frames ?? []).toEqual([]);
 });

@@ -8,6 +8,7 @@ import type { Vec2 } from './common';
 import { createDefaultRectCollider, generateId } from './factories';
 import type { BackgroundLayerSettings, Layer } from './layer';
 import type { Part, PartPose, PartType } from './part';
+import { validatePartLayerReplacement, type PartLayerReplacementError } from './partLayerContract';
 import type { RigAnimation } from './rig';
 
 function touch(asset: Asset): Asset {
@@ -146,12 +147,47 @@ export function createPart(asset: Asset, options: CreatePartOptions): Asset {
 export function updatePart(
   asset: Asset,
   partId: string,
-  patch: Partial<Pick<Part, 'name' | 'partType' | 'layerIds' | 'pivot'>>,
+  patch: Partial<Pick<Part, 'name' | 'partType' | 'pivot'>>,
 ): Asset {
   return touch({
     ...asset,
     parts: asset.parts.map((part) => (part.id === partId ? { ...part, ...patch } : part)),
   });
+}
+
+export type ReplacePartLayerIdsResult =
+  | { ok: true; asset: Asset; changed: boolean }
+  | { ok: false; asset: Asset; error: PartLayerReplacementError };
+
+/**
+ * P1: 既存Part 1件の構成レイヤーだけをH2=L1に従って差し替える。
+ * 拒否・no-op時は同じAsset参照を返し、updatedAtも変更しない。
+ */
+export function replacePartLayerIds(
+  asset: Asset,
+  partId: string,
+  requestedLayerIds: readonly string[],
+  now = new Date(),
+): ReplacePartLayerIdsResult {
+  const validation = validatePartLayerReplacement(asset, partId, requestedLayerIds);
+  if (!validation.ok) {
+    return { ok: false, asset, error: validation.error };
+  }
+  if (!validation.changed) {
+    return { ok: true, asset, changed: false };
+  }
+
+  return {
+    ok: true,
+    changed: true,
+    asset: {
+      ...asset,
+      parts: asset.parts.map((part) =>
+        part.id === partId ? { ...part, layerIds: validation.normalizedLayerIds } : part,
+      ),
+      updatedAt: now.toISOString(),
+    },
+  };
 }
 
 export function removePart(asset: Asset, partId: string): Asset {

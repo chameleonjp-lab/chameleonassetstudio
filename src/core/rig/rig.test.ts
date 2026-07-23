@@ -5,6 +5,7 @@ import type { Layer } from '../model/layer';
 import type { Part, PartPose } from '../model/part';
 import type { RigAnimation } from '../model/rig';
 import type { TextureRef } from '../model/texture';
+import { replacePartLayerIds } from '../model/assetOps';
 import {
   accumulatePartChain,
   applyPoint,
@@ -253,6 +254,161 @@ describe('bakeRigAnimation', () => {
     // 元のアセットは変更しない
     expect(asset.frames).toHaveLength(1);
     expect(asset.animations).toHaveLength(1);
+  });
+
+  it('Part差し替えは既存bakeを変えず、次回bakeだけが新しいLayer集合を使う', () => {
+    const texture: TextureRef = {
+      id: 'tex_main',
+      kind: 'edit',
+      name: 'main',
+      mimeType: 'image/png',
+      size: { width: 16, height: 16 },
+      path: 'textures/main.png',
+    };
+    const createLayer = (id: string): Layer => ({
+      id,
+      name: id,
+      layerType: 'image',
+      visible: true,
+      locked: false,
+      opacity: 1,
+      transform: { position: { x: 0, y: 0 }, scale: { x: 1, y: 1 }, rotation: 0 },
+      textureId: texture.id,
+    });
+    const asset: Asset = {
+      ...baseAsset,
+      textures: [texture],
+      layers: [createLayer('layer_a'), createLayer('layer_b')],
+      parts: [
+        {
+          id: 'part_body',
+          name: 'body',
+          partType: 'body',
+          layerIds: ['layer_a'],
+          pivot: { x: 8, y: 8 },
+        },
+      ],
+    };
+    const rig: RigAnimation = {
+      id: 'rig_replace',
+      name: 'replace',
+      fps: 1,
+      loop: false,
+      durationMs: 1000,
+      keyframes: [{ time: 0, poses: { part_body: { localRotation: 10 } } }],
+    };
+
+    const firstBake = bakeRigAnimation(asset, rig);
+    const firstFrames = firstBake.frames;
+    const firstAnimations = firstBake.animations;
+    expect(firstFrames?.at(-1)?.layerStates.map((state) => state.layerId)).toEqual(['layer_a']);
+
+    const replaced = replacePartLayerIds(firstBake, 'part_body', ['layer_b']);
+    expect(replaced.ok).toBe(true);
+    if (!replaced.ok) {
+      return;
+    }
+    expect(replaced.asset.frames).toBe(firstFrames);
+    expect(replaced.asset.animations).toBe(firstAnimations);
+
+    const secondBake = bakeRigAnimation(replaced.asset, rig);
+    const newlyBakedFrames = secondBake.frames?.slice(firstFrames?.length ?? 0) ?? [];
+    expect(newlyBakedFrames).toHaveLength(1);
+    expect(newlyBakedFrames[0].layerStates.map((state) => state.layerId)).toEqual(['layer_b']);
+    expect(secondBake.frames?.slice(0, firstFrames?.length)).toEqual(firstFrames);
+  });
+
+  it.each([
+    {
+      name: 'empty',
+      parts: [
+        {
+          id: 'part_a',
+          name: 'A',
+          partType: 'body' as const,
+          layerIds: [],
+        },
+      ],
+      expectedCode: 'empty',
+    },
+    {
+      name: 'duplicate',
+      parts: [
+        {
+          id: 'part_a',
+          name: 'A',
+          partType: 'body' as const,
+          layerIds: ['layer_main', 'layer_main'],
+        },
+      ],
+      expectedCode: 'duplicate',
+    },
+    {
+      name: 'missing',
+      parts: [
+        {
+          id: 'part_a',
+          name: 'A',
+          partType: 'body' as const,
+          layerIds: ['layer_missing'],
+        },
+      ],
+      expectedCode: 'missing',
+    },
+    {
+      name: 'shared',
+      parts: [
+        {
+          id: 'part_a',
+          name: 'A',
+          partType: 'body' as const,
+          layerIds: ['layer_main'],
+        },
+        {
+          id: 'part_b',
+          name: 'B',
+          partType: 'head' as const,
+          layerIds: ['layer_main'],
+        },
+      ],
+      expectedCode: 'shared',
+    },
+  ])('H2=L1の$name違反はFrame割当前に理由付きで拒否する', ({ parts, expectedCode }) => {
+    const layer: Layer = {
+      id: 'layer_main',
+      name: 'main',
+      layerType: 'guide',
+      visible: true,
+      locked: false,
+      opacity: 1,
+      transform: { position: { x: 0, y: 0 }, scale: { x: 1, y: 1 }, rotation: 0 },
+    };
+    const asset: Asset = { ...baseAsset, layers: [layer], parts };
+    const before = structuredClone(asset);
+    const rig: RigAnimation = {
+      id: 'rig_invalid',
+      name: 'invalid',
+      fps: 1,
+      loop: false,
+      durationMs: 1000,
+      keyframes: [{ time: 0, poses: {} }],
+    };
+
+    let thrown: unknown;
+    try {
+      bakeRigAnimation(asset, rig);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toMatchObject({
+      code: 'part-layer-constraint',
+      violations: [expect.objectContaining({ code: expectedCode })],
+    });
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toContain('リグを焼き込めません');
+    expect(asset).toEqual(before);
+    expect(asset.frames).toEqual([]);
   });
 });
 

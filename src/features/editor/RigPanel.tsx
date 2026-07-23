@@ -34,6 +34,7 @@ export function RigPanel({ asset, onCommit }: RigPanelProps) {
   const [newKeyframeTime, setNewKeyframeTime] = useState('0');
   const [templateName, setTemplateName] = useState<MotionTemplateName>(MOTION_TEMPLATES[0]);
   const [templateError, setTemplateError] = useState<string | null>(null);
+  const [bakeError, setBakeError] = useState<string | null>(null);
 
   const selectedRig = rigs.find((rig) => rig.id === selectedRigId) ?? rigs[0] ?? null;
 
@@ -101,6 +102,18 @@ export function RigPanel({ asset, onCommit }: RigPanelProps) {
       { ...keyframe, poses: { ...keyframe.poses, [partId]: update(pose) } },
       label,
     );
+  };
+
+  const handleBake = () => {
+    if (!selectedRig) {
+      return;
+    }
+    setBakeError(null);
+    try {
+      onCommit('リグ焼き込み', bakeRigAnimation(asset, selectedRig));
+    } catch (error) {
+      setBakeError(error instanceof Error ? error.message : String(error));
+    }
   };
 
   return (
@@ -278,13 +291,10 @@ export function RigPanel({ asset, onCommit }: RigPanelProps) {
             ))}
           </ul>
 
-          <button
-            type="button"
-            disabled={selectedRig.keyframes.length === 0}
-            onClick={() => onCommit('リグ焼き込み', bakeRigAnimation(asset, selectedRig))}
-          >
+          <button type="button" disabled={selectedRig.keyframes.length === 0} onClick={handleBake}>
             フレームへ焼き込み
           </button>
+          {bakeError ? <p role="alert">{bakeError}</p> : null}
         </div>
       )}
     </div>

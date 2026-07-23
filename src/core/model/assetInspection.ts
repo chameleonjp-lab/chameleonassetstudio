@@ -1,5 +1,6 @@
 import { calculateAnimationDurationMs } from './animationTiming';
 import type { Asset } from './asset';
+import { inspectPartLayerConstraints } from './partLayerContract';
 
 /**
  * 素材検査で表示する重大度。
@@ -171,6 +172,7 @@ function inspectReferences(asset: Asset, push: PushIssue): void {
   const layerIds = new Set(asset.layers.map((layer) => layer.id));
   const frameIds = new Set((asset.frames ?? []).map((frame) => frame.id));
   const partIds = new Set(asset.parts.map((part) => part.id));
+  const partById = new Map(asset.parts.map((part) => [part.id, part]));
 
   for (const layer of asset.layers) {
     if (layer.textureId && !textureIds.has(layer.textureId)) {
@@ -287,24 +289,78 @@ function inspectReferences(asset: Asset, push: PushIssue): void {
     }
   }
 
-  for (const part of asset.parts) {
-    const missingLayers = unique(part.layerIds.filter((layerId) => !layerIds.has(layerId)));
-    if (missingLayers.length > 0) {
-      push({
-        code: 'reference.partLayerMissing',
-        severity: 'error',
-        category: 'reference',
-        message: `パーツ「${part.name}」が存在しないレイヤーを参照しています。`,
-        reason: `見つからないレイヤーID: ${missingLayers.join(', ')}`,
-        action: 'パーツパネルで構成レイヤーを選び直してください。',
-        target: {
-          path: `parts[id=${part.id}].layerIds`,
-          label: `パーツ「${part.name}」`,
-          panel: 'parts',
-        },
-      });
+  for (const violation of inspectPartLayerConstraints(asset)) {
+    const part = partById.get(violation.partIds[0]);
+    const partName = part?.name ?? violation.partIds[0];
+    switch (violation.code) {
+      case 'empty':
+        push({
+          code: 'reference.partLayerEmpty',
+          severity: 'error',
+          category: 'reference',
+          message: `パーツ「${partName}」に構成レイヤーがありません。`,
+          reason: 'パーツには1件以上のレイヤーが必要です。',
+          action: 'パーツパネルで構成レイヤーを1件以上選択してください。',
+          target: {
+            path: `parts[id=${violation.partIds[0]}].layerIds`,
+            label: `パーツ「${partName}」`,
+            panel: 'parts',
+          },
+        });
+        break;
+      case 'duplicate':
+        push({
+          code: 'reference.partLayerDuplicate',
+          severity: 'error',
+          category: 'reference',
+          message: `パーツ「${partName}」で同じレイヤーが重複しています。`,
+          reason: `重複しているレイヤーID: ${violation.layerIds.join(', ')}`,
+          action: 'パーツパネルで構成レイヤーを選び直してください。',
+          target: {
+            path: `parts[id=${violation.partIds[0]}].layerIds`,
+            label: `パーツ「${partName}」`,
+            panel: 'parts',
+          },
+        });
+        break;
+      case 'missing':
+        push({
+          code: 'reference.partLayerMissing',
+          severity: 'error',
+          category: 'reference',
+          message: `パーツ「${partName}」が存在しないレイヤーを参照しています。`,
+          reason: `見つからないレイヤーID: ${violation.layerIds.join(', ')}`,
+          action: 'パーツパネルで構成レイヤーを選び直してください。',
+          target: {
+            path: `parts[id=${violation.partIds[0]}].layerIds`,
+            label: `パーツ「${partName}」`,
+            panel: 'parts',
+          },
+        });
+        break;
+      case 'shared': {
+        const layer = asset.layers.find((candidate) => candidate.id === violation.layerIds[0]);
+        const ownerNames = violation.partIds.map((partId) => partById.get(partId)?.name ?? partId);
+        push({
+          code: 'reference.partLayerShared',
+          severity: 'error',
+          category: 'reference',
+          message: `レイヤー「${layer?.name ?? violation.layerIds[0]}」が複数のパーツで使用されています。`,
+          reason: `使用中のパーツ: ${ownerNames.join(', ')}`,
+          action:
+            'パーツパネルで構成レイヤーを選び直し、1つのレイヤーを1つのパーツだけへ所属させてください。',
+          target: {
+            path: `layers[id=${violation.layerIds[0]}].partOwnership`,
+            label: `レイヤー「${layer?.name ?? violation.layerIds[0]}」`,
+            panel: 'parts',
+          },
+        });
+        break;
+      }
     }
+  }
 
+  for (const part of asset.parts) {
     if (part.parentId && !partIds.has(part.parentId)) {
       push({
         code: 'reference.partParentMissing',

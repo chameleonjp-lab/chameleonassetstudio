@@ -64,6 +64,12 @@ Slice Eについては各実機で、Files pickerからSVG / GIF / APNGを選ん
 - [ ] iPhone Safariでsafe areaと下部操作バーが重ならず、確定・取消・loss確認を操作できる
 - [ ] iPhone Safariでsoftware keyboard表示中も入力、focus、確定・取消、横overflowに問題がない
 
+P1 Slice Cについては、Playwrightの375 × 667 / 667 × 375を実機Safariの代替にせず、Group 12完了前に確認端末・iOS・Safari・commit SHAを記録する。
+
+- [ ] iPhone SE 2 / 3世代相当で20件以上の構成Layer一覧を縦横表示し、指スクロール、選択、確定、取消、横overflowなしを確認する
+- [ ] software keyboard表示中も構成Layerの確定・取消へ到達でき、入力zoom、safe area、下部バーとの重なりがない
+- [ ] 取消で正本不変、確定後のUndo / Redo / reloadで同じ`Part.layerIds`が復元される
+
 ## 4. 性能・メモリ計測（今回の完了条件に含めない・将来課題）
 
 - [ ] 4096 x 4096 画像の取り込み〜編集〜書き出しが実機でクラッシュしない
@@ -78,7 +84,7 @@ Slice Eについては各実機で、Files pickerからSVG / GIF / APNGを選ん
 - 本格的なエフェクトエディタ / パーティクル（effect はメタデータの最小対応のみ）
 - Rive / Spine の取り込み補助（docs 上の関係説明のみ。互換は名乗らない）
 - 大画像（4096²）連続編集のメモリ計測（4 章）
-- Group 12契約監査PR #146はmerge `cb21ea4`で完了し、T1 / R1 / P1とH1=E1 / H2=L1 / H3=M1をacceptedとした。T1 Slice Aは本実装PRで検証中。R1 / P1とH3数値budgetは未着手
+- Group 12契約監査PR #146はmerge `cb21ea4`で完了し、T1 / R1 / P1とH1=E1 / H2=L1 / H3=M1をacceptedとした。T1 Slice AはPR #153、merge `e8fac95`で実装済み。P1 Slice Cは本実装PRで検証中。R1、bake共通preflight、H3数値budgetは未着手
 - PR #147 final head `1ba671f7`、merge `24a089c`でH3計測準備をmainへ反映済み。PR #148 final head `0cfc1ea`、merge `fbdeb357`で24時間配信基盤を反映し、CI Run #462 / #463は全job成功した
 - H3は`docs/future/2D_3_H3_MEASUREMENT_PROTOCOL.md`に従い、PC Chromium、iPhone 17 Pro / 11 Pro Safari、iPad Pro 2018 Safariのcore結果を先に記録する。120 / 240 Frameは未採用候補
 - 配信前にPages sourceが`GitHub Actions`であること、本体rootとH3 `/h3/`、画面のsource commit、開始 / 終了時刻、HTTPSを確認する。JSON保存後は`close-now`を実行してH3だけを閉じる。未完了でも24時間後に新規計測を拒否することを確認する。サービス本体も止める明示判断がない限りUnpublishしない
