@@ -157,17 +157,10 @@
   flex: 1;
   min-width: 0;
   display: flex;
-  padding: 0.75rem;
-  overflow: auto;
-}
-
-.canvas-editor-workspace {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
   flex-direction: column;
   gap: 0.5rem;
+  padding: 0.75rem;
+  overflow: auto;
 }
 
 .editor-mobile-toolbar {
