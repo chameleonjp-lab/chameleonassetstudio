@@ -72,6 +72,9 @@ describe('casproj の書き出しと読み込み', () => {
         payload: { power: 3, critical: false, note: null },
       },
     ];
+    (motionAsset.animations[0].events[0] as unknown as Record<string, unknown>).futureEventField = {
+      preserved: true,
+    };
     const imageBytes = new Uint8Array([1, 2, 3]);
     const bundle: CasprojBundle = {
       project,
@@ -87,6 +90,9 @@ describe('casproj の書き出しと読み込み', () => {
 
     expect(imported.appliedMigrations).toEqual([]);
     expect(imported.bundle.assets).toEqual([motionAsset]);
+    expect(
+      imported.bundle.assets[0].animations[0].events?.[0] as unknown as Record<string, unknown>,
+    ).toMatchObject({ futureEventField: { preserved: true } });
     expect(imported.bundle.assets[0].version).toBe('0.2.0');
   });
 

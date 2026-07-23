@@ -334,7 +334,13 @@ describe('validateAnimation', () => {
   it('JSON安全なevent payloadを許可する', () => {
     const animation = clone(characterAsset.animations[0]) as Record<string, unknown>;
     animation.events = [
-      { id: 'event_1', name: 'start', frameId: 'frame_idle_0', payload: null },
+      {
+        id: 'event_1',
+        name: 'start',
+        frameId: 'frame_idle_0',
+        payload: null,
+        futureEventField: { preserved: true },
+      },
       {
         id: 'event_2',
         name: 'sound',

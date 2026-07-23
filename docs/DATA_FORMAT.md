@@ -1,6 +1,6 @@
 # Chameleon Asset Studio データ形式書
 
-最終更新日: 2026-07-22
+最終更新日: 2026-07-23
 対象バージョン: アプリ 0.1.0 / Asset 0.2.0 / Project・export-presets・atlas 0.1.0
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`
 

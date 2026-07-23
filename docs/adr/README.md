@@ -1,6 +1,6 @@
 # Architecture Decision Records（2D データ契約）
 
-最終更新日: 2026-07-22
+最終更新日: 2026-07-23
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: ADR インデックス（2D-1a契約群、group 11 import判断、group 12 Timeline / Rig判断を含む）
 上位文書: `docs/future/2D_ASSET_DATA_CONTRACT.md`, `docs/future/2D_COMPLETION_ROADMAP.md`（2D-1a）

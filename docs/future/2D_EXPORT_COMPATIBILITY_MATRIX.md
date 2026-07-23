@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 2D Export Compatibility Matrix
 
-最終更新日: 2026-07-22
+最終更新日: 2026-07-23
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 2D 入出力・対象別書き出し・検証基準
 状態: accepted（設計と確認基準。docs-only）

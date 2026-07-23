@@ -53,6 +53,9 @@ describe('duplicateAsset', () => {
         ],
       },
     ];
+    (source.animations[0].events?.[0] as unknown as Record<string, unknown>).futureEventField = {
+      preserved: true,
+    };
     source.rigAnimations = [
       {
         id: 'rig_source',
@@ -91,6 +94,9 @@ describe('duplicateAsset', () => {
       payload: { power: 2 },
     });
     expect(copy.animations[0].events?.[0].id).not.toBe('event_source');
+    expect(copy.animations[0].events?.[0] as unknown as Record<string, unknown>).toMatchObject({
+      futureEventField: { preserved: true },
+    });
     expect(Object.keys(copy.rigAnimations?.[0].keyframes[0].poses ?? {})).toEqual([
       copy.parts[1].id,
     ]);
@@ -98,7 +104,15 @@ describe('duplicateAsset', () => {
 
     const copiedPayload = copy.animations[0].events?.[0].payload as { power: number };
     copiedPayload.power = 99;
+    (
+      (copy.animations[0].events?.[0] as unknown as Record<string, unknown>).futureEventField as {
+        preserved: boolean;
+      }
+    ).preserved = false;
     expect(source.animations[0].events?.[0].payload).toEqual({ power: 2 });
+    expect(
+      (source.animations[0].events?.[0] as unknown as Record<string, unknown>).futureEventField,
+    ).toEqual({ preserved: true });
   });
 
   it('copy側の入れ子を変更しても元Assetを変更しない', () => {

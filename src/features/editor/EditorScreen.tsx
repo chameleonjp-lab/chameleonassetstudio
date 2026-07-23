@@ -74,6 +74,7 @@ import {
   renameLayer,
   ASSET_TYPES,
   type AnchorRole,
+  type AnimationPlayback,
   type AnimationEvent,
   type Asset,
   type AssetFamily,
@@ -444,6 +445,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const historyRef = useRef<History | null>(null);
   historyRef.current ??= new History();
   const history = historyRef.current;
+  const animationPlaybackRef = useRef<AnimationPlayback | null>(null);
   const subscribeHistory = useCallback(
     (onChange: () => void) => history.subscribe(onChange),
     [history],
@@ -1017,8 +1019,14 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       },
       onComplete: () => setIsPlaying(false),
     });
+    animationPlaybackRef.current = playback;
     playback.start();
-    return () => playback.stop();
+    return () => {
+      playback.stop();
+      if (animationPlaybackRef.current === playback) {
+        animationPlaybackRef.current = null;
+      }
+    };
   }, [isPlaying, selectedAnimation, selectedAsset?.frames]);
 
   const handleSelectAnimation = (id: string | null) => {
@@ -1049,6 +1057,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
   const handleRewindAnimation = () => {
     if (!selectedAnimation || selectedAnimation.frameIds.length === 0) {
+      return;
+    }
+    if (isPlaying && animationPlaybackRef.current) {
+      animationPlaybackRef.current.start();
       return;
     }
     setPreviewFrameId(selectedAnimation.frameIds[0]);

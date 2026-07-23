@@ -857,7 +857,8 @@ function inspectEffectProfile(asset: Asset, push: PushIssue): void {
           category: 'effect',
           message: 'エフェクト設定とアニメーションの長さが大きく異なります。',
           reason: `エフェクト設定は${Math.round(effect.durationMs)}ms、最長アニメーションは約${Math.round(longest)}msです。`,
-          action: 'エフェクト設定の再生時間またはタイムラインのFPS・フレーム数を確認してください。',
+          action:
+            'エフェクト設定の再生時間またはタイムラインのFPS・フレーム表示時間・フレーム数を確認してください。',
           target: {
             path: 'effect.durationMs|animations[]',
             label: 'エフェクト設定 / タイムライン',

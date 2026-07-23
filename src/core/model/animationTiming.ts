@@ -1,5 +1,7 @@
 import type { Animation, AnimationEvent, Frame } from './animation';
 
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
+
 /**
  * 1回のFrame出現に使う実効表示時間。
  * 不正なoverrideまたはfpsはnullを返し、呼び出し側が検査結果として扱う。
@@ -14,7 +16,11 @@ export function effectiveFrameDurationMs(
   if (frame.durationMs !== undefined) {
     return Number.isFinite(frame.durationMs) && frame.durationMs > 0 ? frame.durationMs : null;
   }
-  return Number.isFinite(animation.fps) && animation.fps > 0 ? 1000 / animation.fps : null;
+  if (!Number.isFinite(animation.fps) || animation.fps <= 0) {
+    return null;
+  }
+  const fallbackDuration = 1000 / animation.fps;
+  return Number.isFinite(fallbackDuration) && fallbackDuration > 0 ? fallbackDuration : null;
 }
 
 /**
@@ -37,6 +43,9 @@ export function calculateAnimationDurationMs(
       return null;
     }
     total += duration;
+    if (!Number.isFinite(total)) {
+      return null;
+    }
   }
   return total;
 }
@@ -86,6 +95,21 @@ export function createAnimationPlayback(options: AnimationPlaybackOptions): Anim
     }
   };
 
+  const scheduleAfter = (remainingMs: number, callback: () => void) => {
+    const delayMs = Math.min(remainingMs, MAX_TIMER_DELAY_MS);
+    timeoutHandle = options.clock.setTimeout(() => {
+      timeoutHandle = undefined;
+      if (!running) {
+        return;
+      }
+      if (remainingMs > MAX_TIMER_DELAY_MS) {
+        scheduleAfter(remainingMs - MAX_TIMER_DELAY_MS, callback);
+        return;
+      }
+      callback();
+    }, delayMs);
+  };
+
   const emitCurrent = () => {
     if (!running) {
       return;
@@ -102,11 +126,7 @@ export function createAnimationPlayback(options: AnimationPlaybackOptions): Anim
       options.onEvent?.(event, occurrenceIndex);
     }
 
-    timeoutHandle = options.clock.setTimeout(() => {
-      timeoutHandle = undefined;
-      if (!running) {
-        return;
-      }
+    scheduleAfter(duration, () => {
       const nextIndex = occurrenceIndex + 1;
       if (nextIndex >= options.animation.frameIds.length) {
         if (!options.animation.loop) {
@@ -119,7 +139,7 @@ export function createAnimationPlayback(options: AnimationPlaybackOptions): Anim
         occurrenceIndex = nextIndex;
       }
       emitCurrent();
-    }, duration);
+    });
   };
 
   return {

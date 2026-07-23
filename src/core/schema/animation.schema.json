@@ -42,7 +42,6 @@
     "animationEvent": {
       "type": "object",
       "required": ["id", "name", "frameId"],
-      "additionalProperties": false,
       "properties": {
         "id": { "type": "string", "minLength": 1 },
         "name": { "type": "string", "minLength": 1 },

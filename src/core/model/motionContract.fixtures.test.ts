@@ -187,6 +187,7 @@ describe('ADR-0011 / 0021: optional追加と未知fieldの前方互換', () => {
           name: 'attack_start',
           frameId: 'frame_with_overrides',
           payload: { power: 2 },
+          futureEventField: { preserved: true },
         },
       ],
       futureAnimationField: { preserved: true },

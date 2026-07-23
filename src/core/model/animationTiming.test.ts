@@ -79,12 +79,18 @@ describe('animation timing', () => {
 
   it('不正なfps・durationまたは参照切れでは計算不能を返す', () => {
     expect(effectiveFrameDurationMs({ ...animation, fps: 0 }, frames[1])).toBeNull();
+    expect(effectiveFrameDurationMs({ ...animation, fps: Number.MIN_VALUE }, frames[1])).toBeNull();
     expect(effectiveFrameDurationMs(animation, undefined)).toBeNull();
     expect(
       effectiveFrameDurationMs(animation, { ...frames[0], durationMs: Number.NaN }),
     ).toBeNull();
     expect(
       calculateAnimationDurationMs({ ...animation, frameIds: ['missing'] }, frames),
+    ).toBeNull();
+    expect(
+      calculateAnimationDurationMs({ ...animation, frameIds: ['huge', 'huge'] }, [
+        { id: 'huge', name: 'huge', durationMs: Number.MAX_VALUE, layerStates: [] },
+      ]),
     ).toBeNull();
   });
 });
@@ -184,6 +190,68 @@ describe('animation playback scheduler', () => {
     expect(onEvent).toHaveBeenCalledTimes(2);
     expect(onComplete).not.toHaveBeenCalled();
     expect(playback.isRunning()).toBe(false);
+  });
+
+  it('再生中のstartは旧予約を取消し、先頭Frameの時間とイベントから再開する', () => {
+    const clock = new TestClock();
+    const onFrameStart = vi.fn();
+    const onEvent = vi.fn();
+    const playback = createAnimationPlayback({
+      animation,
+      frames,
+      clock,
+      onFrameStart,
+      onEvent,
+    });
+
+    playback.start();
+    clock.advance(250);
+    clock.advance(50);
+    expect(onFrameStart.mock.calls).toEqual([
+      ['frame_a', 0],
+      ['frame_b', 1],
+    ]);
+
+    playback.start();
+    expect(onFrameStart).toHaveBeenLastCalledWith('frame_a', 0);
+    expect(onEvent.mock.calls.map(([event, index]) => [event.id, index])).toEqual([
+      ['event_a1', 0],
+      ['event_a2', 0],
+      ['event_b', 1],
+      ['event_a1', 0],
+      ['event_a2', 0],
+    ]);
+
+    // 旧frame_bの残り50msでは進まず、再開したframe_aの250msを丸ごと待つ。
+    clock.advance(249);
+    expect(onFrameStart).toHaveBeenCalledTimes(3);
+    clock.advance(1);
+    expect(onFrameStart).toHaveBeenLastCalledWith('frame_b', 1);
+  });
+
+  it('ブラウザtimer上限を超えるFrame時間を分割し、早送りせず正しい境界で進める', () => {
+    const clock = new TestClock();
+    const onFrameStart = vi.fn();
+    const playback = createAnimationPlayback({
+      animation: { ...animation, frameIds: ['huge', 'frame_b'] },
+      frames: [
+        {
+          id: 'huge',
+          name: 'huge',
+          durationMs: 2_147_483_648,
+          layerStates: [],
+        },
+        frames[1],
+      ],
+      clock,
+      onFrameStart,
+    });
+
+    playback.start();
+    clock.advance(2_147_483_647);
+    expect(onFrameStart.mock.calls).toEqual([['huge', 0]]);
+    clock.advance(1);
+    expect(onFrameStart).toHaveBeenLastCalledWith('frame_b', 1);
   });
 
   it('参照切れFrameでは表示やeventを通知せず安全に終了する', () => {

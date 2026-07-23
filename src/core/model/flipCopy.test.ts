@@ -125,6 +125,9 @@ describe('flipCopyAsset', () => {
         ],
       })),
     };
+    (source.animations[0].events?.[0] as unknown as Record<string, unknown>).futureEventField = {
+      preserved: true,
+    };
     const flipped = flipCopyAsset(source);
     const newLayerIds = new Set(flipped.layers.map((l) => l.id));
     // part.layerIds は新レイヤー id を指す
@@ -153,8 +156,18 @@ describe('flipCopyAsset', () => {
       payload: { side: 'left' },
     });
     expect(flipped.animations[0].events?.[0].id).not.toBe('event_left');
+    expect(flipped.animations[0].events?.[0] as unknown as Record<string, unknown>).toMatchObject({
+      futureEventField: { preserved: true },
+    });
     (flipped.animations[0].events?.[0].payload as { side: string }).side = 'changed';
+    (
+      (flipped.animations[0].events?.[0] as unknown as Record<string, unknown>)
+        .futureEventField as { preserved: boolean }
+    ).preserved = false;
     expect(source.animations[0].events?.[0].payload).toEqual({ side: 'left' });
+    expect(
+      (source.animations[0].events?.[0] as unknown as Record<string, unknown>).futureEventField,
+    ).toEqual({ preserved: true });
     expect(validateAsset(flipped).valid).toBe(true);
   });
 

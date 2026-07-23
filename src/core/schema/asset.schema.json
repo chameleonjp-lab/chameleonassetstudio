@@ -606,7 +606,6 @@
     "animationEvent": {
       "type": "object",
       "required": ["id", "name", "frameId"],
-      "additionalProperties": false,
       "properties": {
         "id": {
           "type": "string",
