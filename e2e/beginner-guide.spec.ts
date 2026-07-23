@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('初心者向けビジュアルガイドを開ける', async ({ page }) => {
-  await page.goto('/guide/');
+  await page.goto('/guide/index.html');
 
   await expect(page).toHaveTitle('はじめての使い方 | Chameleon Asset Studio');
   await expect(page.getByRole('heading', { name: /まずは画像1枚.*5ステップ.*完成/ })).toBeVisible();
@@ -28,7 +28,7 @@ test('ホーム画面から初心者向けガイドを開ける', async ({ page 
 
 test('初心者向けビジュアルガイドはスマホ幅で横スクロールしない', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
-  await page.goto('/guide/');
+  await page.goto('/guide/index.html');
 
   await expect(page.getByRole('heading', { name: '画面下の4つだけ、先に覚える' })).toBeVisible();
   const overflow = await page.evaluate(
