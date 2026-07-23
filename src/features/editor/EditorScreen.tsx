@@ -3062,7 +3062,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           onDrop={handleDrop}
         >
           {selectedAsset ? (
-            <>
+            <div className={`canvas-editor-frame${dragOver ? ' drag-over' : ''}`}>
               <nav
                 className="editor-mobile-toolbar"
                 aria-label="編集ツール"
@@ -3108,46 +3108,42 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   図で詳しく見る
                 </a>
               </div>
-              <div className={`canvas-editor-frame${dragOver ? ' drag-over' : ''}`}>
-                <CanvasEditor
-                  asset={previewAsset ?? selectedAsset}
-                  tool={tool}
-                  selectedLayerId={selectedLayerId}
-                  eraserRadius={eraserSize}
-                  brushRadius={brushSize}
-                  rasterColor={hexToRgb(rasterColor)}
-                  fillTolerance={Math.round((fillTolerance / 100) * 255)}
-                  onSelectLayer={setSelectedLayerId}
-                  onCommitAsset={commitAssetChange}
-                  onPickColor={(layerId, point) => void handlePickColor(layerId, point)}
-                  onCropCommit={handleCropCommit}
-                  onEraseCommit={handleEraseCommit}
-                  onRasterCommit={(operation) => void applyImageEdit(operation)}
-                  selection={selection}
-                  onSelectionCommit={handleSelectionCommit}
-                  onSelectionMoveCommit={(sel, target) =>
-                    void handleSelectionMoveCommit(sel, target)
-                  }
-                  pastePreview={pastePreview}
-                  onPastePreviewMove={setPastePreviewPosition}
-                  onPasteCommit={(position) => void handlePasteCommit(position)}
-                  textDraft={textDraft}
-                  onTextAnchor={handleTextAnchor}
-                  showColliders={showColliders}
-                  gridEnabled={gridEnabled}
-                  gridSize={gridSize}
-                  gridSizeMode={gridSizeMode}
-                  snapEnabled={snapEnabled}
-                  onGridEnabledChange={setGridEnabled}
-                  onGridSizeChange={setGridSize}
-                  onGridSizeModeChange={setGridSizeMode}
-                  onSnapEnabledChange={setSnapEnabled}
-                  onAddAnchor={handleAddAnchor}
-                  selectedColliderId={selectedColliderId}
-                  onSelectCollider={setSelectedColliderId}
-                />
-              </div>
-            </>
+              <CanvasEditor
+                asset={previewAsset ?? selectedAsset}
+                tool={tool}
+                selectedLayerId={selectedLayerId}
+                eraserRadius={eraserSize}
+                brushRadius={brushSize}
+                rasterColor={hexToRgb(rasterColor)}
+                fillTolerance={Math.round((fillTolerance / 100) * 255)}
+                onSelectLayer={setSelectedLayerId}
+                onCommitAsset={commitAssetChange}
+                onPickColor={(layerId, point) => void handlePickColor(layerId, point)}
+                onCropCommit={handleCropCommit}
+                onEraseCommit={handleEraseCommit}
+                onRasterCommit={(operation) => void applyImageEdit(operation)}
+                selection={selection}
+                onSelectionCommit={handleSelectionCommit}
+                onSelectionMoveCommit={(sel, target) => void handleSelectionMoveCommit(sel, target)}
+                pastePreview={pastePreview}
+                onPastePreviewMove={setPastePreviewPosition}
+                onPasteCommit={(position) => void handlePasteCommit(position)}
+                textDraft={textDraft}
+                onTextAnchor={handleTextAnchor}
+                showColliders={showColliders}
+                gridEnabled={gridEnabled}
+                gridSize={gridSize}
+                gridSizeMode={gridSizeMode}
+                snapEnabled={snapEnabled}
+                onGridEnabledChange={setGridEnabled}
+                onGridSizeChange={setGridSize}
+                onGridSizeModeChange={setGridSizeMode}
+                onSnapEnabledChange={setSnapEnabled}
+                onAddAnchor={handleAddAnchor}
+                selectedColliderId={selectedColliderId}
+                onSelectCollider={setSelectedColliderId}
+              />
+            </div>
           ) : (
             <div className={`canvas-placeholder${dragOver ? ' drag-over' : ''}`}>
               <div className="import-zone">
