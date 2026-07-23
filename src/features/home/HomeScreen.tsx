@@ -302,6 +302,24 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
       <header className="home-header">
         <h1>Chameleon Asset Studio</h1>
         <p>ブラウザゲーム用 2D アセット制作ツール</p>
+        <a
+          className="home-guide-link"
+          href={`${import.meta.env.BASE_URL}guide/`}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="初心者向けの図で分かる使い方を開く"
+        >
+          <span className="home-guide-mark" aria-hidden="true">
+            ?
+          </span>
+          <span className="home-guide-copy">
+            <strong>はじめての方へ</strong>
+            <small>図で使い方を見る</small>
+          </span>
+          <span className="home-guide-arrow" aria-hidden="true">
+            →
+          </span>
+        </a>
       </header>
 
       {errorMessage && (

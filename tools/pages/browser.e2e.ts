@@ -28,7 +28,10 @@ function expectedH3Status(): ExpectedH3Status {
   return value;
 }
 
-test('serves the application at the Pages root and H3 under /h3/', async ({ page, request }) => {
+test('serves the application, beginner guide, and H3 at their Pages routes', async ({
+  page,
+  request,
+}) => {
   const expectedStatus = expectedH3Status();
   const failedResponses: string[] = [];
   const pageErrors: string[] = [];
@@ -44,6 +47,10 @@ test('serves the application at the Pages root and H3 under /h3/', async ({ page
   await page.goto('./');
   await expect(page).toHaveTitle('Chameleon Asset Studio');
   await expect(page.locator('#root')).not.toBeEmpty();
+
+  await page.goto('./guide/');
+  await expect(page).toHaveTitle('はじめての使い方 | Chameleon Asset Studio');
+  await expect(page.getByRole('heading', { name: /まずは画像1枚.*5ステップ.*完成/ })).toBeVisible();
 
   await page.goto('./h3/');
   if (expectedStatus === 'open') {
