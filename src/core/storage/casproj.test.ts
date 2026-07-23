@@ -125,11 +125,7 @@ describe('casproj の書き出しと読み込み', () => {
     expect(imported.bundle.assets).toEqual([replaced.asset]);
     expect(imported.bundle.assets[0].parts[0].layerIds).toEqual(['layer_body', 'layer_guide']);
     expect(imported.bundle.assets[0].version).toBe('0.2.0');
-    expect(
-      imported.bundle.files.every((file) =>
-        file.bytes.every((byte, index) => byte === imageBytes[index]),
-      ),
-    ).toBe(true);
+    expect(imported.bundle.files).toEqual(bundle.files);
   });
 
   it('project.json が無い ZIP は理由付きで失敗する', async () => {
