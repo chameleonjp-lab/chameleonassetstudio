@@ -1883,8 +1883,38 @@
   /* デスクトップ / iPad ではタイムラインの下に書き出しパネルを常時表示する */
   .editor-export {
     display: flex;
+    max-block-size: 11rem;
     border-top: 1px solid #8884;
     padding: 0.5rem 0.75rem;
+    overflow-y: auto;
+  }
+
+  .editor-export .export-panel {
+    gap: 0.45rem;
+  }
+
+  .editor-export .export-explanation {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.4rem 0.55rem;
+  }
+
+  .editor-export .export-explanation p {
+    margin: 0;
+  }
+
+  .editor-export .export-buttons {
+    display: flex;
+    padding-bottom: 0.2rem;
+    overflow-x: auto;
+  }
+
+  .editor-export .export-option {
+    flex: 0 0 min(15rem, 80vw);
+    gap: 0.4rem;
+    padding: 0.45rem 0.55rem;
   }
 }
 
