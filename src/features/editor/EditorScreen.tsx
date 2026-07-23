@@ -150,6 +150,7 @@ import { LayerPanel } from './LayerPanel';
 import { PartPanel } from './PartPanel';
 import { RigPanel } from './RigPanel';
 import { TimelinePanel } from './TimelinePanel';
+import { CANVAS_TOOL_GUIDE_BY_ID, CANVAS_TOOL_GUIDES } from './toolHelp';
 import { VariantPanel, type VariantInspectionView } from './VariantPanel';
 import { applyEditSnap } from './snap';
 import './editor.css';
@@ -2960,23 +2961,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     { view: 'export', label: '書き出し' },
   ];
 
-  const toolButtons: Array<{ tool: CanvasTool; label: string }> = [
-    { tool: 'select', label: '選択' },
-    { tool: 'pan', label: 'パン' },
-    { tool: 'crop', label: 'トリミング' },
-    { tool: 'eraser', label: '消しゴム' },
-    { tool: 'brush', label: 'ブラシ' },
-    { tool: 'fill', label: '塗りつぶし' },
-    { tool: 'rect', label: '矩形' },
-    { tool: 'ellipse', label: '楕円' },
-    { tool: 'selection', label: '範囲' },
-    { tool: 'text', label: '文字' },
-    { tool: 'bgpick', label: '背景透過' },
-    { tool: 'picker', label: 'スポイト' },
-    { tool: 'origin', label: '原点' },
-    { tool: 'anchor', label: 'アンカー' },
-    { tool: 'collider', label: '判定' },
-  ];
+  const toolButtons = CANVAS_TOOL_GUIDES;
+  const activeToolGuide = CANVAS_TOOL_GUIDE_BY_ID[tool];
 
   const statusMessages = (
     <>
@@ -3022,6 +3008,14 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         <p className="editor-save-status" role="status">
           {saveStatusText(saveState)}
         </p>
+        <a
+          className="editor-help-link"
+          href={`${import.meta.env.BASE_URL}guide/features/`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          ？ 操作ガイド
+        </a>
         <div className="editor-panel-toggles">
           <button type="button" aria-pressed={leftOpen} onClick={() => setLeftOpen((v) => !v)}>
             ツール
@@ -3042,12 +3036,14 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         <nav
           className={`editor-toolbar editor-side${leftOpen ? '' : ' collapsed'}`}
           aria-label="ツール"
+          aria-describedby="active-tool-help"
         >
           {toolButtons.map((item) => (
             <button
               key={item.tool}
               type="button"
               aria-pressed={tool === item.tool}
+              title={item.purpose}
               onClick={() => activateTool(item.tool)}
             >
               {item.label}
@@ -3067,6 +3063,51 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         >
           {selectedAsset ? (
             <div className={`canvas-editor-frame${dragOver ? ' drag-over' : ''}`}>
+              <nav
+                className="editor-mobile-toolbar"
+                aria-label="編集ツール"
+                aria-describedby="active-tool-help"
+              >
+                {toolButtons.map((item) => (
+                  <button
+                    key={item.tool}
+                    type="button"
+                    aria-pressed={tool === item.tool}
+                    onClick={() => activateTool(item.tool)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </nav>
+              <div
+                id="active-tool-help"
+                className="editor-tool-help"
+                data-change-kind={activeToolGuide.kind}
+              >
+                <div className="editor-tool-help-heading">
+                  <strong>現在：{activeToolGuide.label}</strong>
+                  <span>{activeToolGuide.kind}</span>
+                </div>
+                <p>
+                  <b>できること：</b>
+                  {activeToolGuide.purpose}
+                </p>
+                <p>
+                  <b>操作：</b>
+                  {activeToolGuide.gesture}
+                </p>
+                <p>
+                  <b>変化と戻し方：</b>
+                  {activeToolGuide.effect}
+                </p>
+                <a
+                  href={`${import.meta.env.BASE_URL}guide/features/#tool-${activeToolGuide.tool}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  図で詳しく見る
+                </a>
+              </div>
               <CanvasEditor
                 asset={previewAsset ?? selectedAsset}
                 tool={tool}
@@ -3134,6 +3175,23 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           aria-label="プロパティ"
         >
           <h2>プロパティ</h2>
+          <div className="editor-properties-guide">
+            <p>目的の場所へ移動できます。詳しい説明は別タブで開きます。</p>
+            <nav aria-label="プロパティ内メニュー">
+              <a href="#property-asset">アセット</a>
+              <a href="#property-layers">レイヤー</a>
+              <a href="#property-image">画像編集</a>
+              <a href="#property-game-data">ゲーム情報</a>
+              <a href="#property-parts">パーツ・リグ</a>
+            </nav>
+            <a
+              href={`${import.meta.env.BASE_URL}guide/features/#properties`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              ？ プロパティの機能を図で見る
+            </a>
+          </div>
           <label className="editor-field">
             プロジェクト名
             <input
@@ -3145,7 +3203,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             />
           </label>
 
-          <h3 className="editor-subheading">アセット</h3>
+          <h3 id="property-asset" className="editor-subheading">
+            アセット
+          </h3>
           {selectedAsset ? (
             <>
               <AssetTypePanel asset={selectedAsset} onCommit={commitPanelChange} />
@@ -3391,14 +3451,18 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             </>
           )}
 
-          <h3 className="editor-subheading">Asset canvasサイズ</h3>
+          <h3 id="property-canvas" className="editor-subheading">
+            Asset canvasサイズ
+          </h3>
           {selectedAsset ? (
             <CanvasResizePanel asset={selectedAsset} onCommit={commitPanelChange} />
           ) : (
             <p className="editor-note">アセットを選ぶとcanvasサイズを変更できます。</p>
           )}
 
-          <h3 className="editor-subheading">レイヤー</h3>
+          <h3 id="property-layers" className="editor-subheading">
+            レイヤー
+          </h3>
           {selectedAsset ? (
             <LayerPanel
               asset={selectedAsset}
@@ -3501,7 +3565,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
           {selectedLayer && (
             <>
-              <h3 className="editor-subheading">画像編集</h3>
+              <h3 id="property-image" className="editor-subheading">
+                画像編集
+              </h3>
               <div className="image-edit-fields">
                 <p className="editor-note">
                   ブラシ・矩形・楕円はキャンバス上でドラッグ、塗りつぶしと背景透過は対象をタップします。描画は選択中の編集用画像へ確定され、Undoで戻せます。
@@ -4199,7 +4265,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             </>
           )}
 
-          <h3 className="editor-subheading">ゲーム情報</h3>
+          <h3 id="property-game-data" className="editor-subheading">
+            ゲーム情報
+          </h3>
           {selectedAsset ? (
             <GameDataPanel
               asset={selectedAsset}
@@ -4229,7 +4297,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             <p className="editor-note">アセットを選ぶとゲーム属性を編集できます。</p>
           )}
 
-          <h3 className="editor-subheading">パーツ</h3>
+          <h3 id="property-parts" className="editor-subheading">
+            パーツ
+          </h3>
           {selectedAsset ? (
             <PartPanel
               asset={selectedAsset}

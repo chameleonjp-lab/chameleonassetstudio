@@ -52,6 +52,10 @@ test('serves the application, beginner guide, and H3 at their Pages routes', asy
   await expect(page).toHaveTitle('はじめての使い方 | Chameleon Asset Studio');
   await expect(page.getByRole('heading', { name: /まずは画像1枚.*5ステップ.*完成/ })).toBeVisible();
 
+  await page.goto('./guide/features/');
+  await expect(page).toHaveTitle('機能別・操作図鑑 | Chameleon Asset Studio');
+  await expect(page.getByRole('heading', { name: 'ボタン名から機能を探す' })).toBeVisible();
+
   await page.goto('./h3/');
   if (expectedStatus === 'open') {
     await expect(page).toHaveTitle('Chameleon H3 measurement harness');

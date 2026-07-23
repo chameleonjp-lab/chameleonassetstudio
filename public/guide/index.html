@@ -593,7 +593,7 @@
 
       .area-grid {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: 14px;
       }
 
@@ -620,6 +620,10 @@
 
       .area-card:nth-child(4) {
         background: var(--blue-soft);
+      }
+
+      .area-card:nth-child(5) {
+        background: var(--leaf-soft);
       }
 
       .area-number {
@@ -1548,6 +1552,7 @@
           <div class="hero-actions">
             <a class="button button-primary" href="../">今すぐサービスを開く</a>
             <a class="button button-secondary" href="#steps">5ステップを見る</a>
+            <a class="button button-secondary" href="features/">各ボタンの説明を見る</a>
           </div>
           <p class="hero-note">
             <span class="hero-note-mark" aria-hidden="true">i</span>
@@ -1581,6 +1586,7 @@
                 </div>
               </div>
               <div class="phone-nav">
+                <span>ホーム</span>
                 <span class="active">編集</span>
                 <span>プロパティ</span>
                 <span>タイムライン</span>
@@ -1588,7 +1594,7 @@
               </div>
             </div>
           </div>
-          <div class="floating-card floating-card-bottom">下の4ボタンで<br />画面を切り替え</div>
+          <div class="floating-card floating-card-bottom">下の5ボタンで<br />画面を切り替え</div>
         </div>
       </section>
 
@@ -1616,30 +1622,36 @@
       <section class="section" aria-labelledby="areas-title">
         <div class="section-heading">
           <span class="section-kicker">SCREEN MAP</span>
-          <h2 id="areas-title">画面下の4つだけ、先に覚える</h2>
+          <h2 id="areas-title">画面下の5つだけ、先に覚える</h2>
           <p>iPhoneでは、画面下のボタンで作業場所を切り替えます。迷ったらここへ戻ってください。</p>
         </div>
         <div class="area-grid">
           <article class="area-card">
             <span class="area-number">1</span>
-            <h3>編集</h3>
-            <p>画像を取り込み、キャンバス上で位置や見た目を調整します。</p>
-            <div class="area-tab">編集</div>
+            <h3>ホーム</h3>
+            <p>プロジェクトを作る、開く、ごみ箱から戻す、.casprojを読み込む場所です。</p>
+            <div class="area-tab">ホーム</div>
           </article>
           <article class="area-card">
             <span class="area-number">2</span>
+            <h3>編集</h3>
+            <p>画像を取り込み、ツールを選んで位置や見た目を調整します。</p>
+            <div class="area-tab">編集</div>
+          </article>
+          <article class="area-card">
+            <span class="area-number">3</span>
             <h3>プロパティ</h3>
             <p>素材の種類、サイズ、レイヤー、原点や当たり判定を設定します。</p>
             <div class="area-tab">プロパティ</div>
           </article>
           <article class="area-card">
-            <span class="area-number">3</span>
+            <span class="area-number">4</span>
             <h3>タイムライン</h3>
             <p>複数の絵を順番に並べ、動く素材を作る場所です。最初は飛ばせます。</p>
             <div class="area-tab">タイムライン</div>
           </article>
           <article class="area-card">
-            <span class="area-number">4</span>
+            <span class="area-number">5</span>
             <h3>書き出し</h3>
             <p>完成画像、ゲーム用データ、続きから編集する保存ファイルを作ります。</p>
             <div class="area-tab">書き出し</div>
@@ -1718,7 +1730,7 @@
               <div class="step-tip">
                 <strong>失敗しても大丈夫</strong>
                 <span
-                  >画面上の「元に戻す」で直前の変更を戻せます。画像編集前の復旧点も残ります。</span
+                  >画面上の「元に戻す」で直前の変更を戻せます。画像編集前の復旧点が残る場合もありますが、最大3件の一時データなのでバックアップには使いません。</span
                 >
               </div>
             </div>
@@ -1936,12 +1948,12 @@
         <div>
           <h2 id="closing-title">準備ができたら、1枚から試しましょう</h2>
           <p>
-            このページは最初の操作に絞っています。連番画像、Sprite Sheet、アニメーション、Family /
-            Variantなどを使うときは、詳しいユーザーガイドを確認してください。
+            このページは最初の操作に絞っています。「このボタンで何が変わる？」を調べるときは機能別・操作図鑑、対応形式や詳しい条件はユーザーガイドを確認してください。
           </p>
         </div>
         <div class="closing-actions">
           <a class="button button-primary" href="../">サービスを開く</a>
+          <a class="button button-secondary" href="features/">機能別・操作図鑑を開く</a>
           <a
             class="text-link"
             href="https://github.com/chameleonjp-lab/chameleonassetstudio/blob/main/docs/USER_GUIDE.md"
