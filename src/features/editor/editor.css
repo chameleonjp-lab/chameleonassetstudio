@@ -157,8 +157,6 @@
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
   padding: 0.75rem;
   overflow: auto;
 }
@@ -169,6 +167,7 @@
 
 .editor-tool-help {
   display: grid;
+  block-size: 8.75rem;
   flex: none;
   grid-template-columns: minmax(0, 1fr);
   gap: 0.25rem;
@@ -178,6 +177,7 @@
   background: color-mix(in srgb, Canvas 92%, #62c3a5 8%);
   font-size: 0.78rem;
   line-height: 1.45;
+  overflow-y: auto;
   overflow-wrap: anywhere;
 }
 
@@ -295,6 +295,7 @@
   flex: 1;
   min-width: 0;
   min-height: 0;
+  gap: 0.5rem;
   border: 1px dashed transparent;
   border-radius: 4px;
   display: flex;
@@ -1921,8 +1922,7 @@
   }
 
   .editor-tool-help {
-    max-height: 9.5rem;
-    overflow-y: auto;
+    block-size: 8rem;
     font-size: 0.76rem;
   }
 
@@ -2070,6 +2070,12 @@
   .editor-timeline button,
   .editor-export button {
     min-height: 44px;
+  }
+}
+
+@media (max-width: 767px) and (max-height: 500px) {
+  .editor-tool-help {
+    block-size: 6rem;
   }
 }
 
