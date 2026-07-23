@@ -3062,7 +3062,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           onDrop={handleDrop}
         >
           {selectedAsset ? (
-            <div className="canvas-editor-workspace">
+            <>
               <nav
                 className="editor-mobile-toolbar"
                 aria-label="編集ツール"
@@ -3147,7 +3147,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   onSelectCollider={setSelectedColliderId}
                 />
               </div>
-            </div>
+            </>
           ) : (
             <div className={`canvas-placeholder${dragOver ? ' drag-over' : ''}`}>
               <div className="import-zone">
