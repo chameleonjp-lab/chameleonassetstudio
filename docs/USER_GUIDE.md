@@ -1,9 +1,11 @@
 # Chameleon Asset Studio ユーザーガイド
 
-最終更新日: 2026-07-21
+最終更新日: 2026-07-23
 対象バージョン: 0.1.0
 
 このガイドは、Chameleon Asset Studio でゲーム用 2D アセットを作って書き出すまでの使い方を説明します。仕様の正本は `docs/REQUIREMENTS_SPECIFICATION.md`、データ形式は `docs/DATA_FORMAT.md` を参照してください。
+
+初めて使う場合は、先に[図で分かる初心者向けガイド](https://chameleonjp-lab.github.io/chameleonassetstudio/guide/)を開くと、最初の1作品を作る流れを短く確認できます。この文書は、対応形式や安全条件を含む詳しい説明として残します。
 
 ---
 
