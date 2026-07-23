@@ -32,11 +32,17 @@ async function setupProjectWithImage(page: Page, name: string): Promise<void> {
 test('PNG をダウンロードできる', async ({ page }) => {
   await setupProjectWithImage(page, 'PNG書き出しテスト');
 
+  await expect(page.getByText('自動保存とダウンロードは別です')).toBeVisible();
+  await expect(page.getByText('選択中のアセットを、透過対応の完成画像1枚にします。')).toBeVisible();
+
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: 'PNG をダウンロード' }).click(),
   ]);
   expect(download.suggestedFilename()).toBe('base.png');
+  await expect(page.getByRole('status').filter({ hasText: 'base.png' })).toContainText(
+    'ダウンロードを開始しました',
+  );
   const path = await download.path();
   expect(path).not.toBeNull();
   const stats = await stat(path!);
