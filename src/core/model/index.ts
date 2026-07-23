@@ -14,6 +14,7 @@ export * from './flipCopy';
 export * from './layer';
 export * from './migrate';
 export * from './part';
+export * from './partLayerContract';
 export * from './project';
 export * from './rig';
 export * from './texture';

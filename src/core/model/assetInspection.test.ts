@@ -82,6 +82,60 @@ describe('inspectAsset (A+B+X)', () => {
     ).toBe(true);
   });
 
+  it('Part構成のempty・duplicate・missing・sharedをread-onlyで決定的に報告する', () => {
+    const source = blank('item');
+    const layerId = source.layers[0].id;
+    const unusedLayer = { ...source.layers[0], id: 'layer_unused', name: 'unused' };
+    const broken: Asset = {
+      ...source,
+      layers: [...source.layers, unusedLayer],
+      parts: [
+        {
+          id: 'part_empty',
+          name: 'empty',
+          partType: 'other',
+          layerIds: [],
+        },
+        {
+          id: 'part_a',
+          name: 'A',
+          partType: 'body',
+          layerIds: [layerId, layerId, 'layer_missing'],
+        },
+        {
+          id: 'part_b',
+          name: 'B',
+          partType: 'head',
+          layerIds: [layerId],
+        },
+      ],
+    };
+    const before = structuredClone(broken);
+
+    const first = inspectAsset(broken).filter((issue) =>
+      [
+        'reference.partLayerEmpty',
+        'reference.partLayerDuplicate',
+        'reference.partLayerMissing',
+        'reference.partLayerShared',
+      ].includes(issue.code),
+    );
+    const second = inspectAsset(broken).filter((issue) =>
+      issue.code.startsWith('reference.partLayer'),
+    );
+
+    expect(first.map((issue) => issue.code)).toEqual([
+      'reference.partLayerDuplicate',
+      'reference.partLayerEmpty',
+      'reference.partLayerMissing',
+      'reference.partLayerShared',
+    ]);
+    expect(first.every((issue) => issue.severity === 'error')).toBe(true);
+    expect(first.map((issue) => issue.id)).toEqual(second.map((issue) => issue.id));
+    expect(first.some((issue) => issue.reason.includes('layer_unused'))).toBe(false);
+    expect(broken).toEqual(before);
+  });
+
   it('provenanceのdangling参照とsource以外への正式参照をerrorとして報告する', () => {
     const asset = blank('item');
     const sourceTexture = asset.textures.find((texture) => texture.kind === 'source')!;

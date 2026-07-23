@@ -294,7 +294,7 @@ LayerTransform の意味は次の通りとする。`position` はテクスチャ
 
 `partType` は `head` / `body` / `arm_left` / `arm_right` / `leg_left` / `leg_right` / `weapon` / `eye` / `mouth` / `shadow` / `accessory` / `other`。`layerIds` で複数レイヤーをまとめる。`pivot`（任意、Vec2）はパーツの基準点で、回転や取り付けの基準に使う。
 
-Group 12のP1 / ADR-0023は、初回part replaceを既存Partの`layerIds`だけを既存Layer ID集合へ置き換える静的操作に限定する。H2=L1により、各Partの`layerIds`は1件以上、各Layerは高々1 Partへ所属し、未所属Layerは許可する。他Part所有Layerは理由付きで拒否し、暗黙移動しない。その他のPart field、Layer / Texture / Blob、Frame / Animation / RigAnimation、既存bake済みFrameは変えない。既存の空・共有dataは自動migrationせず、製品実装は未着手である。
+Group 12のP1 / ADR-0023は、初回part replaceを既存Partの`layerIds`だけを既存Layer ID集合へ置き換える静的操作に限定する。H2=L1により、各Partの`layerIds`は1件以上、各Layerは高々1 Partへ所属し、未所属Layerは許可する。他Part所有Layerは理由付きで拒否し、暗黙移動しない。その他のPart field、Layer / Texture / Blob、Frame / Animation / RigAnimation、既存bake済みFrameは変えない。既存の空・重複・参照切れ・共有dataは自動migrationせず、P1 Slice Cで専用操作、read-only inspection、H2違反だけの狭いbake refusalを実装する。schema、version、migrationは変更しない。
 
 ### 6.4 Anchor
 

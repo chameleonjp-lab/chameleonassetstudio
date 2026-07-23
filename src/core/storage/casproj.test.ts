@@ -1,6 +1,7 @@
 import { strToU8, zip, type Zippable } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import type { Asset, ExportPresetFile, Project } from '../model';
+import { replacePartLayerIds } from '../model';
 import {
   createFamilyVariantIdMap,
   createFamilyVariantWriteSet,
@@ -94,6 +95,37 @@ describe('casproj の書き出しと読み込み', () => {
       imported.bundle.assets[0].animations[0].events?.[0] as unknown as Record<string, unknown>,
     ).toMatchObject({ futureEventField: { preserved: true } });
     expect(imported.bundle.assets[0].version).toBe('0.2.0');
+  });
+
+  it('Part構成レイヤー差し替えをversion・内部ID・画像bytesごとexact roundtripする', async () => {
+    const replaced = replacePartLayerIds(
+      asset,
+      'part_body',
+      ['layer_guide', 'layer_body'],
+      new Date('2026-07-23T12:34:56.000Z'),
+    );
+    expect(replaced.ok).toBe(true);
+    if (!replaced.ok) {
+      return;
+    }
+    const imageBytes = new Uint8Array([4, 3, 2, 1]);
+    const bundle: CasprojBundle = {
+      project,
+      assets: [replaced.asset],
+      files: replaced.asset.textures.map((texture) => ({
+        path: `assets/${replaced.asset.id}/${texture.path}`,
+        bytes: imageBytes,
+      })),
+    };
+
+    const exported = await exportCasproj(bundle);
+    const imported = await importCasproj(exported);
+
+    expect(imported.appliedMigrations).toEqual([]);
+    expect(imported.bundle.assets).toEqual([replaced.asset]);
+    expect(imported.bundle.assets[0].parts[0].layerIds).toEqual(['layer_body', 'layer_guide']);
+    expect(imported.bundle.assets[0].version).toBe('0.2.0');
+    expect(imported.bundle.files).toEqual(bundle.files);
   });
 
   it('project.json が無い ZIP は理由付きで失敗する', async () => {

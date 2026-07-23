@@ -2,7 +2,7 @@
 
 ステータス: accepted（2026-07-22 人間承認、P1 + H2=L1）
 上位文書: `docs/future/2D_3_TIMELINE_RIG_PLAN.md`（§5、§6 H2）、`docs/future/2D_ASSET_DATA_CONTRACT.md`（§8.3）
-関連 fixture: 将来のP1実装sliceで追加（本ADRはdocs-only）
+関連 fixture: `src/core/model/assetOps.test.ts`、`assetInspection.test.ts`、`src/core/rig/rig.test.ts`、`src/core/storage/casproj.test.ts`、`e2e/part-layer-replacement.spec.ts`、`e2e/rig.spec.ts`
 
 ---
 
@@ -31,7 +31,7 @@
 
 ## 影響と fixture
 
-- 将来の実装: Part編集UI、preflight、inspection、次回bake、History、保存roundtrip。
+- P1 Slice Cの実装: Part編集UI、置換preflight、read-only inspection、次回bake、History、保存roundtrip。
 - fixture: missing / duplicate / empty拒否 / order / 単一ownership / 未所属許可、対象Partの`layerIds`と`Asset.updatedAt`以外のfield不変、既存bake不変、次回bakeだけへの反映、1 History、Undo / Redo、`.casproj`を固定する。
 - 既存の空・共有dataを自動migrationせず、read-only inspectionで示し、新規操作とbake preflightからL1を適用する。
 - 本docs-only PRでは型、schema、製品UI、保存処理を変更しない。

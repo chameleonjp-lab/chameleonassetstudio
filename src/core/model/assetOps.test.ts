@@ -10,6 +10,7 @@ import {
   removeLayer,
   removePart,
   renameLayer,
+  replacePartLayerIds,
   setLayerLocked,
   setLayerVisibility,
   updatePart,
@@ -114,6 +115,128 @@ describe('パーツ操作', () => {
     const next = removePart(baseAsset, 'part_body');
     expect(next.parts).toHaveLength(0);
     expect(next.layers).toHaveLength(baseAsset.layers.length);
+  });
+
+  it('replacePartLayerIds は未所属Layerを許可し、Asset.layers順で対象だけを置換する', () => {
+    const now = new Date('2026-07-23T12:34:56.000Z');
+    const richAsset = structuredClone(baseAsset);
+    richAsset.layers.push({
+      ...structuredClone(baseAsset.layers[1]),
+      id: 'layer_parent',
+      name: 'parent',
+    });
+    richAsset.parts[0] = {
+      ...richAsset.parts[0],
+      parentId: 'part_parent',
+      pivot: { x: 5, y: 6 },
+      bindPose: {
+        localPosition: { x: 1, y: 2 },
+        localRotation: 3,
+        localScale: { x: 1.1, y: 0.9 },
+      },
+      rotationLimit: { min: -45, max: 60 },
+    };
+    richAsset.parts.push({
+      id: 'part_parent',
+      name: 'parent',
+      partType: 'other',
+      layerIds: ['layer_parent'],
+    });
+    const before = structuredClone(richAsset);
+    const result = replacePartLayerIds(richAsset, 'part_body', ['layer_guide', 'layer_body'], now);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.changed).toBe(true);
+    const expected = structuredClone(richAsset);
+    expected.parts[0].layerIds = ['layer_body', 'layer_guide'];
+    expected.updatedAt = now.toISOString();
+    expect(result.asset).toEqual(expected);
+    expect(richAsset).toEqual(before);
+  });
+
+  it.each([
+    {
+      name: '対象Partがない',
+      partId: 'part_missing',
+      layerIds: ['layer_guide'],
+      expectedCode: 'target-part-missing',
+    },
+    {
+      name: '選択が空',
+      partId: 'part_body',
+      layerIds: [],
+      expectedCode: 'empty-selection',
+    },
+    {
+      name: '選択に重複がある',
+      partId: 'part_body',
+      layerIds: ['layer_guide', 'layer_guide'],
+      expectedCode: 'duplicate-selection',
+    },
+    {
+      name: '存在しないLayerを含む',
+      partId: 'part_body',
+      layerIds: ['layer_missing'],
+      expectedCode: 'layer-missing',
+    },
+  ])('$name場合は理由付きで拒否しAssetを一切変更しない', ({ partId, layerIds, expectedCode }) => {
+    const result = replacePartLayerIds(baseAsset, partId, layerIds);
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.code).toBe(expectedCode);
+    expect(result.asset).toBe(baseAsset);
+  });
+
+  it('別Partが所有するLayerを暗黙移動せず拒否する', () => {
+    const withOwner: Asset = {
+      ...baseAsset,
+      parts: [
+        ...baseAsset.parts,
+        {
+          id: 'part_guide',
+          name: 'guide owner',
+          partType: 'other',
+          layerIds: ['layer_guide'],
+        },
+      ],
+    };
+
+    const result = replacePartLayerIds(withOwner, 'part_body', ['layer_guide']);
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error.code).toBe('layer-owned-by-other-part');
+    expect(result.error.ownerPartIds).toEqual(['part_guide']);
+    expect(result.asset).toBe(withOwner);
+  });
+
+  it('同じ構成の確定はno-opとなりupdatedAtも履歴用snapshotも増やさない', () => {
+    const result = replacePartLayerIds(baseAsset, 'part_body', ['layer_body']);
+    expect(result).toEqual({ ok: true, asset: baseAsset, changed: false });
+  });
+
+  it('対象PartまたはLayerのID自体が重複している場合は一意性エラーで拒否する', () => {
+    const duplicatePart: Asset = {
+      ...baseAsset,
+      parts: [...baseAsset.parts, { ...baseAsset.parts[0] }],
+    };
+    const partResult = replacePartLayerIds(duplicatePart, 'part_body', ['layer_body']);
+    expect(partResult.ok ? undefined : partResult.error.code).toBe('target-part-ambiguous');
+    expect(partResult.asset).toBe(duplicatePart);
+
+    const duplicateLayer: Asset = {
+      ...baseAsset,
+      layers: [...baseAsset.layers, { ...baseAsset.layers[1] }],
+    };
+    const layerResult = replacePartLayerIds(duplicateLayer, 'part_body', ['layer_guide']);
+    expect(layerResult.ok ? undefined : layerResult.error.code).toBe('layer-ambiguous');
+    expect(layerResult.asset).toBe(duplicateLayer);
   });
 });
 

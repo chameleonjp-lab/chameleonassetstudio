@@ -8,6 +8,7 @@ import type { Asset } from '../model/asset';
 import type { Vec2 } from '../model/common';
 import { generateId } from '../model/factories';
 import type { Part, PartPose } from '../model/part';
+import { assertPartLayerConstraints } from '../model/partLayerContract';
 import type { RigAnimation } from '../model/rig';
 
 /**
@@ -264,6 +265,7 @@ export function interpolateRigPoses(rig: RigAnimation, time: number): Record<str
  * （accumulatePartChain は回転合計と scale 成分積のみを扱う）。
  */
 export function bakeRigAnimation(asset: Asset, rig: RigAnimation): Asset {
+  assertPartLayerConstraints(asset);
   const frameCount = Math.max(1, Math.round((rig.durationMs / 1000) * rig.fps));
   const newFrames: Frame[] = [];
 

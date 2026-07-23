@@ -677,6 +677,98 @@
   opacity: 0.7;
 }
 
+.part-layer-editor {
+  min-width: 0;
+  margin: 0;
+  padding: 0.5rem;
+  border: 1px solid #8885;
+  border-radius: 6px;
+}
+
+.part-layer-editor legend {
+  max-width: 100%;
+  padding: 0 0.25rem;
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.part-layer-editor .editor-note {
+  margin: 0 0 0.4rem;
+}
+
+.part-layer-options {
+  display: flex;
+  max-height: 14rem;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.part-layer-option {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  min-height: 44px;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 0 0.4rem;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid #8884;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.part-layer-option.unavailable {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.part-layer-option input[type='checkbox'] {
+  grid-row: 1 / span 2;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+}
+
+.part-layer-option-name,
+.part-layer-option-reason {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.part-layer-option-name {
+  font-size: 0.82rem;
+}
+
+.part-layer-option-reason {
+  font-size: 0.72rem;
+  opacity: 0.76;
+}
+
+.part-layer-selection-count,
+.part-layer-error {
+  margin: 0.4rem 0 0;
+  font-size: 0.76rem;
+}
+
+.part-layer-error {
+  color: #b42318;
+  font-weight: 700;
+}
+
+.part-layer-editor-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.part-layer-editor-actions button {
+  flex: 1;
+  min-height: 44px;
+}
+
 .part-create {
   display: flex;
   flex-direction: column;
