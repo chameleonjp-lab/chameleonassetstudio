@@ -3,6 +3,7 @@
  * ブラウザ API に依存しない純関数のみを置き、Node でもテストできるようにする。
  */
 import type { Asset } from '../model';
+import { assertFixedFpsAnimationExportSafe } from './animationLoss';
 
 /** Sprite Sheet 上のグリッド配置。 */
 export interface SheetLayout {
@@ -80,6 +81,7 @@ export interface AtlasJson {
  * 書き出す場合など）は frameId 自体をコマ名として使う（'default' など）。
  */
 export function buildAtlas(asset: Asset, layout: SheetLayout): AtlasJson {
+  assertFixedFpsAnimationExportSafe(asset);
   const frames = asset.frames ?? [];
   const nameById = new Map(frames.map((frame) => [frame.id, frame.name]));
 

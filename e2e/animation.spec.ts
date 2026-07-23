@@ -43,8 +43,15 @@ async function setLayerX(page: Page, value: number): Promise<void> {
 }
 
 interface StoredAnimationAsset {
-  frames: Array<{ id: string; name: string }>;
-  animations: Array<{ id: string; name: string; fps: number; loop: boolean; frameIds: string[] }>;
+  frames: Array<{ id: string; name: string; durationMs?: number }>;
+  animations: Array<{
+    id: string;
+    name: string;
+    fps: number;
+    loop: boolean;
+    frameIds: string[];
+    events?: Array<{ id: string; name: string; frameId: string; payload?: unknown }>;
+  }>;
 }
 
 /** IndexedDB の assets ストアから最初のアセットを読む。 */
@@ -62,6 +69,45 @@ async function readStoredAsset(page: Page): Promise<StoredAnimationAsset> {
     });
     db.close();
     return records[0]?.data as never;
+  });
+}
+
+/** Slice Aにはevent編集UIを含めないため、既存作品eventの再読込・再生検査用fixtureを保存する。 */
+async function addStoredAnimationEvent(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('chameleon-asset-studio');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const readTransaction = db.transaction('assets', 'readonly');
+    const records = await new Promise<Array<{ data: StoredAnimationAsset }>>((resolve, reject) => {
+      const request = readTransaction.objectStore('assets').getAll();
+      request.onsuccess = () => resolve(request.result as Array<{ data: StoredAnimationAsset }>);
+      request.onerror = () => reject(request.error);
+    });
+    const record = records[0];
+    const animation = record?.data.animations[0];
+    if (!record || !animation) {
+      db.close();
+      throw new Error('event fixtureを書き込む保存済みAnimationがありません。');
+    }
+    animation.events = [
+      {
+        id: 'event_e2e',
+        name: 'attack_start',
+        frameId: animation.frameIds[0],
+        payload: { power: 2 },
+      },
+    ];
+    const writeTransaction = db.transaction('assets', 'readwrite');
+    writeTransaction.objectStore('assets').put(record);
+    await new Promise<void>((resolve, reject) => {
+      writeTransaction.oncomplete = () => resolve();
+      writeTransaction.onerror = () => reject(writeTransaction.error);
+      writeTransaction.onabort = () => reject(writeTransaction.error);
+    });
+    db.close();
   });
 }
 
@@ -112,6 +158,98 @@ test('fps とループを変更でき、リロード後も保持される', asyn
   const stored = await readStoredAsset(page);
   expect(stored.animations[0].fps).toBe(12);
   expect(stored.animations[0].loop).toBe(false);
+});
+
+test('Frame表示時間をfps既定へ戻せ、Undo・Redo・reload後も再生時間が一致する', async ({ page }) => {
+  await setupProjectWithImage(page, '可変時間テスト');
+  await selectMainLayer(page);
+
+  await page.getByRole('button', { name: 'フレーム追加' }).click();
+  await setLayerX(page, 10);
+  await page.getByRole('button', { name: 'フレーム追加' }).click();
+  await page.getByLabel('新しいアニメーション名').fill('walk');
+  await page.getByRole('button', { name: '作成', exact: true }).click();
+
+  const durationInput = page.getByLabel('フレーム「frame_1」の表示時間（ミリ秒）');
+  await durationInput.fill('220');
+  await durationInput.blur();
+  await expect.poll(async () => (await readStoredAsset(page)).frames[0].durationMs).toBe(220);
+  await expect(page.getByLabel('アニメーション再生時間')).toContainText('345ms');
+
+  await page.getByRole('button', { name: '元に戻す', exact: true }).click();
+  await expect.poll(async () => (await readStoredAsset(page)).frames[0].durationMs).toBeUndefined();
+  await expect(durationInput).toHaveValue('');
+
+  await page.getByRole('button', { name: 'やり直す', exact: true }).click();
+  await expect.poll(async () => (await readStoredAsset(page)).frames[0].durationMs).toBe(220);
+
+  await page.reload();
+  await page.getByRole('button', { name: '「可変時間テスト」を開く' }).click();
+  await page.getByLabel('アニメーション選択').selectOption({ label: 'walk' });
+  await expect(page.getByLabel('フレーム「frame_1」の表示時間（ミリ秒）')).toHaveValue('220');
+  await expect(page.getByLabel('アニメーション再生時間')).toContainText('345ms');
+
+  const reloadedInput = page.getByLabel('フレーム「frame_1」の表示時間（ミリ秒）');
+  await reloadedInput.fill('');
+  await reloadedInput.blur();
+  await expect.poll(async () => (await readStoredAsset(page)).frames[0].durationMs).toBeUndefined();
+  await expect(page.getByLabel('アニメーション再生時間')).toContainText('250ms');
+});
+
+test('保存済みeventをFrame表示開始時に通知し、情報を失うZIPだけ理由付きで拒否する', async ({
+  page,
+}) => {
+  await setupProjectWithImage(page, 'イベント再生テスト');
+  await page.getByRole('button', { name: 'フレーム追加' }).click();
+  await page.getByLabel('新しいアニメーション名').fill('attack');
+  await page.getByRole('button', { name: '作成', exact: true }).click();
+  await expect.poll(async () => (await readStoredAsset(page)).animations[0]?.name).toBe('attack');
+  await expect(page.getByRole('status')).toContainText('保存済み');
+
+  await addStoredAnimationEvent(page);
+  await page.reload();
+  await page.getByRole('button', { name: '「イベント再生テスト」を開く' }).click();
+  await page.getByLabel('アニメーション選択').selectOption({ label: 'attack' });
+
+  await expect(page.getByLabel('アニメーションイベント')).toContainText('attack_start');
+  await page.getByRole('button', { name: '再生', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: '発火:' })).toContainText('attack_start');
+
+  await expect(page.getByRole('button', { name: 'ZIP をダウンロード' })).toBeDisabled();
+  await expect(page.getByRole('alert')).toContainText('attack_start');
+  await expect(page.getByRole('button', { name: 'PNG をダウンロード' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'asset.json をダウンロード' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: '.casproj をダウンロード' })).toBeEnabled();
+});
+
+test('スマホ縦横でFrame時間入力が44px・16pxを保ち、横スクロールを発生させない', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await setupProjectWithImage(page, '可変時間モバイル');
+  await page.getByRole('button', { name: 'タイムライン', exact: true }).click();
+  await page.getByRole('button', { name: 'フレーム追加' }).click();
+
+  const durationInput = page.getByLabel('フレーム「frame_1」の表示時間（ミリ秒）');
+  for (const viewport of [
+    { width: 375, height: 667 },
+    { width: 667, height: 375 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await expect(durationInput).toBeVisible();
+    const metrics = await durationInput.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        height: rect.height,
+        fontSize: Number.parseFloat(getComputedStyle(element).fontSize),
+        rootScrollWidth: document.documentElement.scrollWidth,
+        rootClientWidth: document.documentElement.clientWidth,
+      };
+    });
+    expect(metrics.height).toBeGreaterThanOrEqual(44);
+    expect(metrics.fontSize).toBeGreaterThanOrEqual(16);
+    expect(metrics.rootScrollWidth).toBeLessThanOrEqual(metrics.rootClientWidth);
+  }
 });
 
 test('再生・停止・先頭へでフレームのハイライトが変わる', async ({ page }) => {

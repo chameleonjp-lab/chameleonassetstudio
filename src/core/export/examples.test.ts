@@ -99,3 +99,14 @@ describe('buildPhaserExample', () => {
     expect(html).toContain('当たり判定');
   });
 });
+
+describe('fixed fps example loss guard', () => {
+  it.each([buildCanvasExample, buildPixiExample, buildPhaserExample])(
+    'Frame個別時間を表現できないexample生成を拒否する',
+    (build) => {
+      const withDuration = structuredClone(asset);
+      withDuration.frames![0].durationMs = 160;
+      expect(() => build(withDuration)).toThrow(/個別表示時間.*失われる/);
+    },
+  );
+});

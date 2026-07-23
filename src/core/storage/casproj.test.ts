@@ -61,6 +61,35 @@ describe('casproj の書き出しと読み込み', () => {
     expect(imported.readme).toContain('Chameleon Asset Studio');
   });
 
+  it('Frame時間・event・payloadをIDごとexact roundtripする', async () => {
+    const motionAsset = structuredClone(asset);
+    motionAsset.frames![0].durationMs = 175;
+    motionAsset.animations[0].events = [
+      {
+        id: 'event_roundtrip',
+        name: 'attack_start',
+        frameId: motionAsset.frames![0].id,
+        payload: { power: 3, critical: false, note: null },
+      },
+    ];
+    const imageBytes = new Uint8Array([1, 2, 3]);
+    const bundle: CasprojBundle = {
+      project,
+      assets: [motionAsset],
+      files: motionAsset.textures.map((texture) => ({
+        path: `assets/${motionAsset.id}/${texture.path}`,
+        bytes: imageBytes,
+      })),
+    };
+
+    const exported = await exportCasproj(bundle);
+    const imported = await importCasproj(exported);
+
+    expect(imported.appliedMigrations).toEqual([]);
+    expect(imported.bundle.assets).toEqual([motionAsset]);
+    expect(imported.bundle.assets[0].version).toBe('0.2.0');
+  });
+
   it('project.json が無い ZIP は理由付きで失敗する', async () => {
     const zipped = await zipAsync({ 'note.txt': strToU8('not a casproj') });
     await expect(importCasproj(zipped)).rejects.toThrow(CasprojError);

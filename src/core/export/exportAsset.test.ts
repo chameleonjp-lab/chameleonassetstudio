@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Asset } from '../model';
 import characterAsset from '../samples/asset.character.json';
-import { exportImage, exportZip } from './exportAsset';
+import { exportAssetJson, exportImage, exportSpriteSheet, exportZip } from './exportAsset';
 
 const {
   loadBlobMock,
@@ -104,6 +104,35 @@ describe('exportAsset texture kind boundary', () => {
 
   it('export ZIP 生成後も保存系 API は呼ばれない', async () => {
     await expect(exportZip(assetReferencing('edit'))).resolves.toBeInstanceOf(Blob);
+    expect(saveProject).not.toHaveBeenCalled();
+    expect(saveAsset).not.toHaveBeenCalled();
+    expect(saveBlob).not.toHaveBeenCalled();
+    expect(saveProjectBundle).not.toHaveBeenCalled();
+    expect(saveAssetRevision).not.toHaveBeenCalled();
+    expect(deleteBlob).not.toHaveBeenCalled();
+  });
+
+  it('時間を失うSprite Sheet / ZIPはBlob読込前に拒否し、PNGとasset.jsonは許可する', async () => {
+    const asset = assetReferencing('edit');
+    asset.frames![0].durationMs = 180;
+
+    await expect(exportSpriteSheet(asset)).rejects.toThrow(/個別表示時間/);
+    await expect(exportZip(asset)).rejects.toThrow(/個別表示時間/);
+    expect(loadBlobMock).not.toHaveBeenCalled();
+
+    expect(exportAssetJson(asset)).toBeInstanceOf(Blob);
+    await expect(exportImage(asset, 'image/png')).resolves.toBeInstanceOf(Blob);
+    expect(loadBlobMock).toHaveBeenCalled();
+  });
+
+  it('eventを失うZIPは画像処理・保存処理の前に拒否する', async () => {
+    const asset = assetReferencing('edit');
+    asset.animations[0].events = [
+      { id: 'event_1', name: 'attack_start', frameId: asset.frames![0].id },
+    ];
+
+    await expect(exportZip(asset)).rejects.toThrow(/attack_start.*イベント/);
+    expect(loadBlobMock).not.toHaveBeenCalled();
     expect(saveProject).not.toHaveBeenCalled();
     expect(saveAsset).not.toHaveBeenCalled();
     expect(saveBlob).not.toHaveBeenCalled();

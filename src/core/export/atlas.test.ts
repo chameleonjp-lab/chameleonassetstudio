@@ -71,6 +71,20 @@ describe('buildAtlas', () => {
     expect(atlas.colliders).toEqual(baseAsset.colliders);
   });
 
+  it('参照中Frameの個別時間またはeventを固定fpsへ落とさず理由付きで拒否する', () => {
+    const durationAsset = structuredClone(baseAsset);
+    durationAsset.frames![0].durationMs = 120;
+    expect(() => buildAtlas(durationAsset, computeSheetLayout(['frame_idle_0'], 32, 32))).toThrow(
+      /個別表示時間/,
+    );
+
+    const eventAsset = structuredClone(baseAsset);
+    eventAsset.animations[0].events = [{ id: 'event_1', name: 'step', frameId: 'frame_idle_0' }];
+    expect(() => buildAtlas(eventAsset, computeSheetLayout(['frame_idle_0'], 32, 32))).toThrow(
+      /イベント/,
+    );
+  });
+
   it('フレームが 0 件なら default 1 コマになる', () => {
     const noFrameAsset: Asset = { ...baseAsset, frames: [] };
     const layout = computeSheetLayout(

@@ -108,7 +108,24 @@ describe('flipCopyAsset', () => {
   });
 
   it('part / frame / animation の参照 id を新レイヤー・新フレームへ張り替える', () => {
-    const flipped = flipCopyAsset(baseAsset);
+    const source: Asset = {
+      ...baseAsset,
+      frames: baseAsset.frames?.map((frame, index) =>
+        index === 0 ? { ...frame, durationMs: 150 } : frame,
+      ),
+      animations: baseAsset.animations.map((animation) => ({
+        ...animation,
+        events: [
+          {
+            id: 'event_left',
+            name: 'hand_left_attack',
+            frameId: 'frame_idle_0',
+            payload: { side: 'left' },
+          },
+        ],
+      })),
+    };
+    const flipped = flipCopyAsset(source);
     const newLayerIds = new Set(flipped.layers.map((l) => l.id));
     // part.layerIds は新レイヤー id を指す
     for (const part of flipped.parts) {
@@ -129,7 +146,32 @@ describe('flipCopyAsset', () => {
         expect(newFrameIds.has(frameId)).toBe(true);
       }
     }
+    expect(flipped.frames?.[0].durationMs).toBe(150);
+    expect(flipped.animations[0].events?.[0]).toMatchObject({
+      name: 'hand_left_attack',
+      frameId: flipped.frames?.[0].id,
+      payload: { side: 'left' },
+    });
+    expect(flipped.animations[0].events?.[0].id).not.toBe('event_left');
+    (flipped.animations[0].events?.[0].payload as { side: string }).side = 'changed';
+    expect(source.animations[0].events?.[0].payload).toEqual({ side: 'left' });
     expect(validateAsset(flipped).valid).toBe(true);
+  });
+
+  it('linked mirror modeはFrame / Animation / event IDを維持する', () => {
+    const source: Asset = {
+      ...baseAsset,
+      animations: baseAsset.animations.map((animation) => ({
+        ...animation,
+        events: [{ id: 'event_keep', name: 'start', frameId: 'frame_idle_0' }],
+      })),
+    };
+
+    const linked = flipCopyAsset(source, { preserveInternalIds: true });
+
+    expect(linked.frames?.map(({ id }) => id)).toEqual(source.frames?.map(({ id }) => id));
+    expect(linked.animations.map(({ id }) => id)).toEqual(source.animations.map(({ id }) => id));
+    expect(linked.animations[0].events?.[0]).toEqual(source.animations[0].events?.[0]);
   });
 
   it('リグ編集データ（rigAnimations）は本コピーでは省く', () => {

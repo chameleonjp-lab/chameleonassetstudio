@@ -237,6 +237,50 @@ describe('Slice C family variant recipe / fingerprint', () => {
     );
   });
 
+  it('linked mirrorはFrame時間とevent IDを維持し、refreshでFrame参照を対応先へ更新する', async () => {
+    const fixture = await mirrorFixture();
+    const changedBase = structuredClone(fixture.base);
+    changedBase.frames![0].durationMs = 175;
+    changedBase.animations[0].events = [
+      {
+        id: 'event_linked',
+        name: 'step_left',
+        frameId: changedBase.frames![0].id,
+        payload: { volume: 0.5 },
+      },
+    ];
+
+    const before = await inspectLinkedVariant({
+      base: changedBase,
+      variantAsset: fixture.draft.asset,
+      variant: fixture.variant,
+      baseBlobs: fixture.baseBlobs,
+      variantBlobs: fixture.variantBlobs,
+    });
+    expect(before.stale).toBe(true);
+
+    const artifact = await prepareLinkedVariantRefresh({
+      base: changedBase,
+      variantAsset: fixture.draft.asset,
+      variant: fixture.variant,
+      baseBlobs: fixture.baseBlobs,
+      variantBlobs: fixture.variantBlobs,
+      now: new Date('2026-07-18T01:00:00.000Z'),
+    });
+    const targetFrameId = artifact.nextVariant.recipe.idMap.frames[changedBase.frames![0].id];
+    expect(artifact.afterAsset.frames?.find(({ id }) => id === targetFrameId)?.durationMs).toBe(
+      175,
+    );
+    expect(artifact.afterAsset.animations[0].events).toEqual([
+      {
+        id: 'event_linked',
+        name: 'step_left',
+        frameId: targetFrameId,
+        payload: { volume: 0.5 },
+      },
+    ]);
+  });
+
   it('write-set内の手動削除をmanual-adjustedとして検出し、同じtarget IDで復元する', async () => {
     const fixture = await mirrorFixture();
     const removedTargetId = fixture.variant.recipe.idMap.layers[fixture.base.layers[0].id];
@@ -530,22 +574,28 @@ describe('Slice C family variant recipe / fingerprint', () => {
     };
     expect(() => createLinkedMirrorVariantDraft(extendedFrame)).toThrow('未対応field');
 
-    const extendedAnimation = baseAsset();
-    (extendedAnimation.animations[0] as unknown as Record<string, unknown>).events = [
-      { id: 'event_1', name: 'hit', frameId: extendedAnimation.frames![0].id },
+    const animationWithEvents = baseAsset();
+    animationWithEvents.animations[0].events = [
+      { id: 'event_1', name: 'hit', frameId: animationWithEvents.frames![0].id },
     ];
+    expect(() => createLinkedMirrorVariantDraft(animationWithEvents)).not.toThrow();
+
+    const extendedAnimation = baseAsset();
+    (extendedAnimation.animations[0] as unknown as Record<string, unknown>).futureMotion = {
+      frameId: extendedAnimation.frames![0].id,
+    };
     expect(() => createLinkedMirrorVariantDraft(extendedAnimation)).toThrow('animation');
-    const forwardCompatiblePalette = createLinkedPaletteVariantDraft(extendedAnimation, {
-      baseLayerId: extendedAnimation.layers[0].id,
+    const forwardCompatiblePalette = createLinkedPaletteVariantDraft(animationWithEvents, {
+      baseLayerId: animationWithEvents.layers[0].id,
       replacements: [{ from: '#ff0000', to: '#00ff00' }],
       tolerance: 10,
     });
     expect(forwardCompatiblePalette.asset.textures.map(({ id }) => id)).toEqual(
-      extendedAnimation.textures.map(({ id }) => id),
+      animationWithEvents.textures.map(({ id }) => id),
     );
-    expect(
-      (forwardCompatiblePalette.asset.animations[0] as unknown as Record<string, unknown>).events,
-    ).toEqual((extendedAnimation.animations[0] as unknown as Record<string, unknown>).events);
+    expect(forwardCompatiblePalette.asset.animations[0].events).toEqual(
+      animationWithEvents.animations[0].events,
+    );
 
     const multiple = baseAsset();
     multiple.textures.push({

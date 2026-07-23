@@ -32,11 +32,26 @@ describe('duplicateAsset', () => {
       {
         id: 'frame_source',
         name: 'frame',
+        durationMs: 125,
         layerStates: [{ layerId: layer.id, transform: structuredClone(layer.transform) }],
       },
     ];
     source.animations = [
-      { id: 'animation_source', name: 'idle', fps: 12, loop: true, frameIds: ['frame_source'] },
+      {
+        id: 'animation_source',
+        name: 'idle',
+        fps: 12,
+        loop: true,
+        frameIds: ['frame_source'],
+        events: [
+          {
+            id: 'event_source',
+            name: 'hand_left_attack',
+            frameId: 'frame_source',
+            payload: { power: 2 },
+          },
+        ],
+      },
     ];
     source.rigAnimations = [
       {
@@ -67,12 +82,23 @@ describe('duplicateAsset', () => {
     expect(copy.parts[0].layerIds).toEqual([copy.layers[0].id]);
     expect(copy.parts[1].parentId).toBe(copy.parts[0].id);
     expect(copy.frames?.[0].id).not.toBe('frame_source');
+    expect(copy.frames?.[0].durationMs).toBe(125);
     expect(copy.frames?.[0].layerStates[0].layerId).toBe(copy.layers[0].id);
     expect(copy.animations[0].frameIds).toEqual([copy.frames?.[0].id]);
+    expect(copy.animations[0].events?.[0]).toMatchObject({
+      name: 'hand_left_attack',
+      frameId: copy.frames?.[0].id,
+      payload: { power: 2 },
+    });
+    expect(copy.animations[0].events?.[0].id).not.toBe('event_source');
     expect(Object.keys(copy.rigAnimations?.[0].keyframes[0].poses ?? {})).toEqual([
       copy.parts[1].id,
     ]);
     expect(copy.createdAt).toBe('2026-07-16T00:00:00.000Z');
+
+    const copiedPayload = copy.animations[0].events?.[0].payload as { power: number };
+    copiedPayload.power = 99;
+    expect(source.animations[0].events?.[0].payload).toEqual({ power: 2 });
   });
 
   it('copy側の入れ子を変更しても元Assetを変更しない', () => {

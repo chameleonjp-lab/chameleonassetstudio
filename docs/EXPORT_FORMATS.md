@@ -90,9 +90,9 @@ Slice Dでは、`atlas.json + spritesheet.png`、`chameleon-atlas/0.1.0`のcanon
 
 Atlas versionは引き続きmigration対象ではない。現行versionだけをruntime validatorで受理し、別versionを変換しない。
 
-### 4.2 Group 12の可変時間・event境界（未実装）
+### 4.2 Group 12の可変時間・event境界（T1 Slice A）
 
-現行`atlas.json`、helpers、examplesは`fps / loop / frames`だけで再生し、Frame単位durationとeventを表現できない。T1 / ADR-0021は、これらを黙って均一化・削除しないことまでacceptedである。
+現行`atlas.json`、helpers、examplesは`fps / loop / frames`だけで再生し、Frame単位durationとeventを表現できない。T1 Slice A / ADR-0021では共通preflightを実装し、これらを黙って均一化・削除しない。
 
 - PNG / WebPは静止画なので、Timeline metadataの有無だけを理由に止めない。
 - 単体`asset.json`と`.casproj`はcanonical dataを保持できる。
@@ -100,7 +100,7 @@ Atlas versionは引き続きmigration対象ではない。現行versionだけを
 - H1=E1を採用し、`atlas.json`、それを含むZIP、helpers、examplesを理由付きで止める。明示loss確認後に現行fpsへ均一化しeventを除外するE2は採らない。
 - Atlas 0.1.0へduration / eventを追加したり、Frameをresampleしたりする変更はGroup 12で先取りせず、2D-4の形式version契約へ送る。
 
-E1は契約として決定済みだが、T1製品実装は別の明示指示まで開始しない。本マージ後同期時点のexport挙動は変更されていない。
+T1 Slice AはE1を製品exportへ実装する。拒否理由は対象Animationと失われる情報を示し、Blob読込や保存開始より前に停止する。Atlas 0.1.0自体の表現拡張は行わず、可変時間・eventを保持できる派生形式は2D-4へ残す。
 
 ---
 

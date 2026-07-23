@@ -517,6 +517,10 @@
         "name": {
           "type": "string"
         },
+        "durationMs": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
         "layerStates": {
           "type": "array",
           "items": {
@@ -555,6 +559,69 @@
         "durationMs": {
           "type": "number",
           "minimum": 0
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/animationEvent"
+          }
+        }
+      }
+    },
+    "eventPrimitive": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "eventPayload": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/eventPrimitive"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/eventPrimitive"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/eventPrimitive"
+          }
+        }
+      ]
+    },
+    "animationEvent": {
+      "type": "object",
+      "required": ["id", "name", "frameId"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frameId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "$ref": "#/definitions/eventPayload"
         }
       }
     },

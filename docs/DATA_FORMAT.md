@@ -306,11 +306,13 @@ Group 12のP1 / ADR-0023は、初回part replaceを既存Partの`layerIds`だけ
 
 ### 6.6 Frame と Animation
 
-- `Frame` は `id` / `name` / `layerStates` を持つ。`layerStates` の各要素は `layerId` 必須で、`visible` / `transform` / `opacity` を省略した場合はレイヤー本体の値を使う。
-- `Animation` は `id` / `name` / `fps` / `loop` / `frameIds` を必須で持ち、`durationMs` は任意の参考値（informational）。再生・export はこれを参照せず、時間の正本は fps × フレーム数である（`docs/adr/0008-motion-time-semantics.md`）。
+- `Frame` は `id` / `name` / `layerStates` を持ち、有限かつ0より大きい `durationMs` を任意で持てる。`layerStates` の各要素は `layerId` 必須で、`visible` / `transform` / `opacity` を省略した場合はレイヤー本体の値を使う。
+- `Animation` は `id` / `name` / `fps` / `loop` / `frameIds` を必須で持つ。各Frame出現の実効時間は `frame.durationMs ?? 1000 / animation.fps`、Animation全体の実時間は全出現の実効時間の合計である。同じFrame IDが複数回現れる場合も、その都度加算する。
+- `Animation.durationMs` は任意の参考値（informational）のままで、再生、event、検査、派生exportの時間計算には使わず、自動更新もしない（`docs/adr/0008-motion-time-semantics.md`）。
+- `Animation.events` は任意で、各eventは `id` / `name` / `frameId` と任意の `payload` を持つ。payloadはプリミティブ、プリミティブ配列、または値がプリミティブの平坦objectだけを許可する。eventは対象Frameの表示開始時に配列順で通知され、同じFrameの各出現とloopの各周回で再び通知される。内容をコードとして実行したり、URLを自動取得したりしない。
 - name 候補は `idle` / `walk` / `run` / `jump` / `fall` / `attack` / `damage` / `dead` / `win` / `lose`（`ANIMATION_NAME_SUGGESTIONS`）。
 
-Group 12のT1 / ADR-0021では、将来`Frame.durationMs?: number`をoptional・additiveで追加する。各出現の実効時間は`frame.durationMs ?? 1000 / animation.fps`とし、既存`Animation.durationMs`はinformationalのまま維持する。Asset 0.2.0と旧fps-only dataを変えず、migrationは追加しない。本docs-only監査時点では型・schema・再生・exportに未実装である。
+Group 12のT1 Slice A / ADR-0021で、`Frame.durationMs?`と`Animation.events?`をoptional・additiveに追加した。Asset 0.2.0、IndexedDB配置、`.casproj`配置は変えず、migrationも追加しない。旧fps-only dataは従来どおり `1000 / fps` で再生される。
 
 ### 6.7 型別設定（Phase 14）
 

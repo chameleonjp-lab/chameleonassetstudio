@@ -109,9 +109,17 @@ function rigReasons(asset: Asset, label: string): string[] {
   return reasons;
 }
 
-const SUPPORTED_FRAME_KEYS = new Set(['id', 'name', 'layerStates']);
+const SUPPORTED_FRAME_KEYS = new Set(['id', 'name', 'layerStates', 'durationMs']);
 const SUPPORTED_FRAME_LAYER_STATE_KEYS = new Set(['layerId', 'visible', 'transform', 'opacity']);
-const SUPPORTED_ANIMATION_KEYS = new Set(['id', 'name', 'fps', 'loop', 'frameIds', 'durationMs']);
+const SUPPORTED_ANIMATION_KEYS = new Set([
+  'id',
+  'name',
+  'fps',
+  'loop',
+  'frameIds',
+  'durationMs',
+  'events',
+]);
 
 /**
  * Schemaが将来互換のため許容するframe拡張fieldには、layer IDなどの参照が入り得る。
@@ -944,6 +952,14 @@ function mirrorRefreshAsset(
     ...structuredClone(animation),
     id: ownMappedId(generatedToTarget.animations, animation.id)!,
     frameIds: animation.frameIds.map((id) => ownMappedId(generatedToTarget.frames, id) ?? id),
+    ...(animation.events
+      ? {
+          events: animation.events.map((event) => ({
+            ...structuredClone(event),
+            frameId: ownMappedId(generatedToTarget.frames, event.frameId) ?? event.frameId,
+          })),
+        }
+      : {}),
   }));
 
   const nextWriteSet: FamilyVariantWriteSet = {

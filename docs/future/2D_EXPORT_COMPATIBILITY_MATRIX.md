@@ -11,7 +11,7 @@
 
 > **現状:** mainはPNG / JPEG / WebP、連番、手動格子 sprite sheet、Tileset、Chameleon独自atlasの限定再取り込み、PNG / WebP / Chameleon 独自 atlas / JSON / ZIP の書き出し、Canvas 2D / PixiJS / Phaser の sample・helper、Godot / Unity の取り込み説明を持つ。SVG / GIF source保存のAsset 0.2.0基盤はADR-0019 / PR #135、SVG / GIF / APNGの新規Asset製品入口は1A + 2A + 3A / ADR-0020 / PR #138、安全境界のpost-merge補修はPR #144でmainへ反映済みである。
 > **重要:** 現行 `atlas.json` は Chameleon 独自形式であり、Phaser、PixiJS、Tiled、Unity、Godot の標準形式そのものではない。外部ツールで実行確認するまで `verified` と表示してはいけない。
-> **Group 12:** T1 / ADR-0021のFrame単位durationとeventは未実装で、現行atlas / sample / helperは固定fpsだけを表現する。H1=E1を採用し、対象Animationにlossがある場合は固定fps atlas / product ZIP / helper / exampleを理由付きで拒否する。PNG / WebP、単体`asset.json`、`.casproj`は許可する。製品挙動はまだ変更していない。
+> **Group 12:** T1 Slice A / ADR-0021でFrame単位durationとeventをoptionalに追加した。現行atlas / sample / helperは固定fpsだけを表現するため、H1=E1に従い、対象Animationにlossがある場合は固定fps atlas / product ZIP / helper / exampleを理由付きで拒否する。PNG / WebP、単体`asset.json`、`.casproj`は許可する。Atlas 0.1.0の形式は変更しない。
 
 ## 1. 目的
 

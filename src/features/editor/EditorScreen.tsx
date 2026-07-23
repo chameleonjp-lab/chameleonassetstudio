@@ -59,6 +59,7 @@ import {
   addAnchor,
   addGuideLayer,
   applyFrameToAsset,
+  createAnimationPlayback,
   assetCreationTemplatesForType,
   defaultAssetCreationTemplateId,
   duplicateAsset,
@@ -73,6 +74,7 @@ import {
   renameLayer,
   ASSET_TYPES,
   type AnchorRole,
+  type AnimationEvent,
   type Asset,
   type AssetFamily,
   type LinkedAssetFamilyVariant,
@@ -527,8 +529,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   // タイムライン（Phase 9）
   const [selectedAnimationId, setSelectedAnimationId] = useState<string | null>(null);
   const [previewFrameId, setPreviewFrameId] = useState<string | null>(null);
+  const [firedAnimationEvents, setFiredAnimationEvents] = useState<AnimationEvent[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
-  const playbackIndexRef = useRef(0);
 
   // 画像編集パラメータ
   const [eraserSize, setEraserSize] = useState(16);
@@ -962,9 +964,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   useEffect(() => {
     setSelectedAnimationId(null);
     setPreviewFrameId(null);
+    setFiredAnimationEvents([]);
     setIsPlaying(false);
     setSelectedColliderId(null);
-    playbackIndexRef.current = 0;
   }, [selectedAssetId]);
 
   // アセット / レイヤーを切り替えたらselection・copy buffer・paste preview・text draftを解除する
@@ -994,60 +996,63 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     }
   }, [tool]);
 
-  // アニメーションの再生ループ（fps に従いフレームを順送りする）
+  // Frame単位の実効時間に従う取消可能な逐次再生。
   useEffect(() => {
     if (!isPlaying || !selectedAnimation || selectedAnimation.frameIds.length === 0) {
       return;
     }
-    const { fps, loop, frameIds } = selectedAnimation;
-    const intervalMs = 1000 / Math.max(1, fps);
-    const interval = window.setInterval(() => {
-      const nextIndex = playbackIndexRef.current + 1;
-      if (nextIndex >= frameIds.length) {
-        if (!loop) {
-          setIsPlaying(false);
-          return;
-        }
-        playbackIndexRef.current = 0;
-      } else {
-        playbackIndexRef.current = nextIndex;
-      }
-      setPreviewFrameId(frameIds[playbackIndexRef.current]);
-    }, intervalMs);
-    return () => window.clearInterval(interval);
-  }, [isPlaying, selectedAnimation]);
+    const playback = createAnimationPlayback({
+      animation: selectedAnimation,
+      frames: selectedAsset?.frames ?? [],
+      clock: {
+        setTimeout: (callback, delayMs) => window.setTimeout(callback, delayMs),
+        clearTimeout: (handle) => window.clearTimeout(handle as number),
+      },
+      onFrameStart: (frameId) => {
+        setPreviewFrameId(frameId);
+        setFiredAnimationEvents([]);
+      },
+      onEvent: (event) => {
+        setFiredAnimationEvents((current) => [...current, event]);
+      },
+      onComplete: () => setIsPlaying(false),
+    });
+    playback.start();
+    return () => playback.stop();
+  }, [isPlaying, selectedAnimation, selectedAsset?.frames]);
 
   const handleSelectAnimation = (id: string | null) => {
     setSelectedAnimationId(id);
     setIsPlaying(false);
-    playbackIndexRef.current = 0;
+    setFiredAnimationEvents([]);
   };
 
   const handleSelectFrame = (frameId: string) => {
     setIsPlaying(false);
     setPreviewFrameId(frameId);
+    setFiredAnimationEvents([]);
   };
 
   const handlePlayAnimation = () => {
     if (!selectedAnimation || selectedAnimation.frameIds.length === 0) {
       return;
     }
-    playbackIndexRef.current = 0;
-    setPreviewFrameId(selectedAnimation.frameIds[0]);
+    setFiredAnimationEvents([]);
     setIsPlaying(true);
   };
 
   const handleStopAnimation = () => {
     setIsPlaying(false);
     setPreviewFrameId(null);
+    setFiredAnimationEvents([]);
   };
 
   const handleRewindAnimation = () => {
     if (!selectedAnimation || selectedAnimation.frameIds.length === 0) {
       return;
     }
-    playbackIndexRef.current = 0;
     setPreviewFrameId(selectedAnimation.frameIds[0]);
+    setFiredAnimationEvents([]);
   };
 
   /** レイヤー上で使うツールは、レイヤー未選択なら先頭レイヤーを選ぶ。 */
@@ -4381,6 +4386,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           <TimelinePanel
             asset={selectedAsset}
             playingFrameId={previewFrameId}
+            firedAnimationEvents={firedAnimationEvents}
             isPlaying={isPlaying}
             selectedAnimationId={selectedAnimationId}
             onSelectAnimation={handleSelectAnimation}

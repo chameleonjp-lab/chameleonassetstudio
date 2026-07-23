@@ -8,6 +8,7 @@ import { blobKeyFor } from '../images/importImage';
 import { applyFrameToAsset, type Asset } from '../model';
 import { validateAsset } from '../schema/validate';
 import { loadBlob } from '../storage';
+import { assertFixedFpsAnimationExportSafe } from './animationLoss';
 import { buildAtlas, computeSheetLayout, type AtlasJson } from './atlas';
 import { buildGodotGuide, buildUnityGuide } from './engineGuides';
 import { buildCanvasExample, buildPhaserExample, buildPixiExample } from './examples';
@@ -189,6 +190,7 @@ export function exportAssetJson(asset: Asset): Blob {
  */
 export async function exportSpriteSheet(asset: Asset): Promise<{ sheet: Blob; atlas: AtlasJson }> {
   assertValidAsset(asset);
+  assertFixedFpsAnimationExportSafe(asset);
   const frames = asset.frames ?? [];
   const frameIds = frames.length > 0 ? frames.map((frame) => frame.id) : ['default'];
   const layout = computeSheetLayout(frameIds, asset.canvasSize.width, asset.canvasSize.height);
@@ -308,6 +310,8 @@ function zipAsync(data: Zippable): Promise<Uint8Array> {
  * WebP は書き出し環境が対応している場合のみ同梱し、非対応環境では静かに省略する。
  */
 export async function exportZip(asset: Asset): Promise<Blob> {
+  assertValidAsset(asset);
+  assertFixedFpsAnimationExportSafe(asset);
   const assetJsonBlob = exportAssetJson(asset);
   const pngBlob = await exportImage(asset, 'image/png');
   let webpBlob: Blob | null = null;
