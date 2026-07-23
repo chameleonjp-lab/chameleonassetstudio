@@ -1,16 +1,19 @@
 name: Chameleon Asset Studio Pages
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       operation:
-        description: Publish the service and open or close the H3 measurement page
+        description: Deploy the service and optionally open H3 for 24 hours
         required: true
-        default: publish-24h
+        default: close-now
         type: choice
         options:
-          - publish-24h
           - close-now
+          - publish-24h
 
 concurrency:
   group: h3-pages
@@ -30,16 +33,18 @@ jobs:
         id: publication
         shell: bash
         env:
-          OPERATION: ${{ inputs.operation }}
+          REQUESTED_OPERATION: ${{ inputs.operation }}
         run: |
           set -euo pipefail
+
+          operation="${REQUESTED_OPERATION:-close-now}"
 
           if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
             echo "H3 Pages publication must run from main." >&2
             exit 1
           fi
 
-          if [[ "$OPERATION" == "publish-24h" ]]; then
+          if [[ "$operation" == "publish-24h" ]]; then
             published_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
             expires_at="$(date -u -d "$published_at + 24 hours" '+%Y-%m-%dT%H:%M:%SZ')"
             {
@@ -50,7 +55,7 @@ jobs:
             exit 0
           fi
 
-          if [[ "$OPERATION" == "close-now" ]]; then
+          if [[ "$operation" == "close-now" ]]; then
             {
               echo "mode=closed"
               echo "published_at="
@@ -59,7 +64,7 @@ jobs:
             exit 0
           fi
 
-          echo "Unsupported operation: $OPERATION" >&2
+          echo "Unsupported operation: $operation" >&2
           exit 1
       - name: Configure GitHub Pages
         id: pages
