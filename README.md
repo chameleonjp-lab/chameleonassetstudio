@@ -2,9 +2,9 @@
 
 Chameleon Asset Studio は、ブラウザゲームで使う 2D アセットを作成・編集・ゲーム用データ化するための Web ツールです。
 
-GitHub Pagesの公開workflow実行後は、サービス本体を
-`https://chameleonjp-lab.github.io/chameleonassetstudio/`、一時的なH3実機計測画面を
-`https://chameleonjp-lab.github.io/chameleonassetstudio/h3/`で開く。H3を終了してもサービス本体は公開を維持する。
+公開中の開発版は、[Chameleon Asset Studio](https://chameleonjp-lab.github.io/chameleonassetstudio/)から利用できる。mainが更新されると、GitHub Actionsが最新版を自動公開する。
+
+H3実機計測画面は[別ページ](https://chameleonjp-lab.github.io/chameleonassetstudio/h3/)に置き、通常は閉じておく。性能や端末固有の問題を調べる必要が生じた場合だけ、手動workflowで24時間開く。H3を閉じてもサービス本体は公開を維持する。
 
 このリポジトリでは、最初に実装へ入る前の正本として、以下の 2 つの文書を置きます。
 
