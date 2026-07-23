@@ -240,19 +240,50 @@ describe('フレームとアニメーション（Phase 9）', () => {
 
   it('duplicateFrame は直後に複製を挿入する', async () => {
     const { duplicateFrame } = await import('./assetOps');
-    const next = duplicateFrame(baseAsset, 'frame_idle_0');
+    const source: Asset = {
+      ...baseAsset,
+      frames: baseAsset.frames?.map((frame, index) =>
+        index === 0 ? { ...frame, durationMs: 180 } : frame,
+      ),
+      animations: baseAsset.animations.map((animation) => ({
+        ...animation,
+        events: [{ id: 'event_1', name: 'step', frameId: 'frame_idle_0' }],
+      })),
+    };
+    const next = duplicateFrame(source, 'frame_idle_0');
     expect(next.frames).toHaveLength(3);
     expect(next.frames![1].name).toBe('idle_0_copy');
     expect(next.frames![1].id).not.toBe('frame_idle_0');
-    expect(next.frames![1].layerStates).toEqual(baseAsset.frames![0].layerStates);
+    expect(next.frames![1].durationMs).toBe(180);
+    expect(next.frames![1].layerStates).toEqual(source.frames![0].layerStates);
+    expect(next.animations).toEqual(source.animations);
     expect(validateAsset(next).valid).toBe(true);
   });
 
-  it('removeFrame はアニメーションの frameIds からも除去する', async () => {
+  it('updateFrameDuration は正のoverrideを保存し、undefinedでfps既定へ戻す', async () => {
+    const { updateFrameDuration } = await import('./assetOps');
+    const overridden = updateFrameDuration(baseAsset, 'frame_idle_0', 125);
+    expect(overridden.frames?.[0].durationMs).toBe(125);
+    expect(validateAsset(overridden).valid).toBe(true);
+
+    const fallback = updateFrameDuration(overridden, 'frame_idle_0', undefined);
+    expect(fallback.frames?.[0].durationMs).toBeUndefined();
+    expect(Object.hasOwn(fallback.frames?.[0] ?? {}, 'durationMs')).toBe(false);
+  });
+
+  it('removeFrame はframeIdsだけを更新し、eventは黙って削除しない', async () => {
     const { removeFrame } = await import('./assetOps');
-    const next = removeFrame(baseAsset, 'frame_idle_0');
+    const source: Asset = {
+      ...baseAsset,
+      animations: baseAsset.animations.map((animation) => ({
+        ...animation,
+        events: [{ id: 'event_1', name: 'step', frameId: 'frame_idle_0' }],
+      })),
+    };
+    const next = removeFrame(source, 'frame_idle_0');
     expect(next.frames!.some((f) => f.id === 'frame_idle_0')).toBe(false);
     expect(next.animations[0].frameIds).toEqual(['frame_idle_1']);
+    expect(next.animations[0].events).toEqual(source.animations[0].events);
     expect(validateAsset(next).valid).toBe(true);
   });
 

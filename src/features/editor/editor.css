@@ -1420,6 +1420,16 @@
   font-size: 0.8rem;
 }
 
+.timeline-frame-duration-field input {
+  max-width: 7rem;
+}
+
+.timeline-frame-duration-note {
+  max-width: 10rem;
+  font-size: 0.7rem;
+  opacity: 0.75;
+}
+
 .timeline-frame-actions {
   display: flex;
   gap: 0.25rem;
@@ -1451,6 +1461,25 @@
   gap: 0.4rem;
   border-top: 1px dashed #8885;
   padding-top: 0.4rem;
+}
+
+.timeline-event-summary {
+  max-width: 18rem;
+  padding: 0.45rem;
+  border: 1px solid #8884;
+  border-radius: 6px;
+  overflow-wrap: anywhere;
+}
+
+.timeline-event-summary ul {
+  margin: 0.35rem 0;
+  padding-left: 1.25rem;
+}
+
+.timeline-event-fired,
+.timeline-event-status {
+  color: #147d64;
+  font-weight: 700;
 }
 
 .timeline-animation-inline-fields {
@@ -1499,6 +1528,12 @@
 
 .export-explanation p {
   margin: 0.25rem 0 0;
+}
+
+.export-warning {
+  color: #9b2c2c;
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .export-buttons {
@@ -1880,6 +1915,12 @@
     display: none;
   }
 
+  /* 詳細なFrame時間・event表示が、キャンバスとプロパティの操作領域を押し潰さないようにする。 */
+  .editor-timeline {
+    max-block-size: 12rem;
+    overflow-y: auto;
+  }
+
   /* デスクトップ / iPad ではタイムラインの下に書き出しパネルを常時表示する */
   .editor-export {
     display: flex;
@@ -1991,6 +2032,8 @@
   .editor-timeline.mobile-active {
     flex: 1;
     border-top: none;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   .editor-export.mobile-active {
@@ -2100,6 +2143,12 @@
   .editor-timeline button,
   .editor-export button {
     min-height: 44px;
+  }
+
+  .editor-timeline input:not([type='checkbox']),
+  .editor-timeline select {
+    min-height: 44px;
+    font-size: 16px;
   }
 }
 

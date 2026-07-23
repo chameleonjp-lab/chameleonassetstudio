@@ -4,6 +4,7 @@ import effectAsset from '../samples/asset.effect.json';
 import minimalAsset from '../samples/asset.minimal.json';
 import exportPresets from '../samples/export-presets.sample.json';
 import sampleProject from '../samples/project.sample.json';
+import type { Asset } from '../model';
 import {
   createFamilyVariantIdMap,
   createFamilyVariantWriteSet,
@@ -31,6 +32,20 @@ describe('validateAsset', () => {
     const result = validateAsset(characterAsset);
     expect(result.errors).toEqual([]);
     expect(result.valid).toBe(true);
+  });
+
+  it('Frame.durationMsは正の有限値だけを許可する', () => {
+    const valid = clone(characterAsset) as unknown as Asset;
+    valid.frames![0].durationMs = 0.5;
+    expect(validateAsset(valid)).toEqual({ valid: true, errors: [] });
+
+    for (const durationMs of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const broken = clone(characterAsset) as unknown as Asset;
+      broken.frames![0].durationMs = durationMs;
+      const result = validateAsset(broken);
+      expect(result.valid).toBe(false);
+      expect(result.errors.join('\n')).toContain('/frames/0/durationMs');
+    }
   });
 
   it('id が無い asset は検証で落ちる', () => {
@@ -315,6 +330,45 @@ describe('validateAnimation', () => {
     expect(result.valid).toBe(false);
     expect(result.errors.join('\n')).toContain('loop');
   });
+
+  it('JSON安全なevent payloadを許可する', () => {
+    const animation = clone(characterAsset.animations[0]) as Record<string, unknown>;
+    animation.events = [
+      {
+        id: 'event_1',
+        name: 'start',
+        frameId: 'frame_idle_0',
+        payload: null,
+        futureEventField: { preserved: true },
+      },
+      {
+        id: 'event_2',
+        name: 'sound',
+        frameId: 'frame_idle_1',
+        payload: ['step', 0.8, true, null],
+      },
+      {
+        id: 'event_3',
+        name: 'spawn',
+        frameId: 'frame_idle_1',
+        payload: { kind: 'dust', count: 2, visible: true, optional: null },
+      },
+    ];
+
+    expect(validateAnimation(animation)).toEqual({ valid: true, errors: [] });
+  });
+
+  it.each([{ nested: { value: 1 } }, { nested: [1, 2] }, [['nested']], [{ nested: true }]])(
+    '入れ子を持つevent payloadを拒否する: %j',
+    (payload) => {
+      const animation = clone(characterAsset.animations[0]) as Record<string, unknown>;
+      animation.events = [{ id: 'event_1', name: 'unsafe', frameId: 'frame_idle_0', payload }];
+
+      const result = validateAnimation(animation);
+      expect(result.valid).toBe(false);
+      expect(result.errors.join('\n')).toContain('/events/0/payload');
+    },
+  );
 });
 
 describe('validateProject', () => {

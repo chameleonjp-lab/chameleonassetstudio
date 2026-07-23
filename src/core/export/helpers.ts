@@ -7,6 +7,7 @@
  * 依存を最小にし、コピー先が変わっても動くようにするため）。
  */
 import type { Asset } from '../model';
+import { assertFixedFpsAnimationExportSafe } from './animationLoss';
 
 /** 座標系・使い方などヘルパー共通の先頭コメントを組み立てる。 */
 function commonHeader(asset: Asset, usageLine: string): string {
@@ -29,6 +30,7 @@ function commonHeader(asset: Asset, usageLine: string): string {
  * エンジン非依存で、fetch と Image / CanvasRenderingContext2D のみに依存する。
  */
 export function buildCanvasHelpers(asset: Asset): string {
+  assertFixedFpsAnimationExportSafe(asset);
   return `${commonHeader(
     asset,
     "const { atlas, image } = await loadChameleonAtlas('./atlas/atlas.json');",
@@ -184,6 +186,7 @@ export function createFrameAnimator(atlas, animationName) {
  * （バンドラー構成の違いに依存しないようにするため）。
  */
 export function buildPixiHelpers(asset: Asset): string {
+  assertFixedFpsAnimationExportSafe(asset);
   return `${commonHeader(
     asset,
     "import * as PIXI from 'pixi.js'; const { atlas, baseTexture } = await loadChameleonPixi(PIXI, './atlas/atlas.json');",
@@ -287,6 +290,7 @@ export function drawPixiDebug(graphics, atlas) {
  * 2 段構成にする（1 関数に無理に詰め込まない）。
  */
 export function buildPhaserHelpers(asset: Asset): string {
+  assertFixedFpsAnimationExportSafe(asset);
   return `${commonHeader(
     asset,
     "// preload(): preloadChameleonAsset(this, 'hero', './atlas'); " +

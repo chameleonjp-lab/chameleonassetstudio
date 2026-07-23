@@ -338,6 +338,7 @@ export function duplicateFrame(asset: Asset, frameId: string): Asset {
   const copy: Frame = {
     id: generateId('frame'),
     name: `${source.name}_copy`,
+    ...(source.durationMs !== undefined ? { durationMs: source.durationMs } : {}),
     layerStates: source.layerStates.map((state) => ({
       ...state,
       transform: state.transform
@@ -352,6 +353,28 @@ export function duplicateFrame(asset: Asset, frameId: string): Asset {
   const next = [...frames];
   next.splice(index + 1, 0, copy);
   return touch({ ...asset, frames: next });
+}
+
+/** Frame単位の表示時間を更新する。undefinedは参照先Animationのfpsへ戻す。 */
+export function updateFrameDuration(
+  asset: Asset,
+  frameId: string,
+  durationMs: number | undefined,
+): Asset {
+  return touch({
+    ...asset,
+    frames: (asset.frames ?? []).map((frame) => {
+      if (frame.id !== frameId) {
+        return frame;
+      }
+      if (durationMs === undefined) {
+        const fallbackFrame = { ...frame };
+        delete fallbackFrame.durationMs;
+        return fallbackFrame;
+      }
+      return { ...frame, durationMs };
+    }),
+  });
 }
 
 /** フレームを削除する。アニメーションの frameIds からも除去する。 */

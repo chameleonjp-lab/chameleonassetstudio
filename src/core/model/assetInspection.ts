@@ -1,4 +1,4 @@
-import type { Animation } from './animation';
+import { calculateAnimationDurationMs } from './animationTiming';
 import type { Asset } from './asset';
 
 /**
@@ -103,6 +103,12 @@ function inspectDuplicateIds(asset: Asset, push: PushIssue): void {
       path: 'rigAnimations',
       values: asset.rigAnimations ?? [],
       panel: 'parts',
+    },
+    {
+      name: 'アニメーションイベント',
+      path: 'animationEvents',
+      values: asset.animations.flatMap((animation) => animation.events ?? []),
+      panel: 'timeline',
     },
   ];
 
@@ -260,6 +266,25 @@ function inspectReferences(asset: Asset, push: PushIssue): void {
         },
       });
     }
+    for (const event of animation.events ?? []) {
+      if (frameIds.has(event.frameId)) {
+        continue;
+      }
+      push({
+        code: 'reference.animationEventFrameMissing',
+        severity: 'error',
+        category: 'reference',
+        message: `アニメーション「${animation.name}」のイベント「${event.name}」が存在しないフレームを参照しています。`,
+        reason: `frameId「${event.frameId}」に対応するフレームがありません。`,
+        action:
+          'イベントが参照するフレームを復元するか、後続のイベント編集画面で参照先を選び直してください。',
+        target: {
+          path: `animations[id=${animation.id}].events[id=${event.id}].frameId`,
+          label: `タイムライン > アニメーション「${animation.name}」`,
+          panel: 'timeline',
+        },
+      });
+    }
   }
 
   for (const part of asset.parts) {
@@ -363,6 +388,26 @@ function inspectPartCycles(asset: Asset, push: PushIssue): void {
 }
 
 function inspectAnimations(asset: Asset, push: PushIssue): void {
+  for (const frame of asset.frames ?? []) {
+    if (
+      frame.durationMs !== undefined &&
+      (!Number.isFinite(frame.durationMs) || frame.durationMs <= 0)
+    ) {
+      push({
+        code: 'animation.frameDurationInvalid',
+        severity: 'error',
+        category: 'animation',
+        message: `フレーム「${frame.name}」の表示時間が正しくありません。`,
+        reason: 'フレームの表示時間は0ミリ秒より大きい有限の数である必要があります。',
+        action: 'タイムラインで正の表示時間へ直すか、空欄にしてFPSの既定値へ戻してください。',
+        target: {
+          path: `frames[id=${frame.id}].durationMs`,
+          label: `タイムライン > フレーム「${frame.name}」`,
+          panel: 'timeline',
+        },
+      });
+    }
+  }
   for (const animation of asset.animations) {
     if (!Number.isFinite(animation.fps) || animation.fps <= 0) {
       push({
@@ -741,16 +786,6 @@ function inspectGimmickProfile(asset: Asset, push: PushIssue): void {
   }
 }
 
-function animationDurationMs(animation: Animation): number | null {
-  if (animation.durationMs !== undefined && Number.isFinite(animation.durationMs)) {
-    return animation.durationMs;
-  }
-  if (animation.frameIds.length === 0 || !Number.isFinite(animation.fps) || animation.fps <= 0) {
-    return null;
-  }
-  return (animation.frameIds.length / animation.fps) * 1000;
-}
-
 function inspectEffectProfile(asset: Asset, push: PushIssue): void {
   const effect = asset.effect;
   if (!effect) {
@@ -810,7 +845,7 @@ function inspectEffectProfile(asset: Asset, push: PushIssue): void {
     }
 
     const durations = asset.animations
-      .map(animationDurationMs)
+      .map((animation) => calculateAnimationDurationMs(animation, asset.frames ?? []))
       .filter((duration): duration is number => duration !== null && duration > 0);
     if (durations.length > 0 && effect.durationMs > 0) {
       const longest = Math.max(...durations);
@@ -822,7 +857,8 @@ function inspectEffectProfile(asset: Asset, push: PushIssue): void {
           category: 'effect',
           message: 'エフェクト設定とアニメーションの長さが大きく異なります。',
           reason: `エフェクト設定は${Math.round(effect.durationMs)}ms、最長アニメーションは約${Math.round(longest)}msです。`,
-          action: 'エフェクト設定の再生時間またはタイムラインのFPS・フレーム数を確認してください。',
+          action:
+            'エフェクト設定の再生時間またはタイムラインのFPS・フレーム表示時間・フレーム数を確認してください。',
           target: {
             path: 'effect.durationMs|animations[]',
             label: 'エフェクト設定 / タイムライン',

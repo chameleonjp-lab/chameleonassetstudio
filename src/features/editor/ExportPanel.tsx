@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import {
+  findFixedFpsAnimationLosses,
+  formatFixedFpsAnimationLosses,
+} from '../../core/export/animationLoss';
+import {
   downloadBlob,
   exportAssetJson,
   exportImage,
@@ -83,6 +87,9 @@ export function ExportPanel({ asset, project, projectAssets }: ExportPanelProps)
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completedFileName, setCompletedFileName] = useState<string | null>(null);
+  const fixedFpsLosses = findFixedFpsAnimationLosses(asset);
+  const zipLossMessage =
+    fixedFpsLosses.length > 0 ? formatFixedFpsAnimationLosses(fixedFpsLosses) : null;
 
   const runExport = async (kind: ExportKind) => {
     setError(null);
@@ -146,8 +153,17 @@ export function ExportPanel({ asset, project, projectAssets }: ExportPanelProps)
             <div>
               <strong>{option.purpose}</strong>
               <p>{option.includes}</p>
+              {option.kind === 'zip' && zipLossMessage && (
+                <p className="export-warning" role="alert">
+                  {zipLossMessage}
+                </p>
+              )}
             </div>
-            <button type="button" disabled={busy} onClick={() => void runExport(option.kind)}>
+            <button
+              type="button"
+              disabled={busy || (option.kind === 'zip' && zipLossMessage !== null)}
+              onClick={() => void runExport(option.kind)}
+            >
               {option.label}
             </button>
           </article>

@@ -7,6 +7,7 @@
  * fetch は file:// では動作しないため、ローカルサーバー（例: `npx serve`）で開く必要がある。
  */
 import type { Asset } from '../model';
+import { assertFixedFpsAnimationExportSafe } from './animationLoss';
 
 /** fetch が file:// では動かない旨の注意書き（各サンプル共通）。 */
 const LOCAL_SERVER_NOTE =
@@ -71,6 +72,7 @@ const COMMON_STYLE = [
  * 外部依存なし（素の JS、requestAnimationFrame ループ）。
  */
 export function buildCanvasExample(asset: Asset): string {
+  assertFixedFpsAnimationExportSafe(asset);
   const info = embeddedInfo(asset);
   const title = `${escapeHtml(asset.displayName)} - Canvas 2D サンプル`;
 
@@ -227,6 +229,7 @@ ${embeddedConstantsScript(info)}
  * PixiJS 8 系を CDN から読み込み、Texture / Rectangle でフレームを切り出して Sprite 表示する。
  */
 export function buildPixiExample(asset: Asset): string {
+  assertFixedFpsAnimationExportSafe(asset);
   const info = embeddedInfo(asset);
   const title = `${escapeHtml(asset.displayName)} - PixiJS サンプル`;
 
@@ -374,6 +377,7 @@ ${embeddedConstantsScript(info)}
  * Phaser 4.2.0 を CDN から読み込み、spritesheet ローダーと anims.create でアニメーション再生する。
  */
 export function buildPhaserExample(asset: Asset): string {
+  assertFixedFpsAnimationExportSafe(asset);
   const info = embeddedInfo(asset);
   const title = `${escapeHtml(asset.displayName)} - Phaser サンプル`;
 

@@ -14,6 +14,8 @@ export interface Frame {
   id: string;
   name: string;
   layerStates: FrameLayerState[];
+  /** このフレームを表示する時間（ms）。未指定時は参照先Animationのfpsを使う。 */
+  durationMs?: number;
 }
 
 export const ANIMATION_NAME_SUGGESTIONS = [
@@ -29,6 +31,22 @@ export const ANIMATION_NAME_SUGGESTIONS = [
   'lose',
 ] as const;
 
+export type AnimationEventPrimitive = string | number | boolean | null;
+
+export type AnimationEventPayload =
+  AnimationEventPrimitive | AnimationEventPrimitive[] | Record<string, AnimationEventPrimitive>;
+
+/**
+ * フレーム表示開始時にゲーム側へ伝える不活性なデータ。
+ * name / payloadをアプリ内で実行したり、URLとして読み込んだりしない。
+ */
+export interface AnimationEvent {
+  id: string;
+  name: string;
+  frameId: string;
+  payload?: AnimationEventPayload;
+}
+
 /** 複数フレームを順に再生する設定。フレーム実体は Asset.frames が持つ。 */
 export interface Animation {
   id: string;
@@ -36,6 +54,8 @@ export interface Animation {
   fps: number;
   loop: boolean;
   frameIds: string[];
-  /** 再生時間（ミリ秒）。未指定時は frameIds.length / fps から導出する。 */
+  /** 参考用の合計時間。再生・検査・派生書き出しの時間計算には使わない。 */
   durationMs?: number;
+  /** 対象Frameの表示開始時に、配列順で通知するイベント。 */
+  events?: AnimationEvent[];
 }

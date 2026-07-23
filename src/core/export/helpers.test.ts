@@ -84,3 +84,16 @@ describe('buildPhaserHelpers', () => {
     expect(source).toContain(asset.name);
   });
 });
+
+describe('fixed fps helper loss guard', () => {
+  it.each([buildCanvasHelpers, buildPixiHelpers, buildPhaserHelpers])(
+    'eventを表現できないhelper生成を拒否する',
+    (build) => {
+      const withEvent = structuredClone(asset);
+      withEvent.animations[0].events = [
+        { id: 'event_1', name: 'step', frameId: withEvent.frames![0].id },
+      ];
+      expect(() => build(withEvent)).toThrow(/イベント.*失われる/);
+    },
+  );
+});

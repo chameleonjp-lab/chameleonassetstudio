@@ -248,6 +248,70 @@ describe('inspectAsset (A+B+X)', () => {
     expect(inspectAsset(ready)).toEqual([]);
   });
 
+  it('Frame時間、event ID重複、eventのdangling Frame参照を報告する', () => {
+    const asset = blank('character');
+    const broken: Asset = {
+      ...asset,
+      frames: [{ id: 'frame_1', name: 'frame', durationMs: 0, layerStates: [] }],
+      animations: [
+        {
+          id: 'animation_1',
+          name: 'attack',
+          fps: 8,
+          loop: false,
+          frameIds: ['frame_1'],
+          events: [
+            { id: 'event_same', name: 'start', frameId: 'missing' },
+            { id: 'event_same', name: 'sound', frameId: 'frame_1' },
+          ],
+        },
+      ],
+    };
+
+    expect(codes(inspectAsset(broken))).toEqual(
+      expect.arrayContaining([
+        'reference.animationEventsDuplicateId',
+        'reference.animationEventFrameMissing',
+        'animation.frameDurationInvalid',
+      ]),
+    );
+  });
+
+  it('effect時間検査はAnimation.durationMsを無視してFrameの実効時間を使う', () => {
+    const asset = blank('effect');
+    const frameId = 'effect_frame';
+    const inspected: Asset = {
+      ...asset,
+      effect: {
+        effectType: 'hit',
+        durationMs: 500,
+        loop: false,
+        blendMode: 'add',
+      },
+      frames: [{ id: frameId, name: 'hit', durationMs: 200, layerStates: [] }],
+      animations: [
+        {
+          id: 'effect_animation',
+          name: 'hit',
+          fps: 2,
+          loop: false,
+          frameIds: [frameId],
+          durationMs: 500,
+        },
+      ],
+      anchors: [
+        {
+          id: 'effect_anchor',
+          name: '発生位置',
+          role: 'damage_effect',
+          position: { x: 32, y: 32 },
+        },
+      ],
+    };
+
+    expect(codes(inspectAsset(inspected))).toContain('effect.durationMismatch');
+  });
+
   it('sorts required errors before recommendations and supplies reason, action and target', () => {
     const asset: Asset = {
       ...blank('tile'),

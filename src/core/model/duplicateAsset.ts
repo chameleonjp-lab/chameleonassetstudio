@@ -104,6 +104,15 @@ export function duplicateAsset(asset: Asset, options: DuplicateAssetOptions = {}
       ...animation,
       id: generateId('anim'),
       frameIds: animation.frameIds.map((id) => frameIdMap.get(id) ?? id),
+      ...(animation.events
+        ? {
+            events: animation.events.map((event) => ({
+              ...structuredClone(event),
+              id: generateId('event'),
+              frameId: frameIdMap.get(event.frameId) ?? event.frameId,
+            })),
+          }
+        : {}),
     })),
     provenance: asset.provenance?.map((record) => {
       const copy = structuredClone(record);

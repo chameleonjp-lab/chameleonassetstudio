@@ -197,6 +197,15 @@ export function flipCopyAsset(asset: Asset, options: FlipCopyAssetOptions = {}):
     id: options.preserveInternalIds ? animation.id : generateId('anim'),
     name: swapLeftRightLabel(animation.name),
     frameIds: animation.frameIds.map((id) => frameIdMap.get(id) ?? id),
+    ...(animation.events
+      ? {
+          events: animation.events.map((event) => ({
+            ...structuredClone(event),
+            id: options.preserveInternalIds ? event.id : generateId('event'),
+            frameId: frameIdMap.get(event.frameId) ?? event.frameId,
+          })),
+        }
+      : {}),
   }));
 
   const swappedName = swapLeftRightLabel(asset.name);
