@@ -253,7 +253,6 @@ export function CanvasEditor({
   const pasteDragBaseRef = useRef<Vec2 | null>(null);
   const pointersRef = useRef<Map<number, Vec2>>(new Map());
   const fittedAssetRef = useRef<string | null>(null);
-  const previousViewportRef = useRef<Viewport>({ width: 0, height: 0 });
   const bitmapsRef = useRef<Map<string, DecodedImageSource>>(new Map());
 
   const displayAsset = draftAsset ?? asset;
@@ -330,27 +329,12 @@ export function CanvasEditor({
     [],
   );
 
-  // アセットを開いたら fit 表示にする。ツール説明やパネル開閉で表示領域が変わった場合は、
-  // 利用者が見ていたworld中心を新しいviewport中心へ追従させる。
+  // アセットを開いたら fit 表示にする
   useEffect(() => {
-    if (viewport.width <= 0 || viewport.height <= 0) {
-      return;
-    }
-    const previous = previousViewportRef.current;
-    const assetChanged = fittedAssetRef.current !== asset.id;
-    const previousWasTooSmall = previous.width < 64 || previous.height < 64;
-
-    if (assetChanged || previousWasTooSmall) {
+    if (viewport.width > 0 && viewport.height > 0 && fittedAssetRef.current !== asset.id) {
       fittedAssetRef.current = asset.id;
       setView(fitView(viewport, asset.canvasSize));
-    } else if (previous.width !== viewport.width || previous.height !== viewport.height) {
-      setView((current) => ({
-        ...current,
-        offsetX: current.offsetX + (viewport.width - previous.width) / 2,
-        offsetY: current.offsetY + (viewport.height - previous.height) / 2,
-      }));
     }
-    previousViewportRef.current = viewport;
   }, [viewport, asset.id, asset.canvasSize]);
 
   // paste previewがarmされたらclipboardをImageBitmapへ変換し、初期位置を局所stateへ写す。
