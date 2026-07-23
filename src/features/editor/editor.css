@@ -1915,6 +1915,12 @@
     display: none;
   }
 
+  /* 詳細なFrame時間・event表示が、キャンバスとプロパティの操作領域を押し潰さないようにする。 */
+  .editor-timeline {
+    max-block-size: 12rem;
+    overflow-y: auto;
+  }
+
   /* デスクトップ / iPad ではタイムラインの下に書き出しパネルを常時表示する */
   .editor-export {
     display: flex;
