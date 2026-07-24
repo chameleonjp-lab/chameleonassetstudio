@@ -145,9 +145,9 @@ Project
 Group 12のR1ではrig編集データを既存flipとは別sliceで扱い、次を固定する。
 
 - `Part.pivot.x`は`2 * asset.origin.x - x`、bind pose / keyframeの`localPosition.x`と`localRotation`は符号反転、`localScale`は不変とする。
-- `rotationLimit {min,max}`は`{-max,-min}`とし、Part / parent / layer / pose / rig / frame / event IDと参照を完全mapで張り替える。H2=L1の非空・単一ownershipに反するdataは理由付きで拒否し、未所属Layerは許可する。
+- `rotationLimit {min,max}`は`{-max,-min}`とする。新Asset IDを採番し、Layer / Part / Frame / Animation / RigAnimation / event / Anchor / Collider IDを完全mapで再採番する。parent / layer / frame / pose / event参照を張り替え、TextureRefのid / pathは保持し、Blob storage keyだけを新Asset IDへ張り替える。H2=L1の非空・単一ownershipに反するdataは理由付きで拒否し、未所属Layerは許可する。
 - `flip(bake(original))`と`bake(flipRig(original))`の全Frame transformと最終pixelを同じfixtureで比較する。
-- B1は現在の独立左右反転コピーを新Asset作成操作として拡張し、元AssetとHistoryを変更しない。保存失敗時は新Asset追加を全て取り消し、成功後のreloadと`.casproj`で参照・編集用rig・見た目を保持する。
+- B1は現在の独立左右反転コピーを新Asset作成操作として拡張し、元Assetを変更せず、新しいHistory entryを追加せず、既存のUndo / Redo stackも消去・変更しない。保存失敗時はProject参照、Asset、Blob、画面stateへの新Asset追加を全て取り消し、成功後のreloadと`.casproj`で参照・編集用rig・見た目を保持する。
 
 詳細と実装停止条件はADR-0022と`2D_3_TIMELINE_RIG_PLAN.md`を正本とする。polygonの頂点順、frame別判定上書きはGroup 13へ残す。
 
@@ -204,7 +204,7 @@ Spine、Rive、Live2D の専用形式を直接再現するのではなく、Cham
 
 Group 12のP1 / ADR-0023では、初回の部品差し替えを既存Partの`layerIds`だけを既存Layer ID集合へ置き換える静的操作に限定する。永続dataの例外は通常のcommitで更新する`Asset.updatedAt`だけとする。Partのその他のfield、対象外Part、Layer / Texture / Blob、Frame / Animation / RigAnimation、既存bake済みFrameを変えず、次回bakeだけが新しい所属を使う。H2=L1によりPartは非空、Layerは高々1 Part所属、未所属は許可し、他Part所有Layerを暗黙移動しない。時間依存の衣装・表情・状態切替は別ADRへ送る。
 
-Group 12のB1は、有限値、参照、循環、H2=L1など入力の正しさを割当前に構造preflightし、拒否時はAsset、Blob、History、autosaveを変更しない。B2は生成Frame / LayerState / serialized bytes / sheet pixelを割当前に見積もり、採用上限超過を原子的に拒否する。H3=M1で測定方法だけをacceptedとし、上限値は`2D_3_H3_MEASUREMENT_PROTOCOL.md`のPC / iPhone / iPad測定と後続人間承認までacceptedにしない。
+Group 12のB1は、有限値、参照、循環、H2=L1など入力の正しさを割当前に構造preflightする。`frameCount = max(1, round(durationMs / 1000 * fps))`は算出直後に有限かつ1以上の安全な整数であることを確認し、成立しない場合はloopや配列確保へ入らない。拒否時はAsset、Blob、History、autosaveを変更しない。B2は生成Frame / LayerState / serialized bytes / sheet pixelを割当前に見積もり、採用上限超過を原子的に拒否する。H3=M1で測定方法だけをacceptedとし、上限値は`2D_3_H3_MEASUREMENT_PROTOCOL.md`のPC / iPhone / iPad測定と後続人間承認までacceptedにしない。
 
 逆関節、メッシュ変形、物理揺れ、専用ランタイム出力は、対象別のライセンス・バージョン・検証を済ませるまで追加しない。
 
