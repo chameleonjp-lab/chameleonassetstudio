@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 2D Asset Data Contract
 
-最終更新日: 2026-07-23
+最終更新日: 2026-07-24
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 2D 完成形の保存・座標・互換性契約
 状態: accepted（保存契約。Family / Variantとsource provenanceは実装済み、後続項目を含む）
@@ -11,7 +11,7 @@
 
 > **現状:** 現在の正本は `docs/DATA_FORMAT.md`、`src/core/model/`、`src/core/schema/` である。ADR-0019によりAssetは`0.2.0`、Project / export-presets / Chameleon Atlas / アプリは`0.1.0`で、`.casproj`は各文書を独立にmigrateする。
 > **本書の役割:** 2D 完成形で必要になるデータの意味と、形式変更前に必ず決める契約を定義する。本文だけで現在の型、schema、ZIP 構成、migration を変更してはいけない。Family / Variantは別契約`2D_2_VARIANT_BATCH_PLAN.md`で実装済み。来歴は`2D_2_IMPORT_PLAN.md`のP1に基づき、group 11 Slice B（PR #126）でoptionalな`Asset.provenance?`として実装済みである。
-> **Group 12:** T1 / R1 / P1とH1=E1 / H2=L1 / H3=M1はaccepted。T1 Slice AはPR #153、merge `e8fac95`でmainへ反映済みである。P1 Slice Cは本実装PRで静的Part構成レイヤー差し替え、read-only inspection、H2違反だけの狭いbake refusalを検証中で、R1、有限値・座標・資源上限を含むbake共通preflight、H3の数値budgetは後続に残す。
+> **Group 12:** T1 / R1 / P1とH1=E1 / H2=L1 / H3=M1はaccepted。T1 Slice AはPR #153、merge `e8fac95`、P1 Slice CはPR #154、merge `1c700e7`でmainへ反映済みである。P1は静的Part構成レイヤー差し替え、read-only inspection、H2違反だけの狭いbake refusalを実装し、schema、version、migrationを変更していない。R1、有限値・座標・資源上限を含むbake共通preflight、H3の数値budgetは後続に残す。
 
 ## 1. 目的
 
