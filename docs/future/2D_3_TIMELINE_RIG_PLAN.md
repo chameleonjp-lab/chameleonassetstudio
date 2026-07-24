@@ -89,7 +89,7 @@ merge後の人間判断はH1=E1、H2=L1、H3=M1である。E1 / L1の意味は§
 - 製品import後もPart / Layer / Frame / Animation / RigAnimation / eventの内部ID、参照、時間、transform、配列順、Blob bytes / hashはexact一致とする。許可したcontainer mapを逆適用してcanonical Assetを比較し、reload後にも`flip(bake(original))`と`bake(flipRig(original))`のparityを再実行する。
 - 親子3段以上、非zero pivot、bind pose、rotation limit、部分keyframe、負scale、非等方scaleをfixtureへ含める。
 
-現行`bakeRigAnimation`は入力中心と出力positionの両方にtexture scaleを掛けるが、accepted座標契約はscale非依存の中心を使う。入力は`center0 = position + textureSize / 2`、world pose適用後の中心を`center1`として、出力は`next.position = center1 - textureSize / 2`とする。非等方scaleと回転でparityを壊さないよう、R1製品実装より先に両式を修正し、rendererと同じfixtureで固定する。
+PR #157以前の`bakeRigAnimation`は入力中心と出力positionの両方にtexture scaleを掛けていたが、accepted座標契約はscale非依存の中心を使う。PR #157で、入力を`center0 = position + textureSize / 2`、world pose適用後の中心を`center1`、出力を`next.position = center1 - textureSize / 2`とする両式へ修正し、非等方scaleと回転を含むrendererと同じfixtureでparityを固定した。
 
 B1は、現在の「新しいAssetを作る独立左右反転コピー」を利用者が画面から実行できる形で拡張する。元Assetは変更せず、rig編集データを保持した新Assetへ完全ID mapを適用する。新Asset作成操作は既存契約どおりUndo / Redo対象外とし、新しいHistory entryを追加せず、既存のUndo / Redo stackも消去・変更しない。保存失敗時は追加途中のProject参照、Asset、Blob、画面stateをすべて取り消す。成功後の保存・reloadと`.casproj` roundtripで見た目と参照の一致を確認する。
 

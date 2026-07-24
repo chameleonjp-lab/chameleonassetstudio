@@ -3,7 +3,7 @@
 最終更新日: 2026-07-24
 work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 判断: `H3=M1`（測定方法は固定。正式B0は保留し、問題発生時に再実行。数値budgetは未決定）
-実装: 計測ハーネスのみ。製品機能、上限定数、warning、hard capは未実装
+実装: 計測ハーネスとR1 Slice B1製品機能は実装済み。B2の上限定数、warning、hard cap、採用上限での製品経路実機Gateは未実装
 関連: `2D_3_TIMELINE_RIG_PLAN.md`, `2D_DEVICE_RELIABILITY_SPEC.md`, `docs/adr/0022-rig-flip-and-bake-parity.md`, `tools/h3/`
 
 ---

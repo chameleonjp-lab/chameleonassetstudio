@@ -8,7 +8,7 @@
 
 ## 文脈
 
-現行のアセット全体flipは、焼き込み済みFrameを反転する一方、`rigAnimations`を除外し、Partの`bindPose`と`rotationLimit`を削除する。Group 12のrig flipは、この既存挙動を黙って変えるのではなく、リグ編集データを完全に鏡映する独立sliceとして契約化する必要がある。
+PR #157以前のアセット全体flipは、焼き込み済みFrameを反転する一方、`rigAnimations`を除外し、Partの`bindPose`と`rotationLimit`を削除していた。Group 12のrig flipは、この既存挙動を黙って変えるのではなく、リグ編集データを完全に鏡映する独立sliceとして契約化する必要があった。PR #157で、既存の独立左右反転コピーをrig編集データ保持・完全ID remapへ拡張して解消した。
 
 ## 決定
 
@@ -37,9 +37,9 @@
 
 - B1の実装: rig編集データを保持した独立左右反転コピー、完全ID remap、bake座標修正、構造preflight、inspector、保存・reload・`.casproj` roundtrip。独立copyは新Asset作成操作として画面から利用でき、元Assetを変更せず、新しいHistory entryを追加せず、既存のUndo / Redo stackも消去・変更しない。保存失敗時はProject参照、Asset、Blob、画面stateへの新Asset追加を全て取り消す。
 - fixture: 親子3段以上、非zero pivot、bind pose、rotation limit、部分keyframe、負scale、非等方scale、double flip、source不変、全Frame parity、`.casproj` roundtripを含める。
-- 現行`bakeRigAnimation`は入力中心と出力positionの両方がaccepted座標契約と不一致である。入力を`center0 = position + textureSize / 2`、world pose適用後を`center1`、出力を`next.position = center1 - textureSize / 2`として、R1実装より先にrendererと同じ式へ直す。
+- PR #157以前の`bakeRigAnimation`は入力中心と出力positionの両方がaccepted座標契約と不一致だった。PR #157で、入力を`center0 = position + textureSize / 2`、world pose適用後を`center1`、出力を`next.position = center1 - textureSize / 2`とするrendererと同じ式へ修正し、parity fixtureで固定した。
 - ADR-2026-07-24-027はdocs-only PR #156で正本化し、B1製品実装はPR #157 final head `834cc38`、merge `bf13cac`、CI Run #501全成功、非GitHub・非Opusの固定head独立review `BLOCKER 0 / MUST 0 / SHOULD 0`として完了した。schema、version、migration、storage配置、上限定数は変更していない。
 
 ## 再検討条件
 
-H3=M1により測定方法は決定したが、最大Frame / LayerState / serialized bytes / sheet pixelの数値は未決定である。ADR-2026-07-24-027により、数値に依存しないB1の座標修正、算出後frameCountの有限・安全整数を含む構造preflight、独立rig反転コピー、再採番対象とTextureRef保持を明示した完全ID remap、保存・reload・parityは先行できる。`2D_3_H3_MEASUREMENT_PROTOCOL.md`に従うbrowserとiPhone / iPad Safari測定、および後続の数値人間承認までは、B2のnumeric warning / hard capと上限定数、Group 12完了判定を実装しない。安全な整数でも非常に大きい生成量の停止リスクはB2まで残り、B1だけで資源安全を証明したとは扱わない。shearの永続表現、linked Familyのrig refresh、rebake置換、native rig export、IK、mesh、physicsを追加する場合は別ADRとする。
+H3=M1により測定方法は決定したが、最大Frame / LayerState / serialized bytes / sheet pixelの数値は未決定である。ADR-2026-07-24-027により、数値に依存しないB1の座標修正、算出後frameCountの有限・安全整数を含む構造preflight、独立rig反転コピー、再採番対象とTextureRef保持を明示した完全ID remap、保存・reload・parityを先行し、PR #157で完了した。`2D_3_H3_MEASUREMENT_PROTOCOL.md`に従うbrowserとiPhone / iPad Safari測定、および後続の数値人間承認までは、B2のnumeric warning / hard capと上限定数、Group 12完了判定を実装しない。安全な整数でも非常に大きい生成量の停止リスクはB2まで残り、B1だけで資源安全を証明したとは扱わない。shearの永続表現、linked Familyのrig refresh、rebake置換、native rig export、IK、mesh、physicsを追加する場合は別ADRとする。

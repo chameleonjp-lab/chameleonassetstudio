@@ -126,16 +126,16 @@ leg_left  <-> leg_right
 
 ---
 
-## 6. 実装時の注意（将来）
+## 6. 実装・変更時の注意
 
-- 通常の左右反転から着手するのが安全（transform のみ、データ形式変更なし）。
-- 反転コピーはメタデータ反転と role 入れ替えを伴うため、`asset.json` / `.casproj` / export への影響を確認し、`claude-opus-4-8` の設計レビューを通す。
+- 通常の左右反転はtransformのみ・データ形式変更なしのsliceとして先に実装済みである。
+- 反転コピーはメタデータ反転とrole入れ替えを伴うため、`asset.json` / `.casproj` / exportへの影響を確認する。Opus 4.8が利用可能な場合は設計reviewを行い、利用できない場合は未実施範囲を明記して独立read-only reviewを行う。PR #157は後者として非GitHub・非Opusの3方向監査を通過した。
 - いずれも既存の座標系（左上原点・px・度）と原点の意味を変えない。
 - 本文書の方針から外れる必要が出た場合は、実装を止めて人間確認に戻す（`docs/future/FABLELESS_DEVELOPMENT_GUIDE.md` 6 章）。
 
 ## 7. Group 12 R1: rig flip契約（Slice B1実装済み）
 
-反転軸を`axisX = asset.origin.x`とし、通常Layer反転や現行の独立flip copyを黙って変更せず、rig編集データを扱う別sliceを追加する。
+反転軸を`axisX = asset.origin.x`とし、通常Layer反転を黙って変更せず、既存の独立flip copyをrig編集データ対応の別sliceとしてPR #157で拡張した。
 
 | 対象 | 鏡映後 |
 | --- | --- |
