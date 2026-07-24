@@ -1,6 +1,6 @@
 # Group 12 H3 再現可能計測プロトコル
 
-最終更新日: 2026-07-23
+最終更新日: 2026-07-24
 work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 判断: `H3=M1`（測定方法は固定。正式B0は保留し、問題発生時に再実行。数値budgetは未決定）
 実装: 計測ハーネスのみ。製品機能、上限定数、warning、hard capは未実装
@@ -25,7 +25,7 @@ H3=M1は、rig bakeの安全上限を先に推測せず、同じfixture、同じ
 
 人間は、現在のH3確認をいったん完了とし、まずサービス本体を公開して実際に利用する方針を採用した。移設前commitで取得したiPhone 17 Proのbaseline結果2件は、ハーネスが動作した参考記録として保持するが、正式B0、端末合格、数値budgetには使わない。
 
-正式B0の4端末収集は削除せず、公開利用で性能低下、停止、保存・書き出しの遅延、Safari固有の問題などが見えた時に再開する。数値budgetが未決定の間はwarningやhard capを実装しない。一方、サービス公開と、数値budgetに依存しないT1 Slice A / P1 Slice Cの実装は妨げない。新しい問題から必要な検査項目が見つかった場合は、再現条件を固定してから本書または製品path Gateへ追加する。
+正式B0の4端末収集は削除せず、公開利用で性能低下、停止、保存・書き出しの遅延、Safari固有の問題などが見えた時に再開する。数値budgetが未決定の間はwarningやhard capを実装しない。一方、サービス公開と、数値budgetに依存しないT1 Slice A / P1 Slice C / R1 Slice B1の実装は妨げない。B1は座標修正、構造preflight、独立rig反転コピー、完全ID remap、保存・reload・parityに限り、資源上限とGroup 12完了判定はB2へ残す。新しい問題から必要な検査項目が見つかった場合は、再現条件を固定してから本書または製品path Gateへ追加する。
 
 ## 2. 再現資産
 
@@ -119,11 +119,13 @@ Pagesは結果を受信しない。結果JSONは端末へdownloadし、この会
 
 ## 7. 製品pathの後段Gate
 
-T1 / R1 / P1の製品実装後は、同じfixtureと採用候補最大値を使い、別のproduct-path測定を行う。各caseはwarm-up 1回、記録3回とし、raw値、median、maxを残す。
+T1 / P1とR1 Slice B1の製品実装は、H3数値を採用したことを意味しない。B2で候補上限を人間承認した後、同じfixtureと採用候補最大値を使い、別のproduct-path測定を行う。各caseはwarm-up 1回、記録3回とし、raw値、median、maxを残す。
 
 ```text
 bake -> React反映 -> 保存完了 -> Undo -> Redo -> reload
      -> asset.json -> .casproj -> product export ZIP
+
+独立左右反転コピーは新Asset作成操作のためUndo / Redo対象外であり、このHistory往復はB2のbake製品pathを測る。
 ```
 
 次を別々に記録する。
