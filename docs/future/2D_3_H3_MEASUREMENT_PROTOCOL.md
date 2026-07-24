@@ -3,7 +3,7 @@
 最終更新日: 2026-07-24
 work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 判断: `H3=M1`（測定方法は固定。正式B0は保留し、問題発生時に再実行。数値budgetは未決定）
-実装: 計測ハーネスのみ。製品機能、上限定数、warning、hard capは未実装
+実装: 計測ハーネスとR1 Slice B1製品機能は実装済み。B2の上限定数、warning、hard cap、採用上限での製品経路実機Gateは未実装
 関連: `2D_3_TIMELINE_RIG_PLAN.md`, `2D_DEVICE_RELIABILITY_SPEC.md`, `docs/adr/0022-rig-flip-and-bake-parity.md`, `tools/h3/`
 
 ---
@@ -25,7 +25,7 @@ H3=M1は、rig bakeの安全上限を先に推測せず、同じfixture、同じ
 
 人間は、現在のH3確認をいったん完了とし、まずサービス本体を公開して実際に利用する方針を採用した。移設前commitで取得したiPhone 17 Proのbaseline結果2件は、ハーネスが動作した参考記録として保持するが、正式B0、端末合格、数値budgetには使わない。
 
-正式B0の4端末収集は削除せず、公開利用で性能低下、停止、保存・書き出しの遅延、Safari固有の問題などが見えた時に再開する。数値budgetが未決定の間はwarningやhard capを実装しない。一方、サービス公開と、数値budgetに依存しないT1 Slice A / P1 Slice C / R1 Slice B1の実装は妨げない。B1は座標修正、構造preflight、独立rig反転コピー、完全ID remap、保存・reload・parityに限り、資源上限とGroup 12完了判定はB2へ残す。新しい問題から必要な検査項目が見つかった場合は、再現条件を固定してから本書または製品path Gateへ追加する。
+正式B0の4端末収集は削除せず、公開利用で性能低下、停止、保存・書き出しの遅延、Safari固有の問題などが見えた時に再開する。数値budgetが未決定の間はwarningやhard capを実装しない。T1 Slice A / P1 Slice Cに続き、数値budgetに依存しないR1 Slice B1はPR #157 final head `834cc38`、merge `bf13cac`、CI Run #501全成功、非GitHub・非Opusの固定head独立review `BLOCKER 0 / MUST 0 / SHOULD 0`として実装済みである。B1は座標修正、構造preflight、独立rig反転コピー、完全ID remap、保存・reload・parityに限り、資源上限とGroup 12完了判定はB2へ残す。新しい問題から必要な検査項目が見つかった場合は、再現条件を固定してから本書または製品path Gateへ追加する。
 
 ## 2. 再現資産
 
