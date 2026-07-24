@@ -84,7 +84,7 @@ merge後の人間判断はH1=E1、H2=L1、H3=M1である。E1 / L1の意味は§
 - 参照切れ、親子循環、非有限値、H2=L1（各Part非空、各Layerは高々1 Partへ所属）に反するdataを、旧IDの保持や値の削除で回避せず、理由付きでflip / bakeを拒否する。未所属Layerは許可し、既存違反dataを自動migrationしない。
 - 対応Layerを完全ID mapで照合し、position x / y、scale x / y、`[-180, 180)`へ正規化したrotationの絶対差をそれぞれ`1e-6`以下とする。relative toleranceは使わず、配列順、visible、opacity、参照、時間はexact一致とする。
 - pixel oracleは同じrenderer・同じfixtureから得た同寸法RGBA bufferを比較する。全pixelのalpha差を1以下、どちらかのalphaが0より大きいpixelのRGB各channel差を1以下とし、両方が完全透明のpixelだけRGBを比較対象外にする。
-- parity比較で正規化できるのは、完全mapで対応が証明されたAsset / Part / Layer / Frame / Animation / RigAnimation / event ID、`createdAt / updatedAt`、自動生成されたcopy表示名だけとする。配列順、参照、時間、transform、visible、opacity、pixelを正規化してはならない。
+- parity比較で正規化できるのは、完全mapで対応が証明されたAsset / Part / Layer / Frame / Animation / RigAnimation / event / Anchor / Collider ID、`createdAt / updatedAt`、自動生成されたcopy表示名だけとする。配列順、参照、時間、transform、visible、opacity、pixelを正規化してはならない。
 - `.casproj` roundtripは2段階で検証する。ZIP decode直後・製品namespace再採番前はcanonical `asset.json`とBlob bytes / hashをexport直前とexact一致させる。製品import後は、既存契約が要求するProject ID / Asset ID、FamilyのAsset参照、Asset IDをprefixに持つBlob storage keyの対応mapだけを許可する。
 - 製品import後もPart / Layer / Frame / Animation / RigAnimation / eventの内部ID、参照、時間、transform、配列順、Blob bytes / hashはexact一致とする。許可したcontainer mapを逆適用してcanonical Assetを比較し、reload後にも`flip(bake(original))`と`bake(flipRig(original))`のparityを再実行する。
 - 親子3段以上、非zero pivot、bind pose、rotation limit、部分keyframe、負scale、非等方scaleをfixtureへ含める。

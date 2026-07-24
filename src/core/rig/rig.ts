@@ -10,6 +10,7 @@ import { generateId } from '../model/factories';
 import type { Part, PartPose } from '../model/part';
 import { assertPartLayerConstraints } from '../model/partLayerContract';
 import type { RigAnimation } from '../model/rig';
+import { assertRigPreflight, calculateRigFrameCount } from '../model/rigPreflight';
 
 /**
  * 2D アフィン変換行列（列優先）。点への適用は以下の通り。
@@ -265,9 +266,13 @@ export function interpolateRigPoses(rig: RigAnimation, time: number): Record<str
  * （accumulatePartChain は回転合計と scale 成分積のみを扱う）。
  */
 export function bakeRigAnimation(asset: Asset, rig: RigAnimation): Asset {
+  // 既存H2=L1 errorの互換を維持しつつ、ID採番・Frame配列確保より前に共通preflightを通す。
   assertPartLayerConstraints(asset);
-  const frameCount = Math.max(1, Math.round((rig.durationMs / 1000) * rig.fps));
+  assertRigPreflight(asset, { rig });
+  const frameCount = calculateRigFrameCount(rig);
   const newFrames: Frame[] = [];
+  const layersById = new Map(asset.layers.map((layer) => [layer.id, layer]));
+  const texturesById = new Map(asset.textures.map((texture) => [texture.id, texture]));
 
   for (let i = 0; i < frameCount; i += 1) {
     const t = frameCount === 1 ? 0 : i / (frameCount - 1);
@@ -279,18 +284,14 @@ export function bakeRigAnimation(asset: Asset, rig: RigAnimation): Asset {
       const accum = accumulatePartChain(asset, part.id, poses);
 
       for (const layerId of part.layerIds) {
-        const layer = asset.layers.find((candidate) => candidate.id === layerId);
-        if (!layer) {
-          continue;
-        }
-        const texture = asset.textures.find((candidate) => candidate.id === layer.textureId);
-        if (!texture) {
-          continue;
-        }
+        // preflightで参照を解決済み。TextureRefを持たないguide/shapeは点（0 x 0）として扱う。
+        const layer = layersById.get(layerId)!;
+        const texture = layer.textureId ? texturesById.get(layer.textureId)! : undefined;
+        const textureSize = texture?.size ?? { width: 0, height: 0 };
 
         const center0: Vec2 = {
-          x: layer.transform.position.x + (texture.size.width * layer.transform.scale.x) / 2,
-          y: layer.transform.position.y + (texture.size.height * layer.transform.scale.y) / 2,
+          x: layer.transform.position.x + textureSize.width / 2,
+          y: layer.transform.position.y + textureSize.height / 2,
         };
         const center1 = applyPoint(world, center0);
 
@@ -300,8 +301,8 @@ export function bakeRigAnimation(asset: Asset, rig: RigAnimation): Asset {
           y: layer.transform.scale.y * accum.scale.y,
         };
         const position: Vec2 = {
-          x: center1.x - (texture.size.width * scale.x) / 2,
-          y: center1.y - (texture.size.height * scale.y) / 2,
+          x: center1.x - textureSize.width / 2,
+          y: center1.y - textureSize.height / 2,
         };
 
         layerStates.push({ layerId, transform: { position, scale, rotation } });

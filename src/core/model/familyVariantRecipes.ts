@@ -11,7 +11,7 @@ import type {
   PaletteReplacement,
 } from './family';
 import { isFamilyVariantBlobPath } from './family';
-import { flipCopyAsset } from './flipCopy';
+import { flipCopyAsset, flipCopyAssetForLinkedRefresh } from './flipCopy';
 
 export type LinkedAssetFamilyVariant = Exclude<AssetFamilyVariant, { kind: 'manual' }>;
 export type FamilyVariantBlobMap = ReadonlyMap<string, Blob>;
@@ -860,11 +860,10 @@ function mirrorRefreshAsset(
   recipe: MirrorFamilyVariantRecipe,
   now: Date,
 ): { asset: Asset; recipe: MirrorFamilyVariantRecipe; changes: string[] } {
-  const generated = flipCopyAsset(base, {
+  const generated = flipCopyAssetForLinkedRefresh(base, {
     now,
     name: current.name,
     displayName: current.displayName,
-    preserveInternalIds: true,
   });
   const nextIdMap = structuredClone(recipe.idMap);
   const changes: string[] = [];

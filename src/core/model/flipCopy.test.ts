@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import characterAsset from '../samples/asset.character.json';
 import { validateAsset } from '../schema/validate';
 import type { Asset } from './asset';
@@ -6,6 +6,89 @@ import { flipCopyAsset, swapLeftRightLabel } from './flipCopy';
 
 const baseAsset = characterAsset as unknown as Asset;
 // 反転軸 mirrorX = origin.x = 256、reflect(x) = 512 - x。
+
+function canonicalizeFlipGraph(asset: Asset): Asset {
+  const result = structuredClone(asset);
+  const idMap = <T extends { id: string }>(items: readonly T[], prefix: string) =>
+    new Map(items.map((item, index) => [item.id, `${prefix}_${index}`] as const));
+  const layerIds = idMap(result.layers, 'layer');
+  const partIds = idMap(result.parts, 'part');
+  const frameIds = idMap(result.frames ?? [], 'frame');
+  const animationIds = idMap(result.animations, 'animation');
+  const rigIds = idMap(result.rigAnimations ?? [], 'rig');
+  const eventIds = idMap(
+    result.animations.flatMap((animation) => animation.events ?? []),
+    'event',
+  );
+  const anchorIds = idMap(result.anchors, 'anchor');
+  const colliderIds = idMap(result.colliders, 'collider');
+  const mapped = (map: ReadonlyMap<string, string>, id: string): string => {
+    const value = map.get(id);
+    if (!value) {
+      throw new Error(`canonical ID mapがありません: ${id}`);
+    }
+    return value;
+  };
+
+  result.id = 'asset_0';
+  result.name = 'automatic_copy_name';
+  result.displayName = 'automatic copy display name';
+  result.createdAt = 'normalized';
+  result.updatedAt = 'normalized';
+  for (const layer of result.layers) {
+    layer.id = mapped(layerIds, layer.id);
+  }
+  for (const part of result.parts) {
+    part.id = mapped(partIds, part.id);
+    part.layerIds = part.layerIds.map((id) => mapped(layerIds, id));
+    if (part.parentId) {
+      part.parentId = mapped(partIds, part.parentId);
+    }
+  }
+  for (const frame of result.frames ?? []) {
+    frame.id = mapped(frameIds, frame.id);
+    for (const state of frame.layerStates) {
+      state.layerId = mapped(layerIds, state.layerId);
+    }
+  }
+  for (const animation of result.animations) {
+    animation.id = mapped(animationIds, animation.id);
+    animation.frameIds = animation.frameIds.map((id) => mapped(frameIds, id));
+    for (const event of animation.events ?? []) {
+      event.id = mapped(eventIds, event.id);
+      event.frameId = mapped(frameIds, event.frameId);
+    }
+  }
+  for (const rig of result.rigAnimations ?? []) {
+    rig.id = mapped(rigIds, rig.id);
+    for (const keyframe of rig.keyframes) {
+      keyframe.poses = Object.fromEntries(
+        Object.entries(keyframe.poses).map(([partId, pose]) => [mapped(partIds, partId), pose]),
+      );
+    }
+  }
+  for (const anchor of result.anchors) {
+    anchor.id = mapped(anchorIds, anchor.id);
+  }
+  for (const collider of result.colliders) {
+    collider.id = mapped(colliderIds, collider.id);
+  }
+  return result;
+}
+
+function regeneratedIdGroups(asset: Asset): Record<string, string[]> {
+  return {
+    assets: [asset.id],
+    layers: asset.layers.map(({ id }) => id),
+    parts: asset.parts.map(({ id }) => id),
+    frames: (asset.frames ?? []).map(({ id }) => id),
+    animations: asset.animations.map(({ id }) => id),
+    rigs: (asset.rigAnimations ?? []).map(({ id }) => id),
+    events: asset.animations.flatMap((animation) => (animation.events ?? []).map(({ id }) => id)),
+    anchors: asset.anchors.map(({ id }) => id),
+    colliders: asset.colliders.map(({ id }) => id),
+  };
+}
 
 describe('swapLeftRightLabel', () => {
   it('left / right トークンを 1 回ずつ入れ替える', () => {
@@ -187,15 +270,68 @@ describe('flipCopyAsset', () => {
     expect(linked.animations[0].events?.[0]).toEqual(source.animations[0].events?.[0]);
   });
 
-  it('リグ編集データ（rigAnimations）は本コピーでは省く', () => {
+  it('リグ編集データを鏡映して保持し、Rig / Part参照を新IDへ張り替える', () => {
     const withRig: Asset = {
-      ...baseAsset,
+      ...structuredClone(baseAsset),
+      parts: baseAsset.parts.map((part) => ({
+        ...structuredClone(part),
+        pivot: { x: 240, y: 250 },
+        bindPose: {
+          localPosition: { x: 6, y: -3 },
+          localRotation: 15,
+          localScale: { x: -2, y: 0.5 },
+        },
+        rotationLimit: { min: -20, max: 35 },
+      })),
       rigAnimations: [
-        { id: 'rig_1', name: 'test', fps: 8, loop: true, durationMs: 1000, keyframes: [] },
+        {
+          id: 'rig_1',
+          name: 'attack_left',
+          fps: 8,
+          loop: true,
+          durationMs: 1000,
+          keyframes: [
+            {
+              time: 0,
+              poses: {
+                part_body: {
+                  localPosition: { x: 4, y: 5 },
+                  localRotation: -25,
+                  localScale: { x: -1, y: 3 },
+                },
+              },
+            },
+          ],
+        },
       ],
     };
     const flipped = flipCopyAsset(withRig);
-    expect(flipped.rigAnimations).toBeUndefined();
+    const flippedPart = flipped.parts[0];
+    const flippedRig = flipped.rigAnimations![0];
+
+    expect(flippedPart.id).not.toBe('part_body');
+    expect(flippedPart.pivot).toEqual({ x: 272, y: 250 });
+    expect(flippedPart.bindPose).toEqual({
+      localPosition: { x: -6, y: -3 },
+      localRotation: -15,
+      localScale: { x: -2, y: 0.5 },
+    });
+    expect(flippedPart.rotationLimit).toEqual({ min: -35, max: 20 });
+    expect(flippedRig).toMatchObject({
+      name: 'attack_right',
+      fps: 8,
+      loop: true,
+      durationMs: 1000,
+      keyframes: [{ time: 0 }],
+    });
+    expect(flippedRig.id).not.toBe('rig_1');
+    expect(flippedRig.keyframes[0].poses).toEqual({
+      [flippedPart.id]: {
+        localPosition: { x: -4, y: 5 },
+        localRotation: 25,
+        localScale: { x: -1, y: 3 },
+      },
+    });
   });
 
   it('texture IDを維持するためprovenance参照も維持し、recordは独立copyする', () => {
@@ -218,5 +354,225 @@ describe('flipCopyAsset', () => {
     expect(flipped.textures.some((texture) => texture.id === sourceTextureId)).toBe(true);
     (flipped.provenance?.[0].future as { preserved: boolean }).preserved = false;
     expect(source.provenance[0].future).toEqual({ preserved: true });
+  });
+
+  it('全生成対象IDを完全再採番し、Anchor / Colliderを含む対応と未知の非参照fieldを保持する', () => {
+    const source = structuredClone(baseAsset);
+    source.name = 'hero_left';
+    source.displayName = 'Hero Left';
+    source.layers.push({
+      ...structuredClone(source.layers[0]),
+      id: 'layer_hand',
+      name: 'hand_left',
+      transform: {
+        position: { x: 330, y: 180 },
+        scale: { x: -1.5, y: 0.75 },
+        rotation: 12,
+      },
+    });
+    source.parts = [
+      {
+        id: 'part_root',
+        name: 'root',
+        partType: 'body',
+        layerIds: ['layer_body'],
+        pivot: { x: 260, y: 300 },
+        bindPose: { localPosition: { x: 2, y: 1 }, localRotation: 5 },
+        rotationLimit: { min: -40, max: 30 },
+      },
+      {
+        id: 'part_mid',
+        name: 'arm_left',
+        partType: 'arm_left',
+        layerIds: ['layer_guide'],
+        parentId: 'part_root',
+        pivot: { x: 300, y: 220 },
+        bindPose: { localScale: { x: -1, y: 1.25 } },
+      },
+      {
+        id: 'part_leaf',
+        name: 'hand_left',
+        partType: 'other',
+        layerIds: ['layer_hand'],
+        parentId: 'part_mid',
+        pivot: { x: 340, y: 180 },
+      },
+    ];
+    source.rigAnimations = [
+      {
+        id: 'rig_left',
+        name: 'wave_left',
+        fps: 4,
+        loop: false,
+        durationMs: 1000,
+        keyframes: [
+          {
+            time: 0,
+            poses: {
+              part_root: { localPosition: { x: 1, y: 2 } },
+              part_mid: { localRotation: 10 },
+            },
+          },
+          {
+            time: 1,
+            poses: {
+              part_leaf: { localRotation: -30, localScale: { x: -0.5, y: 2 } },
+            },
+          },
+        ],
+      },
+    ];
+    source.animations[0].events = [
+      {
+        id: 'event_left',
+        name: 'game_left_event',
+        frameId: source.frames![0].id,
+      },
+    ];
+    (source.parts[0] as unknown as Record<string, unknown>).futurePartMetadata = {
+      label: 'left stays data',
+    };
+    (source.rigAnimations[0] as unknown as Record<string, unknown>).futureRigMetadata = {
+      enabled: true,
+    };
+    const before = structuredClone(source);
+
+    const flipped = flipCopyAsset(source, { now: new Date('2026-07-24T01:02:03.000Z') });
+
+    const sourceIds = {
+      layers: source.layers.map(({ id }) => id),
+      parts: source.parts.map(({ id }) => id),
+      frames: source.frames!.map(({ id }) => id),
+      animations: source.animations.map(({ id }) => id),
+      rigs: source.rigAnimations.map(({ id }) => id),
+      events: source.animations.flatMap((animation) =>
+        (animation.events ?? []).map(({ id }) => id),
+      ),
+      anchors: source.anchors.map(({ id }) => id),
+      colliders: source.colliders.map(({ id }) => id),
+    };
+    const flippedIds = {
+      layers: flipped.layers.map(({ id }) => id),
+      parts: flipped.parts.map(({ id }) => id),
+      frames: flipped.frames!.map(({ id }) => id),
+      animations: flipped.animations.map(({ id }) => id),
+      rigs: flipped.rigAnimations!.map(({ id }) => id),
+      events: flipped.animations.flatMap((animation) =>
+        (animation.events ?? []).map(({ id }) => id),
+      ),
+      anchors: flipped.anchors.map(({ id }) => id),
+      colliders: flipped.colliders.map(({ id }) => id),
+    };
+    for (const key of Object.keys(sourceIds) as Array<keyof typeof sourceIds>) {
+      expect(new Set(flippedIds[key]).size).toBe(flippedIds[key].length);
+      expect(flippedIds[key].some((id) => sourceIds[key].includes(id))).toBe(false);
+    }
+
+    expect(flipped.parts[1].parentId).toBe(flipped.parts[0].id);
+    expect(flipped.parts[2].parentId).toBe(flipped.parts[1].id);
+    expect(Object.keys(flipped.rigAnimations![0].keyframes[0].poses)).toEqual([
+      flipped.parts[0].id,
+      flipped.parts[1].id,
+    ]);
+    expect(flipped.animations[0].events![0]).toMatchObject({
+      name: 'game_left_event',
+      frameId: flipped.frames![0].id,
+    });
+    expect(flipped.textures.map(({ id, path }) => ({ id, path }))).toEqual(
+      source.textures.map(({ id, path }) => ({ id, path })),
+    );
+    expect((flipped.parts[0] as unknown as Record<string, unknown>).futurePartMetadata).toEqual({
+      label: 'left stays data',
+    });
+    expect(
+      (flipped.rigAnimations![0] as unknown as Record<string, unknown>).futureRigMetadata,
+    ).toEqual({ enabled: true });
+    expect(source).toEqual(before);
+    expect(validateAsset(flipped).valid).toBe(true);
+  });
+
+  it('二重反転で座標・pose・可動域・左右roleを元へ戻し、各段のIDは独立させる', () => {
+    const source = structuredClone(baseAsset);
+    source.parts[0].pivot = { x: 210, y: 250 };
+    source.parts[0].bindPose = {
+      localPosition: { x: -8, y: 3 },
+      localRotation: 25,
+      localScale: { x: -1.5, y: 0.75 },
+    };
+    source.parts[0].rotationLimit = { min: -35, max: 20 };
+    source.rigAnimations = [
+      {
+        id: 'rig_double',
+        name: 'idle_left',
+        fps: 2,
+        loop: true,
+        durationMs: 1000,
+        keyframes: [
+          {
+            time: 0,
+            poses: {
+              part_body: {
+                localPosition: { x: 5, y: 6 },
+                localRotation: -10,
+                localScale: { x: -2, y: 3 },
+              },
+            },
+          },
+        ],
+      },
+    ];
+
+    const once = flipCopyAsset(source);
+    const twice = flipCopyAsset(once);
+
+    expect(canonicalizeFlipGraph(twice)).toEqual(canonicalizeFlipGraph(source));
+    const groups = [source, once, twice].map(regeneratedIdGroups);
+    for (const key of Object.keys(groups[0])) {
+      const ids = groups.flatMap((group) => group[key]);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+    expect(twice.textures).toEqual(source.textures);
+  });
+
+  it('省略されたFrame transformをown propertyとして追加せずJSON往復を一致させる', () => {
+    const source = structuredClone(baseAsset);
+    delete source.frames![0].layerStates[0].transform;
+
+    const flipped = flipCopyAsset(source);
+    const state = flipped.frames![0].layerStates[0];
+
+    expect(Object.hasOwn(state, 'transform')).toBe(false);
+    expect(JSON.parse(JSON.stringify(state))).toEqual(state);
+  });
+
+  it('linked初回作成相当の内部ID維持modeでも空Partを厳格に拒否する', () => {
+    const source = structuredClone(baseAsset);
+    source.parts[0].layerIds = [];
+
+    expect(() => flipCopyAsset(source, { preserveInternalIds: true })).toThrow(/empty/);
+  });
+
+  it('構造preflight違反は旧IDを残して成功扱いにせず、元Assetを変更しない', () => {
+    const source = structuredClone(baseAsset);
+    source.rigAnimations = [
+      {
+        id: 'rig_invalid',
+        name: 'invalid',
+        fps: 8,
+        loop: false,
+        durationMs: 1000,
+        keyframes: [{ time: 0, poses: { missing_part: {} } }],
+      },
+    ];
+    const before = structuredClone(source);
+    const randomUUID = vi.spyOn(globalThis.crypto, 'randomUUID');
+
+    try {
+      expect(() => flipCopyAsset(source)).toThrow(/ポーズ参照.*見つかりません/);
+      expect(randomUUID).not.toHaveBeenCalled();
+      expect(source).toEqual(before);
+    } finally {
+      randomUUID.mockRestore();
+    }
   });
 });

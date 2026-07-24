@@ -7,6 +7,8 @@ import {
   createFamilyVariantWriteSet,
   createLinkedMirrorVariant,
 } from '../model/familyTestFixtures';
+import { flipCopyAsset } from '../model/flipCopy';
+import { bakeRigAnimation } from '../rig/rig';
 import exportPresetsJson from '../samples/export-presets.sample.json';
 import v010AssetJson from './__fixtures__/v0.1.0-asset.json';
 import v010ProjectJson from './__fixtures__/v0.1.0-project.json';
@@ -186,6 +188,136 @@ describe('2D-1B-CASPROJ staged import', () => {
     ]);
     expect((await loadAsset('asset_copy_1')).asset.id).toBe('asset_copy_1');
     expect(await loadBlob(`asset_copy_1/${asset.textures[0].path}`)).not.toBeNull();
+  });
+
+  it('rig反転copyの製品importはcontainer IDだけを替え、内部graphとBlob bytesを保持する', async () => {
+    const source: Asset = {
+      ...structuredClone(asset),
+      version: '0.2.0',
+      parts: [
+        {
+          id: 'part_import_left',
+          name: 'arm_left',
+          partType: 'arm_left',
+          layerIds: [asset.layers[0].id],
+          pivot: { x: 3, y: 4 },
+          bindPose: {
+            localPosition: { x: 1, y: -2 },
+            localRotation: 15,
+            localScale: { x: -1, y: 0.5 },
+          },
+          rotationLimit: { min: -30, max: 20 },
+        },
+      ],
+      rigAnimations: [
+        {
+          id: 'rig_import_left',
+          name: 'attack_left',
+          fps: 2,
+          loop: false,
+          durationMs: 1000,
+          keyframes: [
+            {
+              time: 0,
+              poses: {
+                part_import_left: {
+                  localPosition: { x: 2, y: 3 },
+                  localRotation: -12,
+                },
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const flipped = flipCopyAsset(source, {
+      now: new Date('2026-07-24T10:00:00.000Z'),
+    });
+    const sourceProject: Project = {
+      ...project,
+      assets: [
+        {
+          id: flipped.id,
+          name: flipped.name,
+          displayName: flipped.displayName,
+          assetType: flipped.assetType,
+        },
+      ],
+    };
+    const exported = await exportCasproj({
+      project: sourceProject,
+      assets: [flipped],
+      files: flipped.textures.map((texture) => ({
+        path: `assets/${flipped.id}/${texture.path}`,
+        bytes: imageBytes,
+      })),
+    });
+
+    const staged = await stageCasprojImport(exported, deterministicIds());
+    const stagedAsset = staged.assets[0];
+    const expectedProject: Project = {
+      ...sourceProject,
+      id: 'project_copy_1',
+      assets: sourceProject.assets.map((summary) => ({
+        ...summary,
+        id: 'asset_copy_1',
+      })),
+    };
+
+    expect(staged.project).toEqual(expectedProject);
+    expect(stagedAsset.id).toBe('asset_copy_1');
+    expect({ ...stagedAsset, id: flipped.id }).toEqual(flipped);
+    expect(staged.blobs.map(({ key }) => key)).toEqual([
+      `asset_copy_1/${flipped.textures[0].path}`,
+    ]);
+    expect(new Uint8Array(await staged.blobs[0].blob.arrayBuffer())).toEqual(imageBytes);
+
+    await commitStagedCasprojImport(staged);
+    expect((await loadProject('project_copy_1')).project).toEqual(expectedProject);
+    const reloaded = await loadAsset('asset_copy_1');
+    expect({ ...reloaded.asset, id: flipped.id }).toEqual(flipped);
+    expect(
+      new Uint8Array(
+        await (await loadBlob(`asset_copy_1/${flipped.textures[0].path}`))!.arrayBuffer(),
+      ),
+    ).toEqual(imageBytes);
+
+    // 製品namespace再採番・commit・reload後のAssetから、同じbake parityを再実行する。
+    const reloadedRig = reloaded.asset.rigAnimations![0];
+    const existingFrameCount = reloaded.asset.frames?.length ?? 0;
+    const flippedAfterBake = flipCopyAsset(bakeRigAnimation(reloaded.asset, reloadedRig), {
+      now: new Date('2026-07-24T11:00:00.000Z'),
+    });
+    const flippedRig = flipCopyAsset(reloaded.asset, {
+      now: new Date('2026-07-24T11:00:00.000Z'),
+    });
+    const bakedAfterFlip = bakeRigAnimation(flippedRig, flippedRig.rigAnimations![0]);
+    const leftFrames = flippedAfterBake.frames!.slice(existingFrameCount);
+    const rightFrames = bakedAfterFlip.frames!.slice(existingFrameCount);
+
+    expect(leftFrames).toHaveLength(rightFrames.length);
+    for (const [frameIndex, leftFrame] of leftFrames.entries()) {
+      const rightFrame = rightFrames[frameIndex];
+      expect(leftFrame.name).toBe(rightFrame.name);
+      expect(leftFrame.layerStates).toHaveLength(rightFrame.layerStates.length);
+      for (const [stateIndex, leftState] of leftFrame.layerStates.entries()) {
+        const rightState = rightFrame.layerStates[stateIndex];
+        expect(flippedAfterBake.layers.findIndex(({ id }) => id === leftState.layerId)).toBe(
+          bakedAfterFlip.layers.findIndex(({ id }) => id === rightState.layerId),
+        );
+        expect(leftState.visible).toBe(rightState.visible);
+        expect(leftState.opacity).toBe(rightState.opacity);
+        expect(leftState.transform?.position.x).toBeCloseTo(rightState.transform!.position.x, 6);
+        expect(leftState.transform?.position.y).toBeCloseTo(rightState.transform!.position.y, 6);
+        expect(leftState.transform?.scale.x).toBeCloseTo(rightState.transform!.scale.x, 6);
+        expect(leftState.transform?.scale.y).toBeCloseTo(rightState.transform!.scale.y, 6);
+        const rotationDifference =
+          ((((leftState.transform!.rotation - rightState.transform!.rotation + 180) % 360) + 360) %
+            360) -
+          180;
+        expect(Math.abs(rotationDifference)).toBeLessThanOrEqual(1e-6);
+      }
+    }
   });
 
   it('future versionをCasprojErrorとして拒否し、正本を変更しない', async () => {

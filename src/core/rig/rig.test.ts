@@ -1,11 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ASSET_FORMAT, CURRENT_ASSET_VERSION, type Asset } from '../model/asset';
 import type { Animation, Frame } from '../model/animation';
 import type { Layer } from '../model/layer';
 import type { Part, PartPose } from '../model/part';
 import type { RigAnimation } from '../model/rig';
+import { calculateRigFrameCount } from '../model/rigPreflight';
 import type { TextureRef } from '../model/texture';
 import { replacePartLayerIds } from '../model/assetOps';
+import { flipCopyAsset } from '../model/flipCopy';
 import {
   accumulatePartChain,
   applyPoint,
@@ -318,6 +320,118 @@ describe('bakeRigAnimation', () => {
     expect(secondBake.frames?.slice(0, firstFrames?.length)).toEqual(firstFrames);
   });
 
+  it('texture中心はscaleに依存せず、負・非等方scaleでもaccepted position式を使う', () => {
+    const texture: TextureRef = {
+      id: 'tex_scaled',
+      kind: 'edit',
+      name: 'scaled',
+      mimeType: 'image/png',
+      size: { width: 40, height: 20 },
+      path: 'textures/scaled.png',
+    };
+    const layer: Layer = {
+      id: 'layer_scaled',
+      name: 'scaled',
+      layerType: 'image',
+      visible: true,
+      locked: false,
+      opacity: 1,
+      transform: {
+        position: { x: 10, y: 20 },
+        scale: { x: -2, y: 3 },
+        rotation: 17,
+      },
+      textureId: texture.id,
+    };
+    const part: Part = {
+      id: 'part_scaled',
+      name: 'scaled',
+      partType: 'body',
+      layerIds: [layer.id],
+      // accepted center = position + unscaled textureSize / 2
+      pivot: { x: 30, y: 30 },
+    };
+    const rig: RigAnimation = {
+      id: 'rig_scaled',
+      name: 'scaled',
+      fps: 1,
+      loop: false,
+      durationMs: 1000,
+      keyframes: [
+        {
+          time: 0,
+          poses: {
+            [part.id]: {
+              localRotation: 90,
+              localScale: { x: 0.5, y: -2 },
+            },
+          },
+        },
+      ],
+    };
+    const asset: Asset = {
+      ...baseAsset,
+      textures: [texture],
+      layers: [layer],
+      parts: [part],
+      rigAnimations: [rig],
+    };
+
+    const state = bakeRigAnimation(asset, rig).frames![0].layerStates[0];
+
+    expect(state.transform?.position).toEqual({ x: 10, y: 20 });
+    expect(state.transform?.scale).toEqual({ x: -1, y: -6 });
+    expect(state.transform?.rotation).toBe(107);
+  });
+
+  it.each([
+    {
+      name: '非有限fps',
+      rig: {
+        ...({} as RigAnimation),
+        ...{ id: 'rig', name: 'x', fps: Number.NaN, loop: false, durationMs: 1000, keyframes: [] },
+      },
+      expectedCode: 'non-finite-number',
+    },
+    {
+      name: '有限だがsafe integerでないframeCount',
+      rig: {
+        id: 'rig',
+        name: 'x',
+        fps: Number.MAX_SAFE_INTEGER + 1,
+        loop: false,
+        durationMs: 1000,
+        keyframes: [],
+      },
+      expectedCode: 'frame-count-unsafe',
+    },
+  ])('$nameはFrame割当前に拒否する', ({ rig, expectedCode }) => {
+    const asset = structuredClone(baseAsset);
+    const before = structuredClone(asset);
+    const randomUUID = vi.spyOn(globalThis.crypto, 'randomUUID');
+    if (expectedCode === 'frame-count-unsafe') {
+      expect(Number.isFinite(calculateRigFrameCount(rig))).toBe(true);
+      expect(Number.isSafeInteger(calculateRigFrameCount(rig))).toBe(false);
+    }
+
+    let thrown: unknown;
+    try {
+      bakeRigAnimation(asset, rig);
+    } catch (error) {
+      thrown = error;
+    } finally {
+      expect(randomUUID).not.toHaveBeenCalled();
+      randomUUID.mockRestore();
+    }
+
+    expect(thrown).toMatchObject({
+      code: 'rig-preflight',
+      violations: expect.arrayContaining([expect.objectContaining({ code: expectedCode })]),
+    });
+    expect(asset).toEqual(before);
+    expect(asset.frames).toEqual([]);
+  });
+
   it.each([
     {
       name: 'empty',
@@ -409,6 +523,168 @@ describe('bakeRigAnimation', () => {
     expect((thrown as Error).message).toContain('リグを焼き込めません');
     expect(asset).toEqual(before);
     expect(asset.frames).toEqual([]);
+  });
+
+  it('全Frameで flip(bake(source)) と bake(flipRig(source)) のtransformが一致する', () => {
+    const texture: TextureRef = {
+      id: 'tex_parity',
+      kind: 'edit',
+      name: 'parity',
+      mimeType: 'image/png',
+      size: { width: 18, height: 10 },
+      path: 'textures/parity.png',
+    };
+    const layers: Layer[] = [
+      {
+        id: 'layer_root',
+        name: 'root',
+        layerType: 'image',
+        visible: true,
+        locked: false,
+        opacity: 0.8,
+        transform: {
+          position: { x: 25, y: 30 },
+          scale: { x: -1.25, y: 0.75 },
+          rotation: 12,
+        },
+        textureId: texture.id,
+      },
+      {
+        id: 'layer_mid',
+        name: 'arm_left',
+        layerType: 'image',
+        visible: true,
+        locked: false,
+        opacity: 1,
+        transform: {
+          position: { x: 44, y: 27 },
+          scale: { x: 0.6, y: -1.4 },
+          rotation: -18,
+        },
+        textureId: texture.id,
+      },
+      {
+        id: 'layer_leaf',
+        name: 'hand_left',
+        layerType: 'image',
+        visible: true,
+        locked: false,
+        opacity: 0.65,
+        transform: {
+          position: { x: 62, y: 20 },
+          scale: { x: -0.5, y: 1.8 },
+          rotation: 7,
+        },
+        textureId: texture.id,
+      },
+    ];
+    const parts: Part[] = [
+      {
+        id: 'part_root',
+        name: 'root',
+        partType: 'body',
+        layerIds: [layers[0].id],
+        pivot: { x: 36, y: 42 },
+        bindPose: {
+          localPosition: { x: 2, y: -1 },
+          localRotation: 4,
+          localScale: { x: 1.1, y: 0.9 },
+        },
+        rotationLimit: { min: -25, max: 35 },
+      },
+      {
+        id: 'part_mid',
+        name: 'arm_left',
+        partType: 'arm_left',
+        layerIds: [layers[1].id],
+        parentId: 'part_root',
+        pivot: { x: 53, y: 35 },
+        bindPose: {
+          localPosition: { x: 3, y: 2 },
+          localRotation: -8,
+          localScale: { x: -0.8, y: 1.2 },
+        },
+        rotationLimit: { min: -40, max: 20 },
+      },
+      {
+        id: 'part_leaf',
+        name: 'hand_left',
+        partType: 'other',
+        layerIds: [layers[2].id],
+        parentId: 'part_mid',
+        pivot: { x: 70, y: 25 },
+        bindPose: { localPosition: { x: -2, y: 1 }, localScale: { x: 1.3, y: -0.7 } },
+      },
+    ];
+    const rig: RigAnimation = {
+      id: 'rig_parity',
+      name: 'wave_left',
+      fps: 3,
+      loop: false,
+      durationMs: 1000,
+      keyframes: [
+        {
+          time: 0,
+          poses: {
+            part_root: { localRotation: 10 },
+            part_mid: { localPosition: { x: 4, y: -2 } },
+          },
+        },
+        {
+          time: 0.5,
+          poses: {
+            part_mid: { localRotation: 17, localScale: { x: -1.2, y: 0.6 } },
+          },
+        },
+        {
+          time: 1,
+          poses: {
+            part_root: { localRotation: -15 },
+            part_leaf: { localRotation: 33, localPosition: { x: 5, y: 3 } },
+          },
+        },
+      ],
+    };
+    const source: Asset = {
+      ...baseAsset,
+      canvasSize: { width: 120, height: 100 },
+      origin: { x: 60, y: 90 },
+      textures: [texture],
+      layers,
+      parts,
+      frames: [],
+      animations: [],
+      rigAnimations: [rig],
+    };
+
+    const flippedAfterBake = flipCopyAsset(bakeRigAnimation(source, rig), {
+      now: new Date('2026-07-24T00:00:00.000Z'),
+    });
+    const flippedRig = flipCopyAsset(source, {
+      now: new Date('2026-07-24T00:00:00.000Z'),
+    });
+    const bakedAfterFlip = bakeRigAnimation(flippedRig, flippedRig.rigAnimations![0]);
+
+    expect(flippedAfterBake.frames).toHaveLength(bakedAfterFlip.frames!.length);
+    for (const [frameIndex, leftFrame] of flippedAfterBake.frames!.entries()) {
+      const rightFrame = bakedAfterFlip.frames![frameIndex];
+      expect(leftFrame.name).toBe(rightFrame.name);
+      expect(leftFrame.layerStates).toHaveLength(rightFrame.layerStates.length);
+      for (const [stateIndex, leftState] of leftFrame.layerStates.entries()) {
+        const rightState = rightFrame.layerStates[stateIndex];
+        expect(leftState.visible).toBe(rightState.visible);
+        expect(leftState.opacity).toBe(rightState.opacity);
+        expect(leftState.transform?.position.x).toBeCloseTo(rightState.transform!.position.x, 6);
+        expect(leftState.transform?.position.y).toBeCloseTo(rightState.transform!.position.y, 6);
+        expect(leftState.transform?.scale.x).toBeCloseTo(rightState.transform!.scale.x, 6);
+        expect(leftState.transform?.scale.y).toBeCloseTo(rightState.transform!.scale.y, 6);
+        const normalizedRotationDifference =
+          ((((leftState.transform!.rotation - rightState.transform!.rotation + 180) % 360) + 360) %
+            360) -
+          180;
+        expect(Math.abs(normalizedRotationDifference)).toBeLessThanOrEqual(1e-6);
+      }
+    }
   });
 });
 

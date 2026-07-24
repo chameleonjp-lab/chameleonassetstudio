@@ -2563,6 +2563,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     if (!project || !selectedAsset) {
       return;
     }
+    await history.waitForPending();
     if (!beginEditorPersistentMutation()) {
       return;
     }
@@ -2571,13 +2572,15 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setImporting(true);
     try {
       const flipped = flipCopyAsset(selectedAsset);
+      await autosave.flush();
       // 画像 Blob は asset id 単位で保存されるため、新アセットのキーへ複製する。
       const blobs: Array<{ key: string; blob: Blob }> = [];
       for (const texture of selectedAsset.textures) {
         const blob = await loadBlob(blobKeyFor(selectedAsset.id, texture.path));
-        if (blob) {
-          blobs.push({ key: blobKeyFor(flipped.id, texture.path), blob });
+        if (!blob) {
+          throw new Error(`反転元の画像Blobが見つかりません: ${texture.path}`);
         }
+        blobs.push({ key: blobKeyFor(flipped.id, texture.path), blob });
       }
       const nextProject: Project = {
         ...project,
@@ -2599,9 +2602,13 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       setAssets((prev) => [...prev, flipped]);
       setSelectedAssetId(flipped.id);
       setSelectedLayerId(null);
-      history.clear();
+      setCheckedLayerIds([]);
     } catch (error) {
-      setEditorError(error instanceof Error ? error.message : String(error));
+      setEditorError(
+        `独立左右反転コピーを作成できませんでした: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
     } finally {
       setImporting(false);
       endEditorPersistentMutation();

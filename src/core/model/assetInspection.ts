@@ -1,6 +1,7 @@
 import { calculateAnimationDurationMs } from './animationTiming';
 import type { Asset } from './asset';
 import { inspectPartLayerConstraints } from './partLayerContract';
+import { inspectRigPreflight, type RigPreflightViolation } from './rigPreflight';
 
 /**
  * 素材検査で表示する重大度。
@@ -516,6 +517,63 @@ function inspectAnimations(asset: Asset, push: PushIssue): void {
   }
 }
 
+function existingInspectionCoversPreflightViolation(violation: RigPreflightViolation): boolean {
+  if (
+    violation.code === 'duplicate-id' ||
+    violation.code === 'reference-missing' ||
+    violation.code === 'part-layer-empty' ||
+    violation.code === 'part-layer-duplicate' ||
+    violation.code === 'part-layer-missing' ||
+    violation.code === 'part-layer-shared' ||
+    violation.code === 'part-parent-cycle'
+  ) {
+    return true;
+  }
+  if (
+    (violation.code === 'non-finite-number' || violation.code === 'non-positive-number') &&
+    (violation.path.startsWith('canvasSize.') ||
+      /^frames\[id=.*\]\.durationMs$/.test(violation.path) ||
+      /^animations\[id=.*\]\.(fps|durationMs)$/.test(violation.path))
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function preflightTarget(path: string): InspectionTarget {
+  if (path.startsWith('rig') || path.startsWith('parts')) {
+    return { path, label: 'パーツ・リグ', panel: 'parts' };
+  }
+  if (path.startsWith('frames') || path.startsWith('animations')) {
+    return { path, label: 'タイムライン', panel: 'timeline' };
+  }
+  if (path.startsWith('layers') || path.startsWith('textures')) {
+    return { path, label: 'レイヤー', panel: 'layers' };
+  }
+  if (path.startsWith('anchors') || path.startsWith('colliders') || path.startsWith('origin')) {
+    return { path, label: 'ゲーム情報', panel: 'game-data' };
+  }
+  return { path, label: 'アセット', panel: 'asset-type' };
+}
+
+function inspectRigPreflightIssues(violations: RigPreflightViolation[], push: PushIssue): void {
+  for (const violation of violations) {
+    // 既存の素材検査が同じ意味と安定codeで表示する項目は二重表示しない。
+    if (existingInspectionCoversPreflightViolation(violation)) {
+      continue;
+    }
+    push({
+      code: `rig.preflight.${violation.code}`,
+      severity: 'error',
+      category: violation.path.startsWith('rig') ? 'animation' : 'reference',
+      message: violation.message,
+      reason: 'この値のままでは左右反転コピーまたはリグ焼き込みの結果を安全に一意化できません。',
+      action: '表示された場所の値または参照を直してから、もう一度実行してください。',
+      target: preflightTarget(violation.path),
+    });
+  }
+}
+
 function inspectCommonProfile(asset: Asset, push: PushIssue): void {
   const { width, height } = asset.canvasSize;
   if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
@@ -944,6 +1002,7 @@ function inspectEffectProfile(asset: Asset, push: PushIssue): void {
  */
 export function inspectAsset(asset: Asset): InspectionIssue[] {
   const { issues, push } = createIssueCollector();
+  const rigPreflightViolations = inspectRigPreflight(asset);
 
   inspectCommonProfile(asset, push);
   inspectDuplicateIds(asset, push);
@@ -951,6 +1010,7 @@ export function inspectAsset(asset: Asset): InspectionIssue[] {
   inspectReferences(asset, push);
   inspectPartCycles(asset, push);
   inspectAnimations(asset, push);
+  inspectRigPreflightIssues(rigPreflightViolations, push);
 
   switch (asset.assetType) {
     case 'character':
