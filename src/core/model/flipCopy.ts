@@ -11,7 +11,7 @@ import { generateId } from './factories';
 import type { Layer, LayerTransform } from './layer';
 import type { Part, PartPose, PartType } from './part';
 import type { RigAnimation } from './rig';
-import { assertRigPreflight } from './rigPreflight';
+import { assertRigPreflight, assertRigPreflightForLinkedRefresh } from './rigPreflight';
 
 /** 左右で対になる anchor role の対応。 */
 const ANCHOR_ROLE_MIRROR: Partial<Record<AnchorRole, AnchorRole>> = {
@@ -138,12 +138,18 @@ export interface FlipCopyAssetOptions {
  * `bindPose` / `rotationLimit`）も鏡映して保持し、全内部参照を完全mapで張り替える
  * （詳細は docs/adr/0022-rig-flip-and-bake-parity.md）。
  */
-export function flipCopyAsset(asset: Asset, options: FlipCopyAssetOptions = {}): Asset {
+function createFlipCopyAsset(
+  asset: Asset,
+  options: FlipCopyAssetOptions,
+  linkedRefreshPreview: boolean,
+): Asset {
   const preserveInternalIds = options.preserveInternalIds ?? false;
   // ID採番より前に全入力を検査し、拒否時に乱数・Asset・Blob・Historyへ副作用を残さない。
-  // linked Familyのrefresh previewだけは、baseからLayerを削除した直後の空Partを
-  // downstreamのwrite-set同期で扱う既存契約を維持する。その他の検査は共通のまま通す。
-  assertRigPreflight(asset, { allowPartLayerEmpty: preserveInternalIds });
+  if (linkedRefreshPreview) {
+    assertRigPreflightForLinkedRefresh(asset);
+  } else {
+    assertRigPreflight(asset);
+  }
 
   const iso = (options.now ?? new Date()).toISOString();
   const mirrorX = asset.origin.x;
@@ -292,9 +298,15 @@ export function flipCopyAsset(asset: Asset, options: FlipCopyAssetOptions = {}):
         state.layerId,
         `frames[id=${frame.id}].layerStates[${index}].layerId`,
       ),
-      transform: state.transform
-        ? mirrorTransform(state.transform, mirrorX, layerWidth.get(state.layerId) ?? 0)
-        : state.transform,
+      ...(state.transform
+        ? {
+            transform: mirrorTransform(
+              state.transform,
+              mirrorX,
+              layerWidth.get(state.layerId) ?? 0,
+            ),
+          }
+        : {}),
     })),
   }));
 
@@ -376,4 +388,21 @@ export function flipCopyAsset(asset: Asset, options: FlipCopyAssetOptions = {}):
     createdAt: iso,
     updatedAt: iso,
   };
+}
+
+export function flipCopyAsset(asset: Asset, options: FlipCopyAssetOptions = {}): Asset {
+  return createFlipCopyAsset(asset, options, false);
+}
+
+/**
+ * linked Family refresh previewだけが使う内部入口。
+ * 初回linked作成と公開の独立copyは必ず `flipCopyAsset` の厳格preflightを通す。
+ *
+ * @internal
+ */
+export function flipCopyAssetForLinkedRefresh(
+  asset: Asset,
+  options: Omit<FlipCopyAssetOptions, 'preserveInternalIds'> = {},
+): Asset {
+  return createFlipCopyAsset(asset, { ...options, preserveInternalIds: true }, true);
 }

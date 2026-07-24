@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ASSET_FORMAT, CURRENT_ASSET_VERSION, type Asset } from '../model/asset';
 import type { Animation, Frame } from '../model/animation';
 import type { Layer } from '../model/layer';
 import type { Part, PartPose } from '../model/part';
 import type { RigAnimation } from '../model/rig';
+import { calculateRigFrameCount } from '../model/rigPreflight';
 import type { TextureRef } from '../model/texture';
 import { replacePartLayerIds } from '../model/assetOps';
 import { flipCopyAsset } from '../model/flipCopy';
@@ -393,13 +394,13 @@ describe('bakeRigAnimation', () => {
       expectedCode: 'non-finite-number',
     },
     {
-      name: 'unsafe frameCount',
+      name: '有限だがsafe integerでないframeCount',
       rig: {
         id: 'rig',
         name: 'x',
-        fps: Number.MAX_VALUE,
+        fps: Number.MAX_SAFE_INTEGER + 1,
         loop: false,
-        durationMs: Number.MAX_VALUE,
+        durationMs: 1000,
         keyframes: [],
       },
       expectedCode: 'frame-count-unsafe',
@@ -407,12 +408,20 @@ describe('bakeRigAnimation', () => {
   ])('$nameはFrame割当前に拒否する', ({ rig, expectedCode }) => {
     const asset = structuredClone(baseAsset);
     const before = structuredClone(asset);
+    const randomUUID = vi.spyOn(globalThis.crypto, 'randomUUID');
+    if (expectedCode === 'frame-count-unsafe') {
+      expect(Number.isFinite(calculateRigFrameCount(rig))).toBe(true);
+      expect(Number.isSafeInteger(calculateRigFrameCount(rig))).toBe(false);
+    }
 
     let thrown: unknown;
     try {
       bakeRigAnimation(asset, rig);
     } catch (error) {
       thrown = error;
+    } finally {
+      expect(randomUUID).not.toHaveBeenCalled();
+      randomUUID.mockRestore();
     }
 
     expect(thrown).toMatchObject({

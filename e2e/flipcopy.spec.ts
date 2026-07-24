@@ -284,6 +284,44 @@ async function sourceLayerScaleX(page: Page, sourceId: string): Promise<number |
   return (await readAllAssets(page)).find(({ id }) => id === sourceId)?.layers[0].transform.scale.x;
 }
 
+async function prepareDeepHistory(page: Page, sourceId: string): Promise<void> {
+  const layerFlip = page.getByRole('button', { name: '左右反転', exact: true });
+  const undo = page.getByRole('button', { name: '元に戻す' });
+  const redo = page.getByRole('button', { name: 'やり直す' });
+  await layerFlip.click();
+  await layerFlip.click();
+  await layerFlip.click();
+  await undo.click();
+  await expect.poll(() => sourceLayerScaleX(page, sourceId)).toBe(-1.5);
+  await expect(undo).toHaveAttribute('title', '左右反転');
+  await expect(redo).toHaveAttribute('title', '左右反転');
+  await expect(undo).toBeEnabled();
+  await expect(redo).toBeEnabled();
+}
+
+async function exerciseEntireHistory(page: Page, sourceId: string): Promise<void> {
+  const undo = page.getByRole('button', { name: '元に戻す' });
+  const redo = page.getByRole('button', { name: 'やり直す' });
+
+  await redo.click();
+  await expect.poll(() => sourceLayerScaleX(page, sourceId)).toBe(1.5);
+  await undo.click();
+  await expect.poll(() => sourceLayerScaleX(page, sourceId)).toBe(-1.5);
+  await undo.click();
+  await expect.poll(() => sourceLayerScaleX(page, sourceId)).toBe(1.5);
+  await undo.click();
+  await expect.poll(() => sourceLayerScaleX(page, sourceId)).toBe(-1.5);
+  await expect(undo).toBeDisabled();
+
+  await redo.click();
+  await expect.poll(() => sourceLayerScaleX(page, sourceId)).toBe(1.5);
+  await redo.click();
+  await expect.poll(() => sourceLayerScaleX(page, sourceId)).toBe(-1.5);
+  await redo.click();
+  await expect.poll(() => sourceLayerScaleX(page, sourceId)).toBe(1.5);
+  await expect(redo).toBeDisabled();
+}
+
 test('rig付き独立左右反転copyを保存・再読込し、既存Undo / Redoを完全維持する', async ({ page }) => {
   const projectName = 'rig反転コピーテスト';
   await setupProjectWithImage(page, projectName);
@@ -293,17 +331,9 @@ test('rig付き独立左右反転copyを保存・再読込し、既存Undo / Red
 
   // UndoとRedoの両方を持つ状態を作る。
   await page.getByRole('button', { name: 'main', exact: true }).click();
-  const layerFlip = page.getByRole('button', { name: '左右反転', exact: true });
   const undo = page.getByRole('button', { name: '元に戻す' });
   const redo = page.getByRole('button', { name: 'やり直す' });
-  await layerFlip.click();
-  await expect(undo).toHaveAttribute('title', '左右反転');
-  await expect(undo).toBeEnabled();
-  await layerFlip.click();
-  await expect(undo).toBeEnabled();
-  await undo.click();
-  await expect(redo).toHaveAttribute('title', '左右反転');
-  await expect(redo).toBeEnabled();
+  await prepareDeepHistory(page, sourceBefore.id);
 
   await page.getByRole('button', { name: '独立左右反転コピーを作成' }).click();
   await expect.poll(async () => (await readAllAssets(page)).length).toBe(2);
@@ -339,10 +369,7 @@ test('rig付き独立左右反転copyを保存・再読込し、既存Undo / Red
   // copy後も既存stackのlabelと実動作を維持する。
   await expect(undo).toHaveAttribute('title', '左右反転');
   await expect(redo).toHaveAttribute('title', '左右反転');
-  await undo.click();
-  await expect.poll(() => sourceLayerScaleX(page, original.id)).toBe(-1.5);
-  await redo.click();
-  await expect.poll(() => sourceLayerScaleX(page, original.id)).toBe(1.5);
+  await exerciseEntireHistory(page, original.id);
 
   await expect(page.locator('.asset-list li')).toHaveCount(2);
   await expect(page.locator('.asset-list button[aria-pressed="true"]')).toContainText('(左右反転)');
@@ -373,12 +400,21 @@ test('Blob保存失敗はProject / Asset / Blob / 画面 / Historyを全rollback
   await setupProjectWithImage(page, projectName);
   await seedRigAsset(page);
   await reopenProject(page, projectName);
+  const source = (await readAllAssets(page))[0];
   await page.getByRole('button', { name: 'main', exact: true }).click();
-  await page.getByRole('button', { name: '左右反転', exact: true }).click();
+  await prepareDeepHistory(page, source.id);
   const undo = page.getByRole('button', { name: '元に戻す' });
+  const redo = page.getByRole('button', { name: 'やり直す' });
   await expect(undo).toHaveAttribute('title', '左右反転');
+  await expect(redo).toHaveAttribute('title', '左右反転');
   await expect(undo).toBeEnabled();
+  await expect(redo).toBeEnabled();
   const before = await storageSnapshot(page);
+  const selectedAssetText = await page
+    .locator('.asset-list button[aria-pressed="true"]')
+    .innerText();
+  const layerX = page.locator('.layer-fields').getByLabel('X', { exact: true });
+  await expect(layerX).toHaveValue('7');
 
   await page.evaluate(() => {
     const originalPut = IDBObjectStore.prototype.put;
@@ -398,11 +434,65 @@ test('Blob保存失敗はProject / Asset / Blob / 画面 / Historyを全rollback
   );
   await expect.poll(() => storageSnapshot(page)).toEqual(before);
   await expect(page.locator('.asset-list li')).toHaveCount(1);
+  await expect(page.locator('.asset-list button[aria-pressed="true"]')).toHaveText(
+    selectedAssetText,
+  );
+  await expect(layerX).toHaveValue('7');
+  await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
   await expect(undo).toHaveAttribute('title', '左右反転');
-  await expect(page.getByRole('button', { name: 'やり直す' })).toBeDisabled();
+  await expect(redo).toHaveAttribute('title', '左右反転');
+  await expect(undo).toBeEnabled();
+  await expect(redo).toBeEnabled();
+  await exerciseEntireHistory(page, source.id);
 
   await page.getByRole('button', { name: '独立左右反転コピーを作成' }).click();
   await expect.poll(async () => (await readAllAssets(page)).length).toBe(2);
+});
+
+test('反転元Blob欠落は保存前に拒否し、Project / Asset / 画面 / Historyを変更しない', async ({
+  page,
+}) => {
+  const projectName = 'rig反転Blob欠落';
+  await setupProjectWithImage(page, projectName);
+  await seedRigAsset(page);
+  await reopenProject(page, projectName);
+  const source = (await readAllAssets(page))[0];
+  await page.getByRole('button', { name: 'main', exact: true }).click();
+  await prepareDeepHistory(page, source.id);
+
+  const missingBlobKey = `${source.id}/${source.textures[0].path}`;
+  await page.evaluate(async (key) => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('chameleon-asset-studio');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const transaction = db.transaction('blobs', 'readwrite');
+    transaction.objectStore('blobs').delete(key);
+    await new Promise<void>((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(transaction.error);
+    });
+    db.close();
+  }, missingBlobKey);
+
+  const before = await storageSnapshot(page);
+  const selectedAssetText = await page
+    .locator('.asset-list button[aria-pressed="true"]')
+    .innerText();
+
+  await page.getByRole('button', { name: '独立左右反転コピーを作成' }).click();
+
+  await expect(page.locator('.import-error')).toContainText('反転元の画像Blobが見つかりません');
+  await expect.poll(() => storageSnapshot(page)).toEqual(before);
+  await expect(page.locator('.asset-list li')).toHaveCount(1);
+  await expect(page.locator('.asset-list button[aria-pressed="true"]')).toHaveText(
+    selectedAssetText,
+  );
+  await expect(page.locator('.layer-fields').getByLabel('X', { exact: true })).toHaveValue('7');
+  await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
+  await exerciseEntireHistory(page, source.id);
 });
 
 test('不正rigはUIで理由付き拒否し、IDBとHistoryを変更しない', async ({ page }) => {

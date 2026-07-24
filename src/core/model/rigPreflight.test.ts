@@ -4,6 +4,7 @@ import type { Asset } from './asset';
 import type { RigAnimation } from './rig';
 import {
   assertRigPreflight,
+  assertRigPreflightForLinkedRefresh,
   calculateRigFrameCount,
   inspectRigPreflight,
   RigPreflightError,
@@ -192,18 +193,21 @@ describe('rigPreflight', () => {
   it('linked Family previewだけは空Partを許可し、その他の参照違反は拒否する', () => {
     const asset = fixture();
     asset.parts[0].layerIds = [];
-    asset.layers[0].textureId = 'texture_missing';
 
     const strictCodes = inspectRigPreflight(asset).map((violation) => violation.code);
-    const linkedPreviewCodes = inspectRigPreflight(asset, {
-      allowPartLayerEmpty: true,
-    }).map((violation) => violation.code);
-
     expect(strictCodes).toContain('part-layer-empty');
-    expect(linkedPreviewCodes).not.toContain('part-layer-empty');
-    expect(linkedPreviewCodes).toContain('reference-missing');
-    expect(() => assertRigPreflight(asset, { allowPartLayerEmpty: true })).toThrow(
-      RigPreflightError,
-    );
+    expect(() => assertRigPreflightForLinkedRefresh(asset)).not.toThrow();
+
+    asset.layers[0].textureId = 'texture_missing';
+    expect(() => assertRigPreflightForLinkedRefresh(asset)).toThrow(RigPreflightError);
+    try {
+      assertRigPreflightForLinkedRefresh(asset);
+    } catch (error) {
+      expect(error).toMatchObject({
+        violations: expect.arrayContaining([
+          expect.objectContaining({ code: 'reference-missing' }),
+        ]),
+      });
+    }
   });
 });

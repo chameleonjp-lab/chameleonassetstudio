@@ -2571,8 +2571,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setImportStatusLabel('独立左右反転コピーを作成中…');
     setImporting(true);
     try {
-      await autosave.flush();
       const flipped = flipCopyAsset(selectedAsset);
+      await autosave.flush();
       // 画像 Blob は asset id 単位で保存されるため、新アセットのキーへ複製する。
       const blobs: Array<{ key: string; blob: Blob }> = [];
       for (const texture of selectedAsset.textures) {

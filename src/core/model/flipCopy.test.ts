@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import characterAsset from '../samples/asset.character.json';
 import { validateAsset } from '../schema/validate';
 import type { Asset } from './asset';
@@ -6,6 +6,89 @@ import { flipCopyAsset, swapLeftRightLabel } from './flipCopy';
 
 const baseAsset = characterAsset as unknown as Asset;
 // 反転軸 mirrorX = origin.x = 256、reflect(x) = 512 - x。
+
+function canonicalizeFlipGraph(asset: Asset): Asset {
+  const result = structuredClone(asset);
+  const idMap = <T extends { id: string }>(items: readonly T[], prefix: string) =>
+    new Map(items.map((item, index) => [item.id, `${prefix}_${index}`] as const));
+  const layerIds = idMap(result.layers, 'layer');
+  const partIds = idMap(result.parts, 'part');
+  const frameIds = idMap(result.frames ?? [], 'frame');
+  const animationIds = idMap(result.animations, 'animation');
+  const rigIds = idMap(result.rigAnimations ?? [], 'rig');
+  const eventIds = idMap(
+    result.animations.flatMap((animation) => animation.events ?? []),
+    'event',
+  );
+  const anchorIds = idMap(result.anchors, 'anchor');
+  const colliderIds = idMap(result.colliders, 'collider');
+  const mapped = (map: ReadonlyMap<string, string>, id: string): string => {
+    const value = map.get(id);
+    if (!value) {
+      throw new Error(`canonical ID mapがありません: ${id}`);
+    }
+    return value;
+  };
+
+  result.id = 'asset_0';
+  result.name = 'automatic_copy_name';
+  result.displayName = 'automatic copy display name';
+  result.createdAt = 'normalized';
+  result.updatedAt = 'normalized';
+  for (const layer of result.layers) {
+    layer.id = mapped(layerIds, layer.id);
+  }
+  for (const part of result.parts) {
+    part.id = mapped(partIds, part.id);
+    part.layerIds = part.layerIds.map((id) => mapped(layerIds, id));
+    if (part.parentId) {
+      part.parentId = mapped(partIds, part.parentId);
+    }
+  }
+  for (const frame of result.frames ?? []) {
+    frame.id = mapped(frameIds, frame.id);
+    for (const state of frame.layerStates) {
+      state.layerId = mapped(layerIds, state.layerId);
+    }
+  }
+  for (const animation of result.animations) {
+    animation.id = mapped(animationIds, animation.id);
+    animation.frameIds = animation.frameIds.map((id) => mapped(frameIds, id));
+    for (const event of animation.events ?? []) {
+      event.id = mapped(eventIds, event.id);
+      event.frameId = mapped(frameIds, event.frameId);
+    }
+  }
+  for (const rig of result.rigAnimations ?? []) {
+    rig.id = mapped(rigIds, rig.id);
+    for (const keyframe of rig.keyframes) {
+      keyframe.poses = Object.fromEntries(
+        Object.entries(keyframe.poses).map(([partId, pose]) => [mapped(partIds, partId), pose]),
+      );
+    }
+  }
+  for (const anchor of result.anchors) {
+    anchor.id = mapped(anchorIds, anchor.id);
+  }
+  for (const collider of result.colliders) {
+    collider.id = mapped(colliderIds, collider.id);
+  }
+  return result;
+}
+
+function regeneratedIdGroups(asset: Asset): Record<string, string[]> {
+  return {
+    assets: [asset.id],
+    layers: asset.layers.map(({ id }) => id),
+    parts: asset.parts.map(({ id }) => id),
+    frames: (asset.frames ?? []).map(({ id }) => id),
+    animations: asset.animations.map(({ id }) => id),
+    rigs: (asset.rigAnimations ?? []).map(({ id }) => id),
+    events: asset.animations.flatMap((animation) => (animation.events ?? []).map(({ id }) => id)),
+    anchors: asset.anchors.map(({ id }) => id),
+    colliders: asset.colliders.map(({ id }) => id),
+  };
+}
 
 describe('swapLeftRightLabel', () => {
   it('left / right トークンを 1 回ずつ入れ替える', () => {
@@ -442,25 +525,31 @@ describe('flipCopyAsset', () => {
     const once = flipCopyAsset(source);
     const twice = flipCopyAsset(once);
 
-    expect(twice.layers.map(({ transform }) => transform)).toEqual(
-      source.layers.map(({ transform }) => transform),
-    );
-    expect(twice.parts[0]).toMatchObject({
-      name: source.parts[0].name,
-      partType: source.parts[0].partType,
-      pivot: source.parts[0].pivot,
-      bindPose: source.parts[0].bindPose,
-      rotationLimit: source.parts[0].rotationLimit,
-    });
-    expect(Object.values(twice.rigAnimations![0].keyframes[0].poses)[0]).toEqual(
-      source.rigAnimations[0].keyframes[0].poses.part_body,
-    );
-    expect(twice.anchors.map(({ name, role, position }) => ({ name, role, position }))).toEqual(
-      source.anchors.map(({ name, role, position }) => ({ name, role, position })),
-    );
-    expect(new Set(twice.layers.map(({ id }) => id))).not.toEqual(
-      new Set(once.layers.map(({ id }) => id)),
-    );
+    expect(canonicalizeFlipGraph(twice)).toEqual(canonicalizeFlipGraph(source));
+    const groups = [source, once, twice].map(regeneratedIdGroups);
+    for (const key of Object.keys(groups[0])) {
+      const ids = groups.flatMap((group) => group[key]);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+    expect(twice.textures).toEqual(source.textures);
+  });
+
+  it('省略されたFrame transformをown propertyとして追加せずJSON往復を一致させる', () => {
+    const source = structuredClone(baseAsset);
+    delete source.frames![0].layerStates[0].transform;
+
+    const flipped = flipCopyAsset(source);
+    const state = flipped.frames![0].layerStates[0];
+
+    expect(Object.hasOwn(state, 'transform')).toBe(false);
+    expect(JSON.parse(JSON.stringify(state))).toEqual(state);
+  });
+
+  it('linked初回作成相当の内部ID維持modeでも空Partを厳格に拒否する', () => {
+    const source = structuredClone(baseAsset);
+    source.parts[0].layerIds = [];
+
+    expect(() => flipCopyAsset(source, { preserveInternalIds: true })).toThrow(/empty/);
   });
 
   it('構造preflight違反は旧IDを残して成功扱いにせず、元Assetを変更しない', () => {
@@ -476,8 +565,14 @@ describe('flipCopyAsset', () => {
       },
     ];
     const before = structuredClone(source);
+    const randomUUID = vi.spyOn(globalThis.crypto, 'randomUUID');
 
-    expect(() => flipCopyAsset(source)).toThrow(/ポーズ参照.*見つかりません/);
-    expect(source).toEqual(before);
+    try {
+      expect(() => flipCopyAsset(source)).toThrow(/ポーズ参照.*見つかりません/);
+      expect(randomUUID).not.toHaveBeenCalled();
+      expect(source).toEqual(before);
+    } finally {
+      randomUUID.mockRestore();
+    }
   });
 });

@@ -36,11 +36,9 @@ export interface InspectRigPreflightOptions {
    * 独立copyと素材検査では省略し、Assetが保持する全rigを検査する。
    */
   rig?: RigAnimation;
-  /**
-   * linked Familyのrefresh preview専用。baseからLayerを削除した直後に生じる空Partを
-   * preview内で除去・同期できるよう、H2=L1のemptyだけを一時的に許可する。
-   * 独立copy、素材検査、bakeでは指定しない。
-   */
+}
+
+interface InspectRigPreflightInternalOptions extends InspectRigPreflightOptions {
   allowPartLayerEmpty?: boolean;
 }
 
@@ -327,9 +325,9 @@ function inspectRigAnimation(
  * UI検査、独立rig反転copy、bakeが共有する読み取り専用の構造preflight。
  * B2で決める生成量の上限・warning・hard capは扱わない。
  */
-export function inspectRigPreflight(
+function inspectRigPreflightInternal(
   asset: Asset,
-  options: InspectRigPreflightOptions = {},
+  options: InspectRigPreflightInternalOptions,
 ): RigPreflightViolation[] {
   const violations: RigPreflightViolation[] = [];
   const frames = asset.frames ?? [];
@@ -623,9 +621,34 @@ export function inspectRigPreflight(
   return violations;
 }
 
-export function assertRigPreflight(asset: Asset, options: InspectRigPreflightOptions = {}): void {
-  const violations = inspectRigPreflight(asset, options);
+export function inspectRigPreflight(
+  asset: Asset,
+  options: InspectRigPreflightOptions = {},
+): RigPreflightViolation[] {
+  return inspectRigPreflightInternal(asset, options);
+}
+
+function throwRigPreflightViolations(violations: RigPreflightViolation[]): void {
   if (violations.length > 0) {
     throw new RigPreflightError(violations);
   }
+}
+
+export function assertRigPreflight(asset: Asset, options: InspectRigPreflightOptions = {}): void {
+  throwRigPreflightViolations(inspectRigPreflightInternal(asset, options));
+}
+
+/**
+ * linked Familyのrefresh preview専用。
+ * baseからLayerを削除した直後に生じる空Partだけを一時的に許可し、write-set同期を可能にする。
+ * 初回linked作成、独立copy、素材検査、bakeからは呼ばない。
+ *
+ * @internal
+ */
+export function assertRigPreflightForLinkedRefresh(asset: Asset): void {
+  throwRigPreflightViolations(
+    inspectRigPreflightInternal(asset, {
+      allowPartLayerEmpty: true,
+    }),
+  );
 }
