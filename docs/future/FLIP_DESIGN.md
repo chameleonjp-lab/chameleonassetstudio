@@ -1,7 +1,7 @@
 # 左右反転の設計方針
 
 最終更新日: 2026-07-24
-文書種別: Phase 19「左右反転」の仕様方針（実装前の設計固定）
+文書種別: Phase 19「左右反転」の仕様方針と実装記録
 現在の着手順: `2D_COMPLETION_ROADMAP.md`（2D-3）
 関連する旧計画: `POST_PHASE17_IMPLEMENTATION_PLAN.md`（Phase 19-B）
 関連: `docs/DATA_FORMAT.md`, `docs/EXPORT_FORMATS.md`
@@ -12,7 +12,7 @@
 
 - **通常の左右反転（transform 反映）は実装済み**（`flipLayerHorizontal` / 「選択中レイヤー」パネルの「左右反転」ボタン / Unit・E2E。schema 変更なし）。
 - **左右反転コピー（アセット全体→新規アセット生成）は実装済み**（`flipCopyAsset` / 「アセット」欄の「独立左右反転コピーを作成」ボタン / Unit・E2E。schema 変更なし）。反転軸は `asset.origin.x`。layers・anchors・colliders・parts・frames・animations を反転し、左右 role / 名前を入れ替え、新規 id を採番、画像 Blob を新アセットのキーへ複製する。
-- **Group 12 R1 Slice B1（本実装）**: リグ編集データ（`rigAnimations`・partの`bindPose` / `rotationLimit`）を保持して反転し、完全ID map、bake座標修正、共通構造preflight、履歴保持、原子的保存・再読込を実装する。ADR-0022で鏡映式・bake同値、H2=L1、H3=M1の測定方法を固定し、ADR-2026-07-24-027でB1 / B2分割とB1先行を承認した。bake数値budget、warning / hard cap、採用上限での実機GateとGroup 12完了判定はB2へ残す。
+- **Group 12 R1 Slice B1（実装済み）**: リグ編集データ（`rigAnimations`・partの`bindPose` / `rotationLimit`）を保持した反転、完全ID map、bake座標修正、共通構造preflight、履歴保持、原子的保存・再読込をPR #157 final head `834cc38`、merge `bf13cac`、CI Run #501全成功、非GitHub・非Opusの固定head独立review `BLOCKER 0 / MUST 0 / SHOULD 0`として実装した。ADR-0022で鏡映式・bake同値、H2=L1、H3=M1の測定方法を固定している。bake数値budget、warning / hard cap、採用上限での実機GateとGroup 12完了判定はB2へ残す。
 
 ---
 
@@ -133,7 +133,7 @@ leg_left  <-> leg_right
 - いずれも既存の座標系（左上原点・px・度）と原点の意味を変えない。
 - 本文書の方針から外れる必要が出た場合は、実装を止めて人間確認に戻す（`docs/future/FABLELESS_DEVELOPMENT_GUIDE.md` 6 章）。
 
-## 7. Group 12 R1: rig flip契約（Slice B1実装）
+## 7. Group 12 R1: rig flip契約（Slice B1実装済み）
 
 反転軸を`axisX = asset.origin.x`とし、通常Layer反転や現行の独立flip copyを黙って変更せず、rig編集データを扱う別sliceを追加する。
 

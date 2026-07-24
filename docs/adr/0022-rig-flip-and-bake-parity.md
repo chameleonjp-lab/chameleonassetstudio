@@ -2,7 +2,7 @@
 
 ステータス: accepted（2026-07-22 人間承認、R1 + H2=L1 + H3=M1 method。2026-07-24 ADR-2026-07-24-027でB1先行を承認）
 上位文書: `docs/future/2D_3_TIMELINE_RIG_PLAN.md`（§4、§6 H3、§7）、`docs/future/FLIP_DESIGN.md`
-関連 fixture: R1 Slice B1で追加（本ADRとADR-2026-07-24-027が実装境界）
+関連 fixture: R1 Slice B1のPR #157で追加（本ADRとADR-2026-07-24-027が実装境界）
 
 ---
 
@@ -38,7 +38,7 @@
 - B1の実装: rig編集データを保持した独立左右反転コピー、完全ID remap、bake座標修正、構造preflight、inspector、保存・reload・`.casproj` roundtrip。独立copyは新Asset作成操作として画面から利用でき、元Assetを変更せず、新しいHistory entryを追加せず、既存のUndo / Redo stackも消去・変更しない。保存失敗時はProject参照、Asset、Blob、画面stateへの新Asset追加を全て取り消す。
 - fixture: 親子3段以上、非zero pivot、bind pose、rotation limit、部分keyframe、負scale、非等方scale、double flip、source不変、全Frame parity、`.casproj` roundtripを含める。
 - 現行`bakeRigAnimation`は入力中心と出力positionの両方がaccepted座標契約と不一致である。入力を`center0 = position + textureSize / 2`、world pose適用後を`center1`、出力を`next.position = center1 - textureSize / 2`として、R1実装より先にrendererと同じ式へ直す。
-- ADR-2026-07-24-027を反映するdocs-only PRでは製品コード、schema、上限定数を変更しない。B1製品実装は、この決定がmainへ入った後の別Draft PRで行う。
+- ADR-2026-07-24-027はdocs-only PR #156で正本化し、B1製品実装はPR #157 final head `834cc38`、merge `bf13cac`、CI Run #501全成功、非GitHub・非Opusの固定head独立review `BLOCKER 0 / MUST 0 / SHOULD 0`として完了した。schema、version、migration、storage配置、上限定数は変更していない。
 
 ## 再検討条件
 
