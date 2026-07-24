@@ -1,6 +1,7 @@
 # 0023-part-layer-replacement
 
 ステータス: accepted（2026-07-22 人間承認、P1 + H2=L1）
+実装状態: PR #154 final head `fdf75f0`、CI #492、merge `1c700e7`で実装・独立検証・main反映済み
 上位文書: `docs/future/2D_3_TIMELINE_RIG_PLAN.md`（§5、§6 H2）、`docs/future/2D_ASSET_DATA_CONTRACT.md`（§8.3）
 関連 fixture: `src/core/model/assetOps.test.ts`、`assetInspection.test.ts`、`src/core/rig/rig.test.ts`、`src/core/storage/casproj.test.ts`、`e2e/part-layer-replacement.spec.ts`、`e2e/rig.spec.ts`
 
@@ -38,4 +39,4 @@
 
 ## 再検討条件
 
-空`layerIds`と1 Layerの複数Part所属はH2=L1で不許可と決定した。L2 / L3へ変更する場合、または時間依存状態、linked装備recipe、Part自動生成、Layer削除を伴う差し替えを追加する場合は別ADRとする。P1製品実装は本ADRだけでは開始せず、別の明示指示と実装PRを必要とする。
+空`layerIds`と1 Layerの複数Part所属はH2=L1で不許可と決定した。L2 / L3へ変更する場合、または時間依存状態、linked装備recipe、Part自動生成、Layer削除を伴う差し替えを追加する場合は別ADRとする。P1製品実装は本ADRだけでは開始せず、後続の明示指示に基づくPR #154で実装した。
