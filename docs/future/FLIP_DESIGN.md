@@ -1,6 +1,6 @@
 # 左右反転の設計方針
 
-最終更新日: 2026-07-22
+最終更新日: 2026-07-24
 文書種別: Phase 19「左右反転」の仕様方針（実装前の設計固定）
 現在の着手順: `2D_COMPLETION_ROADMAP.md`（2D-3）
 関連する旧計画: `POST_PHASE17_IMPLEMENTATION_PLAN.md`（Phase 19-B）
@@ -12,7 +12,7 @@
 
 - **通常の左右反転（transform 反映）は実装済み**（`flipLayerHorizontal` / 「選択中レイヤー」パネルの「左右反転」ボタン / Unit・E2E。schema 変更なし）。
 - **左右反転コピー（アセット全体→新規アセット生成）は実装済み**（`flipCopyAsset` / 「アセット」欄の「独立左右反転コピーを作成」ボタン / Unit・E2E。schema 変更なし）。反転軸は `asset.origin.x`。layers・anchors・colliders・parts・frames・animations を反転し、左右 role / 名前を入れ替え、新規 id を採番、画像 Blob を新アセットのキーへ複製する。
-- **未実装（Group 12 R1 accepted）**: リグ編集データ（`rigAnimations`・partの`bindPose` / `rotationLimit`）の反転。ADR-0022で鏡映式・完全ID map・bake同値、H2=L1、H3=M1の測定方法を固定した。bake数値budgetと実機Gateは未決定のため製品実装は開始しない。焼き込み済み`frames`は現行flipでも反転される。
+- **次の実装（Group 12 R1 Slice B1 accepted）**: リグ編集データ（`rigAnimations`・partの`bindPose` / `rotationLimit`）の反転。ADR-0022で鏡映式・完全ID map・bake同値、H2=L1、H3=M1の測定方法を固定し、ADR-2026-07-24-027でB1 / B2分割とB1先行を承認した。B1は本docs-only決定のmain反映後に開始できる。bake数値budget、warning / hard cap、採用上限での実機GateとGroup 12完了判定はB2へ残す。焼き込み済み`frames`は現行flipでも反転される。
 
 ---
 
@@ -59,7 +59,9 @@
 - アンカー・当たり判定も反転対象にする
 - `hand_left` / `hand_right`、`arm_left` / `arm_right`、`leg_left` / `leg_right` の左右 role と、名前中の left/right トークンを入れ替える
 - 新規 id を採番し、相互参照（part.layerIds / part.parentId / frame.layerStates.layerId / animation.frameIds）を張り替える
-- 画像 Blob は `blobKeyFor(newAssetId, path)` へ複製する（texture の id / path は保持）
+- 画像 Blob は `blobKeyFor(newAssetId, path)` へ複製する（TextureRef の id / path は保持）
+- 新Asset作成はUndo / Redoへ新しいentryを追加せず、既存のUndo / Redo stackも消去・変更しない。
+- 保存成功後にだけ新AssetをProjectと画面stateへ追加する。保存失敗時はProject参照、Asset、Blob、画面stateを追加前の状態へ戻す。
 - 元アセットは非破壊。`asset.json` schema / version は変えない
 - 右向き / 左向きで別々に調整する用途に使う
 
@@ -131,7 +133,7 @@ leg_left  <-> leg_right
 - いずれも既存の座標系（左上原点・px・度）と原点の意味を変えない。
 - 本文書の方針から外れる必要が出た場合は、実装を止めて人間確認に戻す（`docs/future/FABLELESS_DEVELOPMENT_GUIDE.md` 5 章）。
 
-## 7. Group 12 R1: rig flip契約（未実装）
+## 7. Group 12 R1: rig flip契約（Slice B1実装待ち）
 
 反転軸を`axisX = asset.origin.x`とし、通常Layer反転や現行の独立flip copyを黙って変更せず、rig編集データを扱う別sliceを追加する。
 
@@ -144,9 +146,10 @@ leg_left  <-> leg_right
 | `rotationLimit {min,max}` | `{ min: -max, max: -min }` |
 | keyframe `time` / fps / loop / duration | 変更しない |
 
-- Part ID、`parentId`、`layerIds`、rig poseのpart ID key、RigAnimation ID、Frame ID、event IDとeventの`frameId`を完全mapで張り替える。event名は自動変更しない。linked mirrorの内部ID維持modeは既存規則に従う。
+- 新Asset IDを採番し、Layer / Part / Frame / Animation / RigAnimation / event / Anchor / Collider IDを完全mapで再採番する。`parentId`、`layerIds`、FrameのLayer参照、AnimationのFrame参照、rig poseのPart参照、eventの`frameId`を対応mapで張り替える。TextureRefのid / pathは保持し、Blob storage keyだけを新Asset IDへ張り替える。event名は自動変更しない。linked mirrorの内部ID維持modeは既存規則に従う。
 - 未解決参照、親子循環、非有限値、H2=L1の非空・単一ownershipに反するdataを理由付きで拒否し、rigだけを削除して成功扱いにしない。未所属Layerは許可し、既存違反dataを自動migrationしない。
+- `frameCount = max(1, round(durationMs / 1000 * fps))`を求めた直後に、有限かつ1以上の安全な整数であることを確認する。成立しない場合はloopや配列確保へ入る前に理由付きで拒否する。この検査は性能上限の採用ではない。
 - transformは絶対差`1e-6`以下、pixelは同寸法RGBA bufferのalphaと非透明pixelのRGB各channel差1以下をGateにする。正規化対象と`.casproj` roundtripの詳細はADR-0022を正本とする。
-- 現行bakeは入力中心と出力positionの両方を修正する。入力は`center0 = position + textureSize / 2`、world pose適用後を`center1`、出力は`next.position = center1 - textureSize / 2`とする。上限値はH3=M1 protocolのPC / iPhone / iPad測定と後続人間承認後に固定する。
+- 現行bakeは入力中心と出力positionの両方を修正する。入力は`center0 = position + textureSize / 2`、world pose適用後を`center1`、出力は`next.position = center1 - textureSize / 2`とする。B1は算術・構造検査までを扱い、上限値はH3=M1 protocolのPC / iPhone / iPad測定と後続人間承認後にB2で固定する。安全な整数であっても非常に大きい生成量の停止リスクはB2まで残り、B1だけで資源安全を証明したとは扱わない。
 
 正本は`docs/adr/0022-rig-flip-and-bake-parity.md`と`docs/future/2D_3_TIMELINE_RIG_PLAN.md`である。
