@@ -7,6 +7,7 @@ import {
   createFamilyVariantWriteSet,
   createLinkedMirrorVariant,
 } from '../model/familyTestFixtures';
+import { flipCopyAsset } from '../model/flipCopy';
 import characterAsset from '../samples/asset.character.json';
 import exportPresets from '../samples/export-presets.sample.json';
 import sampleProject from '../samples/project.sample.json';
@@ -95,6 +96,74 @@ describe('casproj の書き出しと読み込み', () => {
       imported.bundle.assets[0].animations[0].events?.[0] as unknown as Record<string, unknown>,
     ).toMatchObject({ futureEventField: { preserved: true } });
     expect(imported.bundle.assets[0].version).toBe('0.2.0');
+  });
+
+  it('rig反転copyを内部ID・参照・順序・Blob bytesごとexact roundtripする', async () => {
+    const source = structuredClone(asset);
+    source.parts[0].pivot = { x: 230, y: 250 };
+    source.parts[0].bindPose = {
+      localPosition: { x: 4, y: -2 },
+      localRotation: 12,
+      localScale: { x: -1, y: 1.5 },
+    };
+    source.parts[0].rotationLimit = { min: -25, max: 40 };
+    source.rigAnimations = [
+      {
+        id: 'rig_casproj_left',
+        name: 'idle_left',
+        fps: 4,
+        loop: true,
+        durationMs: 1000,
+        keyframes: [
+          {
+            time: 0,
+            poses: {
+              [source.parts[0].id]: {
+                localPosition: { x: 3, y: 1 },
+                localRotation: -10,
+              },
+            },
+          },
+          { time: 1, poses: { [source.parts[0].id]: { localScale: { x: -2, y: 0.5 } } } },
+        ],
+      },
+    ];
+    const flipped = flipCopyAsset(source, {
+      now: new Date('2026-07-24T10:00:00.000Z'),
+    });
+    const flippedProject: Project = {
+      ...project,
+      assets: [
+        {
+          id: flipped.id,
+          name: flipped.name,
+          displayName: flipped.displayName,
+          assetType: flipped.assetType,
+        },
+      ],
+    };
+    const bytesByPath = new Map(
+      flipped.textures.map((texture, index) => [
+        `assets/${flipped.id}/${texture.path}`,
+        new Uint8Array([0x89, 0x50, 0x4e, 0x47, index, 2, 3, 4]),
+      ]),
+    );
+    const bundle: CasprojBundle = {
+      project: flippedProject,
+      assets: [flipped],
+      files: [...bytesByPath].map(([path, bytes]) => ({ path, bytes })),
+    };
+
+    const exported = await exportCasproj(bundle);
+    const imported = await importCasproj(exported);
+
+    expect(imported.appliedMigrations).toEqual([]);
+    expect(imported.bundle.project).toEqual(flippedProject);
+    expect(imported.bundle.assets).toEqual([flipped]);
+    expect(imported.bundle.files).toEqual(bundle.files);
+    for (const file of imported.bundle.files) {
+      expect(file.bytes).toEqual(bytesByPath.get(file.path));
+    }
   });
 
   it('Part構成レイヤー差し替えをversion・内部ID・画像bytesごとexact roundtripする', async () => {

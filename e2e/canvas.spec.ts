@@ -86,6 +86,7 @@ test('ドラッグでレイヤーを移動でき、Ctrl+Z で戻せる', async (
   const yInput = page.getByLabel('Y', { exact: true });
   await expect(yInput).not.toHaveValue('0');
 
+  await expect(page.getByRole('status')).toHaveText('保存済み', { timeout: 10_000 });
   await page.keyboard.press('ControlOrMeta+z');
   await expect(xInput).toHaveValue('0');
   await expect(yInput).toHaveValue('0');

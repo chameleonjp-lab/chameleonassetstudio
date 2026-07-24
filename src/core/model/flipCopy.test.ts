@@ -187,15 +187,68 @@ describe('flipCopyAsset', () => {
     expect(linked.animations[0].events?.[0]).toEqual(source.animations[0].events?.[0]);
   });
 
-  it('リグ編集データ（rigAnimations）は本コピーでは省く', () => {
+  it('リグ編集データを鏡映して保持し、Rig / Part参照を新IDへ張り替える', () => {
     const withRig: Asset = {
-      ...baseAsset,
+      ...structuredClone(baseAsset),
+      parts: baseAsset.parts.map((part) => ({
+        ...structuredClone(part),
+        pivot: { x: 240, y: 250 },
+        bindPose: {
+          localPosition: { x: 6, y: -3 },
+          localRotation: 15,
+          localScale: { x: -2, y: 0.5 },
+        },
+        rotationLimit: { min: -20, max: 35 },
+      })),
       rigAnimations: [
-        { id: 'rig_1', name: 'test', fps: 8, loop: true, durationMs: 1000, keyframes: [] },
+        {
+          id: 'rig_1',
+          name: 'attack_left',
+          fps: 8,
+          loop: true,
+          durationMs: 1000,
+          keyframes: [
+            {
+              time: 0,
+              poses: {
+                part_body: {
+                  localPosition: { x: 4, y: 5 },
+                  localRotation: -25,
+                  localScale: { x: -1, y: 3 },
+                },
+              },
+            },
+          ],
+        },
       ],
     };
     const flipped = flipCopyAsset(withRig);
-    expect(flipped.rigAnimations).toBeUndefined();
+    const flippedPart = flipped.parts[0];
+    const flippedRig = flipped.rigAnimations![0];
+
+    expect(flippedPart.id).not.toBe('part_body');
+    expect(flippedPart.pivot).toEqual({ x: 272, y: 250 });
+    expect(flippedPart.bindPose).toEqual({
+      localPosition: { x: -6, y: -3 },
+      localRotation: -15,
+      localScale: { x: -2, y: 0.5 },
+    });
+    expect(flippedPart.rotationLimit).toEqual({ min: -35, max: 20 });
+    expect(flippedRig).toMatchObject({
+      name: 'attack_right',
+      fps: 8,
+      loop: true,
+      durationMs: 1000,
+      keyframes: [{ time: 0 }],
+    });
+    expect(flippedRig.id).not.toBe('rig_1');
+    expect(flippedRig.keyframes[0].poses).toEqual({
+      [flippedPart.id]: {
+        localPosition: { x: -4, y: 5 },
+        localRotation: 25,
+        localScale: { x: -1, y: 3 },
+      },
+    });
   });
 
   it('texture IDを維持するためprovenance参照も維持し、recordは独立copyする', () => {
@@ -218,5 +271,213 @@ describe('flipCopyAsset', () => {
     expect(flipped.textures.some((texture) => texture.id === sourceTextureId)).toBe(true);
     (flipped.provenance?.[0].future as { preserved: boolean }).preserved = false;
     expect(source.provenance[0].future).toEqual({ preserved: true });
+  });
+
+  it('全生成対象IDを完全再採番し、Anchor / Colliderを含む対応と未知の非参照fieldを保持する', () => {
+    const source = structuredClone(baseAsset);
+    source.name = 'hero_left';
+    source.displayName = 'Hero Left';
+    source.layers.push({
+      ...structuredClone(source.layers[0]),
+      id: 'layer_hand',
+      name: 'hand_left',
+      transform: {
+        position: { x: 330, y: 180 },
+        scale: { x: -1.5, y: 0.75 },
+        rotation: 12,
+      },
+    });
+    source.parts = [
+      {
+        id: 'part_root',
+        name: 'root',
+        partType: 'body',
+        layerIds: ['layer_body'],
+        pivot: { x: 260, y: 300 },
+        bindPose: { localPosition: { x: 2, y: 1 }, localRotation: 5 },
+        rotationLimit: { min: -40, max: 30 },
+      },
+      {
+        id: 'part_mid',
+        name: 'arm_left',
+        partType: 'arm_left',
+        layerIds: ['layer_guide'],
+        parentId: 'part_root',
+        pivot: { x: 300, y: 220 },
+        bindPose: { localScale: { x: -1, y: 1.25 } },
+      },
+      {
+        id: 'part_leaf',
+        name: 'hand_left',
+        partType: 'other',
+        layerIds: ['layer_hand'],
+        parentId: 'part_mid',
+        pivot: { x: 340, y: 180 },
+      },
+    ];
+    source.rigAnimations = [
+      {
+        id: 'rig_left',
+        name: 'wave_left',
+        fps: 4,
+        loop: false,
+        durationMs: 1000,
+        keyframes: [
+          {
+            time: 0,
+            poses: {
+              part_root: { localPosition: { x: 1, y: 2 } },
+              part_mid: { localRotation: 10 },
+            },
+          },
+          {
+            time: 1,
+            poses: {
+              part_leaf: { localRotation: -30, localScale: { x: -0.5, y: 2 } },
+            },
+          },
+        ],
+      },
+    ];
+    source.animations[0].events = [
+      {
+        id: 'event_left',
+        name: 'game_left_event',
+        frameId: source.frames![0].id,
+      },
+    ];
+    (source.parts[0] as unknown as Record<string, unknown>).futurePartMetadata = {
+      label: 'left stays data',
+    };
+    (source.rigAnimations[0] as unknown as Record<string, unknown>).futureRigMetadata = {
+      enabled: true,
+    };
+    const before = structuredClone(source);
+
+    const flipped = flipCopyAsset(source, { now: new Date('2026-07-24T01:02:03.000Z') });
+
+    const sourceIds = {
+      layers: source.layers.map(({ id }) => id),
+      parts: source.parts.map(({ id }) => id),
+      frames: source.frames!.map(({ id }) => id),
+      animations: source.animations.map(({ id }) => id),
+      rigs: source.rigAnimations.map(({ id }) => id),
+      events: source.animations.flatMap((animation) =>
+        (animation.events ?? []).map(({ id }) => id),
+      ),
+      anchors: source.anchors.map(({ id }) => id),
+      colliders: source.colliders.map(({ id }) => id),
+    };
+    const flippedIds = {
+      layers: flipped.layers.map(({ id }) => id),
+      parts: flipped.parts.map(({ id }) => id),
+      frames: flipped.frames!.map(({ id }) => id),
+      animations: flipped.animations.map(({ id }) => id),
+      rigs: flipped.rigAnimations!.map(({ id }) => id),
+      events: flipped.animations.flatMap((animation) =>
+        (animation.events ?? []).map(({ id }) => id),
+      ),
+      anchors: flipped.anchors.map(({ id }) => id),
+      colliders: flipped.colliders.map(({ id }) => id),
+    };
+    for (const key of Object.keys(sourceIds) as Array<keyof typeof sourceIds>) {
+      expect(new Set(flippedIds[key]).size).toBe(flippedIds[key].length);
+      expect(flippedIds[key].some((id) => sourceIds[key].includes(id))).toBe(false);
+    }
+
+    expect(flipped.parts[1].parentId).toBe(flipped.parts[0].id);
+    expect(flipped.parts[2].parentId).toBe(flipped.parts[1].id);
+    expect(Object.keys(flipped.rigAnimations![0].keyframes[0].poses)).toEqual([
+      flipped.parts[0].id,
+      flipped.parts[1].id,
+    ]);
+    expect(flipped.animations[0].events![0]).toMatchObject({
+      name: 'game_left_event',
+      frameId: flipped.frames![0].id,
+    });
+    expect(flipped.textures.map(({ id, path }) => ({ id, path }))).toEqual(
+      source.textures.map(({ id, path }) => ({ id, path })),
+    );
+    expect((flipped.parts[0] as unknown as Record<string, unknown>).futurePartMetadata).toEqual({
+      label: 'left stays data',
+    });
+    expect(
+      (flipped.rigAnimations![0] as unknown as Record<string, unknown>).futureRigMetadata,
+    ).toEqual({ enabled: true });
+    expect(source).toEqual(before);
+    expect(validateAsset(flipped).valid).toBe(true);
+  });
+
+  it('二重反転で座標・pose・可動域・左右roleを元へ戻し、各段のIDは独立させる', () => {
+    const source = structuredClone(baseAsset);
+    source.parts[0].pivot = { x: 210, y: 250 };
+    source.parts[0].bindPose = {
+      localPosition: { x: -8, y: 3 },
+      localRotation: 25,
+      localScale: { x: -1.5, y: 0.75 },
+    };
+    source.parts[0].rotationLimit = { min: -35, max: 20 };
+    source.rigAnimations = [
+      {
+        id: 'rig_double',
+        name: 'idle_left',
+        fps: 2,
+        loop: true,
+        durationMs: 1000,
+        keyframes: [
+          {
+            time: 0,
+            poses: {
+              part_body: {
+                localPosition: { x: 5, y: 6 },
+                localRotation: -10,
+                localScale: { x: -2, y: 3 },
+              },
+            },
+          },
+        ],
+      },
+    ];
+
+    const once = flipCopyAsset(source);
+    const twice = flipCopyAsset(once);
+
+    expect(twice.layers.map(({ transform }) => transform)).toEqual(
+      source.layers.map(({ transform }) => transform),
+    );
+    expect(twice.parts[0]).toMatchObject({
+      name: source.parts[0].name,
+      partType: source.parts[0].partType,
+      pivot: source.parts[0].pivot,
+      bindPose: source.parts[0].bindPose,
+      rotationLimit: source.parts[0].rotationLimit,
+    });
+    expect(Object.values(twice.rigAnimations![0].keyframes[0].poses)[0]).toEqual(
+      source.rigAnimations[0].keyframes[0].poses.part_body,
+    );
+    expect(twice.anchors.map(({ name, role, position }) => ({ name, role, position }))).toEqual(
+      source.anchors.map(({ name, role, position }) => ({ name, role, position })),
+    );
+    expect(new Set(twice.layers.map(({ id }) => id))).not.toEqual(
+      new Set(once.layers.map(({ id }) => id)),
+    );
+  });
+
+  it('構造preflight違反は旧IDを残して成功扱いにせず、元Assetを変更しない', () => {
+    const source = structuredClone(baseAsset);
+    source.rigAnimations = [
+      {
+        id: 'rig_invalid',
+        name: 'invalid',
+        fps: 8,
+        loop: false,
+        durationMs: 1000,
+        keyframes: [{ time: 0, poses: { missing_part: {} } }],
+      },
+    ];
+    const before = structuredClone(source);
+
+    expect(() => flipCopyAsset(source)).toThrow(/ポーズ参照.*見つかりません/);
+    expect(source).toEqual(before);
   });
 });

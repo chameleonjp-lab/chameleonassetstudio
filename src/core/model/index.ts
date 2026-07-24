@@ -17,4 +17,5 @@ export * from './part';
 export * from './partLayerContract';
 export * from './project';
 export * from './rig';
+export * from './rigPreflight';
 export * from './texture';

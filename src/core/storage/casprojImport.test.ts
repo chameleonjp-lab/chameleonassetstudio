@@ -7,6 +7,7 @@ import {
   createFamilyVariantWriteSet,
   createLinkedMirrorVariant,
 } from '../model/familyTestFixtures';
+import { flipCopyAsset } from '../model/flipCopy';
 import exportPresetsJson from '../samples/export-presets.sample.json';
 import v010AssetJson from './__fixtures__/v0.1.0-asset.json';
 import v010ProjectJson from './__fixtures__/v0.1.0-project.json';
@@ -186,6 +187,90 @@ describe('2D-1B-CASPROJ staged import', () => {
     ]);
     expect((await loadAsset('asset_copy_1')).asset.id).toBe('asset_copy_1');
     expect(await loadBlob(`asset_copy_1/${asset.textures[0].path}`)).not.toBeNull();
+  });
+
+  it('rig反転copyの製品importはcontainer IDだけを替え、内部graphとBlob bytesを保持する', async () => {
+    const source: Asset = {
+      ...structuredClone(asset),
+      version: '0.2.0',
+      parts: [
+        {
+          id: 'part_import_left',
+          name: 'arm_left',
+          partType: 'arm_left',
+          layerIds: [asset.layers[0].id],
+          pivot: { x: 3, y: 4 },
+          bindPose: {
+            localPosition: { x: 1, y: -2 },
+            localRotation: 15,
+            localScale: { x: -1, y: 0.5 },
+          },
+          rotationLimit: { min: -30, max: 20 },
+        },
+      ],
+      rigAnimations: [
+        {
+          id: 'rig_import_left',
+          name: 'attack_left',
+          fps: 2,
+          loop: false,
+          durationMs: 1000,
+          keyframes: [
+            {
+              time: 0,
+              poses: {
+                part_import_left: {
+                  localPosition: { x: 2, y: 3 },
+                  localRotation: -12,
+                },
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const flipped = flipCopyAsset(source, {
+      now: new Date('2026-07-24T10:00:00.000Z'),
+    });
+    const sourceProject: Project = {
+      ...project,
+      assets: [
+        {
+          id: flipped.id,
+          name: flipped.name,
+          displayName: flipped.displayName,
+          assetType: flipped.assetType,
+        },
+      ],
+    };
+    const exported = await exportCasproj({
+      project: sourceProject,
+      assets: [flipped],
+      files: flipped.textures.map((texture) => ({
+        path: `assets/${flipped.id}/${texture.path}`,
+        bytes: imageBytes,
+      })),
+    });
+
+    const staged = await stageCasprojImport(exported, deterministicIds());
+    const stagedAsset = staged.assets[0];
+
+    expect(staged.project.id).toBe('project_copy_1');
+    expect(stagedAsset.id).toBe('asset_copy_1');
+    expect({ ...stagedAsset, id: flipped.id }).toEqual(flipped);
+    expect(staged.blobs.map(({ key }) => key)).toEqual([
+      `asset_copy_1/${flipped.textures[0].path}`,
+    ]);
+    expect(new Uint8Array(await staged.blobs[0].blob.arrayBuffer())).toEqual(imageBytes);
+
+    await commitStagedCasprojImport(staged);
+    const reloaded = await loadAsset('asset_copy_1');
+    expect({ ...reloaded.asset, id: flipped.id }).toEqual(flipped);
+    expect(
+      new Uint8Array(
+        await (await loadBlob(`asset_copy_1/${flipped.textures[0].path}`))!.arrayBuffer(),
+      ),
+    ).toEqual(imageBytes);
   });
 
   it('future versionをCasprojErrorとして拒否し、正本を変更しない', async () => {

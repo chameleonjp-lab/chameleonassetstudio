@@ -9,7 +9,9 @@ import type { Asset } from './asset';
 import type { Collider } from './collider';
 import { generateId } from './factories';
 import type { Layer, LayerTransform } from './layer';
-import type { Part, PartType } from './part';
+import type { Part, PartPose, PartType } from './part';
+import type { RigAnimation } from './rig';
+import { assertRigPreflight } from './rigPreflight';
 
 /** 左右で対になる anchor role の対応。 */
 const ANCHOR_ROLE_MIRROR: Partial<Record<AnchorRole, AnchorRole>> = {
@@ -24,6 +26,11 @@ const PART_TYPE_MIRROR: Partial<Record<PartType, PartType>> = {
   leg_left: 'leg_right',
   leg_right: 'leg_left',
 };
+
+/** JSON roundtripで0へ正規化される-0を生成しない符号反転。 */
+function negate(value: number): number {
+  return value === 0 ? 0 : -value;
+}
 
 /**
  * 名前に含まれる left / right トークンを 1 回ずつ入れ替える。
@@ -61,10 +68,52 @@ function mirrorTransform(
   textureWidth: number,
 ): LayerTransform {
   return {
-    position: { x: 2 * mirrorX - transform.position.x - textureWidth, y: transform.position.y },
-    scale: { x: -transform.scale.x, y: transform.scale.y },
-    rotation: -transform.rotation,
+    ...structuredClone(transform),
+    position: {
+      ...structuredClone(transform.position),
+      x: 2 * mirrorX - transform.position.x - textureWidth,
+      y: transform.position.y,
+    },
+    scale: {
+      ...structuredClone(transform.scale),
+      x: negate(transform.scale.x),
+      y: transform.scale.y,
+    },
+    rotation: negate(transform.rotation),
   };
+}
+
+function mirrorPose(pose: PartPose): PartPose {
+  return {
+    ...structuredClone(pose),
+    ...(pose.localPosition
+      ? {
+          localPosition: {
+            ...structuredClone(pose.localPosition),
+            x: negate(pose.localPosition.x),
+          },
+        }
+      : {}),
+    ...(pose.localRotation !== undefined ? { localRotation: negate(pose.localRotation) } : {}),
+    ...(pose.localScale ? { localScale: structuredClone(pose.localScale) } : {}),
+  };
+}
+
+function createIdMap(
+  ids: readonly string[],
+  prefix: string,
+  preserveInternalIds: boolean,
+): Map<string, string> {
+  return new Map(ids.map((id) => [id, preserveInternalIds ? id : generateId(prefix)] as const));
+}
+
+function mappedId(map: ReadonlyMap<string, string>, sourceId: string, path: string): string {
+  const result = map.get(sourceId);
+  if (!result) {
+    // preflightを通過していれば到達しない。旧IDを残すfallbackは禁止する。
+    throw new Error(`${path} のID対応が見つかりません: ${sourceId}`);
+  }
+  return result;
 }
 
 export interface FlipCopyAssetOptions {
@@ -86,106 +135,163 @@ export interface FlipCopyAssetOptions {
  *
  * テクスチャ（画像 Blob）は呼び出し側が `blobKeyFor(newId, path)` へコピーする前提で、
  * texture の id / path は元のまま保持する。リグ編集データ（`rigAnimations`・part の
- * `bindPose` / `rotationLimit`）は本コピーでは反映せず省く。焼き込み済み `frames` は
- * 反転して保持するため表示・書き出しは正しく反転される（詳細は docs/future/FLIP_DESIGN.md）。
+ * `bindPose` / `rotationLimit`）も鏡映して保持し、全内部参照を完全mapで張り替える
+ * （詳細は docs/adr/0022-rig-flip-and-bake-parity.md）。
  */
 export function flipCopyAsset(asset: Asset, options: FlipCopyAssetOptions = {}): Asset {
+  const preserveInternalIds = options.preserveInternalIds ?? false;
+  // ID採番より前に全入力を検査し、拒否時に乱数・Asset・Blob・Historyへ副作用を残さない。
+  // linked Familyのrefresh previewだけは、baseからLayerを削除した直後の空Partを
+  // downstreamのwrite-set同期で扱う既存契約を維持する。その他の検査は共通のまま通す。
+  assertRigPreflight(asset, { allowPartLayerEmpty: preserveInternalIds });
+
   const iso = (options.now ?? new Date()).toISOString();
   const mirrorX = asset.origin.x;
   const reflectX = (x: number): number => 2 * mirrorX - x;
 
   // 元レイヤー id → texture 幅（frame の layerState 鏡映にも使う）。
+  const textureById = new Map(asset.textures.map((texture) => [texture.id, texture]));
   const layerWidth = new Map<string, number>();
   for (const layer of asset.layers) {
-    const width = layer.textureId
-      ? (asset.textures.find((texture) => texture.id === layer.textureId)?.size.width ?? 0)
-      : 0;
+    const width = layer.textureId ? textureById.get(layer.textureId)!.size.width : 0;
     layerWidth.set(layer.id, width);
   }
 
-  // id 再採番マップ（相互参照を張り替えるため先に作る）。
-  const layerIdMap = new Map(
-    asset.layers.map((layer) => [
-      layer.id,
-      options.preserveInternalIds ? layer.id : generateId('layer'),
-    ]),
+  // 変換開始前に完全ID mapを作る。TextureRefだけはAsset間でid/pathを維持する。
+  const nextAssetId = generateId('asset');
+  const layerIdMap = createIdMap(
+    asset.layers.map(({ id }) => id),
+    'layer',
+    preserveInternalIds,
   );
-  const partIdMap = new Map(
-    asset.parts.map((part) => [
-      part.id,
-      options.preserveInternalIds ? part.id : generateId('part'),
-    ]),
+  const partIdMap = createIdMap(
+    asset.parts.map(({ id }) => id),
+    'part',
+    preserveInternalIds,
   );
-  const frameIdMap = new Map(
-    (asset.frames ?? []).map((frame) => [
-      frame.id,
-      options.preserveInternalIds ? frame.id : generateId('frame'),
-    ]),
+  const frameIdMap = createIdMap(
+    (asset.frames ?? []).map(({ id }) => id),
+    'frame',
+    preserveInternalIds,
+  );
+  const animationIdMap = createIdMap(
+    asset.animations.map(({ id }) => id),
+    'anim',
+    preserveInternalIds,
+  );
+  const rigAnimationIdMap = createIdMap(
+    (asset.rigAnimations ?? []).map(({ id }) => id),
+    'rig',
+    preserveInternalIds,
+  );
+  const eventIdMap = createIdMap(
+    asset.animations.flatMap((animation) => (animation.events ?? []).map(({ id }) => id)),
+    'event',
+    preserveInternalIds,
+  );
+  const anchorIdMap = createIdMap(
+    asset.anchors.map(({ id }) => id),
+    'anchor',
+    preserveInternalIds,
+  );
+  const colliderIdMap = createIdMap(
+    asset.colliders.map(({ id }) => id),
+    'col',
+    preserveInternalIds,
   );
 
   const layers: Layer[] = asset.layers.map((layer) => ({
-    ...layer,
-    id: layerIdMap.get(layer.id)!,
+    ...structuredClone(layer),
+    id: mappedId(layerIdMap, layer.id, `layers[id=${layer.id}]`),
     transform: mirrorTransform(layer.transform, mirrorX, layerWidth.get(layer.id) ?? 0),
-    background: layer.background
-      ? { ...layer.background, parallaxSpeed: { ...layer.background.parallaxSpeed } }
-      : layer.background,
+    ...(layer.background
+      ? {
+          background: {
+            ...structuredClone(layer.background),
+            parallaxSpeed: structuredClone(layer.background.parallaxSpeed),
+          },
+        }
+      : {}),
   }));
 
   const anchors: Anchor[] = asset.anchors.map((anchor) => ({
-    ...anchor,
-    id: options.preserveInternalIds ? anchor.id : generateId('anchor'),
+    ...structuredClone(anchor),
+    id: mappedId(anchorIdMap, anchor.id, `anchors[id=${anchor.id}]`),
     name: swapLeftRightLabel(anchor.name),
     role: ANCHOR_ROLE_MIRROR[anchor.role] ?? anchor.role,
-    position: { x: reflectX(anchor.position.x), y: anchor.position.y },
+    position: {
+      ...structuredClone(anchor.position),
+      x: reflectX(anchor.position.x),
+      y: anchor.position.y,
+    },
   }));
 
   const colliders: Collider[] = asset.colliders.map((collider) => {
     if (collider.shape === 'rect') {
       return {
-        ...collider,
-        id: options.preserveInternalIds ? collider.id : generateId('col'),
+        ...structuredClone(collider),
+        id: mappedId(colliderIdMap, collider.id, `colliders[id=${collider.id}]`),
         name: swapLeftRightLabel(collider.name),
         // 左上 x + 幅を反射する（右端が新しい左端になる）。
-        rect: { ...collider.rect, x: 2 * mirrorX - collider.rect.x - collider.rect.width },
+        rect: {
+          ...structuredClone(collider.rect),
+          x: 2 * mirrorX - collider.rect.x - collider.rect.width,
+        },
       };
     }
     return {
-      ...collider,
-      id: options.preserveInternalIds ? collider.id : generateId('col'),
+      ...structuredClone(collider),
+      id: mappedId(colliderIdMap, collider.id, `colliders[id=${collider.id}]`),
       name: swapLeftRightLabel(collider.name),
-      circle: { ...collider.circle, x: reflectX(collider.circle.x) },
+      circle: { ...structuredClone(collider.circle), x: reflectX(collider.circle.x) },
     };
   });
 
   const parts: Part[] = asset.parts.map((part) => {
     const preservedPart = structuredClone(part);
-    delete preservedPart.bindPose;
-    delete preservedPart.rotationLimit;
     const next: Part = {
       ...preservedPart,
-      id: partIdMap.get(part.id)!,
+      id: mappedId(partIdMap, part.id, `parts[id=${part.id}]`),
       name: swapLeftRightLabel(part.name),
       partType: PART_TYPE_MIRROR[part.partType] ?? part.partType,
-      layerIds: part.layerIds.map((id) => layerIdMap.get(id) ?? id),
+      layerIds: part.layerIds.map((id, index) =>
+        mappedId(layerIdMap, id, `parts[id=${part.id}].layerIds[${index}]`),
+      ),
     };
     if (part.pivot) {
-      next.pivot = { x: reflectX(part.pivot.x), y: part.pivot.y };
+      next.pivot = {
+        ...structuredClone(part.pivot),
+        x: reflectX(part.pivot.x),
+        y: part.pivot.y,
+      };
     }
     if (part.parentId) {
-      next.parentId = partIdMap.get(part.parentId) ?? part.parentId;
+      next.parentId = mappedId(partIdMap, part.parentId, `parts[id=${part.id}].parentId`);
     }
-    // bindPose / rotationLimit（リグ編集データ）は本コピーでは省く。
+    if (part.bindPose) {
+      next.bindPose = mirrorPose(part.bindPose);
+    }
+    if (part.rotationLimit) {
+      next.rotationLimit = {
+        ...structuredClone(part.rotationLimit),
+        min: negate(part.rotationLimit.max),
+        max: negate(part.rotationLimit.min),
+      };
+    }
     return next;
   });
 
   const frames: Frame[] | undefined = asset.frames?.map((frame) => ({
-    ...frame,
-    id: frameIdMap.get(frame.id)!,
+    ...structuredClone(frame),
+    id: mappedId(frameIdMap, frame.id, `frames[id=${frame.id}]`),
     name: swapLeftRightLabel(frame.name),
-    layerStates: frame.layerStates.map((state) => ({
-      ...state,
-      layerId: layerIdMap.get(state.layerId) ?? state.layerId,
+    layerStates: frame.layerStates.map((state, index) => ({
+      ...structuredClone(state),
+      layerId: mappedId(
+        layerIdMap,
+        state.layerId,
+        `frames[id=${frame.id}].layerStates[${index}].layerId`,
+      ),
       transform: state.transform
         ? mirrorTransform(state.transform, mirrorX, layerWidth.get(state.layerId) ?? 0)
         : state.transform,
@@ -193,49 +299,80 @@ export function flipCopyAsset(asset: Asset, options: FlipCopyAssetOptions = {}):
   }));
 
   const animations = asset.animations.map((animation) => ({
-    ...animation,
-    id: options.preserveInternalIds ? animation.id : generateId('anim'),
+    ...structuredClone(animation),
+    id: mappedId(animationIdMap, animation.id, `animations[id=${animation.id}]`),
     name: swapLeftRightLabel(animation.name),
-    frameIds: animation.frameIds.map((id) => frameIdMap.get(id) ?? id),
+    frameIds: animation.frameIds.map((id, index) =>
+      mappedId(frameIdMap, id, `animations[id=${animation.id}].frameIds[${index}]`),
+    ),
     ...(animation.events
       ? {
-          events: animation.events.map((event) => ({
+          events: animation.events.map((event, index) => ({
             ...structuredClone(event),
-            id: options.preserveInternalIds ? event.id : generateId('event'),
-            frameId: frameIdMap.get(event.frameId) ?? event.frameId,
+            id: mappedId(
+              eventIdMap,
+              event.id,
+              `animations[id=${animation.id}].events[${index}].id`,
+            ),
+            frameId: mappedId(
+              frameIdMap,
+              event.frameId,
+              `animations[id=${animation.id}].events[${index}].frameId`,
+            ),
           })),
         }
       : {}),
+  }));
+
+  const rigAnimations: RigAnimation[] | undefined = asset.rigAnimations?.map((rig, rigIndex) => ({
+    ...structuredClone(rig),
+    id: mappedId(rigAnimationIdMap, rig.id, `rigAnimations[${rigIndex}].id`),
+    name: swapLeftRightLabel(rig.name),
+    keyframes: rig.keyframes.map((keyframe, keyframeIndex) => ({
+      ...structuredClone(keyframe),
+      poses: Object.fromEntries(
+        Object.entries(keyframe.poses).map(([partId, pose]) => [
+          mappedId(
+            partIdMap,
+            partId,
+            `rigAnimations[${rigIndex}].keyframes[${keyframeIndex}].poses`,
+          ),
+          mirrorPose(pose),
+        ]),
+      ),
+    })),
   }));
 
   const swappedName = swapLeftRightLabel(asset.name);
   const swappedDisplayName = swapLeftRightLabel(asset.displayName);
 
   return {
-    ...asset,
-    id: generateId('asset'),
+    ...structuredClone(asset),
+    id: nextAssetId,
     name: options.name ?? (swappedName !== asset.name ? swappedName : `${asset.name}_flipped`),
     displayName:
       options.displayName ??
       (swappedDisplayName !== asset.displayName
         ? swappedDisplayName
         : `${asset.displayName} (左右反転)`),
-    canvasSize: { ...asset.canvasSize },
-    origin: { ...asset.origin }, // 反転軸なので座標は不変
-    textures: asset.textures.map((texture) => ({ ...texture, size: { ...texture.size } })),
+    canvasSize: structuredClone(asset.canvasSize),
+    origin: structuredClone(asset.origin), // 反転軸なので座標は不変
+    textures: asset.textures.map((texture) => structuredClone(texture)),
     layers,
     parts,
     anchors,
     colliders,
-    frames,
+    ...(frames ? { frames } : {}),
     animations,
     tags: [...asset.tags],
-    gameAttributes: { ...asset.gameAttributes },
-    provenance: asset.provenance?.map((record) => structuredClone(record)),
-    tile: asset.tile ? { ...asset.tile, tileSize: { ...asset.tile.tileSize } } : asset.tile,
-    gimmick: asset.gimmick ? { ...asset.gimmick } : asset.gimmick,
-    effect: asset.effect ? { ...asset.effect } : asset.effect,
-    rigAnimations: undefined, // リグ編集データの反転は将来対応（焼き込み frames は反転済み）
+    gameAttributes: structuredClone(asset.gameAttributes),
+    ...(asset.provenance
+      ? { provenance: asset.provenance.map((record) => structuredClone(record)) }
+      : {}),
+    ...(asset.tile ? { tile: structuredClone(asset.tile) } : {}),
+    ...(asset.gimmick ? { gimmick: structuredClone(asset.gimmick) } : {}),
+    ...(asset.effect ? { effect: structuredClone(asset.effect) } : {}),
+    ...(rigAnimations ? { rigAnimations } : {}),
     createdAt: iso,
     updatedAt: iso,
   };

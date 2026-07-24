@@ -331,6 +331,53 @@ describe('inspectAsset (A+B+X)', () => {
     );
   });
 
+  it('共通rig preflightの時刻重複・非有限pose・unsafe Frame数を素材検査へ表示する', () => {
+    const asset = blank('character');
+    const layerId = asset.layers[0].id;
+    const partId = 'part_rig';
+    const inspected: Asset = {
+      ...asset,
+      parts: [
+        {
+          id: partId,
+          name: 'rig',
+          partType: 'body',
+          layerIds: [layerId],
+        },
+      ],
+      rigAnimations: [
+        {
+          id: 'rig_invalid',
+          name: 'invalid',
+          fps: Number.MAX_VALUE,
+          loop: false,
+          durationMs: Number.MAX_VALUE,
+          keyframes: [
+            { time: 0, poses: { [partId]: { localRotation: Number.NaN } } },
+            { time: 0, poses: {} },
+          ],
+        },
+      ],
+    };
+    const before = structuredClone(inspected);
+
+    const issues = inspectAsset(inspected);
+
+    expect(codes(issues)).toEqual(
+      expect.arrayContaining([
+        'rig.preflight.non-finite-number',
+        'rig.preflight.frame-count-unsafe',
+        'rig.preflight.rig-keyframe-time-duplicate',
+      ]),
+    );
+    expect(
+      issues
+        .filter((issue) => issue.code.startsWith('rig.preflight.'))
+        .every((issue) => issue.severity === 'error' && issue.target.panel === 'parts'),
+    ).toBe(true);
+    expect(inspected).toEqual(before);
+  });
+
   it('effect時間検査はAnimation.durationMsを無視してFrameの実効時間を使う', () => {
     const asset = blank('effect');
     const frameId = 'effect_frame';
