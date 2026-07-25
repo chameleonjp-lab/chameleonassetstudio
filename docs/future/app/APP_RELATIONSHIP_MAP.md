@@ -164,8 +164,8 @@ flowchart TB
 | A5 | Catalog | Arch 2 章 | 詳 | `APP_MODULE_CATALOG.md` *(予定)*（F-MOD-01 で正本化） |
 | A6 | Manifest 契約 | Arch 3 章 | 中 | `APP_MODULE_MANIFEST_SPEC.md` *(予定)*（F-MOD-01/02/03 が参照する項目は確定） |
 | A7 | 依存解決 | Arch 3・4 章 | 詳 | `APP_MODULE_MANIFEST_SPEC.md` *(予定)*（F-MOD-03 で正本化） |
-| A8 | capability 権限 | Arch 3 章 | 粗 | `APP_CORE_CONTRACT.md` *(予定)* |
-| A9 | Extension Host | Arch 2 章 | 中 | `APP_CORE_CONTRACT.md` *(予定)*（F-CORE-04 履歴登録＋F-MOD-02 有効化/無効化の要件が集約） |
+| A8 | capability 権限 | Arch 3 章 | 詳 | `APP_CORE_CONTRACT.md` *(予定)*（F-CORE-10 で正本化） |
+| A9 | Extension Host | Arch 2 章 | 詳 | `APP_CORE_CONTRACT.md` *(予定)*（F-CORE-09 で正本化） |
 | D1 | 保存形式 versioned | Arch 5 章 | 詳 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-05 で正本化） |
 | D2 | migration | Arch 5 章 | 詳 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-05 で正本化） |
 | D3 | 構成非依存の不変条件 | Arch 5 章 | 中 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-01/05 で具体化） |
@@ -192,6 +192,8 @@ flowchart TB
 | F-MOD-02 | インストール/アンインストール（可逆・コスト戻り） | `features/F-MOD-02-install-uninstall.md` | 詳 | —（P3 導入半分） |
 | F-MOD-03 | 依存解決 & footprint 開示 | `features/F-MOD-03-dependency-resolution-footprint.md` | 詳 | —（A7 の正本） |
 | F-MOD-04 | ライセンス検証ゲート | `features/F-MOD-04-license-verification-gate.md` | 詳 | —（G1 の正本） |
+| F-CORE-09 | Extension Host & ライフサイクル | `features/F-CORE-09-extension-host-lifecycle.md` | 詳 | —（A9 の正本） |
+| F-CORE-10 | capability / 権限の強制 | `features/F-CORE-10-capability-permission-enforcement.md` | 詳 | —（A8 の正本） |
 
 ---
 
@@ -275,6 +277,17 @@ flowchart TB
 | E72 | F-MOD-04 | 依存 | A6 | license メタを manifest から得る |
 | E73 | F-MOD-04 | 依存 | F-MOD-03 | 依存込み集約の結果を検証対象にする |
 | E74 | F-MOD-04 | 支える | F-CORE-07 | 帰属表示を書き出しの器へ載せる |
+| E75 | F-CORE-09 | 実現 | A9 | Extension Host とライフサイクルの正本 |
+| E76 | F-CORE-09 | 依存 | A2 | Host は Core 契約の一部として提供される |
+| E77 | F-CORE-09 | 支える | F-MOD-02 | 有効化/無効化と提供物撤去の受け皿 |
+| E78 | F-CORE-09 | 支える | F-CORE-04 | モジュール操作の履歴登録の受け皿 |
+| E79 | F-CORE-09 | 強制 | D4 | 名前空間の外への書き込みを実行時に拒否 |
+| E80 | F-CORE-09 | 尊重 | D3 | 未導入・無効でもプロジェクトを開けデータを保持 |
+| E81 | F-CORE-10 | 実現 | A8 | capability / 最小権限の正本 |
+| E82 | F-CORE-10 | 依存 | A9 | 強制の実行主体は Extension Host |
+| E83 | F-CORE-10 | 尊重 | G5 | いかなる権限でも Source を書き換えられない |
+| E84 | F-CORE-10 | 強制 | A4 | モジュールの能力境界を実行時に強制する |
+| E85 | F-CORE-10 | 支える | F-MOD-02 | 導入前の要求権限開示の材料を与える |
 
 ---
 
@@ -295,7 +308,7 @@ flowchart TB
 
 > 詳細化の順序自体は `APP_ROADMAP_DECISIONS_OPEN_ITEMS.md` の Stage と整合させる。表の「前提」列は、上流を先に固めるための依存である。
 >
-> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01**, **F-CORE-05**, **F-CORE-03**, **F-CORE-04**, **F-MOD-01**, **F-MOD-02**, **F-MOD-03**, **F-MOD-04**（F-MOD 群の中核 4 機能が完了）。
+> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01 / 03 / 04 / 05**（Core 土台）、**F-MOD-01 / 02 / 03 / 04**（install-on-demand の中核）、**F-CORE-09 / 10**（Extension Host と権限の Core 受け皿）。**モジュール機構は宣言・発見・導入・依存・検証・登録・権限強制まで一巡した。**
 >
 > 上流（現行ブラウザ版）の ADR / 実測 docs から「再導出しなくてよい知見」を引き継ぐ対応表は、`features/README.md` 6 章「系譜マップ」を正本とする。
 

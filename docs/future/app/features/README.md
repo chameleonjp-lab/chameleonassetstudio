@@ -85,8 +85,8 @@
 | F-CORE-06 | 検品 / Inspection フレーム | D-DONE-6, T-DONE-3 | 未 |
 | F-CORE-07 | 書き出しフレーム（ZIP + README + import notes の器） | D-DONE-7, T-DONE-8 | 未 |
 | F-CORE-08 | Home / Project Dashboard | S-DONE-1 | 未 |
-| F-CORE-09 | Extension Host & モジュール・ライフサイクル | S-DONE-2 | 未 |
-| F-CORE-10 | capability / 権限の強制 | S-DONE-2 | 未 |
+| F-CORE-09 | Extension Host & モジュール・ライフサイクル | S-DONE-2 | **詳** |
+| F-CORE-10 | capability / 権限の強制 | S-DONE-2 | **詳** |
 
 ### 3.2 モジュール機構
 
@@ -256,6 +256,8 @@
 
 ## 7. 現在の状況
 
-- 詳細化済み: **F-CORE-01 / 05 / 03 / 04**（Core 土台）、**F-MOD-01 / 02 / 03 / 04**（`features/F-MOD-04-license-verification-gate.md`）。**install-on-demand の中核が完了**——「発見 → 導入/撤去 → 依存と重さの誠実な開示 → 入れてよいものかの検証」が一巡した。
+- 詳細化済み: **F-CORE-01 / 03 / 04 / 05**（Core 土台）、**F-MOD-01 / 02 / 03 / 04**（install-on-demand の中核）、**F-CORE-09 / 10**（Extension Host と権限の Core 受け皿）。
+- **モジュール機構が一巡した**: 宣言（manifest）→ 発見 → 導入/撤去 → 依存と重さの誠実な開示 → 入れてよいものかの検証 → 登録とライフサイクル → 権限の強制。「多機能と軽量の両立」（`P2`→`P3`→`P4`）を支える骨格が、要件レベルで通った。
 - 上流知見の取り込み: 6 章の系譜マップを新設し、ADR-0019（原本保持のための版上げ）を F-CORE-03 / F-CORE-05 に反映済み。ADR-0021 / 0022 / 0023 と `2D_3_H3_MEASUREMENT_PROTOCOL.md` は、対応する機能（F-2D-07 / 08 / 04、F-PLT-04）の詳細化時に参照する。
-- 次候補: **F-CORE-09 / F-CORE-10**（Extension Host & capability 権限の強制）。`A9`/`A8` は F-CORE-04（履歴登録）・F-MOD-02（有効化/無効化）・F-MOD-04（ゲート）から要件が集まっており、Core 側の受け皿が未定義のため。その後 F-PLT 群（外殻・性能計測）→ 共通フレーム（F-CORE-06 検品 / 07 書き出し / 08 Dashboard）→ 2D/3D パイプライン。
+- 次候補: **F-PLT 群**（`F-PLT-01` ネイティブ外殻 → `F-PLT-04` 性能予算の計測 & 退行検知 → `F-PLT-03` offload → `F-PLT-02` ファイル I/O → `F-PLT-05` レンダラのロード）。ここまでの機構は「未使用ゼロコスト」「撤去でコストが戻る」「宣言 footprint と実測の突き合わせ」を要件に掲げているが、**それらを実証する計測と外殻が未定義**のため。F-PLT-04 は 6 章の系譜マップに従い `2D_3_H3_MEASUREMENT_PROTOCOL.md` の進め方（測定手順を先に固定し、数値は実測で置換）を継承する。
+- その後: 共通フレーム（`F-CORE-06` 検品 / `F-CORE-07` 書き出し / `F-CORE-08` Dashboard / `F-CORE-02` 自動保存・復旧）→ 2D パイプライン → 3D パイプライン → UX 横断。
