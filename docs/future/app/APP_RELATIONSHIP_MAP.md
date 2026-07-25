@@ -204,6 +204,7 @@ flowchart TB
 | F-CORE-08 | Home / Project Dashboard | `features/F-CORE-08-home-project-dashboard.md` | 詳 | —（入口。エディションの分岐点） |
 | F-CORE-02 | 自動保存 & クラッシュ復旧 | `features/F-CORE-02-autosave-crash-recovery.md` | 詳 | —（作業を失わせない安全網。Core 群の最後） |
 | F-2D-01 | 新規作成（空/テンプレート/画像/図形/パーツ） | `features/F-2D-01-project-creation.md` | 詳 | —（2D パイプラインの起点） |
+| F-2D-02 | 画像取り込み & 修復 | `features/F-2D-02-image-import.md` | 詳 | —（信頼しない入力の唯一の入口。原本 verbatim・原子性・loss 開示） |
 | F-2D-03 | Canvas & ビューポート（2D） | `features/F-2D-03-canvas-viewport.md` | 詳 | —（全 2D 編集が載る面。座標の正本を守る） |
 | F-2D-04 | レイヤー & パーツ | `features/F-2D-04-layers-parts.md` | 詳 | —（「何に対する操作か」を定義する構造） |
 | F-2D-07 | フレーム & フレームアニメーション | `features/F-2D-07-frames-animation.md` | 詳 | —（可変時間・event・loss 時の拒否） |
@@ -394,6 +395,12 @@ flowchart TB
 | E173 | F-2D-08 | 依存 | F-CORE-06 | bake 前の構造 preflight を検品フレームに委ねる |
 | E174 | F-2D-08 | 依存 | F-PLT-03 | 重い bake を UI から逃がし、キャンセルで中途生成物を残さない |
 | E175 | F-2D-08 | 依存 | F-PLT-04 | 生成量の上限値を実測で決める |
+| E176 | F-2D-02 | 支える | F-2D-01 | 起点「画像取り込み」の実体を提供 |
+| E177 | F-2D-02 | 依存 | F-PLT-02 | 信頼しないファイルの安全な読み込みに依る |
+| E178 | F-2D-02 | 尊重 | G5 | 原本を書き換えず verbatim 保持する |
+| E179 | F-2D-02 | 依存 | F-2D-07 | コマ列をフレーム／アニメーションへ写す |
+| E180 | F-2D-02 | 依存 | F-CORE-06 | loss の提示と report を検品フレームに委ねる |
+| E181 | F-2D-02 | 尊重 | G1 | 外部 parser の採用はライセンス評価を要する |
 
 ---
 
