@@ -204,6 +204,7 @@ flowchart TB
 | F-CORE-08 | Home / Project Dashboard | `features/F-CORE-08-home-project-dashboard.md` | 詳 | —（入口。エディションの分岐点） |
 | F-CORE-02 | 自動保存 & クラッシュ復旧 | `features/F-CORE-02-autosave-crash-recovery.md` | 詳 | —（作業を失わせない安全網。Core 群の最後） |
 | F-2D-01 | 新規作成（空/テンプレート/画像/図形/パーツ） | `features/F-2D-01-project-creation.md` | 詳 | —（2D パイプラインの起点） |
+| F-2D-03 | Canvas & ビューポート（2D） | `features/F-2D-03-canvas-viewport.md` | 詳 | —（全 2D 編集が載る面。座標の正本を守る） |
 
 ---
 
@@ -356,6 +357,12 @@ flowchart TB
 | E141 | F-2D-01 | 尊重 | G5 | 画像・既存アセット起点でも元を書き換えない |
 | E142 | F-2D-01 | 尊重 | P5 | エディションは 2D で固定し、3D へ変換しない |
 | E143 | F-2D-01 | 制約 | A4 | モジュールはテンプレートを足せるが器の作法を壊さない |
+| E144 | F-2D-03 | 依存 | PF4 | 2D 描画ライブラリを利用する |
+| E145 | F-2D-03 | 依存 | F-PLT-05 | レンダラのロード規則（2D のみ）に乗る |
+| E146 | F-2D-03 | 尊重 | G5 | 表示・snap・overlay がデータを変更しない |
+| E147 | F-2D-03 | 支える | A3 | 2D Edition Runtime の編集面を提供 |
+| E148 | F-2D-03 | 制約 | A4 | モジュール overlay は表示に留まり Document を変えない |
+| E149 | F-2D-03 | 依存 | F-PLT-03 | 重い再描画を UI から逃がす |
 
 ---
 
