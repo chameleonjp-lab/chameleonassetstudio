@@ -84,7 +84,7 @@
 | F-CORE-05 | 保存形式・バージョニング・migration | D-DONE-8, S-DONE-5 | **詳** |
 | F-CORE-06 | 検品 / Inspection フレーム | D-DONE-6, T-DONE-3 | **詳** |
 | F-CORE-07 | 書き出しフレーム（ZIP + README + import notes の器） | D-DONE-7, T-DONE-8 | **詳** |
-| F-CORE-08 | Home / Project Dashboard | S-DONE-1 | 未 |
+| F-CORE-08 | Home / Project Dashboard | S-DONE-1 | **詳** |
 | F-CORE-09 | Extension Host & モジュール・ライフサイクル | S-DONE-2 | **詳** |
 | F-CORE-10 | capability / 権限の強制 | S-DONE-2 | **詳** |
 
@@ -270,6 +270,8 @@
 - **F-CORE-07 完了**（`features/F-CORE-07-export-frame.md`）。制作物が外へ出る唯一の出口であり、差別化仮説 2（「作れる」ではなく**外部エンジンで確実に使える**）を支える器。上流の**互換性ラベル（`generic`/`candidate`/`verified`）と「記録が無いものを verified と呼ばない」規律**を継承した。
 - **F-CORE-06 完了**（`features/F-CORE-06-inspection-validation-frame.md`）。ADR-0014 の**三段検証（構造 / 意味 / 出力 preflight）と段ごとに異なる失敗時の既定動作**（構造=止める／意味=修復要求し黙って直さない／出力=警告 or 停止だが保存正本は止めない）、**検証は read-only**、**秘密情報検出は preflight 段**、**不正入力対策は別関心事**、を継承した。
 - **これで `A2`（Core 契約）の全要素が揃った**（保存・非破壊・履歴・形式/移行・検品・書き出し・Host・権限）。
-- 次候補: **`F-CORE-08`（Home / Project Dashboard）**。`S-DONE-1`（2D・3D いずれのプロジェクトへも入れる）の入口であり、F-CORE-01 FR-5/FR-12（最近使った項目・再開）と F-PLT-05（エディション判定によるレンダラ選択）が接続する場所。続けて `F-CORE-02`（自動保存・復旧）で Core 群が完了する。
+- **F-CORE-08 完了**（`features/F-CORE-08-home-project-dashboard.md`）。利用者が最初に触れる画面であり、`P1`（非採用の法則）の複数項目——起動の速さ・迷わなさ・見て分かるか——が**同時に評価される場所**。`A3` の**エディション分岐点**でもあり、**Dashboard 表示時点ではどちらのレンダラも載せない**ことを要件化した。
+- 次候補: **`F-CORE-02`（自動保存 & クラッシュ復旧）**。`D-DONE-8`（クラッシュしても復旧できる）の実体で、F-CORE-01 FR-13 と F-CORE-08 FR-6 が既に「復旧候補の提示」を前提にしている。**これで Core 群（F-CORE-01〜10）が完了**する。
+- その後: **2D パイプライン**（`F-2D-01` → 04 → 09/10 → 07/08 → 11/12 → 15/16）→ 3D パイプライン → UX 横断。
 - その後: 2D パイプライン（`F-2D-01` → 04 → 09/10 → 07/08 → 11/12 → 15/16）→ 3D パイプライン（`F-3D-01` → 03 → 05 → 06/07 → 10/11/12 → 14/15）→ UX 横断（`F-UX-01`〜05）。
 - その後: 共通フレーム（`F-CORE-06` 検品 / `F-CORE-07` 書き出し / `F-CORE-08` Dashboard / `F-CORE-02` 自動保存・復旧）→ 2D パイプライン → 3D パイプライン → UX 横断。
