@@ -1,7 +1,7 @@
 # Chameleon Asset Studio App — Relationship Map（仕様関係マップ・詳細化の中枢）
 
 状態: **draft / concept only / living document**（詳細化フェーズ中は継続更新する）
-最終更新日: 2026-07-21
+最終更新日: 2026-07-25
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 将来コンセプト（仕様関係マップ／traceability hub）
 入口文書: `docs/future/app/README.md`
@@ -162,8 +162,8 @@ flowchart TB
 | A3 | Edition Runtime | Arch 2 章 | 粗 | `APP_2D_EDITION_SPEC.md` / `APP_3D_EDITION_SPEC.md` *(予定)* |
 | A4 | Feature Modules | Arch 2 章 | 粗 | `APP_MODULE_CATALOG.md` *(予定)* |
 | A5 | Catalog | Arch 2 章 | 詳 | `APP_MODULE_CATALOG.md` *(予定)*（F-MOD-01 で正本化） |
-| A6 | Manifest 契約 | Arch 3 章 | 粗 | `APP_MODULE_MANIFEST_SPEC.md` *(予定)* |
-| A7 | 依存解決 | Arch 3・4 章 | 粗 | `APP_MODULE_MANIFEST_SPEC.md` *(予定)* |
+| A6 | Manifest 契約 | Arch 3 章 | 中 | `APP_MODULE_MANIFEST_SPEC.md` *(予定)*（F-MOD-01/02/03 が参照する項目は確定） |
+| A7 | 依存解決 | Arch 3・4 章 | 詳 | `APP_MODULE_MANIFEST_SPEC.md` *(予定)*（F-MOD-03 で正本化） |
 | A8 | capability 権限 | Arch 3 章 | 粗 | `APP_CORE_CONTRACT.md` *(予定)* |
 | A9 | Extension Host | Arch 2 章 | 中 | `APP_CORE_CONTRACT.md` *(予定)*（F-CORE-04 履歴登録＋F-MOD-02 有効化/無効化の要件が集約） |
 | D1 | 保存形式 versioned | Arch 5 章 | 詳 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-05 で正本化） |
@@ -171,7 +171,7 @@ flowchart TB
 | D3 | 構成非依存の不変条件 | Arch 5 章 | 中 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-01/05 で具体化） |
 | D4 | 名前空間拡張 | Arch 5 章 | 中 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-05 で境界規則） |
 | PF1 | 性能予算 | Arch 7 章 | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* |
-| PF2 | 計測・退行検知 | Arch 7 章 | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* |
+| PF2 | 計測・退行検知 | Arch 7 章 | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)*（上流 `2D_3_H3_MEASUREMENT_PROTOCOL.md` の測定手順を継承予定。F-MOD-03 が宣言値との突き合わせを要求） |
 | PF3 | 重い処理 offload | Arch 6 章 | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* |
 | PF4 | 描画ライブラリ edition別 | Arch 6 章 / Comp 2-D | 粗 | `APP_2D_EDITION_SPEC.md` / `APP_3D_EDITION_SPEC.md` *(予定)* |
 | PF5 | 外殻方式 Tauri系 | Arch 6 章 / Comp 2-G | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* |
@@ -190,6 +190,7 @@ flowchart TB
 | F-CORE-04 | Undo/Redo & 履歴 | `features/F-CORE-04-undo-redo-history.md` | 詳 | —（非破壊派生の上を航法） |
 | F-MOD-01 | モジュールカタログ & 発見 | `features/F-MOD-01-module-catalog-discovery.md` | 詳 | —（A5 の正本） |
 | F-MOD-02 | インストール/アンインストール（可逆・コスト戻り） | `features/F-MOD-02-install-uninstall.md` | 詳 | —（P3 導入半分） |
+| F-MOD-03 | 依存解決 & footprint 開示 | `features/F-MOD-03-dependency-resolution-footprint.md` | 詳 | —（A7 の正本） |
 
 ---
 
@@ -262,6 +263,12 @@ flowchart TB
 | E61 | F-MOD-02 | 尊重 | D3 | 撤去してもプロジェクトデータを保持（往復） |
 | E62 | F-MOD-02 | 依存 | A9 | 有効化/無効化ライフサイクルを Extension Host が担う |
 | E63 | F-MOD-02 | 尊重 | G1 | verified のみ導入可 |
+| E64 | F-MOD-03 | 実現 | A7 | 推移的依存解決・衝突検出の正本 |
+| E65 | F-MOD-03 | 依存 | A6 | dependsOn / footprint / coreContract / capabilities を manifest から得る |
+| E66 | F-MOD-03 | 支える | F-MOD-02 | 導入の合計コストと撤去の逆依存判断を供給 |
+| E67 | F-MOD-03 | 尊重 | P4 | 増分計上と orphan 回収でコスト戻りを保つ |
+| E68 | F-MOD-03 | 検証 | PF2 | 宣言 footprint を実測と突き合わせる |
+| E69 | F-MOD-03 | 尊重 | G1 | 依存込みで verified を確認する |
 
 ---
 
@@ -282,7 +289,9 @@ flowchart TB
 
 > 詳細化の順序自体は `APP_ROADMAP_DECISIONS_OPEN_ITEMS.md` の Stage と整合させる。表の「前提」列は、上流を先に固めるための依存である。
 >
-> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01**, **F-CORE-05**, **F-CORE-03**, **F-CORE-04**, **F-MOD-01**, **F-MOD-02**。
+> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01**, **F-CORE-05**, **F-CORE-03**, **F-CORE-04**, **F-MOD-01**, **F-MOD-02**, **F-MOD-03**。
+>
+> 上流（現行ブラウザ版）の ADR / 実測 docs から「再導出しなくてよい知見」を引き継ぐ対応表は、`features/README.md` 6 章「系譜マップ」を正本とする。
 
 ---
 

@@ -94,7 +94,7 @@
 |---|---|---|---|
 | F-MOD-01 | モジュールカタログ & 発見 | S-DONE-2 | **詳** |
 | F-MOD-02 | インストール / アンインストール（可逆・コスト戻り） | S-DONE-2 | **詳** |
-| F-MOD-03 | 依存解決 & footprint 開示 | S-DONE-2 | 未 |
+| F-MOD-03 | 依存解決 & footprint 開示 | S-DONE-2 | **詳** |
 | F-MOD-04 | ライセンス検証ゲート | S-DONE-2 | 未 |
 | F-MOD-05 | プロファイル（推奨セット束ね） | S-DONE-2 | 未 |
 | F-MOD-06 | 文脈連動の「この機能が要る」提示 | S-DONE-2, S-DONE-4 | 未 |
@@ -221,7 +221,41 @@
 
 ---
 
-## 6. 現在の状況
+## 6. 系譜マップ（上流知見 → 本コンセプトの機能）
 
-- 詳細化済み: **F-CORE-01 / 05 / 03 / 04**（Core 土台）、**F-MOD-01 / 02**（`features/F-MOD-02-install-uninstall.md`）。install-on-demand の中核（発見＋導入/撤去）が揃った。
-- 次候補: **F-MOD-03**（依存解決 & footprint 開示）。導入時の合計コスト算出・依存の連れ込み・逆依存の尊重。続けて F-MOD-04 ライセンス検証を 1 機能ずつ。
+現行 Chameleon（ブラウザ版）で人間承認済みの ADR と実測 docs は、本コンセプトにとって **再導出しなくてよい知見**である。ここでは「どの上流を、どの機能の詳細化で参照するか」を一覧にし、逆算のたびに探し直さないようにする。
+
+> **扱いの原則**: 上流は **知見（precedent）として継承**し、**制約としては継承しない**（`APP_PRODUCT_VISION.md` 6 章）。本コンセプトは別系統であり、上流の実装・schema をそのまま持ち込む決定はしていない。
+
+| 上流（正本） | 継承する知見 | 活かす機能 | 状態 |
+|---|---|---|---|
+| `adr/0007` データ層分離 | UI state / 保存データ / export の責務分離 | F-CORE-01, F-CORE-03 | 反映済 |
+| `adr/0003` variant と派生解釈 | 1 元から独立した複数派生 | F-CORE-03 | 反映済 |
+| `adr/0004` trim/atlas/scale 出力意味論 | 出力は派生であり元を壊さない | F-CORE-03 | 反映済 |
+| `adr/0006` 移行・復旧境界 | 移行前の退避と復旧の境界 | F-CORE-05 | 反映済 |
+| `adr/0015` 移行詳細契約 | 段階的・決定的な migration | F-CORE-05 | 反映済 |
+| `adr/0012` 拡張と未知データ | 未知データの非破壊往復 | F-CORE-05（`D3`/`D4`） | 反映済 |
+| **`adr/0019` optional source mime と asset 0.2.0** | **取り込み元を verbatim 保持するために version を上げた前例**（原本を捨てず、schema を後追いで正す判断） | **F-CORE-05（版上げ）/ F-CORE-03（Source 保持）** | **反映済（本更新）** |
+| `adr/0014` validation staging | 段階的な構造検証 | F-CORE-06 検品 | 未（参照予定） |
+| `adr/0013` / `adr/0017` provenance・AI 境界 | 記録境界と AI の線引き | F-CORE-05, 非目標の AI 境界 | 未（参照予定） |
+| `adr/0016` / `adr/0020` import 任意形式の分類・製品挙動 | 対応形式の分類と失敗時の見せ方 | F-2D-02 画像取り込み | 未（参照予定） |
+| `adr/0018` chameleon atlas semantic reimport | atlas を意味を保って再取り込みする | F-2D-11 / F-2D-12 | 未（参照予定） |
+| **`adr/0021` frame duration semantics** | **可変時間、同一 Frame 再利用、全体時間、複製、event、旧 data 互換** | **F-2D-07 フレームアニメーション** | 未（参照予定） |
+| **`adr/0022` rig flip と bake parity** | **反転時にリグ編集データを完全鏡映し ID remap する（黙って落とさない）** | **F-2D-08 簡易リグ焼き込み** | 未（参照予定） |
+| **`adr/0023` part / layer 差し替え** | **Part の所属差し替えを既存構造の範囲で安全に区切る** | **F-2D-04 レイヤー & パーツ** | 未（参照予定） |
+| `../2D_3_TIMELINE_RIG_PLAN.md` | timeline / rig の契約計画、slice と Gate の切り方 | F-2D-07 / F-2D-08 | 未（参照予定） |
+| **`../2D_3_H3_MEASUREMENT_PROTOCOL.md`** | **固定 fixture・固定 matrix・Node / ブラウザ測定・結果 schema・停止条件（`tools/h3/`）** | **F-PLT-04 計測 & 退行検知（`PF1`/`PF2`）** | 未（参照予定） |
+| `../2D_DEVICE_RELIABILITY_SPEC.md` | 端末別の保存・復旧・性能・アクセシビリティの見方 | F-UX-04, F-CORE-02 | 未（参照予定） |
+| `../PERFORMANCE_BUDGET.md` | 現状性能 baseline と再測定手順 | F-PLT-04 | 未（参照予定） |
+
+### 6.1 特に継承する「進め方」
+
+`2D_3_H3_MEASUREMENT_PROTOCOL.md` は **「測定方法は固定する。数値 budget は未決のまま残す」** という姿勢を採っている。これは本コンセプトの性能規律（`APP_MODULAR_ARCHITECTURE.md` 7 章：仮値を置き、実測で置換する）と同じ考え方であり、**F-PLT-04 の詳細化では、数値を先に決めずに測定手順・固定 fixture・結果 schema・停止条件から固める**方針を継承する。
+
+---
+
+## 7. 現在の状況
+
+- 詳細化済み: **F-CORE-01 / 05 / 03 / 04**（Core 土台）、**F-MOD-01 / 02 / 03**（`features/F-MOD-03-dependency-resolution-footprint.md`）。install-on-demand は「発見 → 導入/撤去 → 依存と重さの誠実な開示」まで揃った。
+- 上流知見の取り込み: 6 章の系譜マップを新設し、ADR-0019（原本保持のための版上げ）を F-CORE-03 / F-CORE-05 に反映済み。ADR-0021 / 0022 / 0023 と `2D_3_H3_MEASUREMENT_PROTOCOL.md` は、対応する機能（F-2D-07 / 08 / 04、F-PLT-04）の詳細化時に参照する。
+- 次候補: **F-MOD-04**（ライセンス検証ゲート）。F-MOD-01/02/03 が「verified のみ導入可」を前提にしており、その enforcement の正本が未定義のため。これで F-MOD 群の中核 4 機能が揃う。
