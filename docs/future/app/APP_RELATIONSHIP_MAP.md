@@ -207,6 +207,7 @@ flowchart TB
 | F-2D-03 | Canvas & ビューポート（2D） | `features/F-2D-03-canvas-viewport.md` | 詳 | —（全 2D 編集が載る面。座標の正本を守る） |
 | F-2D-04 | レイヤー & パーツ | `features/F-2D-04-layers-parts.md` | 詳 | —（「何に対する操作か」を定義する構造） |
 | F-2D-07 | フレーム & フレームアニメーション | `features/F-2D-07-frames-animation.md` | 詳 | —（可変時間・event・loss 時の拒否） |
+| F-2D-08 | 簡易リグ焼き込み（bake） | `features/F-2D-08-rig-bake.md` | 詳 | —（反転規則・parity 検証・失敗が壊さない） |
 | F-2D-09 | 原点 / アンカー付与（2D） | `features/F-2D-09-origin-anchors.md` | 詳 | —（絵をゲーム素材に変える最初の一歩） |
 | F-2D-10 | 当たり判定付与（2D） | `features/F-2D-10-collider-authoring.md` | 詳 | —（上書き単位と polygon チェックリストを継承） |
 
@@ -387,6 +388,12 @@ flowchart TB
 | E167 | F-2D-07 | 制約 | F-CORE-07 | loss のある派生成果物を理由つきで拒否させる |
 | E168 | F-2D-07 | 依存 | F-CORE-06 | dangling event 検出と出力検証に委ねる |
 | E169 | F-2D-07 | 依存 | F-CORE-04 | 編集操作は履歴に乗る |
+| E170 | F-2D-08 | 依存 | F-2D-04 | Part の親子・姿勢の上に載る |
+| E171 | F-2D-08 | 依存 | F-2D-07 | bake 先のフレームと時間の規範に依る |
+| E172 | F-2D-08 | 尊重 | G5 | bake は派生であり、リグ定義と Source を失わない |
+| E173 | F-2D-08 | 依存 | F-CORE-06 | bake 前の構造 preflight を検品フレームに委ねる |
+| E174 | F-2D-08 | 依存 | F-PLT-03 | 重い bake を UI から逃がし、キャンセルで中途生成物を残さない |
+| E175 | F-2D-08 | 依存 | F-PLT-04 | 生成量の上限値を実測で決める |
 
 ---
 
