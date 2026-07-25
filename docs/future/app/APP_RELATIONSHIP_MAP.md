@@ -170,8 +170,8 @@ flowchart TB
 | D2 | migration | Arch 5 章 | 詳 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-05 で正本化） |
 | D3 | 構成非依存の不変条件 | Arch 5 章 | 中 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-01/05 で具体化） |
 | D4 | 名前空間拡張 | Arch 5 章 | 中 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-05 で境界規則） |
-| PF1 | 性能予算 | Arch 7 章 | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* |
-| PF2 | 計測・退行検知 | Arch 7 章 | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)*（上流 `2D_3_H3_MEASUREMENT_PROTOCOL.md` の測定手順を継承予定。F-MOD-03 が宣言値との突き合わせを要求） |
+| PF1 | 性能予算 | Arch 7 章 | 中 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)*（数値は未決のまま、F-PLT-04 が実測で置換する経路を確定） |
+| PF2 | 計測・退行検知 | Arch 7 章 | 詳 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)*（F-PLT-04 で正本化。上流 `2D_3_H3_MEASUREMENT_PROTOCOL.md` の進め方を継承） |
 | PF3 | 重い処理 offload | Arch 6 章 | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* |
 | PF4 | 描画ライブラリ edition別 | Arch 6 章 / Comp 2-D | 粗 | `APP_2D_EDITION_SPEC.md` / `APP_3D_EDITION_SPEC.md` *(予定)* |
 | PF5 | 外殻方式 Tauri系 | Arch 6 章 / Comp 2-G | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* |
@@ -194,6 +194,7 @@ flowchart TB
 | F-MOD-04 | ライセンス検証ゲート | `features/F-MOD-04-license-verification-gate.md` | 詳 | —（G1 の正本） |
 | F-CORE-09 | Extension Host & ライフサイクル | `features/F-CORE-09-extension-host-lifecycle.md` | 詳 | —（A9 の正本） |
 | F-CORE-10 | capability / 権限の強制 | `features/F-CORE-10-capability-permission-enforcement.md` | 詳 | —（A8 の正本） |
+| F-PLT-04 | 性能予算の計測 & 退行検知 | `features/F-PLT-04-performance-measurement-regression.md` | 詳 | —（PF2 の正本。外殻評価の物差し） |
 
 ---
 
@@ -288,6 +289,12 @@ flowchart TB
 | E83 | F-CORE-10 | 尊重 | G5 | いかなる権限でも Source を書き換えられない |
 | E84 | F-CORE-10 | 強制 | A4 | モジュールの能力境界を実行時に強制する |
 | E85 | F-CORE-10 | 支える | F-MOD-02 | 導入前の要求権限開示の材料を与える |
+| E86 | F-PLT-04 | 実現 | PF2 | 計測・退行検知の正本（手順と停止条件） |
+| E87 | F-PLT-04 | 検証 | P4 | 未使用ゼロコストを 3 状態測定で示す |
+| E88 | F-PLT-04 | 支える | PF1 | 仮値を実測で置換する経路を与える |
+| E89 | F-PLT-04 | 検証 | F-MOD-02 | 撤去でコストが戻る（残渣ゼロ）ことを示す |
+| E90 | F-PLT-04 | 支える | F-MOD-03 | 宣言 footprint と実測の突き合わせを供給 |
+| E91 | F-PLT-04 | 制約 | PF5 | 外殻候補の評価基準を先に定める（実測後に確定するため） |
 
 ---
 
@@ -308,7 +315,7 @@ flowchart TB
 
 > 詳細化の順序自体は `APP_ROADMAP_DECISIONS_OPEN_ITEMS.md` の Stage と整合させる。表の「前提」列は、上流を先に固めるための依存である。
 >
-> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01 / 03 / 04 / 05**（Core 土台）、**F-MOD-01 / 02 / 03 / 04**（install-on-demand の中核）、**F-CORE-09 / 10**（Extension Host と権限の Core 受け皿）。**モジュール機構は宣言・発見・導入・依存・検証・登録・権限強制まで一巡した。**
+> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01 / 03 / 04 / 05**（Core 土台）、**F-MOD-01 / 02 / 03 / 04**（install-on-demand の中核）、**F-CORE-09 / 10**（Extension Host と権限の Core 受け皿）、**F-PLT-04**（計測・退行検知）。**モジュール機構は宣言・発見・導入・依存・検証・登録・権限強制まで一巡し、その約束を実測で確かめる物差しも定まった。**
 >
 > 上流（現行ブラウザ版）の ADR / 実測 docs から「再導出しなくてよい知見」を引き継ぐ対応表は、`features/README.md` 6 章「系譜マップ」を正本とする。
 
