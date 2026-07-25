@@ -1,6 +1,6 @@
 # Future Planning Index
 
-最終更新日: 2026-07-23
+最終更新日: 2026-07-25
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 将来計画インデックス
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
@@ -42,6 +42,7 @@ Chameleon Asset Studio は、画像取り込み専用の変換ツールに限定
 | `DECISION_LOG.md` | 重要な方針変更と変更経緯の記録 |
 | `PRODUCT_DIRECTION_2D_TO_3D.md` | 2D 完成を優先し、3D を同じテイストの別画面として広げる方針 |
 | `ASSET_CREATION_AND_EXPORT_STRATEGY.md` | 画像取り込みに限らない作成方法、作成可能ファイル、外部ツール向け書き出し方針 |
+| `EXTERNAL_GITHUB_REFERENCE_CATALOG.md` | 2D / 3D の外部 GitHub 参考実装、有用性3段階、条件付き候補、URL訂正、追加機能案の索引 |
 | `POST_PHASE17_REQUIREMENTS.md` | Phase 17 後に伸ばすべきローカル制作ツールとしての要件 |
 | `POST_PHASE17_IMPLEMENTATION_PLAN.md` | Phase 17 後の段階的な実装計画 |
 | `THREE_D_ASSET_PREPARATION_REQUIREMENTS.md` | 将来の 3D Asset Preparation Mode の要件 |
