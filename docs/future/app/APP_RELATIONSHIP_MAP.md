@@ -201,6 +201,7 @@ flowchart TB
 | F-PLT-05 | エディション別レンダラのロード | `features/F-PLT-05-edition-renderer-loading.md` | 詳 | —（P5 と P4 が交わる実行層） |
 | F-CORE-07 | 書き出しフレーム | `features/F-CORE-07-export-frame.md` | 詳 | —（制作物が外へ出る唯一の出口） |
 | F-CORE-06 | 検品 / Inspection フレーム | `features/F-CORE-06-inspection-validation-frame.md` | 詳 | —（三段検証。A2 の最後の要素） |
+| F-CORE-08 | Home / Project Dashboard | `features/F-CORE-08-home-project-dashboard.md` | 詳 | —（入口。エディションの分岐点） |
 
 ---
 
@@ -336,6 +337,12 @@ flowchart TB
 | E124 | F-CORE-06 | 制約 | A4 | モジュール由来のルールも同じ三段・重大度に従う |
 | E125 | F-CORE-06 | 支える | G3 | 「検品の確かさ」を差別化として成立させる |
 | E126 | F-CORE-06 | 依存 | F-PLT-03 | 重い検証を UI から逃がす |
+| E127 | F-CORE-08 | 支える | F-CORE-01 | 作成・開く・再開の入口を提供 |
+| E128 | F-CORE-08 | 支える | F-PLT-05 | エディション判定を供給し、載せる一方を決める |
+| E129 | F-CORE-08 | 尊重 | P4 | レンダラ・モジュール実体を読まずに機能する |
+| E130 | F-CORE-08 | 尊重 | P5 | 入口は共有し、編集画面は分ける |
+| E131 | F-CORE-08 | 検証 | P1 | 起動の軽さ・迷わなさが最初に評価される場所 |
+| E132 | F-CORE-08 | 依存 | F-CORE-02 | クラッシュ復旧候補の提示元に依る |
 
 ---
 
