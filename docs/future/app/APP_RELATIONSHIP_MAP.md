@@ -197,6 +197,7 @@ flowchart TB
 | F-PLT-04 | 性能予算の計測 & 退行検知 | `features/F-PLT-04-performance-measurement-regression.md` | 詳 | —（PF2 の正本。外殻評価の物差し） |
 | F-PLT-01 | ネイティブ外殻 & ウィンドウ/OS 連携 | `features/F-PLT-01-native-shell-os-integration.md` | 詳 | —（A1 の正本。PF5 の選定基準） |
 | F-PLT-03 | 重い処理の offload | `features/F-PLT-03-heavy-work-offload.md` | 詳 | —（PF3 の正本。応答性の土台） |
+| F-PLT-02 | ネイティブ ファイル I/O & ダイアログ | `features/F-PLT-02-native-file-io-dialogs.md` | 詳 | —（原子的保存の実行層） |
 
 ---
 
@@ -308,6 +309,12 @@ flowchart TB
 | E100 | F-PLT-03 | 尊重 | G5 | 中断・失敗で Source と Document を壊さない |
 | E101 | F-PLT-03 | 制約 | A4 | モジュールの重い処理も同じ仕組みに乗せる（独自スレッド乱立を許さない） |
 | E102 | F-PLT-03 | 依存 | F-CORE-04 | 重い処理を 1 つの履歴単位として扱う |
+| E103 | F-PLT-02 | 支える | D1 | 保存の器を安全に書き・読む実行層 |
+| E104 | F-PLT-02 | 尊重 | G5 | 取り込んだ元ファイルを上書きしない |
+| E105 | F-PLT-02 | 依存 | F-PLT-01 | I/O とダイアログの実行主体は外殻 |
+| E106 | F-PLT-02 | 依存 | F-PLT-03 | 大きな I/O を UI から逃がす |
+| E107 | F-PLT-02 | 支える | F-CORE-01 | 原子的保存（FR-8）の実現手段を提供 |
+| E108 | F-PLT-02 | 尊重 | A8 | 利用者が選んだ範囲の外へ触れない |
 
 ---
 
@@ -328,7 +335,7 @@ flowchart TB
 
 > 詳細化の順序自体は `APP_ROADMAP_DECISIONS_OPEN_ITEMS.md` の Stage と整合させる。表の「前提」列は、上流を先に固めるための依存である。
 >
-> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01 / 03 / 04 / 05**（Core 土台）、**F-MOD-01 / 02 / 03 / 04**（install-on-demand の中核）、**F-CORE-09 / 10**（Extension Host と権限の Core 受け皿）、**F-PLT-04**（計測・退行検知）、**F-PLT-01**（ネイティブ外殻）、**F-PLT-03**（重い処理 offload）。**モジュール機構は宣言・発見・導入・依存・検証・登録・権限強制まで一巡し、その約束を実測で確かめる物差しと、載せる土台の要件・選定基準も定まった（外殻の採用自体は `APP-R-01` のとおり人間承認待ち）。**
+> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01 / 03 / 04 / 05**（Core 土台）、**F-MOD-01 / 02 / 03 / 04**（install-on-demand の中核）、**F-CORE-09 / 10**（Extension Host と権限の Core 受け皿）、**F-PLT-04**（計測・退行検知）、**F-PLT-01**（ネイティブ外殻）、**F-PLT-03**（重い処理 offload）、**F-PLT-02**（ファイル I/O）。**モジュール機構は宣言・発見・導入・依存・検証・登録・権限強制まで一巡し、その約束を実測で確かめる物差しと、載せる土台の要件・選定基準も定まった（外殻の採用自体は `APP-R-01` のとおり人間承認待ち）。**
 >
 > 上流（現行ブラウザ版）の ADR / 実測 docs から「再導出しなくてよい知見」を引き継ぐ対応表は、`features/README.md` 6 章「系譜マップ」を正本とする。
 
