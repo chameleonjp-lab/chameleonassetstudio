@@ -159,7 +159,7 @@ flowchart TB
 | G5 | 非破壊・元データ保持 | Vision 6 章 / Arch 5 章 | 詳 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-03 で正本化） |
 | A1 | Shell 外殻 | Arch 2・6 章 | 詳 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)*（F-PLT-01 で責務境界を正本化） |
 | A2 | Core 契約 | Arch 2 章 | 詳 | `APP_CORE_CONTRACT.md` *(予定)*（F-CORE-01 保存/03 非破壊/04 履歴/05 形式/06 検品/07 書き出し/09 Host/10 権限で全要素が揃った） |
-| A3 | Edition Runtime | Arch 2 章 | 粗 | `APP_2D_EDITION_SPEC.md` / `APP_3D_EDITION_SPEC.md` *(予定)* |
+| A3 | Edition Runtime | Arch 2 章 | 中 | `APP_2D_EDITION_SPEC.md` / `APP_3D_EDITION_SPEC.md` *(予定)*（F-2D-01 で 2D 側の制作起点を具体化） |
 | A4 | Feature Modules | Arch 2 章 | 粗 | `APP_MODULE_CATALOG.md` *(予定)* |
 | A5 | Catalog | Arch 2 章 | 詳 | `APP_MODULE_CATALOG.md` *(予定)*（F-MOD-01 で正本化） |
 | A6 | Manifest 契約 | Arch 3 章 | 中 | `APP_MODULE_MANIFEST_SPEC.md` *(予定)*（F-MOD-01/02/03 が参照する項目は確定） |
@@ -203,6 +203,7 @@ flowchart TB
 | F-CORE-06 | 検品 / Inspection フレーム | `features/F-CORE-06-inspection-validation-frame.md` | 詳 | —（三段検証。A2 の最後の要素） |
 | F-CORE-08 | Home / Project Dashboard | `features/F-CORE-08-home-project-dashboard.md` | 詳 | —（入口。エディションの分岐点） |
 | F-CORE-02 | 自動保存 & クラッシュ復旧 | `features/F-CORE-02-autosave-crash-recovery.md` | 詳 | —（作業を失わせない安全網。Core 群の最後） |
+| F-2D-01 | 新規作成（空/テンプレート/画像/図形/パーツ） | `features/F-2D-01-project-creation.md` | 詳 | —（2D パイプラインの起点） |
 
 ---
 
@@ -350,6 +351,11 @@ flowchart TB
 | E136 | F-CORE-02 | 依存 | F-PLT-02 | 原子的書き込みに依る |
 | E137 | F-CORE-02 | 依存 | F-PLT-03 | 自動保存を UI から逃がす |
 | E138 | F-CORE-02 | 依存 | F-CORE-05 | 復旧領域は器の形式に従い、移行時退避と整合する |
+| E139 | F-2D-01 | 依存 | F-CORE-01 | Project 生成の受け皿に乗る（独自保存経路を作らない） |
+| E140 | F-2D-01 | 支える | A3 | 2D Edition Runtime の制作起点を定義 |
+| E141 | F-2D-01 | 尊重 | G5 | 画像・既存アセット起点でも元を書き換えない |
+| E142 | F-2D-01 | 尊重 | P5 | エディションは 2D で固定し、3D へ変換しない |
+| E143 | F-2D-01 | 制約 | A4 | モジュールはテンプレートを足せるが器の作法を壊さない |
 
 ---
 
