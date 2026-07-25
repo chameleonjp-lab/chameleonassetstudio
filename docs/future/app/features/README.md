@@ -83,7 +83,7 @@
 | F-CORE-04 | Undo / Redo & 履歴 | D-DONE-2 | **詳** |
 | F-CORE-05 | 保存形式・バージョニング・migration | D-DONE-8, S-DONE-5 | **詳** |
 | F-CORE-06 | 検品 / Inspection フレーム | D-DONE-6, T-DONE-3 | 未 |
-| F-CORE-07 | 書き出しフレーム（ZIP + README + import notes の器） | D-DONE-7, T-DONE-8 | 未 |
+| F-CORE-07 | 書き出しフレーム（ZIP + README + import notes の器） | D-DONE-7, T-DONE-8 | **詳** |
 | F-CORE-08 | Home / Project Dashboard | S-DONE-1 | 未 |
 | F-CORE-09 | Extension Host & モジュール・ライフサイクル | S-DONE-2 | **詳** |
 | F-CORE-10 | capability / 権限の強制 | S-DONE-2 | **詳** |
@@ -245,6 +245,8 @@
 | **`adr/0023` part / layer 差し替え** | **Part の所属差し替えを既存構造の範囲で安全に区切る** | **F-2D-04 レイヤー & パーツ** | 未（参照予定） |
 | `../2D_3_TIMELINE_RIG_PLAN.md` | timeline / rig の契約計画、slice と Gate の切り方 | F-2D-07 / F-2D-08 | 未（参照予定） |
 | **`../2D_3_H3_MEASUREMENT_PROTOCOL.md`** | **固定 fixture・固定 matrix・Node / ブラウザ測定・結果 schema・停止条件（`tools/h3/`）** | **F-PLT-04 計測 & 退行検知（`PF1`/`PF2`）** | 未（参照予定） |
+| **`../2D_EXPORT_COMPATIBILITY_MATRIX.md`** | **互換性ラベル（`generic`/`candidate`/`verified`）と `verified` の必要条件。記録が無いものを verified と呼ばない／verified は対象バージョンに紐づく** | **F-CORE-07 書き出しフレーム** | **反映済（本更新）** |
+| `../EXPORT_QUALITY_DESIGN.md` / `../../EXPORT_FORMATS.md` / `../../ENGINE_INTEGRATION.md` | 出力品質の options 設計、対応形式、エンジン連携の考え方 | F-CORE-07, F-2D-16, F-3D-15 | 一部（F-CORE-07 で参照） |
 | `../2D_DEVICE_RELIABILITY_SPEC.md` | 端末別の保存・復旧・性能・アクセシビリティの見方 | F-UX-04, F-CORE-02 | 未（参照予定） |
 | `../PERFORMANCE_BUDGET.md` | 現状性能 baseline と再測定手順 | F-PLT-04 | 未（参照予定） |
 
@@ -265,6 +267,7 @@
 - **F-PLT-03 完了**（`features/F-PLT-03-heavy-work-offload.md`）。**8 機能が「UI を固めない」を掲げながら、その実現手段の正本が無い**状態だったため優先した（最も多く依存されていた未定義機能）。キャンセル可能・中断しても壊さない・重い処理を 1 履歴単位として扱う・高速経路は任意で fallback で成立・モジュールの重い処理も同じ仕組みに乗せる、を要件化。
 - **F-PLT-02 完了**（`features/F-PLT-02-native-file-io-dialogs.md`）。F-CORE-01 FR-8 / F-CORE-05 FR-12 / F-MOD-02 FR-7 が前提にしていた**原子的に書ける手段**の正本。中断しても直前の保存を壊さない、部分書き込みを検出する、元ファイルを読み取りのみで扱う、D&D・ネイティブダイアログ・関連付け、ZIP 書き出しも途中失敗で不完全な成果物を残さない、を要件化。
 - **F-PLT-05 完了**（`features/F-PLT-05-edition-renderer-loading.md`）。**F-PLT 群（プラットフォーム基盤）が揃った**。起動時はどちらのレンダラも載せない・使わないエディションの描画依存を常駐させない・レンダラ依存を Core/Shell へ染み出させない・切り替えで資源を解放する・描画不能でもデータを失わない、を要件化（採用は `APP-O-03` のとおり未決）。
-- 次候補: **共通フレーム**を上流から。`F-CORE-07`（書き出しフレーム）→ `F-CORE-06`（検品フレーム）→ `F-CORE-08`（Dashboard）→ `F-CORE-02`（自動保存・復旧）。**F-CORE-07 を先にする理由**: F-MOD-04 FR-9（帰属表示の同梱先）が既にこの器を前提にしており、2D/3D 双方の書き出し（`D-DONE-7` / `T-DONE-8`）が載る土台だから。
+- **F-CORE-07 完了**（`features/F-CORE-07-export-frame.md`）。制作物が外へ出る唯一の出口であり、差別化仮説 2（「作れる」ではなく**外部エンジンで確実に使える**）を支える器。上流の**互換性ラベル（`generic`/`candidate`/`verified`）と「記録が無いものを verified と呼ばない」規律**を継承した。
+- 次候補: **`F-CORE-06`（検品フレーム）**。F-CORE-07 FR-4 が inspection report の同梱を前提にしており、その供給元が未定義。あわせて `A2`（Core 契約）の最後の未確定要素であり、これが揃うと `A2` が「詳」になる。続けて `F-CORE-08`（Dashboard）→ `F-CORE-02`（自動保存・復旧）。
 - その後: 2D パイプライン（`F-2D-01` → 04 → 09/10 → 07/08 → 11/12 → 15/16）→ 3D パイプライン（`F-3D-01` → 03 → 05 → 06/07 → 10/11/12 → 14/15）→ UX 横断（`F-UX-01`〜05）。
 - その後: 共通フレーム（`F-CORE-06` 検品 / `F-CORE-07` 書き出し / `F-CORE-08` Dashboard / `F-CORE-02` 自動保存・復旧）→ 2D パイプライン → 3D パイプライン → UX 横断。
