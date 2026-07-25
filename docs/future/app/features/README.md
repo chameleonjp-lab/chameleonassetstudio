@@ -95,7 +95,7 @@
 | F-MOD-01 | モジュールカタログ & 発見 | S-DONE-2 | **詳** |
 | F-MOD-02 | インストール / アンインストール（可逆・コスト戻り） | S-DONE-2 | **詳** |
 | F-MOD-03 | 依存解決 & footprint 開示 | S-DONE-2 | **詳** |
-| F-MOD-04 | ライセンス検証ゲート | S-DONE-2 | 未 |
+| F-MOD-04 | ライセンス検証ゲート | S-DONE-2 | **詳** |
 | F-MOD-05 | プロファイル（推奨セット束ね） | S-DONE-2 | 未 |
 | F-MOD-06 | 文脈連動の「この機能が要る」提示 | S-DONE-2, S-DONE-4 | 未 |
 
@@ -256,6 +256,6 @@
 
 ## 7. 現在の状況
 
-- 詳細化済み: **F-CORE-01 / 05 / 03 / 04**（Core 土台）、**F-MOD-01 / 02 / 03**（`features/F-MOD-03-dependency-resolution-footprint.md`）。install-on-demand は「発見 → 導入/撤去 → 依存と重さの誠実な開示」まで揃った。
+- 詳細化済み: **F-CORE-01 / 05 / 03 / 04**（Core 土台）、**F-MOD-01 / 02 / 03 / 04**（`features/F-MOD-04-license-verification-gate.md`）。**install-on-demand の中核が完了**——「発見 → 導入/撤去 → 依存と重さの誠実な開示 → 入れてよいものかの検証」が一巡した。
 - 上流知見の取り込み: 6 章の系譜マップを新設し、ADR-0019（原本保持のための版上げ）を F-CORE-03 / F-CORE-05 に反映済み。ADR-0021 / 0022 / 0023 と `2D_3_H3_MEASUREMENT_PROTOCOL.md` は、対応する機能（F-2D-07 / 08 / 04、F-PLT-04）の詳細化時に参照する。
-- 次候補: **F-MOD-04**（ライセンス検証ゲート）。F-MOD-01/02/03 が「verified のみ導入可」を前提にしており、その enforcement の正本が未定義のため。これで F-MOD 群の中核 4 機能が揃う。
+- 次候補: **F-CORE-09 / F-CORE-10**（Extension Host & capability 権限の強制）。`A9`/`A8` は F-CORE-04（履歴登録）・F-MOD-02（有効化/無効化）・F-MOD-04（ゲート）から要件が集まっており、Core 側の受け皿が未定義のため。その後 F-PLT 群（外殻・性能計測）→ 共通フレーム（F-CORE-06 検品 / 07 書き出し / 08 Dashboard）→ 2D/3D パイプライン。

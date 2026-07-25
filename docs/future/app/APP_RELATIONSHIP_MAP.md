@@ -175,7 +175,7 @@ flowchart TB
 | PF3 | 重い処理 offload | Arch 6 章 | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* |
 | PF4 | 描画ライブラリ edition別 | Arch 6 章 / Comp 2-D | 粗 | `APP_2D_EDITION_SPEC.md` / `APP_3D_EDITION_SPEC.md` *(予定)* |
 | PF5 | 外殻方式 Tauri系 | Arch 6 章 / Comp 2-G | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* |
-| G1 | ライセンス検証 gate | Arch 3 章 | 粗 | 各採用評価記録 *(予定)* |
+| G1 | ライセンス検証 gate | Arch 3 章 | 詳 | 各採用評価記録 *(予定)*（F-MOD-04 で正本化） |
 | G2 | 価値の位置づけ | Vision 5 章 / Comp 5 章 | 粗 | Vision（確定寄り） |
 | G3 | 差別化仮説 | Comp 4 章 | 粗 | Comp（更新継続） |
 | G4 | 第三者拡張（保留） | Arch 8 章 / Roadmap 4 章 | 粗 | Stage 4 判断 *(予定)* |
@@ -191,6 +191,7 @@ flowchart TB
 | F-MOD-01 | モジュールカタログ & 発見 | `features/F-MOD-01-module-catalog-discovery.md` | 詳 | —（A5 の正本） |
 | F-MOD-02 | インストール/アンインストール（可逆・コスト戻り） | `features/F-MOD-02-install-uninstall.md` | 詳 | —（P3 導入半分） |
 | F-MOD-03 | 依存解決 & footprint 開示 | `features/F-MOD-03-dependency-resolution-footprint.md` | 詳 | —（A7 の正本） |
+| F-MOD-04 | ライセンス検証ゲート | `features/F-MOD-04-license-verification-gate.md` | 詳 | —（G1 の正本） |
 
 ---
 
@@ -269,6 +270,11 @@ flowchart TB
 | E67 | F-MOD-03 | 尊重 | P4 | 増分計上と orphan 回収でコスト戻りを保つ |
 | E68 | F-MOD-03 | 検証 | PF2 | 宣言 footprint を実測と突き合わせる |
 | E69 | F-MOD-03 | 尊重 | G1 | 依存込みで verified を確認する |
+| E70 | F-MOD-04 | 実現 | G1 | ライセンス検証ゲートの正本（人間確認 + 記録） |
+| E71 | F-MOD-04 | 制約 | F-MOD-02 | 導入可否の最終判定を与える |
+| E72 | F-MOD-04 | 依存 | A6 | license メタを manifest から得る |
+| E73 | F-MOD-04 | 依存 | F-MOD-03 | 依存込み集約の結果を検証対象にする |
+| E74 | F-MOD-04 | 支える | F-CORE-07 | 帰属表示を書き出しの器へ載せる |
 
 ---
 
@@ -289,7 +295,7 @@ flowchart TB
 
 > 詳細化の順序自体は `APP_ROADMAP_DECISIONS_OPEN_ITEMS.md` の Stage と整合させる。表の「前提」列は、上流を先に固めるための依存である。
 >
-> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01**, **F-CORE-05**, **F-CORE-03**, **F-CORE-04**, **F-MOD-01**, **F-MOD-02**, **F-MOD-03**。
+> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01**, **F-CORE-05**, **F-CORE-03**, **F-CORE-04**, **F-MOD-01**, **F-MOD-02**, **F-MOD-03**, **F-MOD-04**（F-MOD 群の中核 4 機能が完了）。
 >
 > 上流（現行ブラウザ版）の ADR / 実測 docs から「再導出しなくてよい知見」を引き継ぐ対応表は、`features/README.md` 6 章「系譜マップ」を正本とする。
 
