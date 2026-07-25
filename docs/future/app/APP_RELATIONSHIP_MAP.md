@@ -202,6 +202,7 @@ flowchart TB
 | F-CORE-07 | 書き出しフレーム | `features/F-CORE-07-export-frame.md` | 詳 | —（制作物が外へ出る唯一の出口） |
 | F-CORE-06 | 検品 / Inspection フレーム | `features/F-CORE-06-inspection-validation-frame.md` | 詳 | —（三段検証。A2 の最後の要素） |
 | F-CORE-08 | Home / Project Dashboard | `features/F-CORE-08-home-project-dashboard.md` | 詳 | —（入口。エディションの分岐点） |
+| F-CORE-02 | 自動保存 & クラッシュ復旧 | `features/F-CORE-02-autosave-crash-recovery.md` | 詳 | —（作業を失わせない安全網。Core 群の最後） |
 
 ---
 
@@ -343,6 +344,12 @@ flowchart TB
 | E130 | F-CORE-08 | 尊重 | P5 | 入口は共有し、編集画面は分ける |
 | E131 | F-CORE-08 | 検証 | P1 | 起動の軽さ・迷わなさが最初に評価される場所 |
 | E132 | F-CORE-08 | 依存 | F-CORE-02 | クラッシュ復旧候補の提示元に依る |
+| E133 | F-CORE-02 | 支える | F-CORE-01 | FR-13（復旧候補の提示）の実体を供給 |
+| E134 | F-CORE-02 | 支える | F-CORE-08 | Dashboard に復旧候補を供給 |
+| E135 | F-CORE-02 | 尊重 | G5 | 自動保存が可搬正本と Source を汚さない |
+| E136 | F-CORE-02 | 依存 | F-PLT-02 | 原子的書き込みに依る |
+| E137 | F-CORE-02 | 依存 | F-PLT-03 | 自動保存を UI から逃がす |
+| E138 | F-CORE-02 | 依存 | F-CORE-05 | 復旧領域は器の形式に従い、移行時退避と整合する |
 
 ---
 
@@ -363,7 +370,7 @@ flowchart TB
 
 > 詳細化の順序自体は `APP_ROADMAP_DECISIONS_OPEN_ITEMS.md` の Stage と整合させる。表の「前提」列は、上流を先に固めるための依存である。
 >
-> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01 / 03 / 04 / 05**（Core 土台）、**F-MOD-01 / 02 / 03 / 04**（install-on-demand の中核）、**F-CORE-09 / 10**（Extension Host と権限の Core 受け皿）、**F-PLT-04**（計測・退行検知）、**F-PLT-01**（ネイティブ外殻）、**F-PLT-03**（重い処理 offload）、**F-PLT-02**（ファイル I/O）、**F-PLT-05**（レンダラのロード）。**F-PLT 群（プラットフォーム基盤）が揃った。** さらに共通フレームとして **F-CORE-07**（書き出し）・**F-CORE-06**（検品）を確定し、**`A2`（Core 契約）の全要素が揃った**。**モジュール機構は宣言・発見・導入・依存・検証・登録・権限強制まで一巡し、その約束を実測で確かめる物差しと、載せる土台の要件・選定基準も定まった（外殻の採用自体は `APP-R-01` のとおり人間承認待ち）。**
+> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01 / 03 / 04 / 05**（Core 土台）、**F-MOD-01 / 02 / 03 / 04**（install-on-demand の中核）、**F-CORE-09 / 10**（Extension Host と権限の Core 受け皿）、**F-PLT-04**（計測・退行検知）、**F-PLT-01**（ネイティブ外殻）、**F-PLT-03**（重い処理 offload）、**F-PLT-02**（ファイル I/O）、**F-PLT-05**（レンダラのロード）。**F-PLT 群（プラットフォーム基盤）が揃った。** さらに共通フレームとして **F-CORE-07**（書き出し）・**F-CORE-06**（検品）・**F-CORE-08**（Dashboard）・**F-CORE-02**（自動保存/復旧）を確定し、**`A2`（Core 契約）の全要素と Core 群（F-CORE-01〜10）が完了した**。以降は 2D / 3D パイプラインと UX 横断へ進む。**モジュール機構は宣言・発見・導入・依存・検証・登録・権限強制まで一巡し、その約束を実測で確かめる物差しと、載せる土台の要件・選定基準も定まった（外殻の採用自体は `APP-R-01` のとおり人間承認待ち）。**
 >
 > 上流（現行ブラウザ版）の ADR / 実測 docs から「再導出しなくてよい知見」を引き継ぐ対応表は、`features/README.md` 6 章「系譜マップ」を正本とする。
 
