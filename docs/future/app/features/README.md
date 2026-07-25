@@ -82,7 +82,7 @@
 | F-CORE-03 | 非破壊編集モデル（source 保持・派生分離） | D-DONE-2, T-DONE-6/9 | **詳** |
 | F-CORE-04 | Undo / Redo & 履歴 | D-DONE-2 | **詳** |
 | F-CORE-05 | 保存形式・バージョニング・migration | D-DONE-8, S-DONE-5 | **詳** |
-| F-CORE-06 | 検品 / Inspection フレーム | D-DONE-6, T-DONE-3 | 未 |
+| F-CORE-06 | 検品 / Inspection フレーム | D-DONE-6, T-DONE-3 | **詳** |
 | F-CORE-07 | 書き出しフレーム（ZIP + README + import notes の器） | D-DONE-7, T-DONE-8 | **詳** |
 | F-CORE-08 | Home / Project Dashboard | S-DONE-1 | 未 |
 | F-CORE-09 | Extension Host & モジュール・ライフサイクル | S-DONE-2 | **詳** |
@@ -236,7 +236,7 @@
 | `adr/0015` 移行詳細契約 | 段階的・決定的な migration | F-CORE-05 | 反映済 |
 | `adr/0012` 拡張と未知データ | 未知データの非破壊往復 | F-CORE-05（`D3`/`D4`） | 反映済 |
 | **`adr/0019` optional source mime と asset 0.2.0** | **取り込み元を verbatim 保持するために version を上げた前例**（原本を捨てず、schema を後追いで正す判断） | **F-CORE-05（版上げ）/ F-CORE-03（Source 保持）** | **反映済（本更新）** |
-| `adr/0014` validation staging | 段階的な構造検証 | F-CORE-06 検品 | 未（参照予定） |
+| **`adr/0014` validation staging** | **三段検証（構造 / 意味 / 出力 preflight）と、段ごとに異なる失敗時の既定動作。検証は read-only。秘密情報検出は preflight 段。不正入力対策は別関心事** | **F-CORE-06 検品フレーム** | **反映済（本更新）** |
 | `adr/0013` / `adr/0017` provenance・AI 境界 | 記録境界と AI の線引き | F-CORE-05, 非目標の AI 境界 | 未（参照予定） |
 | `adr/0016` / `adr/0020` import 任意形式の分類・製品挙動 | 対応形式の分類と失敗時の見せ方 | F-2D-02 画像取り込み | 未（参照予定） |
 | `adr/0018` chameleon atlas semantic reimport | atlas を意味を保って再取り込みする | F-2D-11 / F-2D-12 | 未（参照予定） |
@@ -268,6 +268,8 @@
 - **F-PLT-02 完了**（`features/F-PLT-02-native-file-io-dialogs.md`）。F-CORE-01 FR-8 / F-CORE-05 FR-12 / F-MOD-02 FR-7 が前提にしていた**原子的に書ける手段**の正本。中断しても直前の保存を壊さない、部分書き込みを検出する、元ファイルを読み取りのみで扱う、D&D・ネイティブダイアログ・関連付け、ZIP 書き出しも途中失敗で不完全な成果物を残さない、を要件化。
 - **F-PLT-05 完了**（`features/F-PLT-05-edition-renderer-loading.md`）。**F-PLT 群（プラットフォーム基盤）が揃った**。起動時はどちらのレンダラも載せない・使わないエディションの描画依存を常駐させない・レンダラ依存を Core/Shell へ染み出させない・切り替えで資源を解放する・描画不能でもデータを失わない、を要件化（採用は `APP-O-03` のとおり未決）。
 - **F-CORE-07 完了**（`features/F-CORE-07-export-frame.md`）。制作物が外へ出る唯一の出口であり、差別化仮説 2（「作れる」ではなく**外部エンジンで確実に使える**）を支える器。上流の**互換性ラベル（`generic`/`candidate`/`verified`）と「記録が無いものを verified と呼ばない」規律**を継承した。
-- 次候補: **`F-CORE-06`（検品フレーム）**。F-CORE-07 FR-4 が inspection report の同梱を前提にしており、その供給元が未定義。あわせて `A2`（Core 契約）の最後の未確定要素であり、これが揃うと `A2` が「詳」になる。続けて `F-CORE-08`（Dashboard）→ `F-CORE-02`（自動保存・復旧）。
+- **F-CORE-06 完了**（`features/F-CORE-06-inspection-validation-frame.md`）。ADR-0014 の**三段検証（構造 / 意味 / 出力 preflight）と段ごとに異なる失敗時の既定動作**（構造=止める／意味=修復要求し黙って直さない／出力=警告 or 停止だが保存正本は止めない）、**検証は read-only**、**秘密情報検出は preflight 段**、**不正入力対策は別関心事**、を継承した。
+- **これで `A2`（Core 契約）の全要素が揃った**（保存・非破壊・履歴・形式/移行・検品・書き出し・Host・権限）。
+- 次候補: **`F-CORE-08`（Home / Project Dashboard）**。`S-DONE-1`（2D・3D いずれのプロジェクトへも入れる）の入口であり、F-CORE-01 FR-5/FR-12（最近使った項目・再開）と F-PLT-05（エディション判定によるレンダラ選択）が接続する場所。続けて `F-CORE-02`（自動保存・復旧）で Core 群が完了する。
 - その後: 2D パイプライン（`F-2D-01` → 04 → 09/10 → 07/08 → 11/12 → 15/16）→ 3D パイプライン（`F-3D-01` → 03 → 05 → 06/07 → 10/11/12 → 14/15）→ UX 横断（`F-UX-01`〜05）。
 - その後: 共通フレーム（`F-CORE-06` 検品 / `F-CORE-07` 書き出し / `F-CORE-08` Dashboard / `F-CORE-02` 自動保存・復旧）→ 2D パイプライン → 3D パイプライン → UX 横断。

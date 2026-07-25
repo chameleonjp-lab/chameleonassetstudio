@@ -158,7 +158,7 @@ flowchart TB
 | P5 | 目的分離 2D/3D | Vision 4 章 | 粗 | `APP_2D_EDITION_SPEC.md` / `APP_3D_EDITION_SPEC.md` *(予定)* |
 | G5 | 非破壊・元データ保持 | Vision 6 章 / Arch 5 章 | 詳 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-03 で正本化） |
 | A1 | Shell 外殻 | Arch 2・6 章 | 詳 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)*（F-PLT-01 で責務境界を正本化） |
-| A2 | Core 契約 | Arch 2 章 | 中 | `APP_CORE_CONTRACT.md` *(予定)*（F-CORE-01 で一部具体化） |
+| A2 | Core 契約 | Arch 2 章 | 詳 | `APP_CORE_CONTRACT.md` *(予定)*（F-CORE-01 保存/03 非破壊/04 履歴/05 形式/06 検品/07 書き出し/09 Host/10 権限で全要素が揃った） |
 | A3 | Edition Runtime | Arch 2 章 | 粗 | `APP_2D_EDITION_SPEC.md` / `APP_3D_EDITION_SPEC.md` *(予定)* |
 | A4 | Feature Modules | Arch 2 章 | 粗 | `APP_MODULE_CATALOG.md` *(予定)* |
 | A5 | Catalog | Arch 2 章 | 詳 | `APP_MODULE_CATALOG.md` *(予定)*（F-MOD-01 で正本化） |
@@ -200,6 +200,7 @@ flowchart TB
 | F-PLT-02 | ネイティブ ファイル I/O & ダイアログ | `features/F-PLT-02-native-file-io-dialogs.md` | 詳 | —（原子的保存の実行層） |
 | F-PLT-05 | エディション別レンダラのロード | `features/F-PLT-05-edition-renderer-loading.md` | 詳 | —（P5 と P4 が交わる実行層） |
 | F-CORE-07 | 書き出しフレーム | `features/F-CORE-07-export-frame.md` | 詳 | —（制作物が外へ出る唯一の出口） |
+| F-CORE-06 | 検品 / Inspection フレーム | `features/F-CORE-06-inspection-validation-frame.md` | 詳 | —（三段検証。A2 の最後の要素） |
 
 ---
 
@@ -329,6 +330,12 @@ flowchart TB
 | E118 | F-CORE-07 | 支える | G3 | 「外部エンジンで確実に使える」差別化仮説を器として支える |
 | E119 | F-CORE-07 | 制約 | A4 | モジュールは preset を足せるが器の原則を壊せない |
 | E120 | F-CORE-07 | 尊重 | G1 | attribution 同梱と、未検証を `verified` と名乗らない規律 |
+| E121 | F-CORE-06 | 実現 | A2 | Core 契約の Validation / Inspection フレームを具体化（A2 の最後の要素） |
+| E122 | F-CORE-06 | 支える | F-CORE-07 | inspection report と preflight を供給 |
+| E123 | F-CORE-06 | 尊重 | G5 | 検証は read-only でデータを書き換えない |
+| E124 | F-CORE-06 | 制約 | A4 | モジュール由来のルールも同じ三段・重大度に従う |
+| E125 | F-CORE-06 | 支える | G3 | 「検品の確かさ」を差別化として成立させる |
+| E126 | F-CORE-06 | 依存 | F-PLT-03 | 重い検証を UI から逃がす |
 
 ---
 
@@ -349,7 +356,7 @@ flowchart TB
 
 > 詳細化の順序自体は `APP_ROADMAP_DECISIONS_OPEN_ITEMS.md` の Stage と整合させる。表の「前提」列は、上流を先に固めるための依存である。
 >
-> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01 / 03 / 04 / 05**（Core 土台）、**F-MOD-01 / 02 / 03 / 04**（install-on-demand の中核）、**F-CORE-09 / 10**（Extension Host と権限の Core 受け皿）、**F-PLT-04**（計測・退行検知）、**F-PLT-01**（ネイティブ外殻）、**F-PLT-03**（重い処理 offload）、**F-PLT-02**（ファイル I/O）、**F-PLT-05**（レンダラのロード）。**F-PLT 群（プラットフォーム基盤）が揃った。** さらに共通フレームとして **F-CORE-07**（書き出し）に着手。**モジュール機構は宣言・発見・導入・依存・検証・登録・権限強制まで一巡し、その約束を実測で確かめる物差しと、載せる土台の要件・選定基準も定まった（外殻の採用自体は `APP-R-01` のとおり人間承認待ち）。**
+> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01 / 03 / 04 / 05**（Core 土台）、**F-MOD-01 / 02 / 03 / 04**（install-on-demand の中核）、**F-CORE-09 / 10**（Extension Host と権限の Core 受け皿）、**F-PLT-04**（計測・退行検知）、**F-PLT-01**（ネイティブ外殻）、**F-PLT-03**（重い処理 offload）、**F-PLT-02**（ファイル I/O）、**F-PLT-05**（レンダラのロード）。**F-PLT 群（プラットフォーム基盤）が揃った。** さらに共通フレームとして **F-CORE-07**（書き出し）・**F-CORE-06**（検品）を確定し、**`A2`（Core 契約）の全要素が揃った**。**モジュール機構は宣言・発見・導入・依存・検証・登録・権限強制まで一巡し、その約束を実測で確かめる物差しと、載せる土台の要件・選定基準も定まった（外殻の採用自体は `APP-R-01` のとおり人間承認待ち）。**
 >
 > 上流（現行ブラウザ版）の ADR / 実測 docs から「再導出しなくてよい知見」を引き継ぐ対応表は、`features/README.md` 6 章「系譜マップ」を正本とする。
 
