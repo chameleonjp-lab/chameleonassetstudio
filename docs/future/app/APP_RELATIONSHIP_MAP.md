@@ -199,6 +199,7 @@ flowchart TB
 | F-PLT-03 | 重い処理の offload | `features/F-PLT-03-heavy-work-offload.md` | 詳 | —（PF3 の正本。応答性の土台） |
 | F-PLT-02 | ネイティブ ファイル I/O & ダイアログ | `features/F-PLT-02-native-file-io-dialogs.md` | 詳 | —（原子的保存の実行層） |
 | F-PLT-05 | エディション別レンダラのロード | `features/F-PLT-05-edition-renderer-loading.md` | 詳 | —（P5 と P4 が交わる実行層） |
+| F-CORE-07 | 書き出しフレーム | `features/F-CORE-07-export-frame.md` | 詳 | —（制作物が外へ出る唯一の出口） |
 
 ---
 
@@ -322,6 +323,12 @@ flowchart TB
 | E112 | F-PLT-05 | 尊重 | P4 | 使わないエディションの依存を常駐させない |
 | E113 | F-PLT-05 | 依存 | F-PLT-04 | 分離効果の実測と候補比較を同一手順で行う |
 | E114 | F-PLT-05 | 尊重 | G1 | 描画ライブラリもライセンス確認を経て採用する |
+| E115 | F-CORE-07 | 実現 | A2 | Core 契約の export フレームを具体化 |
+| E116 | F-CORE-07 | 依存 | F-PLT-02 | 原子的な成果物生成に依る |
+| E117 | F-CORE-07 | 尊重 | G5 | 書き出しは派生であり Source を変更しない |
+| E118 | F-CORE-07 | 支える | G3 | 「外部エンジンで確実に使える」差別化仮説を器として支える |
+| E119 | F-CORE-07 | 制約 | A4 | モジュールは preset を足せるが器の原則を壊せない |
+| E120 | F-CORE-07 | 尊重 | G1 | attribution 同梱と、未検証を `verified` と名乗らない規律 |
 
 ---
 
@@ -342,7 +349,7 @@ flowchart TB
 
 > 詳細化の順序自体は `APP_ROADMAP_DECISIONS_OPEN_ITEMS.md` の Stage と整合させる。表の「前提」列は、上流を先に固めるための依存である。
 >
-> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01 / 03 / 04 / 05**（Core 土台）、**F-MOD-01 / 02 / 03 / 04**（install-on-demand の中核）、**F-CORE-09 / 10**（Extension Host と権限の Core 受け皿）、**F-PLT-04**（計測・退行検知）、**F-PLT-01**（ネイティブ外殻）、**F-PLT-03**（重い処理 offload）、**F-PLT-02**（ファイル I/O）、**F-PLT-05**（レンダラのロード）。**F-PLT 群（プラットフォーム基盤）が揃った。****モジュール機構は宣言・発見・導入・依存・検証・登録・権限強制まで一巡し、その約束を実測で確かめる物差しと、載せる土台の要件・選定基準も定まった（外殻の採用自体は `APP-R-01` のとおり人間承認待ち）。**
+> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01 / 03 / 04 / 05**（Core 土台）、**F-MOD-01 / 02 / 03 / 04**（install-on-demand の中核）、**F-CORE-09 / 10**（Extension Host と権限の Core 受け皿）、**F-PLT-04**（計測・退行検知）、**F-PLT-01**（ネイティブ外殻）、**F-PLT-03**（重い処理 offload）、**F-PLT-02**（ファイル I/O）、**F-PLT-05**（レンダラのロード）。**F-PLT 群（プラットフォーム基盤）が揃った。** さらに共通フレームとして **F-CORE-07**（書き出し）に着手。**モジュール機構は宣言・発見・導入・依存・検証・登録・権限強制まで一巡し、その約束を実測で確かめる物差しと、載せる土台の要件・選定基準も定まった（外殻の採用自体は `APP-R-01` のとおり人間承認待ち）。**
 >
 > 上流（現行ブラウザ版）の ADR / 実測 docs から「再導出しなくてよい知見」を引き継ぐ対応表は、`features/README.md` 6 章「系譜マップ」を正本とする。
 
