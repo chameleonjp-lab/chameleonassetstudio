@@ -6,7 +6,7 @@
 所属パイプライン段: 全段の土台（保存の器の正本）
 上位: `docs/future/app/features/README.md`, `docs/future/app/APP_MODULAR_ARCHITECTURE.md`
 関係マップ: `docs/future/app/APP_RELATIONSHIP_MAP.md`
-系譜（既存知見・制約ではなく参考）: `docs/adr/0006-migration-and-recovery-boundaries.md`, `docs/adr/0012-target-extension-and-unknown-data.md`, `docs/adr/0013-provenance-and-ai-record-boundary.md`, `docs/adr/0014-validation-staging.md`, `docs/adr/0015-migration-detailed-contract.md`
+系譜（既存知見・制約ではなく参考）: `docs/adr/0006-migration-and-recovery-boundaries.md`, `docs/adr/0012-target-extension-and-unknown-data.md`, `docs/adr/0013-provenance-and-ai-record-boundary.md`, `docs/adr/0014-validation-staging.md`, `docs/adr/0015-migration-detailed-contract.md`, `docs/adr/0019-optional-source-mime-and-asset-0.2.0.md`
 
 ---
 
@@ -86,6 +86,7 @@
 - **未知データ保持と名前空間**（`D3`/`D4`）の規則をここで固定し、F-CORE-01（開く/保存）・F-CORE-09（Host）・各モジュールが従う。
 - **物理形式は未決**（非目標）。要件は物理形式に依存しないよう書く。
 - **UI 一時状態は器に入れない**（Arch 5 章の規律。F-CORE-01 6 章の分離と一致）。
+- **前例（ADR-0019）**: 上流では、取り込んだ元ファイルを verbatim 保持するために **原本を捨てずに version を上げ、schema を後追いで正す**判断を採った。本機能もこの優先順位（**データ保持 > 既存 schema の据え置き**）を継承する。
 
 ## 6. 依存機能
 

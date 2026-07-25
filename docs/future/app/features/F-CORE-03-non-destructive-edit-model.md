@@ -6,7 +6,7 @@
 所属パイプライン段: 全段の土台（編集・整備・軽量化の基盤）
 上位: `docs/future/app/features/README.md`, `docs/future/app/APP_MODULAR_ARCHITECTURE.md`
 関係マップ: `docs/future/app/APP_RELATIONSHIP_MAP.md`
-系譜（既存知見・制約ではなく参考）: `docs/adr/0007-data-layer-separation.md`, `docs/adr/0003-variant-and-derived-asset-interpretation.md`, `docs/adr/0004-trim-atlas-scale-output-semantics.md`
+系譜（既存知見・制約ではなく参考）: `docs/adr/0007-data-layer-separation.md`, `docs/adr/0003-variant-and-derived-asset-interpretation.md`, `docs/adr/0004-trim-atlas-scale-output-semantics.md`, `docs/adr/0019-optional-source-mime-and-asset-0.2.0.md`
 
 ---
 
@@ -46,6 +46,7 @@
 - **FR-1** 取り込み／作成した各アセットは、**不変の Source を保持**する。いかなる編集操作も Source を書き換えない。
 - **FR-2** 取り込んだ**元ファイルをディスク上で上書きしない**（バイト保持）。F-CORE-01 FR-9 / F-CORE-05 FR-13 の実体。
 - **FR-3** Source は保存の器に **一度だけ**持ち、派生は Source を**参照**する（`D4`／F-CORE-05 の名前空間・領域分離に乗る。二重保存を避ける）。
+- **FR-3.1** Source は **取り込み時のまま（verbatim）** 保持する。現行の器が表現できない形式であっても、**原本を捨てる方向で妥協しない**（前例: ADR-0019 は原本保持のために version を上げた。対応は F-CORE-05 が担う）。
 
 ### 3.2 非破壊の派生
 
