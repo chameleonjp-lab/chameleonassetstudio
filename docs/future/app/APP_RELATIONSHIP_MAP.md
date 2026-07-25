@@ -172,7 +172,7 @@ flowchart TB
 | D4 | 名前空間拡張 | Arch 5 章 | 中 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-05 で境界規則） |
 | PF1 | 性能予算 | Arch 7 章 | 中 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)*（数値は未決のまま、F-PLT-04 が実測で置換する経路を確定） |
 | PF2 | 計測・退行検知 | Arch 7 章 | 詳 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)*（F-PLT-04 で正本化。上流 `2D_3_H3_MEASUREMENT_PROTOCOL.md` の進め方を継承） |
-| PF3 | 重い処理 offload | Arch 6 章 | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* |
+| PF3 | 重い処理 offload | Arch 6 章 | 詳 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)*（F-PLT-03 で正本化。8 機能が依存する応答性の土台） |
 | PF4 | 描画ライブラリ edition別 | Arch 6 章 / Comp 2-D | 粗 | `APP_2D_EDITION_SPEC.md` / `APP_3D_EDITION_SPEC.md` *(予定)* |
 | PF5 | 外殻方式 Tauri系 | Arch 6 章 / Comp 2-G | 中 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)*（F-PLT-01 で**選定基準は確定**。**採用は未決** = `APP-R-01` の実測 + 人間承認待ち） |
 | G1 | ライセンス検証 gate | Arch 3 章 | 詳 | 各採用評価記録 *(予定)*（F-MOD-04 で正本化） |
@@ -196,6 +196,7 @@ flowchart TB
 | F-CORE-10 | capability / 権限の強制 | `features/F-CORE-10-capability-permission-enforcement.md` | 詳 | —（A8 の正本） |
 | F-PLT-04 | 性能予算の計測 & 退行検知 | `features/F-PLT-04-performance-measurement-regression.md` | 詳 | —（PF2 の正本。外殻評価の物差し） |
 | F-PLT-01 | ネイティブ外殻 & ウィンドウ/OS 連携 | `features/F-PLT-01-native-shell-os-integration.md` | 詳 | —（A1 の正本。PF5 の選定基準） |
+| F-PLT-03 | 重い処理の offload | `features/F-PLT-03-heavy-work-offload.md` | 詳 | —（PF3 の正本。応答性の土台） |
 
 ---
 
@@ -301,6 +302,12 @@ flowchart TB
 | E94 | F-PLT-01 | 依存 | F-PLT-04 | 候補比較は同一の計測手順に依る |
 | E95 | F-PLT-01 | 尊重 | P4 | Shell に機能を足さず、常駐を最小に保つ |
 | E96 | F-PLT-01 | 支える | F-CORE-10 | OS 権限を capability へ対応付ける土台を提供 |
+| E97 | F-PLT-03 | 実現 | PF3 | 重い処理 offload の正本 |
+| E98 | F-PLT-03 | 依存 | F-PLT-01 | プロセス / スレッド構成の土台に載る |
+| E99 | F-PLT-03 | 支える | PF1 | 応答性の予算を実現手段の側から支える |
+| E100 | F-PLT-03 | 尊重 | G5 | 中断・失敗で Source と Document を壊さない |
+| E101 | F-PLT-03 | 制約 | A4 | モジュールの重い処理も同じ仕組みに乗せる（独自スレッド乱立を許さない） |
+| E102 | F-PLT-03 | 依存 | F-CORE-04 | 重い処理を 1 つの履歴単位として扱う |
 
 ---
 
@@ -321,7 +328,7 @@ flowchart TB
 
 > 詳細化の順序自体は `APP_ROADMAP_DECISIONS_OPEN_ITEMS.md` の Stage と整合させる。表の「前提」列は、上流を先に固めるための依存である。
 >
-> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01 / 03 / 04 / 05**（Core 土台）、**F-MOD-01 / 02 / 03 / 04**（install-on-demand の中核）、**F-CORE-09 / 10**（Extension Host と権限の Core 受け皿）、**F-PLT-04**（計測・退行検知）、**F-PLT-01**（ネイティブ外殻）。**モジュール機構は宣言・発見・導入・依存・検証・登録・権限強制まで一巡し、その約束を実測で確かめる物差しと、載せる土台の要件・選定基準も定まった（外殻の採用自体は `APP-R-01` のとおり人間承認待ち）。**
+> 機能レイヤーの詳細化は `features/` で **1 機能ずつ**進める（`features/README.md` の機能インベントリが queue）。各機能は完成系（D-DONE / T-DONE / S-DONE）から逆算して仕様・要件を洗い出し、末尾で本マップへ linkage を昇格する。着手済み: **F-CORE-01 / 03 / 04 / 05**（Core 土台）、**F-MOD-01 / 02 / 03 / 04**（install-on-demand の中核）、**F-CORE-09 / 10**（Extension Host と権限の Core 受け皿）、**F-PLT-04**（計測・退行検知）、**F-PLT-01**（ネイティブ外殻）、**F-PLT-03**（重い処理 offload）。**モジュール機構は宣言・発見・導入・依存・検証・登録・権限強制まで一巡し、その約束を実測で確かめる物差しと、載せる土台の要件・選定基準も定まった（外殻の採用自体は `APP-R-01` のとおり人間承認待ち）。**
 >
 > 上流（現行ブラウザ版）の ADR / 実測 docs から「再導出しなくてよい知見」を引き継ぐ対応表は、`features/README.md` 6 章「系譜マップ」を正本とする。
 
