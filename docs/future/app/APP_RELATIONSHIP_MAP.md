@@ -205,6 +205,7 @@ flowchart TB
 | F-CORE-02 | 自動保存 & クラッシュ復旧 | `features/F-CORE-02-autosave-crash-recovery.md` | 詳 | —（作業を失わせない安全網。Core 群の最後） |
 | F-2D-01 | 新規作成（空/テンプレート/画像/図形/パーツ） | `features/F-2D-01-project-creation.md` | 詳 | —（2D パイプラインの起点） |
 | F-2D-03 | Canvas & ビューポート（2D） | `features/F-2D-03-canvas-viewport.md` | 詳 | —（全 2D 編集が載る面。座標の正本を守る） |
+| F-2D-04 | レイヤー & パーツ | `features/F-2D-04-layers-parts.md` | 詳 | —（「何に対する操作か」を定義する構造） |
 
 ---
 
@@ -363,6 +364,12 @@ flowchart TB
 | E147 | F-2D-03 | 支える | A3 | 2D Edition Runtime の編集面を提供 |
 | E148 | F-2D-03 | 制約 | A4 | モジュール overlay は表示に留まり Document を変えない |
 | E149 | F-2D-03 | 依存 | F-PLT-03 | 重い再描画を UI から逃がす |
+| E150 | F-2D-04 | 依存 | F-2D-03 | canvas の選択・ハンドル基盤に乗る |
+| E151 | F-2D-04 | 依存 | F-CORE-04 | 構造操作は履歴に乗り、確定は 1 履歴操作 |
+| E152 | F-2D-04 | 尊重 | G5 | 構造操作が Source を書き換えない |
+| E153 | F-2D-04 | 支える | A3 | 2D の構造（レイヤー / パーツ）を定義 |
+| E154 | F-2D-04 | 依存 | F-CORE-06 | 参照の存在・一意性・循環を意味検証に委ねる |
+| E155 | F-2D-04 | 尊重 | D1 | 書き込み範囲を限定し、対象外の領域を変更しない |
 
 ---
 
