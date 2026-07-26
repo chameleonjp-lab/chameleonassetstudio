@@ -221,12 +221,14 @@ flowchart TB
 | F-2D-16 | 2D 書き出し preset & import notes | `features/F-2D-16-export-presets-import-notes.md` | 詳 | —（「対応」を曖昧にしない。記録の無いものを verified と呼ばない） |
 | F-3D-01 | GLB / glTF 安全読み込み | `features/F-3D-01-glb-gltf-safe-loading.md` | 詳 | —（3D の入口。付随ファイル参照の範囲限定・元を絶対に上書きしない） |
 | F-3D-03 | 3D ビューポート & 検品表示 | `features/F-3D-03-viewport-inspection-display.md` | 詳 | —（3D の価値は生成でなく検品。read-only・対象別しきい値） |
+| F-3D-04 | scene graph / node / mesh / material 検査 | `features/F-3D-04-scene-graph-inspection.md` | 詳 | —（「どこが」を示す。表示切替も read-only・自動修正しない） |
 | F-3D-05 | 原点 / 足元 / 向き / スケール整備 | `features/F-3D-05-origin-orientation-scale.md` | 詳 | —（判らないものを判らないまま扱う。整備は解釈で元を書き換えない） |
 | F-3D-06 | 3D アンカー付与 | `features/F-3D-06-anchors.md` | 詳 | —（形からは判らない意味を与える。自動生成しない） |
 | F-3D-07 | 3D 当たり判定付与（box / sphere / capsule） | `features/F-3D-07-colliders.md` | 詳 | —（mesh collider を作らない。重さとエンジン差が理由） |
 | F-3D-10 | 軽量化: mesh 簡略化 | `features/F-3D-10-mesh-simplification.md` | 詳 | —（置き換えでなく別モデル。既定で強く削らない） |
 | F-3D-11 | 軽量化: テクスチャ圧縮 | `features/F-3D-11-texture-compression.md` | 詳 | —（軽量化の二本目の軸。対応状況を曖昧にしない） |
 | F-3D-12 | 前後比較 | `features/F-3D-12-before-after-comparison.md` | 詳 | —（比較は read-only。自動で最良を選ばない・選ばない自由） |
+| F-3D-15 | 3D 書き出し preset | *(未詳細化)* | 未 | —（`E233`/`E246` が先行して制約を張る先。詳細化時に本行を更新する） |
 
 ---
 
@@ -494,6 +496,12 @@ flowchart TB
 | E256 | F-3D-05 | 制約 | F-3D-06 | 基準未確定のまま依存工程を始めさせない |
 | E257 | F-3D-06 | 制約 | F-3D-10 | 内部要素への結び付けは、派生生成で黙って張り替えられない |
 | E258 | F-3D-10 | 尊重 | D4 | 派生は直接の親を保持し、連鎖の再現と古さ判定を壊さない |
+| E259 | F-3D-04 | 依存 | F-3D-03 | 概観・表示面・対象環境プリセットの上に細部を足す |
+| E260 | F-3D-04 | 支える | F-3D-10 | 未使用・重複の情報で「安全に外せるもの」の判定根拠を与える |
+| E261 | F-3D-04 | 尊重 | G5 | 表示 / 非表示を含め read-only で、保存データを変更しない |
+| E262 | F-3D-04 | 実現 | F-CORE-06 | 意味検証の 3D 具体（対象・影響・直し方・無視可条件を伴う警告）を与える |
+| E263 | F-3D-04 | 支える | F-3D-12 | 派生への同一検査の再実行結果を比較の根拠として供給 |
+| E264 | F-CORE-06 | 支える | P1 | 指摘が対象・影響・直し方・無視可条件を伴い、無視される警告になるのを防ぐ |
 
 ---
 
