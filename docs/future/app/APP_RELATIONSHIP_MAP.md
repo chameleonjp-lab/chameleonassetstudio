@@ -220,6 +220,7 @@ flowchart TB
 | F-2D-15 | 2D 検品（エンジン適合チェック） | `features/F-2D-15-inspection-engine-fit.md` | 詳 | —（出す前に見る。read-only・修正案を自動確定しない） |
 | F-2D-16 | 2D 書き出し preset & import notes | `features/F-2D-16-export-presets-import-notes.md` | 詳 | —（「対応」を曖昧にしない。記録の無いものを verified と呼ばない） |
 | F-3D-01 | GLB / glTF 安全読み込み | `features/F-3D-01-glb-gltf-safe-loading.md` | 詳 | —（3D の入口。付随ファイル参照の範囲限定・元を絶対に上書きしない） |
+| F-3D-02 | 多形式取り込み | `features/F-3D-02-multi-format-import.md` | 詳 | —（形式を増やす条件を定める。表現力の差を隠さない） |
 | F-3D-03 | 3D ビューポート & 検品表示 | `features/F-3D-03-viewport-inspection-display.md` | 詳 | —（3D の価値は生成でなく検品。read-only・対象別しきい値） |
 | F-3D-04 | scene graph / node / mesh / material 検査 | `features/F-3D-04-scene-graph-inspection.md` | 詳 | —（「どこが」を示す。表示切替も read-only・自動修正しない） |
 | F-3D-05 | 原点 / 足元 / 向き / スケール整備 | `features/F-3D-05-origin-orientation-scale.md` | 詳 | —（判らないものを判らないまま扱う。整備は解釈で元を書き換えない） |
@@ -515,6 +516,11 @@ flowchart TB
 | E273 | F-3D-15 | 尊重 | G5 | 既定では元モデルをそのまま出し、変換を焼き込まない |
 | E274 | F-3D-15 | 依存 | F-3D-14 | 同梱する検査記録を受け取る |
 | E275 | F-3D-15 | 制約 | D1 | 再現可能な出力（並び・時刻・整形の固定）を保ち、保存データを変えない |
+| E276 | F-3D-02 | 依存 | F-3D-01 | 安全規律を供給元とし、形式が増えても等しく適用する |
+| E277 | F-3D-02 | 尊重 | G3 | 表現力の差を抱えたまま「対応」と言わない |
+| E278 | F-3D-02 | 制約 | A4 | モジュールが形式を足せるが、同じ安全規律・表示規律に従う |
+| E279 | F-3D-02 | 尊重 | D3 | 未知の塊を捨てず保持したうえで警告する |
+| E280 | F-3D-02 | 依存 | F-PLT-04 | 上限値を暫定とし、実測で確定する |
 
 ---
 
