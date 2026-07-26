@@ -158,14 +158,14 @@ flowchart TB
 | P5 | 目的分離 2D/3D | Vision 4 章 | 粗 | `APP_2D_EDITION_SPEC.md` / `APP_3D_EDITION_SPEC.md` *(予定)* |
 | G5 | 非破壊・元データ保持 | Vision 6 章 / Arch 5 章 | 詳 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-03 で正本化） |
 | A1 | Shell 外殻 | Arch 2・6 章 | 詳 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)*（F-PLT-01 で責務境界を正本化） |
-| A2 | Core 契約 | Arch 2 章 | 詳 | `APP_CORE_CONTRACT.md` *(予定)*（F-CORE-01 保存/03 非破壊/04 履歴/05 形式/06 検品/07 書き出し/09 Host/10 権限で全要素が揃った） |
+| A2 | Core 契約 | Arch 2 章 | 詳 | **`APP_CORE_CONTRACT.md`**（層の統合。正本は F-CORE-01/03/04/05/06/07/09/10 の各機能仕様） |
 | A3 | Edition Runtime | Arch 2 章 | 中 | `APP_2D_EDITION_SPEC.md` / `APP_3D_EDITION_SPEC.md` *(予定)*（F-2D-01 で 2D 側の制作起点を具体化） |
 | A4 | Feature Modules | Arch 2 章 | 粗 | `APP_MODULE_CATALOG.md` *(予定)* |
 | A5 | Catalog | Arch 2 章 | 詳 | `APP_MODULE_CATALOG.md` *(予定)*（F-MOD-01 で正本化） |
 | A6 | Manifest 契約 | Arch 3 章 | 中 | `APP_MODULE_MANIFEST_SPEC.md` *(予定)*（F-MOD-01/02/03 が参照する項目は確定） |
 | A7 | 依存解決 | Arch 3・4 章 | 詳 | `APP_MODULE_MANIFEST_SPEC.md` *(予定)*（F-MOD-03 で正本化） |
-| A8 | capability 権限 | Arch 3 章 | 詳 | `APP_CORE_CONTRACT.md` *(予定)*（F-CORE-10 で正本化） |
-| A9 | Extension Host | Arch 2 章 | 詳 | `APP_CORE_CONTRACT.md` *(予定)*（F-CORE-09 で正本化） |
+| A8 | capability 権限 | Arch 3 章 | 詳 | **`APP_CORE_CONTRACT.md`** 5 章（正本は F-CORE-10） |
+| A9 | Extension Host | Arch 2 章 | 詳 | **`APP_CORE_CONTRACT.md`** 4 章（正本は F-CORE-09） |
 | D1 | 保存形式 versioned | Arch 5 章 | 詳 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-05 で正本化） |
 | D2 | migration | Arch 5 章 | 詳 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-05 で正本化） |
 | D3 | 構成非依存の不変条件 | Arch 5 章 | 中 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-01/05 で具体化） |
@@ -577,7 +577,7 @@ flowchart TB
 |---|---|---|---|
 | `APP_MODULE_CATALOG.md` *(予定)* | P3, A4, A5 | A6/A2 の骨格 | 一部（`F-MOD-01`〜`06` で発見・導入・依存・検証・束ね・文脈提示まで機能単位で確定。文書としての統合は未着手） |
 | `APP_MODULE_MANIFEST_SPEC.md` *(予定)* | A6, A7 | A2, A8 | 未着手 |
-| `APP_CORE_CONTRACT.md` *(予定)* | A2, A8, A9 | P4（ゼロコスト） | 未着手 |
+| **`APP_CORE_CONTRACT.md`** | A2, A8, A9 | P4（ゼロコスト） | **完了**（Core が約束すること C-1〜C-9 / 上に載る側の義務 R-1〜R-6 / Host・権限 / 確かめ方を統合） |
 | `APP_DATA_CONTRACT.md` *(予定)* | D1, D2, D3, D4, G5 | A2 | 一部（F-CORE-05 で D1/D2/D4 の規則を具体化。物理形式は未決 `APP-O-01`） |
 | `APP_2D_EDITION_SPEC.md` *(予定)* | A3(2D), PF4(2D), P5 | A4, A2 | 一部（`features/F-2D-01`〜`16` で **2D パイプライン全 16 機能を具体化済み**。エディション文書としての統合は未着手） |
 | `APP_3D_EDITION_SPEC.md` *(予定)* | A3(3D), PF4(3D), P5 | A4, A2 | 一部（**`features/F-3D-01`〜`15` の全 15 機能を具体化済み**。`T-DONE-1`〜`T-DONE-9` のすべてに担当機能が付いた。`F-3D-16`〜`18`（付与）は `APP-O-04` 判断待ちの保留。エディション文書としての統合は未着手） |
