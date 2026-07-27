@@ -156,7 +156,7 @@ flowchart TB
 | P3 | install-on-demand | Arch 1・4 章 | 詳 | `APP_MODULE_CATALOG.md` *(予定)*（F-MOD-01 発見＋F-MOD-02 導入で中核確定） |
 | P4 | 未使用ゼロコスト不変条件 | Arch 1・7 章 | 粗 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* |
 | P5 | 目的分離 2D/3D | Vision 4 章 | 粗 | `APP_2D_EDITION_SPEC.md` / `APP_3D_EDITION_SPEC.md` *(予定)* |
-| G5 | 非破壊・元データ保持 | Vision 6 章 / Arch 5 章 | 詳 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-03 で正本化） |
+| G5 | 非破壊・元データ保持 | Vision 6 章 / Arch 5 章 | 詳 | **`APP_DATA_CONTRACT.md`** 2 章（三層分離 Source / 派生 / 一時状態。正本は F-CORE-03） |
 | A1 | Shell 外殻 | Arch 2・6 章 | 詳 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)*（F-PLT-01 で責務境界を正本化） |
 | A2 | Core 契約 | Arch 2 章 | 詳 | **`APP_CORE_CONTRACT.md`**（層の統合。正本は F-CORE-01/03/04/05/06/07/09/10 の各機能仕様） |
 | A3 | Edition Runtime | Arch 2 章 | 中 | `APP_2D_EDITION_SPEC.md` / `APP_3D_EDITION_SPEC.md` *(予定)*（F-2D-01 で 2D 側の制作起点を具体化） |
@@ -166,10 +166,10 @@ flowchart TB
 | A7 | 依存解決 | Arch 3・4 章 | 詳 | `APP_MODULE_MANIFEST_SPEC.md` *(予定)*（F-MOD-03 で正本化） |
 | A8 | capability 権限 | Arch 3 章 | 詳 | **`APP_CORE_CONTRACT.md`** 5 章（正本は F-CORE-10） |
 | A9 | Extension Host | Arch 2 章 | 詳 | **`APP_CORE_CONTRACT.md`** 4 章（正本は F-CORE-09） |
-| D1 | 保存形式 versioned | Arch 5 章 | 詳 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-05 で正本化） |
-| D2 | migration | Arch 5 章 | 詳 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-05 で正本化） |
-| D3 | 構成非依存の不変条件 | Arch 5 章 | 中 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-01/05 で具体化） |
-| D4 | 名前空間拡張 | Arch 5 章 | 中 | `APP_DATA_CONTRACT.md` *(予定)*（F-CORE-05 で境界規則） |
+| D1 | 保存形式 versioned | Arch 5 章 | 詳 | **`APP_DATA_CONTRACT.md`** 3 章（正本は F-CORE-05。物理形式は `APP-O-01` 未決） |
+| D2 | migration | Arch 5 章 | 詳 | **`APP_DATA_CONTRACT.md`** 4 章（正本は F-CORE-05。optional の積み増しだけで済ませない） |
+| D3 | 構成非依存の不変条件 | Arch 5 章 | 詳 | **`APP_DATA_CONTRACT.md`** 5 章（保存側と取り込み側の双方から要求され確定） |
+| D4 | 名前空間拡張 | Arch 5 章 | 詳 | **`APP_DATA_CONTRACT.md`** 6 章（write-set 限定・派生連鎖・内部参照まで具体化） |
 | PF1 | 性能予算 | Arch 7 章 | 中 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)*（数値は未決のまま、F-PLT-04 が実測で置換する経路を確定） |
 | PF2 | 計測・退行検知 | Arch 7 章 | 詳 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)*（F-PLT-04 で正本化。上流 `2D_3_H3_MEASUREMENT_PROTOCOL.md` の進め方を継承） |
 | PF3 | 重い処理 offload | Arch 6 章 | 詳 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)*（F-PLT-03 で正本化。8 機能が依存する応答性の土台） |
@@ -578,7 +578,7 @@ flowchart TB
 | `APP_MODULE_CATALOG.md` *(予定)* | P3, A4, A5 | A6/A2 の骨格 | 一部（`F-MOD-01`〜`06` で発見・導入・依存・検証・束ね・文脈提示まで機能単位で確定。文書としての統合は未着手） |
 | `APP_MODULE_MANIFEST_SPEC.md` *(予定)* | A6, A7 | A2, A8 | 未着手 |
 | **`APP_CORE_CONTRACT.md`** | A2, A8, A9 | P4（ゼロコスト） | **完了**（Core が約束すること C-1〜C-9 / 上に載る側の義務 R-1〜R-6 / Host・権限 / 確かめ方を統合） |
-| `APP_DATA_CONTRACT.md` *(予定)* | D1, D2, D3, D4, G5 | A2 | 一部（F-CORE-05 で D1/D2/D4 の規則を具体化。物理形式は未決 `APP-O-01`） |
+| **`APP_DATA_CONTRACT.md`** | D1, D2, D3, D4, G5 | A2 | **完了**（三層分離 / 保存形式 / 移行 / 構成非依存 / 名前空間拡張 / 参照と識別 / 出力との境界を統合。**物理形式は `APP-O-01` 未決のまま、どの形式でも成立する意味論**として確定） |
 | `APP_2D_EDITION_SPEC.md` *(予定)* | A3(2D), PF4(2D), P5 | A4, A2 | 一部（`features/F-2D-01`〜`16` で **2D パイプライン全 16 機能を具体化済み**。エディション文書としての統合は未着手） |
 | `APP_3D_EDITION_SPEC.md` *(予定)* | A3(3D), PF4(3D), P5 | A4, A2 | 一部（**`features/F-3D-01`〜`15` の全 15 機能を具体化済み**。`T-DONE-1`〜`T-DONE-9` のすべてに担当機能が付いた。`F-3D-16`〜`18`（付与）は `APP-O-04` 判断待ちの保留。エディション文書としての統合は未着手） |
 | `APP_PERFORMANCE_AND_SHELL.md` *(予定)* | P4, PF1, PF2, PF3, PF5, A1 | 実測材料 C1 | 未着手 |
