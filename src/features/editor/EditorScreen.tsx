@@ -160,6 +160,13 @@ import './editor.css';
 
 type MobileView = 'canvas' | 'properties' | 'timeline' | 'export';
 
+const FRAME_PREVIEW_EDIT_MESSAGE =
+  'フレームをプレビュー中です。保存を伴う編集はできません。タイムラインの「停止」で終了してください。';
+
+function canUseToolDuringFramePreview(tool: CanvasTool): boolean {
+  return tool === 'select' || tool === 'pan';
+}
+
 interface EditorScreenProps {
   projectId: string;
   onBackToHome: () => void;
@@ -531,6 +538,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   // タイムライン（Phase 9）
   const [selectedAnimationId, setSelectedAnimationId] = useState<string | null>(null);
   const [previewFrameId, setPreviewFrameId] = useState<string | null>(null);
+  const [previewOccurrenceIndex, setPreviewOccurrenceIndex] = useState<number | null>(null);
   const [firedAnimationEvents, setFiredAnimationEvents] = useState<AnimationEvent[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -793,6 +801,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
   const selectedAnimation =
     selectedAsset?.animations.find((animation) => animation.id === selectedAnimationId) ?? null;
+  const framePreviewActive = previewFrameId !== null;
   /** タイムラインでプレビュー中のフレームをレイヤーへ適用したアセット（キャンバス表示用）。 */
   const previewAsset =
     selectedAsset && previewFrameId
@@ -810,6 +819,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
   const canStartEditorPersistentMutation = useCallback(
     ({ allowPendingImageImport = false }: EditorPersistentMutationOptions = {}) => {
+      if (framePreviewActive) {
+        setEditorError(FRAME_PREVIEW_EDIT_MESSAGE);
+        return false;
+      }
       return canStartPersistentMutation({
         history,
         mutationBusy: mutationBusyRef.current,
@@ -817,7 +830,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         onReject: setEditorError,
       });
     },
-    [history, pendingImageImport],
+    [framePreviewActive, history, pendingImageImport],
   );
 
   const beginEditorPersistentMutation = useCallback(
@@ -840,11 +853,15 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   /** アセットのスナップショットを適用して自動保存する（Undo / Redo からも使う）。 */
   const applyAssetSnapshot = useCallback(
     (snapshot: Asset) => {
+      if (framePreviewActive) {
+        setEditorError(FRAME_PREVIEW_EDIT_MESSAGE);
+        return;
+      }
       setAssets((prev) => prev.map((asset) => (asset.id === snapshot.id ? snapshot : asset)));
       setProject((current) => syncProjectAssetSummary(current, snapshot));
       autosave.schedule(() => saveAsset(projectId, snapshot));
     },
-    [autosave, projectId],
+    [autosave, framePreviewActive, projectId],
   );
 
   /** Blob 変更を含む改訂は保存成功後だけ React 状態へ反映し、Asset 単体 autosave は予約しない。 */
@@ -966,6 +983,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   useEffect(() => {
     setSelectedAnimationId(null);
     setPreviewFrameId(null);
+    setPreviewOccurrenceIndex(null);
     setFiredAnimationEvents([]);
     setIsPlaying(false);
     setSelectedColliderId(null);
@@ -1010,8 +1028,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         setTimeout: (callback, delayMs) => window.setTimeout(callback, delayMs),
         clearTimeout: (handle) => window.clearTimeout(handle as number),
       },
-      onFrameStart: (frameId) => {
+      onFrameStart: (frameId, occurrenceIndex) => {
         setPreviewFrameId(frameId);
+        setPreviewOccurrenceIndex(occurrenceIndex);
         setFiredAnimationEvents([]);
       },
       onEvent: (event) => {
@@ -1030,14 +1049,21 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   }, [isPlaying, selectedAnimation, selectedAsset?.frames]);
 
   const handleSelectAnimation = (id: string | null) => {
+    if (framePreviewActive) {
+      setEditorError(FRAME_PREVIEW_EDIT_MESSAGE);
+      return;
+    }
     setSelectedAnimationId(id);
     setIsPlaying(false);
+    setPreviewFrameId(null);
+    setPreviewOccurrenceIndex(null);
     setFiredAnimationEvents([]);
   };
 
   const handleSelectFrame = (frameId: string) => {
     setIsPlaying(false);
     setPreviewFrameId(frameId);
+    setPreviewOccurrenceIndex(null);
     setFiredAnimationEvents([]);
   };
 
@@ -1052,7 +1078,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const handleStopAnimation = () => {
     setIsPlaying(false);
     setPreviewFrameId(null);
+    setPreviewOccurrenceIndex(null);
     setFiredAnimationEvents([]);
+    setEditorError((current) => (current === FRAME_PREVIEW_EDIT_MESSAGE ? null : current));
   };
 
   const handleRewindAnimation = () => {
@@ -1064,6 +1092,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       return;
     }
     setPreviewFrameId(selectedAnimation.frameIds[0]);
+    setPreviewOccurrenceIndex(0);
     setFiredAnimationEvents([]);
   };
 
@@ -3014,7 +3043,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         <div className="editor-history-buttons">
           <button
             type="button"
-            disabled={!historyState.canUndo || persistentMutationBlocked}
+            disabled={!historyState.canUndo || persistentMutationBlocked || framePreviewActive}
             onClick={() => void handleHistoryUndo()}
             title={historyState.undoLabel ?? undefined}
           >
@@ -3022,7 +3051,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           </button>
           <button
             type="button"
-            disabled={!historyState.canRedo || persistentMutationBlocked}
+            disabled={!historyState.canRedo || persistentMutationBlocked || framePreviewActive}
             onClick={() => void handleHistoryRedo()}
             title={historyState.redoLabel ?? undefined}
           >
@@ -3068,6 +3097,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               type="button"
               aria-pressed={tool === item.tool}
               title={item.purpose}
+              disabled={framePreviewActive && !canUseToolDuringFramePreview(item.tool)}
               onClick={() => activateTool(item.tool)}
             >
               {item.label}
@@ -3087,6 +3117,12 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         >
           {selectedAsset ? (
             <div className={`canvas-editor-frame${dragOver ? ' drag-over' : ''}`}>
+              {framePreviewActive && (
+                <p className="editor-note" role="status" aria-label="フレームプレビューの編集制限">
+                  フレームをプレビュー中です。パン・ズーム・レイヤー選択だけ利用できます。
+                  保存を伴う編集へ戻るには、タイムラインの「停止」を押してください。
+                </p>
+              )}
               <nav
                 className="editor-mobile-toolbar"
                 aria-label="編集ツール"
@@ -3097,6 +3133,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                     key={item.tool}
                     type="button"
                     aria-pressed={tool === item.tool}
+                    disabled={framePreviewActive && !canUseToolDuringFramePreview(item.tool)}
                     onClick={() => activateTool(item.tool)}
                   >
                     {item.label}
@@ -3136,6 +3173,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 asset={previewAsset ?? selectedAsset}
                 tool={tool}
                 selectedLayerId={selectedLayerId}
+                readOnly={framePreviewActive}
+                onReadOnlyAttempt={() => setEditorError(FRAME_PREVIEW_EDIT_MESSAGE)}
                 eraserRadius={eraserSize}
                 brushRadius={brushSize}
                 rasterColor={hexToRgb(rasterColor)}
@@ -4405,6 +4444,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           <TimelinePanel
             asset={selectedAsset}
             playingFrameId={previewFrameId}
+            playingOccurrenceIndex={previewOccurrenceIndex}
             firedAnimationEvents={firedAnimationEvents}
             isPlaying={isPlaying}
             selectedAnimationId={selectedAnimationId}

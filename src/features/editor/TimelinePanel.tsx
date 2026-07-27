@@ -19,6 +19,8 @@ interface TimelinePanelProps {
   asset: Asset;
   /** 再生中 or プレビュー選択中のフレーム id（ハイライト用）。 */
   playingFrameId: string | null;
+  /** 再生中のAnimation内の一時的な出現index。保存・export・Historyへ入れない。 */
+  playingOccurrenceIndex: number | null;
   /** 再生中の現在Frameで発火した、保存データ上の不活性なイベント。 */
   firedAnimationEvents: readonly AnimationEvent[];
   isPlaying: boolean;
@@ -41,6 +43,7 @@ interface TimelinePanelProps {
 export function TimelinePanel({
   asset,
   playingFrameId,
+  playingOccurrenceIndex,
   firedAnimationEvents,
   isPlaying,
   selectedAnimationId,
@@ -62,6 +65,16 @@ export function TimelinePanel({
     ? calculateAnimationDurationMs(selectedAnimation, frames)
     : null;
   const frameNameById = new Map(frames.map((frame) => [frame.id, frame.name]));
+  const playbackOccurrence =
+    selectedAnimation &&
+    playingFrameId &&
+    playingOccurrenceIndex !== null &&
+    selectedAnimation.frameIds[playingOccurrenceIndex] === playingFrameId
+      ? {
+          position: playingOccurrenceIndex + 1,
+          total: selectedAnimation.frameIds.length,
+        }
+      : null;
 
   const handleDeleteFrame = (frameId: string, name: string) => {
     const ok = window.confirm(`フレーム「${name}」を削除します。よろしいですか？`);
@@ -292,6 +305,11 @@ export function TimelinePanel({
               アニメーション削除
             </button>
             <p className="editor-note">フレーム {selectedAnimation.frameIds.length} 枚</p>
+            {playbackOccurrence && (
+              <p className="editor-note" role="status" aria-label="アニメーション再生位置">
+                出現位置: {playbackOccurrence.position} / {playbackOccurrence.total}
+              </p>
+            )}
             <p className="editor-note" aria-label="アニメーション再生時間">
               再生時間:{' '}
               {selectedAnimationDuration === null
@@ -336,7 +354,7 @@ export function TimelinePanel({
         <button type="button" disabled={!canPlay || isPlaying} onClick={onPlay}>
           再生
         </button>
-        <button type="button" disabled={!isPlaying} onClick={onStop}>
+        <button type="button" disabled={!isPlaying && !playingFrameId} onClick={onStop}>
           停止
         </button>
         <button type="button" onClick={onRewind}>

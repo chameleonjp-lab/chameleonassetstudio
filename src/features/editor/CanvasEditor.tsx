@@ -61,6 +61,10 @@ interface CanvasEditorProps {
   asset: Asset;
   tool: CanvasTool;
   selectedLayerId: string | null;
+  /** Frame preview中は保存を伴う操作を止め、pan・zoom・layer選択だけを許可する。 */
+  readOnly?: boolean;
+  /** readOnly中に保存を伴うtoolが使われたことを親へ通知する。 */
+  onReadOnlyAttempt?: () => void;
   /** 消しゴムの半径（テクスチャのピクセル単位）。 */
   eraserRadius: number;
   /** brushの半径（テクスチャのピクセル単位）。 */
@@ -185,6 +189,8 @@ export function CanvasEditor({
   asset,
   tool,
   selectedLayerId,
+  readOnly = false,
+  onReadOnlyAttempt,
   eraserRadius,
   brushRadius,
   rasterColor,
@@ -651,6 +657,26 @@ export function CanvasEditor({
       shapeTexturePointsRef.current = null;
       selectionTexturePointsRef.current = null;
       selectionMoveStartTextureRef.current = null;
+      return;
+    }
+
+    if (readOnly) {
+      if (tool === 'select') {
+        const worldPoint = screenToWorld(view, point);
+        const targets = asset.layers.map((layer) => ({
+          layer,
+          textureSize: textureSizeFor(asset, layer.textureId) ?? { width: 0, height: 0 },
+        }));
+        onSelectLayer(hitTestLayers(targets, worldPoint));
+      } else if (tool !== 'pan') {
+        onReadOnlyAttempt?.();
+      }
+      dragRef.current = {
+        mode: 'pan',
+        pointerId: event.pointerId,
+        startScreen: point,
+        startView: view,
+      };
       return;
     }
 
@@ -1361,6 +1387,7 @@ export function CanvasEditor({
         ref={canvasRef}
         className="canvas-editor-canvas"
         aria-label="アセットキャンバス"
+        aria-readonly={readOnly}
         style={{
           width: viewport.width,
           height: viewport.height,

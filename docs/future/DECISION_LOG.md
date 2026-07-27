@@ -1,6 +1,6 @@
 # Decision Log
 
-最終更新日: 2026-07-24
+最終更新日: 2026-07-27
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 重要方針の変更経緯・決定記録
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
@@ -1114,3 +1114,35 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 - B2のH3数値、warning、hard cap、物理iPhone / iPad Safariのproduct-path、Group 12完了判定は未完了のまま維持する。
 - Slice DをB2より先に扱うかは未決定であり、Timeline UXの契約監査と人間の明示判断なしに製品実装を開始しない。
 - Group 13はGroup 12完了に依存するため開始しない。
+
+## ADR-2026-07-27-028: Slice Dを4段階へ分け、D1のpreview安全対策を先行する
+
+### 状態
+
+- accepted（2026-07-27 人間承認、A1+B1）
+- 対象: Group 12 `2D-3-TIMELINE + 2D-3-RIG` のTimeline UX / Slice D
+- 基準main: `9787b680503530912ebf6b1dd872fc2c0c59380f`
+- D1 product implementation / Draft verification in progress
+- B2 numeric budget / warning / hard cap pending
+
+### 確認できた事実
+
+- `EditorScreen`はFrameを適用した表示用Assetを編集可能な`CanvasEditor`へ渡しており、preview中のdragや画像操作が基礎Layerへ保存され得る。
+- 直接の`onLiveChange`経路もあるため、キャンバス表示だけでなく永続変更の開始点とsnapshot反映点の両方を防護する必要がある。
+- schedulerは`(frameId, occurrenceIndex)`を通知済みだが、画面は`occurrenceIndex`を捨てていたため、反復Frameの何回目かを区別できない。
+- 手動Frame選択とnon-loop再生完了では`isPlaying=false`のままpreviewが残る一方、停止buttonが無効になり、明示的にpreviewを終了できない。
+
+### 決定
+
+- A1を採用し、Frame preview中はpan、zoom、Layer選択だけを許可する。保存を伴うtool、Undo / Redo、永続変更開始、直接snapshot反映は拒否し、理由と「停止」導線を表示する。
+- 手動preview中とnon-loop再生完了後も停止buttonを有効にし、停止時にpreviewと一時的な出現位置を消す。
+- 反復FrameはAnimation内の1始まりの出現位置を一時表示する。この値をAsset、IndexedDB、History、`.casproj`、exportへ保存しない。
+- B1を採用し、Slice DをD1（preview編集防護＋一時的な出現位置）、D2（保存しないonion skin）、D3（event追加・名前変更・Frame変更・削除）、D4（frame alignmentの別契約監査後の実装）へ分ける。
+- 今回実装するのはD1だけとし、D2〜D4とB2の数値判断を先取りしない。
+
+### 変更しないこと
+
+- schema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependency。
+- onion skin、event payload編集、frame alignment、collider override / polygon、IK、mesh、physics、state machine。
+- B2の生成量budget、warning、hard cap、Group 12完了判定。
+- Ready化、merge、Pages配信。

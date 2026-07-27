@@ -1,10 +1,10 @@
 # 2D-3 Timeline + Rig 契約計画
 
-最終更新日: 2026-07-24
+最終更新日: 2026-07-27
 work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 監査基準: `main@236571c241bf84747f71f260f3bea99e6abe7f25`
 マージ後基準: PR #146 merge `cb21ea4` / PR #147 final head `1ba671f7` / merge `24a089c` / PR #148 final head `0cfc1ea` / merge `fbdeb357` / PR #149 merge `536318f` / PR #153 merge `e8fac95` / PR #154 final head `fdf75f0` / merge `1c700e7` / PR #157 final head `834cc38` / merge `bf13cac`
-状態: `T1 Slice A merged / P1 Slice C merged / R1 Slice B1 merged and independently verified / Slice B2 numeric Gate pending / Slice D explicit decision pending / formal B0 deferred`
+状態: `T1 Slice A merged / P1 Slice C merged / R1 Slice B1 merged and independently verified / Slice B2 numeric Gate pending / Slice D1 A1+B1 accepted and in Draft verification / Slice D2-D4 pending / formal B0 deferred`
 関連: `docs/adr/0008-motion-time-semantics.md`, `docs/adr/0009-animation-event-boundary.md`, `docs/adr/0021-frame-duration-semantics.md`, `docs/adr/0022-rig-flip-and-bake-parity.md`, `docs/adr/0023-part-layer-replacement.md`, `docs/future/2D_3_H3_MEASUREMENT_PROTOCOL.md`
 
 ---
@@ -17,7 +17,7 @@ work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 - **R1**: rig flipは既存flipとは別sliceとする。ID参照、位置、回転、可動域を鏡映し、bake前後の結果一致を必須にする。
 - **P1**: 初回part replaceは既存`Part.layerIds`の静的な差し替えだけとする。時間依存の衣装・状態切替は別ADRへ分離する。
 
-PR #146の契約監査は17文書、製品コード変更なしでmainへ反映済みである。後続の人間判断H1=E1、H2=L1、H3=M1と計測専用`tools/h3/`はPR #147 final head `1ba671f7`、merge `24a089c`でmainへ反映された。CI Run #460とmerge後CI Run #461は全job成功し、固定headの最終独立reviewは全3系統`BLOCKER 0 / MUST 0`だった。PR #148 merge `fbdeb357`で24時間配信基盤、PR #149 merge `536318f`でPages rootのサービス本体と`/h3/`の分離を実装した。T1 Slice AはPR #153 final head `7f684a7`、merge `e8fac95`としてmainへ反映済みで、CI Run #489と固定headの独立reviewを通過した。P1 Slice CはPR #154 final head `fdf75f0`、merge `1c700e7`としてmainへ反映済みで、CI Run #492と固定headの独立review `BLOCKER 0 / MUST 0 / SHOULD 0`を通過した。2026-07-23の人間判断により、正式B0の4端末収集は当面保留し、H3を問題発生時の診断手段として維持する。2026-07-24の人間判断ADR-2026-07-24-027でSlice BをB1とB2へ分割し、PR #157 final head `834cc38397c300895f50c1efdb86d94f3870a0a8`、merge `bf13cac3db854c30b33e9b2ef97d389a2372e961`でB1をmainへ反映した。CI Run #501は全job成功し、非GitHub・非Opusの固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。B2の数値budget、warning、hard cap、採用上限での実機測定、Group 12完了判定とSlice Dの製品実装は、後続の明示判断まで開始しない。
+PR #146の契約監査は17文書、製品コード変更なしでmainへ反映済みである。後続の人間判断H1=E1、H2=L1、H3=M1と計測専用`tools/h3/`はPR #147 final head `1ba671f7`、merge `24a089c`でmainへ反映された。CI Run #460とmerge後CI Run #461は全job成功し、固定headの最終独立reviewは全3系統`BLOCKER 0 / MUST 0`だった。PR #148 merge `fbdeb357`で24時間配信基盤、PR #149 merge `536318f`でPages rootのサービス本体と`/h3/`の分離を実装した。T1 Slice AはPR #153 final head `7f684a7`、merge `e8fac95`としてmainへ反映済みで、CI Run #489と固定headの独立reviewを通過した。P1 Slice CはPR #154 final head `fdf75f0`、merge `1c700e7`としてmainへ反映済みで、CI Run #492と固定headの独立review `BLOCKER 0 / MUST 0 / SHOULD 0`を通過した。2026-07-23の人間判断により、正式B0の4端末収集は当面保留し、H3を問題発生時の診断手段として維持する。2026-07-24の人間判断ADR-2026-07-24-027でSlice BをB1とB2へ分割し、PR #157 final head `834cc38397c300895f50c1efdb86d94f3870a0a8`、merge `bf13cac3db854c30b33e9b2ef97d389a2372e961`でB1をmainへ反映した。CI Run #501は全job成功し、非GitHub・非Opusの固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。B2の数値budget、warning、hard cap、採用上限での実機測定、Group 12完了判定は、後続の明示判断まで開始しない。2026-07-27のADR-2026-07-27-028でA1+B1を採用し、Slice DをD1〜D4へ分け、D1のpreview安全対策だけを実装・検証中とする。
 
 ## 2. 監査方法と現状
 
@@ -290,3 +290,16 @@ Playwrightのmobile viewportは実iPhone Safariの代替にしない。Group 12�
 - 非GitHub・非Opusの固定head独立reviewは、仕様・判断、実装・データ安全、テスト・iPhone境界の3方向すべて`BLOCKER 0 / MUST 0 / SHOULD 0`である。
 - B1は`implemented / CI-passed / independently-verified / merged`とする。B2、物理iPhone / iPad Safari、資源上限、Group 12完了判定、Slice D製品実装は未完了のまま維持する。
 - Group 13はGroup 12完了に依存するため、現時点では開始しない。
+
+## 14. Slice Dの分割とD1 Gate（ADR-2026-07-27-028）
+
+Slice Dは次の順で進め、各段階を別の契約・実装判断として扱う。
+
+1. **D1**: Frame preview中の永続編集防護、明示的な停止導線、反復Frameの一時的な出現位置。
+2. **D2**: Assetへ保存しないonion skin。
+3. **D3**: eventの追加、名前変更、参照Frame変更、削除。payload編集は含めない。
+4. **D4**: frame alignmentを別の契約監査後に実装する。
+
+D1の合格条件は、preview中のpan・zoom・Layer選択が使えること、保存を伴うキャンバス操作・入力・Undo / Redoが拒否されること、IndexedDB上のAssetが変わらないこと、手動previewとnon-loop完了後に停止できること、反復Frameの出現位置がloopごとに戻ること、停止後に通常編集を再開できることとする。375 × 667のChromium E2Eで保存不変と横overflowなしを確認し、物理iPhone SafariはGroup 12 closeout Gateへ残す。
+
+D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependencyを変更しない。D2〜D4、event payload編集、B2の数値上限、Group 12完了判定も対象外とする。
