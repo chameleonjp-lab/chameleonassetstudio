@@ -265,6 +265,7 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
   await expect(previewEditAlert).toContainText('保存を伴う編集はできません');
 
   await panTool.click();
+  await expect(panTool).toHaveAttribute('aria-pressed', 'true');
   const canvasBeforePan = await canvas.evaluate((element) =>
     (element as HTMLCanvasElement).toDataURL(),
   );
@@ -274,6 +275,7 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
   await page.mouse.move(
     canvasBox.x + canvasBox.width / 2 + panDelta,
     canvasBox.y + canvasBox.height / 2,
+    { steps: 8 },
   );
   await page.mouse.up();
   await expect
