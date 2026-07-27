@@ -264,8 +264,25 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
   await expect(previewEditAlert).toHaveCount(1);
   await expect(previewEditAlert).toContainText('保存を伴う編集はできません');
 
+  await panTool.click();
+  const canvasBeforePan = await canvas.evaluate((element) =>
+    (element as HTMLCanvasElement).toDataURL(),
+  );
+  const panDelta = Math.min(160, canvasBox.width / 2 - 8);
+  await page.mouse.move(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    canvasBox.x + canvasBox.width / 2 + panDelta,
+    canvasBox.y + canvasBox.height / 2,
+  );
+  await page.mouse.up();
+  await expect
+    .poll(async () => canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL()))
+    .not.toBe(canvasBeforePan);
+
+  // PanでLayerを右へずらし、元の中心で解除、移動後の中心で再選択できることを実操作で確認する。
   await selectTool.click();
-  await page.mouse.click(canvasBox.x + 2, canvasBox.y + 2);
+  await page.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
   await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
   const mainLayerButton = page
     .getByRole('list', { name: 'レイヤー一覧' })
@@ -273,25 +290,14 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
   await expect(mainLayerButton).toHaveAttribute('aria-pressed', 'false');
 
   await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
-  await page.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
+  await page.mouse.click(
+    canvasBox.x + canvasBox.width / 2 + panDelta - 24,
+    canvasBox.y + canvasBox.height / 2,
+  );
   await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
   await expect(mainLayerButton).toHaveAttribute('aria-pressed', 'true');
 
   await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
-  await panTool.click();
-  const canvasBeforePan = await canvas.evaluate((element) =>
-    (element as HTMLCanvasElement).toDataURL(),
-  );
-  await page.mouse.move(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(
-    canvasBox.x + canvasBox.width / 2 + 20,
-    canvasBox.y + canvasBox.height / 2 + 12,
-  );
-  await page.mouse.up();
-  await expect
-    .poll(async () => canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL()))
-    .not.toBe(canvasBeforePan);
   await page.getByRole('button', { name: '200%', exact: true }).click();
   await expect(page.getByText('ズーム 200%', { exact: true })).toBeVisible();
 
