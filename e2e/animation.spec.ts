@@ -198,12 +198,43 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
 
   await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
   await page.getByRole('button', { name: 'フレーム追加' }).click();
+  await page.getByLabel('新しいアニメーション名').fill('once');
+  await page.getByRole('button', { name: '作成', exact: true }).click();
+  await page.getByLabel('ループ').uncheck();
   await expect.poll(async () => (await readStoredAsset(page)).frames).toHaveLength(2);
+  await expect.poll(async () => (await readStoredAsset(page)).animations[0]?.loop).toBe(false);
   await expect(page.getByRole('status')).toContainText('保存済み');
+
+  await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
+  await setLayerX(page, 40);
+  await expect
+    .poll(async () => (await readStoredAsset(page)).layers[0]?.transform.position.x)
+    .toBe(40);
+
+  const undoButton = page.getByRole('button', { name: '元に戻す', exact: true });
+  const redoButton = page.getByRole('button', { name: 'やり直す', exact: true });
+  await expect(undoButton).toBeEnabled();
+  const undoLabelBeforePreview = await undoButton.getAttribute('title');
+  const redoLabelBeforePreview = await redoButton.getAttribute('title');
+
+  await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+  const playButton = page.getByRole('button', { name: '再生', exact: true });
+  const stopButton = page.getByRole('button', { name: '停止', exact: true });
+  await playButton.click();
+  await expect(playButton).toBeDisabled();
+  await expect(playButton).toBeEnabled();
+  await expect(stopButton).toBeEnabled();
+  await stopButton.click();
+  await expect(stopButton).toBeDisabled();
+
   const storedBeforePreview = await readStoredAsset(page);
 
+  await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
+  const toolbar = page.getByRole('navigation', { name: '編集ツール' });
+  await toolbar.getByRole('button', { name: 'ブラシ', exact: true }).click();
+
+  await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
   await page.getByRole('button', { name: 'frame_1', exact: true }).click();
-  const stopButton = page.getByRole('button', { name: '停止', exact: true });
   await expect(stopButton).toBeEnabled();
 
   await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
@@ -214,13 +245,43 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
   await expect(previewGuard).toContainText('パン・ズーム・レイヤー選択');
   await expect(canvas).toHaveAttribute('aria-readonly', 'true');
 
-  const toolbar = page.getByRole('navigation', { name: '編集ツール' });
-  await expect(toolbar.getByRole('button', { name: '選択', exact: true })).toBeEnabled();
-  await expect(toolbar.getByRole('button', { name: 'パン', exact: true })).toBeEnabled();
-  await expect(toolbar.getByRole('button', { name: 'ブラシ', exact: true })).toBeDisabled();
+  const selectTool = toolbar.getByRole('button', { name: '選択', exact: true });
+  const panTool = toolbar.getByRole('button', { name: 'パン', exact: true });
+  const brushTool = toolbar.getByRole('button', { name: 'ブラシ', exact: true });
+  await expect(selectTool).toBeEnabled();
+  await expect(panTool).toBeEnabled();
+  await expect(brushTool).toBeDisabled();
+  await expect(brushTool).toHaveAttribute('aria-pressed', 'true');
+  await expect(undoButton).toBeDisabled();
+  await expect(redoButton).toBeDisabled();
 
   const canvasBox = await canvas.boundingBox();
   if (!canvasBox) throw new Error('preview中のキャンバス領域を取得できません。');
+  await page.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
+  const previewEditAlert = page
+    .getByRole('alert')
+    .filter({ hasText: 'フレームをプレビュー中です' });
+  await expect(previewEditAlert).toHaveCount(1);
+  await expect(previewEditAlert).toContainText('保存を伴う編集はできません');
+
+  await selectTool.click();
+  await page.mouse.click(canvasBox.x + 2, canvasBox.y + 2);
+  await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
+  const mainLayerButton = page
+    .getByRole('list', { name: 'レイヤー一覧' })
+    .getByRole('button', { name: 'main', exact: true });
+  await expect(mainLayerButton).toHaveAttribute('aria-pressed', 'false');
+
+  await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
+  await page.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
+  await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
+  await expect(mainLayerButton).toHaveAttribute('aria-pressed', 'true');
+
+  await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
+  await panTool.click();
+  const canvasBeforePan = await canvas.evaluate((element) =>
+    (element as HTMLCanvasElement).toDataURL(),
+  );
   await page.mouse.move(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
   await page.mouse.down();
   await page.mouse.move(
@@ -228,22 +289,37 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
     canvasBox.y + canvasBox.height / 2 + 12,
   );
   await page.mouse.up();
+  await expect
+    .poll(async () => canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL()))
+    .not.toBe(canvasBeforePan);
   await page.getByRole('button', { name: '200%', exact: true }).click();
   await expect(page.getByText('ズーム 200%', { exact: true })).toBeVisible();
 
+  await page.keyboard.press('Control+z');
+  await page.keyboard.press('Control+Shift+z');
+  await expect(undoButton).toBeDisabled();
+  await expect(redoButton).toBeDisabled();
+
+  await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+  await page.getByLabel('新しいアニメーション名').fill('blocked');
+  await page.getByRole('button', { name: '作成', exact: true }).click();
+  await expect.poll(async () => (await readStoredAsset(page)).animations).toHaveLength(1);
+  await expect(stopButton).toBeEnabled();
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByRole('button', { name: 'アニメーション削除', exact: true }).click();
+  await expect.poll(async () => (await readStoredAsset(page)).animations).toHaveLength(1);
+  await expect(stopButton).toBeEnabled();
+
   await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
   const xInput = page.getByLabel('X', { exact: true });
+  const previewLayerX = await xInput.inputValue();
   await xInput.fill('96');
   await xInput.blur();
-  const previewEditAlert = page
-    .getByRole('alert')
-    .filter({ hasText: 'フレームをプレビュー中です' });
   await expect(previewEditAlert).toHaveCount(1);
-  await expect(previewEditAlert).toContainText('保存を伴う編集はできません');
-  await expect(xInput).toHaveValue('32');
+  await expect(xInput).toHaveValue(previewLayerX);
   await expect
     .poll(async () => (await readStoredAsset(page)).layers[0]?.transform.position.x)
-    .toBe(32);
+    .toBe(40);
   expect(await readStoredAsset(page)).toEqual(storedBeforePreview);
 
   expect(
@@ -254,6 +330,24 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
 
   await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
   await stopButton.click();
+  await expect(stopButton).toBeDisabled();
+  await expect(undoButton).toBeEnabled();
+  await expect(undoButton).toHaveAttribute('title', undoLabelBeforePreview ?? '');
+  if (redoLabelBeforePreview === null) {
+    await expect(redoButton).not.toHaveAttribute('title', /.+/);
+  } else {
+    await expect(redoButton).toHaveAttribute('title', redoLabelBeforePreview);
+  }
+
+  await undoButton.click();
+  await expect
+    .poll(async () => (await readStoredAsset(page)).layers[0]?.transform.position.x)
+    .toBe(32);
+  await redoButton.click();
+  await expect
+    .poll(async () => (await readStoredAsset(page)).layers[0]?.transform.position.x)
+    .toBe(40);
+
   await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
   await expect(previewGuard).toHaveCount(0);
   await expect(canvas).toHaveAttribute('aria-readonly', 'false');
