@@ -44,6 +44,9 @@ async function setLayerX(page: Page, value: number): Promise<void> {
 }
 
 interface StoredAnimationAsset {
+  layers: Array<{
+    transform: { position: { x: number; y: number } };
+  }>;
   frames: Array<{ id: string; name: string; durationMs?: number }>;
   animations: Array<{
     id: string;
@@ -174,6 +177,88 @@ test('フレームを2枚作って idle アニメーションを作れる', asyn
     .toMatchObject({ name: 'idle', fps: 8, loop: true });
   const stored = await readStoredAsset(page);
   expect(stored.animations[0].frameIds).toHaveLength(2);
+});
+
+test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再開できる', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await setupProjectWithImage(page, 'preview安全テスト');
+
+  const mobileNav = page.getByRole('navigation', { name: '画面切り替え' });
+  await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
+  await selectMainLayer(page);
+
+  await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+  await page.getByRole('button', { name: 'フレーム追加' }).click();
+
+  await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
+  await setLayerX(page, 32);
+  await expect
+    .poll(async () => (await readStoredAsset(page)).layers[0]?.transform.position.x)
+    .toBe(32);
+
+  await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+  await page.getByRole('button', { name: 'フレーム追加' }).click();
+  await expect.poll(async () => (await readStoredAsset(page)).frames).toHaveLength(2);
+  await expect(page.getByRole('status')).toContainText('保存済み');
+  const storedBeforePreview = await readStoredAsset(page);
+
+  await page.getByRole('button', { name: 'frame_1', exact: true }).click();
+  const stopButton = page.getByRole('button', { name: '停止', exact: true });
+  await expect(stopButton).toBeEnabled();
+
+  await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
+  const previewGuard = page.getByRole('status', {
+    name: 'フレームプレビューの編集制限',
+  });
+  const canvas = page.getByLabel('アセットキャンバス');
+  await expect(previewGuard).toContainText('パン・ズーム・レイヤー選択');
+  await expect(canvas).toHaveAttribute('aria-readonly', 'true');
+
+  const toolbar = page.getByRole('navigation', { name: '編集ツール' });
+  await expect(toolbar.getByRole('button', { name: '選択', exact: true })).toBeEnabled();
+  await expect(toolbar.getByRole('button', { name: 'パン', exact: true })).toBeEnabled();
+  await expect(toolbar.getByRole('button', { name: 'ブラシ', exact: true })).toBeDisabled();
+
+  const canvasBox = await canvas.boundingBox();
+  if (!canvasBox) throw new Error('preview中のキャンバス領域を取得できません。');
+  await page.mouse.move(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    canvasBox.x + canvasBox.width / 2 + 20,
+    canvasBox.y + canvasBox.height / 2 + 12,
+  );
+  await page.mouse.up();
+  await page.getByRole('button', { name: '200%', exact: true }).click();
+  await expect(page.getByText('ズーム 200%', { exact: true })).toBeVisible();
+
+  await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
+  const xInput = page.getByLabel('X', { exact: true });
+  await xInput.fill('96');
+  await xInput.blur();
+  await expect(page.getByRole('alert')).toContainText('フレームをプレビュー中です');
+  await expect(xInput).toHaveValue('32');
+  await expect
+    .poll(async () => (await readStoredAsset(page)).layers[0]?.transform.position.x)
+    .toBe(32);
+  expect(await readStoredAsset(page)).toEqual(storedBeforePreview);
+
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    ),
+  ).toBe(false);
+
+  await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+  await stopButton.click();
+  await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
+  await expect(previewGuard).toHaveCount(0);
+  await expect(canvas).toHaveAttribute('aria-readonly', 'false');
+
+  await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
+  await setLayerX(page, 48);
+  await expect
+    .poll(async () => (await readStoredAsset(page)).layers[0]?.transform.position.x)
+    .toBe(48);
 });
 
 test('fps とループを変更でき、リロード後も保持される', async ({ page }) => {
@@ -364,28 +449,34 @@ test('mock clockで可変時間・反復Frame・loop event・再生中の先頭�
 
   const frameList = page.getByRole('list', { name: 'フレーム一覧' });
   const currentFrame = frameList.getByRole('button', { pressed: true });
+  const occurrenceStatus = page.getByRole('status', { name: 'アニメーション再生位置' });
   const firedStatus = page.getByRole('status').filter({ hasText: '発火:' });
   await page.getByRole('button', { name: '再生', exact: true }).click();
   await expect(currentFrame).toHaveText('frame_1');
+  await expect(occurrenceStatus).toHaveText('出現位置: 1 / 4');
   await expect(firedStatus).toHaveText('発火: start、ready');
 
   await page.clock.runFor(219);
   await expect(currentFrame).toHaveText('frame_1');
   await page.clock.runFor(1);
   await expect(currentFrame).toHaveText('frame_2');
+  await expect(occurrenceStatus).toHaveText('出現位置: 2 / 4');
   await expect(firedStatus).toHaveText('発火: turn');
 
   // 同じFrameの2回目の出現でも、保存順のeventを再発火する。
   await page.clock.runFor(125);
   await expect(currentFrame).toHaveText('frame_1');
+  await expect(occurrenceStatus).toHaveText('出現位置: 3 / 4');
   await expect(firedStatus).toHaveText('発火: start、ready');
   await page.clock.runFor(220);
   await expect(currentFrame).toHaveText('frame_2');
+  await expect(occurrenceStatus).toHaveText('出現位置: 4 / 4');
   await expect(firedStatus).toHaveText('発火: turn');
 
   // loopの次周回でも先頭Frameとeventを再発火する。
   await page.clock.runFor(125);
   await expect(currentFrame).toHaveText('frame_1');
+  await expect(occurrenceStatus).toHaveText('出現位置: 1 / 4');
   await expect(firedStatus).toHaveText('発火: start、ready');
   await page.clock.runFor(220);
   await expect(currentFrame).toHaveText('frame_2');
@@ -393,6 +484,7 @@ test('mock clockで可変時間・反復Frame・loop event・再生中の先頭�
   // 再生中の巻き戻しは旧予約を取消し、先頭Frameの220msを丸ごと再開する。
   await page.getByRole('button', { name: '先頭へ' }).click();
   await expect(currentFrame).toHaveText('frame_1');
+  await expect(occurrenceStatus).toHaveText('出現位置: 1 / 4');
   await expect(firedStatus).toHaveText('発火: start、ready');
   await page.clock.runFor(219);
   await expect(currentFrame).toHaveText('frame_1');
