@@ -235,7 +235,11 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
   const xInput = page.getByLabel('X', { exact: true });
   await xInput.fill('96');
   await xInput.blur();
-  await expect(page.getByRole('alert')).toContainText('フレームをプレビュー中です');
+  const previewEditAlert = page
+    .getByRole('alert')
+    .filter({ hasText: 'フレームをプレビュー中です' });
+  await expect(previewEditAlert).toHaveCount(1);
+  await expect(previewEditAlert).toContainText('保存を伴う編集はできません');
   await expect(xInput).toHaveValue('32');
   await expect
     .poll(async () => (await readStoredAsset(page)).layers[0]?.transform.position.x)
