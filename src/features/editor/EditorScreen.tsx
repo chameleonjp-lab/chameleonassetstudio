@@ -1049,6 +1049,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   }, [isPlaying, selectedAnimation, selectedAsset?.frames]);
 
   const handleSelectAnimation = (id: string | null) => {
+    if (framePreviewActive) {
+      setEditorError(FRAME_PREVIEW_EDIT_MESSAGE);
+      return;
+    }
     setSelectedAnimationId(id);
     setIsPlaying(false);
     setPreviewFrameId(null);
