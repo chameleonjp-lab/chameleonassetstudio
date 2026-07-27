@@ -266,9 +266,6 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
 
   await panTool.click();
   await expect(panTool).toHaveAttribute('aria-pressed', 'true');
-  const canvasBeforePan = await canvas.evaluate((element) =>
-    (element as HTMLCanvasElement).toDataURL(),
-  );
   const panDelta = Math.min(160, canvasBox.width / 2 - 8);
   await page.mouse.move(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
   await page.mouse.down();
@@ -278,11 +275,14 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
     { steps: 8 },
   );
   await page.mouse.up();
-  await expect
-    .poll(async () => canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL()))
-    .not.toBe(canvasBeforePan);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
 
-  // PanでLayerを右へずらし、元の中心で解除、移動後の中心で再選択できることを実操作で確認する。
+  // PanでLayerを右へずらした結果を、元の中心で解除、移動後の中心で再選択できることから確認する。
   await selectTool.click();
   await page.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
   await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
