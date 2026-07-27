@@ -255,9 +255,12 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
   await expect(undoButton).toBeDisabled();
   await expect(redoButton).toBeDisabled();
 
-  const canvasBox = await canvas.boundingBox();
-  if (!canvasBox) throw new Error('preview中のキャンバス領域を取得できません。');
-  await page.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
+  const canvasSize = await canvas.evaluate((element) => ({
+    width: element.clientWidth,
+    height: element.clientHeight,
+  }));
+  const canvasCenter = { x: canvasSize.width / 2, y: canvasSize.height / 2 };
+  await canvas.click({ position: canvasCenter });
   const previewEditAlert = page
     .getByRole('alert')
     .filter({ hasText: 'フレームをプレビュー中です' });
@@ -266,14 +269,13 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
 
   await panTool.click();
   await expect(panTool).toHaveAttribute('aria-pressed', 'true');
-  const panDelta = Math.min(160, canvasBox.width / 2 - 8);
-  await page.mouse.move(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
+  const panDelta = Math.min(160, canvasSize.width / 2 - 8);
+  await canvas.hover({ position: canvasCenter });
   await page.mouse.down();
-  await page.mouse.move(
-    canvasBox.x + canvasBox.width / 2 + panDelta,
-    canvasBox.y + canvasBox.height / 2,
-    { steps: 8 },
-  );
+  await canvas.hover({
+    position: { x: canvasCenter.x + panDelta, y: canvasCenter.y },
+    force: true,
+  });
   await page.mouse.up();
   await page.evaluate(
     () =>
@@ -284,7 +286,7 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
 
   // PanでLayerを右へずらした結果を、元の中心で解除、移動後の中心で再選択できることから確認する。
   await selectTool.click();
-  await page.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
+  await canvas.click({ position: canvasCenter });
   await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
   const mainLayerButton = page
     .getByRole('list', { name: 'レイヤー一覧' })
@@ -292,10 +294,9 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
   await expect(mainLayerButton).toHaveAttribute('aria-pressed', 'false');
 
   await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
-  await page.mouse.click(
-    canvasBox.x + canvasBox.width / 2 + panDelta - 24,
-    canvasBox.y + canvasBox.height / 2,
-  );
+  await canvas.click({
+    position: { x: canvasCenter.x + panDelta - 24, y: canvasCenter.y },
+  });
   await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
   await expect(mainLayerButton).toHaveAttribute('aria-pressed', 'true');
 
