@@ -1161,7 +1161,7 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 - 対象: Group 12 `2D-3-TIMELINE + 2D-3-RIG` のTimeline UX / Slice D2
 - 基準main: `89d62786d008f777e753d3fbb89a44c65b00e8d2`
 - D1: implemented / CI-passed / independently-verified / merged
-- D2: contract accepted / product implementation not started
+- D2: contract accepted / product implementation and verification in progress
 - D3 / D4、B2 numeric budget / warning / hard cap: pending
 
 ### 確認できた事実
@@ -1177,11 +1177,11 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 - **B1**: D1のread-only契約を維持し、D2は前後確認だけに使う。onion skinはpointer入力を受け取らず、保存編集、Undo / Redo、History、autosaveへ接続しない。Animation再生中は一時的に隠し、停止後は同じ画面内の切替状態を復元する。
 - **C1**: 初期状態はoffとする。前・次を個別に切り替え、前は赤系、次は青系で固定し、各表示に「前」「次」の文字を付ける。色だけを識別手段にしない。重ねる透明度は25%に固定する。
 - 切替状態と現在の出現位置はEditor画面の一時状態だけに置く。reloadではoffへ戻し、Asset、IndexedDB、History、`.casproj`、exportへ保存しない。
-- D2製品実装は本docs-only決定PRがmainへ入った後、1 branch / 1 Draft PR / 単一writerで行う。
+- docs-only決定PR #203はmerge `73f0eafe69dd42c820f92e9f039e49fe2e2d9d28`でmainへ反映済みである。D2製品実装は、そのmainを基準に1 branch / 1 Draft PR / 単一writerで進行する。
 
 ### 合格条件
 
-- Unit / contractで、loop / non-loopの端、前後1件、反復Frameの各出現位置、同じFrame IDの複数出現を確認する。
+- Unit / contractで、loop / non-loopの端、前後1件、反復Frameの各出現位置、同じFrame IDの複数出現を確認する。停止中も選択中Animationの出現順を直接選べるようにし、`A → B → A`の1番目と3番目を選び分ける。
 - 375 × 667のChromium E2Eで、初期off、前・次の個別切替、文字と色の区別、25%表示、再生中の非表示、停止後の復元、横overflowなし、44px以上の操作対象を確認する。
 - D2をon / offしてもIndexedDB上のAssetとUndo / Redo stackが変わらず、reload後にoffへ戻ることを確認する。
 - D1のpan、zoom、Layer選択、保存編集拒否、明示停止を壊さない。

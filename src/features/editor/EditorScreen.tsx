@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -153,6 +154,7 @@ import { LayerPanel } from './LayerPanel';
 import { PartPanel } from './PartPanel';
 import { RigPanel } from './RigPanel';
 import { TimelinePanel } from './TimelinePanel';
+import { resolveOnionSkinOccurrences } from './onionSkin';
 import { CANVAS_TOOL_GUIDE_BY_ID, CANVAS_TOOL_GUIDES } from './toolHelp';
 import { VariantPanel, type VariantInspectionView } from './VariantPanel';
 import { applyEditSnap } from './snap';
@@ -541,6 +543,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [previewOccurrenceIndex, setPreviewOccurrenceIndex] = useState<number | null>(null);
   const [firedAnimationEvents, setFiredAnimationEvents] = useState<AnimationEvent[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [showPreviousOnionSkin, setShowPreviousOnionSkin] = useState(false);
+  const [showNextOnionSkin, setShowNextOnionSkin] = useState(false);
 
   // 画像編集パラメータ
   const [eraserSize, setEraserSize] = useState(16);
@@ -802,11 +806,46 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const selectedAnimation =
     selectedAsset?.animations.find((animation) => animation.id === selectedAnimationId) ?? null;
   const framePreviewActive = previewFrameId !== null;
+  const availableFrameIds = useMemo(
+    () => new Set((selectedAsset?.frames ?? []).map((frame) => frame.id)),
+    [selectedAsset],
+  );
+  const onionSkinOccurrences = useMemo(() => {
+    if (
+      !selectedAnimation ||
+      previewOccurrenceIndex === null ||
+      selectedAnimation.frameIds[previewOccurrenceIndex] !== previewFrameId
+    ) {
+      return { previous: null, next: null };
+    }
+    return resolveOnionSkinOccurrences(
+      selectedAnimation,
+      previewOccurrenceIndex,
+      availableFrameIds,
+    );
+  }, [availableFrameIds, previewFrameId, previewOccurrenceIndex, selectedAnimation]);
   /** タイムラインでプレビュー中のフレームをレイヤーへ適用したアセット（キャンバス表示用）。 */
-  const previewAsset =
-    selectedAsset && previewFrameId
-      ? applyFrameToAsset(selectedAsset, previewFrameId)
-      : selectedAsset;
+  const previewAsset = useMemo(
+    () =>
+      selectedAsset && previewFrameId
+        ? applyFrameToAsset(selectedAsset, previewFrameId)
+        : selectedAsset,
+    [previewFrameId, selectedAsset],
+  );
+  const onionSkinPreviousAsset = useMemo(
+    () =>
+      !isPlaying && showPreviousOnionSkin && selectedAsset && onionSkinOccurrences.previous
+        ? applyFrameToAsset(selectedAsset, onionSkinOccurrences.previous.frameId)
+        : null,
+    [isPlaying, onionSkinOccurrences.previous, selectedAsset, showPreviousOnionSkin],
+  );
+  const onionSkinNextAsset = useMemo(
+    () =>
+      !isPlaying && showNextOnionSkin && selectedAsset && onionSkinOccurrences.next
+        ? applyFrameToAsset(selectedAsset, onionSkinOccurrences.next.frameId)
+        : null,
+    [isPlaying, onionSkinOccurrences.next, selectedAsset, showNextOnionSkin],
+  );
 
   useEffect(() => {
     if (
@@ -986,6 +1025,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setPreviewOccurrenceIndex(null);
     setFiredAnimationEvents([]);
     setIsPlaying(false);
+    setShowPreviousOnionSkin(false);
+    setShowNextOnionSkin(false);
     setSelectedColliderId(null);
   }, [selectedAssetId]);
 
@@ -1064,6 +1105,17 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setIsPlaying(false);
     setPreviewFrameId(frameId);
     setPreviewOccurrenceIndex(null);
+    setFiredAnimationEvents([]);
+  };
+
+  const handleSelectOccurrence = (occurrenceIndex: number) => {
+    const frameId = selectedAnimation?.frameIds[occurrenceIndex];
+    if (!frameId || !availableFrameIds.has(frameId)) {
+      return;
+    }
+    setIsPlaying(false);
+    setPreviewFrameId(frameId);
+    setPreviewOccurrenceIndex(occurrenceIndex);
     setFiredAnimationEvents([]);
   };
 
@@ -3171,6 +3223,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               </div>
               <CanvasEditor
                 asset={previewAsset ?? selectedAsset}
+                onionSkinPreviousAsset={onionSkinPreviousAsset}
+                onionSkinNextAsset={onionSkinNextAsset}
                 tool={tool}
                 selectedLayerId={selectedLayerId}
                 readOnly={framePreviewActive}
@@ -4450,6 +4504,11 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             selectedAnimationId={selectedAnimationId}
             onSelectAnimation={handleSelectAnimation}
             onSelectFrame={handleSelectFrame}
+            onSelectOccurrence={handleSelectOccurrence}
+            showPreviousOnionSkin={showPreviousOnionSkin}
+            showNextOnionSkin={showNextOnionSkin}
+            onShowPreviousOnionSkinChange={setShowPreviousOnionSkin}
+            onShowNextOnionSkinChange={setShowNextOnionSkin}
             onPlay={handlePlayAnimation}
             onStop={handleStopAnimation}
             onRewind={handleRewindAnimation}

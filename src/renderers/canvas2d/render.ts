@@ -12,11 +12,18 @@ export interface RenderLayer {
   bitmap: CanvasImageSource | null;
 }
 
+export interface RenderOnionSkin {
+  layers: RenderLayer[];
+  color: string;
+  opacity: number;
+}
+
 export interface RenderSceneOptions {
   view: ViewTransform;
   viewport: Viewport;
   canvasSize: Size;
   layers: RenderLayer[];
+  onionSkins?: readonly RenderOnionSkin[];
   selectedLayerId: string | null;
 }
 
@@ -25,6 +32,7 @@ const CHECKER_LIGHT = '#e9e9e9';
 const CHECKER_DARK = '#c9c9c9';
 const CANVAS_BORDER = 'rgba(128, 128, 128, 0.9)';
 const SELECTION_COLOR = '#3a86ff';
+let tintScratchCanvas: OffscreenCanvas | HTMLCanvasElement | null = null;
 
 /** 透明背景の市松模様（要件 11.3）。アセットキャンバスの矩形内に描く。 */
 function drawCheckerboard(
@@ -65,9 +73,57 @@ function drawCheckerboard(
   ctx.restore();
 }
 
-function drawLayer(ctx: CanvasRenderingContext2D, view: ViewTransform, entry: RenderLayer): void {
+function tintedBitmap(
+  bitmap: CanvasImageSource,
+  textureSize: Size,
+  color: string,
+): CanvasImageSource | null {
+  const width = Math.max(1, Math.round(textureSize.width));
+  const height = Math.max(1, Math.round(textureSize.height));
+  const canvas =
+    tintScratchCanvas ??
+    (typeof OffscreenCanvas !== 'undefined'
+      ? new OffscreenCanvas(width, height)
+      : typeof document !== 'undefined'
+        ? document.createElement('canvas')
+        : null);
+  if (!canvas) {
+    return null;
+  }
+  tintScratchCanvas = canvas;
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d') as
+    CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
+  if (!context) {
+    return null;
+  }
+  try {
+    context.clearRect(0, 0, width, height);
+    context.drawImage(bitmap, 0, 0, width, height);
+    context.globalCompositeOperation = 'source-in';
+    context.fillStyle = color;
+    context.fillRect(0, 0, width, height);
+    context.globalCompositeOperation = 'source-over';
+  } catch {
+    return null;
+  }
+
+  return canvas;
+}
+
+function drawLayer(
+  ctx: CanvasRenderingContext2D,
+  view: ViewTransform,
+  entry: RenderLayer,
+  options: { color?: string; opacity?: number } = {},
+): void {
   const { layer, textureSize, bitmap } = entry;
   if (!layer.visible || !bitmap || !textureSize) {
+    return;
+  }
+  const source = options.color ? tintedBitmap(bitmap, textureSize, options.color) : bitmap;
+  if (!source) {
     return;
   }
   const transform = layer.transform;
@@ -76,13 +132,13 @@ function drawLayer(ctx: CanvasRenderingContext2D, view: ViewTransform, entry: Re
     y: transform.position.y + textureSize.height / 2,
   });
   ctx.save();
-  ctx.globalAlpha = Math.min(1, Math.max(0, layer.opacity));
+  ctx.globalAlpha = Math.min(1, Math.max(0, layer.opacity * (options.opacity ?? 1)));
   ctx.translate(center.x, center.y);
   ctx.rotate((transform.rotation * Math.PI) / 180);
   ctx.scale(transform.scale.x * view.scale, transform.scale.y * view.scale);
   try {
     ctx.drawImage(
-      bitmap,
+      source,
       -textureSize.width / 2,
       -textureSize.height / 2,
       textureSize.width,
@@ -152,10 +208,19 @@ export function drawGrid(
 
 /** 1 フレーム分の描画。イベント駆動で呼ぶ（常時ループはしない）。 */
 export function renderScene(ctx: CanvasRenderingContext2D, options: RenderSceneOptions): void {
-  const { view, viewport, canvasSize, layers, selectedLayerId } = options;
+  const { view, viewport, canvasSize, layers, onionSkins, selectedLayerId } = options;
   ctx.clearRect(0, 0, viewport.width, viewport.height);
 
   drawCheckerboard(ctx, view, canvasSize);
+
+  for (const onionSkin of onionSkins ?? []) {
+    for (const entry of onionSkin.layers) {
+      drawLayer(ctx, view, entry, {
+        color: onionSkin.color,
+        opacity: onionSkin.opacity,
+      });
+    }
+  }
 
   for (const entry of layers) {
     drawLayer(ctx, view, entry);
