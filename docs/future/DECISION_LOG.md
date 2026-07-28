@@ -1,6 +1,6 @@
 # Decision Log
 
-最終更新日: 2026-07-27
+最終更新日: 2026-07-28
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 重要方針の変更経緯・決定記録
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
@@ -1122,7 +1122,7 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 - accepted（2026-07-27 人間承認、A1+B1）
 - 対象: Group 12 `2D-3-TIMELINE + 2D-3-RIG` のTimeline UX / Slice D
 - 基準main: `9787b680503530912ebf6b1dd872fc2c0c59380f`
-- D1 product implementation / Draft verification in progress
+- D1 implemented / CI-passed / independently-verified / merged（PR #201、CI Run #596）
 - B2 numeric budget / warning / hard cap pending
 
 ### 確認できた事実
@@ -1145,4 +1145,51 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 - schema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependency。
 - onion skin、event payload編集、frame alignment、collider override / polygon、IK、mesh、physics、state machine。
 - B2の生成量budget、warning、hard cap、Group 12完了判定。
+- Ready化、merge、Pages配信。
+### 実装結果
+
+- D1はPR #201 final head `25cd3327b93850f1af1733c2b43585e3fa0a667b`、merge `c1d08e3b4cadd7c3a3064ab8e824b17f67feb243`でmainへ反映した。
+- CI Run #596はlint、format、build、unit 758件、Chromium E2E 166件、H3 Chromium、Pages open / closed routeを含め全job成功した。
+- 固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`である。
+- D1は`implemented / CI-passed / independently-verified / merged`とする。D2〜D4、B2、schema、保存形式、export、dependencyはPR #201で変更していない。
+
+## ADR-2026-07-28-029: D2 onion skinを再生順の一時表示として固定する
+
+### 状態
+
+- accepted（2026-07-28 人間承認、A1+B1+C1）
+- 対象: Group 12 `2D-3-TIMELINE + 2D-3-RIG` のTimeline UX / Slice D2
+- 基準main: `89d62786d008f777e753d3fbb89a44c65b00e8d2`
+- D1: implemented / CI-passed / independently-verified / merged
+- D2: contract accepted / product implementation not started
+- D3 / D4、B2 numeric budget / warning / hard cap: pending
+
+### 確認できた事実
+
+- 同じFrame IDを1つのAnimationが複数回参照できるため、`Asset.frames`の一覧順では実際の再生前後と一致しない。
+- D1でAnimation内の一時的な出現位置を画面へ渡せるようになり、反復Frameを出現単位で区別できる。
+- Frame適用時に保存されていない画像や省略値を基礎Assetから補う現行経路があるため、D2を編集補助へ広げると参照表示が基礎Layerの変更に追従する場合がある。
+- 前後のFrameを半透明で重ねる表示（onion skin）は、既存ツールでも前後の色分けと個別表示が使われている。参考: [Aseprite公式](https://www.aseprite.org/docs/onion-skinning/)、[Krita公式](https://docs.krita.org/en/user_manual/animation.html)。
+
+### 決定
+
+- **A1**: 前後は選択中Animationの`frameIds`における出現順で解決する。現在の出現位置から前1件・次1件だけを候補とし、`loop=true`の時だけ末尾と先頭をつなぐ。非loopの端では存在しない側を表示しない。同じFrame IDの反復は出現位置で区別する。
+- **B1**: D1のread-only契約を維持し、D2は前後確認だけに使う。onion skinはpointer入力を受け取らず、保存編集、Undo / Redo、History、autosaveへ接続しない。Animation再生中は一時的に隠し、停止後は同じ画面内の切替状態を復元する。
+- **C1**: 初期状態はoffとする。前・次を個別に切り替え、前は赤系、次は青系で固定し、各表示に「前」「次」の文字を付ける。色だけを識別手段にしない。重ねる透明度は25%に固定する。
+- 切替状態と現在の出現位置はEditor画面の一時状態だけに置く。reloadではoffへ戻し、Asset、IndexedDB、History、`.casproj`、exportへ保存しない。
+- D2製品実装は本docs-only決定PRがmainへ入った後、1 branch / 1 Draft PR / 単一writerで行う。
+
+### 合格条件
+
+- Unit / contractで、loop / non-loopの端、前後1件、反復Frameの各出現位置、同じFrame IDの複数出現を確認する。
+- 375 × 667のChromium E2Eで、初期off、前・次の個別切替、文字と色の区別、25%表示、再生中の非表示、停止後の復元、横overflowなし、44px以上の操作対象を確認する。
+- D2をon / offしてもIndexedDB上のAssetとUndo / Redo stackが変わらず、reload後にoffへ戻ることを確認する。
+- D1のpan、zoom、Layer選択、保存編集拒否、明示停止を壊さない。
+- Playwrightのmobile viewportを物理iPhone Safariの代替にしない。物理Safari確認はGroup 12 closeout Gateへ残す。
+
+### 変更しないこと
+
+- schema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependency。
+- onion skinを表示したままの編集、色・透明度・表示枚数の利用者設定、端末内への設定保存。
+- D3のevent編集、D4のframe alignment、event payload編集、B2の資源上限、Group 12完了判定。
 - Ready化、merge、Pages配信。
