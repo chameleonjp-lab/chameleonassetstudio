@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 外部 GitHub 参考資料カタログ
 
-最終更新日: 2026-07-26  
+最終更新日: 2026-07-28  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 文書種別: 外部実装・機能・仕様の調査記録  
 状態: reference only / implementation not approved  
@@ -144,6 +144,8 @@ AI は本書だけで採用を確定してはいけない。採用を検討す�
 | `3D-EXT-014` | [VAST-AI-Research/TripoSR](https://github.com/VAST-AI-Research/TripoSR) | 外部処理 / 高性能デスクトップ・GPU | 単一画像から 3D mesh を作る比較的単純な外部実験候補。 | 画像→3D の初期比較、失敗例収集 | 生成品質を保証せず、GLB / texture / scale / origin を CAS で再検査する。 |
 | `3D-EXT-078` | [MengTo/Skills](https://github.com/MengTo/Skills) | 開発用 / デスクトップ向き | `build-hybrid-game-assets` と `build-vesperfall-review-assets` は、軽い透過 PNG の catalog card、選択時だけ起動する単一 live model inspector、隔離 review route、import / procedural / img2threejs の provenance、bounds framing、足基準の grounding、action 操作、mobile / performance / browser QA を一つの手順にしている。512×512・alpha・model source を確認する小さな validator も実装例になる。 | 2D asset catalog の軽量表示、将来の 3D Asset Preparation Mode、model / animation inspector、AI 用の制作・検品手順、再現可能な review evidence | A は設計・QA資料としての評価であり、Skills 全体の導入承認ではない。Vesperfall 固有 path と文言は CAS 用に書き直す。MIT は repository の code / docs に対するもので、参照画像、model、外部素材の権利は別確認する。2D Pro Gate 承認前は 3D 実装へ使わない。 |
 | `3D-EXT-079` | [mshumer/Claude-of-Duty](https://github.com/mshumer/Claude-of-Duty) | ブラウザ / デスクトップ向き | Three.js r180 / WebGL2 のブラウザ FPS を、外部画像・model・音声 asset なしで構成し、GPU procedural PBR texture、code-built mesh / props / weapons、procedural audio、deterministic clock / RNG、isolated fixed-frame capture、per-pixel diff、実操作 profile、shader pre-warm を一つの実例として公開している。11 subsystem の所有境界と event vocabulary、AI agent 開発の実測振り返りも有用。 | 将来の procedural material / geometry、3D preview と export の visual regression、frame-time / hitch / shader compile 計測、複数 AI の担当境界 | ゲーム入力は keyboard / mouse / gamepad 中心で、touch 操作の見本ではない。作者の性能値は Apple silicon laptop で、iPhone / iPad の性能予算の証拠にしない。約 55k 行の独自 renderer / physics を丸ごと移植しない。root `LICENSE` は MIT、`package.json` は ISC 表記のため、コード利用前に差を再確認し copyright notice を保持する。2D Pro Gate 承認前は 3D 実装へ使わない。 |
+| `3D-EXT-080` | [earthtojake/text-to-cad](https://github.com/earthtojake/text-to-cad) | 開発用＋ブラウザ / デスクトップ向き | 自然文・参考画像から CAD brief と build123d の Python source を作り、STEP を正本の派生 artifact として生成し、geometry facts、寸法、selector reference、複数視点 snapshot で検証してから STL / 3MF / GLB へ分岐する一連の agent workflow が有用。2D DXF、部品探索、browser viewer も skill として責務分離している。 | 将来の text / image-to-CAD、source と派生 artifact の追跡、geometry-aware な追加修正、寸法検査、2D DXF と 3D STEP の handoff、preview / review loop | 利用者向け単体 Web app ではなく、coding agent、local Python / Node、build123d / OpenCascade 系処理を前提とする。生成 Python を CAS の利用者環境で無制限実行せず、sandbox、resource limit、許可 API、artifact 検査を別 Gate にする。repository は MIT だが、取得部品・参考画像・生成物の権利は別確認する。2D Pro Gate 承認前は導入・3D 実装を開始しない。 |
+| `3D-EXT-081` | [achimala/TheLongSilence](https://github.com/achimala/TheLongSilence) | ブラウザ / デスクトップ向き | seed だけで構成する Three.js / WebGL2 の広域 world で、floating origin と logarithmic depth、planet cubemap bake、共通 greeble / material kit、transform bake と material 単位の geometry merge、quality tier と動的 resolution を実装している。headed Chromium による interaction assertion、固定 scene の screenshot survey、輝度 percentile・白飛び・黒つぶれ測定まで同じ repository にある。 | 将来の world mode、procedural prop / material、遠近差の大きい 3D preview、draw call 削減、端末別 quality、visual / performance regression と review evidence | touch control はあるが、公式 README は phone を意図的に拒否しておりスマホ向け見本ではない。1 commit の game 実装で editor UX の基準ではないため、renderer 全体を移植せず技法と検証 tool を個別に比較する。root LICENSE は MIT。作者環境の見た目・fps を CAS の合格値に流用せず、2D Pro Gate 承認後に PC / iPhone / iPad を別々に実測する。 |
 
 ### 4.2 B / MEDIUM
 
@@ -248,7 +250,7 @@ AI は本書だけで採用を確定してはいけない。採用を検討す�
 | `IDEA-2D-06` | 作者、license、attribution、生成元を素材と一緒に保存する | `2D-EXT-009`, `2D-EXT-026`, `2D-EXT-039` | ADR-0013 の provenance 境界と整合させる。 |
 | `IDEA-2D-07` | 外部 2D animation 形式の read-only inspector と import notes | `2D-EXT-018`〜`023` | 完全互換を名乗らず、失う情報がある出力を黙って作らない。 |
 | `IDEA-2D-08` | 一覧は軽い thumbnail、選択時だけ editor / preview を起動し、寸法、alpha、source、license、派生元、検品結果をまとめて読める asset catalog | `2D-EXT-001`, `2D-EXT-009`, `2D-EXT-026`, `3D-EXT-078` | 既存 Project / Asset 契約を維持し、一覧で多数の canvas や重い decoder を起動しない。iPhone の memory、scroll、fallback を実測する。 |
-| `IDEA-2D-09` | 固定 seed・clock・frame budget と隔離 page で editor / animation / preview / export を再現し、pixel diff と frame-time distribution / hitch を残す visual-performance gate | `2D-EXT-001`, `3D-EXT-006`, `3D-EXT-079` | 既存 E2E を置き換えず、DOM / Canvas / IndexedDB の意味検査と画像比較を併用する。PC / iPhone / iPad を分けて測り、中央値だけで合格にしない。非決定な時刻、乱数、exposure、particle 状態を固定または隔離する。 |
+| `IDEA-2D-09` | 固定 seed・clock・frame budget と隔離 page で editor / animation / preview / export を再現し、pixel diff、輝度分布、frame-time distribution / hitch を残す visual-performance gate | `2D-EXT-001`, `3D-EXT-006`, `3D-EXT-079`, `3D-EXT-081` | 既存 E2E を置き換えず、DOM / Canvas / IndexedDB の意味検査と画像比較を併用する。PC / iPhone / iPad を分けて測り、中央値だけで合格にしない。非決定な時刻、乱数、exposure、particle 状態を固定または隔離する。 |
 
 ### 6.2 3D
 
@@ -260,9 +262,10 @@ AI は本書だけで採用を確定してはいけない。採用を検討す�
 | `IDEA-3D-04` | PBR map 一式の作成、node recipe、3D preview、ZIP 出力 | `3D-EXT-008`, `3D-EXT-010`, `3D-EXT-021`〜`023`, `3D-EXT-061`〜`062` | map の意味、色空間、解像度、外部 API、生成物の権利を記録する。 |
 | `IDEA-3D-05` | 検品済み GLB を外部へ送り、rigged GLB を戻して差分検査する | `3D-EXT-011`, `3D-EXT-033`〜`037`, `3D-EXT-059`〜`060` | skeleton、weight、animation、bone naming、再配布条件を再検査する。 |
 | `IDEA-3D-06` | voxel / standee / simple puff を画像から作る軽量 3D mode | `3D-EXT-017`〜`020`, `3D-EXT-041`, `3D-EXT-063`〜`067` | 通常 mesh、voxel、2.5D standee の形式と検品を分ける。 |
-| `IDEA-3D-07` | city / terrain / captured world を単体 asset とは別に扱う world mode | `3D-EXT-007`, `3D-EXT-042`〜`046` | GLB mesh、CityGML、point cloud、Gaussian splat を同じ形式として扱わない。 |
+| `IDEA-3D-07` | city / terrain / captured world を単体 asset とは別に扱い、広域座標・描画距離・quality tier を検証する world mode | `3D-EXT-007`, `3D-EXT-042`〜`046`, `3D-EXT-081` | GLB mesh、CityGML、point cloud、Gaussian splat を同じ形式として扱わない。floating origin、depth、LOD、端末別 resolution を独立した検証項目にする。 |
 | `IDEA-3D-08` | 2D catalog card、選択中の live 3D inspector、隔離 review route を組にし、source、形式、socket、action、grounding、検品 evidence を追跡する | `3D-EXT-001`, `3D-EXT-003`, `3D-EXT-006`, `3D-EXT-078` | 2D Pro Gate 承認後。card media と runtime model を同一物と誤記せず、一覧で WebGL を初期化しない。validator の file header 検査だけで model 品質や権利を合格にしない。 |
-| `IDEA-3D-09` | seed・clock・quality・camera・frame budget を固定した 3D baseline と pixel diff に、scripted 操作 profile、p50 / p95 / p99、hitch attribution、shader pre-warm 検証を組み合わせる | `3D-EXT-003`, `3D-EXT-006`, `3D-EXT-079` | 2D Pro Gate 承認後。shot ごとに新しい page を使い、原本 GLB と baseline を残す。見た目の一致だけで意味上の正しさを合格にせず、PC / iPhone / iPad を別々に測る。説明できない出力差を伴う最適化は採用しない。 |
+| `IDEA-3D-09` | seed・clock・quality・camera・frame budget を固定した 3D baseline と pixel diff に、輝度 percentile・白飛び・黒つぶれ、scripted 操作 profile、p50 / p95 / p99、hitch attribution、shader pre-warm 検証を組み合わせる | `3D-EXT-003`, `3D-EXT-006`, `3D-EXT-079`, `3D-EXT-081` | 2D Pro Gate 承認後。shot ごとに新しい page を使い、原本 GLB と baseline を残す。見た目の一致や tone 値だけで意味上の正しさを合格にせず、PC / iPhone / iPad を別々に測る。説明できない出力差を伴う最適化は採用しない。 |
+| `IDEA-3D-10` | 自然文・参考画像から STEP-first の parametric CAD source を作り、geometry reference、寸法、複数視点 snapshot、差分を検査して STEP / GLB / STL / 3MF / DXF を派生出力する CAD workspace | `3D-EXT-038`〜`040`, `3D-EXT-080` | 2D Pro Gate 承認後。source と生成 artifact を分離して両方を追跡し、生成 code は sandbox 内で実行する。STEP を primary とし、DXF と mesh export は loss・単位・solid validity を検査した派生物にする。外部部品と参考画像の provenance / license を保存する。 |
 
 ## 7. URL の訂正と、現時点で参照しないもの
 
