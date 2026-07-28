@@ -38,6 +38,7 @@ import {
   type ColliderHandle,
   type ColliderRectHandle,
 } from './colliderEditing';
+import { ONION_SKIN_NEXT_COLOR, ONION_SKIN_OPACITY, ONION_SKIN_PREVIOUS_COLOR } from './onionSkin';
 
 /** 汎用font family候補（契約 §5 A: 再編集不可・可搬性のため汎用candidateのみ）。 */
 export type RasterTextFontFamily = 'sans-serif' | 'serif' | 'monospace';
@@ -59,6 +60,10 @@ export interface PastePreviewState {
 
 interface CanvasEditorProps {
   asset: Asset;
+  /** 現在Frameより前に描く、保存されない前Frameの参照表示。 */
+  onionSkinPreviousAsset?: Asset | null;
+  /** 現在Frameより前に描く、保存されない次Frameの参照表示。 */
+  onionSkinNextAsset?: Asset | null;
   tool: CanvasTool;
   selectedLayerId: string | null;
   /** Frame preview中は保存を伴う操作を止め、pan・zoom・layer選択だけを許可する。 */
@@ -187,6 +192,8 @@ function moveLayer(asset: Asset, layerId: string, deltaX: number, deltaY: number
 
 export function CanvasEditor({
   asset,
+  onionSkinPreviousAsset = null,
+  onionSkinNextAsset = null,
   tool,
   selectedLayerId,
   readOnly = false,
@@ -291,7 +298,13 @@ export function CanvasEditor({
     void (async () => {
       const map = new Map<string, DecodedImageSource>();
       const textureIds = new Set(
-        asset.layers.map((layer) => layer.textureId).filter((id): id is string => Boolean(id)),
+        [
+          ...asset.layers,
+          ...(onionSkinPreviousAsset?.layers ?? []),
+          ...(onionSkinNextAsset?.layers ?? []),
+        ]
+          .map((layer) => layer.textureId)
+          .filter((id): id is string => Boolean(id)),
       );
       for (const textureId of textureIds) {
         const texture = asset.textures.find((tex) => tex.id === textureId);
@@ -323,7 +336,13 @@ export function CanvasEditor({
     return () => {
       cancelled = true;
     };
-  }, [asset.id, asset.textures, asset.layers]);
+  }, [
+    asset.id,
+    asset.textures,
+    asset.layers,
+    onionSkinPreviousAsset?.layers,
+    onionSkinNextAsset?.layers,
+  ]);
 
   useEffect(
     () => () => {
@@ -399,11 +418,40 @@ export function CanvasEditor({
       textureSize: textureSizeFor(displayAsset, layer.textureId),
       bitmap: layer.textureId ? (bitmaps.get(layer.textureId)?.source ?? null) : null,
     }));
+    const onionSkins = [
+      ...(onionSkinPreviousAsset
+        ? [
+            {
+              color: ONION_SKIN_PREVIOUS_COLOR,
+              opacity: ONION_SKIN_OPACITY,
+              layers: onionSkinPreviousAsset.layers.map((layer) => ({
+                layer,
+                textureSize: textureSizeFor(onionSkinPreviousAsset, layer.textureId),
+                bitmap: layer.textureId ? (bitmaps.get(layer.textureId)?.source ?? null) : null,
+              })),
+            },
+          ]
+        : []),
+      ...(onionSkinNextAsset
+        ? [
+            {
+              color: ONION_SKIN_NEXT_COLOR,
+              opacity: ONION_SKIN_OPACITY,
+              layers: onionSkinNextAsset.layers.map((layer) => ({
+                layer,
+                textureSize: textureSizeFor(onionSkinNextAsset, layer.textureId),
+                bitmap: layer.textureId ? (bitmaps.get(layer.textureId)?.source ?? null) : null,
+              })),
+            },
+          ]
+        : []),
+    ];
     renderScene(ctx, {
       view,
       viewport,
       canvasSize: displayAsset.canvasSize,
       layers,
+      onionSkins,
       selectedLayerId,
     });
 
@@ -567,6 +615,8 @@ export function CanvasEditor({
     viewport,
     view,
     displayAsset,
+    onionSkinPreviousAsset,
+    onionSkinNextAsset,
     bitmaps,
     selectedLayerId,
     cropRectScreen,
@@ -1388,6 +1438,9 @@ export function CanvasEditor({
         className="canvas-editor-canvas"
         aria-label="アセットキャンバス"
         aria-readonly={readOnly}
+        data-onion-skin-previous={onionSkinPreviousAsset ? 'true' : 'false'}
+        data-onion-skin-next={onionSkinNextAsset ? 'true' : 'false'}
+        data-onion-skin-opacity={String(ONION_SKIN_OPACITY)}
         style={{
           width: viewport.width,
           height: viewport.height,

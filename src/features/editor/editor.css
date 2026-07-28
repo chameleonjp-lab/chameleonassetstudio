@@ -1555,6 +1555,78 @@
   padding-top: 0.4rem;
 }
 
+.timeline-occurrences {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.timeline-occurrence-list {
+  display: flex;
+  gap: 0.35rem;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 0 0.2rem;
+  overflow-x: auto;
+  list-style: none;
+}
+
+.timeline-occurrence-list li {
+  flex: none;
+}
+
+.timeline-occurrence-list button {
+  white-space: nowrap;
+}
+
+.timeline-occurrence-list button[aria-pressed='true'] {
+  border-color: #3a86ff;
+  font-weight: 700;
+}
+
+.timeline-onion-skin {
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 0.45rem;
+  border: 1px solid #8884;
+  border-radius: 6px;
+}
+
+.timeline-onion-skin legend {
+  padding: 0 0.2rem;
+  font-weight: 700;
+}
+
+.timeline-onion-skin-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.timeline-onion-skin-toggle {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid #8885;
+  border-radius: 6px;
+}
+
+.timeline-onion-skin-toggle input {
+  flex: none;
+}
+
+.timeline-onion-skin-swatch {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  border: 1px solid #0005;
+  border-radius: 3px;
+}
+
 .timeline-event-summary {
   max-width: 18rem;
   padding: 0.45rem;
@@ -2241,6 +2313,16 @@
   .editor-timeline select {
     min-height: 44px;
     font-size: 16px;
+  }
+
+  .timeline-onion-skin-toggle {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .timeline-onion-skin-toggle input[type='checkbox'] {
+    width: 22px;
+    height: 22px;
   }
 }
 

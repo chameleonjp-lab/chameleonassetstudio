@@ -14,6 +14,7 @@ import {
   type AnimationEvent,
   type Asset,
 } from '../../core/model';
+import { ONION_SKIN_NEXT_COLOR, ONION_SKIN_OPACITY, ONION_SKIN_PREVIOUS_COLOR } from './onionSkin';
 
 interface TimelinePanelProps {
   asset: Asset;
@@ -28,6 +29,12 @@ interface TimelinePanelProps {
   onSelectAnimation: (id: string | null) => void;
   /** クリックでそのフレームをプレビューする。 */
   onSelectFrame: (frameId: string) => void;
+  /** 選択中Animationの出現位置を、Frame IDと分けてプレビューする。 */
+  onSelectOccurrence: (occurrenceIndex: number) => void;
+  showPreviousOnionSkin: boolean;
+  showNextOnionSkin: boolean;
+  onShowPreviousOnionSkinChange: (show: boolean) => void;
+  onShowNextOnionSkinChange: (show: boolean) => void;
   onPlay: () => void;
   onStop: () => void;
   onRewind: () => void;
@@ -49,6 +56,11 @@ export function TimelinePanel({
   selectedAnimationId,
   onSelectAnimation,
   onSelectFrame,
+  onSelectOccurrence,
+  showPreviousOnionSkin,
+  showNextOnionSkin,
+  onShowPreviousOnionSkinChange,
+  onShowNextOnionSkinChange,
   onPlay,
   onStop,
   onRewind,
@@ -75,6 +87,7 @@ export function TimelinePanel({
           total: selectedAnimation.frameIds.length,
         }
       : null;
+  const onionSkinOpacityPercent = Math.round(ONION_SKIN_OPACITY * 100);
 
   const handleDeleteFrame = (frameId: string, name: string) => {
     const ok = window.confirm(`フレーム「${name}」を削除します。よろしいですか？`);
@@ -248,6 +261,73 @@ export function TimelinePanel({
 
         {selectedAnimation && (
           <div className="timeline-animation-fields">
+            <div className="timeline-occurrences">
+              <strong>再生順の出現位置</strong>
+              <ol className="timeline-occurrence-list" aria-label="アニメーションの再生順">
+                {selectedAnimation.frameIds.map((frameId, occurrenceIndex) => {
+                  const frameName = frameNameById.get(frameId) ?? `参照切れ: ${frameId}`;
+                  const selected =
+                    playingOccurrenceIndex === occurrenceIndex && playingFrameId === frameId;
+                  return (
+                    <li key={`${frameId}-${occurrenceIndex}`}>
+                      <button
+                        type="button"
+                        aria-label={`出現 ${occurrenceIndex + 1}: ${frameName}`}
+                        aria-pressed={selected}
+                        disabled={isPlaying || !frameNameById.has(frameId)}
+                        onClick={() => onSelectOccurrence(occurrenceIndex)}
+                      >
+                        {occurrenceIndex + 1}. {frameName}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+
+            <fieldset className="timeline-onion-skin" aria-label="前後のフレーム表示">
+              <legend>前後のフレーム表示（オニオンスキン）</legend>
+              <div className="timeline-onion-skin-controls">
+                <label className="timeline-onion-skin-toggle">
+                  <input
+                    type="checkbox"
+                    aria-label={`前のフレームを表示（赤・${onionSkinOpacityPercent}%）`}
+                    checked={showPreviousOnionSkin}
+                    disabled={isPlaying}
+                    onChange={(event) => onShowPreviousOnionSkinChange(event.target.checked)}
+                  />
+                  <span
+                    className="timeline-onion-skin-swatch"
+                    style={{ backgroundColor: ONION_SKIN_PREVIOUS_COLOR }}
+                    aria-hidden="true"
+                  />
+                  前（赤・{onionSkinOpacityPercent}%）
+                </label>
+                <label className="timeline-onion-skin-toggle">
+                  <input
+                    type="checkbox"
+                    aria-label={`次のフレームを表示（青・${onionSkinOpacityPercent}%）`}
+                    checked={showNextOnionSkin}
+                    disabled={isPlaying}
+                    onChange={(event) => onShowNextOnionSkinChange(event.target.checked)}
+                  />
+                  <span
+                    className="timeline-onion-skin-swatch"
+                    style={{ backgroundColor: ONION_SKIN_NEXT_COLOR }}
+                    aria-hidden="true"
+                  />
+                  次（青・{onionSkinOpacityPercent}%）
+                </label>
+              </div>
+              <p className="editor-note" aria-label="前後のフレーム表示状態">
+                {isPlaying
+                  ? '再生中は一時的に隠します。終了後に同じ切替状態へ戻ります。'
+                  : playingOccurrenceIndex === null
+                    ? '再生順の出現位置を選ぶと、前後のフレームを重ねて確認できます。'
+                    : '前後表示は確認専用です。保存データには入りません。'}
+              </p>
+            </fieldset>
+
             <div className="timeline-animation-inline-fields">
               <label className="editor-field">
                 fps

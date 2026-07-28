@@ -2,25 +2,25 @@ import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 import { confirmImageImport } from './importTestHelpers';
 
-async function makePngBuffer(page: Page): Promise<Buffer> {
-  const dataUrl = await page.evaluate(() => {
+async function makePngBuffer(page: Page, size = 64): Promise<Buffer> {
+  const dataUrl = await page.evaluate((imageSize) => {
     const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 64;
+    canvas.width = imageSize;
+    canvas.height = imageSize;
     const context = canvas.getContext('2d')!;
     context.fillStyle = '#8e44ad';
-    context.fillRect(0, 0, 64, 64);
+    context.fillRect(0, 0, imageSize, imageSize);
     return canvas.toDataURL('image/png');
-  });
+  }, size);
   return Buffer.from(dataUrl.split(',')[1], 'base64');
 }
 
-async function setupProjectWithImage(page: Page, name: string): Promise<void> {
+async function setupProjectWithImage(page: Page, name: string, imageSize = 64): Promise<void> {
   await page.goto('/');
   await page.getByLabel('プロジェクト名').fill(name);
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await expect(page.getByRole('heading', { name })).toBeVisible();
-  const buffer = await makePngBuffer(page);
+  const buffer = await makePngBuffer(page, imageSize);
   await page
     .getByLabel('画像を選ぶ')
     .setInputFiles({ name: 'base.png', mimeType: 'image/png', buffer });
@@ -156,6 +156,89 @@ async function writeStoredAnimationFixture(
     });
     db.close();
   }, fixture);
+}
+
+async function canvasPositionForWorld(
+  page: Page,
+  world: { x: number; y: number },
+  canvasSize: number,
+): Promise<{ x: number; y: number }> {
+  const canvas = page.getByLabel('アセットキャンバス');
+  await expect(canvas).toBeVisible();
+  return canvas.evaluate(
+    (element, input) => {
+      const viewport = {
+        width: element.clientWidth,
+        height: element.clientHeight,
+      };
+      const availableWidth = Math.max(1, viewport.width - 64);
+      const availableHeight = Math.max(1, viewport.height - 64);
+      const scale = Math.min(
+        8,
+        Math.max(
+          0.05,
+          Math.min(availableWidth / input.canvasSize, availableHeight / input.canvasSize),
+        ),
+      );
+      return {
+        x: input.world.x * scale + (viewport.width - input.canvasSize * scale) / 2,
+        y: input.world.y * scale + (viewport.height - input.canvasSize * scale) / 2,
+      };
+    },
+    { world, canvasSize },
+  );
+}
+
+async function readCanvasPixelAtWorld(
+  page: Page,
+  world: { x: number; y: number },
+  canvasSize: number,
+): Promise<[number, number, number, number]> {
+  const canvas = page.getByLabel('アセットキャンバス');
+  const position = await canvasPositionForWorld(page, world, canvasSize);
+  return canvas.evaluate((element, point) => {
+    const source = element as HTMLCanvasElement;
+    const scaleX = source.width / source.clientWidth;
+    const scaleY = source.height / source.clientHeight;
+    const x = Math.min(source.width - 1, Math.max(0, Math.floor(point.x * scaleX)));
+    const y = Math.min(source.height - 1, Math.max(0, Math.floor(point.y * scaleY)));
+    return Array.from(source.getContext('2d')!.getImageData(x, y, 1, 1).data) as [
+      number,
+      number,
+      number,
+      number,
+    ];
+  }, position);
+}
+
+function expectTintedPixel(
+  actual: readonly number[],
+  background: readonly number[],
+  color: readonly [number, number, number],
+): void {
+  expectTintedPixelStack(actual, background, [color]);
+}
+
+function expectTintedPixelStack(
+  actual: readonly number[],
+  background: readonly number[],
+  colors: ReadonlyArray<readonly [number, number, number]>,
+): void {
+  let expectedAlpha = background[3] / 255;
+  const expectedPremultiplied = background
+    .slice(0, 3)
+    .map((channel) => (channel / 255) * expectedAlpha);
+  for (const color of colors) {
+    for (const [index, channel] of color.entries()) {
+      expectedPremultiplied[index] = (channel / 255) * 0.25 + expectedPremultiplied[index] * 0.75;
+    }
+    expectedAlpha = 0.25 + expectedAlpha * 0.75;
+  }
+  for (const index of [0, 1, 2]) {
+    const expected = Math.round((expectedPremultiplied[index] / expectedAlpha) * 255);
+    expect(Math.abs(actual[index] - expected)).toBeLessThanOrEqual(2);
+  }
+  expect(Math.abs(actual[3] - Math.round(expectedAlpha * 255))).toBeLessThanOrEqual(2);
 }
 
 test('フレームを2枚作って idle アニメーションを作れる', async ({ page }) => {
@@ -366,6 +449,235 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
   await expect
     .poll(async () => (await readStoredAsset(page)).layers[0]?.transform.position.x)
     .toBe(48);
+});
+
+test('iPhone幅で反復Frameの出現位置を選び、前後を赤・青の25%で個別表示できる', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await setupProjectWithImage(page, '前後フレーム表示テスト', 8);
+
+  const mobileNav = page.getByRole('navigation', { name: '画面切り替え' });
+  await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
+  await selectMainLayer(page);
+  await setLayerX(page, 4);
+  await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+  await page.getByRole('button', { name: 'フレーム追加' }).click();
+
+  await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
+  await setLayerX(page, 0);
+  await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+  await page.getByRole('button', { name: 'フレーム追加' }).click();
+  await page.getByLabel('新しいアニメーション名').fill('onion');
+  await page.getByRole('button', { name: '作成', exact: true }).click();
+  await page.getByLabel('ループ').uncheck();
+  await expect(page.getByRole('status')).toContainText('保存済み');
+
+  await writeStoredAnimationFixture(page, { frameSequence: [0, 1, 0] });
+  await page.reload();
+  await page.getByRole('button', { name: '「前後フレーム表示テスト」を開く' }).click();
+  await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+  await page.getByLabel('アニメーション選択').selectOption({ label: 'onion' });
+
+  const occurrenceList = page.getByRole('list', { name: 'アニメーションの再生順' });
+  await expect(occurrenceList.getByRole('listitem')).toHaveCount(3);
+  const firstOccurrence = page.getByRole('button', { name: '出現 1: frame_1' });
+  const secondOccurrence = page.getByRole('button', { name: '出現 2: frame_2' });
+  const thirdOccurrence = page.getByRole('button', { name: '出現 3: frame_1' });
+  const previousToggle = page.getByLabel('前のフレームを表示（赤・25%）');
+  const nextToggle = page.getByLabel('次のフレームを表示（青・25%）');
+  await expect(previousToggle).not.toBeChecked();
+  await expect(nextToggle).not.toBeChecked();
+
+  const previousLabel = page.locator('.timeline-onion-skin-toggle').filter({
+    has: previousToggle,
+  });
+  const nextLabel = page.locator('.timeline-onion-skin-toggle').filter({ has: nextToggle });
+  await expect(previousLabel).toContainText('前（赤・25%）');
+  await expect(nextLabel).toContainText('次（青・25%）');
+  expect(
+    await previousLabel
+      .locator('.timeline-onion-skin-swatch')
+      .evaluate((element) => getComputedStyle(element).backgroundColor),
+  ).toBe('rgb(209, 67, 79)');
+  expect(
+    await nextLabel
+      .locator('.timeline-onion-skin-swatch')
+      .evaluate((element) => getComputedStyle(element).backgroundColor),
+  ).toBe('rgb(37, 99, 235)');
+  for (const label of [previousLabel, nextLabel]) {
+    const rect = await label.evaluate((element) => element.getBoundingClientRect());
+    expect(rect.width).toBeGreaterThanOrEqual(44);
+    expect(rect.height).toBeGreaterThanOrEqual(44);
+  }
+
+  await firstOccurrence.click();
+  await expect(page.getByRole('status', { name: 'アニメーション再生位置' })).toHaveText(
+    '出現位置: 1 / 3',
+  );
+  await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
+  const canvas = page.getByLabel('アセットキャンバス');
+  const backgroundPixel = await readCanvasPixelAtWorld(page, { x: 2, y: 4 }, 8);
+  await expect(canvas).toHaveAttribute('data-onion-skin-previous', 'false');
+  await expect(canvas).toHaveAttribute('data-onion-skin-next', 'false');
+
+  await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+  await nextToggle.check();
+  await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
+  await expect(canvas).toHaveAttribute('data-onion-skin-previous', 'false');
+  await expect(canvas).toHaveAttribute('data-onion-skin-next', 'true');
+  await expect(canvas).toHaveAttribute('data-onion-skin-opacity', '0.25');
+  const nextPixel = await readCanvasPixelAtWorld(page, { x: 2, y: 4 }, 8);
+  expectTintedPixel(nextPixel, backgroundPixel, [37, 99, 235]);
+
+  // ghostはpointer対象にならず、現在FrameだけをLayer選択に使う。
+  const selectTool = page
+    .getByRole('navigation', { name: '編集ツール' })
+    .getByRole('button', { name: '選択', exact: true });
+  await selectTool.click();
+  await canvas.click({ position: await canvasPositionForWorld(page, { x: 2, y: 4 }, 8) });
+  await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
+  const mainLayerButton = page
+    .getByRole('list', { name: 'レイヤー一覧' })
+    .getByRole('button', { name: 'main', exact: true });
+  await expect(mainLayerButton).toHaveAttribute('aria-pressed', 'false');
+  await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
+  await canvas.click({ position: await canvasPositionForWorld(page, { x: 10, y: 4 }, 8) });
+  await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
+  await expect(mainLayerButton).toHaveAttribute('aria-pressed', 'true');
+
+  await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+  await thirdOccurrence.click();
+  await expect(page.getByRole('status', { name: 'アニメーション再生位置' })).toHaveText(
+    '出現位置: 3 / 3',
+  );
+  await previousToggle.check();
+  await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
+  await expect(canvas).toHaveAttribute('data-onion-skin-previous', 'true');
+  await expect(canvas).toHaveAttribute('data-onion-skin-next', 'false');
+  const previousPixel = await readCanvasPixelAtWorld(page, { x: 2, y: 4 }, 8);
+  expectTintedPixel(previousPixel, backgroundPixel, [209, 67, 79]);
+
+  await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+  await previousToggle.uncheck();
+  await nextToggle.uncheck();
+  await secondOccurrence.click();
+  await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
+  const bothBackgroundPixel = await readCanvasPixelAtWorld(page, { x: 10, y: 4 }, 8);
+  await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+  await previousToggle.check();
+  await nextToggle.check();
+  await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
+  await expect(canvas).toHaveAttribute('data-onion-skin-previous', 'true');
+  await expect(canvas).toHaveAttribute('data-onion-skin-next', 'true');
+  const bothPixel = await readCanvasPixelAtWorld(page, { x: 10, y: 4 }, 8);
+  expectTintedPixelStack(bothPixel, bothBackgroundPixel, [
+    [209, 67, 79],
+    [37, 99, 235],
+  ]);
+
+  await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    ),
+  ).toBe(false);
+
+  await firstOccurrence.click();
+  await page.clock.install();
+  await page.getByRole('button', { name: '再生', exact: true }).click();
+  await expect(previousToggle).toBeDisabled();
+  await expect(nextToggle).toBeDisabled();
+  await expect(previousToggle).toBeChecked();
+  await expect(nextToggle).toBeChecked();
+  await expect(canvas).toHaveAttribute('data-onion-skin-previous', 'false');
+  await expect(canvas).toHaveAttribute('data-onion-skin-next', 'false');
+
+  await page.clock.runFor(375);
+  await expect(page.getByRole('button', { name: '再生', exact: true })).toBeEnabled();
+  await expect(page.getByRole('status', { name: 'アニメーション再生位置' })).toHaveText(
+    '出現位置: 3 / 3',
+  );
+  await expect(previousToggle).toBeEnabled();
+  await expect(nextToggle).toBeEnabled();
+  await expect(previousToggle).toBeChecked();
+  await expect(nextToggle).toBeChecked();
+  await expect(canvas).toHaveAttribute('data-onion-skin-previous', 'true');
+  await expect(canvas).toHaveAttribute('data-onion-skin-next', 'false');
+
+  await page.getByRole('button', { name: '停止', exact: true }).click();
+  await expect(canvas).toHaveAttribute('data-onion-skin-previous', 'false');
+  await expect(canvas).toHaveAttribute('data-onion-skin-next', 'false');
+  await firstOccurrence.click();
+  await expect(canvas).toHaveAttribute('data-onion-skin-previous', 'false');
+  await expect(canvas).toHaveAttribute('data-onion-skin-next', 'true');
+});
+
+test('前後表示の切替はAssetと履歴を変えず、reloadでoffへ戻る', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await setupProjectWithImage(page, '前後表示非保存テスト', 8);
+
+  const mobileNav = page.getByRole('navigation', { name: '画面切り替え' });
+  await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
+  await selectMainLayer(page);
+  await setLayerX(page, 4);
+  await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+  await page.getByRole('button', { name: 'フレーム追加' }).click();
+  await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
+  await setLayerX(page, 0);
+  await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+  await page.getByRole('button', { name: 'フレーム追加' }).click();
+  await page.getByLabel('新しいアニメーション名').fill('history');
+  await page.getByRole('button', { name: '作成', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('保存済み');
+
+  const storedBefore = await readStoredAsset(page);
+  const undoButton = page.getByRole('button', { name: '元に戻す', exact: true });
+  const redoButton = page.getByRole('button', { name: 'やり直す', exact: true });
+  const undoTitle = await undoButton.getAttribute('title');
+  const redoTitle = await redoButton.getAttribute('title');
+
+  await page.getByRole('button', { name: '出現 1: frame_1' }).click();
+  const previousToggle = page.getByLabel('前のフレームを表示（赤・25%）');
+  const nextToggle = page.getByLabel('次のフレームを表示（青・25%）');
+  await previousToggle.check();
+  await nextToggle.check();
+  await expect(undoButton).toBeDisabled();
+  await expect(redoButton).toBeDisabled();
+  expect(await readStoredAsset(page)).toEqual(storedBefore);
+
+  await page.getByRole('button', { name: '停止', exact: true }).click();
+  await expect(undoButton).toBeEnabled();
+  await expect(undoButton).toHaveAttribute('title', undoTitle ?? '');
+  if (redoTitle === null) {
+    await expect(redoButton).not.toHaveAttribute('title', /.+/);
+  } else {
+    await expect(redoButton).toHaveAttribute('title', redoTitle);
+  }
+
+  await undoButton.click();
+  await expect.poll(async () => (await readStoredAsset(page)).animations).toHaveLength(0);
+  await undoButton.click();
+  await expect.poll(async () => (await readStoredAsset(page)).frames).toHaveLength(1);
+  await redoButton.click();
+  await expect.poll(async () => (await readStoredAsset(page)).frames).toHaveLength(2);
+  await redoButton.click();
+  await expect.poll(async () => (await readStoredAsset(page)).animations).toHaveLength(1);
+  expect(await readStoredAsset(page)).toEqual(storedBefore);
+
+  await page.reload();
+  await page.getByRole('button', { name: '「前後表示非保存テスト」を開く' }).click();
+  await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+  await page.getByLabel('アニメーション選択').selectOption({ label: 'history' });
+  await expect(previousToggle).not.toBeChecked();
+  await expect(nextToggle).not.toBeChecked();
+  await page.getByRole('button', { name: '出現 1: frame_1' }).click();
+  await expect(page.getByLabel('アセットキャンバス')).toHaveAttribute(
+    'data-onion-skin-previous',
+    'false',
+  );
+  await expect(page.getByLabel('アセットキャンバス')).toHaveAttribute(
+    'data-onion-skin-next',
+    'false',
+  );
 });
 
 test('fps とループを変更でき、リロード後も保持される', async ({ page }) => {
