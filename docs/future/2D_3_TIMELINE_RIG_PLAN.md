@@ -3,8 +3,8 @@
 最終更新日: 2026-07-29
 work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 監査基準: `main@236571c241bf84747f71f260f3bea99e6abe7f25`
-マージ後基準: PR #146 merge `cb21ea4` / PR #147 final head `1ba671f7` / merge `24a089c` / PR #148 final head `0cfc1ea` / merge `fbdeb357` / PR #149 merge `536318f` / PR #153 merge `e8fac95` / PR #154 final head `fdf75f0` / merge `1c700e7` / PR #157 final head `834cc38` / merge `bf13cac` / PR #201 final head `25cd332` / merge `c1d08e3` / PR #204 final head `8ebeb27` / merge `eeaea39`
-状態: `T1 Slice A merged / P1 Slice C merged / R1 Slice B1 merged and independently verified / Slice B2 numeric Gate pending / Slice D1-D2 merged and independently verified / Slice D3 P1+A1+B1+C1 product implementation complete, CI/review pending / Slice D4 pending / formal B0 deferred`
+マージ後基準: PR #146 merge `cb21ea4` / PR #147 final head `1ba671f7` / merge `24a089c` / PR #148 final head `0cfc1ea` / merge `fbdeb357` / PR #149 merge `536318f` / PR #153 merge `e8fac95` / PR #154 final head `fdf75f0` / merge `1c700e7` / PR #157 final head `834cc38` / merge `bf13cac` / PR #201 final head `25cd332` / merge `c1d08e3` / PR #204 final head `8ebeb27` / merge `eeaea39` / PR #206 final head `ac84b8c` / merge `3081495`
+状態: `T1 Slice A merged / P1 Slice C merged / R1 Slice B1 merged and independently verified / Slice B2 numeric Gate pending / Slice D1-D3 merged and independently verified / Slice D4 A1+B1+C1 contract accepted, product implementation not started / formal B0 deferred`
 関連: `docs/adr/0008-motion-time-semantics.md`, `docs/adr/0009-animation-event-boundary.md`, `docs/adr/0021-frame-duration-semantics.md`, `docs/adr/0022-rig-flip-and-bake-parity.md`, `docs/adr/0023-part-layer-replacement.md`, `docs/future/2D_3_H3_MEASUREMENT_PROTOCOL.md`
 
 ---
@@ -19,9 +19,9 @@ work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 
 PR #146の契約監査は17文書、製品コード変更なしでmainへ反映済みである。後続の人間判断H1=E1、H2=L1、H3=M1と計測専用`tools/h3/`はPR #147 final head `1ba671f7`、merge `24a089c`でmainへ反映された。CI Run #460とmerge後CI Run #461は全job成功し、固定headの最終独立reviewは全3系統`BLOCKER 0 / MUST 0`だった。PR #148 merge `fbdeb357`で24時間配信基盤、PR #149 merge `536318f`でPages rootのサービス本体と`/h3/`の分離を実装した。T1 Slice AはPR #153 final head `7f684a7`、merge `e8fac95`としてmainへ反映済みで、CI Run #489と固定headの独立reviewを通過した。P1 Slice CはPR #154 final head `fdf75f0`、merge `1c700e7`としてmainへ反映済みで、CI Run #492と固定headの独立review `BLOCKER 0 / MUST 0 / SHOULD 0`を通過した。2026-07-23の人間判断により、正式B0の4端末収集は当面保留し、H3を問題発生時の診断手段として維持する。2026-07-24の人間判断ADR-2026-07-24-027でSlice BをB1とB2へ分割し、PR #157 final head `834cc38397c300895f50c1efdb86d94f3870a0a8`、merge `bf13cac3db854c30b33e9b2ef97d389a2372e961`でB1をmainへ反映した。CI Run #501は全job成功し、非GitHub・非Opusの固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。B2の数値budget、warning、hard cap、採用上限での実機測定、Group 12完了判定は、後続の明示判断まで開始しない。2026-07-27のADR-2026-07-27-028でA1+B1を採用し、Slice DをD1〜D4へ分けた。D1はPR #201 final head `25cd3327b93850f1af1733c2b43585e3fa0a667b`、merge `c1d08e3b4cadd7c3a3064ab8e824b17f67feb243`でmainへ反映し、CI Run #596全成功、固定head独立review `BLOCKER 0 / MUST 0 / SHOULD 0`として完了した。2026-07-28のADR-2026-07-28-029でA1+B1+C1を採用し、D2の再生順、read-only、UI-only表示と試験条件を確定した。docs-only決定PR #203 merge `73f0eafe69dd42c820f92e9f039e49fe2e2d9d28`後、D2はPR #204 final head `8ebeb279e9d7b9ef9a15700d80d4a6cd7ab1d57f`、merge `eeaea39522d0f31bfe786ca0da27176bfd5ee859`でmainへ反映した。CI Run #603のclean attemptはunit 763件、Chromium E2E 168件、H3、Pages open / closed routeをすべて成功し、固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。
 
-2026-07-29のADR-2026-07-29-030でD3の`P1+A1+B1+C1`を承認した。D3の製品実装は、このdocs-only決定PRがmainへmergeされた後に別Draft PRで開始する。D4、B2、物理iPhone SafariのGroup 12 closeout Gateは未完了のまま維持する。
+2026-07-29のADR-2026-07-29-030でD3の`P1+A1+B1+C1`を承認した。PR #205 merge `66debcaf974fe965757f39be8a433d86546eed19`で実装Gateを満了し、PR #206 final head `ac84b8c2d6141f6353c3e07dbb2dbfae9a2f5c98`、merge `3081495a979d10176a05eb2907e7cede55cc8c9a`でmainへ反映した。CI Run #610はunit 769件、Chromium E2E 170件、H3、Pages open / closed routeを含む31 stepを全成功し、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D3は`implemented / CI-passed / independently-verified / merged`としてcloseoutする。
 
-D3製品実装では、選択中Animationの有効なFrame候補からeventを追加し、名前変更、参照Frame変更、確認付き削除を行うUIと純粋なmodel操作を追加した。追加・変更・削除は各1 History、no-opと取消は0 Historyとし、参照切れの既存event、payload、未知項目、配列順を自動変更しない。schema、version、migration、保存形式、export、dependencyは変更していない。CIと独立review、mainへのmergeは未完了であり、D3 closeoutとは扱わない。
+同日のADR-2026-07-29-031でD4の`A1+B1+C1`を承認した。D4は選択中Animationの基準Frameと対象Frameを重ね、対象Frame全体へ同じ手動移動量を適用する。確定前はUIだけの一時表示、確定時は1 Historyとし、不足するFrame / LayerState / transformを自動生成しない。D4製品実装は本docs-only決定PRのmerge後に別Draft PRで開始する。B2、物理iPhone SafariのGroup 12 closeout Gateは未完了のまま維持する。
 
 ## 2. 監査方法と現状
 
@@ -183,12 +183,12 @@ Frameを1件も割り当てる前に、UI、意味検証、bake関数が同じ�
 | C | P1 | `Part.layerIds`だけの置換UIとinspection | L1拒否、exact write-set、1 History、次回bakeのみ反映 |
 | D1 | preview安全 | 永続編集防護、明示停止、一時的な出現位置 | PR #201 / CI #596 / 固定head独立reviewで完了 |
 | D2 | onion skin | 選択中Animationの再生順による前後1出現、loop端、反復Frameの出現位置選択、read-only、UI-only、固定25% | PR #204 / CI #603 / 固定head独立reviewで完了 |
-| D3 | event編集 | 選択中Animationのevent追加・名前変更・参照Frame変更・削除。payload編集は除外 | P1+A1+B1+C1 contract accepted。PR #205で実装Gateを満了し、PR #206で製品実装・必須test・CI補修中 |
-| D4 | frame alignment | 別の契約監査後に実装 | 後続の明示判断まで未着手 |
+| D3 | event編集 | 選択中Animationのevent追加・名前変更・参照Frame変更・削除。payload編集は除外 | PR #206 / CI #610 / 固定head独立reviewで完了 |
+| D4 | frame alignment | 基準Frameと対象Frameを重ね、対象Frame全体を手動移動。確定前はUI-only、確定時は1 History、不足dataは拒否 | A1+B1+C1 contract accepted。製品実装は本docs-only決定PRのmerge後に別Draft PRで開始 |
 
 PR #154はSlice Cだけを扱い、既存Part 1件の`layerIds`差し替えUI、H2=L1検証、read-only inspection、H2違反だけを割当前に止める狭いbake refusal、History・保存roundtripを実装した。T1のschema・scheduler・export契約は変更していない。
 
-ADR-2026-07-24-027により、後続をB1とB2へ分けた。B1は有限値・座標・参照・構造検査とR1をPR #157で実装し、資源上限を先取りしていない。B2はH3数値と別の人間承認後に扱う。D1はPR #201、D2はPR #204で完了した。D3のevent編集はADR-2026-07-29-030で契約承認し、PR #205で実装Gateを満了した。製品実装と必須testはPR #206でCI・独立review待ちである。D4のframe alignmentは後続判断まで未着手とする。
+ADR-2026-07-24-027により、後続をB1とB2へ分けた。B1は有限値・座標・参照・構造検査とR1をPR #157で実装し、資源上限を先取りしていない。B2はH3数値と別の人間承認後に扱う。D1はPR #201、D2はPR #204、D3はPR #206で完了した。D4のframe alignmentはADR-2026-07-29-031でA1+B1+C1を承認し、本docs-only決定PRのmerge後に製品実装へ進む。
 
 1 PR 1 sliceを守る。schemaを変更するT1と、schema不要のR1/P1を同じ製品PRへ混ぜない。各実装PRは固定headでlint、format、build、全unit、Chromium E2Eを成功させ、skip / retryを理由なく残さない。
 
@@ -203,12 +203,13 @@ ADR-2026-07-24-027により、後続をB1とB2へ分けた。B1は有限値・�
 | D1 | preview guard、保存しないoccurrence index | pan・zoom・Layer選択、保存編集拒否、IndexedDB不変、明示停止、停止後編集再開、反復Frame / loop / rewind | 物理SafariはGroup 12 closeoutへ残す |
 | D2 | 再生順の前後1出現、loop端、反復Frameの出現位置選択、赤系の「前」・青系の「次」、固定25%、UI-only | `A → B → A`の1番目・3番目の選択、初期off、前・次の個別切替、再生中非表示、停止後復元、Asset / History不変、reloadでoff、375 × 667 / 44px / 横overflowなし | 物理SafariはGroup 12 closeoutへ残す |
 | D3 | exact write-set、global unique event ID、重複名、空名・0 Frame拒否、順序・payload・未知項目保持、反復Frameの全出現・全loop発火、入力Asset不変。新規追加・明示参照変更ではAnimation外・参照切れFrameを拒否し、既存の無効参照は読込・表示・名前変更で保持 | add / rename / ref change / delete、Enter / blurの1 History、Enter後blurの二重commitなし、Esc取消、削除cancel / confirm、Undo / Redo、IndexedDB / reload、preview guard、375 × 667 / 44px / 16px input / keyboard / touch emulation / 横overflowなし | 物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはGroup 12 closeoutへ残す |
+| D4 | 候補の初出順・重複除去、基準と対象の相違、選択Animation / 基準Frame / 対象Frameの一意解決、Layer 0件と選択対象ID重複の拒否、完全LayerState、有限delta / 結果座標、全対象positionへの同一delta、Asset内のexact write-set、`Project.updatedAt`同期と他Project field不変、入力Asset不変、shared Frameのdistinct Animation数・総出現数 | 複数Animation・反復fixtureで正確な影響件数、基準 / 対象の文字、基準のread-only・半透明、対象の通常表示、D2設定不変、1px方向操作とX / Y入力、一時表示中のAsset・History・IndexedDB不変、取消button / Esc、0差分、確定1 History、Undo / Redo、autosave / reload / `.casproj`、Layer 0件・重複ID・不足data拒否と永続状態不変、preview guard、375 × 667 / 44px / 16px input / keyboard / touch emulation / 入力zoom防止 / 横overflowなし | 物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはGroup 12 closeoutへ残す |
 
 Playwrightのmobile viewportは実iPhone Safariの代替にしない。Group 12完了前にsafe area、software keyboard、入力zoom、orientation、touch target、bake時のmemoryとreloadを実機で記録する。
 
 ## 10. 互換性と対象外
 
-- T1はAsset 0.2.0のoptional field追加で、migration、IndexedDB layout、`.casproj`配置を変えない。R1 / P1 / D3はschemaを変えない。
+- T1はAsset 0.2.0のoptional field追加で、migration、IndexedDB layout、`.casproj`配置を変えない。R1 / P1 / D3 / D4はschemaを変えない。
 - Atlasへduration / eventを追加する変更はChameleon Atlas 0.1.0の形式変更なのでGroup 12では行わない。
 - GIF / APNG importは現行のuniform fps + loss表示を維持し、T1と同時に自動拡張しない。
 - linked Familyのrig refresh、rebakeによる既存Frame置換、native rig export、collider override / polygon、IK、mesh、physics、state machineは対象外。
@@ -308,7 +309,7 @@ Slice Dは次の順で進め、各段階を別の契約・実装判断として�
 1. **D1**: Frame preview中の永続編集防護、明示的な停止導線、反復Frameの一時的な出現位置。
 2. **D2**: Assetへ保存しないonion skin。
 3. **D3**: eventの追加、名前変更、参照Frame変更、削除。payload編集は含めない。
-4. **D4**: frame alignmentを別の契約監査後に実装する。
+4. **D4**: ADR-2026-07-29-031のA1+B1+C1に従い、基準Frameと対象Frameを重ねて対象Frame全体を手動移動する。
 
 D1の合格条件は、preview中のpan・zoom・Layer選択が使えること、保存を伴うキャンバス操作・入力・Undo / Redoが拒否されること、IndexedDB上のAssetが変わらないこと、手動previewとnon-loop完了後に停止できること、反復Frameの出現位置がloopごとに戻ること、停止後に通常編集を再開できることとする。375 × 667のChromium E2Eで保存不変と横overflowなしを確認し、物理iPhone SafariはGroup 12 closeout Gateへ残す。
 
@@ -382,6 +383,52 @@ D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.caspr
 - Unit / contractでexact write-set、global unique ID、重複名、空名・0 Frame拒否、順序・payload・未知項目保持、反復Frameの全出現・全loop発火、入力Asset不変を確認する。新規追加または明示的な参照変更ではAnimation外・参照切れFrameを拒否し、既存の無効参照は読み込み・表示・名前編集で保持して自動削除・自動再割当しないことを確認する。
 - Chromium E2Eでadd / rename / ref change / delete、Enter / blurの1 History、Enter後blurの二重commitなし、Esc取消、削除cancel / confirm、Undo / Redo、IndexedDB / reload、preview guardを確認する。
 - Chromiumの375 × 667で44px以上の操作対象、16px以上の入力文字、keyboard操作、入力zoom防止、touch emulation、横overflowなしを確認する。物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはGroup 12 closeout Gateへ残し、Playwrightのmobile viewportで代替しない。
-- D3製品実装は、このdocs-only決定PRがmainへmergeされた後に、最新mainから別の1 branch / 1 Draft PR / 単一writerで行う。このGateはPR #205のmergeで満了し、製品実装と必須testはPR #206で進行中である。
+- D3製品実装は、このdocs-only決定PRがmainへmergeされた後に、最新mainから別の1 branch / 1 Draft PR / 単一writerで行う。このGateはPR #205のmergeで満了し、PR #206 final head `ac84b8c2d6141f6353c3e07dbb2dbfae9a2f5c98`、merge `3081495a979d10176a05eb2907e7cede55cc8c9a`、CI Run #610、固定head独立reviewを経て完了した。
 - payload編集、event並べ替え、出現位置固有event、Frame削除時のcascade、D4 frame alignment、B2資源上限、Group 12完了判定は対象外とする。
 - schema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependencyを変更しない。今回のdocs-only PRでは製品コード、Ready化、mergeを行わない。
+
+## 17. PR #206 merge後closeoutとD4 Gate（ADR-2026-07-29-031）
+
+### 17.1 D3 closeout
+
+- PR #206 final head `ac84b8c2d6141f6353c3e07dbb2dbfae9a2f5c98`、merge `3081495a979d10176a05eb2907e7cede55cc8c9a`でD3をmainへ反映した。
+- CI Run #610はlint、format、build、unit 769件、Chromium E2E 170件、H3 Chromium、Pages open / closed routeを含む31 stepを全成功し、failure、skip、retryは0件だった。
+- 固定headの仕様、実装・データ安全、テスト・CI・mobileの3方向独立reviewは、すべて`BLOCKER 0 / MUST 0 / SHOULD 0`である。
+- D3は`implemented / CI-passed / independently-verified / merged`とする。物理iPhone SafariはGroup 12 closeoutへ残す。
+
+### 17.2 D4の対象選択と手動表示契約
+
+- **A1**: 選択中Animationが参照する実在Frame IDだけを候補にし、最初の出現順を維持して重複除去する。基準Frameと対象Frameを別々に明示選択し、同じFrame IDの組み合わせは拒否する。
+- 選択中AnimationはIDでちょうど1件、基準Frameと対象Frameも各IDでちょうど1件へ解決できる場合だけ使う。選択対象のAnimation IDまたはFrame IDが重複していれば理由付きで拒否する。
+- alignmentはFrame ID単位で扱う。同じFrame IDが同じAnimationで反復する場合も、複数Animationから参照される場合も、対象Frameの1回の変更が全出現へ反映される。確定前に、影響するdistinct Animation数と全Animationを通した総出現数を表示する。
+- 基準Frameは読み取り専用の半透明表示、対象Frameは移動後の通常表示とし、「基準」「対象」の文字でも区別する。D2 onion skinの前後表示とは別の一時modeとし、D2の切替状態を変更しない。
+- 初回UIは上下左右の1px操作とX / Y移動量の数値入力を提供する。移動量の初期値は`{x: 0, y: 0}`とし、有限なpx値だけを許可する。既存座標を丸めず、clamp、crop、自動中央揃え、透明外周や画像内容による自動整列を行わない。
+- alignmentはAnimation再生停止中だけ開始できる。alignment中は再生を開始せず、確定または取消後に通常の再生・編集へ戻る。
+
+### 17.3 D4のFrame全体移動と拒否条件
+
+- **B1**: 対象Frameの全`layerStates`へ同じ`delta = {x, y}`を適用し、各`transform.position`だけを`position + delta`へ更新する。対応するAsset Layerのvisible、`layerType = guide`、`locked`の状態にかかわらず、全LayerStateを同じ量だけ動かす。
+- Asset内のdomain write-setは、対象Frameの各`FrameLayerState.transform.position.x / y`と通常commitで更新する`Asset.updatedAt`だけとする。Frameの`id / name / durationMs`、LayerStateの順序、`layerId / visible / opacity / transform.scale / transform.rotation`、未知項目を維持する。
+- 既存の通常保存が行うmetadata同期として、IndexedDBの`Project.updatedAt = max(previous Project.updatedAt, Asset.updatedAt)`だけをAsset外の永続更新に許可する。`Project.assets`のID、名前、表示名、種別、順序、`families`、その他のProject fieldは変更しない。`Project.updatedAt`はHistoryで巻き戻さない。
+- 他Frame、Asset本体のLayer transform、Texture / Blob、Animationとevent、origin、anchor、collider、part、rig、Family / Variant、保存形式、exportを変更しない。
+- **C1**: 現在のAssetが1件以上のLayerを持ち、Layer IDが全件一意で、基準Frameと対象Frameが各Asset Layerに対してちょうど1つの有効なLayerStateと完全な有限transformを持つ場合だけalignmentに使える。Layer 0件、Layer ID重複、LayerStateの欠落・重複・存在しないLayer参照、transform欠落、非有限値があれば理由付きで拒否する。
+- 不足するLayerStateやtransformを基礎Layerから複製せず、新しいFrame / Layer / LayerStateを生成しない。無効dataを削除、並べ替え、丸め、補正しない。
+- `delta`または加算後の座標が非有限なら拒否する。キャンバス外の有限座標はclampせず許可する。
+
+### 17.4 D4の一時状態・履歴・保存
+
+- alignment中の`delta`と重ね表示はEditorのUI draftだけに置く。確定前はAsset、History、Undo / Redo、autosave、IndexedDB、`.casproj`、exportを変更しない。
+- 「位置を確定」で対象Frame全体の移動を1 Historyとしてcommitする。`delta = {0, 0}`はno-opとし、Asset、`updatedAt`、Historyを変更しない。
+- 「取消」とEscはdraftを破棄し、Asset、History、autosaveを変更しない。確定後のUndo / Redoは対象Frame全体の移動を1回で往復する。
+- 確定後はautosave、reload、`.casproj` roundtripで対象Frameの全位置、非対象data、配列順、未知項目を保持する。
+- D1のpreview guardを維持し、Animation再生中の開始・確定、その他の永続編集との同時commitを拒否する。
+
+### 17.5 D4の合格条件と対象外
+
+- Unit / contractで候補の重複除去、同一Frame拒否、選択Animation / 基準Frame / 対象Frameの一意解決、Layer 0件拒否、Layer ID一意性、完全LayerState preflight、有限値、shared Frameのdistinct Animation数と総出現数、全対象positionへの同一delta、Asset内のexact write-set、通常保存では`Project.updatedAt`だけが同期されること、その他Project field不変、no-op、拒否時を含む入力Asset不変を確認する。
+- Chromium E2Eでは複数Animationと反復出現で共有するFrameを使い、確定前に正確なdistinct Animation数と総出現数が表示されることを確認する。「基準」「対象」の文字、基準Frameのread-only・半透明表示、対象Frameの通常表示、alignment前後のD2 onion skin設定不変、方向操作、X / Y入力も確認する。
+- 取消buttonとEscを別々に実行し、draft破棄とAsset・History・autosave・IndexedDB不変を確認する。0差分、確定1 History、Undo / Redo、autosave / reload / `.casproj`、Layer 0件・重複ID・不足dataの理由付き拒否、拒否時の永続状態不変、preview guardも確認する。
+- Chromiumの375 × 667で44px以上の操作対象、16px以上の数値入力、keyboardとtouch emulation、入力zoom防止、横overflowなしを確認する。物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはGroup 12 closeout Gateへ残し、Playwrightのmobile viewportで代替しない。
+- D4製品実装は、本docs-only決定PRがmainへmergeされた後に、最新mainから別の1 branch / 1 Draft PR / 単一writerで行う。
+- Layer単位・全Frame一括移動、canvas drag、自動整列、透明外周解析、画像内容比較、rotation / scale / opacity / visibility調整、Frame複製、共有Frameの自動分離は対象外とする。
+- schema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependency、B2資源上限、Group 12完了判定を変更しない。今回のdocs-only PRでは製品コード、Ready化、mergeを行わない。
