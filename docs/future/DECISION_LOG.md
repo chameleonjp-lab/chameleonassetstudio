@@ -1290,7 +1290,7 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 - Asset内のdomain write-setは、対象Frameの各`FrameLayerState.transform.position.x / y`と通常commitで更新する`Asset.updatedAt`だけとする。Frameの`id / name / durationMs`、LayerStateの順序、`layerId / visible / opacity / transform.scale / transform.rotation`、未知項目を維持する。
 - 既存の通常保存が行うmetadata同期として、IndexedDBの`Project.updatedAt = max(previous Project.updatedAt, Asset.updatedAt)`だけをAsset外の永続更新に許可する。`Project.assets`のID、名前、表示名、種別、順序、`families`、その他のProject fieldは変更しない。`Project.updatedAt`はHistoryで巻き戻さない。
 - 他Frame、Asset本体のLayer transform、Texture / Blob、Animationとevent、origin、anchor、collider、part、rig、Family / Variant、保存形式、exportを変更しない。
-- **C1**: 現在のAsset Layer IDが全件一意で、基準Frameと対象Frameが各Asset Layerに対してちょうど1つの有効なLayerStateと完全な有限transformを持つ場合だけalignmentに使える。Layer ID重複、LayerStateの欠落・重複・存在しないLayer参照、transform欠落、非有限値があれば理由付きで拒否する。
+- **C1**: 現在のAssetが1件以上のLayerを持ち、Layer IDが全件一意で、基準Frameと対象Frameが各Asset Layerに対してちょうど1つの有効なLayerStateと完全な有限transformを持つ場合だけalignmentに使える。Layer 0件、Layer ID重複、LayerStateの欠落・重複・存在しないLayer参照、transform欠落、非有限値があれば理由付きで拒否する。
 - 不足するLayerStateやtransformを基礎Layerから複製せず、新しいFrame / Layer / LayerStateを生成しない。無効dataを削除、並べ替え、丸め、補正しない。
 - `delta`または加算後の座標が非有限なら拒否する。キャンバス外の有限座標はclampせず許可する。
 - alignment中の`delta`と重ね表示はEditorのUI draftだけに置く。確定前はAsset、History、Undo / Redo、autosave、IndexedDB、`.casproj`、exportを変更しない。
@@ -1300,9 +1300,9 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 
 ### 合格条件
 
-- Unit / contractで候補の重複除去、同一Frame拒否、選択Animation / 基準Frame / 対象Frameの一意解決、Layer ID一意性、完全LayerState preflight、有限値、shared Frameのdistinct Animation数と総出現数、全対象positionへの同一delta、Asset内のexact write-set、通常保存では`Project.updatedAt`だけが同期されること、その他Project field不変、no-op、拒否時を含む入力Asset不変を確認する。
+- Unit / contractで候補の重複除去、同一Frame拒否、選択Animation / 基準Frame / 対象Frameの一意解決、Layer 0件拒否、Layer ID一意性、完全LayerState preflight、有限値、shared Frameのdistinct Animation数と総出現数、全対象positionへの同一delta、Asset内のexact write-set、通常保存では`Project.updatedAt`だけが同期されること、その他Project field不変、no-op、拒否時を含む入力Asset不変を確認する。
 - Chromium E2Eでは複数Animationと反復出現で共有するFrameを使い、確定前に正確なdistinct Animation数と総出現数が表示されることを確認する。「基準」「対象」の文字、基準Frameのread-only・半透明表示、対象Frameの通常表示、alignment前後のD2 onion skin設定不変、方向操作、X / Y入力も確認する。
-- 取消buttonとEscを別々に実行し、draft破棄とAsset・History・autosave・IndexedDB不変を確認する。0差分、確定1 History、Undo / Redo、autosave / reload / `.casproj`、重複IDと不足dataの理由付き拒否、拒否時の永続状態不変、preview guardも確認する。
+- 取消buttonとEscを別々に実行し、draft破棄とAsset・History・autosave・IndexedDB不変を確認する。0差分、確定1 History、Undo / Redo、autosave / reload / `.casproj`、Layer 0件・重複ID・不足dataの理由付き拒否、拒否時の永続状態不変、preview guardも確認する。
 - Chromiumの375 × 667で44px以上の操作対象、16px以上の数値入力、keyboardとtouch emulation、入力zoom防止、横overflowなしを確認する。
 - 物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはGroup 12 closeout Gateへ残し、Playwrightのmobile viewportで代替しない。
 

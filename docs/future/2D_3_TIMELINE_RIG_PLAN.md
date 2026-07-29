@@ -203,7 +203,7 @@ ADR-2026-07-24-027により、後続をB1とB2へ分けた。B1は有限値・�
 | D1 | preview guard、保存しないoccurrence index | pan・zoom・Layer選択、保存編集拒否、IndexedDB不変、明示停止、停止後編集再開、反復Frame / loop / rewind | 物理SafariはGroup 12 closeoutへ残す |
 | D2 | 再生順の前後1出現、loop端、反復Frameの出現位置選択、赤系の「前」・青系の「次」、固定25%、UI-only | `A → B → A`の1番目・3番目の選択、初期off、前・次の個別切替、再生中非表示、停止後復元、Asset / History不変、reloadでoff、375 × 667 / 44px / 横overflowなし | 物理SafariはGroup 12 closeoutへ残す |
 | D3 | exact write-set、global unique event ID、重複名、空名・0 Frame拒否、順序・payload・未知項目保持、反復Frameの全出現・全loop発火、入力Asset不変。新規追加・明示参照変更ではAnimation外・参照切れFrameを拒否し、既存の無効参照は読込・表示・名前変更で保持 | add / rename / ref change / delete、Enter / blurの1 History、Enter後blurの二重commitなし、Esc取消、削除cancel / confirm、Undo / Redo、IndexedDB / reload、preview guard、375 × 667 / 44px / 16px input / keyboard / touch emulation / 横overflowなし | 物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはGroup 12 closeoutへ残す |
-| D4 | 候補の初出順・重複除去、基準と対象の相違、完全LayerState、有限delta / 結果座標、全対象positionへの同一delta、exact write-set、入力Asset不変、shared Frameの全参照影響 | 基準 / 対象の表示、1px方向操作とX / Y入力、一時表示中のAsset・History・IndexedDB不変、取消、0差分、確定1 History、Undo / Redo、autosave / reload / `.casproj`、不足data拒否、preview guard、375 × 667 / 44px / 16px input / touch / 横overflowなし | 物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはGroup 12 closeoutへ残す |
+| D4 | 候補の初出順・重複除去、基準と対象の相違、選択Animation / 基準Frame / 対象Frameの一意解決、Layer 0件と選択対象ID重複の拒否、完全LayerState、有限delta / 結果座標、全対象positionへの同一delta、Asset内のexact write-set、`Project.updatedAt`同期と他Project field不変、入力Asset不変、shared Frameのdistinct Animation数・総出現数 | 複数Animation・反復fixtureで正確な影響件数、基準 / 対象の文字、基準のread-only・半透明、対象の通常表示、D2設定不変、1px方向操作とX / Y入力、一時表示中のAsset・History・IndexedDB不変、取消button / Esc、0差分、確定1 History、Undo / Redo、autosave / reload / `.casproj`、Layer 0件・重複ID・不足data拒否と永続状態不変、preview guard、375 × 667 / 44px / 16px input / keyboard / touch emulation / 入力zoom防止 / 横overflowなし | 物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはGroup 12 closeoutへ残す |
 
 Playwrightのmobile viewportは実iPhone Safariの代替にしない。Group 12完了前にsafe area、software keyboard、入力zoom、orientation、touch target、bake時のmemoryとreloadを実機で記録する。
 
@@ -411,7 +411,7 @@ D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.caspr
 - Asset内のdomain write-setは、対象Frameの各`FrameLayerState.transform.position.x / y`と通常commitで更新する`Asset.updatedAt`だけとする。Frameの`id / name / durationMs`、LayerStateの順序、`layerId / visible / opacity / transform.scale / transform.rotation`、未知項目を維持する。
 - 既存の通常保存が行うmetadata同期として、IndexedDBの`Project.updatedAt = max(previous Project.updatedAt, Asset.updatedAt)`だけをAsset外の永続更新に許可する。`Project.assets`のID、名前、表示名、種別、順序、`families`、その他のProject fieldは変更しない。`Project.updatedAt`はHistoryで巻き戻さない。
 - 他Frame、Asset本体のLayer transform、Texture / Blob、Animationとevent、origin、anchor、collider、part、rig、Family / Variant、保存形式、exportを変更しない。
-- **C1**: 現在のAsset Layer IDが全件一意で、基準Frameと対象Frameが各Asset Layerに対してちょうど1つの有効なLayerStateと完全な有限transformを持つ場合だけalignmentに使える。Layer ID重複、LayerStateの欠落・重複・存在しないLayer参照、transform欠落、非有限値があれば理由付きで拒否する。
+- **C1**: 現在のAssetが1件以上のLayerを持ち、Layer IDが全件一意で、基準Frameと対象Frameが各Asset Layerに対してちょうど1つの有効なLayerStateと完全な有限transformを持つ場合だけalignmentに使える。Layer 0件、Layer ID重複、LayerStateの欠落・重複・存在しないLayer参照、transform欠落、非有限値があれば理由付きで拒否する。
 - 不足するLayerStateやtransformを基礎Layerから複製せず、新しいFrame / Layer / LayerStateを生成しない。無効dataを削除、並べ替え、丸め、補正しない。
 - `delta`または加算後の座標が非有限なら拒否する。キャンバス外の有限座標はclampせず許可する。
 
@@ -425,9 +425,9 @@ D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.caspr
 
 ### 17.5 D4の合格条件と対象外
 
-- Unit / contractで候補の重複除去、同一Frame拒否、選択Animation / 基準Frame / 対象Frameの一意解決、Layer ID一意性、完全LayerState preflight、有限値、shared Frameのdistinct Animation数と総出現数、全対象positionへの同一delta、Asset内のexact write-set、通常保存では`Project.updatedAt`だけが同期されること、その他Project field不変、no-op、拒否時を含む入力Asset不変を確認する。
+- Unit / contractで候補の重複除去、同一Frame拒否、選択Animation / 基準Frame / 対象Frameの一意解決、Layer 0件拒否、Layer ID一意性、完全LayerState preflight、有限値、shared Frameのdistinct Animation数と総出現数、全対象positionへの同一delta、Asset内のexact write-set、通常保存では`Project.updatedAt`だけが同期されること、その他Project field不変、no-op、拒否時を含む入力Asset不変を確認する。
 - Chromium E2Eでは複数Animationと反復出現で共有するFrameを使い、確定前に正確なdistinct Animation数と総出現数が表示されることを確認する。「基準」「対象」の文字、基準Frameのread-only・半透明表示、対象Frameの通常表示、alignment前後のD2 onion skin設定不変、方向操作、X / Y入力も確認する。
-- 取消buttonとEscを別々に実行し、draft破棄とAsset・History・autosave・IndexedDB不変を確認する。0差分、確定1 History、Undo / Redo、autosave / reload / `.casproj`、重複IDと不足dataの理由付き拒否、拒否時の永続状態不変、preview guardも確認する。
+- 取消buttonとEscを別々に実行し、draft破棄とAsset・History・autosave・IndexedDB不変を確認する。0差分、確定1 History、Undo / Redo、autosave / reload / `.casproj`、Layer 0件・重複ID・不足dataの理由付き拒否、拒否時の永続状態不変、preview guardも確認する。
 - Chromiumの375 × 667で44px以上の操作対象、16px以上の数値入力、keyboardとtouch emulation、入力zoom防止、横overflowなしを確認する。物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはGroup 12 closeout Gateへ残し、Playwrightのmobile viewportで代替しない。
 - D4製品実装は、本docs-only決定PRがmainへmergeされた後に、最新mainから別の1 branch / 1 Draft PR / 単一writerで行う。
 - Layer単位・全Frame一括移動、canvas drag、自動整列、透明外周解析、画像内容比較、rotation / scale / opacity / visibility調整、Frame複製、共有Frameの自動分離は対象外とする。
