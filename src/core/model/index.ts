@@ -1,6 +1,7 @@
 export * from './anchor';
 export * from './assetOps';
 export * from './animation';
+export * from './animationEvents';
 export * from './animationTiming';
 export * from './asset';
 export * from './collider';

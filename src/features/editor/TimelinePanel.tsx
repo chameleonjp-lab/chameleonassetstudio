@@ -1,15 +1,20 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ANIMATION_NAME_SUGGESTIONS,
   addAnimation,
+  addAnimationEvent,
+  animationEventFrameCandidates,
   calculateAnimationDurationMs,
   captureFrame,
   duplicateFrame,
   moveFrameOrder,
   removeAnimation,
+  removeAnimationEvent,
   removeFrame,
   renameFrame,
   updateAnimation,
+  changeAnimationEventFrame,
+  renameAnimationEvent,
   updateFrameDuration,
   type AnimationEvent,
   type Asset,
@@ -46,6 +51,44 @@ interface TimelinePanelProps {
   onCommitFieldEdit: () => void;
 }
 
+function EventNameEditor({
+  event,
+  onCommit,
+}: {
+  event: AnimationEvent;
+  onCommit: (name: string) => void;
+}) {
+  const [draft, setDraft] = useState(event.name);
+  const committed = useRef(false);
+  const commit = () => {
+    if (committed.current) return;
+    committed.current = true;
+    if (draft.trim() && draft !== event.name) onCommit(draft);
+  };
+  return (
+    <input
+      type="text"
+      aria-label={`イベント「${event.name}」の名前`}
+      value={draft}
+      onFocus={() => {
+        committed.current = false;
+      }}
+      onChange={(change) => setDraft(change.target.value)}
+      onKeyDown={(key) => {
+        if (key.key === 'Enter') {
+          commit();
+          key.currentTarget.blur();
+        } else if (key.key === 'Escape') {
+          committed.current = true;
+          setDraft(event.name);
+          key.currentTarget.blur();
+        }
+      }}
+      onBlur={commit}
+    />
+  );
+}
+
 /** タイムラインパネル（Phase 9）。フレームの取り込みとアニメーションの再生を扱う。 */
 export function TimelinePanel({
   asset,
@@ -70,6 +113,8 @@ export function TimelinePanel({
   onCommitFieldEdit,
 }: TimelinePanelProps) {
   const [newAnimationName, setNewAnimationName] = useState('');
+  const [newEventName, setNewEventName] = useState('');
+  const [newEventFrameId, setNewEventFrameId] = useState('');
   const frames = asset.frames ?? [];
   const selectedAnimation =
     asset.animations.find((animation) => animation.id === selectedAnimationId) ?? null;
@@ -88,6 +133,13 @@ export function TimelinePanel({
         }
       : null;
   const onionSkinOpacityPercent = Math.round(ONION_SKIN_OPACITY * 100);
+  const eventFrameCandidates = selectedAnimation
+    ? animationEventFrameCandidates(asset, selectedAnimation.id)
+    : [];
+
+  const commitEventChange = (label: string, result: ReturnType<typeof addAnimationEvent>) => {
+    if (result.ok && result.changed) onCommit(label, result.asset);
+  };
 
   const handleDeleteFrame = (frameId: string, name: string) => {
     const ok = window.confirm(`フレーム「${name}」を削除します。よろしいですか？`);
@@ -398,8 +450,52 @@ export function TimelinePanel({
             </p>
             <div className="timeline-event-summary" aria-label="アニメーションイベント">
               <strong>イベント {selectedAnimation.events?.length ?? 0} 件</strong>
+              <div className="timeline-event-create">
+                <label className="editor-field">
+                  新しいイベント名
+                  <input
+                    type="text"
+                    value={newEventName}
+                    onChange={(event) => setNewEventName(event.target.value)}
+                  />
+                </label>
+                <label className="editor-field">
+                  参照フレーム
+                  <select
+                    aria-label="新しいイベントの参照フレーム"
+                    value={newEventFrameId}
+                    onChange={(event) => setNewEventFrameId(event.target.value)}
+                  >
+                    <option value="">選択してください</option>
+                    {eventFrameCandidates.map((frameId) => (
+                      <option key={frameId} value={frameId}>
+                        {frameNameById.get(frameId)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  disabled={!newEventName.trim() || !newEventFrameId}
+                  onClick={() => {
+                    const result = addAnimationEvent(
+                      asset,
+                      selectedAnimation.id,
+                      newEventName,
+                      newEventFrameId,
+                    );
+                    commitEventChange('イベント追加', result);
+                    if (result.ok && result.changed) {
+                      setNewEventName('');
+                      setNewEventFrameId('');
+                    }
+                  }}
+                >
+                  イベント追加
+                </button>
+              </div>
               {(selectedAnimation.events?.length ?? 0) > 0 ? (
-                <ul>
+                <ul className="timeline-event-list">
                   {selectedAnimation.events?.map((event, index) => (
                     <li
                       key={`${event.id}-${index}`}
@@ -409,8 +505,56 @@ export function TimelinePanel({
                           : undefined
                       }
                     >
-                      {event.name} —{' '}
-                      {frameNameById.get(event.frameId) ?? `参照切れ: ${event.frameId}`}
+                      <EventNameEditor
+                        key={`${event.id}-${event.name}`}
+                        event={event}
+                        onCommit={(name) =>
+                          commitEventChange(
+                            'イベント名変更',
+                            renameAnimationEvent(asset, selectedAnimation.id, event.id, name),
+                          )
+                        }
+                      />
+                      <select
+                        aria-label={`イベント「${event.name}」の参照フレーム`}
+                        className={
+                          !eventFrameCandidates.includes(event.frameId) ? 'is-invalid' : ''
+                        }
+                        value={event.frameId}
+                        onChange={(change) =>
+                          commitEventChange(
+                            'イベント参照変更',
+                            changeAnimationEventFrame(
+                              asset,
+                              selectedAnimation.id,
+                              event.id,
+                              change.target.value,
+                            ),
+                          )
+                        }
+                      >
+                        {!eventFrameCandidates.includes(event.frameId) && (
+                          <option value={event.frameId}>参照無効: {event.frameId}</option>
+                        )}
+                        {eventFrameCandidates.map((frameId) => (
+                          <option key={frameId} value={frameId}>
+                            {frameNameById.get(frameId)}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        aria-label={`イベント「${event.name}」を削除`}
+                        onClick={() => {
+                          if (!window.confirm(`イベント「${event.name}」を削除しますか？`)) return;
+                          commitEventChange(
+                            'イベント削除',
+                            removeAnimationEvent(asset, selectedAnimation.id, event.id),
+                          );
+                        }}
+                      >
+                        削除
+                      </button>
                     </li>
                   ))}
                 </ul>

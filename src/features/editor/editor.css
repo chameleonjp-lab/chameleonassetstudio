@@ -1640,6 +1640,33 @@
   padding-left: 1.25rem;
 }
 
+.timeline-event-create,
+.timeline-event-list li {
+  display: grid;
+  min-width: 0;
+  gap: 0.4rem;
+}
+
+.timeline-event-create {
+  margin-top: 0.4rem;
+}
+
+.timeline-event-list li {
+  margin-block: 0.5rem;
+}
+
+.timeline-event-list input,
+.timeline-event-list select,
+.timeline-event-create input,
+.timeline-event-create select {
+  width: 100%;
+  min-width: 0;
+}
+
+.timeline-event-list .is-invalid {
+  border-color: #b42318;
+}
+
 .timeline-event-fired,
 .timeline-event-status {
   color: #147d64;
