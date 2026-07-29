@@ -183,12 +183,12 @@ Frameを1件も割り当てる前に、UI、意味検証、bake関数が同じ�
 | C | P1 | `Part.layerIds`だけの置換UIとinspection | L1拒否、exact write-set、1 History、次回bakeのみ反映 |
 | D1 | preview安全 | 永続編集防護、明示停止、一時的な出現位置 | PR #201 / CI #596 / 固定head独立reviewで完了 |
 | D2 | onion skin | 選択中Animationの再生順による前後1出現、loop端、反復Frameの出現位置選択、read-only、UI-only、固定25% | PR #204 / CI #603 / 固定head独立reviewで完了 |
-| D3 | event編集 | 選択中Animationのevent追加・名前変更・参照Frame変更・削除。payload編集は除外 | P1+A1+B1+C1 contract accepted。製品実装はdocs-only決定PRのmerge後に別Draft PRで開始 |
+| D3 | event編集 | 選択中Animationのevent追加・名前変更・参照Frame変更・削除。payload編集は除外 | P1+A1+B1+C1 contract accepted。PR #205で実装Gateを満了し、PR #206で製品実装・必須test・CI補修中 |
 | D4 | frame alignment | 別の契約監査後に実装 | 後続の明示判断まで未着手 |
 
 PR #154はSlice Cだけを扱い、既存Part 1件の`layerIds`差し替えUI、H2=L1検証、read-only inspection、H2違反だけを割当前に止める狭いbake refusal、History・保存roundtripを実装した。T1のschema・scheduler・export契約は変更していない。
 
-ADR-2026-07-24-027により、後続をB1とB2へ分けた。B1は有限値・座標・参照・構造検査とR1をPR #157で実装し、資源上限を先取りしていない。B2はH3数値と別の人間承認後に扱う。D1はPR #201、D2はPR #204で完了した。D3のevent編集はADR-2026-07-29-030で契約承認済みだが、製品実装は開始していない。D4のframe alignmentは後続判断まで未着手とする。
+ADR-2026-07-24-027により、後続をB1とB2へ分けた。B1は有限値・座標・参照・構造検査とR1をPR #157で実装し、資源上限を先取りしていない。B2はH3数値と別の人間承認後に扱う。D1はPR #201、D2はPR #204で完了した。D3のevent編集はADR-2026-07-29-030で契約承認し、PR #205で実装Gateを満了した。製品実装と必須testはPR #206でCI・独立review待ちである。D4のframe alignmentは後続判断まで未着手とする。
 
 1 PR 1 sliceを守る。schemaを変更するT1と、schema不要のR1/P1を同じ製品PRへ混ぜない。各実装PRは固定headでlint、format、build、全unit、Chromium E2Eを成功させ、skip / retryを理由なく残さない。
 
@@ -382,6 +382,6 @@ D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.caspr
 - Unit / contractでexact write-set、global unique ID、重複名、空名・0 Frame拒否、順序・payload・未知項目保持、反復Frameの全出現・全loop発火、入力Asset不変を確認する。新規追加または明示的な参照変更ではAnimation外・参照切れFrameを拒否し、既存の無効参照は読み込み・表示・名前編集で保持して自動削除・自動再割当しないことを確認する。
 - Chromium E2Eでadd / rename / ref change / delete、Enter / blurの1 History、Enter後blurの二重commitなし、Esc取消、削除cancel / confirm、Undo / Redo、IndexedDB / reload、preview guardを確認する。
 - Chromiumの375 × 667で44px以上の操作対象、16px以上の入力文字、keyboard操作、入力zoom防止、touch emulation、横overflowなしを確認する。物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはGroup 12 closeout Gateへ残し、Playwrightのmobile viewportで代替しない。
-- D3製品実装は、このdocs-only決定PRがmainへmergeされた後に、最新mainから別の1 branch / 1 Draft PR / 単一writerで行う。
+- D3製品実装は、このdocs-only決定PRがmainへmergeされた後に、最新mainから別の1 branch / 1 Draft PR / 単一writerで行う。このGateはPR #205のmergeで満了し、製品実装と必須testはPR #206で進行中である。
 - payload編集、event並べ替え、出現位置固有event、Frame削除時のcascade、D4 frame alignment、B2資源上限、Group 12完了判定は対象外とする。
 - schema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependencyを変更しない。今回のdocs-only PRでは製品コード、Ready化、mergeを行わない。

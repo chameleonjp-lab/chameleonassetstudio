@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import sample from '../samples/asset.character.json';
 import type { Asset } from './asset';
 import {
@@ -71,6 +71,47 @@ describe('D3 animation event editing', () => {
       ok: true,
       changed: true,
     });
+
+    source.animations[0].frameIds = ['missing'];
+    expect(animationEventFrameCandidates(source, 'animation_1')).toEqual([]);
+    expect(addAnimationEvent(source, 'animation_1', 'step', 'frame_a')).toEqual({
+      ok: false,
+      asset: source,
+      reason: '選択中アニメーションの有効なフレームを選んでください。',
+    });
+  });
+
+  it('追加eventのIDをAsset全体で一意にする', () => {
+    const source = fixture();
+    source.animations.push({
+      id: 'animation_2',
+      name: 'idle',
+      frameIds: ['frame_a'],
+      fps: 8,
+      loop: true,
+      events: [
+        {
+          id: 'event_00000000-0000-4000-8000-000000000001',
+          name: 'existing',
+          frameId: 'frame_a',
+        },
+      ],
+    });
+    const randomUuid = vi
+      .spyOn(globalThis.crypto, 'randomUUID')
+      .mockReturnValueOnce('00000000-0000-4000-8000-000000000001')
+      .mockReturnValueOnce('00000000-0000-4000-8000-000000000002');
+
+    try {
+      const result = addAnimationEvent(source, 'animation_1', 'new', 'frame_a');
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.asset.animations[0].events?.at(-1)?.id).toBe(
+        'event_00000000-0000-4000-8000-000000000002',
+      );
+    } finally {
+      randomUuid.mockRestore();
+    }
   });
 
   it('exact write-setで未知項目・payload・無効参照・順序を保持する', () => {
@@ -78,11 +119,10 @@ describe('D3 animation event editing', () => {
     const renamed = renameAnimationEvent(source, 'animation_1', 'event_dangling', 'renamed');
     expect(renamed.ok).toBe(true);
     if (!renamed.ok) return;
-    expect(renamed.asset.animations[0].events?.[1]).toMatchObject({
-      id: 'event_dangling',
-      name: 'renamed',
-      frameId: 'outside',
-    });
+    const expectedAfterRename = structuredClone(source);
+    expectedAfterRename.updatedAt = renamed.asset.updatedAt;
+    expectedAfterRename.animations[0].events![1].name = 'renamed';
+    expect(renamed.asset).toEqual(expectedAfterRename);
 
     const changed = changeAnimationEventFrame(
       renamed.asset,
@@ -92,13 +132,10 @@ describe('D3 animation event editing', () => {
     );
     expect(changed.ok).toBe(true);
     if (!changed.ok) return;
-    expect(changed.asset.animations[0].events?.[0]).toMatchObject({
-      id: 'event_existing',
-      name: 'step',
-      frameId: 'frame_b',
-      payload: { volume: 1 },
-      future: 'keep',
-    });
+    const expectedAfterFrameChange = structuredClone(renamed.asset);
+    expectedAfterFrameChange.updatedAt = changed.asset.updatedAt;
+    expectedAfterFrameChange.animations[0].events![0].frameId = 'frame_b';
+    expect(changed.asset).toEqual(expectedAfterFrameChange);
     expect(source.animations[0].events?.[0].frameId).toBe('frame_a');
   });
 

@@ -69,7 +69,8 @@ interface StoredAnimationEvent {
 interface StoredAnimationEventFixture {
   id: string;
   name: string;
-  frameIndex: number;
+  frameIndex?: number;
+  frameId?: string;
   payload?: unknown;
   [key: string]: unknown;
 }
@@ -92,7 +93,7 @@ async function readStoredAsset(page: Page): Promise<StoredAnimationAsset> {
   });
 }
 
-/** Slice Aにはevent編集UIを含めないため、既存作品eventの再読込・再生検査用fixtureを保存する。 */
+/** eventの再読込・再生・編集検査用fixtureを保存する。 */
 async function writeStoredAnimationFixture(
   page: Page,
   options: {
@@ -140,13 +141,16 @@ async function writeStoredAnimationFixture(
         return frameId;
       });
     }
-    animation.events = storedFixture.events.map(({ frameIndex, ...event }) => {
-      const frameId = sourceFrameIds[frameIndex];
-      if (!frameId) {
-        throw new Error(`event fixtureのFrame indexが不正です: ${frameIndex}`);
-      }
-      return { ...event, frameId } as StoredAnimationEvent;
-    });
+    animation.events = storedFixture.events.map(
+      ({ frameIndex, frameId: explicitFrameId, ...event }) => {
+        const frameId =
+          explicitFrameId ?? (frameIndex === undefined ? undefined : sourceFrameIds[frameIndex]);
+        if (!frameId) {
+          throw new Error(`event fixtureのFrame参照が不正です: ${frameIndex ?? explicitFrameId}`);
+        }
+        return { ...event, frameId } as StoredAnimationEvent;
+      },
+    );
     const writeTransaction = db.transaction('assets', 'readwrite');
     writeTransaction.objectStore('assets').put(record);
     await new Promise<void>((resolve, reject) => {
@@ -680,6 +684,289 @@ test('前後表示の切替はAssetと履歴を変えず、reloadでoffへ戻る
   );
 });
 
+test.describe('D3 event編集', () => {
+  test.use({ hasTouch: true });
+
+  test('iPhone幅で追加・名前・参照・削除を各1履歴として保存し、取消・Undo・Redo・reloadを保つ', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await setupProjectWithImage(page, 'イベント編集履歴テスト');
+
+    const mobileNav = page.getByRole('navigation', { name: '画面切り替え' });
+    await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+    await page.getByRole('button', { name: 'フレーム追加' }).click();
+    await page.getByRole('button', { name: 'フレーム追加' }).click();
+    await page.getByLabel('新しいアニメーション名').fill('event_edit');
+    await page.getByRole('button', { name: '作成', exact: true }).click();
+    await expect.poll(async () => (await readStoredAsset(page)).frames).toHaveLength(2);
+    await expect.poll(async () => (await readStoredAsset(page)).animations).toHaveLength(1);
+
+    const newEventName = page.getByLabel('新しいイベント名');
+    const newEventFrame = page.getByLabel('新しいイベントの参照フレーム');
+    const addButton = page.getByRole('button', { name: 'イベント追加', exact: true });
+    await newEventName.fill('start');
+    await newEventFrame.selectOption({ label: 'frame_1' });
+    await addButton.tap();
+
+    await expect
+      .poll(async () => (await readStoredAsset(page)).animations[0].events)
+      .toHaveLength(1);
+    const storedAfterAdd = await readStoredAsset(page);
+    const addedEvent = storedAfterAdd.animations[0].events?.[0];
+    expect(addedEvent).toMatchObject({
+      name: 'start',
+      frameId: storedAfterAdd.frames[0].id,
+    });
+    expect(addedEvent?.id).toMatch(/^event_/);
+    expect(addedEvent?.payload).toBeUndefined();
+
+    const undoButton = page.getByRole('button', { name: '元に戻す', exact: true });
+    const redoButton = page.getByRole('button', { name: 'やり直す', exact: true });
+    await expect(undoButton).toHaveAttribute('title', 'イベント追加');
+
+    const startNameInput = page.getByLabel('イベント「start」の名前');
+    await startNameInput.fill('entered');
+    await startNameInput.press('Enter');
+    await expect
+      .poll(async () => (await readStoredAsset(page)).animations[0].events?.[0]?.name)
+      .toBe('entered');
+    await expect(undoButton).toHaveAttribute('title', 'イベント名変更');
+
+    await undoButton.click();
+    await expect
+      .poll(async () => (await readStoredAsset(page)).animations[0].events?.[0]?.name)
+      .toBe('start');
+    await expect(undoButton).toHaveAttribute('title', 'イベント追加');
+    await expect(redoButton).toHaveAttribute('title', 'イベント名変更');
+    await redoButton.click();
+    await expect
+      .poll(async () => (await readStoredAsset(page)).animations[0].events?.[0]?.name)
+      .toBe('entered');
+
+    const enteredNameInput = page.getByLabel('イベント「entered」の名前');
+    await enteredNameInput.fill('cancelled');
+    await enteredNameInput.press('Escape');
+    await expect(enteredNameInput).toHaveValue('entered');
+    await expect(undoButton).toHaveAttribute('title', 'イベント名変更');
+    expect((await readStoredAsset(page)).animations[0].events?.[0]?.name).toBe('entered');
+
+    await enteredNameInput.fill('blurred');
+    await enteredNameInput.blur();
+    await expect
+      .poll(async () => (await readStoredAsset(page)).animations[0].events?.[0]?.name)
+      .toBe('blurred');
+    await undoButton.click();
+    await expect
+      .poll(async () => (await readStoredAsset(page)).animations[0].events?.[0]?.name)
+      .toBe('entered');
+    await expect(undoButton).toHaveAttribute('title', 'イベント名変更');
+    await redoButton.click();
+    await expect
+      .poll(async () => (await readStoredAsset(page)).animations[0].events?.[0]?.name)
+      .toBe('blurred');
+
+    const eventFrameSelect = page.getByLabel('イベント「blurred」の参照フレーム');
+    await eventFrameSelect.selectOption({ label: 'frame_2' });
+    await expect
+      .poll(async () => (await readStoredAsset(page)).animations[0].events?.[0]?.frameId)
+      .toBe(storedAfterAdd.frames[1].id);
+    await expect(undoButton).toHaveAttribute('title', 'イベント参照変更');
+    await undoButton.click();
+    await expect
+      .poll(async () => (await readStoredAsset(page)).animations[0].events?.[0]?.frameId)
+      .toBe(storedAfterAdd.frames[0].id);
+    await expect(undoButton).toHaveAttribute('title', 'イベント名変更');
+    await redoButton.click();
+    await expect
+      .poll(async () => (await readStoredAsset(page)).animations[0].events?.[0]?.frameId)
+      .toBe(storedAfterAdd.frames[1].id);
+
+    const deleteButton = page.getByRole('button', { name: 'イベント「blurred」を削除' });
+    page.once('dialog', (dialog) => void dialog.dismiss());
+    await deleteButton.tap();
+    expect((await readStoredAsset(page)).animations[0].events).toHaveLength(1);
+    await expect(undoButton).toHaveAttribute('title', 'イベント参照変更');
+
+    page.once('dialog', (dialog) => void dialog.accept());
+    await deleteButton.tap();
+    await expect
+      .poll(async () => (await readStoredAsset(page)).animations[0].events)
+      .toHaveLength(0);
+    await expect(undoButton).toHaveAttribute('title', 'イベント削除');
+    await undoButton.click();
+    await expect
+      .poll(async () => (await readStoredAsset(page)).animations[0].events)
+      .toHaveLength(1);
+    await expect(undoButton).toHaveAttribute('title', 'イベント参照変更');
+    await redoButton.click();
+    await expect
+      .poll(async () => (await readStoredAsset(page)).animations[0].events)
+      .toHaveLength(0);
+    await undoButton.click();
+    await expect
+      .poll(async () => (await readStoredAsset(page)).animations[0].events)
+      .toHaveLength(1);
+
+    const restoredNameInput = page.getByLabel('イベント「blurred」の名前');
+    const restoredFrameSelect = page.getByLabel('イベント「blurred」の参照フレーム');
+    const restoredDeleteButton = page.getByRole('button', { name: 'イベント「blurred」を削除' });
+    for (const control of [
+      newEventName,
+      newEventFrame,
+      addButton,
+      restoredNameInput,
+      restoredFrameSelect,
+      restoredDeleteButton,
+    ]) {
+      const box = await control.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+    }
+    expect(
+      await restoredNameInput.evaluate((element) =>
+        Number.parseFloat(getComputedStyle(element).fontSize),
+      ),
+    ).toBeGreaterThanOrEqual(16);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      ),
+    ).toBe(false);
+
+    await expect(page.getByRole('status')).toContainText('保存済み');
+    await page.reload();
+    await page.getByRole('button', { name: '「イベント編集履歴テスト」を開く' }).click();
+    await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+    await page.getByLabel('アニメーション選択').selectOption({ label: 'event_edit' });
+    await expect(page.getByLabel('イベント「blurred」の名前')).toHaveValue('blurred');
+    await expect(page.getByLabel('イベント「blurred」の参照フレーム')).toHaveValue(
+      storedAfterAdd.frames[1].id,
+    );
+    expect((await readStoredAsset(page)).animations[0].events?.[0]).toEqual({
+      ...addedEvent,
+      name: 'blurred',
+      frameId: storedAfterAdd.frames[1].id,
+    });
+  });
+
+  test('参照切れeventの対象外データを保持し、Frame preview中の編集を履歴前に拒否する', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await setupProjectWithImage(page, 'イベント参照切れテスト');
+
+    const mobileNav = page.getByRole('navigation', { name: '画面切り替え' });
+    await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+    await page.getByRole('button', { name: 'フレーム追加' }).click();
+    await page.getByRole('button', { name: 'フレーム追加' }).click();
+    await page.getByLabel('新しいアニメーション名').fill('dangling');
+    await page.getByRole('button', { name: '作成', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('保存済み');
+
+    await writeStoredAnimationFixture(page, {
+      events: [
+        {
+          id: 'event_dangling',
+          name: 'old',
+          frameId: 'outside',
+          payload: { power: 2 },
+          futureEventField: { preserved: true },
+        },
+        {
+          id: 'event_sibling',
+          name: 'sibling',
+          frameIndex: 1,
+          payload: { keep: true },
+        },
+      ],
+    });
+    await page.reload();
+    await page.getByRole('button', { name: '「イベント参照切れテスト」を開く' }).click();
+    await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+    await page.getByLabel('アニメーション選択').selectOption({ label: 'dangling' });
+
+    const invalidFrameSelect = page.getByLabel('イベント「old」の参照フレーム');
+    await expect(page.getByLabel('イベント「old」の名前')).toHaveValue('old');
+    await expect(invalidFrameSelect).toHaveValue('outside');
+    await expect(invalidFrameSelect).toHaveClass(/is-invalid/);
+    await expect(
+      invalidFrameSelect.getByRole('option', { name: '参照無効: outside' }),
+    ).toBeVisible();
+
+    const beforeRename = await readStoredAsset(page);
+    const oldNameInput = page.getByLabel('イベント「old」の名前');
+    await oldNameInput.fill('renamed');
+    await oldNameInput.press('Enter');
+    await expect
+      .poll(async () => (await readStoredAsset(page)).animations[0].events?.[0]?.name)
+      .toBe('renamed');
+    const afterRename = await readStoredAsset(page);
+    expect(afterRename.animations[0].events).toEqual([
+      {
+        ...beforeRename.animations[0].events?.[0],
+        name: 'renamed',
+      },
+      beforeRename.animations[0].events?.[1],
+    ]);
+
+    const undoButton = page.getByRole('button', { name: '元に戻す', exact: true });
+    const undoTitleBeforePreview = await undoButton.getAttribute('title');
+    await page.getByRole('button', { name: 'frame_1', exact: true }).click();
+    await expect(page.getByRole('button', { name: '停止', exact: true })).toBeEnabled();
+    const storedBeforePreview = await readStoredAsset(page);
+
+    const renamedInput = page.getByLabel('イベント「renamed」の名前');
+    await renamedInput.fill('blocked');
+    await renamedInput.press('Enter');
+    await expect(page.getByRole('alert')).toContainText('保存を伴う編集はできません');
+    expect(await readStoredAsset(page)).toEqual(storedBeforePreview);
+    await expect(undoButton).toHaveAttribute('title', undoTitleBeforePreview ?? '');
+
+    await page.getByLabel('イベント「renamed」の参照フレーム').selectOption({ label: 'frame_1' });
+    expect(await readStoredAsset(page)).toEqual(storedBeforePreview);
+
+    page.once('dialog', (dialog) => void dialog.accept());
+    await page.getByRole('button', { name: 'イベント「renamed」を削除' }).tap();
+    expect(await readStoredAsset(page)).toEqual(storedBeforePreview);
+    await expect(undoButton).toHaveAttribute('title', undoTitleBeforePreview ?? '');
+
+    await page.getByRole('button', { name: '停止', exact: true }).click();
+    await renamedInput.focus();
+    await renamedInput.press('Escape');
+    await expect(renamedInput).toHaveValue('renamed');
+
+    const firstFrameId = storedBeforePreview.frames[0].id;
+    await page.getByLabel('イベント「renamed」の参照フレーム').selectOption({ label: 'frame_1' });
+    await expect
+      .poll(async () => (await readStoredAsset(page)).animations[0].events?.[0]?.frameId)
+      .toBe(firstFrameId);
+    const afterReferenceChange = await readStoredAsset(page);
+    expect(afterReferenceChange.animations[0].events).toEqual([
+      {
+        ...storedBeforePreview.animations[0].events?.[0],
+        frameId: firstFrameId,
+      },
+      storedBeforePreview.animations[0].events?.[1],
+    ]);
+
+    await undoButton.click();
+    await expect
+      .poll(async () => (await readStoredAsset(page)).animations[0].events?.[0]?.frameId)
+      .toBe('outside');
+    await page.getByRole('button', { name: 'やり直す', exact: true }).click();
+    await expect
+      .poll(async () => (await readStoredAsset(page)).animations[0].events?.[0]?.frameId)
+      .toBe(firstFrameId);
+
+    await expect(page.getByRole('status')).toContainText('保存済み');
+    await page.reload();
+    await page.getByRole('button', { name: '「イベント参照切れテスト」を開く' }).click();
+    const reloaded = await readStoredAsset(page);
+    expect(reloaded.animations[0].events).toEqual(afterReferenceChange.animations[0].events);
+  });
+});
+
 test('fps とループを変更でき、リロード後も保持される', async ({ page }) => {
   await setupProjectWithImage(page, 'fpsテスト');
   await selectMainLayer(page);
@@ -761,7 +1048,11 @@ test('T1データを保持する4形式を実出力・再読込し、情報を�
   await page.getByRole('button', { name: '「イベント再生テスト」を開く' }).click();
   await page.getByLabel('アニメーション選択').selectOption({ label: 'attack' });
 
-  await expect(page.getByLabel('アニメーションイベント')).toContainText('attack_start');
+  await expect(
+    page
+      .getByLabel('アニメーションイベント')
+      .getByRole('textbox', { name: 'イベント「attack_start」の名前' }),
+  ).toHaveValue('attack_start');
   await page.getByRole('button', { name: '再生', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: '発火:' })).toContainText('attack_start');
   await page.getByRole('button', { name: '停止', exact: true }).click();
