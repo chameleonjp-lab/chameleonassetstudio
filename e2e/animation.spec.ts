@@ -890,9 +890,9 @@ test.describe('D3 event編集', () => {
     await expect(page.getByLabel('イベント「old」の名前')).toHaveValue('old');
     await expect(invalidFrameSelect).toHaveValue('outside');
     await expect(invalidFrameSelect).toHaveClass(/is-invalid/);
-    await expect(
-      invalidFrameSelect.getByRole('option', { name: '参照無効: outside' }),
-    ).toBeVisible();
+    await expect(invalidFrameSelect.getByRole('option', { name: '参照無効: outside' })).toHaveText(
+      '参照無効: outside',
+    );
 
     const beforeRename = await readStoredAsset(page);
     const oldNameInput = page.getByLabel('イベント「old」の名前');
