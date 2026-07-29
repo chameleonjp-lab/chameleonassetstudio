@@ -1,10 +1,10 @@
 # 2D-3 Timeline + Rig 契約計画
 
-最終更新日: 2026-07-28
+最終更新日: 2026-07-29
 work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 監査基準: `main@236571c241bf84747f71f260f3bea99e6abe7f25`
-マージ後基準: PR #146 merge `cb21ea4` / PR #147 final head `1ba671f7` / merge `24a089c` / PR #148 final head `0cfc1ea` / merge `fbdeb357` / PR #149 merge `536318f` / PR #153 merge `e8fac95` / PR #154 final head `fdf75f0` / merge `1c700e7` / PR #157 final head `834cc38` / merge `bf13cac` / PR #201 final head `25cd332` / merge `c1d08e3`
-状態: `T1 Slice A merged / P1 Slice C merged / R1 Slice B1 merged and independently verified / Slice B2 numeric Gate pending / Slice D1 merged and independently verified / Slice D2 A1+B1+C1 implementation and verification in progress / Slice D3-D4 pending / formal B0 deferred`
+マージ後基準: PR #146 merge `cb21ea4` / PR #147 final head `1ba671f7` / merge `24a089c` / PR #148 final head `0cfc1ea` / merge `fbdeb357` / PR #149 merge `536318f` / PR #153 merge `e8fac95` / PR #154 final head `fdf75f0` / merge `1c700e7` / PR #157 final head `834cc38` / merge `bf13cac` / PR #201 final head `25cd332` / merge `c1d08e3` / PR #204 final head `8ebeb27` / merge `eeaea39`
+状態: `T1 Slice A merged / P1 Slice C merged / R1 Slice B1 merged and independently verified / Slice B2 numeric Gate pending / Slice D1-D2 merged and independently verified / Slice D3 P1+A1+B1+C1 contract accepted, product implementation not started / Slice D4 pending / formal B0 deferred`
 関連: `docs/adr/0008-motion-time-semantics.md`, `docs/adr/0009-animation-event-boundary.md`, `docs/adr/0021-frame-duration-semantics.md`, `docs/adr/0022-rig-flip-and-bake-parity.md`, `docs/adr/0023-part-layer-replacement.md`, `docs/future/2D_3_H3_MEASUREMENT_PROTOCOL.md`
 
 ---
@@ -17,9 +17,9 @@ work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 - **R1**: rig flipは既存flipとは別sliceとする。ID参照、位置、回転、可動域を鏡映し、bake前後の結果一致を必須にする。
 - **P1**: 初回part replaceは既存`Part.layerIds`の静的な差し替えだけとする。時間依存の衣装・状態切替は別ADRへ分離する。
 
-PR #146の契約監査は17文書、製品コード変更なしでmainへ反映済みである。後続の人間判断H1=E1、H2=L1、H3=M1と計測専用`tools/h3/`はPR #147 final head `1ba671f7`、merge `24a089c`でmainへ反映された。CI Run #460とmerge後CI Run #461は全job成功し、固定headの最終独立reviewは全3系統`BLOCKER 0 / MUST 0`だった。PR #148 merge `fbdeb357`で24時間配信基盤、PR #149 merge `536318f`でPages rootのサービス本体と`/h3/`の分離を実装した。T1 Slice AはPR #153 final head `7f684a7`、merge `e8fac95`としてmainへ反映済みで、CI Run #489と固定headの独立reviewを通過した。P1 Slice CはPR #154 final head `fdf75f0`、merge `1c700e7`としてmainへ反映済みで、CI Run #492と固定headの独立review `BLOCKER 0 / MUST 0 / SHOULD 0`を通過した。2026-07-23の人間判断により、正式B0の4端末収集は当面保留し、H3を問題発生時の診断手段として維持する。2026-07-24の人間判断ADR-2026-07-24-027でSlice BをB1とB2へ分割し、PR #157 final head `834cc38397c300895f50c1efdb86d94f3870a0a8`、merge `bf13cac3db854c30b33e9b2ef97d389a2372e961`でB1をmainへ反映した。CI Run #501は全job成功し、非GitHub・非Opusの固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。B2の数値budget、warning、hard cap、採用上限での実機測定、Group 12完了判定は、後続の明示判断まで開始しない。2026-07-27のADR-2026-07-27-028でA1+B1を採用し、Slice DをD1〜D4へ分けた。D1はPR #201 final head `25cd3327b93850f1af1733c2b43585e3fa0a667b`、merge `c1d08e3b4cadd7c3a3064ab8e824b17f67feb243`でmainへ反映し、CI Run #596全成功、固定head独立review `BLOCKER 0 / MUST 0 / SHOULD 0`として完了した。2026-07-28のADR-2026-07-28-029でA1+B1+C1を採用し、D2の再生順、read-only、UI-only表示と試験条件を確定した。D2製品実装は本docs-only決定PRのmerge後まで開始しない。
+PR #146の契約監査は17文書、製品コード変更なしでmainへ反映済みである。後続の人間判断H1=E1、H2=L1、H3=M1と計測専用`tools/h3/`はPR #147 final head `1ba671f7`、merge `24a089c`でmainへ反映された。CI Run #460とmerge後CI Run #461は全job成功し、固定headの最終独立reviewは全3系統`BLOCKER 0 / MUST 0`だった。PR #148 merge `fbdeb357`で24時間配信基盤、PR #149 merge `536318f`でPages rootのサービス本体と`/h3/`の分離を実装した。T1 Slice AはPR #153 final head `7f684a7`、merge `e8fac95`としてmainへ反映済みで、CI Run #489と固定headの独立reviewを通過した。P1 Slice CはPR #154 final head `fdf75f0`、merge `1c700e7`としてmainへ反映済みで、CI Run #492と固定headの独立review `BLOCKER 0 / MUST 0 / SHOULD 0`を通過した。2026-07-23の人間判断により、正式B0の4端末収集は当面保留し、H3を問題発生時の診断手段として維持する。2026-07-24の人間判断ADR-2026-07-24-027でSlice BをB1とB2へ分割し、PR #157 final head `834cc38397c300895f50c1efdb86d94f3870a0a8`、merge `bf13cac3db854c30b33e9b2ef97d389a2372e961`でB1をmainへ反映した。CI Run #501は全job成功し、非GitHub・非Opusの固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。B2の数値budget、warning、hard cap、採用上限での実機測定、Group 12完了判定は、後続の明示判断まで開始しない。2026-07-27のADR-2026-07-27-028でA1+B1を採用し、Slice DをD1〜D4へ分けた。D1はPR #201 final head `25cd3327b93850f1af1733c2b43585e3fa0a667b`、merge `c1d08e3b4cadd7c3a3064ab8e824b17f67feb243`でmainへ反映し、CI Run #596全成功、固定head独立review `BLOCKER 0 / MUST 0 / SHOULD 0`として完了した。2026-07-28のADR-2026-07-28-029でA1+B1+C1を採用し、D2の再生順、read-only、UI-only表示と試験条件を確定した。docs-only決定PR #203 merge `73f0eafe69dd42c820f92e9f039e49fe2e2d9d28`後、D2はPR #204 final head `8ebeb279e9d7b9ef9a15700d80d4a6cd7ab1d57f`、merge `eeaea39522d0f31bfe786ca0da27176bfd5ee859`でmainへ反映した。CI Run #603のclean attemptはunit 763件、Chromium E2E 168件、H3、Pages open / closed routeをすべて成功し、固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。
 
-直前文末の「merge後まで開始しない」はmerge前Gateの履歴である。docs-only決定PR #203はmerge `73f0eafe69dd42c820f92e9f039e49fe2e2d9d28`でmainへ反映され、D2製品実装はそのmainから別Draft PRで開始して現在は実装・検証中である。
+2026-07-29のADR-2026-07-29-030でD3の`P1+A1+B1+C1`を承認した。D3の製品実装は、このdocs-only決定PRがmainへmergeされた後に別Draft PRで開始する。D4、B2、物理iPhone SafariのGroup 12 closeout Gateは未完了のまま維持する。
 
 ## 2. 監査方法と現状
 
@@ -180,13 +180,13 @@ Frameを1件も割り当てる前に、UI、意味検証、bake関数が同じ�
 | B2 | 資源数値Gate | 生成量表示、採用後のwarning / hard cap、資源超過の原子的拒否 | H3数値決定、採用上限でPC / iPhone / iPad product-path実測、Group 12完了判定 |
 | C | P1 | `Part.layerIds`だけの置換UIとinspection | L1拒否、exact write-set、1 History、次回bakeのみ反映 |
 | D1 | preview安全 | 永続編集防護、明示停止、一時的な出現位置 | PR #201 / CI #596 / 固定head独立reviewで完了 |
-| D2 | onion skin | 選択中Animationの再生順による前後1出現、loop端、反復Frameの出現位置選択、read-only、UI-only、固定25% | A1+B1+C1 accepted。別製品Draft PRで実装・検証中 |
-| D3 | event編集 | event追加・名前変更・参照Frame変更・削除。payload編集は除外 | 後続の明示判断まで未着手 |
+| D2 | onion skin | 選択中Animationの再生順による前後1出現、loop端、反復Frameの出現位置選択、read-only、UI-only、固定25% | PR #204 / CI #603 / 固定head独立reviewで完了 |
+| D3 | event編集 | 選択中Animationのevent追加・名前変更・参照Frame変更・削除。payload編集は除外 | P1+A1+B1+C1 contract accepted。製品実装はdocs-only決定PRのmerge後に別Draft PRで開始 |
 | D4 | frame alignment | 別の契約監査後に実装 | 後続の明示判断まで未着手 |
 
 PR #154はSlice Cだけを扱い、既存Part 1件の`layerIds`差し替えUI、H2=L1検証、read-only inspection、H2違反だけを割当前に止める狭いbake refusal、History・保存roundtripを実装した。T1のschema・scheduler・export契約は変更していない。
 
-ADR-2026-07-24-027により、後続をB1とB2へ分けた。B1は有限値・座標・参照・構造検査とR1をPR #157で実装し、資源上限を先取りしていない。B2はH3数値と別の人間承認後に扱う。D1はPR #201で完了し、D2はADR-2026-07-28-029の契約に従って別製品Draft PRで実装・検証中である。D3のevent編集とD4のframe alignmentは後続判断まで未着手とする。
+ADR-2026-07-24-027により、後続をB1とB2へ分けた。B1は有限値・座標・参照・構造検査とR1をPR #157で実装し、資源上限を先取りしていない。B2はH3数値と別の人間承認後に扱う。D1はPR #201、D2はPR #204で完了した。D3のevent編集はADR-2026-07-29-030で契約承認済みだが、製品実装は開始していない。D4のframe alignmentは後続判断まで未着手とする。
 
 1 PR 1 sliceを守る。schemaを変更するT1と、schema不要のR1/P1を同じ製品PRへ混ぜない。各実装PRは固定headでlint、format、build、全unit、Chromium E2Eを成功させ、skip / retryを理由なく残さない。
 
@@ -200,12 +200,13 @@ ADR-2026-07-24-027により、後続をB1とB2へ分けた。B1は有限値・�
 | P1 | missing / duplicate / empty / order / ownership、他field不変 | 既存bake不変、次回bake反映、1 History、Undo / Redo、reload | touch選択、長いLayer一覧、keyboard後の確定 / 取消 |
 | D1 | preview guard、保存しないoccurrence index | pan・zoom・Layer選択、保存編集拒否、IndexedDB不変、明示停止、停止後編集再開、反復Frame / loop / rewind | 物理SafariはGroup 12 closeoutへ残す |
 | D2 | 再生順の前後1出現、loop端、反復Frameの出現位置選択、赤系の「前」・青系の「次」、固定25%、UI-only | `A → B → A`の1番目・3番目の選択、初期off、前・次の個別切替、再生中非表示、停止後復元、Asset / History不変、reloadでoff、375 × 667 / 44px / 横overflowなし | 物理SafariはGroup 12 closeoutへ残す |
+| D3 | exact write-set、global unique event ID、重複名、空名・0 Frame拒否、順序・payload・未知項目保持、反復Frameの全出現・全loop発火、入力Asset不変。新規追加・明示参照変更ではAnimation外・参照切れFrameを拒否し、既存の無効参照は読込・表示・名前変更で保持 | add / rename / ref change / delete、Enter / blurの1 History、Enter後blurの二重commitなし、Esc取消、削除cancel / confirm、Undo / Redo、IndexedDB / reload、preview guard、375 × 667 / 44px / 16px input / keyboard / touch emulation / 横overflowなし | 物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはGroup 12 closeoutへ残す |
 
 Playwrightのmobile viewportは実iPhone Safariの代替にしない。Group 12完了前にsafe area、software keyboard、入力zoom、orientation、touch target、bake時のmemoryとreloadを実機で記録する。
 
 ## 10. 互換性と対象外
 
-- T1はAsset 0.2.0のoptional field追加で、migration、IndexedDB layout、`.casproj`配置を変えない。R1 / P1はschemaを変えない。
+- T1はAsset 0.2.0のoptional field追加で、migration、IndexedDB layout、`.casproj`配置を変えない。R1 / P1 / D3はschemaを変えない。
 - Atlasへduration / eventを追加する変更はChameleon Atlas 0.1.0の形式変更なのでGroup 12では行わない。
 - GIF / APNG importは現行のuniform fps + loss表示を維持し、T1と同時に自動拡張しない。
 - linked Familyのrig refresh、rebakeによる既存Frame置換、native rig export、collider override / polygon、IK、mesh、physics、state machineは対象外。
@@ -346,3 +347,39 @@ D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.caspr
 - 色、透明度、表示枚数の利用者設定と端末内保存。
 - schema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependency。
 - D3 event編集、D4 frame alignment、event payload編集、B2資源上限、Group 12完了判定。
+
+## 16. PR #204 merge後closeoutとD3 Gate（ADR-2026-07-29-030）
+
+### 16.1 D2 closeout
+
+- PR #204 final head `8ebeb279e9d7b9ef9a15700d80d4a6cd7ab1d57f`、merge `eeaea39522d0f31bfe786ca0da27176bfd5ee859`でD2をmainへ反映した。
+- CI Run #603のclean attemptはlint、format、build、unit 763件、Chromium E2E 168件、H3 Chromium、Pages open / closed routeを含め全job成功し、failed / flaky / retry / skippedは0件だった。
+- 固定head独立reviewの最終結果は`BLOCKER 0 / MUST 0 / SHOULD 0`である。
+- D2は`implemented / CI-passed / independently-verified / merged`とする。物理iPhone SafariはGroup 12 closeoutへ残す。
+
+### 16.2 D3の参照Frameと追加契約
+
+- D3は選択中Animationのeventだけを編集する。参照候補は、そのAnimationの`frameIds`が実際に参照する有効なFrame IDに限定する。
+- 同じFrame IDが反復する場合、候補は最初の出現順を維持して重複除去する。eventはFrame ID参照のままなので、そのFrameの全出現と全loopで発火する。出現位置固有eventは導入しない。
+- 既存eventが存在しないFrameまたは選択中Animation外のFrameを参照していても、自動削除・自動再割当しない。無効状態を表示し、利用者の明示的な参照変更または削除を待つ。
+- 追加時は名前と参照Frameを明示選択してから確定する。有効な参照候補が0件なら追加を無効化または拒否する。
+- 空白だけの名前は拒否する。trimは空判定だけに使い、空でない名前の文字列を正規化しない。重複名は許可する。
+- 追加eventにはAsset全体で一意なevent IDを割り当て、payloadは追加せず、選択中Animationの`events`末尾へ追加する。
+
+### 16.3 D3の編集・削除・履歴契約
+
+- 名前変更は対象eventの`name`だけ、参照変更は`frameId`だけを変更する。既存eventの`id`、payload、未知項目、配列位置、他event、Animationの未知項目を維持する。
+- 削除は確認を必須とし、対象eventだけを削除する。残るeventの順序と内容を変えない。確認取消はAssetとHistoryを変えない。
+- 編集中の入力値はUI draftに置く。Enterまたは編集領域からのフォーカス離脱で最大1 Historyをcommitし、Enter後のblurで二重commitしない。Escは取消し、Asset、History、autosaveを変えない。
+- add、参照変更、確認済みdeleteはそれぞれ1 Historyとする。renameも確定単位で1 Historyとし、no-opではHistoryを作らない。
+- D1 / D2のpreview guardを維持し、preview中の永続event編集を拒否する。
+- 保存後のIndexedDB、reload、Undo / Redoでevent ID、名前、`frameId`、payload、未知項目、順序が一致することを必須にする。
+
+### 16.4 D3の合格条件と対象外
+
+- Unit / contractでexact write-set、global unique ID、重複名、空名・0 Frame拒否、順序・payload・未知項目保持、反復Frameの全出現・全loop発火、入力Asset不変を確認する。新規追加または明示的な参照変更ではAnimation外・参照切れFrameを拒否し、既存の無効参照は読み込み・表示・名前編集で保持して自動削除・自動再割当しないことを確認する。
+- Chromium E2Eでadd / rename / ref change / delete、Enter / blurの1 History、Enter後blurの二重commitなし、Esc取消、削除cancel / confirm、Undo / Redo、IndexedDB / reload、preview guardを確認する。
+- Chromiumの375 × 667で44px以上の操作対象、16px以上の入力文字、keyboard操作、入力zoom防止、touch emulation、横overflowなしを確認する。物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはGroup 12 closeout Gateへ残し、Playwrightのmobile viewportで代替しない。
+- D3製品実装は、このdocs-only決定PRがmainへmergeされた後に、最新mainから別の1 branch / 1 Draft PR / 単一writerで行う。
+- payload編集、event並べ替え、出現位置固有event、Frame削除時のcascade、D4 frame alignment、B2資源上限、Group 12完了判定は対象外とする。
+- schema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependencyを変更しない。今回のdocs-only PRでは製品コード、Ready化、mergeを行わない。

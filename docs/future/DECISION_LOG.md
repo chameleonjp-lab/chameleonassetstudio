@@ -1,6 +1,6 @@
 # Decision Log
 
-最終更新日: 2026-07-28
+最終更新日: 2026-07-29
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 重要方針の変更経緯・決定記録
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
@@ -1161,8 +1161,9 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 - 対象: Group 12 `2D-3-TIMELINE + 2D-3-RIG` のTimeline UX / Slice D2
 - 基準main: `89d62786d008f777e753d3fbb89a44c65b00e8d2`
 - D1: implemented / CI-passed / independently-verified / merged
-- D2: contract accepted / product implementation and verification in progress
-- D3 / D4、B2 numeric budget / warning / hard cap: pending
+- D2: implemented / CI-passed / independently-verified / merged（PR #204、CI Run #603）
+- D3はADR-2026-07-28-029時点ではpending。現在の契約はADR-2026-07-29-030を正本とする。
+- D4、B2 numeric budget / warning / hard cap: pending
 
 ### 確認できた事実
 
@@ -1193,3 +1194,58 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 - onion skinを表示したままの編集、色・透明度・表示枚数の利用者設定、端末内への設定保存。
 - D3のevent編集、D4のframe alignment、event payload編集、B2の資源上限、Group 12完了判定。
 - Ready化、merge、Pages配信。
+
+### 実装結果
+
+- D2はPR #204 final head `8ebeb279e9d7b9ef9a15700d80d4a6cd7ab1d57f`、merge `eeaea39522d0f31bfe786ca0da27176bfd5ee859`でmainへ反映した。
+- CI Run #603のclean attemptはlint、format、build、unit 763件、Chromium E2E 168件、H3 Chromium、Pages open / closed routeを含め全job成功し、failed / flaky / retry / skippedは0件だった。
+- 固定head独立reviewの最終結果は`BLOCKER 0 / MUST 0 / SHOULD 0`である。
+- D2は`implemented / CI-passed / independently-verified / merged`とする。schema、保存形式、export、dependencyはPR #204で変更していない。
+
+## ADR-2026-07-29-030: D2をcloseoutし、D3 event編集をP1+A1+B1+C1で固定する
+
+### 状態
+
+- accepted（2026-07-29 人間承認、P1+A1+B1+C1）
+- 対象: Group 12 `2D-3-TIMELINE + 2D-3-RIG` のTimeline UX / Slice D3
+- 基準main: `eeaea39522d0f31bfe786ca0da27176bfd5ee859`
+- D2: implemented / CI-passed / independently-verified / merged
+- D3: contract accepted / product implementation not started
+- D4、B2 numeric budget / warning / hard cap: pending
+
+### 確認できた事実
+
+- `Animation.events`はevent ID、名前、Frame ID、optional payloadを持ち、既存の発火意味はFrame ID単位である。
+- 1つのAnimationが同じFrame IDを複数回参照できるため、eventを出現位置へ変換すると既存の発火意味と保存契約が変わる。
+- 選択中Animation外または存在しないFrameを参照する既存eventは入力として存在し得るため、画面表示時の自動削除や自動再割当はデータ損失になる。
+- event編集を通常の入力changeごとにAssetへ反映すると、History、autosave、Enter後のblurが複数commitを作る可能性がある。
+- D1 / D2のpreview guardはpreview中の永続編集を拒否する境界なので、D3でも維持する必要がある。
+
+### 決定
+
+- **P1**: D2 closeoutとD3契約を1つのdocs-only Draft PRへまとめる。D3製品実装は、そのPRがmainへmergeされた後に、最新mainから別の1 branch / 1 Draft PR / 単一writerで行う。
+- **A1**: 参照候補は選択中Animationの`frameIds`が実際に参照する有効なFrame IDに限定し、最初の出現順を維持して重複除去する。eventはFrame ID参照のままとし、反復Frameの全出現と全loopで発火する。
+- 既存eventが存在しないFrameまたは選択中Animation外のFrameを参照していても、自動削除・自動再割当しない。無効状態を表示し、利用者の明示的な参照変更または削除を待つ。
+- **B1**: 追加は名前と参照Frameを明示選択してから確定する。有効な参照候補が0件なら追加を無効化または拒否する。
+- 空白だけの名前は拒否する。trimは空判定だけに使い、空でない名前を正規化しない。重複名は許可する。
+- 追加eventにはAsset全体で一意なevent IDを割り当て、payloadは追加せず、選択中Animationの`events`末尾へ追加する。
+- **C1**: 名前変更は対象eventの`name`だけ、参照変更は`frameId`だけを変える。既存eventの`id`、payload、未知項目、配列位置、他event、Animationの未知項目を維持する。
+- 削除は確認を必須とし、対象eventだけを削除する。確認取消ではAssetとHistoryを変えず、確認後も残るeventの順序と内容を変えない。
+- 編集中の値はUI draftに置く。Enterまたは編集領域からのフォーカス離脱で最大1 Historyをcommitし、Enter後のblurで二重commitしない。Escは取消し、Asset、History、autosaveを変えない。
+- add、rename、参照変更、確認済みdeleteは各確定単位で1 Historyとし、no-opではHistoryを作らない。
+- D1 / D2のpreview guardを維持し、preview中の永続event編集を拒否する。
+
+### 合格条件
+
+- Unit / contractでexact write-set、Asset全体で一意なevent ID、重複名、空名・0 Frame拒否、順序・payload・未知項目保持、反復Frameの全出現・全loop発火、入力Asset不変を確認する。新規追加または明示的な参照変更ではAnimation外・参照切れFrameを拒否し、既存の無効参照は読み込み・表示・名前編集で保持して自動削除・自動再割当しないことを確認する。
+- Chromium E2Eでadd / rename / ref change / delete、Enter / blurの1 History、Enter後blurの二重commitなし、Esc取消、削除cancel / confirm、Undo / Redo、IndexedDB / reload、preview guardを確認する。
+- 保存・reload後もevent ID、名前、`frameId`、payload、未知項目、配列順が一致することを確認する。
+- Chromiumの375 × 667で44px以上の操作対象、16px以上の入力文字、keyboard操作、入力zoom防止、touch emulation、横overflowなしを確認する。
+- 物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはGroup 12 closeout Gateへ残し、Playwrightのmobile viewportで代替しない。
+
+### 変更しないこと
+
+- payload編集、event並べ替え、出現位置固有event、Frame削除時のcascade。
+- schema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependency。
+- D4のframe alignment、B2の資源上限、Group 12完了判定。
+- 今回のdocs-only PRでの製品コード変更、Ready化、merge、Pages配信。
