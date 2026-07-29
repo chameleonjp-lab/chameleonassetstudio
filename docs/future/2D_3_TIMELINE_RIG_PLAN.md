@@ -4,7 +4,7 @@
 work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 監査基準: `main@236571c241bf84747f71f260f3bea99e6abe7f25`
 マージ後基準: PR #146 merge `cb21ea4` / PR #147 final head `1ba671f7` / merge `24a089c` / PR #148 final head `0cfc1ea` / merge `fbdeb357` / PR #149 merge `536318f` / PR #153 merge `e8fac95` / PR #154 final head `fdf75f0` / merge `1c700e7` / PR #157 final head `834cc38` / merge `bf13cac` / PR #201 final head `25cd332` / merge `c1d08e3` / PR #204 final head `8ebeb27` / merge `eeaea39`
-状態: `T1 Slice A merged / P1 Slice C merged / R1 Slice B1 merged and independently verified / Slice B2 numeric Gate pending / Slice D1-D2 merged and independently verified / Slice D3 P1+A1+B1+C1 contract accepted, product implementation not started / Slice D4 pending / formal B0 deferred`
+状態: `T1 Slice A merged / P1 Slice C merged / R1 Slice B1 merged and independently verified / Slice B2 numeric Gate pending / Slice D1-D2 merged and independently verified / Slice D3 P1+A1+B1+C1 product implementation complete, CI/review pending / Slice D4 pending / formal B0 deferred`
 関連: `docs/adr/0008-motion-time-semantics.md`, `docs/adr/0009-animation-event-boundary.md`, `docs/adr/0021-frame-duration-semantics.md`, `docs/adr/0022-rig-flip-and-bake-parity.md`, `docs/adr/0023-part-layer-replacement.md`, `docs/future/2D_3_H3_MEASUREMENT_PROTOCOL.md`
 
 ---
@@ -20,6 +20,8 @@ work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 PR #146の契約監査は17文書、製品コード変更なしでmainへ反映済みである。後続の人間判断H1=E1、H2=L1、H3=M1と計測専用`tools/h3/`はPR #147 final head `1ba671f7`、merge `24a089c`でmainへ反映された。CI Run #460とmerge後CI Run #461は全job成功し、固定headの最終独立reviewは全3系統`BLOCKER 0 / MUST 0`だった。PR #148 merge `fbdeb357`で24時間配信基盤、PR #149 merge `536318f`でPages rootのサービス本体と`/h3/`の分離を実装した。T1 Slice AはPR #153 final head `7f684a7`、merge `e8fac95`としてmainへ反映済みで、CI Run #489と固定headの独立reviewを通過した。P1 Slice CはPR #154 final head `fdf75f0`、merge `1c700e7`としてmainへ反映済みで、CI Run #492と固定headの独立review `BLOCKER 0 / MUST 0 / SHOULD 0`を通過した。2026-07-23の人間判断により、正式B0の4端末収集は当面保留し、H3を問題発生時の診断手段として維持する。2026-07-24の人間判断ADR-2026-07-24-027でSlice BをB1とB2へ分割し、PR #157 final head `834cc38397c300895f50c1efdb86d94f3870a0a8`、merge `bf13cac3db854c30b33e9b2ef97d389a2372e961`でB1をmainへ反映した。CI Run #501は全job成功し、非GitHub・非Opusの固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。B2の数値budget、warning、hard cap、採用上限での実機測定、Group 12完了判定は、後続の明示判断まで開始しない。2026-07-27のADR-2026-07-27-028でA1+B1を採用し、Slice DをD1〜D4へ分けた。D1はPR #201 final head `25cd3327b93850f1af1733c2b43585e3fa0a667b`、merge `c1d08e3b4cadd7c3a3064ab8e824b17f67feb243`でmainへ反映し、CI Run #596全成功、固定head独立review `BLOCKER 0 / MUST 0 / SHOULD 0`として完了した。2026-07-28のADR-2026-07-28-029でA1+B1+C1を採用し、D2の再生順、read-only、UI-only表示と試験条件を確定した。docs-only決定PR #203 merge `73f0eafe69dd42c820f92e9f039e49fe2e2d9d28`後、D2はPR #204 final head `8ebeb279e9d7b9ef9a15700d80d4a6cd7ab1d57f`、merge `eeaea39522d0f31bfe786ca0da27176bfd5ee859`でmainへ反映した。CI Run #603のclean attemptはunit 763件、Chromium E2E 168件、H3、Pages open / closed routeをすべて成功し、固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。
 
 2026-07-29のADR-2026-07-29-030でD3の`P1+A1+B1+C1`を承認した。D3の製品実装は、このdocs-only決定PRがmainへmergeされた後に別Draft PRで開始する。D4、B2、物理iPhone SafariのGroup 12 closeout Gateは未完了のまま維持する。
+
+D3製品実装では、選択中Animationの有効なFrame候補からeventを追加し、名前変更、参照Frame変更、確認付き削除を行うUIと純粋なmodel操作を追加した。追加・変更・削除は各1 History、no-opと取消は0 Historyとし、参照切れの既存event、payload、未知項目、配列順を自動変更しない。schema、version、migration、保存形式、export、dependencyは変更していない。CIと独立review、mainへのmergeは未完了であり、D3 closeoutとは扱わない。
 
 ## 2. 監査方法と現状
 
