@@ -1425,7 +1425,9 @@ test.describe('D4 frame alignment', () => {
       buffer: casprojBytes,
     });
     await page.getByRole('button', { name: '「D4位置合わせ保存テスト」を開く' }).click();
-    expect(await readStoredAsset(page, assetId)).toEqual(storedAfter);
+    const importedAsset = await readStoredAsset(page);
+    expect(importedAsset.id).not.toBe(assetId);
+    expect({ ...importedAsset, id: assetId }).toEqual(storedAfter);
   });
 
   test('取消button・入力中Esc・0差分・Animation切替を非保存で終了する', async ({ page }) => {
