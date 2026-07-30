@@ -2407,6 +2407,13 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .timeline-frame-alignment button,
+  .timeline-frame-alignment input,
+  .timeline-frame-alignment select {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
   .timeline-onion-skin-toggle {
     min-width: 44px;
     min-height: 44px;

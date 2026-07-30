@@ -1497,14 +1497,14 @@ test.describe('D4 frame alignment', () => {
 
     await page.getByRole('button', { name: '再生', exact: true }).click();
     await page.getByRole('button', { name: '位置合わせを開始' }).click();
-    await expect(page.getByRole('alert')).toContainText('再生中');
+    await expect(page.getByRole('alert').filter({ hasText: '再生中' })).toBeVisible();
     expect(await readStoredAsset(page, assetId)).toEqual(storedBefore);
     expect(await readStoredProject(page)).toEqual(projectBefore);
     await page.getByRole('button', { name: '停止', exact: true }).click();
 
     await page.getByRole('button', { name: 'alignment_reference', exact: true }).click();
     await page.getByRole('button', { name: '位置合わせを開始' }).click();
-    await expect(page.getByRole('alert')).toContainText('プレビュー中');
+    await expect(page.getByRole('alert').filter({ hasText: 'プレビュー中' })).toBeVisible();
     expect(await readStoredAsset(page, assetId)).toEqual(storedBefore);
     expect(await readStoredProject(page)).toEqual(projectBefore);
     await page.getByRole('button', { name: '停止', exact: true }).click();
@@ -1512,7 +1512,7 @@ test.describe('D4 frame alignment', () => {
     await page.getByRole('button', { name: '位置合わせを開始' }).click();
     await expect(page.getByRole('button', { name: '再生', exact: true })).toBeDisabled();
     await page.getByLabel('フレーム名').first().fill('blocked');
-    await expect(page.getByRole('alert')).toContainText('位置合わせ中');
+    await expect(page.getByRole('alert').filter({ hasText: '位置合わせ中' })).toBeVisible();
     await page.waitForTimeout(900);
     expect(await readStoredAsset(page, assetId)).toEqual(storedBefore);
     expect(await readStoredProject(page)).toEqual(projectBefore);
@@ -1548,7 +1548,7 @@ test.describe('D4 frame alignment', () => {
       const projectBefore = await readStoredProject(page);
 
       await page.getByRole('button', { name: '位置合わせを開始' }).click();
-      await expect(page.getByRole('alert')).toContainText(fixture.reason);
+      await expect(page.getByRole('alert').filter({ hasText: fixture.reason })).toBeVisible();
       await expect(page.getByRole('button', { name: '位置合わせを開始' })).toBeVisible();
       expect(await readStoredAsset(page, assetId)).toEqual(storedBefore);
       expect(await readStoredProject(page)).toEqual(projectBefore);
