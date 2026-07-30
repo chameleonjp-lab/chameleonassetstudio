@@ -1254,11 +1254,6 @@ test.describe('D4 frame alignment', () => {
     });
     await previousOnionSkin.check();
     await expect(nextOnionSkin).not.toBeChecked();
-    await page.getByRole('button', { name: 'alignment_target', exact: true }).click();
-    await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
-    const backgroundAtReference = await readCanvasPixelAtWorld(page, { x: 2, y: 4 }, 32);
-    await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
-    await page.getByRole('button', { name: '停止', exact: true }).click();
 
     const storedBefore = await readStoredAsset(page, assetId);
     const projectBefore = await readStoredProject(page);
@@ -1355,11 +1350,20 @@ test.describe('D4 frame alignment', () => {
     await expect(canvas).toHaveAttribute('data-onion-skin-next', 'false');
     const referencePixel = await readCanvasPixelAtWorld(page, { x: 2, y: 4 }, 32);
     const targetPixel = await readCanvasPixelAtWorld(page, { x: 16, y: 4 }, 32);
-    for (const [index, purpleChannel] of [142, 68, 173].entries()) {
-      const expectedReference = Math.round(
-        backgroundAtReference[index] * 0.5 + purpleChannel * 0.5,
-      );
-      expect(Math.abs(referencePixel[index] - expectedReference)).toBeLessThanOrEqual(3);
+    const purple = [142, 68, 173] as const;
+    // mobile view切替でCanvasが再中央寄せされるため、同じworld座標でも市松模様の
+    // 明暗cellは変わり得る。現在cellのどちらか一方とRGB全体が50%合成になっていることを確認する。
+    expect(
+      [233, 201].some((checkerChannel) =>
+        purple.every(
+          (purpleChannel, index) =>
+            Math.abs(
+              referencePixel[index] - Math.round(checkerChannel * 0.5 + purpleChannel * 0.5),
+            ) <= 3,
+        ),
+      ),
+    ).toBe(true);
+    for (const [index, purpleChannel] of purple.entries()) {
       expect(Math.abs(targetPixel[index] - purpleChannel)).toBeLessThanOrEqual(2);
     }
     expect(referencePixel[3]).toBe(255);
