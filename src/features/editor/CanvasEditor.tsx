@@ -40,6 +40,8 @@ import {
 } from './colliderEditing';
 import { ONION_SKIN_NEXT_COLOR, ONION_SKIN_OPACITY, ONION_SKIN_PREVIOUS_COLOR } from './onionSkin';
 
+export const FRAME_ALIGNMENT_REFERENCE_OPACITY = 0.5;
+
 /** 汎用font family候補（契約 §5 A: 再編集不可・可搬性のため汎用candidateのみ）。 */
 export type RasterTextFontFamily = 'sans-serif' | 'serif' | 'monospace';
 
@@ -64,6 +66,8 @@ interface CanvasEditorProps {
   onionSkinPreviousAsset?: Asset | null;
   /** 現在Frameより前に描く、保存されない次Frameの参照表示。 */
   onionSkinNextAsset?: Asset | null;
+  /** D4で対象Frameより前に無着色・半透明で描く、保存されない基準Frame。 */
+  alignmentReferenceAsset?: Asset | null;
   tool: CanvasTool;
   selectedLayerId: string | null;
   /** Frame preview中は保存を伴う操作を止め、pan・zoom・layer選択だけを許可する。 */
@@ -194,6 +198,7 @@ export function CanvasEditor({
   asset,
   onionSkinPreviousAsset = null,
   onionSkinNextAsset = null,
+  alignmentReferenceAsset = null,
   tool,
   selectedLayerId,
   readOnly = false,
@@ -302,6 +307,7 @@ export function CanvasEditor({
           ...asset.layers,
           ...(onionSkinPreviousAsset?.layers ?? []),
           ...(onionSkinNextAsset?.layers ?? []),
+          ...(alignmentReferenceAsset?.layers ?? []),
         ]
           .map((layer) => layer.textureId)
           .filter((id): id is string => Boolean(id)),
@@ -342,6 +348,7 @@ export function CanvasEditor({
     asset.layers,
     onionSkinPreviousAsset?.layers,
     onionSkinNextAsset?.layers,
+    alignmentReferenceAsset?.layers,
   ]);
 
   useEffect(
@@ -446,11 +453,22 @@ export function CanvasEditor({
           ]
         : []),
     ];
+    const referenceOverlay = alignmentReferenceAsset
+      ? {
+          opacity: FRAME_ALIGNMENT_REFERENCE_OPACITY,
+          layers: alignmentReferenceAsset.layers.map((layer) => ({
+            layer,
+            textureSize: textureSizeFor(alignmentReferenceAsset, layer.textureId),
+            bitmap: layer.textureId ? (bitmaps.get(layer.textureId)?.source ?? null) : null,
+          })),
+        }
+      : undefined;
     renderScene(ctx, {
       view,
       viewport,
       canvasSize: displayAsset.canvasSize,
       layers,
+      referenceOverlay,
       onionSkins,
       selectedLayerId,
     });
@@ -617,6 +635,7 @@ export function CanvasEditor({
     displayAsset,
     onionSkinPreviousAsset,
     onionSkinNextAsset,
+    alignmentReferenceAsset,
     bitmaps,
     selectedLayerId,
     cropRectScreen,
@@ -1441,6 +1460,8 @@ export function CanvasEditor({
         data-onion-skin-previous={onionSkinPreviousAsset ? 'true' : 'false'}
         data-onion-skin-next={onionSkinNextAsset ? 'true' : 'false'}
         data-onion-skin-opacity={String(ONION_SKIN_OPACITY)}
+        data-frame-alignment-reference={alignmentReferenceAsset ? 'true' : 'false'}
+        data-frame-alignment-reference-opacity={String(FRAME_ALIGNMENT_REFERENCE_OPACITY)}
         style={{
           width: viewport.width,
           height: viewport.height,

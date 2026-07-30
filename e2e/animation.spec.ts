@@ -44,10 +44,40 @@ async function setLayerX(page: Page, value: number): Promise<void> {
 }
 
 interface StoredAnimationAsset {
+  id: string;
+  displayName: string;
+  updatedAt: string;
+  canvasSize: { width: number; height: number };
   layers: Array<{
-    transform: { position: { x: number; y: number } };
+    id: string;
+    name: string;
+    layerType: string;
+    visible: boolean;
+    opacity: number;
+    locked: boolean;
+    transform: {
+      position: { x: number; y: number };
+      scale: { x: number; y: number };
+      rotation: number;
+    };
   }>;
-  frames: Array<{ id: string; name: string; durationMs?: number }>;
+  frames: Array<{
+    id: string;
+    name: string;
+    durationMs?: number;
+    layerStates: Array<{
+      layerId: string;
+      visible?: boolean;
+      opacity?: number;
+      transform?: {
+        position: { x: number; y: number };
+        scale: { x: number; y: number };
+        rotation: number;
+      };
+      [key: string]: unknown;
+    }>;
+    [key: string]: unknown;
+  }>;
   animations: Array<{
     id: string;
     name: string;
@@ -56,6 +86,7 @@ interface StoredAnimationAsset {
     frameIds: string[];
     events?: StoredAnimationEvent[];
   }>;
+  [key: string]: unknown;
 }
 
 interface StoredAnimationEvent {
@@ -75,21 +106,71 @@ interface StoredAnimationEventFixture {
   [key: string]: unknown;
 }
 
-/** IndexedDB の assets ストアから最初のアセットを読む。 */
-async function readStoredAsset(page: Page): Promise<StoredAnimationAsset> {
+interface StoredProject {
+  id: string;
+  updatedAt: string;
+  assets: Array<{ id: string; [key: string]: unknown }>;
+  [key: string]: unknown;
+}
+
+/** IndexedDB の assets ストアから、指定ID（省略時は先頭）のアセットを読む。 */
+async function readStoredAsset(page: Page, assetId?: string): Promise<StoredAnimationAsset> {
+  return page.evaluate(async (targetAssetId) => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('chameleon-asset-studio');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const records = await new Promise<Array<{ data: StoredAnimationAsset }>>((resolve, reject) => {
+      const request = db.transaction('assets', 'readonly').objectStore('assets').getAll();
+      request.onsuccess = () => resolve(request.result as Array<{ data: StoredAnimationAsset }>);
+      request.onerror = () => reject(request.error);
+    });
+    db.close();
+    const record = targetAssetId
+      ? records.find((candidate) => candidate.data.id === targetAssetId)
+      : records[0];
+    if (!record) {
+      throw new Error(`対象Assetが見つかりません: ${targetAssetId ?? '先頭'}`);
+    }
+    return record.data;
+  }, assetId);
+}
+
+async function readStoredAssetCount(page: Page): Promise<number> {
   return page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open('chameleon-asset-studio');
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
-    const records = await new Promise<Array<{ data: unknown }>>((resolve, reject) => {
-      const request = db.transaction('assets', 'readonly').objectStore('assets').getAll();
+    const count = await new Promise<number>((resolve, reject) => {
+      const request = db.transaction('assets', 'readonly').objectStore('assets').count();
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
     db.close();
-    return records[0]?.data as never;
+    return count;
+  });
+}
+
+async function readStoredProject(page: Page): Promise<StoredProject> {
+  return page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('chameleon-asset-studio');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const records = await new Promise<StoredProject[]>((resolve, reject) => {
+      const request = db.transaction('projects', 'readonly').objectStore('projects').getAll();
+      request.onsuccess = () => resolve(request.result as StoredProject[]);
+      request.onerror = () => reject(request.error);
+    });
+    db.close();
+    if (!records[0]) {
+      throw new Error('保存済みProjectが見つかりません。');
+    }
+    return records[0];
   });
 }
 
@@ -160,6 +241,192 @@ async function writeStoredAnimationFixture(
     });
     db.close();
   }, fixture);
+}
+
+type FrameAlignmentFixtureFailure = 'no-layers' | 'duplicate-layer-id' | 'missing-layer-state';
+
+/** D4統合試験用に、完全LayerStateと共有・反復Frameを持つ保存済みfixtureを作る。 */
+async function writeStoredFrameAlignmentFixture(
+  page: Page,
+  assetId: string,
+  failure?: FrameAlignmentFixtureFailure,
+): Promise<void> {
+  await page.evaluate(
+    async ({ targetAssetId, failureMode }) => {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('chameleon-asset-studio');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      const readTransaction = db.transaction('assets', 'readonly');
+      const records = await new Promise<Array<{ data: StoredAnimationAsset }>>(
+        (resolve, reject) => {
+          const request = readTransaction.objectStore('assets').getAll();
+          request.onsuccess = () =>
+            resolve(request.result as Array<{ data: StoredAnimationAsset }>);
+          request.onerror = () => reject(request.error);
+        },
+      );
+      const record = records.find((candidate) => candidate.data.id === targetAssetId);
+      if (!record || record.data.layers.length === 0) {
+        db.close();
+        throw new Error('位置合わせfixtureを書き込むAsset Layerがありません。');
+      }
+      record.data.canvasSize = { width: 32, height: 32 };
+      record.data.layers.push({
+        id: 'layer_alignment_guide',
+        name: 'alignment guide',
+        layerType: 'guide',
+        visible: false,
+        opacity: 0.4,
+        locked: true,
+        transform: {
+          position: { x: 3, y: 5 },
+          scale: { x: 1, y: 1 },
+          rotation: 0,
+        },
+      });
+      record.data.futureAssetField = { preserved: true };
+
+      const states = record.data.layers.map((layer, index) => ({
+        layerId: layer.id,
+        visible: layer.visible,
+        opacity: layer.opacity,
+        transform: {
+          position: {
+            x: layer.transform.position.x + index,
+            y: layer.transform.position.y + index * 2,
+          },
+          scale: { x: 1, y: 1 },
+          rotation: 0,
+        },
+        futureLayerStateField: { preserved: true },
+      }));
+      const targetStates = structuredClone(states);
+      for (const state of targetStates) {
+        state.transform.position.x += 12;
+        state.transform.position.y += 6;
+      }
+      record.data.frames = [
+        {
+          id: 'frame_alignment_reference',
+          name: 'alignment_reference',
+          layerStates: states,
+          futureFrameField: { preserved: true },
+        },
+        {
+          id: 'frame_alignment_target',
+          name: 'alignment_target',
+          durationMs: 175,
+          layerStates: targetStates,
+          futureFrameField: { preserved: true },
+        },
+      ];
+      record.data.animations = [
+        {
+          id: 'animation_alignment_primary',
+          name: 'alignment_primary',
+          fps: 12,
+          loop: true,
+          frameIds: [
+            'frame_alignment_reference',
+            'frame_alignment_target',
+            'frame_alignment_target',
+          ],
+          events: [
+            {
+              id: 'event_alignment_target',
+              name: 'target_start',
+              frameId: 'frame_alignment_target',
+              payload: { preserved: true },
+            },
+          ],
+        },
+        {
+          id: 'animation_alignment_shared',
+          name: 'alignment_shared',
+          fps: 8,
+          loop: false,
+          frameIds: ['frame_alignment_target', 'frame_alignment_reference'],
+        },
+      ];
+
+      if (failureMode === 'no-layers') {
+        record.data.layers = [];
+      } else if (failureMode === 'duplicate-layer-id') {
+        record.data.layers.push(structuredClone(record.data.layers[0]));
+      } else if (failureMode === 'missing-layer-state') {
+        record.data.frames[1].layerStates.pop();
+      }
+
+      const writeTransaction = db.transaction('assets', 'readwrite');
+      writeTransaction.objectStore('assets').put(record);
+      await new Promise<void>((resolve, reject) => {
+        writeTransaction.oncomplete = () => resolve();
+        writeTransaction.onerror = () => reject(writeTransaction.error);
+        writeTransaction.onabort = () => reject(writeTransaction.error);
+      });
+
+      const projectReadTransaction = db.transaction('projects', 'readonly');
+      const projects = await new Promise<StoredProject[]>((resolve, reject) => {
+        const request = projectReadTransaction.objectStore('projects').getAll();
+        request.onsuccess = () => resolve(request.result as StoredProject[]);
+        request.onerror = () => reject(request.error);
+      });
+      const project = projects.find((candidate) =>
+        candidate.assets.some((entry) => entry.id === targetAssetId),
+      );
+      const projectEntry = project?.assets.find((entry) => entry.id === targetAssetId);
+      if (!project || !projectEntry) {
+        db.close();
+        throw new Error('位置合わせfixtureを書き込むProject Asset要約がありません。');
+      }
+      project.futureProjectField = { preserved: true };
+      projectEntry.futureAssetEntryField = { preserved: true };
+      const projectWriteTransaction = db.transaction('projects', 'readwrite');
+      projectWriteTransaction.objectStore('projects').put(project);
+      await new Promise<void>((resolve, reject) => {
+        projectWriteTransaction.oncomplete = () => resolve();
+        projectWriteTransaction.onerror = () => reject(projectWriteTransaction.error);
+        projectWriteTransaction.onabort = () => reject(projectWriteTransaction.error);
+      });
+      db.close();
+    },
+    { targetAssetId: assetId, failureMode: failure },
+  );
+}
+
+async function setupFrameAlignmentProject(
+  page: Page,
+  name: string,
+  failure?: FrameAlignmentFixtureFailure,
+  withSecondAsset = false,
+): Promise<string> {
+  await setupProjectWithImage(page, name, 8);
+  const originalAsset = await readStoredAsset(page);
+  const originalDisplayName = originalAsset.displayName;
+  if (withSecondAsset) {
+    const duplicateButton = page.getByRole('button', { name: '独立コピーを作成' });
+    await duplicateButton.click();
+    await expect.poll(async () => readStoredAssetCount(page)).toBe(2);
+    await expect(duplicateButton).toBeEnabled();
+  }
+  await writeStoredFrameAlignmentFixture(page, originalAsset.id, failure);
+  await page.reload();
+  await page.getByRole('button', { name: `「${name}」を開く` }).click();
+  if (withSecondAsset) {
+    await page
+      .locator('.asset-list')
+      .getByRole('button', { name: originalDisplayName, exact: true })
+      .click();
+  }
+  return originalAsset.id;
+}
+
+async function selectFrameAlignmentPair(page: Page): Promise<void> {
+  await page.getByLabel('アニメーション選択').selectOption('animation_alignment_primary');
+  await page.getByLabel('位置合わせの基準Frame').selectOption('frame_alignment_reference');
+  await page.getByLabel('位置合わせの対象Frame').selectOption('frame_alignment_target');
 }
 
 async function canvasPositionForWorld(
@@ -967,6 +1234,336 @@ test.describe('D3 event編集', () => {
   });
 });
 
+test.describe('D4 frame alignment', () => {
+  test.use({ hasTouch: true });
+
+  test('iPhone幅で共有Frame全体を1履歴で移動し、Undo・Redo・reload・casprojを保つ', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    const assetId = await setupFrameAlignmentProject(page, 'D4位置合わせ保存テスト');
+    const mobileNav = page.getByRole('navigation', { name: '画面切り替え' });
+    await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+    await selectFrameAlignmentPair(page);
+
+    const previousOnionSkin = page.getByRole('checkbox', {
+      name: /前のフレームを表示/,
+    });
+    const nextOnionSkin = page.getByRole('checkbox', {
+      name: /次のフレームを表示/,
+    });
+    await previousOnionSkin.check();
+    await expect(nextOnionSkin).not.toBeChecked();
+
+    const storedBefore = await readStoredAsset(page, assetId);
+    const projectBefore = await readStoredProject(page);
+    const undoButton = page.getByRole('button', { name: '元に戻す', exact: true });
+    const redoButton = page.getByRole('button', { name: 'やり直す', exact: true });
+    const undoTitleBefore = await undoButton.getAttribute('title');
+    const redoTitleBefore = await redoButton.getAttribute('title');
+    await expect(undoButton).toBeDisabled();
+
+    const alignmentGroup = page.getByRole('group', { name: 'フレーム位置合わせ' });
+    await expect(alignmentGroup.getByLabel('位置合わせの基準Frame').locator('..')).toContainText(
+      '基準Frame（半透明・読み取り専用）',
+    );
+    await expect(alignmentGroup.getByLabel('位置合わせの対象Frame').locator('..')).toContainText(
+      '対象Frame（通常表示・移動）',
+    );
+    const startButton = page.getByRole('button', { name: '位置合わせを開始' });
+    const startBox = await startButton.boundingBox();
+    expect(startBox).not.toBeNull();
+    expect(startBox!.width).toBeGreaterThanOrEqual(44);
+    expect(startBox!.height).toBeGreaterThanOrEqual(44);
+    await startButton.tap();
+    const draftGroup = page.getByLabel('フレーム位置合わせ調整');
+    await expect(draftGroup.getByRole('status')).toHaveText('影響: Animation 2件 / 総出現 3件');
+    await expect(previousOnionSkin).toBeChecked();
+    await expect(nextOnionSkin).not.toBeChecked();
+
+    const upButton = page.getByRole('button', { name: '上へ1px' });
+    const leftButton = page.getByRole('button', { name: '左へ1px' });
+    const rightButton = page.getByRole('button', { name: '右へ1px' });
+    const downButton = page.getByRole('button', { name: '下へ1px' });
+    const xInput = page.getByLabel('X移動量（px）');
+    const yInput = page.getByLabel('Y移動量（px）');
+    await rightButton.tap();
+    await expect(xInput).toHaveValue('1');
+    await downButton.tap();
+    await expect(yInput).toHaveValue('1');
+    await leftButton.tap();
+    await expect(xInput).toHaveValue('0');
+    await upButton.tap();
+    await expect(yInput).toHaveValue('0');
+    await xInput.selectText();
+    await xInput.pressSequentially('2.5');
+    await yInput.fill('-4');
+    await page.waitForTimeout(900);
+    expect(await readStoredAsset(page, assetId)).toEqual(storedBefore);
+    expect(await readStoredProject(page)).toEqual(projectBefore);
+    await expect(undoButton).toBeDisabled();
+    await expect(redoButton).toBeDisabled();
+    expect(await undoButton.getAttribute('title')).toBe(undoTitleBefore);
+    expect(await redoButton.getAttribute('title')).toBe(redoTitleBefore);
+
+    const confirmButton = page.getByRole('button', { name: '位置を確定' });
+    const cancelButton = page.getByRole('button', { name: '取消', exact: true });
+    for (const control of [
+      page.getByLabel('位置合わせの基準Frame'),
+      page.getByLabel('位置合わせの対象Frame'),
+      xInput,
+      yInput,
+      upButton,
+      leftButton,
+      rightButton,
+      downButton,
+      confirmButton,
+      cancelButton,
+    ]) {
+      const box = await control.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.width).toBeGreaterThanOrEqual(44);
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+    }
+    for (const input of [xInput, yInput]) {
+      expect(
+        await input.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize)),
+      ).toBeGreaterThanOrEqual(16);
+    }
+    for (const control of [upButton, leftButton, rightButton, downButton]) {
+      expect(await control.evaluate((element) => getComputedStyle(element).touchAction)).toBe(
+        'manipulation',
+      );
+    }
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      ),
+    ).toBe(false);
+
+    await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
+    const canvas = page.getByLabel('アセットキャンバス');
+    await expect(canvas).toHaveAttribute('aria-readonly', 'true');
+    await expect(canvas).toHaveAttribute('data-frame-alignment-reference', 'true');
+    await expect(canvas).toHaveAttribute('data-frame-alignment-reference-opacity', '0.5');
+    await expect(canvas).toHaveAttribute('data-onion-skin-previous', 'false');
+    await expect(canvas).toHaveAttribute('data-onion-skin-next', 'false');
+    const referencePixel = await readCanvasPixelAtWorld(page, { x: 2, y: 4 }, 32);
+    const targetPixel = await readCanvasPixelAtWorld(page, { x: 16, y: 4 }, 32);
+    const purple = [142, 68, 173] as const;
+    // mobile view切替でCanvasが再中央寄せされるため、同じworld座標でも市松模様の
+    // 明暗cellは変わり得る。現在cellのどちらか一方とRGB全体が50%合成になっていることを確認する。
+    expect(
+      [233, 201].some((checkerChannel) =>
+        purple.every(
+          (purpleChannel, index) =>
+            Math.abs(
+              referencePixel[index] - Math.round(checkerChannel * 0.5 + purpleChannel * 0.5),
+            ) <= 3,
+        ),
+      ),
+    ).toBe(true);
+    for (const [index, purpleChannel] of purple.entries()) {
+      expect(Math.abs(targetPixel[index] - purpleChannel)).toBeLessThanOrEqual(2);
+    }
+    expect(referencePixel[3]).toBe(255);
+    expect(targetPixel[3]).toBe(255);
+
+    await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+    await confirmButton.tap();
+    await expect(previousOnionSkin).toBeChecked();
+    await expect(nextOnionSkin).not.toBeChecked();
+    await expect(undoButton).toHaveAttribute('title', 'フレーム位置合わせ');
+    await expect(page.locator('.editor-save-status')).toContainText('保存済み');
+
+    const storedAfter = await readStoredAsset(page, assetId);
+    const expected = structuredClone(storedBefore);
+    expected.updatedAt = storedAfter.updatedAt;
+    const expectedTarget = expected.frames.find((frame) => frame.id === 'frame_alignment_target')!;
+    for (const state of expectedTarget.layerStates) {
+      state.transform!.position = {
+        ...state.transform!.position,
+        x: state.transform!.position.x + 2.5,
+        y: state.transform!.position.y - 4,
+      };
+    }
+    expect(storedAfter).toEqual(expected);
+
+    const projectAfter = await readStoredProject(page);
+    expect({ ...projectAfter, updatedAt: projectBefore.updatedAt }).toEqual(projectBefore);
+    expect(Date.parse(projectAfter.updatedAt)).toBeGreaterThanOrEqual(
+      Date.parse(projectBefore.updatedAt),
+    );
+
+    await undoButton.click();
+    await expect.poll(async () => readStoredAsset(page, assetId)).toEqual(storedBefore);
+    expect(await readStoredProject(page)).toEqual(projectAfter);
+    await expect(redoButton).toHaveAttribute('title', 'フレーム位置合わせ');
+    await redoButton.click();
+    await expect.poll(async () => readStoredAsset(page, assetId)).toEqual(storedAfter);
+    await expect(page.locator('.editor-save-status')).toContainText('保存済み');
+
+    await page.reload();
+    await page.getByRole('button', { name: '「D4位置合わせ保存テスト」を開く' }).click();
+    expect(await readStoredAsset(page, assetId)).toEqual(storedAfter);
+
+    await mobileNav.getByRole('button', { name: '書き出し', exact: true }).click();
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: '.casproj をダウンロード' }).tap(),
+    ]);
+    const downloadPath = await download.path();
+    expect(downloadPath).not.toBeNull();
+    const casprojBytes = await readFile(downloadPath!);
+
+    page.once('dialog', (dialog) => void dialog.accept());
+    await page.goto('/');
+    await page.getByRole('button', { name: '「D4位置合わせ保存テスト」を削除' }).click();
+    await page.getByLabel('.casproj を読み込む').setInputFiles({
+      name: 'D4位置合わせ保存テスト.casproj',
+      mimeType: 'application/zip',
+      buffer: casprojBytes,
+    });
+    await page.getByRole('button', { name: '「D4位置合わせ保存テスト」を開く' }).click();
+    const importedAsset = await readStoredAsset(page);
+    expect(importedAsset.id).not.toBe(assetId);
+    expect({ ...importedAsset, id: assetId }).toEqual(storedAfter);
+  });
+
+  test('取消button・入力中Esc・0差分・Animation切替を非保存で終了する', async ({ page }) => {
+    const assetId = await setupFrameAlignmentProject(page, 'D4取消テスト', undefined, true);
+    await selectFrameAlignmentPair(page);
+    const storedBefore = await readStoredAsset(page, assetId);
+    const projectBefore = await readStoredProject(page);
+    const undoButton = page.getByRole('button', { name: '元に戻す', exact: true });
+    const redoButton = page.getByRole('button', { name: 'やり直す', exact: true });
+    const undoTitleBefore = await undoButton.getAttribute('title');
+    const redoTitleBefore = await redoButton.getAttribute('title');
+
+    await page.getByRole('button', { name: '位置合わせを開始' }).click();
+    await page.getByLabel('X移動量（px）').fill('9');
+    await page.waitForTimeout(900);
+    expect(await readStoredAsset(page, assetId)).toEqual(storedBefore);
+    expect(await readStoredProject(page)).toEqual(projectBefore);
+    await page.getByRole('button', { name: '取消', exact: true }).click();
+    expect(await readStoredAsset(page, assetId)).toEqual(storedBefore);
+    expect(await readStoredProject(page)).toEqual(projectBefore);
+    await expect(undoButton).toBeDisabled();
+    await expect(redoButton).toBeDisabled();
+    expect(await undoButton.getAttribute('title')).toBe(undoTitleBefore);
+    expect(await redoButton.getAttribute('title')).toBe(redoTitleBefore);
+
+    await page.getByRole('button', { name: '位置合わせを開始' }).click();
+    const yInput = page.getByLabel('Y移動量（px）');
+    await yInput.fill('-3');
+    await yInput.press('Escape');
+    await expect(page.getByRole('button', { name: '位置合わせを開始' })).toBeVisible();
+    expect(await readStoredAsset(page, assetId)).toEqual(storedBefore);
+    expect(await readStoredProject(page)).toEqual(projectBefore);
+    await expect(undoButton).toBeDisabled();
+    await expect(redoButton).toBeDisabled();
+
+    await page.getByRole('button', { name: '位置合わせを開始' }).click();
+    await page.getByRole('button', { name: '位置を確定' }).click();
+    await expect(page.getByRole('button', { name: '位置合わせを開始' })).toBeVisible();
+    expect(await readStoredAsset(page, assetId)).toEqual(storedBefore);
+    expect(await readStoredProject(page)).toEqual(projectBefore);
+    await expect(undoButton).toBeDisabled();
+    await expect(redoButton).toBeDisabled();
+
+    await page.getByRole('button', { name: '位置合わせを開始' }).click();
+    await page.getByLabel('アニメーション選択').selectOption('animation_alignment_shared');
+    await expect(page.getByRole('button', { name: '位置合わせを開始' })).toBeVisible();
+    expect(await readStoredAsset(page, assetId)).toEqual(storedBefore);
+    expect(await readStoredProject(page)).toEqual(projectBefore);
+    await expect(undoButton).toBeDisabled();
+    await expect(redoButton).toBeDisabled();
+
+    await page.getByLabel('アニメーション選択').selectOption('animation_alignment_primary');
+    await page.getByLabel('位置合わせの基準Frame').selectOption('frame_alignment_reference');
+    await page.getByLabel('位置合わせの対象Frame').selectOption('frame_alignment_target');
+    await page.getByRole('button', { name: '位置合わせを開始' }).click();
+    await page.locator('.asset-list button:not([aria-pressed="true"])').click();
+    await expect(page.getByRole('button', { name: '位置を確定' })).toHaveCount(0);
+    expect(await readStoredAsset(page, assetId)).toEqual(storedBefore);
+    expect(await readStoredProject(page)).toEqual(projectBefore);
+    await expect(undoButton).toBeDisabled();
+    await expect(redoButton).toBeDisabled();
+  });
+
+  test('再生・通常Frame preview・他の保存編集との同時実行を拒否する', async ({ page }) => {
+    const assetId = await setupFrameAlignmentProject(page, 'D4防護テスト');
+    await selectFrameAlignmentPair(page);
+    const storedBefore = await readStoredAsset(page, assetId);
+    const projectBefore = await readStoredProject(page);
+    const undoButton = page.getByRole('button', { name: '元に戻す', exact: true });
+    const redoButton = page.getByRole('button', { name: 'やり直す', exact: true });
+    const undoTitleBefore = await undoButton.getAttribute('title');
+    const redoTitleBefore = await redoButton.getAttribute('title');
+
+    await page.getByRole('button', { name: '再生', exact: true }).click();
+    await page.getByRole('button', { name: '位置合わせを開始' }).click();
+    await expect(page.getByRole('alert').filter({ hasText: '再生中' })).toBeVisible();
+    expect(await readStoredAsset(page, assetId)).toEqual(storedBefore);
+    expect(await readStoredProject(page)).toEqual(projectBefore);
+    await page.getByRole('button', { name: '停止', exact: true }).click();
+
+    await page.getByRole('button', { name: 'alignment_reference', exact: true }).click();
+    await page.getByRole('button', { name: '位置合わせを開始' }).click();
+    await expect(page.getByRole('alert').filter({ hasText: 'プレビュー中' })).toBeVisible();
+    expect(await readStoredAsset(page, assetId)).toEqual(storedBefore);
+    expect(await readStoredProject(page)).toEqual(projectBefore);
+    await page.getByRole('button', { name: '停止', exact: true }).click();
+
+    await page.getByRole('button', { name: '位置合わせを開始' }).click();
+    await expect(page.getByRole('button', { name: '再生', exact: true })).toBeDisabled();
+    await page.getByLabel('フレーム名').first().fill('blocked');
+    await expect(page.getByRole('alert').filter({ hasText: '位置合わせ中' })).toBeVisible();
+    await page.waitForTimeout(900);
+    expect(await readStoredAsset(page, assetId)).toEqual(storedBefore);
+    expect(await readStoredProject(page)).toEqual(projectBefore);
+    await expect(undoButton).toBeDisabled();
+    await expect(redoButton).toBeDisabled();
+    expect(await undoButton.getAttribute('title')).toBe(undoTitleBefore);
+    expect(await redoButton.getAttribute('title')).toBe(redoTitleBefore);
+    await page.getByRole('button', { name: '取消', exact: true }).click();
+  });
+
+  for (const fixture of [
+    {
+      failure: 'no-layers',
+      label: 'Layer 0件',
+      reason: 'AssetにLayerがない',
+    },
+    {
+      failure: 'duplicate-layer-id',
+      label: 'Layer ID重複',
+      reason: '同じLayer IDが複数',
+    },
+    {
+      failure: 'missing-layer-state',
+      label: 'LayerState欠落',
+      reason: '状態がありません',
+    },
+  ] as const) {
+    test(`${fixture.label}を理由付きで拒否し保存状態を変えない`, async ({ page }) => {
+      const projectName = `D4拒否-${fixture.failure}`;
+      const assetId = await setupFrameAlignmentProject(page, projectName, fixture.failure);
+      await selectFrameAlignmentPair(page);
+      const storedBefore = await readStoredAsset(page, assetId);
+      const projectBefore = await readStoredProject(page);
+
+      await page.getByRole('button', { name: '位置合わせを開始' }).click();
+      await expect(page.getByRole('alert').filter({ hasText: fixture.reason })).toBeVisible();
+      await expect(page.getByRole('button', { name: '位置合わせを開始' })).toBeVisible();
+      expect(await readStoredAsset(page, assetId)).toEqual(storedBefore);
+      expect(await readStoredProject(page)).toEqual(projectBefore);
+      await expect(page.getByRole('button', { name: '元に戻す', exact: true })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'やり直す', exact: true })).toBeDisabled();
+    });
+  }
+});
+
 test('fps とループを変更でき、リロード後も保持される', async ({ page }) => {
   await setupProjectWithImage(page, 'fpsテスト');
   await selectMainLayer(page);
@@ -1155,7 +1752,8 @@ test('mock clockで可変時間・反復Frame・loop event・再生中の先頭�
   await page.reload();
   await page.getByRole('button', { name: '「決定的再生テスト」を開く' }).click();
   await page.getByLabel('アニメーション選択').selectOption({ label: 'loop_timing' });
-  await page.clock.install();
+  // installだけでは実時間が進むため、再生開始前にmock clockを導入して停止する。
+  await page.clock.pauseAt(new Date());
 
   const frameList = page.getByRole('list', { name: 'フレーム一覧' });
   const currentFrame = frameList.getByRole('button', { pressed: true });

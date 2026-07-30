@@ -19,6 +19,7 @@ import {
   type AnimationEvent,
   type Asset,
 } from '../../core/model';
+import { FrameAlignmentPanel, type FrameAlignmentDraft } from './FrameAlignmentPanel';
 import { ONION_SKIN_NEXT_COLOR, ONION_SKIN_OPACITY, ONION_SKIN_PREVIOUS_COLOR } from './onionSkin';
 
 interface TimelinePanelProps {
@@ -49,6 +50,13 @@ interface TimelinePanelProps {
   onLiveChange: (next: Asset) => void;
   onBeginFieldEdit: () => void;
   onCommitFieldEdit: () => void;
+  frameAlignmentDraft: FrameAlignmentDraft | null;
+  frameAlignmentPreviewError: string | null;
+  onStartFrameAlignment: (referenceFrameId: string, targetFrameId: string) => void;
+  onFrameAlignmentDeltaInput: (axis: 'x' | 'y', value: string) => void;
+  onNudgeFrameAlignment: (x: number, y: number) => void;
+  onConfirmFrameAlignment: () => void;
+  onCancelFrameAlignment: () => void;
 }
 
 function EventNameEditor({
@@ -111,6 +119,13 @@ export function TimelinePanel({
   onLiveChange,
   onBeginFieldEdit,
   onCommitFieldEdit,
+  frameAlignmentDraft,
+  frameAlignmentPreviewError,
+  onStartFrameAlignment,
+  onFrameAlignmentDeltaInput,
+  onNudgeFrameAlignment,
+  onConfirmFrameAlignment,
+  onCancelFrameAlignment,
 }: TimelinePanelProps) {
   const [newAnimationName, setNewAnimationName] = useState('');
   const [newEventName, setNewEventName] = useState('');
@@ -178,6 +193,20 @@ export function TimelinePanel({
 
   return (
     <div className="timeline-panel">
+      {asset.animations.length > 0 && (
+        <FrameAlignmentPanel
+          asset={asset}
+          animationId={selectedAnimationId}
+          isPlaying={isPlaying}
+          draft={frameAlignmentDraft}
+          previewError={frameAlignmentPreviewError}
+          onStart={onStartFrameAlignment}
+          onDeltaInput={onFrameAlignmentDeltaInput}
+          onNudge={onNudgeFrameAlignment}
+          onConfirm={onConfirmFrameAlignment}
+          onCancel={onCancelFrameAlignment}
+        />
+      )}
       <div className="timeline-frames">
         <ul className="timeline-frame-list" aria-label="フレーム一覧">
           {frames.map((frame) => (
@@ -575,7 +604,11 @@ export function TimelinePanel({
       </div>
 
       <div className="timeline-playback">
-        <button type="button" disabled={!canPlay || isPlaying} onClick={onPlay}>
+        <button
+          type="button"
+          disabled={!canPlay || isPlaying || !!frameAlignmentDraft}
+          onClick={onPlay}
+        >
           再生
         </button>
         <button type="button" disabled={!isPlaying && !playingFrameId} onClick={onStop}>

@@ -1,6 +1,6 @@
 # Chameleon Asset Studio テスト計画書
 
-最終更新日: 2026-07-29
+最終更新日: 2026-07-30
 対象バージョン: アプリ 0.1.0 / Asset 0.2.0 / Project・export-presets・atlas 0.1.0
 詳細な対象一覧の正本: `docs/implementation/TEST_AND_RELEASE.md`
 
@@ -50,13 +50,13 @@ PR #144 final head `1980ae6`の固定head reviewで、現行不具合ではな�
 - generic MIMEと拡張子・実signatureが一致しないfileについて、利用者向けalert、Asset不変、quarantine記録までを一続きで確認する。
 - `ImageDecoder.isTypeSupported() === false`とconstructor `NotSupportedError`の両方で、先頭frame + 8fps + loss表示へのfallbackを確認する。
 
-### 3.2 Group 12 Timeline / Rig計測・実装Gate（T1 / P1 / B1 / D1〜D3実装・独立検証・merge済み、D4契約済み・製品未着手、B2保留）
+### 3.2 Group 12 Timeline / Rig計測・実装Gate（T1 / P1 / B1 / D1〜D3実装・独立検証・merge済み、D4製品実装Draft PRのCI・独立review待ち、B2保留）
 
 正本は`docs/future/2D_3_TIMELINE_RIG_PLAN.md`。PR #146 merge `cb21ea4`後にH1=E1、H2=L1、H3=M1を人間承認した。T1 Slice AはPR #153で可変時間、event、共通scheduler、検査、保存roundtrip、E1拒否を実装済みである。P1 Slice CはPR #154で静的Part構成Layer差し替え、H2=L1拒否、read-only inspection、1 History、保存roundtripを実装済みである。ADR-2026-07-24-027でA1を採用し、R1をB1 / B2へ分割した。PR #157 final head `834cc38397c300895f50c1efdb86d94f3870a0a8`、merge `bf13cac3db854c30b33e9b2ef97d389a2372e961`でB1をmainへ反映した。CI Run #501は全job成功し、非GitHub・非Opusの固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。B2の資源上限とH3数値は後続人間承認まで未決定とする。ADR-2026-07-27-028でA1+B1を採用したD1はPR #201 final head `25cd3327b93850f1af1733c2b43585e3fa0a667b`、merge `c1d08e3b4cadd7c3a3064ab8e824b17f67feb243`でmainへ反映済みである。CI Run #596はunit 758件、Chromium E2E 166件を含め全job成功し、固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。ADR-2026-07-28-029でA1+B1+C1を採用したD2は、PR #204 final head `8ebeb279e9d7b9ef9a15700d80d4a6cd7ab1d57f`、merge `eeaea39522d0f31bfe786ca0da27176bfd5ee859`でmainへ反映済みである。CI Run #603の最終attemptはunit 763件、Chromium E2E 168件、H3 1件、Pages open / closed各1件を含め全job成功し、failed / flaky / skipped / retryは0件、固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D2を`implemented / CI-passed / independently-verified / merged`とする。
 
 ADR-2026-07-29-030でP1+A1+B1+C1を採用したD3は、PR #206 final head `ac84b8c2d6141f6353c3e07dbb2dbfae9a2f5c98`、merge `3081495a979d10176a05eb2907e7cede55cc8c9a`でmainへ反映済みである。CI Run #610はunit 769件、Chromium E2E 170件、H3 1件、Pages open / closed各1件を含む31 stepを全成功し、failure / skip / retryは0件、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D3を`implemented / CI-passed / independently-verified / merged`とする。
 
-ADR-2026-07-29-031でA1+B1+C1を採用し、D4 frame alignmentの契約を確定した。D4製品実装は本docs-only決定PRのmerge後に別Draft PRで開始する。B2、物理iPhone Safari、Group 12完了判定は保留する。
+ADR-2026-07-29-031でA1+B1+C1を採用し、D4 frame alignmentの契約を確定した。契約PR #208 merge `ea67920`で実装前Gateを満了し、本D4製品実装Draft PRでmodel、専用半透明参照描画、UI-only draft、編集防護、1 History、保存roundtrip、Chromium E2Eを追加した。ローカルにbrowser binaryがないためChromium実行はGitHub Actionsで判定し、固定head独立review後までD4を完了扱いしない。B2、物理iPhone Safari、Group 12完了判定は保留する。
 
 計測準備は`tools/h3/`に分離する。固定fixtureがL1に適合すること、60 / 120 / 240 Frameのdevice matrix、480 / 960 Frameの明示Node escalation、現行`bakeRigAnimation` / `computeSheetLayout`の直接利用、結果schemaをunit testで固定する。通常のlint、format、typecheck、unit testに含め、専用browser buildも検証する。計測値そのものに合否assertionを置かない。
 
@@ -75,7 +75,7 @@ PR CIと公開workflowでは、専用Playwright設定でbuild済みH3ページ�
 | 資源 / B2 | 生成Frame / LayerState / JSON byte / sheet pixelの境界、理由code、warning / hard cap | 採用値の直前・一致・超過、超過時Asset / Blob / History / autosave不変 | 採用上限でbake、操作応答、PC / iPhone / iPad Safari reload / crashなし |
 | P1 | `Part.layerIds`だけのexact write-set、missing / duplicate / empty拒否 / order / 単一ownership / 未所属許可、他field不変 | 既存bake不変、次回bakeだけ反映、1 History、Undo / Redo、reload、`.casproj` | touch選択、長いLayer一覧、keyboard後の確定 / 取消 |
 
-T1 Slice Aのunit / contractは`src/core/model/animationTiming.test.ts`、`src/core/export/animationLoss.test.ts`と既存model / schema / storage / export testへ固定する。Chromium E2Eは`e2e/animation.spec.ts`でduration入力、合計時間、Undo / Redo、reload、event開始通知、E1拒否、375 × 667と667 × 375の入力zoom・44px・横overflowを確認する。ローカルにbrowser binaryがない場合もskipへ変えず、GitHub Actionsの全Chromium結果を合格証拠とする。Slice D1は同じ`e2e/animation.spec.ts`でpreview中の保存状態完全不変、許可操作、停止後の再開、反復Frameの出現位置を固定済みである。Slice D2はPR #204で再生順から前後の出現位置を解決するunit / contractと、初期off、前・次の個別表示、再生中の非表示、停止後の復元、保存・History不変、reloadでoffを固定済みである。Slice D3はPR #206で既存mock-clock試験を維持し、event追加・名前変更・Frame変更・削除のexact write-set、同名・空名・0 Frame、全出現発火、履歴、取消、保存・reload、未知項目保持をunit / E2Eへ固定済みである。Slice D4は既存のFrame / LayerTransform / History / preview guardを再利用し、一意ID preflight、完全LayerState、全positionの同一delta、影響件数表示、確定前不変、取消button / Esc、no-op、確定1 History、D2設定不変、通常保存metadata、保存roundtripを同じmodel / storage / E2E領域へ追加する。
+T1 Slice Aのunit / contractは`src/core/model/animationTiming.test.ts`、`src/core/export/animationLoss.test.ts`と既存model / schema / storage / export testへ固定する。Chromium E2Eは`e2e/animation.spec.ts`でduration入力、合計時間、Undo / Redo、reload、event開始通知、E1拒否、375 × 667と667 × 375の入力zoom・44px・横overflowを確認する。ローカルにbrowser binaryがない場合もskipへ変えず、GitHub Actionsの全Chromium結果を合格証拠とする。Slice D1は同じ`e2e/animation.spec.ts`でpreview中の保存状態完全不変、許可操作、停止後の再開、反復Frameの出現位置を固定済みである。Slice D2はPR #204で再生順から前後の出現位置を解決するunit / contractと、初期off、前・次の個別表示、再生中の非表示、停止後の復元、保存・History不変、reloadでoffを固定済みである。Slice D3はPR #206で既存mock-clock試験を維持し、event追加・名前変更・Frame変更・削除のexact write-set、同名・空名・0 Frame、全出現発火、履歴、取消、保存・reload、未知項目保持をunit / E2Eへ固定済みである。Slice D4は`src/core/model/frameAlignment.test.ts`、`src/renderers/canvas2d/render.test.ts`、`src/features/editor/editorMutationGuard.test.ts`、`src/core/storage/projectStore.test.ts`、`src/core/storage/casproj.test.ts`へ一意ID preflight、完全LayerState、全positionの同一delta、専用半透明描画、他編集拒否、通常保存metadata、exact roundtripを固定した。`e2e/animation.spec.ts`には共有・反復Frameの影響件数、確定前不変、取消button / 入力中Esc、no-op、1 History、Undo / Redo、D2設定不変、preview guard、reload、`.casproj`、理由付き拒否、375 × 667を6シナリオとして追加した。
 
 P1 Slice Cのunit / contractは`src/core/model/assetOps.test.ts`、`assetInspection.test.ts`、`src/core/rig/rig.test.ts`、`src/core/storage/casproj.test.ts`へ固定する。Chromium E2Eは`e2e/part-layer-replacement.spec.ts`と`e2e/rig.spec.ts`で拒否・取消、他Part所有、H2違反bake refusal、1 History、保存失敗rollback、Undo / Redo、reload、既存bake不変、次回bake反映、375 × 667 / 667 × 375のtouch・長い一覧・44px・横overflowを確認する。Playwrightは実iPhone Safari、safe area、software keyboardの代替にしない。
 
