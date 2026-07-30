@@ -1752,7 +1752,8 @@ test('mock clockで可変時間・反復Frame・loop event・再生中の先頭�
   await page.reload();
   await page.getByRole('button', { name: '「決定的再生テスト」を開く' }).click();
   await page.getByLabel('アニメーション選択').selectOption({ label: 'loop_timing' });
-  await page.clock.install();
+  // installだけでは実時間が進むため、再生開始前にmock clockを導入して停止する。
+  await page.clock.pauseAt(new Date());
 
   const frameList = page.getByRole('list', { name: 'フレーム一覧' });
   const currentFrame = frameList.getByRole('button', { pressed: true });
