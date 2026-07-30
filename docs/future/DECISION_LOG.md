@@ -1266,8 +1266,8 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 - 対象: Group 12 `2D-3-TIMELINE + 2D-3-RIG` のTimeline UX / Slice D4
 - 基準main: `3081495a979d10176a05eb2907e7cede55cc8c9a`
 - D3: implemented / CI-passed / independently-verified / merged
-- D4: contract accepted / product implementation in Draft PR / CI and independent review pending
-- B2 numeric budget / warning / hard cap、物理iPhone Safari、Group 12完了判定: pending
+- D4: implemented / CI-passed / independently-verified / merged
+- B2 numeric budget / warning / hard cap、物理iPhone / iPad Safari、Group 12完了判定: pending
 
 ### 確認できた事実
 
@@ -1324,5 +1324,11 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 - pure modelで候補列挙、preflight、共有Frame影響件数、UI-only preview、確定を共通化し、対象Frameの全LayerStateの`transform.position.x / y`へ同一deltaだけを適用する。未知fieldを含む入力Assetを変更しない。
 - Editorには基準・対象選択、4方向の1px操作、X / Y入力、影響件数、確定・取消を追加する。基準FrameはD2とは別の無着色50%描画、対象Frameは通常描画とする。draft中は再生、Undo / Redo、他の永続編集を拒否する。
 - Unit / storage / `.casproj` / render / guard / Chromium E2Eでexact write-set、拒否時不変、Project metadata境界、1 History、Undo / Redo、reload、共有・反復Frame、D1 / D2共存、mobile、理由付き拒否を検証する。
-- schema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependency、B2、物理iPhone Safari、Group 12完了判定は変更しない。
-- CI成功と固定headの3方向独立read-only reviewが完了するまでD4は`in progress`とする。本Draft PRのReady化・mergeは行わない。
+- schema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependency、B2、物理iPhone / iPad Safari、Group 12完了判定は変更しない。
+- PR #209 final head `16f5ae2a62928c92f039710e935f3c66c113b0c1`、merge `5e25d0d4e1a4c6680afdd5f5d05ef51d0f8bdea8`でD4製品実装をmainへ反映した。CI Run #623はunit 799件、Chromium E2E 176件、H3 1件、Pages open / closed各1件を全成功し、failed / flaky / skippedは0件だった。固定headの仕様、実装・データ安全、テスト・CI・mobileの3方向独立read-only reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`である。
+
+### Merge後closeout（2026-07-30）
+
+- D4を`implemented / CI-passed / independently-verified / merged`としてcloseoutする。
+- PR #209ではschema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependency、B2資源上限、Group 12完了判定を変更していない。
+- B2の採用数値、warning、hard cap、採用上限でのPC / iPhone / iPad product-path実測、物理iPhone / iPad Safari、Group 12完了判定は別の人間判断までpendingとする。

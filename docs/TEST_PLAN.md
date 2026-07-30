@@ -50,13 +50,13 @@ PR #144 final head `1980ae6`の固定head reviewで、現行不具合ではな�
 - generic MIMEと拡張子・実signatureが一致しないfileについて、利用者向けalert、Asset不変、quarantine記録までを一続きで確認する。
 - `ImageDecoder.isTypeSupported() === false`とconstructor `NotSupportedError`の両方で、先頭frame + 8fps + loss表示へのfallbackを確認する。
 
-### 3.2 Group 12 Timeline / Rig計測・実装Gate（T1 / P1 / B1 / D1〜D3実装・独立検証・merge済み、D4製品実装Draft PRのCI・独立review待ち、B2保留）
+### 3.2 Group 12 Timeline / Rig計測・実装Gate（T1 / P1 / B1 / D1〜D4実装・独立検証・merge済み、B2保留）
 
 正本は`docs/future/2D_3_TIMELINE_RIG_PLAN.md`。PR #146 merge `cb21ea4`後にH1=E1、H2=L1、H3=M1を人間承認した。T1 Slice AはPR #153で可変時間、event、共通scheduler、検査、保存roundtrip、E1拒否を実装済みである。P1 Slice CはPR #154で静的Part構成Layer差し替え、H2=L1拒否、read-only inspection、1 History、保存roundtripを実装済みである。ADR-2026-07-24-027でA1を採用し、R1をB1 / B2へ分割した。PR #157 final head `834cc38397c300895f50c1efdb86d94f3870a0a8`、merge `bf13cac3db854c30b33e9b2ef97d389a2372e961`でB1をmainへ反映した。CI Run #501は全job成功し、非GitHub・非Opusの固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。B2の資源上限とH3数値は後続人間承認まで未決定とする。ADR-2026-07-27-028でA1+B1を採用したD1はPR #201 final head `25cd3327b93850f1af1733c2b43585e3fa0a667b`、merge `c1d08e3b4cadd7c3a3064ab8e824b17f67feb243`でmainへ反映済みである。CI Run #596はunit 758件、Chromium E2E 166件を含め全job成功し、固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。ADR-2026-07-28-029でA1+B1+C1を採用したD2は、PR #204 final head `8ebeb279e9d7b9ef9a15700d80d4a6cd7ab1d57f`、merge `eeaea39522d0f31bfe786ca0da27176bfd5ee859`でmainへ反映済みである。CI Run #603の最終attemptはunit 763件、Chromium E2E 168件、H3 1件、Pages open / closed各1件を含め全job成功し、failed / flaky / skipped / retryは0件、固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D2を`implemented / CI-passed / independently-verified / merged`とする。
 
 ADR-2026-07-29-030でP1+A1+B1+C1を採用したD3は、PR #206 final head `ac84b8c2d6141f6353c3e07dbb2dbfae9a2f5c98`、merge `3081495a979d10176a05eb2907e7cede55cc8c9a`でmainへ反映済みである。CI Run #610はunit 769件、Chromium E2E 170件、H3 1件、Pages open / closed各1件を含む31 stepを全成功し、failure / skip / retryは0件、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D3を`implemented / CI-passed / independently-verified / merged`とする。
 
-ADR-2026-07-29-031でA1+B1+C1を採用し、D4 frame alignmentの契約を確定した。契約PR #208 merge `ea67920`で実装前Gateを満了し、本D4製品実装Draft PRでmodel、専用半透明参照描画、UI-only draft、編集防護、1 History、保存roundtrip、Chromium E2Eを追加した。ローカルにbrowser binaryがないためChromium実行はGitHub Actionsで判定し、固定head独立review後までD4を完了扱いしない。B2、物理iPhone Safari、Group 12完了判定は保留する。
+ADR-2026-07-29-031でA1+B1+C1を採用し、D4 frame alignmentの契約を確定した。契約PR #208 merge `ea67920`で実装前Gateを満了し、PR #209 final head `16f5ae2a62928c92f039710e935f3c66c113b0c1`、merge `5e25d0d4e1a4c6680afdd5f5d05ef51d0f8bdea8`でmodel、専用半透明参照描画、UI-only draft、編集防護、1 History、保存roundtrip、Chromium E2Eをmainへ反映した。CI Run #623はunit 799件、Chromium E2E 176件、H3 1件、Pages open / closed各1件を全成功し、failed / flaky / skippedは0件、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D4を`implemented / CI-passed / independently-verified / merged`とする。B2、物理iPhone / iPad Safari、Group 12完了判定は保留する。
 
 計測準備は`tools/h3/`に分離する。固定fixtureがL1に適合すること、60 / 120 / 240 Frameのdevice matrix、480 / 960 Frameの明示Node escalation、現行`bakeRigAnimation` / `computeSheetLayout`の直接利用、結果schemaをunit testで固定する。通常のlint、format、typecheck、unit testに含め、専用browser buildも検証する。計測値そのものに合否assertionを置かない。
 
@@ -79,7 +79,7 @@ T1 Slice Aのunit / contractは`src/core/model/animationTiming.test.ts`、`src/c
 
 P1 Slice Cのunit / contractは`src/core/model/assetOps.test.ts`、`assetInspection.test.ts`、`src/core/rig/rig.test.ts`、`src/core/storage/casproj.test.ts`へ固定する。Chromium E2Eは`e2e/part-layer-replacement.spec.ts`と`e2e/rig.spec.ts`で拒否・取消、他Part所有、H2違反bake refusal、1 History、保存失敗rollback、Undo / Redo、reload、既存bake不変、次回bake反映、375 × 667 / 667 × 375のtouch・長い一覧・44px・横overflowを確認する。Playwrightは実iPhone Safari、safe area、software keyboardの代替にしない。
 
-PR #154 final head `fdf75f0`のCI #492はunit 732件、Chromium 159件、H3 1件、Pages公開・閉鎖各1件を成功し、固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。PR #206 final head `ac84b8c`のCI #610はunit 769件、Chromium 170件、H3 1件、Pages公開・閉鎖各1件を成功し、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。物理iPhone Safariの項目はGroup 12 closeoutまで未完了として維持する。
+PR #154 final head `fdf75f0`のCI #492はunit 732件、Chromium 159件、H3 1件、Pages公開・閉鎖各1件を成功し、固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。PR #206 final head `ac84b8c`のCI #610はunit 769件、Chromium 170件、H3 1件、Pages公開・閉鎖各1件を成功し、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。PR #209 final head `16f5ae2`のCI #623はunit 799件、Chromium 176件、H3 1件、Pages公開・閉鎖各1件を成功し、failed / flaky / skippedは0件、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。物理iPhone / iPad Safariの項目はGroup 12 closeoutまで未完了として維持する。
 
 R1 Slice B1の独立左右反転コピーは、PR #157のE2Eで、現在と同じ新Asset作成操作として画面から実行できること、元Assetが不変であること、新しいHistory entryがなく既存のUndo / Redo stackが前後で完全一致すること、保存失敗時にProject参照・Asset・Blob・画面stateへの新Asset追加を全て取り消すこと、成功後のreloadでも参照と見た目が一致することを確認済みである。
 
