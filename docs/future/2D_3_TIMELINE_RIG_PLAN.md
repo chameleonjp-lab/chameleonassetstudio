@@ -3,8 +3,8 @@
 最終更新日: 2026-07-30
 work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 監査基準: `main@236571c241bf84747f71f260f3bea99e6abe7f25`
-マージ後基準: PR #146 merge `cb21ea4` / PR #147 final head `1ba671f7` / merge `24a089c` / PR #148 final head `0cfc1ea` / merge `fbdeb357` / PR #149 merge `536318f` / PR #153 merge `e8fac95` / PR #154 final head `fdf75f0` / merge `1c700e7` / PR #157 final head `834cc38` / merge `bf13cac` / PR #201 final head `25cd332` / merge `c1d08e3` / PR #204 final head `8ebeb27` / merge `eeaea39` / PR #206 final head `ac84b8c` / merge `3081495` / PR #208 final head `ef41a4b` / merge `ea67920`
-状態: `T1 Slice A merged / P1 Slice C merged / R1 Slice B1 merged and independently verified / Slice B2 numeric Gate pending / Slice D1-D3 merged and independently verified / Slice D4 A1+B1+C1 product implementation in Draft PR, CI and independent review pending / formal B0 deferred`
+マージ後基準: PR #146 merge `cb21ea4` / PR #147 final head `1ba671f7` / merge `24a089c` / PR #148 final head `0cfc1ea` / merge `fbdeb357` / PR #149 merge `536318f` / PR #153 merge `e8fac95` / PR #154 final head `fdf75f0` / merge `1c700e7` / PR #157 final head `834cc38` / merge `bf13cac` / PR #201 final head `25cd332` / merge `c1d08e3` / PR #204 final head `8ebeb27` / merge `eeaea39` / PR #206 final head `ac84b8c` / merge `3081495` / PR #208 final head `ef41a4b` / merge `ea67920` / PR #209 final head `16f5ae2` / merge `5e25d0d`
+状態: `T1 Slice A merged / P1 Slice C merged / R1 Slice B1 merged and independently verified / Slice B2 numeric Gate pending / Slice D1-D4 merged and independently verified / physical iPhone and iPad Safari Gate pending / formal B0 deferred`
 関連: `docs/adr/0008-motion-time-semantics.md`, `docs/adr/0009-animation-event-boundary.md`, `docs/adr/0021-frame-duration-semantics.md`, `docs/adr/0022-rig-flip-and-bake-parity.md`, `docs/adr/0023-part-layer-replacement.md`, `docs/future/2D_3_H3_MEASUREMENT_PROTOCOL.md`
 
 ---
@@ -21,7 +21,7 @@ PR #146の契約監査は17文書、製品コード変更なしでmainへ反映�
 
 2026-07-29のADR-2026-07-29-030でD3の`P1+A1+B1+C1`を承認した。PR #205 merge `66debcaf974fe965757f39be8a433d86546eed19`で実装Gateを満了し、PR #206 final head `ac84b8c2d6141f6353c3e07dbb2dbfae9a2f5c98`、merge `3081495a979d10176a05eb2907e7cede55cc8c9a`でmainへ反映した。CI Run #610はunit 769件、Chromium E2E 170件、H3、Pages open / closed routeを含む31 stepを全成功し、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D3は`implemented / CI-passed / independently-verified / merged`としてcloseoutする。
 
-同日のADR-2026-07-29-031でD4の`A1+B1+C1`を承認した。D4は選択中Animationの基準Frameと対象Frameを重ね、対象Frame全体へ同じ手動移動量を適用する。確定前はUIだけの一時表示、確定時は1 Historyとし、不足するFrame / LayerState / transformを自動生成しない。契約PR #208 merge `ea67920`で実装前Gateを満了し、本D4製品実装Draft PRで製品コードと試験を追加してCI・固定head独立reviewを待つ。B2、物理iPhone SafariのGroup 12 closeout Gateは未完了のまま維持する。
+同日のADR-2026-07-29-031でD4の`A1+B1+C1`を承認した。D4は選択中Animationの基準Frameと対象Frameを重ね、対象Frame全体へ同じ手動移動量を適用する。確定前はUIだけの一時表示、確定時は1 Historyとし、不足するFrame / LayerState / transformを自動生成しない。契約PR #208 merge `ea67920`で実装前Gateを満了し、PR #209 final head `16f5ae2a62928c92f039710e935f3c66c113b0c1`、merge `5e25d0d4e1a4c6680afdd5f5d05ef51d0f8bdea8`で製品コードと試験をmainへ反映した。CI Run #623はunit 799件、Chromium E2E 176件、H3 1件、Pages open / closed各1件を全成功し、failed / flaky / skippedは0件、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D4を`implemented / CI-passed / independently-verified / merged`とする。B2、物理iPhone / iPad SafariのGroup 12 closeout Gateは未完了のまま維持する。
 
 ## 2. 監査方法と現状
 
@@ -184,11 +184,11 @@ Frameを1件も割り当てる前に、UI、意味検証、bake関数が同じ�
 | D1 | preview安全 | 永続編集防護、明示停止、一時的な出現位置 | PR #201 / CI #596 / 固定head独立reviewで完了 |
 | D2 | onion skin | 選択中Animationの再生順による前後1出現、loop端、反復Frameの出現位置選択、read-only、UI-only、固定25% | PR #204 / CI #603 / 固定head独立reviewで完了 |
 | D3 | event編集 | 選択中Animationのevent追加・名前変更・参照Frame変更・削除。payload編集は除外 | PR #206 / CI #610 / 固定head独立reviewで完了 |
-| D4 | frame alignment | 基準Frameと対象Frameを重ね、対象Frame全体を手動移動。確定前はUI-only、確定時は1 History、不足dataは拒否 | A1+B1+C1 contract accepted。PR #208 merge後、本D4製品実装Draft PRのCI・固定head独立review待ち |
+| D4 | frame alignment | 基準Frameと対象Frameを重ね、対象Frame全体を手動移動。確定前はUI-only、確定時は1 History、不足dataは拒否 | PR #209 / CI #623 / 固定head独立reviewで完了 |
 
 PR #154はSlice Cだけを扱い、既存Part 1件の`layerIds`差し替えUI、H2=L1検証、read-only inspection、H2違反だけを割当前に止める狭いbake refusal、History・保存roundtripを実装した。T1のschema・scheduler・export契約は変更していない。
 
-ADR-2026-07-24-027により、後続をB1とB2へ分けた。B1は有限値・座標・参照・構造検査とR1をPR #157で実装し、資源上限を先取りしていない。B2はH3数値と別の人間承認後に扱う。D1はPR #201、D2はPR #204、D3はPR #206で完了した。D4のframe alignmentはADR-2026-07-29-031でA1+B1+C1を承認し、契約PR #208 merge後に本D4製品実装Draft PRを開始した。
+ADR-2026-07-24-027により、後続をB1とB2へ分けた。B1は有限値・座標・参照・構造検査とR1をPR #157で実装し、資源上限を先取りしていない。B2はH3数値と別の人間承認後に扱う。D1はPR #201、D2はPR #204、D3はPR #206、D4はPR #209で完了した。B2の資源数値GateはD4 closeoutと分離し、後続の人間承認まで開始しない。
 
 1 PR 1 sliceを守る。schemaを変更するT1と、schema不要のR1/P1を同じ製品PRへ混ぜない。各実装PRは固定headでlint、format、build、全unit、Chromium E2Eを成功させ、skip / retryを理由なく残さない。
 
@@ -299,7 +299,7 @@ Playwrightのmobile viewportは実iPhone Safariの代替にしない。Group 12�
 - final headは`834cc38397c300895f50c1efdb86d94f3870a0a8`、merge commitは`bf13cac3db854c30b33e9b2ef97d389a2372e961`である。
 - CI Run #501はlint、format、build、unit 758件、Chromium E2E 165件、H3 Chromium、Pages open / closed routeを含め全job成功した。
 - 非GitHub・非Opusの固定head独立reviewは、仕様・判断、実装・データ安全、テスト・iPhone境界の3方向すべて`BLOCKER 0 / MUST 0 / SHOULD 0`である。
-- B1は`implemented / CI-passed / independently-verified / merged`とする。B2、物理iPhone / iPad Safari、資源上限、Group 12完了判定、Slice D製品実装は未完了のまま維持する。
+- PR #157 closeout時点でB1を`implemented / CI-passed / independently-verified / merged`とした。B2、物理iPhone / iPad Safari、資源上限、Group 12完了判定は未完了のまま維持する。Slice Dの現在状態は§14〜§17を正本とする。
 - Group 13はGroup 12完了に依存するため、現時点では開始しない。
 
 ## 14. Slice Dの分割とD1 Gate（ADR-2026-07-27-028）
@@ -429,15 +429,15 @@ D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.caspr
 - Chromium E2Eでは複数Animationと反復出現で共有するFrameを使い、確定前に正確なdistinct Animation数と総出現数が表示されることを確認する。「基準」「対象」の文字、基準Frameのread-only・半透明表示、対象Frameの通常表示、alignment前後のD2 onion skin設定不変、方向操作、X / Y入力も確認する。
 - 取消buttonとEscを別々に実行し、draft破棄とAsset・History・autosave・IndexedDB不変を確認する。0差分、確定1 History、Undo / Redo、autosave / reload / `.casproj`、Layer 0件・重複ID・不足dataの理由付き拒否、拒否時の永続状態不変、preview guardも確認する。
 - Chromiumの375 × 667で44px以上の操作対象、16px以上の数値入力、keyboardとtouch emulation、入力zoom防止、横overflowなしを確認する。物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはGroup 12 closeout Gateへ残し、Playwrightのmobile viewportで代替しない。
-- D4製品実装は、契約PR #208がmainへmergeされた後、main `0cbc699`から本D4製品実装Draft PR / 単一writerで開始した。CI成功と固定head独立review前にcloseoutしない。
+- D4製品実装は、契約PR #208がmainへmergeされた後、main `0cbc699`から別のDraft PR / 単一writerで開始し、PR #209 final head `16f5ae2`、merge `5e25d0d`、CI #623、固定head独立reviewを経てcloseoutした。
 - Layer単位・全Frame一括移動、canvas drag、自動整列、透明外周解析、画像内容比較、rotation / scale / opacity / visibility調整、Frame複製、共有Frameの自動分離は対象外とする。
-- schema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependency、B2資源上限、Group 12完了判定を変更しない。本D4製品実装Draft PRではReady化・mergeを行わない。
+- PR #209ではschema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependency、B2資源上限、Group 12完了判定を変更していない。
 
-### 17.6 D4製品実装の進行記録
+### 17.6 D4製品実装・closeout記録
 
 - PR #208 merge `ea67920`を含むmain `0cbc699`を基準に、1 branch / 1 Draft PR / 単一writerで実装を開始した。
 - `frameAlignment`のpure modelで候補、preflight、影響件数、preview、確定を共通化し、対象Frameの全LayerStateの`transform.position.x / y`だけへ同じdeltaを適用する。未知fieldを含む入力Assetは変更しない。
 - EditorのUI draftへ開始時のAsset / Animation / 基準Frame / 対象Frame IDとX / Y入力を固定する。開始前に保留autosaveをflushし、確定時にpreflightを再実行する。位置合わせ中は再生、Undo / Redo、他の永続編集を拒否し、Asset / Animation切替、取消button、入力中Escではdraftだけを破棄する。
 - D4専用の無着色50%基準描画をD2 onion skinと別経路で先に描き、対象Frameを通常表示する。D2の前後切替値と既存data属性は変更しない。
 - Unit / storageでmodel exact write-set、理由付き拒否、入力不変、1保存時の`Project.updatedAt`同期とUndo保存時の非巻き戻し、`.casproj` exact roundtrip、専用描画順、同時編集guardを確認する。Chromium E2Eは共有・反復Frame、影響件数、確定前不変、4方向操作、X / Y入力、取消 / Esc / no-op、1 History、Undo / Redo、reload / `.casproj`、D1 / D2共存、3種類の拒否、375 × 667を確認する。
-- ローカルではlint、typecheck、buildと対象Unitを通す。Chromium binaryがないため、E2Eの実行結果は本Draft PRのGitHub Actionsを正本とする。CIと固定headの3方向独立reviewが完了するまでD4は`in progress`である。
+- PR #209 final head `16f5ae2a62928c92f039710e935f3c66c113b0c1`、merge `5e25d0d4e1a4c6680afdd5f5d05ef51d0f8bdea8`を正本とする。CI Run #623はunit 799件、Chromium E2E 176件、H3 1件、Pages open / closed各1件を全成功し、failed / flaky / skippedは0件だった。固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`で、D4は`implemented / CI-passed / independently-verified / merged`として完了した。
