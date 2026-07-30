@@ -193,18 +193,20 @@ export function TimelinePanel({
 
   return (
     <div className="timeline-panel">
-      <FrameAlignmentPanel
-        asset={asset}
-        animationId={selectedAnimationId}
-        isPlaying={isPlaying}
-        draft={frameAlignmentDraft}
-        previewError={frameAlignmentPreviewError}
-        onStart={onStartFrameAlignment}
-        onDeltaInput={onFrameAlignmentDeltaInput}
-        onNudge={onNudgeFrameAlignment}
-        onConfirm={onConfirmFrameAlignment}
-        onCancel={onCancelFrameAlignment}
-      />
+      {asset.animations.length > 0 && (
+        <FrameAlignmentPanel
+          asset={asset}
+          animationId={selectedAnimationId}
+          isPlaying={isPlaying}
+          draft={frameAlignmentDraft}
+          previewError={frameAlignmentPreviewError}
+          onStart={onStartFrameAlignment}
+          onDeltaInput={onFrameAlignmentDeltaInput}
+          onNudge={onNudgeFrameAlignment}
+          onConfirm={onConfirmFrameAlignment}
+          onCancel={onCancelFrameAlignment}
+        />
+      )}
       <div className="timeline-frames">
         <ul className="timeline-frame-list" aria-label="フレーム一覧">
           {frames.map((frame) => (

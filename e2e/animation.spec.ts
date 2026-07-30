@@ -137,6 +137,23 @@ async function readStoredAsset(page: Page, assetId?: string): Promise<StoredAnim
   }, assetId);
 }
 
+async function readStoredAssetCount(page: Page): Promise<number> {
+  return page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('chameleon-asset-studio');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const count = await new Promise<number>((resolve, reject) => {
+      const request = db.transaction('assets', 'readonly').objectStore('assets').count();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    db.close();
+    return count;
+  });
+}
+
 async function readStoredProject(page: Page): Promise<StoredProject> {
   return page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -386,12 +403,13 @@ async function setupFrameAlignmentProject(
   withSecondAsset = false,
 ): Promise<string> {
   await setupProjectWithImage(page, name, 8);
-  await expect(page.locator('.editor-save-status')).toContainText('保存済み');
   const originalAsset = await readStoredAsset(page);
   const originalDisplayName = originalAsset.displayName;
   if (withSecondAsset) {
-    await page.getByRole('button', { name: '独立コピーを作成' }).click();
-    await expect(page.locator('.editor-save-status')).toContainText('保存済み');
+    const duplicateButton = page.getByRole('button', { name: '独立コピーを作成' });
+    await duplicateButton.click();
+    await expect.poll(async () => readStoredAssetCount(page)).toBe(2);
+    await expect(duplicateButton).toBeEnabled();
   }
   await writeStoredFrameAlignmentFixture(page, originalAsset.id, failure);
   await page.reload();
