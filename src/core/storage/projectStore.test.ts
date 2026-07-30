@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Asset, Project } from '../model';
-import { createEmptyProject } from '../model';
+import { applyFrameAlignment, createEmptyProject } from '../model';
 import { createLinkedMirrorVariant } from '../model/familyTestFixtures';
 import characterAsset from '../samples/asset.character.json';
 import {
@@ -42,6 +42,31 @@ beforeEach(async () => {
 function assetWithId(id: string, displayName = id): Asset {
   const base = characterAsset as unknown as Asset;
   return { ...base, id, name: id, displayName };
+}
+
+function frameAlignmentAssetWithId(id: string): Asset {
+  const source = structuredClone(assetWithId(id));
+  source.updatedAt = '2026-07-28T00:00:00.000Z';
+  const layerStates = source.layers.map((layer) => ({
+    layerId: layer.id,
+    visible: layer.visible,
+    opacity: layer.opacity,
+    transform: structuredClone(layer.transform),
+  }));
+  source.frames = [
+    { id: 'frame_reference', name: 'reference', layerStates: structuredClone(layerStates) },
+    { id: 'frame_target', name: 'target', layerStates: structuredClone(layerStates) },
+  ];
+  source.animations = [
+    {
+      id: 'animation_alignment',
+      name: 'alignment',
+      fps: 12,
+      loop: true,
+      frameIds: ['frame_reference', 'frame_target'],
+    },
+  ];
+  return source;
 }
 
 function projectWithAssets(name: string, assets: Asset[], id?: string): Project {
@@ -582,6 +607,56 @@ describe('saveProjectBundle guard', () => {
 });
 
 describe('改訂保存', () => {
+  it('D4保存はProject.updatedAtだけを前進させ、Undo保存でも巻き戻さない', async () => {
+    const before = frameAlignmentAssetWithId('asset_frame_alignment');
+    const project = {
+      ...projectWithAssets('frame alignment', [before]),
+      updatedAt: '2026-07-29T00:00:00.000Z',
+      families: [
+        {
+          id: 'family_frame_alignment',
+          name: 'Frame Alignment',
+          baseAssetId: before.id,
+          variants: [],
+        },
+      ],
+      futureProjectField: { preserved: true },
+    } as unknown as Project;
+    (project.assets[0] as unknown as Record<string, unknown>).futureAssetEntryField = {
+      preserved: true,
+    };
+    await saveProject(project);
+    await saveAsset(project.id, before);
+
+    const applied = applyFrameAlignment(
+      before,
+      {
+        assetId: before.id,
+        animationId: 'animation_alignment',
+        referenceFrameId: 'frame_reference',
+        targetFrameId: 'frame_target',
+      },
+      { x: 2.5, y: -4 },
+      new Date('2026-07-30T00:00:00.000Z'),
+    );
+    expect(applied.ok).toBe(true);
+    if (!applied.ok) {
+      return;
+    }
+
+    await saveAsset(project.id, applied.value.asset);
+    const afterProject = (await loadProject(project.id)).project;
+    expect(afterProject).toEqual({
+      ...project,
+      updatedAt: '2026-07-30T00:00:00.000Z',
+    });
+    expect((await loadAsset(before.id)).asset).toEqual(applied.value.asset);
+
+    await saveAsset(project.id, before);
+    expect((await loadProject(project.id)).project).toEqual(afterProject);
+    expect((await loadAsset(before.id)).asset).toEqual(before);
+  });
+
   it('metadata保存でProject要約とAssetを原子的に同期する', async () => {
     const asset = assetWithId('asset_metadata_sync', 'before');
     const project = projectWithAssets('metadata sync', [asset]);

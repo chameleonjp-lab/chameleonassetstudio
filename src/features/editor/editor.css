@@ -1467,6 +1467,66 @@
   width: 100%;
 }
 
+.timeline-frame-alignment {
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0.65rem;
+  border: 1px solid #3a86ff66;
+  border-radius: 7px;
+  overflow-wrap: anywhere;
+}
+
+.timeline-frame-alignment legend {
+  padding-inline: 0.25rem;
+  font-weight: 700;
+}
+
+.timeline-frame-alignment-selects,
+.timeline-frame-alignment-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.timeline-frame-alignment .editor-field,
+.timeline-frame-alignment input,
+.timeline-frame-alignment select {
+  min-width: 0;
+  width: 100%;
+}
+
+.timeline-frame-alignment-draft {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 0.55rem;
+}
+
+.timeline-frame-alignment-impact {
+  margin: 0;
+  font-weight: 700;
+}
+
+.timeline-frame-alignment-nudges {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.timeline-frame-alignment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.timeline-frame-alignment button,
+.timeline-frame-alignment input,
+.timeline-frame-alignment select {
+  touch-action: manipulation;
+}
+
 .timeline-frames {
   display: flex;
   flex-direction: column;
@@ -2340,6 +2400,11 @@
   .editor-timeline select {
     min-height: 44px;
     font-size: 16px;
+  }
+
+  .timeline-frame-alignment-selects,
+  .timeline-frame-alignment-inputs {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .timeline-onion-skin-toggle {

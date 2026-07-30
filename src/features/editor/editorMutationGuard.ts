@@ -6,11 +6,14 @@ export const PERSISTENT_MUTATION_IN_PROGRESS_MESSAGE =
   '保存データの変更処理中です。完了後に操作してください。';
 export const PERSISTENT_MUTATION_PREVIEW_MESSAGE =
   '取り込みpreviewを確認中です。確定または取消してから操作してください。';
+export const PERSISTENT_MUTATION_FRAME_ALIGNMENT_MESSAGE =
+  'フレーム位置合わせ中です。確定または取消してから操作してください。';
 
 export interface PersistentMutationGuardOptions {
   history: Pick<History, 'getState'>;
   mutationBusy: boolean;
   previewPending?: boolean;
+  frameAlignmentPending?: boolean;
   onReject?: (message: string) => void;
 }
 
@@ -18,6 +21,7 @@ export function canStartPersistentMutation({
   history,
   mutationBusy,
   previewPending = false,
+  frameAlignmentPending = false,
   onReject,
 }: PersistentMutationGuardOptions): boolean {
   if (history.getState().isBusy) {
@@ -30,6 +34,10 @@ export function canStartPersistentMutation({
   }
   if (previewPending) {
     onReject?.(PERSISTENT_MUTATION_PREVIEW_MESSAGE);
+    return false;
+  }
+  if (frameAlignmentPending) {
+    onReject?.(PERSISTENT_MUTATION_FRAME_ALIGNMENT_MESSAGE);
     return false;
   }
   return true;

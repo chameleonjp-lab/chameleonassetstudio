@@ -1,7 +1,7 @@
 import { strToU8, zip, type Zippable } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import type { Asset, ExportPresetFile, Project } from '../model';
-import { replacePartLayerIds } from '../model';
+import { applyFrameAlignment, replacePartLayerIds } from '../model';
 import {
   createFamilyVariantIdMap,
   createFamilyVariantWriteSet,
@@ -31,6 +31,47 @@ function zipAsync(data: Zippable): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     zip(data, (error, output) => (error ? reject(error) : resolve(output)));
   });
+}
+
+function frameAlignmentAsset(): Asset {
+  const source = structuredClone(asset);
+  const layerStates = source.layers.map((layer) => ({
+    layerId: layer.id,
+    visible: layer.visible,
+    opacity: layer.opacity,
+    transform: structuredClone(layer.transform),
+  }));
+  source.frames = [
+    { id: 'frame_reference', name: 'reference', layerStates: structuredClone(layerStates) },
+    {
+      id: 'frame_target',
+      name: 'target',
+      durationMs: 175,
+      layerStates: structuredClone(layerStates),
+    },
+  ];
+  source.animations = [
+    {
+      id: 'animation_alignment',
+      name: 'alignment',
+      fps: 12,
+      loop: true,
+      frameIds: ['frame_reference', 'frame_target', 'frame_target'],
+      events: [
+        {
+          id: 'event_alignment',
+          name: 'target_start',
+          frameId: 'frame_target',
+          payload: { preserved: true },
+        },
+      ],
+    },
+  ];
+  (source.frames[1] as unknown as Record<string, unknown>).futureFrameField = { preserved: true };
+  (source.frames[1].layerStates[0] as unknown as Record<string, unknown>).futureLayerStateField = {
+    preserved: true,
+  };
+  return source;
 }
 
 describe('casproj の書き出しと読み込み', () => {
@@ -96,6 +137,50 @@ describe('casproj の書き出しと読み込み', () => {
       imported.bundle.assets[0].animations[0].events?.[0] as unknown as Record<string, unknown>,
     ).toMatchObject({ futureEventField: { preserved: true } });
     expect(imported.bundle.assets[0].version).toBe('0.2.0');
+  });
+
+  it('D4移動後の全Layer位置・順序・未知fieldをexact roundtripする', async () => {
+    const before = frameAlignmentAsset();
+    const applied = applyFrameAlignment(
+      before,
+      {
+        assetId: before.id,
+        animationId: 'animation_alignment',
+        referenceFrameId: 'frame_reference',
+        targetFrameId: 'frame_target',
+      },
+      { x: -3.25, y: 8.5 },
+      new Date('2026-07-30T00:00:00.000Z'),
+    );
+    expect(applied.ok).toBe(true);
+    if (!applied.ok) {
+      return;
+    }
+    const moved = applied.value.asset;
+    const bundle: CasprojBundle = {
+      project,
+      assets: [moved],
+      files: moved.textures.map((texture, index) => ({
+        path: `assets/${moved.id}/${texture.path}`,
+        bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47, index]),
+      })),
+    };
+
+    const exported = await exportCasproj(bundle);
+    const imported = await importCasproj(exported);
+
+    expect(imported.appliedMigrations).toEqual([]);
+    expect(imported.bundle.assets).toEqual([moved]);
+    expect(imported.bundle.assets[0].frames?.map((frame) => frame.id)).toEqual([
+      'frame_reference',
+      'frame_target',
+    ]);
+    expect(imported.bundle.assets[0].frames?.[1].layerStates).toEqual(
+      moved.frames?.[1].layerStates,
+    );
+    expect(
+      imported.bundle.assets[0].frames?.[1] as unknown as Record<string, unknown>,
+    ).toMatchObject({ futureFrameField: { preserved: true } });
   });
 
   it('rig反転copyを内部ID・参照・順序・Blob bytesごとexact roundtripする', async () => {

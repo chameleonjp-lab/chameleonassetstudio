@@ -4,6 +4,7 @@ import {
   canStartPersistentMutation,
   commitPersistentMutationWithHistory,
   PERSISTENT_MUTATION_BUSY_MESSAGE,
+  PERSISTENT_MUTATION_FRAME_ALIGNMENT_MESSAGE,
   PERSISTENT_MUTATION_IN_PROGRESS_MESSAGE,
   PERSISTENT_MUTATION_PREVIEW_MESSAGE,
 } from './editorMutationGuard';
@@ -62,6 +63,32 @@ describe('canStartPersistentMutation', () => {
     }
     expect(onReject).toHaveBeenCalledWith(PERSISTENT_MUTATION_PREVIEW_MESSAGE);
     expect(assetMutator).not.toHaveBeenCalled();
+  });
+
+  it('フレーム位置合わせ中は他の永続変更とautosaveを開始しない', () => {
+    const history = new History();
+    const onReject = vi.fn();
+    const assetMutator = vi.fn();
+    const projectMutator = vi.fn();
+    const autosave = vi.fn();
+    const historyBefore = history.getState();
+    if (
+      canStartPersistentMutation({
+        history,
+        mutationBusy: false,
+        frameAlignmentPending: true,
+        onReject,
+      })
+    ) {
+      assetMutator();
+      projectMutator();
+      autosave();
+    }
+    expect(onReject).toHaveBeenCalledWith(PERSISTENT_MUTATION_FRAME_ALIGNMENT_MESSAGE);
+    expect(assetMutator).not.toHaveBeenCalled();
+    expect(projectMutator).not.toHaveBeenCalled();
+    expect(autosave).not.toHaveBeenCalled();
+    expect(history.getState()).toEqual(historyBefore);
   });
 });
 

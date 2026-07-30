@@ -1,6 +1,6 @@
 # Decision Log
 
-最終更新日: 2026-07-29
+最終更新日: 2026-07-30
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 重要方針の変更経緯・決定記録
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
@@ -1266,7 +1266,7 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 - 対象: Group 12 `2D-3-TIMELINE + 2D-3-RIG` のTimeline UX / Slice D4
 - 基準main: `3081495a979d10176a05eb2907e7cede55cc8c9a`
 - D3: implemented / CI-passed / independently-verified / merged
-- D4: contract accepted / product implementation not started
+- D4: contract accepted / product implementation in Draft PR / CI and independent review pending
 - B2 numeric budget / warning / hard cap、物理iPhone Safari、Group 12完了判定: pending
 
 ### 確認できた事実
@@ -1317,3 +1317,12 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 
 - D4製品実装は、本docs-only決定PRがmainへmergeされた後に、最新mainから別の1 branch / 1 Draft PR / 単一writerで行う。
 - CI成功後、固定headを仕様、実装・データ安全、テスト・CI・mobileの3方向でread-only検証する。
+
+### 実装追跡（2026-07-30）
+
+- 本ADRを確定した契約PR #208はmerge `ea67920e9c2285ca21b8992334d18c3e60cbf300`としてmainへ反映済みである。D4製品実装は、そのmergeを含むmain `0cbc699b0cae06583f5b4ae6fd4e8a4941eb388a`から別branch / 別Draft PR / 単一writerで開始した。
+- pure modelで候補列挙、preflight、共有Frame影響件数、UI-only preview、確定を共通化し、対象Frameの全LayerStateの`transform.position.x / y`へ同一deltaだけを適用する。未知fieldを含む入力Assetを変更しない。
+- Editorには基準・対象選択、4方向の1px操作、X / Y入力、影響件数、確定・取消を追加する。基準FrameはD2とは別の無着色50%描画、対象Frameは通常描画とする。draft中は再生、Undo / Redo、他の永続編集を拒否する。
+- Unit / storage / `.casproj` / render / guard / Chromium E2Eでexact write-set、拒否時不変、Project metadata境界、1 History、Undo / Redo、reload、共有・反復Frame、D1 / D2共存、mobile、理由付き拒否を検証する。
+- schema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependency、B2、物理iPhone Safari、Group 12完了判定は変更しない。
+- CI成功と固定headの3方向独立read-only reviewが完了するまでD4は`in progress`とする。本Draft PRのReady化・mergeは行わない。

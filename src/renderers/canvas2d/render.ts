@@ -18,11 +18,17 @@ export interface RenderOnionSkin {
   opacity: number;
 }
 
+export interface RenderReferenceOverlay {
+  layers: readonly RenderLayer[];
+  opacity: number;
+}
+
 export interface RenderSceneOptions {
   view: ViewTransform;
   viewport: Viewport;
   canvasSize: Size;
   layers: RenderLayer[];
+  referenceOverlay?: RenderReferenceOverlay;
   onionSkins?: readonly RenderOnionSkin[];
   selectedLayerId: string | null;
 }
@@ -208,10 +214,15 @@ export function drawGrid(
 
 /** 1 フレーム分の描画。イベント駆動で呼ぶ（常時ループはしない）。 */
 export function renderScene(ctx: CanvasRenderingContext2D, options: RenderSceneOptions): void {
-  const { view, viewport, canvasSize, layers, onionSkins, selectedLayerId } = options;
+  const { view, viewport, canvasSize, layers, referenceOverlay, onionSkins, selectedLayerId } =
+    options;
   ctx.clearRect(0, 0, viewport.width, viewport.height);
 
   drawCheckerboard(ctx, view, canvasSize);
+
+  for (const entry of referenceOverlay?.layers ?? []) {
+    drawLayer(ctx, view, entry, { opacity: referenceOverlay?.opacity });
+  }
 
   for (const onionSkin of onionSkins ?? []) {
     for (const entry of onionSkin.layers) {

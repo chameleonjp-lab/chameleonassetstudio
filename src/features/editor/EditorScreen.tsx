@@ -59,6 +59,7 @@ import {
 import {
   addAnchor,
   addGuideLayer,
+  applyFrameAlignment,
   applyFrameToAsset,
   createAnimationPlayback,
   assetCreationTemplatesForType,
@@ -71,7 +72,9 @@ import {
   createLinkedVariantFingerprint,
   generateId,
   inspectLinkedVariant,
+  inspectFrameAlignment,
   prepareLinkedVariantRefresh,
+  previewFrameAlignment,
   renameLayer,
   ASSET_TYPES,
   type AnchorRole,
@@ -84,6 +87,7 @@ import {
   type PaletteReplacement,
   type AssetCreationTemplateId,
   type AssetType,
+  type FrameAlignmentDelta,
   type Layer,
   type Project,
   type Size,
@@ -146,6 +150,7 @@ import {
   commitPersistentMutationWithHistory,
 } from './editorMutationGuard';
 import { ExportPanel } from './ExportPanel';
+import type { FrameAlignmentDraft } from './FrameAlignmentPanel';
 import { GameAttributesPanel } from './GameAttributesPanel';
 import { GameDataPanel } from './GameDataPanel';
 import { ImportFrameSetPanel } from './ImportFrameSetPanel';
@@ -164,6 +169,10 @@ type MobileView = 'canvas' | 'properties' | 'timeline' | 'export';
 
 const FRAME_PREVIEW_EDIT_MESSAGE =
   'フレームをプレビュー中です。保存を伴う編集はできません。タイムラインの「停止」で終了してください。';
+const FRAME_ALIGNMENT_ACTIVE_MESSAGE =
+  'フレーム位置合わせ中です。確定または取消してから操作してください。';
+const FRAME_ALIGNMENT_PLAYING_MESSAGE =
+  'Animation再生中はフレーム位置合わせを開始・確定できません。停止してから操作してください。';
 
 function canUseToolDuringFramePreview(tool: CanvasTool): boolean {
   return tool === 'select' || tool === 'pan';
@@ -261,6 +270,7 @@ function syncProjectAssetSummary(project: Project | null, asset: Asset): Project
     assets: project.assets.map((entry) =>
       entry.id === asset.id
         ? {
+            ...entry,
             id: asset.id,
             name: asset.name,
             displayName: asset.displayName,
@@ -329,6 +339,15 @@ type PendingImageImport = PendingNewAssetsImageImport | PendingLayerImageImport;
 
 interface EditorPersistentMutationOptions {
   allowPendingImageImport?: boolean;
+  allowFrameAlignment?: boolean;
+}
+
+function frameAlignmentDeltaForDraft(draft: FrameAlignmentDraft): FrameAlignmentDelta | null {
+  if (draft.xInput.trim() === '' || draft.yInput.trim() === '') {
+    return null;
+  }
+  const delta = { x: Number(draft.xInput), y: Number(draft.yInput) };
+  return Number.isFinite(delta.x) && Number.isFinite(delta.y) ? delta : null;
 }
 
 const FRAME_SET_PREVIEW_MODE_LABELS: Record<PreparedFrameSetImport['preview']['mode'], string> = {
@@ -545,6 +564,15 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showPreviousOnionSkin, setShowPreviousOnionSkin] = useState(false);
   const [showNextOnionSkin, setShowNextOnionSkin] = useState(false);
+  const [frameAlignmentDraft, setFrameAlignmentDraft] = useState<FrameAlignmentDraft | null>(null);
+  const frameAlignmentDraftRef = useRef<FrameAlignmentDraft | null>(null);
+  const assetsRef = useRef<Asset[]>([]);
+  const selectedAssetIdRef = useRef<string | null>(null);
+  const selectedAnimationIdRef = useRef<string | null>(null);
+  frameAlignmentDraftRef.current = frameAlignmentDraft;
+  assetsRef.current = assets;
+  selectedAssetIdRef.current = selectedAssetId;
+  selectedAnimationIdRef.current = selectedAnimationId;
 
   // 画像編集パラメータ
   const [eraserSize, setEraserSize] = useState(16);
@@ -632,7 +660,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     mutationBusy ||
     alphaInspecting ||
     paletteInspecting ||
-    pendingImageImport !== null;
+    pendingImageImport !== null ||
+    frameAlignmentDraft !== null;
 
   const selectedAsset = assets.find((asset) => asset.id === selectedAssetId) ?? assets[0] ?? null;
   const selectedFamilyMembership =
@@ -832,19 +861,52 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         : selectedAsset,
     [previewFrameId, selectedAsset],
   );
+  const frameAlignmentDelta = useMemo(
+    () => (frameAlignmentDraft ? frameAlignmentDeltaForDraft(frameAlignmentDraft) : null),
+    [frameAlignmentDraft],
+  );
+  const frameAlignmentPreviewResult = useMemo(
+    () =>
+      selectedAsset && frameAlignmentDraft
+        ? previewFrameAlignment(
+            selectedAsset,
+            frameAlignmentDraft.selection,
+            frameAlignmentDelta ?? { x: 0, y: 0 },
+          )
+        : null,
+    [frameAlignmentDelta, frameAlignmentDraft, selectedAsset],
+  );
+  const frameAlignmentPreview =
+    frameAlignmentPreviewResult?.ok === true ? frameAlignmentPreviewResult.value : null;
+  const frameAlignmentPreviewError =
+    frameAlignmentPreviewResult?.ok === false ? frameAlignmentPreviewResult.reason : null;
   const onionSkinPreviousAsset = useMemo(
     () =>
-      !isPlaying && showPreviousOnionSkin && selectedAsset && onionSkinOccurrences.previous
+      !frameAlignmentDraft &&
+      !isPlaying &&
+      showPreviousOnionSkin &&
+      selectedAsset &&
+      onionSkinOccurrences.previous
         ? applyFrameToAsset(selectedAsset, onionSkinOccurrences.previous.frameId)
         : null,
-    [isPlaying, onionSkinOccurrences.previous, selectedAsset, showPreviousOnionSkin],
+    [
+      frameAlignmentDraft,
+      isPlaying,
+      onionSkinOccurrences.previous,
+      selectedAsset,
+      showPreviousOnionSkin,
+    ],
   );
   const onionSkinNextAsset = useMemo(
     () =>
-      !isPlaying && showNextOnionSkin && selectedAsset && onionSkinOccurrences.next
+      !frameAlignmentDraft &&
+      !isPlaying &&
+      showNextOnionSkin &&
+      selectedAsset &&
+      onionSkinOccurrences.next
         ? applyFrameToAsset(selectedAsset, onionSkinOccurrences.next.frameId)
         : null,
-    [isPlaying, onionSkinOccurrences.next, selectedAsset, showNextOnionSkin],
+    [frameAlignmentDraft, isPlaying, onionSkinOccurrences.next, selectedAsset, showNextOnionSkin],
   );
 
   useEffect(() => {
@@ -857,7 +919,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   }, [selectedAsset, selectedColliderId]);
 
   const canStartEditorPersistentMutation = useCallback(
-    ({ allowPendingImageImport = false }: EditorPersistentMutationOptions = {}) => {
+    ({
+      allowPendingImageImport = false,
+      allowFrameAlignment = false,
+    }: EditorPersistentMutationOptions = {}) => {
       if (framePreviewActive) {
         setEditorError(FRAME_PREVIEW_EDIT_MESSAGE);
         return false;
@@ -866,6 +931,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         history,
         mutationBusy: mutationBusyRef.current,
         previewPending: pendingImageImport !== null && !allowPendingImageImport,
+        frameAlignmentPending: frameAlignmentDraftRef.current !== null && !allowFrameAlignment,
         onReject: setEditorError,
       });
     },
@@ -891,14 +957,24 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
   /** アセットのスナップショットを適用して自動保存する（Undo / Redo からも使う）。 */
   const applyAssetSnapshot = useCallback(
-    (snapshot: Asset) => {
+    (
+      snapshot: Asset,
+      {
+        allowFrameAlignment = false,
+      }: Pick<EditorPersistentMutationOptions, 'allowFrameAlignment'> = {},
+    ) => {
       if (framePreviewActive) {
         setEditorError(FRAME_PREVIEW_EDIT_MESSAGE);
-        return;
+        return false;
+      }
+      if (frameAlignmentDraftRef.current && !allowFrameAlignment) {
+        setEditorError(FRAME_ALIGNMENT_ACTIVE_MESSAGE);
+        return false;
       }
       setAssets((prev) => prev.map((asset) => (asset.id === snapshot.id ? snapshot : asset)));
       setProject((current) => syncProjectAssetSummary(current, snapshot));
       autosave.schedule(() => saveAsset(projectId, snapshot));
+      return true;
     },
     [autosave, framePreviewActive, projectId],
   );
@@ -957,20 +1033,32 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
   /** 変更を適用し、履歴へ積む。 */
   const commitAssetChange = useCallback(
-    (label: string, before: Asset, next: Asset) => {
-      if (!canStartEditorPersistentMutation()) {
-        return;
+    (
+      label: string,
+      before: Asset,
+      next: Asset,
+      options: Pick<EditorPersistentMutationOptions, 'allowFrameAlignment'> = {},
+    ) => {
+      if (!canStartEditorPersistentMutation(options)) {
+        return false;
       }
       const pushed = history.push({
         label,
-        undo: () => applyAssetSnapshot(before),
-        redo: () => applyAssetSnapshot(next),
+        undo: () => {
+          applyAssetSnapshot(before);
+        },
+        redo: () => {
+          applyAssetSnapshot(next);
+        },
       });
       if (!pushed) {
         setEditorError('元に戻す／やり直す処理中です。完了後に操作してください。');
-        return;
+        return false;
       }
-      applyAssetSnapshot(next);
+      if (!applyAssetSnapshot(next, options)) {
+        return false;
+      }
+      return true;
     },
     [applyAssetSnapshot, canStartEditorPersistentMutation, history],
   );
@@ -1004,6 +1092,12 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       if (event.key !== 'Escape') {
         return;
       }
+      if (frameAlignmentDraftRef.current) {
+        event.preventDefault();
+        setFrameAlignmentDraft(null);
+        setEditorError(null);
+        return;
+      }
       const target = event.target as HTMLElement | null;
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
         return;
@@ -1027,6 +1121,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setIsPlaying(false);
     setShowPreviousOnionSkin(false);
     setShowNextOnionSkin(false);
+    setFrameAlignmentDraft(null);
     setSelectedColliderId(null);
   }, [selectedAssetId]);
 
@@ -1094,6 +1189,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       setEditorError(FRAME_PREVIEW_EDIT_MESSAGE);
       return;
     }
+    setFrameAlignmentDraft(null);
     setSelectedAnimationId(id);
     setIsPlaying(false);
     setPreviewFrameId(null);
@@ -1102,6 +1198,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   };
 
   const handleSelectFrame = (frameId: string) => {
+    if (frameAlignmentDraftRef.current) {
+      setEditorError(FRAME_ALIGNMENT_ACTIVE_MESSAGE);
+      return;
+    }
     setIsPlaying(false);
     setPreviewFrameId(frameId);
     setPreviewOccurrenceIndex(null);
@@ -1109,6 +1209,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   };
 
   const handleSelectOccurrence = (occurrenceIndex: number) => {
+    if (frameAlignmentDraftRef.current) {
+      setEditorError(FRAME_ALIGNMENT_ACTIVE_MESSAGE);
+      return;
+    }
     const frameId = selectedAnimation?.frameIds[occurrenceIndex];
     if (!frameId || !availableFrameIds.has(frameId)) {
       return;
@@ -1119,7 +1223,160 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setFiredAnimationEvents([]);
   };
 
+  const handleStartFrameAlignment = async (referenceFrameId: string, targetFrameId: string) => {
+    if (!selectedAsset || !selectedAnimationId) {
+      setEditorError('位置合わせに使うAnimationを選択してください。');
+      return;
+    }
+    if (isPlaying) {
+      setEditorError(FRAME_ALIGNMENT_PLAYING_MESSAGE);
+      return;
+    }
+    const selection = {
+      assetId: selectedAsset.id,
+      animationId: selectedAnimationId,
+      referenceFrameId,
+      targetFrameId,
+    };
+    if (!beginEditorPersistentMutation()) {
+      return;
+    }
+    setEditorError(null);
+    try {
+      const inspection = inspectFrameAlignment(selectedAsset, selection);
+      if (!inspection.ok) {
+        setEditorError(inspection.reason);
+        return;
+      }
+
+      // D4開始前の保存待ちだけを完了させ、D4 draft自体はautosaveへ入れない。
+      await autosave.flush();
+      if (
+        selectedAssetIdRef.current !== selection.assetId ||
+        selectedAnimationIdRef.current !== selection.animationId
+      ) {
+        setEditorError(
+          '位置合わせの準備中にAssetまたはAnimationが変わりました。もう一度開始してください。',
+        );
+        return;
+      }
+      const latestAsset = assetsRef.current.find((asset) => asset.id === selection.assetId);
+      if (!latestAsset) {
+        setEditorError('位置合わせを開始したAssetを読み込めません。');
+        return;
+      }
+      const latestInspection = inspectFrameAlignment(latestAsset, selection);
+      if (!latestInspection.ok) {
+        setEditorError(latestInspection.reason);
+        return;
+      }
+
+      setIsPlaying(false);
+      setPreviewFrameId(null);
+      setPreviewOccurrenceIndex(null);
+      setFiredAnimationEvents([]);
+      setFrameAlignmentDraft({
+        selection,
+        xInput: '0',
+        yInput: '0',
+        impact: latestInspection.value.impact,
+      });
+    } catch (error) {
+      setEditorError(
+        `位置合わせを開始できませんでした: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    } finally {
+      endEditorPersistentMutation();
+    }
+  };
+
+  const handleFrameAlignmentDeltaInput = (axis: 'x' | 'y', value: string) => {
+    setFrameAlignmentDraft((current) =>
+      current
+        ? {
+            ...current,
+            [axis === 'x' ? 'xInput' : 'yInput']: value,
+          }
+        : null,
+    );
+  };
+
+  const handleNudgeFrameAlignment = (x: number, y: number) => {
+    setFrameAlignmentDraft((current) => {
+      if (!current) {
+        return null;
+      }
+      const delta = frameAlignmentDeltaForDraft(current);
+      if (!delta) {
+        return current;
+      }
+      return {
+        ...current,
+        xInput: String(delta.x + x),
+        yInput: String(delta.y + y),
+      };
+    });
+  };
+
+  const handleCancelFrameAlignment = () => {
+    setFrameAlignmentDraft(null);
+    setEditorError(null);
+  };
+
+  const handleConfirmFrameAlignment = () => {
+    const draft = frameAlignmentDraftRef.current;
+    if (!draft) {
+      return;
+    }
+    if (isPlaying) {
+      setEditorError(FRAME_ALIGNMENT_PLAYING_MESSAGE);
+      return;
+    }
+    const delta = frameAlignmentDeltaForDraft(draft);
+    if (!delta) {
+      setEditorError('XとYには有限な数値を入力してください。');
+      return;
+    }
+    const currentAsset = assetsRef.current.find((asset) => asset.id === draft.selection.assetId);
+    if (
+      !currentAsset ||
+      selectedAssetIdRef.current !== draft.selection.assetId ||
+      selectedAnimationIdRef.current !== draft.selection.animationId
+    ) {
+      setEditorError(
+        '位置合わせを開始したAssetまたはAnimationから選択が変わりました。もう一度開始してください。',
+      );
+      setFrameAlignmentDraft(null);
+      return;
+    }
+
+    const result = applyFrameAlignment(currentAsset, draft.selection, delta);
+    if (!result.ok) {
+      setEditorError(result.reason);
+      return;
+    }
+    if (!result.value.changed) {
+      setFrameAlignmentDraft(null);
+      setEditorError(null);
+      return;
+    }
+    if (
+      commitAssetChange('フレーム位置合わせ', currentAsset, result.value.asset, {
+        allowFrameAlignment: true,
+      })
+    ) {
+      setFrameAlignmentDraft(null);
+      setEditorError(null);
+    }
+  };
+
   const handlePlayAnimation = () => {
+    if (frameAlignmentDraftRef.current) {
+      setEditorError(FRAME_ALIGNMENT_ACTIVE_MESSAGE);
+      return;
+    }
     if (!selectedAnimation || selectedAnimation.frameIds.length === 0) {
       return;
     }
@@ -1136,6 +1393,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   };
 
   const handleRewindAnimation = () => {
+    if (frameAlignmentDraftRef.current) {
+      setEditorError(FRAME_ALIGNMENT_ACTIVE_MESSAGE);
+      return;
+    }
     if (!selectedAnimation || selectedAnimation.frameIds.length === 0) {
       return;
     }
@@ -2919,10 +3180,17 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     if (JSON.stringify(before) === JSON.stringify(current)) {
       return;
     }
+    if (!canStartEditorPersistentMutation()) {
+      return;
+    }
     const pushed = history.push({
       label: '数値編集',
-      undo: () => applyAssetSnapshot(before),
-      redo: () => applyAssetSnapshot(current),
+      undo: () => {
+        applyAssetSnapshot(before);
+      },
+      redo: () => {
+        applyAssetSnapshot(current);
+      },
     });
     if (!pushed) {
       setEditorError('元に戻す／やり直す処理中です。完了後に操作してください。');
@@ -3222,13 +3490,20 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 </a>
               </div>
               <CanvasEditor
-                asset={previewAsset ?? selectedAsset}
+                asset={frameAlignmentPreview?.targetAsset ?? previewAsset ?? selectedAsset}
                 onionSkinPreviousAsset={onionSkinPreviousAsset}
                 onionSkinNextAsset={onionSkinNextAsset}
+                alignmentReferenceAsset={frameAlignmentPreview?.referenceAsset ?? null}
                 tool={tool}
                 selectedLayerId={selectedLayerId}
-                readOnly={framePreviewActive}
-                onReadOnlyAttempt={() => setEditorError(FRAME_PREVIEW_EDIT_MESSAGE)}
+                readOnly={framePreviewActive || !!frameAlignmentDraft}
+                onReadOnlyAttempt={() =>
+                  setEditorError(
+                    frameAlignmentDraft
+                      ? FRAME_ALIGNMENT_ACTIVE_MESSAGE
+                      : FRAME_PREVIEW_EDIT_MESSAGE,
+                  )
+                }
                 eraserRadius={eraserSize}
                 brushRadius={brushSize}
                 rasterColor={hexToRgb(rasterColor)}
@@ -4516,6 +4791,15 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             onLiveChange={applyAssetSnapshot}
             onBeginFieldEdit={beginLayerEdit}
             onCommitFieldEdit={commitLayerEdit}
+            frameAlignmentDraft={frameAlignmentDraft}
+            frameAlignmentPreviewError={frameAlignmentPreviewError}
+            onStartFrameAlignment={(referenceFrameId, targetFrameId) =>
+              void handleStartFrameAlignment(referenceFrameId, targetFrameId)
+            }
+            onFrameAlignmentDeltaInput={handleFrameAlignmentDeltaInput}
+            onNudgeFrameAlignment={handleNudgeFrameAlignment}
+            onConfirmFrameAlignment={handleConfirmFrameAlignment}
+            onCancelFrameAlignment={handleCancelFrameAlignment}
           />
         ) : (
           <p className="editor-note">アセットを選ぶとフレームとアニメーションを編集できます。</p>

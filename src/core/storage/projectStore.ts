@@ -120,8 +120,9 @@ function assertTextureRefsUnchanged(previousAsset: Asset, nextAsset: Asset): voi
   }
 }
 
-function projectEntryForAsset(asset: Asset): ProjectAssetEntry {
+function projectEntryForAsset(asset: Asset, previousEntry?: ProjectAssetEntry): ProjectAssetEntry {
   return {
+    ...previousEntry,
     id: asset.id,
     name: asset.name,
     displayName: asset.displayName,
@@ -170,7 +171,7 @@ async function syncProjectAssetEntryInTx(
   const nextProject: Project = {
     ...project,
     assets: project.assets.map((entry) =>
-      entry.id === asset.id ? projectEntryForAsset(asset) : entry,
+      entry.id === asset.id ? projectEntryForAsset(asset, entry) : entry,
     ),
     updatedAt: latestUpdatedAt(project.updatedAt, asset.updatedAt),
   };
