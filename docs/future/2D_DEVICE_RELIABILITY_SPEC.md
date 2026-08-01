@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 2D Device & Reliability Spec
 
-最終更新日: 2026-07-10
+最終更新日: 2026-08-02
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 2D 完成形の端末・保存・復旧・性能・安全性仕様
 状態: accepted（将来設計。docs-only）
@@ -136,13 +136,15 @@ Chameleon は、PC、iPad、スマホで同じ編集元を安全に扱い、端�
 | 多数タイル / atlas | padding / trim / multi-page 導入後の CPU、メモリ、出力時間。 |
 | 復元・移行 | 大きな `.casproj` の読み込み中断、古い version、画像欠落、保存容量不足。 |
 
-### 6.3.1 Group 12 H3の二段階Gate
+### 6.3.1 Group 12から`2D-6-PERFORMANCE`へ延期したH3二段階測定
 
 H3=M1のcore測定は`2D_3_H3_MEASUREMENT_PROTOCOL.md`を正本とする。PC Chromium、iPhone 17 Pro Safari、iPhone 11 Pro Safari、iPad Pro 2018 Safariで、同じcommit・fixture SHA-256・caseを1件ずつ測る。Playwrightのmobile viewportとNode結果は物理Safariの代替にしない。
 
 core段階は現行bake、JSON serialization、sheet pixel推定だけを測る。製品実装後は同じfixtureと後続承認候補値で、React反映、保存、Undo / Redo、reload、`asset.json` / `.casproj` / ZIP、safe area、software keyboard、44px touch targetをproduct-path Gateとして別に測る。browserがheap / Long Task / storage estimateを提供しない場合は`unsupported / null`と記録し、0として合格させない。
 
 120 Frame超warning / 240 Frame hard capは未採用候補である。Frame、LayerState、serialized bytes、sheet pixelとRGBA推定を合わせ、最弱端末の結果を人間が別途承認するまで製品上限へ使わない。
+
+2026-08-02の人間判断で、T1 / P1 / B1のGroup 12物理Safari Gateを完了扱いとし、B2をGroup 12完了条件から外して`2D-6-PERFORMANCE`へ延期した。これは正式B0、数値budget、warning / hard cap、採用上限product-path実測を完了したことを意味しない。公開利用で停止、極端な遅延、保存・書き出し失敗、Safari固有問題が再現した場合に本測定を再開する。
 
 ### 6.4 オフラインと更新
 
