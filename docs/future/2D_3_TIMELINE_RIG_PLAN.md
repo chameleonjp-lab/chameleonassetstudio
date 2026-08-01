@@ -4,7 +4,7 @@
 work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 監査基準: `main@236571c241bf84747f71f260f3bea99e6abe7f25`
 マージ後基準: PR #146 merge `cb21ea4` / PR #147 final head `1ba671f7` / merge `24a089c` / PR #148 final head `0cfc1ea` / merge `fbdeb357` / PR #149 merge `536318f` / PR #153 merge `e8fac95` / PR #154 final head `fdf75f0` / merge `1c700e7` / PR #157 final head `834cc38` / merge `bf13cac` / PR #201 final head `25cd332` / merge `c1d08e3` / PR #204 final head `8ebeb27` / merge `eeaea39` / PR #206 final head `ac84b8c` / merge `3081495` / PR #208 final head `ef41a4b` / merge `ea67920` / PR #209 final head `16f5ae2` / merge `5e25d0d`
-状態: `T1 Slice A merged / P1 Slice C merged / R1 Slice B1 merged and independently verified / Slice B2 numeric Gate pending / Slice D1-D4 merged and independently verified / D1-D4 physical iPhone and iPad Safari passed / T1-P1-B1 physical Safari Gate pending / formal B0 deferred`
+状態: `Group 12 completed / T1-P1-B1-D1-D4 merged and independently verified / D1-D4 physical Safari passed / T1-P1-B1 physical Safari completed by 2026-08-02 human decision / B2 deferred to 2D-6-PERFORMANCE and unmeasured / formal B0 deferred / Group 13 contract audit unblocked`
 関連: `docs/adr/0008-motion-time-semantics.md`, `docs/adr/0009-animation-event-boundary.md`, `docs/adr/0021-frame-duration-semantics.md`, `docs/adr/0022-rig-flip-and-bake-parity.md`, `docs/adr/0023-part-layer-replacement.md`, `docs/future/2D_3_H3_MEASUREMENT_PROTOCOL.md`
 
 ---
@@ -21,7 +21,7 @@ PR #146の契約監査は17文書、製品コード変更なしでmainへ反映�
 
 2026-07-29のADR-2026-07-29-030でD3の`P1+A1+B1+C1`を承認した。PR #205 merge `66debcaf974fe965757f39be8a433d86546eed19`で実装Gateを満了し、PR #206 final head `ac84b8c2d6141f6353c3e07dbb2dbfae9a2f5c98`、merge `3081495a979d10176a05eb2907e7cede55cc8c9a`でmainへ反映した。CI Run #610はunit 769件、Chromium E2E 170件、H3、Pages open / closed routeを含む31 stepを全成功し、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D3は`implemented / CI-passed / independently-verified / merged`としてcloseoutする。
 
-同日のADR-2026-07-29-031でD4の`A1+B1+C1`を承認した。D4は選択中Animationの基準Frameと対象Frameを重ね、対象Frame全体へ同じ手動移動量を適用する。確定前はUIだけの一時表示、確定時は1 Historyとし、不足するFrame / LayerState / transformを自動生成しない。契約PR #208 merge `ea67920`で実装前Gateを満了し、PR #209 final head `16f5ae2a62928c92f039710e935f3c66c113b0c1`、merge `5e25d0d4e1a4c6680afdd5f5d05ef51d0f8bdea8`で製品コードと試験をmainへ反映した。CI Run #623はunit 799件、Chromium E2E 176件、H3 1件、Pages open / closed各1件を全成功し、failed / flaky / skippedは0件、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D4を`implemented / CI-passed / independently-verified / merged`とする。D1〜D4の物理Safari確認は、D4を2026-08-01、D1〜D3を2026-08-02に指定3端末で問題なしと人間確認済みである。B2とT1 / P1 / B1の物理iPhone / iPad SafariのGroup 12 closeout Gateは未完了のまま維持する。
+同日のADR-2026-07-29-031でD4の`A1+B1+C1`を承認した。D4は選択中Animationの基準Frameと対象Frameを重ね、対象Frame全体へ同じ手動移動量を適用する。確定前はUIだけの一時表示、確定時は1 Historyとし、不足するFrame / LayerState / transformを自動生成しない。契約PR #208 merge `ea67920`で実装前Gateを満了し、PR #209 final head `16f5ae2a62928c92f039710e935f3c66c113b0c1`、merge `5e25d0d4e1a4c6680afdd5f5d05ef51d0f8bdea8`で製品コードと試験をmainへ反映した。CI Run #623はunit 799件、Chromium E2E 176件、H3 1件、Pages open / closed各1件を全成功し、failed / flaky / skippedは0件、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D4を`implemented / CI-passed / independently-verified / merged`とする。D1〜D4の物理Safari確認は、D4を2026-08-01、D1〜D3を2026-08-02に指定3端末で問題なしと人間確認済みである。2026-08-02の人間判断でT1 / P1 / B1の物理Safari Gateを完了扱いとし、B2は`2D-6-PERFORMANCE`へ延期した。B2をGroup 12完了条件から外してGroup 12をcloseoutし、Group 13の契約監査を開始可能とする。
 
 ## 2. 監査方法と現状
 
@@ -219,7 +219,7 @@ Playwrightのmobile viewportは実iPhone Safariの代替にしない。Group 12�
 
 次のいずれかに該当したら、影響するsliceだけを止めて人間判断へ戻す。
 
-- H3数値が未決定の間は、数値warning / hard cap、B2、Group 12完了判定を確定しない。これはサービス公開、T1 Slice A、P1 Slice C、B1の停止条件ではない。
+- 2026-08-02の後続判断により、H3数値未決定はGroup 12 closeoutとGroup 13契約監査の停止条件ではない。数値warning / hard capとB2実装は`2D-6-PERFORMANCE`で別に扱い、測定と人間承認前に製品定数へ入れない。
 - accepted座標式とbake parityを同時に満たせない。
 - optional追加だけでは旧Asset 0.2.0のroundtripを維持できない。
 - 公開利用で停止、極端な遅延、保存・書き出し失敗などが再現した。この場合はM1 protocolまたは製品path Gateを再開する。
@@ -448,7 +448,7 @@ D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.caspr
 - 確認範囲は、基準Frameと対象Frameの選択、上下左右の1px移動、X / Y数値入力、確定、取消、Undo / Redo、Safari再読み込み、software keyboard、safe area、実touch、縦横orientation、横overflowである。
 - 本確認では各端末の正確なOS / Safari versionを新たに記録していない。端末名と利用者報告をD4の物理操作証拠とし、H3の正式B0、性能値、数値budgetには使わない。
 - 本確認はD4だけを対象とした。2026-08-01時点ではT1、P1、B1、D1〜D3の物理Safari確認、B2、Group 12全体の完了判定を未完了のまま維持した。D1〜D3の後続結果は§19を正本とする。
-- Group 13はGroup 12完了に依存するため開始しない。
+- この時点ではGroup 13を開始しなかった。2026-08-02の後続closeout判断は§20を正本とする。
 
 ## 19. D1〜D3物理Safari確認（2026-08-02）
 
@@ -458,5 +458,30 @@ D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.caspr
 - D3では、eventの追加、名前変更、参照Frame変更、削除取消・確定、Undo / Redo、Frame preview中の編集拒否、保存後のSafari再読み込みを確認した。
 - 共通範囲としてsoftware keyboard、safe area、実touch、縦横orientation、Safari下部bar、横overflowを確認した。
 - 各端末の正確なOS / Safari versionは新たに記録していない。端末名と利用者報告をD1〜D3の物理操作証拠とし、H3の正式B0、性能値、数値budgetには使わない。
-- これによりD1〜D4の物理Safari確認は完了した。T1、P1、B1の物理Safari確認、B2、採用上限でのPC / iPhone / iPad product-path実測、Group 12全体の完了判定は未完了のまま維持する。
-- Group 13はGroup 12完了に依存するため開始しない。
+- これによりD1〜D4の物理Safari確認は完了した。この記録時点ではT1、P1、B1の物理Safari確認、B2、採用上限でのPC / iPhone / iPad product-path実測、Group 12全体の完了判定を未完了としたが、同日後続のGroup 12 closeout判断は§20を正本とする。
+- この時点ではGroup 13を開始しなかった。2026-08-02の後続closeout判断は§20を正本とする。
+
+## 20. Group 12 closeoutとB2延期（2026-08-02）
+
+### 状態
+
+- accepted（2026-08-02 人間判断）
+- Group 12: completed
+- T1 / P1 / B1の物理Safari Gate: 完了扱い
+- B2: `deferred to 2D-6-PERFORMANCE / unimplemented / unmeasured`
+- Group 13: 契約監査開始可能
+
+### 決定
+
+- 利用者から「実機確認系は一旦全て完了扱いで進める」と明示されたため、T1 / P1 / B1のGroup 12物理Safari Gateを完了扱いにする。
+- この判断は個別操作結果、正確なOS / Safari version、確認時commit、H3 raw値を新たに取得したことを意味しない。D1〜D4の既存端末証拠と区別する。
+- 正式B0とB2の数値budget、warning、hard cap、採用上限でのPC / iPhone / iPad product-path実測は完了扱いにしない。
+- B2を未測定・未実装の性能課題として`2D-6-PERFORMANCE`へ延期し、Group 12の完了条件から外す。120 / 240 Frameは未採用候補のまま維持する。
+- B1の安全整数検査を通る極端に大きい生成量では、同期bakeによる画面停止やメモリ不足が残り得る。公開利用で停止、極端な遅延、保存・書き出し失敗が再現した場合は、H3と製品path測定を再開する。
+- T1 / P1 / B1 / D1〜D4の実装、CI、独立確認、今回の人間判断をもってGroup 12をcloseoutし、Group 13の契約監査を次の正式作業とする。
+
+### 変更しないこと
+
+- warning / hard cap / 採用上限の数値。
+- 製品コード、test code、schema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependency。
+- 2D Pro Gate全体の完了、3D開始、Ready化、merge。
