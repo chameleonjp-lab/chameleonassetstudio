@@ -1352,6 +1352,7 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 
 ### 決定
 
+- 本決定はADR-2026-07-24-027、ADR-2026-07-29-031、ADR-0022のうち、B2および物理Safari GateをGroup 12完了条件とする部分だけを置き換える。B2の未実装要件、性能測定手順、残存リスクは維持する。
 - 「実機確認系は一旦全て完了扱いで進める」という人間判断を、T1 / P1 / B1のGroup 12物理Safari Gateへ適用する。
 - 個別操作結果、正確なOS / Safari version、確認時commitを取得済みとは扱わない。
 - B2を`2D-6-PERFORMANCE`へ延期し、Group 12の完了条件から外す。B2は`unimplemented / unmeasured`のまま維持する。
