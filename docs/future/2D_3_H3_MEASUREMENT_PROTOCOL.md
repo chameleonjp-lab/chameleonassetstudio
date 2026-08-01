@@ -1,9 +1,9 @@
 # Group 12 H3 再現可能計測プロトコル
 
-最終更新日: 2026-07-24
+最終更新日: 2026-08-02
 work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 判断: `H3=M1`（測定方法は固定。正式B0は保留し、問題発生時に再実行。数値budgetは未決定）
-実装: 計測ハーネスとR1 Slice B1製品機能は実装済み。B2の上限定数、warning、hard cap、採用上限での製品経路実機Gateは未実装
+実装: 計測ハーネスとR1 Slice B1製品機能は実装済み。B2の上限定数、warning、hard cap、採用上限での製品経路実機Gateは未実装のまま`2D-6-PERFORMANCE`へ延期
 関連: `2D_3_TIMELINE_RIG_PLAN.md`, `2D_DEVICE_RELIABILITY_SPEC.md`, `docs/adr/0022-rig-flip-and-bake-parity.md`, `tools/h3/`
 
 ---
@@ -149,3 +149,11 @@ bake -> React反映 -> 保存完了 -> Undo -> Redo -> reload
 - numeric warning / hard capと、上限超過時の原子的拒否を人間が別途承認していない。
 
 H3=M1の完了は「測定方法を固定した」ことまでであり、「120 / 240または他の数値を採用した」ことではない。
+
+## 9. 2026-08-02のGroup 12 closeout後の扱い
+
+- 人間判断により、T1 / P1 / B1のGroup 12物理Safari Gateを完了扱いとし、Group 12をcloseoutする。
+- 正式B0、B2、数値budget、warning、hard cap、採用上限でのPC / iPhone / iPad product-path実測は完了扱いにしない。
+- B2は`2D-6-PERFORMANCE`へ延期し、本書を再現可能な測定手順として維持する。120 / 240 Frameは未採用候補であり、製品定数ではない。
+- 公開利用で停止、極端な遅延、保存・書き出し失敗、Safari固有の問題が再現した場合に、同じcommit / fixture / 結果形式で本プロトコルを再開する。
+- Node、Playwright Chromium、D1〜D4の操作確認、2026-08-02の完了扱いを、性能値、memory、crash耐性、B2合格の証拠へ流用しない。
