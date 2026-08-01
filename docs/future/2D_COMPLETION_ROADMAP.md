@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 2D Completion Roadmap
 
-最終更新日: 2026-08-01
+最終更新日: 2026-08-02
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 2D 完成までの実装順と品質 gate
 状態: accepted（今後の優先順。docs-only）
