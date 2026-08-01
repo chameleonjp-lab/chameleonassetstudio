@@ -21,7 +21,7 @@ PR #146の契約監査は17文書、製品コード変更なしでmainへ反映�
 
 2026-07-29のADR-2026-07-29-030でD3の`P1+A1+B1+C1`を承認した。PR #205 merge `66debcaf974fe965757f39be8a433d86546eed19`で実装Gateを満了し、PR #206 final head `ac84b8c2d6141f6353c3e07dbb2dbfae9a2f5c98`、merge `3081495a979d10176a05eb2907e7cede55cc8c9a`でmainへ反映した。CI Run #610はunit 769件、Chromium E2E 170件、H3、Pages open / closed routeを含む31 stepを全成功し、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D3は`implemented / CI-passed / independently-verified / merged`としてcloseoutする。
 
-同日のADR-2026-07-29-031でD4の`A1+B1+C1`を承認した。D4は選択中Animationの基準Frameと対象Frameを重ね、対象Frame全体へ同じ手動移動量を適用する。確定前はUIだけの一時表示、確定時は1 Historyとし、不足するFrame / LayerState / transformを自動生成しない。契約PR #208 merge `ea67920`で実装前Gateを満了し、PR #209 final head `16f5ae2a62928c92f039710e935f3c66c113b0c1`、merge `5e25d0d4e1a4c6680afdd5f5d05ef51d0f8bdea8`で製品コードと試験をmainへ反映した。CI Run #623はunit 799件、Chromium E2E 176件、H3 1件、Pages open / closed各1件を全成功し、failed / flaky / skippedは0件、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D4を`implemented / CI-passed / independently-verified / merged`とする。D4の物理Safari確認は2026-08-01に指定3端末で問題なしと人間確認済みである。B2とD4以外の物理iPhone / iPad SafariのGroup 12 closeout Gateは未完了のまま維持する。
+同日のADR-2026-07-29-031でD4の`A1+B1+C1`を承認した。D4は選択中Animationの基準Frameと対象Frameを重ね、対象Frame全体へ同じ手動移動量を適用する。確定前はUIだけの一時表示、確定時は1 Historyとし、不足するFrame / LayerState / transformを自動生成しない。契約PR #208 merge `ea67920`で実装前Gateを満了し、PR #209 final head `16f5ae2a62928c92f039710e935f3c66c113b0c1`、merge `5e25d0d4e1a4c6680afdd5f5d05ef51d0f8bdea8`で製品コードと試験をmainへ反映した。CI Run #623はunit 799件、Chromium E2E 176件、H3 1件、Pages open / closed各1件を全成功し、failed / flaky / skippedは0件、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D4を`implemented / CI-passed / independently-verified / merged`とする。D1〜D4の物理Safari確認は、D4を2026-08-01、D1〜D3を2026-08-02に指定3端末で問題なしと人間確認済みである。B2とT1 / P1 / B1の物理iPhone / iPad SafariのGroup 12 closeout Gateは未完了のまま維持する。
 
 ## 2. 監査方法と現状
 
@@ -447,5 +447,16 @@ D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.caspr
 - 人間確認により、iPhone 17 Pro、iPhone 11 Pro、iPad Pro 2018のSafariでD4 frame alignmentを「問題なし」とする。
 - 確認範囲は、基準Frameと対象Frameの選択、上下左右の1px移動、X / Y数値入力、確定、取消、Undo / Redo、Safari再読み込み、software keyboard、safe area、実touch、縦横orientation、横overflowである。
 - 本確認では各端末の正確なOS / Safari versionを新たに記録していない。端末名と利用者報告をD4の物理操作証拠とし、H3の正式B0、性能値、数値budgetには使わない。
-- 本確認はD4だけを対象とする。T1、P1、B1、D1〜D3の物理Safari確認、B2、Group 12全体の完了判定は未完了のまま維持する。
+- 本確認はD4だけを対象とした。2026-08-01時点ではT1、P1、B1、D1〜D3の物理Safari確認、B2、Group 12全体の完了判定を未完了のまま維持した。D1〜D3の後続結果は§19を正本とする。
+- Group 13はGroup 12完了に依存するため開始しない。
+
+## 19. D1〜D3物理Safari確認（2026-08-02）
+
+- 人間確認により、iPhone 17 Pro、iPhone 11 Pro、iPad Pro 2018のSafariでD1〜D3を「問題なし」とする。
+- D1では、Frame preview中の選択・pan・zoom、永続編集とUndo / Redoの拒否、明示停止、停止後のUndo / Redoと通常編集、Safari再読み込みを確認した。
+- D2では、前・次の個別表示、再生中の一時非表示、停止後の表示復元、Safari再読み込み後のoffを確認した。
+- D3では、eventの追加、名前変更、参照Frame変更、削除取消・確定、Undo / Redo、Frame preview中の編集拒否、保存後のSafari再読み込みを確認した。
+- 共通範囲としてsoftware keyboard、safe area、実touch、縦横orientation、Safari下部bar、横overflowを確認した。
+- 各端末の正確なOS / Safari versionは新たに記録していない。端末名と利用者報告をD1〜D3の物理操作証拠とし、H3の正式B0、性能値、数値budgetには使わない。
+- これによりD1〜D4の物理Safari確認は完了した。T1、P1、B1の物理Safari確認、B2、採用上限でのPC / iPhone / iPad product-path実測、Group 12全体の完了判定は未完了のまま維持する。
 - Group 13はGroup 12完了に依存するため開始しない。
