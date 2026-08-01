@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 2D Completion Roadmap
 
-最終更新日: 2026-07-30
+最終更新日: 2026-08-01
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 2D 完成までの実装順と品質 gate
 状態: accepted（今後の優先順。docs-only）
@@ -227,9 +227,9 @@ PR #55（`2D-2-CREATE-01`）は、`2D-1B-GATE` より先に main へマージさ
 - character、item、background、tile、gimmick、effect、UI / icon の型別検査画面。
 - tile collision、背景ループ / parallax、gimmick の動き、effect の duration / blend / anchor の確認。
 
-Group 12の詳細契約は`2D_3_TIMELINE_RIG_PLAN.md`を正本とする。T1 / R1 / P1の中核はPR #146 final head `20871f7`、merge `cb21ea4`でADR-0021〜0023へ反映した。H1=E1、H2=L1、H3=M1を2026-07-22に追加人間承認し、計測準備PR #147、Pages配信分離PR #148 / #149、T1 Slice A PR #153、P1 Slice C PR #154をmainへ反映した。2026-07-23の人間判断により正式B0を保留し、H3の数値budget、warning、hard capを先取りしない。R1 Slice B1はPR #157、Slice D1はPR #201、D2はPR #204で完了した。ADR-2026-07-29-030のD3はPR #206 final head `ac84b8c2d6141f6353c3e07dbb2dbfae9a2f5c98`、merge `3081495a979d10176a05eb2907e7cede55cc8c9a`、CI Run #610全成功、固定headの3方向独立review `BLOCKER 0 / MUST 0 / SHOULD 0`を経て完了した。ADR-2026-07-29-031でD4のA1+B1+C1を承認し、基準Frameと対象Frameを重ね、対象Frame全体を手動移動し、確定前はUI-only、確定時は1 History、不足dataは自動生成せず拒否する契約を固定した。契約PR #208 merge `ea67920`で実装前Gateを満了し、PR #209 final head `16f5ae2a62928c92f039710e935f3c66c113b0c1`、merge `5e25d0d4e1a4c6680afdd5f5d05ef51d0f8bdea8`で製品コードと試験をmainへ反映した。CI Run #623はunit 799件、Chromium E2E 176件、H3 1件、Pages open / closed各1件を全成功し、failed / flaky / skippedは0件、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D4を`implemented / CI-passed / independently-verified / merged`とする。B2と物理iPhone / iPad SafariのGroup 12 closeoutは保留し、ADR-0010のcollider override / polygonはGroup 13のまま維持する。
+Group 12の詳細契約は`2D_3_TIMELINE_RIG_PLAN.md`を正本とする。T1 / R1 / P1の中核はPR #146 final head `20871f7`、merge `cb21ea4`でADR-0021〜0023へ反映した。H1=E1、H2=L1、H3=M1を2026-07-22に追加人間承認し、計測準備PR #147、Pages配信分離PR #148 / #149、T1 Slice A PR #153、P1 Slice C PR #154をmainへ反映した。2026-07-23の人間判断により正式B0を保留し、H3の数値budget、warning、hard capを先取りしない。R1 Slice B1はPR #157、Slice D1はPR #201、D2はPR #204で完了した。ADR-2026-07-29-030のD3はPR #206 final head `ac84b8c2d6141f6353c3e07dbb2dbfae9a2f5c98`、merge `3081495a979d10176a05eb2907e7cede55cc8c9a`、CI Run #610全成功、固定headの3方向独立review `BLOCKER 0 / MUST 0 / SHOULD 0`を経て完了した。ADR-2026-07-29-031でD4のA1+B1+C1を承認し、基準Frameと対象Frameを重ね、対象Frame全体を手動移動し、確定前はUI-only、確定時は1 History、不足dataは自動生成せず拒否する契約を固定した。契約PR #208 merge `ea67920`で実装前Gateを満了し、PR #209 final head `16f5ae2a62928c92f039710e935f3c66c113b0c1`、merge `5e25d0d4e1a4c6680afdd5f5d05ef51d0f8bdea8`で製品コードと試験をmainへ反映した。CI Run #623はunit 799件、Chromium E2E 176件、H3 1件、Pages open / closed各1件を全成功し、failed / flaky / skippedは0件、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D4を`implemented / CI-passed / independently-verified / merged`とする。D4の物理Safari確認は2026-08-01にiPhone 17 Pro、iPhone 11 Pro、iPad Pro 2018で問題なしと人間確認済みである。B2とD4以外の物理iPhone / iPad SafariのGroup 12 closeoutは保留し、ADR-0010のcollider override / polygonはGroup 13のまま維持する。
 
-PR #203 / #205 / #208のmergeでD2 / D3 / D4の各実装前Gateを満了し、PR #204 / #206 / #209で3 Sliceを`implemented / CI-passed / independently-verified / merged`としてcloseoutした。B2、物理iPhone / iPad SafariのGroup 12 closeout Gateは未完了のまま維持する。
+PR #203 / #205 / #208のmergeでD2 / D3 / D4の各実装前Gateを満了し、PR #204 / #206 / #209で3 Sliceを`implemented / CI-passed / independently-verified / merged`としてcloseoutした。B2とD4以外の物理iPhone / iPad SafariのGroup 12 closeout Gateは未完了のまま維持する。
 
 D4の実装前GateはPR #208 merge `ea67920`で満了した。D4製品実装はmain `0cbc699`から別のDraft PR / 単一writerで進め、製品コード、Unit / storage / Chromium E2E、追従文書を同じ差分へ入れ、CI成功と固定headの3方向独立reviewを経てPR #209でcloseoutした。
 
