@@ -1,10 +1,10 @@
 # 2D-3 Timeline + Rig 契約計画
 
-最終更新日: 2026-07-30
+最終更新日: 2026-08-01
 work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 監査基準: `main@236571c241bf84747f71f260f3bea99e6abe7f25`
 マージ後基準: PR #146 merge `cb21ea4` / PR #147 final head `1ba671f7` / merge `24a089c` / PR #148 final head `0cfc1ea` / merge `fbdeb357` / PR #149 merge `536318f` / PR #153 merge `e8fac95` / PR #154 final head `fdf75f0` / merge `1c700e7` / PR #157 final head `834cc38` / merge `bf13cac` / PR #201 final head `25cd332` / merge `c1d08e3` / PR #204 final head `8ebeb27` / merge `eeaea39` / PR #206 final head `ac84b8c` / merge `3081495` / PR #208 final head `ef41a4b` / merge `ea67920` / PR #209 final head `16f5ae2` / merge `5e25d0d`
-状態: `T1 Slice A merged / P1 Slice C merged / R1 Slice B1 merged and independently verified / Slice B2 numeric Gate pending / Slice D1-D4 merged and independently verified / physical iPhone and iPad Safari Gate pending / formal B0 deferred`
+状態: `T1 Slice A merged / P1 Slice C merged / R1 Slice B1 merged and independently verified / Slice B2 numeric Gate pending / Slice D1-D4 merged and independently verified / D4 physical iPhone and iPad Safari passed / remaining physical Safari Gate pending / formal B0 deferred`
 関連: `docs/adr/0008-motion-time-semantics.md`, `docs/adr/0009-animation-event-boundary.md`, `docs/adr/0021-frame-duration-semantics.md`, `docs/adr/0022-rig-flip-and-bake-parity.md`, `docs/adr/0023-part-layer-replacement.md`, `docs/future/2D_3_H3_MEASUREMENT_PROTOCOL.md`
 
 ---
@@ -21,7 +21,7 @@ PR #146の契約監査は17文書、製品コード変更なしでmainへ反映�
 
 2026-07-29のADR-2026-07-29-030でD3の`P1+A1+B1+C1`を承認した。PR #205 merge `66debcaf974fe965757f39be8a433d86546eed19`で実装Gateを満了し、PR #206 final head `ac84b8c2d6141f6353c3e07dbb2dbfae9a2f5c98`、merge `3081495a979d10176a05eb2907e7cede55cc8c9a`でmainへ反映した。CI Run #610はunit 769件、Chromium E2E 170件、H3、Pages open / closed routeを含む31 stepを全成功し、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D3は`implemented / CI-passed / independently-verified / merged`としてcloseoutする。
 
-同日のADR-2026-07-29-031でD4の`A1+B1+C1`を承認した。D4は選択中Animationの基準Frameと対象Frameを重ね、対象Frame全体へ同じ手動移動量を適用する。確定前はUIだけの一時表示、確定時は1 Historyとし、不足するFrame / LayerState / transformを自動生成しない。契約PR #208 merge `ea67920`で実装前Gateを満了し、PR #209 final head `16f5ae2a62928c92f039710e935f3c66c113b0c1`、merge `5e25d0d4e1a4c6680afdd5f5d05ef51d0f8bdea8`で製品コードと試験をmainへ反映した。CI Run #623はunit 799件、Chromium E2E 176件、H3 1件、Pages open / closed各1件を全成功し、failed / flaky / skippedは0件、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D4を`implemented / CI-passed / independently-verified / merged`とする。B2、物理iPhone / iPad SafariのGroup 12 closeout Gateは未完了のまま維持する。
+同日のADR-2026-07-29-031でD4の`A1+B1+C1`を承認した。D4は選択中Animationの基準Frameと対象Frameを重ね、対象Frame全体へ同じ手動移動量を適用する。確定前はUIだけの一時表示、確定時は1 Historyとし、不足するFrame / LayerState / transformを自動生成しない。契約PR #208 merge `ea67920`で実装前Gateを満了し、PR #209 final head `16f5ae2a62928c92f039710e935f3c66c113b0c1`、merge `5e25d0d4e1a4c6680afdd5f5d05ef51d0f8bdea8`で製品コードと試験をmainへ反映した。CI Run #623はunit 799件、Chromium E2E 176件、H3 1件、Pages open / closed各1件を全成功し、failed / flaky / skippedは0件、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D4を`implemented / CI-passed / independently-verified / merged`とする。D4の物理Safari確認は2026-08-01に指定3端末で問題なしと人間確認済みである。B2とD4以外の物理iPhone / iPad SafariのGroup 12 closeout Gateは未完了のまま維持する。
 
 ## 2. 監査方法と現状
 
@@ -441,3 +441,11 @@ D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.caspr
 - D4専用の無着色50%基準描画をD2 onion skinと別経路で先に描き、対象Frameを通常表示する。D2の前後切替値と既存data属性は変更しない。
 - Unit / storageでmodel exact write-set、理由付き拒否、入力不変、1保存時の`Project.updatedAt`同期とUndo保存時の非巻き戻し、`.casproj` exact roundtrip、専用描画順、同時編集guardを確認する。Chromium E2Eは共有・反復Frame、影響件数、確定前不変、4方向操作、X / Y入力、取消 / Esc / no-op、1 History、Undo / Redo、reload / `.casproj`、D1 / D2共存、3種類の拒否、375 × 667を確認する。
 - PR #209 final head `16f5ae2a62928c92f039710e935f3c66c113b0c1`、merge `5e25d0d4e1a4c6680afdd5f5d05ef51d0f8bdea8`を正本とする。CI Run #623はunit 799件、Chromium E2E 176件、H3 1件、Pages open / closed各1件を全成功し、failed / flaky / skippedは0件だった。固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`で、D4は`implemented / CI-passed / independently-verified / merged`として完了した。
+
+## 18. D4物理Safari確認（2026-08-01）
+
+- 人間確認により、iPhone 17 Pro、iPhone 11 Pro、iPad Pro 2018のSafariでD4 frame alignmentを「問題なし」とする。
+- 確認範囲は、基準Frameと対象Frameの選択、上下左右の1px移動、X / Y数値入力、確定、取消、Undo / Redo、Safari再読み込み、software keyboard、safe area、実touch、縦横orientation、横overflowである。
+- 本確認では各端末の正確なOS / Safari versionを新たに記録していない。端末名と利用者報告をD4の物理操作証拠とし、H3の正式B0、性能値、数値budgetには使わない。
+- 本確認はD4だけを対象とする。T1、P1、B1、D1〜D3の物理Safari確認、B2、Group 12全体の完了判定は未完了のまま維持する。
+- Group 13はGroup 12完了に依存するため開始しない。
