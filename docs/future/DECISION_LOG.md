@@ -1396,4 +1396,29 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 
 ### 実装状況
 
-PR #216はmerge `f54526210f0d563cff408b0e66c4234b90c4324f`としてmainへ反映済みである。続くG1 Slice Aは本Draft PRで実装中で、構造を持つgameAttributesの読み取り専用表示、旧tile / gimmick / effect / 全Layer background設定の保持警告と個別削除、文字・数値入力のEnter / blur 1回確定・Esc取消・no-op、重複属性名による上書き拒否を扱う。Asset `0.2.0`、schema、migration、`.casproj`、export形式、O1、polygonは変更しない。Group 13と進捗14/27は未完了のまま維持する。
+PR #216はmerge `f54526210f0d563cff408b0e66c4234b90c4324f`としてmainへ反映済みである。G1 Slice AはPR #217 final head `e28e4de43f6825fdd5f0d206983e0760359f0503`、merge `bc48487ef47de113f96e80cf625b56b0e245efce`、CI Run #650全成功、固定headの3方向独立review `BLOCKER 0 / MUST 0 / SHOULD 0`として完了した。構造を持つgameAttributesの読み取り専用表示、旧tile / gimmick / effect / 全Layer background設定の保持警告と個別削除、文字・数値入力のEnter / blur 1回確定・Esc取消・no-op、重複属性名による上書き拒否を実装した。Asset `0.2.0`、schema、migration、`.casproj`、export形式、O1、polygonは変更していない。Group 13と進捗14/27は未完了のまま維持し、次はO1正式契約Slice Bである。
+
+## ADR-2026-08-02-034: O1 Frame別collider上書きの正式契約
+
+### 状態
+
+- accepted（O1の詳細契約。製品は`contract-in-draft / unimplemented / unverified`）
+- 対象: Group 13 O1 Slice B `2D-3-COLLIDER-OVERRIDE`
+- 基準main: `bc48487ef47de113f96e80cf625b56b0e245efce`
+- 正本: `docs/adr/0024-frame-collider-override-contract.md`, `docs/future/2D_3_GAME_DATA_PLAN.md`
+
+### 決定
+
+- `Frame.colliderOverrides?`は順序に意味を持たないoptional配列とする。各entryは`colliderId`でAsset共通colliderを参照し、shapeに一致するrect / circleの完全geometry、`visible`、またはその両方を持つ。geometryの部分形、rect / circleの同居、`id` / `name` / `purpose` / `shape` / `enabled`の保存を禁止する。
+- entryにないgeometryまたは`visible`はAsset共通値へfield単位でfallbackする。`id` / `name` / `purpose` / `shape`は常にAsset共通値を使う。不在と空配列は共通値だけを使い、最後のentryを解除した新規保存ではfield自体を省略する。
+- JSON Schemaは構造、共通runtime意味検証はAsset collider ID一意、Frame内参照一意、dangling参照、shape一致、有限値、正寸法を扱う。意味上無効なdataを黙って修復・fallbackしない。Frame / override / geometryの未知fieldは保持するが解釈・推測remapしない。
+- 既定はAsset共通編集で、Frame scopeは再生停止中にFrameを明示選択した場合だけ使う。最初のgeometry編集は実効値の完全形をcopyし、`visible`はinherit / show / hide、geometry resetと全resetを分ける。Enter / blurは最大1 History、Escapeは取消、no-opはHistoryなしとする。
+- Frame複製はdeep copy、Asset複製は共通collider ID mapで参照を張り替える。左右反転、Family linked mirror / refresh、canvas resize、D4 alignmentはADR-0024のexact規則に従う。参照中の共通collider削除・shape変更は、先にoverrideを明示解除するまで拒否する。
+- 既存History / autosave / IndexedDB経路を使い、保存・容量失敗時はAsset、Project参照、Blob、History、画面stateをrollbackする。旧dataへfieldを補完せず、Asset `0.2.0`、migrationなし、`.casproj`配置不変を維持する。
+- PNG / WebP / 単体`asset.json` / `.casproj`は許可する。現行Atlas生成API、`atlas.json`、product ZIPはcanonicalな上書きが1件以上あればBlob読込・decode・canvas・ZIP生成・downloadより前に理由付きで拒否する。空配列だけでは拒否しない。
+
+### 実装順と変更境界
+
+- 本Slice Bは正本文書とADRだけを変更し、製品コード、型、JSON Schema、version、migration、IndexedDB layout、保存・export実装、ZIP構成、dependency、CI、polygonを変更しない。
+- Slice Bがmainへmergeされた後、最新mainから別branch / 別Draft PR / 単一writerでSlice Cを実装する。schema、resolver、共通意味検証、編集、History / autosave、複製・反転・resize、保存rollback、export preflight、unit / storage / `.casproj` / Chromium E2Eを同じGateで検証する。
+- polygonはP1により2D Pro Gateまで`unsupported`を維持する。Group 13は未完了、進捗は14/27、現在位置は15工程目のままとする。
