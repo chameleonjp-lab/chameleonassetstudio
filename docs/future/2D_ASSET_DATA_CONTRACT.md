@@ -227,7 +227,7 @@ Group 12のB1は、有限値、参照、循環、H2=L1など入力の正しさ�
 Frame別判定は、アセット共通判定を基準にし、既存colliderの位置・サイズ・`visible`だけをFrame単位で上書きする。colliderの追加・削除、`purpose`変更、`shape`変更、ゲーム内の有効 / 無効、Animation単位上書きは行わない。
 
 - `Frame.colliderOverrides?`は順序に意味を持たない配列とし、各entryは`colliderId`でAsset共通colliderを参照する。
-- rectは完全な`x / y / width / height`、circleは完全な`x / y / radius`を保存する。geometryを保存せず`visible`だけを上書きしてよい。geometryの部分形やrect / circleの同居は許可しない。
+- rectは完全な`x / y / width / height`、circleは完全な`x / y / radius`を保存する。geometryを保存せず`visible`だけを上書きしてよい。geometryの部分形やrect / circleの同居は許可しない。canonical writer / UIはentry固有`id`、`name`、`purpose`、`shape`、`enabled`を生成・編集・解釈しないが、既存dataでrecognized override fieldと併存する同名fieldは未知fieldとしてexact保持する。それらだけではentryを成立させない。
 - entryにないgeometryまたは`visible`はAsset共通値へfield単位でfallbackする。`id` / `name` / `purpose` / `shape`は常にAsset共通値を使う。
 - field不在と空配列はAsset共通値だけを使う。最後のentryを解除した新規保存ではfield自体を省略し、旧dataへ空配列を補完しない。
 - Frame / override / geometryの未知fieldは保持するが解釈しない。未知field内部のIDらしき値を複製・反転時に推測して書き換えない。

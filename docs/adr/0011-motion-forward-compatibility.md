@@ -20,8 +20,8 @@ ADR-0008〜0010 は、frame 別 `durationMs` 上書き・`Animation.events`・`F
 ## 根拠
 
 - `src/core/schema/animation.schema.json`（`animation` の `properties` に `additionalProperties: false` が存在しない）。
-- `src/core/schema/asset.schema.json` の `frame`（438〜456 行目）、`frameLayerState`（417〜437 行目）、root オブジェクト（1〜129 行目のトップレベル `type: "object"`）のいずれにも `additionalProperties` キーワードが無い。トップレベルの `description` にも「未対応の追加プロパティは検証エラーにせず保持する」と明記されている（`asset.schema.json:5`）。
-- `src/core/model/animation.ts:40` の `durationMs?: number;` が、schema 上 optional なフィールドを型定義でも additive に扱っている既存の前例である。
+- `src/core/schema/asset.schema.json` の`frameLayerState`（488〜507行目）、`frame`（509〜531行目）、root objectのいずれにも`additionalProperties` keywordが無い。トップレベルのdescriptionにも「未対応の追加プロパティは検証エラーにせず保持する」と明記されている。
+- `src/core/model/animation.ts:13`〜19の`Frame.durationMs?: number`が、schema上optionalなfieldを型定義でもadditiveに扱う既存の前例である。
 - ADR-0006（`docs/adr/0006-migration-and-recovery-boundaries.md`）が固定した「現行 version の `asset.json` を `migrateAsset` に通しても座標・構造が一切変わらない」という恒等 migrate の事実。
 
 ## 影響と fixture

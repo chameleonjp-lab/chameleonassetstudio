@@ -129,7 +129,7 @@ Phase 19-B の左右反転コピーは、判定も反転対象にする。Phase 
 
 ## 7. フレーム別判定の扱い
 
-フレーム別判定は、既存colliderの位置・サイズをFrameごとに調整する用途がある。現行 `Frame` はlayer statesだけを持ち、collider statesを持たないため、Slice Bでは契約だけを固定し、製品実装はSlice Cで行う。
+フレーム別判定は、既存colliderの位置・サイズをFrameごとに調整する用途がある。現行`Frame`はlayer statesと任意の`durationMs`を持つが、collider statesを持たないため、Slice Bでは契約だけを固定し、製品実装はSlice Cで行う。
 
 ADR-0010により、正本は`Asset.colliders`、上書きはFrame単位、優先順位は「Frame上書き > Asset共通」と決定済みである。最初の上書きは既存colliderの位置、サイズ、`visible`だけを扱い、追加・削除、`purpose`変更、`shape`変更、Animation単位上書きは行わない。
 

@@ -1382,7 +1382,7 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 ### 確認できた事実
 
 - origin、anchor、rect / circle、tile、background、gimmick、effect、tag、gameAttributesは既存の型、schema、画面、History、autosave、IndexedDB、`asset.json`、`.casproj`へ接続済みである。
-- 構造を持つgameAttributesは現在の文字入力で意味を失い得る。Asset種別変更後の旧種別設定は非破壊で残るが、見落としやすい。
+- PR #215監査時点では、構造を持つgameAttributesは当時の文字入力で意味を失い得た。Asset種別変更後の旧種別設定は非破壊で残るが、見落としやすかった。これらは後続G1 / PR #217で補修済みである。
 - ADR-0010はFrame単位上書き、位置・サイズ・`visible`だけ、polygon unsupportedを決定済みである。PR #215の監査時点では実装時期が未決定だったが、2026-08-02のO1採用によりG1後の契約・実装sliceへ置いた。`visible`は編集・debug表示であり、ゲーム内の有効 / 無効はO1に含めない。
 - 現行Atlas `0.1.0`、helpers、examplesはFrame別上書きとpolygonを表現できない。
 
@@ -1409,7 +1409,7 @@ PR #216はmerge `f54526210f0d563cff408b0e66c4234b90c4324f`としてmainへ反映
 
 ### 決定
 
-- `Frame.colliderOverrides?`は順序に意味を持たないoptional配列とする。各entryは`colliderId`でAsset共通colliderを参照し、shapeに一致するrect / circleの完全geometry、`visible`、またはその両方を持つ。geometryの部分形、rect / circleの同居、`id` / `name` / `purpose` / `shape` / `enabled`の保存を禁止する。
+- `Frame.colliderOverrides?`は順序に意味を持たないoptional配列とする。各entryは`colliderId`でAsset共通colliderを参照し、shapeに一致するrect / circleの完全geometry、`visible`、またはその両方を持つ。geometryの部分形とrect / circleの同居を禁止する。canonical writer / UIはentry固有`id` / `name` / `purpose` / `shape` / `enabled`を生成・編集・解釈しないが、既存dataでrecognized override fieldと併存する同名fieldは未知fieldとしてexact保持する。それらだけではentryを成立させない。
 - entryにないgeometryまたは`visible`はAsset共通値へfield単位でfallbackする。`id` / `name` / `purpose` / `shape`は常にAsset共通値を使う。不在と空配列は共通値だけを使い、最後のentryを解除した新規保存ではfield自体を省略する。
 - JSON Schemaは構造、共通runtime意味検証はAsset collider ID一意、Frame内参照一意、dangling参照、shape一致、有限値、正寸法を扱う。意味上無効なdataを黙って修復・fallbackしない。Frame / override / geometryの未知fieldは保持するが解釈・推測remapしない。
 - 既定はAsset共通編集で、Frame scopeは再生停止中にFrameを明示選択した場合だけ使う。最初のgeometry編集は実効値の完全形をcopyし、`visible`はinherit / show / hide、geometry resetと全resetを分ける。Enter / blurは最大1 History、Escapeは取消、no-opはHistoryなしとする。

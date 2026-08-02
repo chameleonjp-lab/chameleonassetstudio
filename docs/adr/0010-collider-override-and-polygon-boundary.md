@@ -22,8 +22,8 @@
 
 ## 根拠
 
-- `Collider` は現行 `rect` / `circle` の union のみで（`src/core/schema/asset.schema.json` の `collider` 定義、347〜348 行目の `shape: enum ["rect", "circle"]`）、polygon は存在しない。
-- `Frame`（`src/core/model/animation.ts:13`〜）は `layerStates` のみを持ち、collider 上書き用フィールドは存在しない。`Animation`（`animation.ts:33`〜）も同様に collider 情報を持たない。
+- `Collider` は現行 `rect` / `circle` の union のみで（`src/core/schema/asset.schema.json` の `collider` 定義、404〜487行目）、polygon は存在しない。
+- `Frame`（`src/core/model/animation.ts:13`〜19）は`layerStates`と任意の`durationMs`を持つが、collider上書き用fieldは存在しない。`Animation`（同51〜61）もcollider情報を持たない。
 - ADR-0005（`docs/adr/0005-flip-semantics.md`）が固定した rect / circle の反転式は、将来の frame 別上書きにもそのまま適用できる形（矩形は右端基準、円は中心基準）である。
 - `docs/future/COLLIDER_EDITING_DESIGN.md` と ADR-0006（`docs/adr/0006-migration-and-recovery-boundaries.md`）が、`Collider` union の構造変更を migration gate 対象として明示している。
 

@@ -44,7 +44,7 @@ interface Frame {
 - geometryを保存する場合、rectは`x / y / width / height`、circleは`x / y / radius`をすべて持つ。geometry内部の部分patchは保存しない。
 - `visible`だけのentryを許可する。geometryと`visible`はそれぞれ省略時にAsset共通値へfallbackする。
 - entryは`rect`、`circle`、`visible`の少なくとも1つを持つ。`rect`と`circle`の同時保持は禁止する。
-- `shape`、`name`、`purpose`、entry固有ID、`enabled`は保存しない。これらを未知fieldから推測して解釈しない。
+- canonical writer / UIは`shape`、`name`、`purpose`、entry固有`id`、`enabled`を生成・編集・解釈しない。既存dataでrecognized override fieldと併存する同名fieldは未知fieldとしてexact保持するが、上書き値やID参照として扱わない。これらのfieldだけではentryを成立させない。
 - `colliderOverrides`不在と空配列は同じ意味である。新しい編集で最後のentryを解除した場合はfield自体を省略する。旧dataへ空配列を自動補完しない。
 - Frame、override、geometryにある未知fieldは、既存の前方互換方針どおり保持する。ただし未知field内の意味やID参照を推測して変換しない。
 
@@ -65,7 +65,7 @@ JSON Schemaは次を構造検証する。
 - `colliderId`は空でない文字列。
 - rect / circleの必要field、number型、0より大きいwidth / height / radius。
 - rectとcircleの排他、entryに少なくとも1つの上書きfieldがあること。
-- 空配列を許可し、各階層の未知fieldを拒否しないこと。
+- 空配列を許可し、各階層の未知fieldを拒否しないこと。`shape`、`name`、`purpose`、`id`、`enabled`という名前もrecognized override fieldと併存する限り未知fieldとして許可・保持し、それだけでentryをvalidにしないこと。
 
 専用のread-only runtime検証は次を意味検証する。
 
@@ -99,7 +99,7 @@ JSON Schemaは次を構造検証する。
 ### 6. 保存と失敗時復旧
 
 - O1編集はmetadata-onlyの既存commit、History、autosave、IndexedDB経路を使う。新しいstore、index、Blob、snapshot形式を追加しない。
-- semantic不正はcommit前に拒否する。保存失敗や容量不足では既存の原子的rollbackにより、React state、Asset、Project参照、Blob、History、IndexedDB、自動保存状態を保存前へ戻す。metadata-only操作なのでBlobは変更しない。
+- semantic不正はcommit前に拒否する。保存失敗や容量不足では既存の原子的rollbackにより、React state、Asset、Project参照、History、IndexedDBの未確定変更を保存前へ戻し、pending autosaveを破棄する。metadata-only操作なのでBlobは変更しない。元の失敗は`AutosaveQueue.error`へ保持し、利用者へのerror表示を消さない。
 - field不在の旧Asset / `.casproj`は不在のまま読み、保存し直しても意味を変えない。有効な新dataは単体`asset.json`、IndexedDB、`.casproj`で未知fieldを含めてroundtripする。
 - Assetは`0.2.0`、Project / export-presets / Atlasは`0.1.0`を維持し、migrationと`.casproj`内部配置を変更しない。
 
@@ -123,7 +123,7 @@ Atlas `0.1.0`へAsset共通値だけを出してFrame値を落とさない。拒
 ## 影響と fixture
 
 - Slice Bの影響: docsだけ。製品コード、型、schema、version、migration、保存形式、export ZIP構成、dependencyは変更しない。
-- Slice Cの必須fixture: field不在、rect / circle / visible-only、fallback、重複、参照切れ、shape不一致、非有限値、0以下寸法、共有Frame、Frame / Asset複製、flip、linked mirror、resize、D4非追従、削除拒否、History、Undo / Redo、autosave、IndexedDB、旧 / 新`.casproj`、保存失敗rollback、許可 / 拒否export、375 x 667。
+- Slice Cの必須fixture: field不在、空配列、rect / circle / visible-only、partial geometry、rect / circle同居、recognized override fieldなし、空`colliderId`、予約名fieldのexact保持・非解釈、fallback、重複、参照切れ、shape不一致、非有限値、0以下寸法、共有Frame、Frame / Asset複製、flip、linked mirror、resize、D4非追従、削除拒否、History、Undo / Redo、autosave、IndexedDB、旧 / 新`.casproj`、保存失敗rollbackとerror表示保持、許可 / 拒否export、375 x 667。
 - 既存`motionContract.fixtures.test.ts`の参照切れ例は、検証を弱めず、実在するAsset共通colliderを持つ正常fixtureへ直す。
 - 物理SafariはGroup 13の追加停止Gateにせず、2D Pro全体の端末確認へ残す。
 
