@@ -345,21 +345,30 @@ test.describe('mobile G1', () => {
     const typeSelect = page.getByLabel('アセット種別');
     await expect(score).toBeVisible();
     await expect(typeSelect).toBeVisible();
-    const dimensions = await page.evaluate(() => {
-      const scoreInput = document.querySelector<HTMLInputElement>(
-        'input[aria-label="属性「score」の値"]',
-      )!;
-      const assetType = document.querySelector<HTMLSelectElement>('select')!;
-      const properties = document.querySelector<HTMLElement>('.editor-properties.mobile-active')!;
-      return {
-        scoreHeight: scoreInput.getBoundingClientRect().height,
-        scoreFontSize: Number.parseFloat(getComputedStyle(scoreInput).fontSize),
-        selectHeight: assetType.getBoundingClientRect().height,
-        selectFontSize: Number.parseFloat(getComputedStyle(assetType).fontSize),
-        documentFits: document.documentElement.scrollWidth <= window.innerWidth,
-        propertiesFits: properties.scrollWidth <= properties.clientWidth,
-      };
-    });
+    const [scoreMetrics, selectMetrics, layoutMetrics] = await Promise.all([
+      score.evaluate((input) => ({
+        height: input.getBoundingClientRect().height,
+        fontSize: Number.parseFloat(getComputedStyle(input).fontSize),
+      })),
+      typeSelect.evaluate((select) => ({
+        height: select.getBoundingClientRect().height,
+        fontSize: Number.parseFloat(getComputedStyle(select).fontSize),
+      })),
+      page.evaluate(() => {
+        const properties = document.querySelector<HTMLElement>('.editor-properties.mobile-active')!;
+        return {
+          documentFits: document.documentElement.scrollWidth <= window.innerWidth,
+          propertiesFits: properties.scrollWidth <= properties.clientWidth,
+        };
+      }),
+    ]);
+    const dimensions = {
+      scoreHeight: scoreMetrics.height,
+      scoreFontSize: scoreMetrics.fontSize,
+      selectHeight: selectMetrics.height,
+      selectFontSize: selectMetrics.fontSize,
+      ...layoutMetrics,
+    };
     expect(dimensions.scoreHeight).toBeGreaterThanOrEqual(44);
     expect(dimensions.scoreFontSize).toBeGreaterThanOrEqual(16);
     expect(dimensions.selectHeight).toBeGreaterThanOrEqual(44);
