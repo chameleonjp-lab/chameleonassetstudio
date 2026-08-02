@@ -509,11 +509,64 @@ export function applyFrameToAsset(asset: Asset, frameId: string): Asset {
 
 /** アセット種別を変更する。 */
 export function setAssetType(asset: Asset, assetType: AssetType): Asset {
+  if (asset.assetType === assetType) {
+    return asset;
+  }
   return touch({ ...asset, assetType });
+}
+
+function tileSettingsEqual(left: TileSettings | undefined, right: TileSettings | undefined) {
+  return (
+    left === right ||
+    (!!left &&
+      !!right &&
+      left.tileSize.width === right.tileSize.width &&
+      left.tileSize.height === right.tileSize.height &&
+      left.collisionType === right.collisionType &&
+      left.visualType === right.visualType)
+  );
+}
+
+function gimmickSettingsEqual(
+  left: GimmickSettings | undefined,
+  right: GimmickSettings | undefined,
+) {
+  return left === right || (!!left && !!right && left.movementPreset === right.movementPreset);
+}
+
+function effectSettingsEqual(left: EffectSettings | undefined, right: EffectSettings | undefined) {
+  return (
+    left === right ||
+    (!!left &&
+      !!right &&
+      left.effectType === right.effectType &&
+      left.durationMs === right.durationMs &&
+      left.loop === right.loop &&
+      left.blendMode === right.blendMode)
+  );
+}
+
+function backgroundSettingsEqual(
+  left: BackgroundLayerSettings | undefined,
+  right: BackgroundLayerSettings | undefined,
+) {
+  return (
+    left === right ||
+    (!!left &&
+      !!right &&
+      left.role === right.role &&
+      left.parallaxSpeed.x === right.parallaxSpeed.x &&
+      left.parallaxSpeed.y === right.parallaxSpeed.y &&
+      left.loopX === right.loopX &&
+      left.loopY === right.loopY)
+  );
 }
 
 /** tile アセット用設定を設定する。undefined を渡すと削除する。 */
 export function setTileSettings(asset: Asset, tile: TileSettings | undefined): Asset {
+  if (tileSettingsEqual(asset.tile, tile)) {
+    return asset;
+  }
   const next = { ...asset };
   if (tile) {
     next.tile = tile;
@@ -525,6 +578,9 @@ export function setTileSettings(asset: Asset, tile: TileSettings | undefined): A
 
 /** gimmick アセット用設定を設定する。undefined を渡すと削除する。 */
 export function setGimmickSettings(asset: Asset, gimmick: GimmickSettings | undefined): Asset {
+  if (gimmickSettingsEqual(asset.gimmick, gimmick)) {
+    return asset;
+  }
   const next = { ...asset };
   if (gimmick) {
     next.gimmick = gimmick;
@@ -536,6 +592,9 @@ export function setGimmickSettings(asset: Asset, gimmick: GimmickSettings | unde
 
 /** effect アセット用設定を設定する。undefined を渡すと削除する。 */
 export function setEffectSettings(asset: Asset, effect: EffectSettings | undefined): Asset {
+  if (effectSettingsEqual(asset.effect, effect)) {
+    return asset;
+  }
   const next = { ...asset };
   if (effect) {
     next.effect = effect;
@@ -551,7 +610,8 @@ export function setLayerBackground(
   layerId: string,
   background: BackgroundLayerSettings | undefined,
 ): Asset {
-  if (!asset.layers.some((layer) => layer.id === layerId)) {
+  const target = asset.layers.find((layer) => layer.id === layerId);
+  if (!target || backgroundSettingsEqual(target.background, background)) {
     return asset;
   }
   return mapLayer(asset, layerId, (layer) => {
@@ -567,11 +627,20 @@ export function setLayerBackground(
 
 /** ゲーム属性を追加・更新する。 */
 export function setGameAttribute(asset: Asset, key: string, value: unknown): Asset {
+  if (
+    Object.prototype.hasOwnProperty.call(asset.gameAttributes, key) &&
+    Object.is(asset.gameAttributes[key], value)
+  ) {
+    return asset;
+  }
   return touch({ ...asset, gameAttributes: { ...asset.gameAttributes, [key]: value } });
 }
 
 /** ゲーム属性を削除する。 */
 export function removeGameAttribute(asset: Asset, key: string): Asset {
+  if (!Object.prototype.hasOwnProperty.call(asset.gameAttributes, key)) {
+    return asset;
+  }
   const gameAttributes = { ...asset.gameAttributes };
   delete gameAttributes[key];
   return touch({ ...asset, gameAttributes });

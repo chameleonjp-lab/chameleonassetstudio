@@ -24,6 +24,8 @@ import {
 } from '../../core/model';
 import { ASSET_TYPE_LABELS } from './assetTypeLabels';
 import { BackgroundPreview } from './BackgroundPreview';
+import { CommittedInput } from './CommittedInput';
+import { formatReadonlyGameAttribute, retainedTypeSettings } from './gameDataSafety';
 
 interface AssetTypePanelProps {
   asset: Asset;
@@ -97,18 +99,20 @@ function TileFields({ asset, onCommit }: AssetTypePanelProps) {
       <div className="gamedata-inline-fields">
         <label className="editor-field">
           タイル幅
-          <input
+          <CommittedInput
             type="number"
+            aria-label="タイル幅"
             min={1}
-            value={tile.tileSize.width}
-            onChange={(event) =>
+            value={String(tile.tileSize.width)}
+            normalize={(value) => String(Math.max(1, Number(value) || 1))}
+            onCommit={(value) =>
               onCommit(
                 'タイル幅変更',
                 setTileSettings(asset, {
                   ...tile,
                   tileSize: {
                     ...tile.tileSize,
-                    width: Math.max(1, Number(event.target.value) || 1),
+                    width: Math.max(1, Number(value) || 1),
                   },
                 }),
               )
@@ -117,18 +121,20 @@ function TileFields({ asset, onCommit }: AssetTypePanelProps) {
         </label>
         <label className="editor-field">
           タイル高さ
-          <input
+          <CommittedInput
             type="number"
+            aria-label="タイル高さ"
             min={1}
-            value={tile.tileSize.height}
-            onChange={(event) =>
+            value={String(tile.tileSize.height)}
+            normalize={(value) => String(Math.max(1, Number(value) || 1))}
+            onCommit={(value) =>
               onCommit(
                 'タイル高さ変更',
                 setTileSettings(asset, {
                   ...tile,
                   tileSize: {
                     ...tile.tileSize,
-                    height: Math.max(1, Number(event.target.value) || 1),
+                    height: Math.max(1, Number(value) || 1),
                   },
                 }),
               )
@@ -159,14 +165,12 @@ function TileFields({ asset, onCommit }: AssetTypePanelProps) {
       </label>
       <label className="editor-field">
         見た目タイプ
-        <input
+        <CommittedInput
           type="text"
+          aria-label="見た目タイプ"
           value={tile.visualType}
-          onChange={(event) =>
-            onCommit(
-              '見た目タイプ変更',
-              setTileSettings(asset, { ...tile, visualType: event.target.value }),
-            )
+          onCommit={(value) =>
+            onCommit('見た目タイプ変更', setTileSettings(asset, { ...tile, visualType: value }))
           }
         />
       </label>
@@ -277,17 +281,18 @@ function EffectFields({ asset, onCommit }: AssetTypePanelProps) {
       </label>
       <label className="editor-field">
         エフェクト長さ(ms)
-        <input
+        <CommittedInput
           type="number"
           aria-label="エフェクト長さ(ms)"
           min={1}
-          value={effect.durationMs}
-          onChange={(event) =>
+          value={String(effect.durationMs)}
+          normalize={(value) => String(Math.max(1, Number(value) || 1))}
+          onCommit={(value) =>
             onCommit(
               'エフェクト長さ変更',
               setEffectSettings(asset, {
                 ...effect,
-                durationMs: Math.max(1, Number(event.target.value) || 1),
+                durationMs: Math.max(1, Number(value) || 1),
               }),
             )
           }
@@ -377,6 +382,25 @@ function ItemFields({ asset, onCommit }: AssetTypePanelProps) {
 
 /** アセット種別ごとの設定パネル（Phase 14）。 */
 export function AssetTypePanel({ asset, onCommit }: AssetTypePanelProps) {
+  const retainedSettings = retainedTypeSettings(asset);
+
+  const removeRetainedSetting = (setting: (typeof retainedSettings)[number]) => {
+    switch (setting.kind) {
+      case 'tile':
+        onCommit('保持中のタイル設定を削除', setTileSettings(asset, undefined));
+        break;
+      case 'gimmick':
+        onCommit('保持中のギミック設定を削除', setGimmickSettings(asset, undefined));
+        break;
+      case 'effect':
+        onCommit('保持中のエフェクト設定を削除', setEffectSettings(asset, undefined));
+        break;
+      case 'background':
+        onCommit('保持中の背景設定を削除', setLayerBackground(asset, setting.layerId, undefined));
+        break;
+    }
+  };
+
   return (
     <div className="gamedata-panel">
       <label className="editor-field">
@@ -399,6 +423,33 @@ export function AssetTypePanel({ asset, onCommit }: AssetTypePanelProps) {
       {asset.assetType === 'item' && <ItemFields asset={asset} onCommit={onCommit} />}
       {asset.assetType === 'background' && <BackgroundFields asset={asset} onCommit={onCommit} />}
       {asset.assetType === 'effect' && <EffectFields asset={asset} onCommit={onCommit} />}
+      {retainedSettings.length > 0 && (
+        <section className="gamedata-retained-settings" aria-labelledby="retained-settings-title">
+          <h4 id="retained-settings-title" className="gamedata-heading">
+            保持中の旧種別設定
+          </h4>
+          <p className="gamedata-warning">
+            現在のアセット種別では使われませんが、データを守るため保持しています。不要な設定だけを明示的に削除できます。
+          </p>
+          <ul className="gamedata-list" aria-label="保持中の旧種別設定一覧">
+            {retainedSettings.map((setting) => {
+              const key =
+                setting.kind === 'background' ? `background:${setting.layerId}` : setting.kind;
+              return (
+                <li key={key} className="gamedata-row">
+                  <strong>{setting.label}</strong>
+                  <pre className="gamedata-retained-value">
+                    {formatReadonlyGameAttribute(setting.value)}
+                  </pre>
+                  <button type="button" onClick={() => removeRetainedSetting(setting)}>
+                    {setting.label}を削除
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }
@@ -451,18 +502,20 @@ export function BackgroundLayerFields({ asset, layer, onCommit }: BackgroundLaye
       <div className="gamedata-inline-fields">
         <label className="editor-field">
           視差速度 X
-          <input
+          <CommittedInput
             type="number"
+            aria-label="視差速度 X"
             step={0.1}
-            value={background.parallaxSpeed.x}
-            onChange={(event) =>
+            value={String(background.parallaxSpeed.x)}
+            normalize={(value) => String(Number(value) || 0)}
+            onCommit={(value) =>
               onCommit(
                 '視差速度変更',
                 setLayerBackground(asset, layer.id, {
                   ...background,
                   parallaxSpeed: {
                     ...background.parallaxSpeed,
-                    x: Number(event.target.value) || 0,
+                    x: Number(value) || 0,
                   },
                 }),
               )
@@ -471,18 +524,20 @@ export function BackgroundLayerFields({ asset, layer, onCommit }: BackgroundLaye
         </label>
         <label className="editor-field">
           視差速度 Y
-          <input
+          <CommittedInput
             type="number"
+            aria-label="視差速度 Y"
             step={0.1}
-            value={background.parallaxSpeed.y}
-            onChange={(event) =>
+            value={String(background.parallaxSpeed.y)}
+            normalize={(value) => String(Number(value) || 0)}
+            onCommit={(value) =>
               onCommit(
                 '視差速度変更',
                 setLayerBackground(asset, layer.id, {
                   ...background,
                   parallaxSpeed: {
                     ...background.parallaxSpeed,
-                    y: Number(event.target.value) || 0,
+                    y: Number(value) || 0,
                   },
                 }),
               )

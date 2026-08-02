@@ -538,6 +538,61 @@ describe('型別設定（Phase 14）', () => {
     const removed = removeGameAttribute(withScore, 'score');
     expect(removed.gameAttributes.score).toBeUndefined();
   });
+
+  it('型別設定とゲーム属性の意味上のno-opは元のAsset参照を返す', async () => {
+    const {
+      removeGameAttribute,
+      setAssetType,
+      setEffectSettings,
+      setGameAttribute,
+      setGimmickSettings,
+      setLayerBackground,
+      setTileSettings,
+    } = await import('./assetOps');
+    const tile = {
+      tileSize: { width: 32, height: 32 },
+      collisionType: 'solid',
+      visualType: 'floor',
+    } as const;
+    const gimmick = { movementPreset: 'horizontal' } as const;
+    const effect = {
+      effectType: 'spark',
+      durationMs: 500,
+      loop: false,
+      blendMode: 'normal',
+    } as const;
+    const background = {
+      role: 'mid',
+      parallaxSpeed: { x: 0.5, y: 0 },
+      loopX: true,
+      loopY: false,
+    } as const;
+    const configured: Asset = {
+      ...baseAsset,
+      assetType: 'tile',
+      tile,
+      gimmick,
+      effect,
+      gameAttributes: { score: 10 },
+      layers: baseAsset.layers.map((layer, index) =>
+        index === 0 ? { ...layer, background } : layer,
+      ),
+    };
+
+    expect(setAssetType(configured, 'tile')).toBe(configured);
+    expect(setTileSettings(configured, structuredClone(tile))).toBe(configured);
+    expect(setGimmickSettings(configured, structuredClone(gimmick))).toBe(configured);
+    expect(setEffectSettings(configured, structuredClone(effect))).toBe(configured);
+    expect(
+      setLayerBackground(configured, configured.layers[0].id, structuredClone(background)),
+    ).toBe(configured);
+    expect(setGameAttribute(configured, 'score', 10)).toBe(configured);
+    expect(removeGameAttribute(configured, 'missing')).toBe(configured);
+    expect(setTileSettings(baseAsset, undefined)).toBe(baseAsset);
+    expect(setGimmickSettings(baseAsset, undefined)).toBe(baseAsset);
+    expect(setEffectSettings(baseAsset, undefined)).toBe(baseAsset);
+    expect(setLayerBackground(baseAsset, baseAsset.layers[0].id, undefined)).toBe(baseAsset);
+  });
 });
 
 describe('簡易リグ（Phase 15）', () => {

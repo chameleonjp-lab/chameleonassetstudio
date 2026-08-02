@@ -87,6 +87,12 @@ R1 parity fixtureは左右Part、親子3段以上、非zero pivot、bind pose、
 
 bake性能はNode core、実browser core、製品pathを分けて測る。coreはwarm-up 3 / 記録10のraw sample、median、nearest-rank p95、fixture hash、生成分と最終AssetのFrame / LayerState、compact / pretty JSON byte、sheet pixelを残す。製品pathは実装後にwarm-up 1 / 記録3でReact、保存、Undo / Redo、reload、`asset.json` / `.casproj` / ZIPを測る。NodeやPlaywright viewportだけでiPhone Gateを通過させない。
 
+### 3.3 Group 13 G1 Slice A（implementation-in-draft）
+
+正本は`docs/future/2D_3_GAME_DATA_PLAN.md`。unitは`src/features/editor/gameDataSafety.test.ts`と`src/core/model/assetOps.test.ts`で、文字列・有限数値だけの編集許可、構造値の型付き表示、現在種別と一致しないtile / gimmick / effect / 全Layer background設定の列挙、設定・属性の意味上のno-opが元Asset参照を返すことを固定する。
+
+Chromium E2Eは`e2e/game-data-safety.spec.ts`で、配列・object・boolean・nullの読み取り専用表示と別属性編集後のexact保持、重複key上書き拒否、Enter / blurの1 History、Enter後blurの二重commitなし、Esc取消、正規化後no-op、Undo / Redo、autosave、reload、`asset.json`、旧設定の種別変更後保持と全種類の個別削除、375 x 667で44px・16px・横overflowなしを確認する。既存`assettypes.spec.ts`と`gamedata.spec.ts`は削除・緩和しない。ローカルでbrowser binaryを取得できない場合もskipへ変えず、GitHub Actions Chromiumの成功を合格証拠とする。物理SafariはGroup 13の追加停止Gateにせず、リリース全体の端末確認へ残す。
+
 ## 4. テスト変更と失敗時の扱い
 
 テストは現在の仕様を確認する手段であり、変更禁止の仕様書ではない。

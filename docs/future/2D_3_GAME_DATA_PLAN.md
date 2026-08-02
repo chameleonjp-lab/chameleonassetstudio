@@ -2,8 +2,8 @@
 
 最終更新日: 2026-08-02  
 対象: Group 13 `2D-3-GAME-DATA + 2D-3-COLLIDER-OVERRIDE + 2D-3-POLYGON`  
-基準main: `55fb2c3710e3678225d485b1bad7edbbf1d54fcb`
-状態: `accepted: G1 + O1 + P1 / implementation-not-started`
+基準main: `f54526210f0d563cff408b0e66c4234b90c4324f`
+状態: `accepted: G1 + O1 + P1 / G1 Slice A implementation-in-draft`
 
 ---
 
@@ -15,16 +15,16 @@ Group 13を、次の3つへ分離する。
 2. Frameごとの当たり判定上書き。
 3. polygon colliderの採否。
 
-PR #215でdocs-only契約監査をmainへ反映し、2026-08-02の人間判断で`G1+O1+P1`を採用した。本書はその採用判断と実装順を記録するが、製品実装、schema変更、version変更は行わない。
+PR #215でdocs-only契約監査、PR #216で`G1+O1+P1`の採用記録をmainへ反映した。本Slice Aは、その採用判断のうちG1だけを製品コード、試験、利用者向け説明へ反映する。schema、version、migration、保存形式、export形式は変更しない。
 
 ## 2. 現在位置
 
 - Group 12はcompletedで、Group 13の契約監査PR #215もmainへ反映済みである。
 - 2D完成ロードマップは27工程で、Group 12までの14工程が完了している。
 - 現在は15工程目のGroup 13である。
-- `G1+O1+P1`はacceptedだが、製品実装は未着手であり、完了数は14工程のままである。
+- `G1+O1+P1`はacceptedで、G1のSlice Aを本Draft PRで実装中である。Group 13全体は未完了で、完了数は14工程のままである。
 - Group 14はGroup 13完了後に開始する。
-- 同じ目的のopen Pull Requestは監査開始時点で0件である。
+- Slice Aのmerge後にO1の正式契約Slice Bへ進む。O1製品実装とpolygonは本PRへ含めない。
 
 ## 3. 監査で確認した既存実装
 
@@ -155,7 +155,7 @@ P1により2D Pro Gateまで`unsupported`を維持し、必要性と対象別出
 
 採用した`G1+O1+P1`を同じ実装PRへ混ぜない。
 
-1. Slice A `2D-3-GAME-DATA-CLOSEOUT`: G1の既存範囲補修。
+1. Slice A `2D-3-GAME-DATA-CLOSEOUT`: G1の既存範囲補修。本Draft PRで実装・検証中。
 2. Slice B `2D-3-COLLIDER-OVERRIDE-CONTRACT`: O1の正式schema / data / export拒否契約。
 3. Slice C `2D-3-COLLIDER-OVERRIDE`: Slice B merge後の製品実装。
 4. Group 13 closeout: P1のunsupported維持、Group 14開始条件、残リスクを同期する。
@@ -172,6 +172,8 @@ Slice Bでは`Frame.colliderOverrides?`のcanonical schema形、semantic validat
 - 旧種別設定を自動削除せず、理由付きで表示する。
 - 文字・数値入力のEnter / blur二重commitなし、Esc取消、no-op、Undo / Redo、autosave、reload。
 - 既存origin、anchor、rect / circle、tile、background、gimmick、effectのE2Eを弱めない。
+- `src/features/editor/gameDataSafety.test.ts`と`src/core/model/assetOps.test.ts`で編集可否、旧設定列挙、no-opを固定する。
+- `e2e/game-data-safety.spec.ts`で構造値の保存・再読込・書き出し、重複key拒否、全旧設定の保持・個別削除、入力確定、Undo / Redo、375 x 667を固定する。ローカルにbrowser binaryがない場合もskipへ変えず、GitHub Actions Chromiumの成功を合格証拠とする。
 
 ### Slice B / C
 
@@ -199,6 +201,7 @@ Slice Bでは`Frame.colliderOverrides?`のcanonical schema形、semantic validat
 
 1. PR #215のdocs-only監査をmainへ置く。完了済み。
 2. 人間が`G1+O1+P1`を明示決定する。2026-08-02に完了済み。
-3. 本docs-only採用記録をmainへ置く。このPRでは製品コードを変更しない。
-4. 採用記録のmerge後、Slice AのG1だけを単一writerで開始する。
-5. Slice Aのmerge後、Slice BでO1の正式契約を固定し、そのmerge後にだけSlice Cの製品実装へ進む。
+3. docs-only採用記録PR #216をmainへ置く。完了済み。
+4. 採用記録のmerge後、Slice AのG1だけを単一writerで開始する。本Draft PRで進行中。
+5. Slice AのCIと固定head独立確認を通し、人間がmergeを判断する。
+6. Slice Aのmerge後、Slice BでO1の正式契約を固定し、そのmerge後にだけSlice Cの製品実装へ進む。
