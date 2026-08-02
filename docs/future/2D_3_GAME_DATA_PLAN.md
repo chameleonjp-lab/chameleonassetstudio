@@ -175,6 +175,9 @@ O2を採用した場合はSlice B / Cを作らない。G1ならSlice Aの完了�
 ### Slice B / C
 
 - schema / model: 正常値、参照切れ、shape不一致、非有限値、0以下サイズ、重複。
+- 有効値の解決: 上書き不在時はAsset共通値へfallbackし、上書き存在時はFrame値を優先する。rectの位置・幅・高さ、circleの位置・半径を編集してpreviewへ反映する。
+- 表示意味: `visible`は編集・debug表示だけへ作用し、ゲーム内の有効 / 無効として解釈しない。`enabled`を暗黙に作成、解釈、編集しない。
+- Frame共有: 同じFrameを参照する複数Animationで、同じ上書き結果を得る。
 - 操作: Frame複製、Asset複製、flip、canvas resize、D4非追従、共通collider削除拒否。
 - 保存: History、Undo / Redo、autosave、IndexedDB、旧`.casproj`、新データroundtrip、保存失敗時の原子的復旧。
 - 書き出し: 許可形式の保持と、Atlas / 製品ZIP / helperの理由付き拒否。
@@ -196,4 +199,4 @@ O2を採用した場合はSlice B / Cを作らない。G1ならSlice Aの完了�
 1. 本docs-only監査をmainへ置く。
 2. 人間が`G1/G2 + O1/O2 + P1/P2`を明示決定する。
 3. accepted判断を正本へ記録する。
-4. Slice Aから単一writerで実装する。
+4. 採用した組み合わせに従い、§9の該当sliceまたはcloseoutへ進む。G1の場合だけSlice Aを単一writerで開始する。
