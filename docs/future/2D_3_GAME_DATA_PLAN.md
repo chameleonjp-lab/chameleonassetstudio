@@ -60,19 +60,19 @@ balanced profileでは、すべてのAssetへanchorやcolliderを強制しない
 
 `gameAttributes`はschema上、配列やobjectを含むJSON値を保持できる。一方、現在の入力欄は文字列と数値向けであり、配列やobjectを文字列化して編集すると意味を失う。
 
-推奨は、文字列と有限数値だけを通常入力で編集し、配列・object・boolean・nullは読み取り専用で表示することである。構造を持つ値を編集する専用JSON editorはGroup 13の必須範囲に含めない。
+G1では、文字列と有限数値だけを通常入力で編集し、配列・object・boolean・nullは読み取り専用で表示する。構造を持つ値を編集する専用JSON editorはGroup 13の必須範囲に含めない。
 
 ### 4.2 Asset種別を変えた後の旧設定
 
 Asset種別を変えても、以前の`tile`、`gimmick`、`effect`、Layerのbackground設定はデータ内に残る。これは非破壊保持として安全だが、画面から見えにくい。
 
-推奨は自動削除せず、別種別の設定が残っていることを理由付きで表示し、削除は利用者の明示操作だけで行うことである。
+G1では自動削除せず、別種別の設定が残っていることを理由付きで表示し、削除は利用者の明示操作だけで行う。
 
 ### 4.3 入力ごとのHistory
 
 原点、anchor、colliderの数値・文字入力は、入力中の変更を確定時の1 Historyへまとめる。種別設定とgame attributesは入力のたびにHistoryを作り得る。
 
-推奨は、文字・数値入力をEnterまたはフォーカス離脱で最大1 Historyへまとめ、Escで取消、no-opではHistoryを作らない既存方式へ揃えることである。
+G1では、文字・数値入力をEnterまたはフォーカス離脱で最大1 Historyへまとめ、Escで取消、no-opではHistoryを作らない既存方式へ揃える。
 
 ## 5. Frame別collider上書きの既存決定
 
@@ -124,7 +124,7 @@ polygonを採用するには、少なくとも次を別の設計で固定する�
 - `.casproj`、atlas、helpers、target adapter、E2E
 - 古いrect / circleと旧`.casproj`の互換性
 
-推奨は2D Pro Gateまで`unsupported`を維持し、必要性と対象別出力の条件が揃った後の別work packageへ送ることである。
+P1により2D Pro Gateまで`unsupported`を維持し、必要性と対象別出力の条件が揃った後の別work packageへ送る。
 
 ## 8. 採用判断
 
