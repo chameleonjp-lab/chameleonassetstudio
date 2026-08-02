@@ -857,6 +857,50 @@
   padding: 0.2rem 0.4rem;
 }
 
+.gamedata-readonly-value {
+  flex: 1;
+  min-width: 0;
+}
+
+.gamedata-readonly-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.gamedata-readonly-value pre,
+.gamedata-retained-value {
+  max-width: 100%;
+  margin: 0;
+  padding: 0.4rem;
+  border: 1px solid #8884;
+  border-radius: 4px;
+  background: color-mix(in srgb, Canvas 94%, CanvasText 6%);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.gamedata-warning {
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid #c37a00;
+  border-radius: 5px;
+  background: color-mix(in srgb, Canvas 88%, #ffb703 12%);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.gamedata-retained-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 /* 判定用途のカラースワッチ（Phase 19-C）。キャンバス表示色とリストを対応づける。 */
 .gamedata-collider-swatch {
   display: inline-block;
@@ -2398,6 +2442,12 @@
 
   .editor-timeline input:not([type='checkbox']),
   .editor-timeline select {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .gamedata-panel input:not([type='checkbox']):not([type='color']),
+  .gamedata-panel select {
     min-height: 44px;
     font-size: 16px;
   }

@@ -1393,3 +1393,7 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 - `P1`（採用）: polygonを2D Pro Gateまで`unsupported`として別work packageへ延期する。P2は採用しない。
 
 採用順は、docs-only採用記録、G1のSlice A、O1の正式契約Slice B、Slice B merge後のO1製品実装Slice C、P1のunsupported維持を同期するGroup 13 closeoutとする。Slice Bではcanonical schema形、semantic validation、UI操作、保存と書き出し拒否を固定する。この採用記録だけでは製品コード、schema、version、migration、保存形式、export形式を変更せず、Group 13を完了扱いにしない。
+
+### 実装状況
+
+PR #216はmerge `f54526210f0d563cff408b0e66c4234b90c4324f`としてmainへ反映済みである。続くG1 Slice Aは本Draft PRで実装中で、構造を持つgameAttributesの読み取り専用表示、旧tile / gimmick / effect / 全Layer background設定の保持警告と個別削除、文字・数値入力のEnter / blur 1回確定・Esc取消・no-op、重複属性名による上書き拒否を扱う。Asset `0.2.0`、schema、migration、`.casproj`、export形式、O1、polygonは変更しない。Group 13と進捗14/27は未完了のまま維持する。

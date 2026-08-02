@@ -5,6 +5,12 @@ import {
   setGameAttribute,
   type Asset,
 } from '../../core/model';
+import { CommittedInput } from './CommittedInput';
+import {
+  formatReadonlyGameAttribute,
+  gameAttributeTypeLabel,
+  isEditableGameAttribute,
+} from './gameDataSafety';
 import { InspectionPanel } from './InspectionPanel';
 
 interface GameAttributesPanelProps {
@@ -23,25 +29,21 @@ function parseAttributeValue(raw: string): unknown {
   return raw;
 }
 
-function displayValue(value: unknown): string {
-  if (value === undefined || value === null) {
-    return '';
-  }
-  return typeof value === 'string' ? value : String(value);
-}
-
 /** ゲーム属性（gameAttributes）の一覧編集パネル（Phase 14）。 */
 export function GameAttributesPanel({ asset, onCommit }: GameAttributesPanelProps) {
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
   const entries = Object.entries(asset.gameAttributes);
+  const trimmedNewKey = newKey.trim();
+  const duplicateKey =
+    trimmedNewKey !== '' &&
+    Object.prototype.hasOwnProperty.call(asset.gameAttributes, trimmedNewKey);
 
   const handleAdd = () => {
-    const key = newKey.trim();
-    if (!key) {
+    if (!trimmedNewKey || duplicateKey) {
       return;
     }
-    onCommit('属性を追加', setGameAttribute(asset, key, parseAttributeValue(newValue)));
+    onCommit('属性を追加', setGameAttribute(asset, trimmedNewKey, parseAttributeValue(newValue)));
     setNewKey('');
     setNewValue('');
   };
@@ -57,20 +59,34 @@ export function GameAttributesPanel({ asset, onCommit }: GameAttributesPanelProp
             <li key={key} className="gamedata-row">
               <div className="gamedata-row-header">
                 <span className="gamedata-shape">{key}</span>
-                <label className="editor-field">
-                  値
-                  <input
-                    type="text"
-                    aria-label={`属性「${key}」の値`}
-                    value={displayValue(value)}
-                    onChange={(event) =>
-                      onCommit(
-                        '属性値変更',
-                        setGameAttribute(asset, key, parseAttributeValue(event.target.value)),
-                      )
-                    }
-                  />
-                </label>
+                {isEditableGameAttribute(value) ? (
+                  <label className="editor-field">
+                    値
+                    <CommittedInput
+                      type="text"
+                      aria-label={`属性「${key}」の値`}
+                      value={String(value)}
+                      normalize={
+                        typeof value === 'number'
+                          ? (nextValue) => String(parseAttributeValue(nextValue))
+                          : undefined
+                      }
+                      onCommit={(nextValue) =>
+                        onCommit(
+                          '属性値変更',
+                          setGameAttribute(asset, key, parseAttributeValue(nextValue)),
+                        )
+                      }
+                    />
+                  </label>
+                ) : (
+                  <div className="gamedata-readonly-value">
+                    <span className="gamedata-readonly-label">
+                      読み取り専用（{gameAttributeTypeLabel(value)}）
+                    </span>
+                    <pre>{formatReadonlyGameAttribute(value)}</pre>
+                  </div>
+                )}
                 <button
                   type="button"
                   aria-label={`属性「${key}」を削除`}
@@ -88,6 +104,7 @@ export function GameAttributesPanel({ asset, onCommit }: GameAttributesPanelProp
           属性名
           <input
             type="text"
+            aria-label="新しい属性名"
             list="game-attribute-key-suggestions"
             value={newKey}
             onChange={(event) => setNewKey(event.target.value)}
@@ -97,14 +114,20 @@ export function GameAttributesPanel({ asset, onCommit }: GameAttributesPanelProp
           属性値
           <input
             type="text"
+            aria-label="新しい属性値"
             value={newValue}
             onChange={(event) => setNewValue(event.target.value)}
           />
         </label>
-        <button type="button" onClick={handleAdd}>
+        <button type="button" onClick={handleAdd} disabled={!trimmedNewKey || duplicateKey}>
           属性を追加
         </button>
       </div>
+      {duplicateKey && (
+        <p className="gamedata-warning" role="alert">
+          同じ属性名があります。既存の値を守るため、別の属性名を入力してください。
+        </p>
+      )}
       <datalist id="game-attribute-key-suggestions">
         {ITEM_ATTRIBUTE_KEYS.map((key) => (
           <option key={key} value={key} />
