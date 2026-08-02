@@ -337,7 +337,8 @@ test('保存失敗はBlobを変えずAsset/Project/History/UIを戻しerrorを�
   await width.fill('20');
   await width.press('Enter');
   await expect(saveStatus(page)).toContainText('保存失敗', { timeout: 10_000 });
-  await expect(saveStatus(page)).toContainText('injected O1 asset write failure');
+  await expect(saveStatus(page)).toContainText('保存容量が不足しています');
+  await expect(saveStatus(page)).toContainText('保存済みの正本は変更されていません');
   await expect(width).toHaveValue('32');
   await expect(page.getByRole('button', { name: '元に戻す' })).toBeDisabled();
   await expect.poll(async () => readStoredAsset(page)).toEqual(beforeAsset);

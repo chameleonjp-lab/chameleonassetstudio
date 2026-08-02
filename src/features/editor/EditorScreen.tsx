@@ -562,6 +562,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   // タイムライン（Phase 9）
   const [selectedAnimationId, setSelectedAnimationId] = useState<string | null>(null);
   const [previewFrameId, setPreviewFrameId] = useState<string | null>(null);
+  const [selectedTimelineFrameId, setSelectedTimelineFrameId] = useState<string | null>(null);
   const [previewOccurrenceIndex, setPreviewOccurrenceIndex] = useState<number | null>(null);
   const [firedAnimationEvents, setFiredAnimationEvents] = useState<AnimationEvent[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -838,12 +839,13 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const selectedAnimation =
     selectedAsset?.animations.find((animation) => animation.id === selectedAnimationId) ?? null;
   const framePreviewActive = previewFrameId !== null;
-  const selectedPreviewFrame = useMemo(
+  const selectedTimelineFrame = useMemo(
     () =>
-      selectedAsset && previewFrameId
-        ? ((selectedAsset.frames ?? []).find((frame) => frame.id === previewFrameId) ?? null)
+      selectedAsset && selectedTimelineFrameId
+        ? ((selectedAsset.frames ?? []).find((frame) => frame.id === selectedTimelineFrameId) ??
+          null)
         : null,
-    [previewFrameId, selectedAsset],
+    [selectedAsset, selectedTimelineFrameId],
   );
   const availableFrameIds = useMemo(
     () => new Set((selectedAsset?.frames ?? []).map((frame) => frame.id)),
@@ -1151,6 +1153,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   useEffect(() => {
     setSelectedAnimationId(null);
     setPreviewFrameId(null);
+    setSelectedTimelineFrameId(null);
     setPreviewOccurrenceIndex(null);
     setFiredAnimationEvents([]);
     setIsPlaying(false);
@@ -1209,9 +1212,6 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       },
       onComplete: () => {
         setIsPlaying(false);
-        setPreviewFrameId(null);
-        setPreviewOccurrenceIndex(null);
-        setFiredAnimationEvents([]);
       },
     });
     animationPlaybackRef.current = playback;
@@ -1233,6 +1233,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setSelectedAnimationId(id);
     setIsPlaying(false);
     setPreviewFrameId(null);
+    setSelectedTimelineFrameId(null);
     setPreviewOccurrenceIndex(null);
     setFiredAnimationEvents([]);
   };
@@ -1244,6 +1245,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     }
     setIsPlaying(false);
     setPreviewFrameId(frameId);
+    setSelectedTimelineFrameId(frameId);
     setPreviewOccurrenceIndex(null);
     setFiredAnimationEvents([]);
   };
@@ -1259,6 +1261,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     }
     setIsPlaying(false);
     setPreviewFrameId(frameId);
+    setSelectedTimelineFrameId(frameId);
     setPreviewOccurrenceIndex(occurrenceIndex);
     setFiredAnimationEvents([]);
   };
@@ -1313,6 +1316,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
       setIsPlaying(false);
       setPreviewFrameId(null);
+      setSelectedTimelineFrameId(null);
       setPreviewOccurrenceIndex(null);
       setFiredAnimationEvents([]);
       setFrameAlignmentDraft({
@@ -1421,12 +1425,14 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       return;
     }
     setFiredAnimationEvents([]);
+    setSelectedTimelineFrameId(null);
     setIsPlaying(true);
   };
 
   const handleStopAnimation = () => {
     setIsPlaying(false);
     setPreviewFrameId(null);
+    setSelectedTimelineFrameId(null);
     setPreviewOccurrenceIndex(null);
     setFiredAnimationEvents([]);
     setEditorError((current) => (current === FRAME_PREVIEW_EDIT_MESSAGE ? null : current));
@@ -1444,6 +1450,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       animationPlaybackRef.current.start();
       return;
     }
+    setSelectedTimelineFrameId(null);
     setPreviewFrameId(selectedAnimation.frameIds[0]);
     setPreviewOccurrenceIndex(0);
     setFiredAnimationEvents([]);
@@ -3247,7 +3254,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
   /** 停止中の選択Frameに対するO1専用commit。派生previewAssetは保存へ流さない。 */
   const commitFrameColliderChange = (label: string, next: Asset) => {
-    if (!selectedAsset || !selectedPreviewFrame || isPlaying || next === selectedAsset) {
+    if (!selectedAsset || !selectedTimelineFrame || isPlaying || next === selectedAsset) {
       return;
     }
     const inspection = inspectFrameColliderOverrides(next);
@@ -4755,7 +4762,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               onCommitFieldEdit={commitLayerEdit}
               selectedColliderId={selectedColliderId}
               onSelectCollider={setSelectedColliderId}
-              selectedFrame={selectedPreviewFrame}
+              selectedFrame={selectedTimelineFrame}
               isPlaying={isPlaying}
               onFrameCommit={commitFrameColliderChange}
               onFrameError={setEditorError}
