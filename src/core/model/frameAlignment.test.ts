@@ -49,7 +49,16 @@ function completeAsset(): Asset {
     ],
     parts: [],
     anchors: [],
-    colliders: [],
+    colliders: [
+      {
+        id: 'future-collider-reference',
+        name: 'body',
+        purpose: 'body',
+        shape: 'rect',
+        visible: true,
+        rect: { x: 4, y: 5, width: 6, height: 7 },
+      },
+    ],
     frames: [
       {
         id: 'frame_reference',

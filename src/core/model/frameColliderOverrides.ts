@@ -213,13 +213,55 @@ function mutationError(
   return { ok: false, changed: false, asset, code, message };
 }
 
-function geometryEqual(
-  left: FrameColliderRect | FrameColliderCircle | undefined,
-  right: FrameColliderRect | FrameColliderCircle,
-): boolean {
-  if (!left) return false;
-  const keys = Object.keys(right);
-  return keys.length === Object.keys(left).length && keys.every((key) => left[key] === right[key]);
+function jsonValueEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return (
+      Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((value, index) => jsonValueEqual(value, right[index]))
+    );
+  }
+  if (left === null || right === null || typeof left !== 'object' || typeof right !== 'object') {
+    return false;
+  }
+  const leftRecord = left as Record<string, unknown>;
+  const rightRecord = right as Record<string, unknown>;
+  const leftKeys = Object.keys(leftRecord).sort();
+  const rightKeys = Object.keys(rightRecord).sort();
+  return (
+    leftKeys.length === rightKeys.length &&
+    leftKeys.every(
+      (key, index) => key === rightKeys[index] && jsonValueEqual(leftRecord[key], rightRecord[key]),
+    )
+  );
+}
+
+function mergeGeometry<T extends FrameColliderRect | FrameColliderCircle>(
+  current: T | undefined,
+  next: T,
+): T {
+  return {
+    ...(current ? structuredClone(current) : {}),
+    ...structuredClone(next),
+  } as T;
+}
+
+interface PreservedEntryFields {
+  colliderId: string;
+  visible?: boolean;
+  [key: string]: unknown;
+}
+
+function preserveNonGeometryFields(
+  entry: FrameColliderOverride | undefined,
+  colliderId: string,
+): PreservedEntryFields {
+  const fields = structuredClone(entry ?? { colliderId }) as PreservedEntryFields;
+  delete fields.rect;
+  delete fields.circle;
+  return fields;
 }
 
 function withUpdatedFrame(
@@ -305,17 +347,20 @@ export function setFrameColliderGeometry(
     );
   }
   const existing = findFrameColliderOverride(frame, colliderId);
-  const currentGeometry = existing?.rect ?? existing?.circle;
-  if (geometryEqual(currentGeometry, geometry)) return { ok: true, changed: false, asset };
-  const nextEntry: FrameColliderOverride = existing
-    ? { ...structuredClone(existing), colliderId }
-    : { colliderId };
+  const entryFields = preserveNonGeometryFields(existing, colliderId);
+  let nextEntry: FrameColliderOverride;
   if (isRect) {
-    nextEntry.rect = structuredClone(geometry as FrameColliderRect);
-    delete nextEntry.circle;
+    const nextGeometry = mergeGeometry(existing?.rect, geometry as FrameColliderRect);
+    if (existing?.rect && jsonValueEqual(existing.rect, nextGeometry)) {
+      return { ok: true, changed: false, asset };
+    }
+    nextEntry = { ...entryFields, colliderId, rect: nextGeometry };
   } else {
-    nextEntry.circle = structuredClone(geometry as FrameColliderCircle);
-    delete nextEntry.rect;
+    const nextGeometry = mergeGeometry(existing?.circle, geometry as FrameColliderCircle);
+    if (existing?.circle && jsonValueEqual(existing.circle, nextGeometry)) {
+      return { ok: true, changed: false, asset };
+    }
+    nextEntry = { ...entryFields, colliderId, circle: nextGeometry };
   }
   const nextEntries = existing
     ? (frame.colliderOverrides ?? []).map((entry) =>

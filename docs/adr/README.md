@@ -66,7 +66,7 @@ ADRは上位仕様・計画の判断を追跡可能にする記録である。�
 | [0021](./0021-frame-duration-semantics.md) | Frame単位可変時間、旧fps-only互換、H1=E1拒否 | Group 12計画 T1 / §8.2 | T1 Slice A、PR #153で実装済み |
 | [0022](./0022-rig-flip-and-bake-parity.md) | rig flipの鏡映式・完全ID map・bake同値、H2=L1 / H3=M1境界 | Group 12計画 R1 / §6.4・§8.3 | ADR-2026-07-24-027でB1先行を承認。PR #157 / merge `bf13cac`で実装済み |
 | [0023](./0023-part-layer-replacement.md) | 静的なPart.layerIds差し替えとH2=L1 | Group 12計画 P1 / §8.3 | P1 Slice C、PR #154 / merge `1c700e7`で実装済み |
-| [0024](./0024-frame-collider-override-contract.md) | Frame別collider上書きのcanonical契約 | Group 13計画 O1 / §9.2 | Slice BはPR #218でmain反映済み。Slice Cは製品fixtureを含めDraft実装中・未検証 |
+| [0024](./0024-frame-collider-override-contract.md) | Frame別collider上書きのcanonical契約 | Group 13計画 O1 / §9.2 | Slice BはPR #218でmain反映済み。Slice Cは製品fixtureを含むDraft実装・固定head検証必須・未merge |
 
 ## 4. 変更してよいもの・してはいけないもの
 
@@ -94,4 +94,4 @@ group 11 Slice E製品実装のADR-0020は、2026-07-21の人間承認（1A + 2A
 
 group 12のADR-0021〜0023は、2026-07-22の人間承認（T1 + R1 + P1、後続H1=E1 + H2=L1 + H3=M1）に従い、Frame単位可変時間、理由付き固定fps派生export拒否、rig flip / bake parity、非空・単一Layer ownership、静的part replace、測定先行を固定する。H3の数値budgetは`docs/future/2D_3_H3_MEASUREMENT_PROTOCOL.md`の実測と後続人間承認まで未決定である。T1 Slice AはPR #153で型・schema・再生・検査・保存・product export Gateを実装済みである。P1 Slice CはPR #154でschema、version、migration、storage配置、Atlas 0.1.0、dependencyを変えず、既存Partの構成Layer差し替えを実装済みである。ADR-2026-07-24-027でR1をB1 / B2へ分割した。B1はPR #157 final head `834cc38`、merge `bf13cac`、CI Run #501全成功、非GitHub・非Opusの固定head独立review `BLOCKER 0 / MUST 0 / SHOULD 0`として実装済みである。B2の数値warning / hard cap、採用上限での実機測定、Group 12完了判定はH3数値の後続判断まで残す。
 
-group 13のADR-0024は、2026-08-02の人間承認`G1+O1+P1`に従い、Frame単位だけのcollider上書きについてcanonical data、field単位fallback、構造・意味検証、UI、複製・反転・resize、保存・rollback、現行Atlas系の理由付き拒否を固定する。G1はPR #217、ADR-0024のdocs-only Slice BはPR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`でmainへ反映済みである。型・schema・製品挙動・testはSlice CでDraft実装中・未検証である。Asset `0.2.0`、migrationなし、polygon `unsupported`を維持する。
+group 13のADR-0024は、2026-08-02の人間承認`G1+O1+P1`に従い、Frame単位だけのcollider上書きについてcanonical data、field単位fallback、構造・意味検証、UI、複製・反転・resize、保存・rollback、現行Atlas系の理由付き拒否を固定する。G1はPR #217、ADR-0024のdocs-only Slice BはPR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`でmainへ反映済みである。型・schema・製品挙動・testのSlice CはDraft実装・固定head検証必須・未mergeである。Asset `0.2.0`、migrationなし、polygon `unsupported`を維持する。

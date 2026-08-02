@@ -5,6 +5,7 @@
 import {
   assertFrameColliderOverridesValid,
   type Asset,
+  type FrameColliderOverride,
   type LayerTransform,
   type Size,
   type Vec2,
@@ -118,27 +119,30 @@ export function resizeAssetCanvas(
       ),
       ...(frame.colliderOverrides
         ? {
-            colliderOverrides: frame.colliderOverrides.map((override) => ({
-              ...structuredClone(override),
-              ...(override.rect
-                ? {
-                    rect: {
-                      ...structuredClone(override.rect),
-                      x: override.rect.x + offset.x,
-                      y: override.rect.y + offset.y,
-                    },
-                  }
-                : {}),
-              ...(override.circle
-                ? {
-                    circle: {
-                      ...structuredClone(override.circle),
-                      x: override.circle.x + offset.x,
-                      y: override.circle.y + offset.y,
-                    },
-                  }
-                : {}),
-            })),
+            colliderOverrides: frame.colliderOverrides.map((override): FrameColliderOverride => {
+              const cloned = structuredClone(override);
+              if (cloned.rect) {
+                return {
+                  ...cloned,
+                  rect: {
+                    ...cloned.rect,
+                    x: cloned.rect.x + offset.x,
+                    y: cloned.rect.y + offset.y,
+                  },
+                };
+              }
+              if (cloned.circle) {
+                return {
+                  ...cloned,
+                  circle: {
+                    ...cloned.circle,
+                    x: cloned.circle.x + offset.x,
+                    y: cloned.circle.y + offset.y,
+                  },
+                };
+              }
+              return cloned;
+            }),
           }
         : {}),
     })),

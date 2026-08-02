@@ -141,7 +141,7 @@ describe('exportAsset texture kind boundary', () => {
     expect(deleteBlob).not.toHaveBeenCalled();
   });
 
-  it('Frame collider overrideはPNG/asset.jsonを許可しSprite Sheet/ZIPをBlob読込前に拒否する', async () => {
+  it('Frame collider overrideはPNG/WebP/asset.jsonを許可しSprite Sheet/ZIPをBlob読込前に拒否する', async () => {
     const asset = assetReferencing('edit');
     asset.frames![0].colliderOverrides = [
       {
@@ -161,6 +161,7 @@ describe('exportAsset texture kind boundary', () => {
       asset.frames![0].colliderOverrides,
     );
     await expect(exportImage(asset, 'image/png')).resolves.toBeInstanceOf(Blob);
+    await expect(exportImage(asset, 'image/webp')).resolves.toBeInstanceOf(Blob);
     expect(loadBlobMock).toHaveBeenCalled();
   });
 

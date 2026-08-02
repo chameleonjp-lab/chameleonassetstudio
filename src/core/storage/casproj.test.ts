@@ -175,6 +175,16 @@ describe('casproj の書き出しと読み込み', () => {
     );
   });
 
+  it('意味不正なFrame collider overrideを含む手製.casprojをimportで拒否する', async () => {
+    const invalid = structuredClone(asset);
+    invalid.frames![0].colliderOverrides = [{ colliderId: 'col_missing', visible: false }];
+    const zipped = await zipAsync({
+      'project.json': strToU8(JSON.stringify(project)),
+      [`assets/${invalid.id}/asset.json`]: strToU8(JSON.stringify(invalid)),
+    });
+    await expect(importCasproj(zipped)).rejects.toThrow(/frame-override-dangling-collider/);
+  });
+
   it('D4移動後の全Layer位置・順序・未知fieldをexact roundtripする', async () => {
     const before = frameAlignmentAsset();
     const applied = applyFrameAlignment(

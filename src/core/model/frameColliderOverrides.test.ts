@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import characterAsset from '../samples/asset.character.json';
 import type { Asset } from './asset';
+import type { FrameColliderOverride } from './animation';
 import {
   findFrameColliderOverride,
   frameColliderReferenceReason,
@@ -17,6 +18,21 @@ function fixture(): Asset {
 }
 
 describe('Frame collider overrideの意味検証', () => {
+  it('canonical型はrect / circle / visible-onlyを排他的に表す', () => {
+    const visibleOnly: FrameColliderOverride = { colliderId: 'col_body', visible: false };
+    // @ts-expect-error recognized override fieldなしはcanonical型ではない
+    const missingRecognizedField: FrameColliderOverride = { colliderId: 'col_body' };
+    // @ts-expect-error rectとcircleの同居はcanonical型ではない
+    const mixedGeometry: FrameColliderOverride = {
+      colliderId: 'col_body',
+      rect: { x: 1, y: 2, width: 3, height: 4 },
+      circle: { x: 1, y: 2, radius: 3 },
+    };
+    expect(visibleOnly.visible).toBe(false);
+    expect(missingRecognizedField.colliderId).toBe('col_body');
+    expect(mixedGeometry.colliderId).toBe('col_body');
+  });
+
   it('field不在と空配列をvalidとして入力を変更しない', () => {
     const absent = fixture();
     const before = structuredClone(absent);
@@ -158,6 +174,109 @@ describe('Frame collider overrideのfallbackと編集', () => {
       future: { exact: true },
       name: 'reserved-is-unknown',
     });
+  });
+
+  it('circleを完全形で作り、shape不一致のgeometryは理由付きで拒否する', () => {
+    const asset = fixture();
+    const circle = setFrameColliderGeometry(asset, 'frame_idle_0', 'col_pickup', {
+      x: 5,
+      y: 6,
+      radius: 7,
+    });
+    expect(circle.ok && circle.changed).toBe(true);
+    if (!circle.ok) return;
+    expect(findFrameColliderOverride(circle.asset.frames![0], 'col_pickup')).toEqual({
+      colliderId: 'col_pickup',
+      circle: { x: 5, y: 6, radius: 7 },
+    });
+
+    const mismatch = setFrameColliderGeometry(asset, 'frame_idle_0', 'col_body', {
+      x: 5,
+      y: 6,
+      radius: 7,
+    });
+    expect(mismatch).toMatchObject({ ok: false, changed: false, code: 'shape-mismatch' });
+    expect(mismatch.asset).toBe(asset);
+  });
+
+  it('未知geometryをdeep比較してsemantic no-opを抑止し、known値更新でもexact保持する', () => {
+    const asset = fixture();
+    asset.frames![0].colliderOverrides = [
+      {
+        colliderId: 'col_body',
+        rect: {
+          x: 1,
+          y: 2,
+          width: 3,
+          height: 4,
+          futureGeometry: { nested: ['exact', { keep: true }] },
+        },
+      },
+    ];
+    const noOp = setFrameColliderGeometry(asset, 'frame_idle_0', 'col_body', {
+      x: 1,
+      y: 2,
+      width: 3,
+      height: 4,
+    });
+    expect(noOp).toEqual({ ok: true, changed: false, asset });
+    expect(noOp.asset).toBe(asset);
+
+    const changed = setFrameColliderGeometry(asset, 'frame_idle_0', 'col_body', {
+      x: 1,
+      y: 2,
+      width: 8,
+      height: 4,
+    });
+    expect(changed.ok && changed.changed).toBe(true);
+    if (!changed.ok) return;
+    expect(changed.asset.frames![0].colliderOverrides![0]).toEqual({
+      colliderId: 'col_body',
+      rect: {
+        x: 1,
+        y: 2,
+        width: 8,
+        height: 4,
+        futureGeometry: { nested: ['exact', { keep: true }] },
+      },
+    });
+  });
+
+  it('visible-onlyのhide/show/inheritとgeometryだけのresetをfield単位で扱う', () => {
+    const asset = fixture();
+    const hidden = setFrameColliderVisible(asset, 'frame_idle_0', 'col_body', false);
+    expect(hidden.ok && hidden.changed).toBe(true);
+    if (!hidden.ok) return;
+    expect(hidden.asset.frames![0].colliderOverrides).toEqual([
+      { colliderId: 'col_body', visible: false },
+    ]);
+
+    const shown = setFrameColliderVisible(hidden.asset, 'frame_idle_0', 'col_body', true);
+    expect(shown.ok && shown.changed).toBe(true);
+    if (!shown.ok) return;
+    expect(shown.asset.frames![0].colliderOverrides).toEqual([
+      { colliderId: 'col_body', visible: true },
+    ]);
+
+    const inherited = setFrameColliderVisible(shown.asset, 'frame_idle_0', 'col_body', undefined);
+    expect(inherited.ok && inherited.changed).toBe(true);
+    if (!inherited.ok) return;
+    expect(inherited.asset.frames![0]).not.toHaveProperty('colliderOverrides');
+
+    const withGeometry = fixture();
+    withGeometry.frames![0].colliderOverrides = [
+      {
+        colliderId: 'col_body',
+        rect: { x: 1, y: 2, width: 3, height: 4 },
+        visible: false,
+      },
+    ];
+    const geometryReset = resetFrameColliderGeometry(withGeometry, 'frame_idle_0', 'col_body');
+    expect(geometryReset.ok && geometryReset.changed).toBe(true);
+    if (!geometryReset.ok) return;
+    expect(geometryReset.asset.frames![0].colliderOverrides).toEqual([
+      { colliderId: 'col_body', visible: false },
+    ]);
   });
 
   it('正規化後no-opでは同じ参照を返す', () => {

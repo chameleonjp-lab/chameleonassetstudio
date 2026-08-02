@@ -1,6 +1,6 @@
 # 0024-frame-collider-override-contract
 
-ステータス: accepted（2026-08-02 人間承認 O1。Slice BはPR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`で完了。Slice CはDraft実装中・未検証）
+ステータス: accepted（2026-08-02 人間承認 O1。Slice BはPR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`で完了。Slice CはDraft実装・固定head検証必須・未merge）
 上位文書: `docs/future/2D_3_GAME_DATA_PLAN.md`（§5〜§6.2、§9〜§12）、`docs/future/2D_ASSET_DATA_CONTRACT.md`（§9.2）
 関連 fixture: Slice C `2D-3-COLLIDER-OVERRIDE`で追加する
 
