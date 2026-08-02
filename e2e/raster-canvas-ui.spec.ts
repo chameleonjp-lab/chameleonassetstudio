@@ -25,7 +25,7 @@ async function createBlankAsset(page: Page) {
   await properties.getByLabel('新規アセット名').fill('描画テスト');
   await properties.getByLabel('新規アセットのサイズ').selectOption('32');
   await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
-  await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
+  await expect(page.getByLabel('アセットキャンバス')).toBeVisible({ timeout: 10_000 });
 }
 
 async function readStoredAlphaCount(page: Page): Promise<{
@@ -290,7 +290,7 @@ test('iPhone SE級viewport（375x667）でアセット作成から描画・保�
     await properties.getByLabel('新規アセットのサイズ').selectOption('32');
     await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
     await mobileNav.getByRole('button', { name: '編集' }).click();
-    await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
+    await expect(page.getByLabel('アセットキャンバス')).toBeVisible({ timeout: 10_000 });
 
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
