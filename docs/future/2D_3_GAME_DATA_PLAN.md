@@ -82,6 +82,7 @@ ADR-0010 / 0011で、将来境界はacceptedである。ただし実装許可で
 - 優先順位は「Frame上書き > Asset共通」とする。
 - 対象はAsset共通に実在するcolliderだけとする。
 - rectは`x`、`y`、`width`、`height`、circleは`x`、`y`、`radius`、共通で`visible`だけを上書きできる。
+- `visible`は編集・debug表示だけを制御し、ゲーム内の当たり判定の有効 / 無効を表さない。Frame別の有効時間帯が必要な場合は、`enabled`等の別fieldを別の人間判断で設計する。
 - colliderの追加・削除、`purpose`変更、`shape`変更は上書きで行わない。
 - 同じFrameを複数Animationが参照する場合、同じ上書きを使う。
 
@@ -137,8 +138,8 @@ polygonを採用するには、少なくとも次を別の設計で固定する�
 
 | 候補 | 内容 | 影響 |
 |---|---|---|
-| **O1（推奨）** | §5〜§6.1の限定仕様で、G1後の独立sliceとして実装する。 | 攻撃などのFrame別判定を扱える。複製、反転、resize、保存、書き出し拒否まで横断テストが必要。 |
-| O2 | 今回は実装せず、Group 14以降へ延期する。 | 形式変更リスクは減るが、Frame別判定は使えないまま残る。 |
+| **O1（推奨）** | §5〜§6.1の限定仕様で、G1後の独立sliceとして実装する。 | 既存colliderのFrame別位置・サイズ調整とdebug表示上書きを扱える。ゲーム内の有効 / 無効は扱わない。複製、反転、resize、保存、書き出し拒否まで横断テストが必要。 |
+| O2 | Group 13では不採用とし、2D Pro Gate後のfuture backlog `POST-2D-COLLIDER-OVERRIDE`へ延期する。 | O2の採用記録をもって`2D-3-COLLIDER-OVERRIDE`のGroup 13 Gateはcloseできる。別ADRがacceptedになるまでFrame上書きは実装しない。 |
 
 ### P1: polygon
 
@@ -159,6 +160,8 @@ polygonを採用するには、少なくとも次を別の設計で固定する�
 4. Group 13 closeout: P1のunsupported維持、Group 14開始条件、残リスクを同期する。
 
 各sliceは1 branch、1 Draft Pull Request、単一writerとする。CI失敗は同じPull Requestで直す。
+
+O2を採用した場合はSlice B / Cを作らない。G1ならSlice Aの完了後、G2なら現状完了の記録後に、O2の延期先とP1 / P2の状態を正本へ記録してGroup 13をcloseし、Group 14へ進む。P2を選ぶ場合はpolygon設計の完了がGroup 13 close条件として残る。
 
 ## 10. 必須検証
 
@@ -194,4 +197,3 @@ polygonを採用するには、少なくとも次を別の設計で固定する�
 2. 人間が`G1/G2 + O1/O2 + P1/P2`を明示決定する。
 3. accepted判断を正本へ記録する。
 4. Slice Aから単一writerで実装する。
-
