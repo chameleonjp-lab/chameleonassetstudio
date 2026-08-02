@@ -261,7 +261,7 @@ export function GameDataPanel({
           </option>
         </select>
       </label>
-      <p className="editor-note" role="status">
+      <p className="editor-note">
         {colliderScope === 'frame' && selectedFrame
           ? `Frame別編集中: 「${selectedFrame.name}」。省略した値はAsset共通値を使います。`
           : isPlaying
@@ -727,7 +727,7 @@ function FrameColliderOverridePanel({
               </button>
             </div>
             {unknownKeys.length > 0 && (
-              <p className="export-warning" role="status">
+              <p className="export-warning">
                 未知field（{unknownKeys.join('、')}
                 ）を保持中です。field単位の解除で未知fieldだけが残る場合は拒否します。
               </p>

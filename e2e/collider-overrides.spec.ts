@@ -317,9 +317,10 @@ test.describe('mobile O1', () => {
     await page.getByLabel('アニメーション選択').selectOption({ label: 'o1_animation' });
     await page.getByRole('button', { name: '再生', exact: true }).tap();
     await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).tap();
-    await expect(
-      page.getByLabel('当たり判定の編集範囲').getByRole('option', { name: /選択Frame/ }),
-    ).toBeDisabled();
+    const frameOption = page
+      .getByLabel('当たり判定の編集範囲')
+      .getByRole('option', { name: /選択Frame/ });
+    await expect(frameOption).toHaveJSProperty('disabled', true);
 
     await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).tap();
     await page.getByRole('button', { name: '停止', exact: true }).tap();
