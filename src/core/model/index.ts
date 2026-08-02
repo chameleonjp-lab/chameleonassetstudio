@@ -12,6 +12,7 @@ export * from './factories';
 export * from './family';
 export * from './familyVariantRecipes';
 export * from './frameAlignment';
+export * from './frameColliderOverrides';
 export { flipCopyAsset, swapLeftRightLabel, type FlipCopyAssetOptions } from './flipCopy';
 export * from './layer';
 export * from './migrate';

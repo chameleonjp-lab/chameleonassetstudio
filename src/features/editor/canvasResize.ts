@@ -2,7 +2,13 @@
  * Asset canvas resize / game data追従の純関数。
  * 正本: docs/future/2D_2_CANVAS_RESIZE_PLAN.md（B1+P1+G1+O1+V1+H1）。
  */
-import type { Asset, LayerTransform, Size, Vec2 } from '../../core/model';
+import {
+  assertFrameColliderOverridesValid,
+  type Asset,
+  type LayerTransform,
+  type Size,
+  type Vec2,
+} from '../../core/model';
 import { validateBlankCanvasSize } from './blankAsset';
 import { layerWorldBounds, type AABB } from './layerAlign';
 
@@ -86,6 +92,7 @@ export function resizeAssetCanvas(
   anchor: CanvasResizeAnchor,
   now: Date = new Date(),
 ): Asset {
+  assertFrameColliderOverridesValid(asset);
   const validationError = validateBlankCanvasSize(nextSize);
   if (validationError) {
     throw new Error(validationError);
@@ -109,6 +116,31 @@ export function resizeAssetCanvas(
           ? { ...state, transform: translateTransform(state.transform, offset) }
           : state,
       ),
+      ...(frame.colliderOverrides
+        ? {
+            colliderOverrides: frame.colliderOverrides.map((override) => ({
+              ...structuredClone(override),
+              ...(override.rect
+                ? {
+                    rect: {
+                      ...structuredClone(override.rect),
+                      x: override.rect.x + offset.x,
+                      y: override.rect.y + offset.y,
+                    },
+                  }
+                : {}),
+              ...(override.circle
+                ? {
+                    circle: {
+                      ...structuredClone(override.circle),
+                      x: override.circle.x + offset.x,
+                      y: override.circle.y + offset.y,
+                    },
+                  }
+                : {}),
+            })),
+          }
+        : {}),
     })),
     origin: translatePoint(asset.origin, offset),
     anchors: asset.anchors.map((anchorEntry) => ({
@@ -191,7 +223,7 @@ export function inspectCanvasResizeOverflow(asset: Asset): CanvasResizeOverflowC
   const anchors = asset.anchors.filter((anchor) =>
     pointOutsideCanvas(anchor.position, asset.canvasSize),
   ).length;
-  const colliders = asset.colliders.filter((collider) => {
+  const commonColliders = asset.colliders.filter((collider) => {
     if (collider.shape === 'circle') {
       return (
         collider.circle.x - collider.circle.radius < 0 ||
@@ -209,6 +241,31 @@ export function inspectCanvasResizeOverflow(asset: Asset): CanvasResizeOverflowC
       Math.max(collider.rect.y, bottom) > asset.canvasSize.height
     );
   }).length;
+  const frameColliders = (asset.frames ?? []).reduce(
+    (count, frame) =>
+      count +
+      (frame.colliderOverrides ?? []).filter((override) => {
+        if (override.circle) {
+          return (
+            override.circle.x - override.circle.radius < 0 ||
+            override.circle.y - override.circle.radius < 0 ||
+            override.circle.x + override.circle.radius > asset.canvasSize.width ||
+            override.circle.y + override.circle.radius > asset.canvasSize.height
+          );
+        }
+        if (override.rect) {
+          return (
+            override.rect.x < 0 ||
+            override.rect.y < 0 ||
+            override.rect.x + override.rect.width > asset.canvasSize.width ||
+            override.rect.y + override.rect.height > asset.canvasSize.height
+          );
+        }
+        return false;
+      }).length,
+    0,
+  );
+  const colliders = commonColliders + frameColliders;
   const partPivots = asset.parts.filter(
     (part) => part.pivot && pointOutsideCanvas(part.pivot, asset.canvasSize),
   ).length;

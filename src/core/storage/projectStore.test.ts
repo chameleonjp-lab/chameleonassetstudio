@@ -681,6 +681,38 @@ describe('改訂保存', () => {
     });
   });
 
+  it('Frame collider overrideを未知field込みでIndexedDBへexact roundtripする', async () => {
+    const asset = structuredClone(assetWithId('asset_o1_roundtrip'));
+    asset.frames![0].colliderOverrides = [
+      {
+        colliderId: 'col_body',
+        rect: { x: 1, y: 2, width: 3, height: 4, futureGeometry: { exact: true } },
+        visible: false,
+        futureEntry: { exact: true },
+      },
+    ];
+    const project = projectWithAssets('O1 roundtrip', [asset]);
+    await saveProject(project);
+    await saveAsset(project.id, asset);
+    expect((await loadAsset(asset.id)).asset).toEqual(asset);
+    expect((await loadAsset(asset.id)).asset.version).toBe('0.2.0');
+  });
+
+  it('意味不正なFrame collider overrideをtransaction前に拒否して正本を維持する', async () => {
+    const before = structuredClone(assetWithId('asset_o1_invalid'));
+    const project = projectWithAssets('O1 invalid', [before]);
+    await saveProject(project);
+    await saveAsset(project.id, before);
+    const invalid = structuredClone(before);
+    invalid.frames![0].colliderOverrides = [{ colliderId: 'col_missing', visible: false }];
+
+    await expect(saveAsset(project.id, invalid)).rejects.toThrow(
+      /frame-override-dangling-collider/,
+    );
+    expect((await loadAsset(before.id)).asset).toEqual(before);
+    expect((await loadProject(project.id)).project).toEqual(project);
+  });
+
   it('metadata保存の途中失敗時はProject要約とAssetを両方維持する', async () => {
     const asset = assetWithId('asset_metadata_atomic', 'before');
     const project = projectWithAssets('metadata atomic', [asset]);

@@ -1422,3 +1422,27 @@ PR #216はmerge `f54526210f0d563cff408b0e66c4234b90c4324f`としてmainへ反映
 - 本Slice Bは正本文書とADRだけを変更し、製品コード、型、JSON Schema、version、migration、IndexedDB layout、保存・export実装、ZIP構成、dependency、CI、polygonを変更しない。
 - Slice Bがmainへmergeされた後、最新mainから別branch / 別Draft PR / 単一writerでSlice Cを実装する。schema、resolver、共通意味検証、編集、History / autosave、複製・反転・resize、保存rollback、export preflight、unit / storage / `.casproj` / Chromium E2Eを同じGateで検証する。
 - polygonはP1により2D Pro Gateまで`unsupported`を維持する。Group 13は未完了、進捗は14/27、現在位置は15工程目のままとする。
+
+## ADR-2026-08-02-035: PR #218反映後のO1 Slice C製品実装開始
+
+### 状態
+
+- accepted（ADR-0024の実装開始。`implementation-in-draft / unverified`）
+- 対象: Group 13 O1 Slice C `2D-3-COLLIDER-OVERRIDE`
+- 基準main: `bbe9df960170942ddac67cad737b77fcb93d7e8d`
+- 契約PR: #218、merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`
+- 正本: `docs/adr/0024-frame-collider-override-contract.md`, `docs/future/2D_3_GAME_DATA_PLAN.md`
+
+### 確認できた事実
+
+- O1正式契約Slice BはPR #218としてmainへ反映済みであり、追加の人間判断なしでSlice Cを開始できる。
+- G1はPR #217で完了済み、polygonはP1により`unsupported`であり、Group 13の進捗は14/27のままである。
+- O1はmetadata-onlyである。編集・保存処理は画像Blobを作成・置換しないため、保存失敗時にBlobをrollbackするのではなく、Blobを変更しないことが正しい境界である。
+
+### 実装境界
+
+- `Frame.colliderOverrides?`の型・JSON Schema・resolver・共通意味検証、Frame scope UI、History / autosave / IndexedDB、複製・反転・linked refresh・canvas resize、保存roundtrip、Atlas / product ZIPの事前拒否、unit / Chromium E2Eを同じSlice Cで実装する。
+- 保存・容量失敗時は未確定のAsset、Project参照、History、画面state、IndexedDB metadata、pending autosaveを原子的に戻す。画像Blobは変更しない。失敗理由は`SaveState.status === 'error'` / `errorMessage`に残す。
+- 旧dataへfieldを補完せず、Asset `0.2.0`、migrationなし、IndexedDB / `.casproj`配置、Atlas `0.1.0`、export ZIP構成、dependencyを維持する。
+- Animation単位上書き、Frame別collider追加・削除、`purpose` / `shape` / `enabled`、polygonは実装しない。
+- CIと固定headの3方向独立read-only監査が完了するまで、Slice Cを実装済み・検証済みとは扱わない。Draftを維持し、Ready化・merge・Group 13 closeoutは行わない。

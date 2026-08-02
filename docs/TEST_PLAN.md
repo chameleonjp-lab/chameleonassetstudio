@@ -97,7 +97,7 @@ PR #217 final head `e28e4de43f6825fdd5f0d206983e0760359f0503`のCI Run #650はun
 
 ### 3.4 Group 13 O1 Slice B / C
 
-Slice Bはdocs-only契約であり、製品testは追加しない。Slice CではADR-0024を正本として、次をすべて自動検証する。
+Slice Bはdocs-only契約としてPR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`で完了した。現在のSlice CはADR-0024を正本として、次をすべて自動検証するtestをDraft実装中である。CIと固定head独立監査が完了するまで検証済みとは扱わない。
 
 - schemaと意味検証: rect / circleの完全geometry、`visible`だけの上書き、field単位fallback、field不在、空配列、partial rect / circle、rect / circle同居、recognized override fieldなし、空`colliderId`、予約名fieldのexact保持・非解釈、未知field保持、重複Asset collider ID、Frame内重複参照、dangling参照、shape不一致、非有限値、0以下の寸法を扱う。無効dataを黙って修復・fallbackしない。
 - 編集: Frame選択・停止中だけのscope、rect / circle編集とpreview、`visible`のinherit / show / hide、geometry resetと全reset、未知fieldだけを残すfield単位resetの理由付き拒否と明示的なentry全解除、Enter / blurの最大1 History、Escape取消、no-op抑止、`visible: false`の再編集を扱う。
@@ -107,6 +107,8 @@ Slice Bはdocs-only契約であり、製品testは追加しない。Slice Cで�
 - 端末: 375 x 667でtouch、44px target、16px input、横overflowなし、Tab / Enter / Escapeを確認する。既存testを削除・skip・緩和せず、CIのfailed / flaky / skippedを0件にする。
 
 `src/core/model/motionContract.fixtures.test.ts`の先行`colliderOverrides` fixtureは、参照先Asset colliderを持つ意味上validなdataへ直す。意味検証をfixtureに合わせて弱めない。物理SafariはSlice B / Cだけの追加停止Gateにはせず、リリース全体の端末確認へ残す。
+
+Slice Cの専用testは、model / resolver / semantic validationを`src/core/model/frameColliderOverrides.test.ts`、Atlas / ZIPのloss判定を`src/core/export/colliderOverrideLoss.test.ts`、製品操作・保存失敗・書き出し・375 x 667を`e2e/collider-overrides.spec.ts`へ固定する。既存のschema、asset操作、複製・反転・linked refresh・canvas resize、storage、`.casproj`、export / Atlas testも同じ契約へ更新し、既存回帰を削除・緩和しない。
 
 ## 4. テスト変更と失敗時の扱い
 

@@ -334,6 +334,14 @@ describe('previewFrameAlignment / applyFrameAlignment', () => {
       futureFrameField?: unknown;
     };
     target.futureFrameField = { preserved: true };
+    target.colliderOverrides = [
+      {
+        colliderId: 'future-collider-reference',
+        rect: { x: 1, y: 2, width: 3, height: 4, futureGeometry: { preserved: true } },
+        visible: false,
+        futureEntry: { preserved: true },
+      },
+    ];
     (
       target.layerStates[0] as (typeof target.layerStates)[number] & { futureState?: unknown }
     ).futureState = { preserved: true };
@@ -371,6 +379,9 @@ describe('previewFrameAlignment / applyFrameAlignment', () => {
     expect(result.value.asset.animations).toEqual(before.animations);
     expect(result.value.asset.frames![0]).toEqual(before.frames![0]);
     expect(result.value.asset.frames![2]).toEqual(before.frames![2]);
+    expect(result.value.asset.frames![1].colliderOverrides).toEqual(
+      before.frames![1].colliderOverrides,
+    );
   });
 
   it('キャンバス外の有限座標を丸めず許可する', () => {

@@ -11,6 +11,7 @@ import { generateId } from './factories';
 import type { Layer, LayerTransform } from './layer';
 import type { Part, PartPose, PartType } from './part';
 import type { RigAnimation } from './rig';
+import { assertFrameColliderOverridesValid } from './frameColliderOverrides';
 import { assertRigPreflight, assertRigPreflightForLinkedRefresh } from './rigPreflight';
 
 /** 左右で対になる anchor role の対応。 */
@@ -143,6 +144,7 @@ function createFlipCopyAsset(
   options: FlipCopyAssetOptions,
   linkedRefreshPreview: boolean,
 ): Asset {
+  assertFrameColliderOverridesValid(asset);
   const preserveInternalIds = options.preserveInternalIds ?? false;
   // ID採番より前に全入力を検査し、拒否時に乱数・Asset・Blob・Historyへ副作用を残さない。
   if (linkedRefreshPreview) {
@@ -308,6 +310,34 @@ function createFlipCopyAsset(
           }
         : {}),
     })),
+    ...(frame.colliderOverrides
+      ? {
+          colliderOverrides: frame.colliderOverrides.map((override, index) => ({
+            ...structuredClone(override),
+            colliderId: mappedId(
+              colliderIdMap,
+              override.colliderId,
+              `frames[id=${frame.id}].colliderOverrides[${index}].colliderId`,
+            ),
+            ...(override.rect
+              ? {
+                  rect: {
+                    ...structuredClone(override.rect),
+                    x: 2 * mirrorX - override.rect.x - override.rect.width,
+                  },
+                }
+              : {}),
+            ...(override.circle
+              ? {
+                  circle: {
+                    ...structuredClone(override.circle),
+                    x: reflectX(override.circle.x),
+                  },
+                }
+              : {}),
+          })),
+        }
+      : {}),
   }));
 
   const animations = asset.animations.map((animation) => ({

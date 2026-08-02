@@ -102,7 +102,7 @@ Atlas versionは引き続きmigration対象ではない。現行versionだけを
 
 T1 Slice AはE1を製品exportへ実装する。拒否理由は対象Animationと失われる情報を示し、Blob読込や保存開始より前に停止する。Atlas 0.1.0自体の表現拡張は行わず、可変時間・eventを保持できる派生形式は2D-4へ残す。
 
-### 4.3 Group 13のFrame別collider上書き境界（O1 Slice B）
+### 4.3 Group 13のFrame別collider上書き境界（O1 Slice C）
 
 現行`atlas.json`、helpers、examplesはAsset共通colliderだけを表現し、Frame別上書きを表現できない。ADR-0024の契約に従い、Slice Cではcanonicalな`Frame.colliderOverrides`が1件以上あるAssetをlossyな派生出力へ黙って流さない。
 
@@ -112,7 +112,7 @@ T1 Slice AはE1を製品exportへ実装する。拒否理由は対象Animation�
 - 拒否理由にはFrame、collider、失われる情報、許可される代替としてPNG / WebP / 単体`asset.json` / `.casproj`を示す。
 - `colliderOverrides`不在と空配列だけのAssetは、Frame別の差分がないためこの理由では拒否しない。
 
-Slice Bはdocs-onlyであり、この拒否処理はまだ製品へ追加しない。Atlas `0.1.0`、ZIP構成、helper APIを拡張せず、Slice B merge後のSlice Cで共通preflightとして実装・検証する。
+Slice BはPR #218でmainへ反映済みである。Slice CはAtlas `0.1.0`、ZIP構成、helper APIを拡張せず、この拒否を直接APIとUIが共用するpreflightとして実装中である。本DraftのCIと固定head独立監査が完了するまで検証済みとは扱わない。
 
 ---
 

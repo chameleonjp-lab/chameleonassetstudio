@@ -781,6 +781,12 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-width: 0;
+}
+
+.gamedata-collider-scope select {
+  width: 100%;
+  min-width: 0;
 }
 
 .gamedata-heading {
@@ -839,6 +845,18 @@
   display: flex;
   align-items: flex-end;
   gap: 0.4rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.gamedata-override-actions button {
+  flex: 1 1 10rem;
+}
+
+.gamedata-panel button,
+.gamedata-panel input,
+.gamedata-panel select {
+  touch-action: manipulation;
 }
 
 .gamedata-row-header .editor-field {
@@ -2448,8 +2466,14 @@
 
   .gamedata-panel input:not([type='checkbox']):not([type='color']),
   .gamedata-panel select {
+    width: 100%;
+    min-width: 0;
     min-height: 44px;
     font-size: 16px;
+  }
+
+  .gamedata-panel button {
+    min-width: 44px;
   }
 
   .timeline-frame-alignment-selects,

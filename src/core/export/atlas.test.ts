@@ -85,6 +85,14 @@ describe('buildAtlas', () => {
     );
   });
 
+  it('Frame collider overrideを直接APIでもAtlasへ落とさず事前拒否する', () => {
+    const asset = structuredClone(baseAsset);
+    asset.frames![0].colliderOverrides = [{ colliderId: 'col_body', visible: false }];
+    expect(() => buildAtlas(asset, computeSheetLayout(['frame_idle_0'], 32, 32))).toThrow(
+      /frame_idle_0.*col_body.*asset\.json.*\.casproj/s,
+    );
+  });
+
   it('フレームが 0 件なら default 1 コマになる', () => {
     const noFrameAsset: Asset = { ...baseAsset, frames: [] };
     const layout = computeSheetLayout(

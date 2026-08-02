@@ -313,6 +313,15 @@ describe('原点、アンカー、当たり判定（Phase 8）', () => {
     expect(removed.colliders.some((c) => c.id === 'col_body')).toBe(false);
     expect(removed.colliders).toHaveLength(baseAsset.colliders.length - 1);
   });
+
+  it('Frame上書きから参照中の判定は暗黙削除しない', async () => {
+    const { removeCollider } = await import('./assetOps');
+    const source = structuredClone(baseAsset);
+    source.frames![0].colliderOverrides = [{ colliderId: 'col_body', visible: false }];
+    const result = removeCollider(source, 'col_body');
+    expect(result).toBe(source);
+    expect(result.colliders.some((collider) => collider.id === 'col_body')).toBe(true);
+  });
 });
 
 describe('フレームとアニメーション（Phase 9）', () => {
@@ -366,7 +375,20 @@ describe('フレームとアニメーション（Phase 9）', () => {
     const source: Asset = {
       ...baseAsset,
       frames: baseAsset.frames?.map((frame, index) =>
-        index === 0 ? { ...frame, durationMs: 180 } : frame,
+        index === 0
+          ? {
+              ...frame,
+              durationMs: 180,
+              colliderOverrides: [
+                {
+                  colliderId: 'col_body',
+                  rect: { x: 1, y: 2, width: 3, height: 4, futureGeometry: { keep: true } },
+                  futureEntry: { keep: true },
+                },
+              ],
+              futureFrame: { keep: true },
+            }
+          : frame,
       ),
       animations: baseAsset.animations.map((animation) => ({
         ...animation,
@@ -379,6 +401,11 @@ describe('フレームとアニメーション（Phase 9）', () => {
     expect(next.frames![1].id).not.toBe('frame_idle_0');
     expect(next.frames![1].durationMs).toBe(180);
     expect(next.frames![1].layerStates).toEqual(source.frames![0].layerStates);
+    expect(next.frames![1].colliderOverrides).toEqual(source.frames![0].colliderOverrides);
+    expect(next.frames![1].colliderOverrides).not.toBe(source.frames![0].colliderOverrides);
+    expect(next.frames![1].futureFrame).toEqual({ keep: true });
+    (next.frames![1].colliderOverrides![0].futureEntry as { keep: boolean }).keep = false;
+    expect(source.frames![0].colliderOverrides![0].futureEntry).toEqual({ keep: true });
     expect(next.animations).toEqual(source.animations);
     expect(validateAsset(next).valid).toBe(true);
   });

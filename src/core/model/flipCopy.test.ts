@@ -190,6 +190,40 @@ describe('flipCopyAsset', () => {
     }
   });
 
+  it.each([false, true])(
+    'Frame collider overrideをID設定 preserve=%s に合わせて鏡映し未知fieldを保持する',
+    (preserveInternalIds) => {
+      const source = structuredClone(baseAsset);
+      source.frames![0].colliderOverrides = [
+        {
+          colliderId: 'col_body',
+          rect: { x: 100, y: 20, width: 30, height: 40, futureGeometry: 'keep' },
+          visible: false,
+          futureEntry: { keep: true },
+        },
+        {
+          colliderId: 'col_pickup',
+          circle: { x: 300, y: 22, radius: 12 },
+        },
+      ];
+      const flipped = flipCopyAsset(source, { preserveInternalIds });
+      const overrides = flipped.frames![0].colliderOverrides!;
+      const rectCollider = flipped.colliders.find((collider) => collider.shape === 'rect')!;
+      const circleCollider = flipped.colliders.find((collider) => collider.shape === 'circle')!;
+      expect(overrides[0]).toMatchObject({
+        colliderId: rectCollider.id,
+        rect: { x: 512 - 100 - 30, y: 20, width: 30, height: 40, futureGeometry: 'keep' },
+        visible: false,
+        futureEntry: { keep: true },
+      });
+      expect(overrides[1]).toMatchObject({
+        colliderId: circleCollider.id,
+        circle: { x: 512 - 300, y: 22, radius: 12 },
+      });
+      expect(rectCollider.id === 'col_body').toBe(preserveInternalIds);
+    },
+  );
+
   it('part / frame / animation の参照 id を新レイヤー・新フレームへ張り替える', () => {
     const source: Asset = {
       ...baseAsset,

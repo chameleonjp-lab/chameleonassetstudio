@@ -100,11 +100,20 @@ function richAsset(): Asset {
             },
           },
         ],
+        colliderOverrides: [
+          {
+            colliderId: 'rect-1',
+            rect: { x: 31, y: 32, width: 33, height: 34, futureGeometry: 'keep' },
+            futureEntry: { keep: true },
+          },
+          { colliderId: 'circle-1', circle: { x: 35, y: 36, radius: 37 } },
+        ],
       },
       {
         id: 'frame-2',
         name: 'inherits-base',
         layerStates: [{ layerId: layer.id, visible: false }],
+        colliderOverrides: [{ colliderId: 'rect-1', visible: false }],
       },
     ],
     anchors: [{ id: 'anchor-1', name: 'hand', role: 'hand_left', position: { x: 11, y: 12 } }],
@@ -177,6 +186,15 @@ describe('resizeAssetCanvas', () => {
       layerId: before.layers[0].id,
       visible: false,
     });
+    expect(next.frames?.[0].colliderOverrides).toEqual([
+      {
+        colliderId: 'rect-1',
+        rect: { x: 36, y: 36, width: 33, height: 34, futureGeometry: 'keep' },
+        futureEntry: { keep: true },
+      },
+      { colliderId: 'circle-1', circle: { x: 40, y: 40, radius: 37 } },
+    ]);
+    expect(next.frames?.[1].colliderOverrides).toEqual([{ colliderId: 'rect-1', visible: false }]);
     expect(next.origin).toEqual({ x: 55, y: 84 });
     expect(next.anchors[0].position).toEqual({ x: 16, y: 16 });
     expect(next.colliders[0].shape === 'rect' && next.colliders[0].rect).toEqual({
@@ -250,6 +268,13 @@ describe('inspectCanvasResizeOverflow', () => {
               },
             },
           ],
+          colliderOverrides: [
+            {
+              colliderId: 'rect-in',
+              rect: { x: 49, y: 49, width: 2, height: 2 },
+            },
+            { colliderId: 'circle-out', visible: false },
+          ],
         },
         {
           id: 'frame-inherit',
@@ -296,9 +321,9 @@ describe('inspectCanvasResizeOverflow', () => {
       frameStates: 1,
       origin: 0,
       anchors: 1,
-      colliders: 1,
+      colliders: 2,
       partPivots: 1,
-      total: 5,
+      total: 6,
     });
   });
 });

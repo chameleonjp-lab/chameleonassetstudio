@@ -140,4 +140,37 @@ describe('exportAsset texture kind boundary', () => {
     expect(saveAssetRevision).not.toHaveBeenCalled();
     expect(deleteBlob).not.toHaveBeenCalled();
   });
+
+  it('Frame collider overrideはPNG/asset.jsonを許可しSprite Sheet/ZIPをBlob読込前に拒否する', async () => {
+    const asset = assetReferencing('edit');
+    asset.frames![0].colliderOverrides = [
+      {
+        colliderId: 'col_body',
+        rect: { x: 1, y: 2, width: 3, height: 4, futureGeometry: 'keep' },
+        visible: false,
+        futureEntry: { keep: true },
+      },
+    ];
+
+    await expect(exportSpriteSheet(asset)).rejects.toThrow(/frame_idle_0.*col_body/s);
+    await expect(exportZip(asset)).rejects.toThrow(/asset\.json.*\.casproj/s);
+    expect(loadBlobMock).not.toHaveBeenCalled();
+
+    const json = exportAssetJson(asset);
+    expect(JSON.parse(await json.text()).frames[0].colliderOverrides).toEqual(
+      asset.frames![0].colliderOverrides,
+    );
+    await expect(exportImage(asset, 'image/png')).resolves.toBeInstanceOf(Blob);
+    expect(loadBlobMock).toHaveBeenCalled();
+  });
+
+  it('意味不正なFrame collider overrideは許可形式も画像処理前に拒否する', async () => {
+    const asset = assetReferencing('edit');
+    asset.frames![0].colliderOverrides = [{ colliderId: 'missing', visible: false }];
+    expect(() => exportAssetJson(asset)).toThrow(/frame-override-dangling-collider/);
+    await expect(exportImage(asset, 'image/png')).rejects.toThrow(
+      /frame-override-dangling-collider/,
+    );
+    expect(loadBlobMock).not.toHaveBeenCalled();
+  });
 });

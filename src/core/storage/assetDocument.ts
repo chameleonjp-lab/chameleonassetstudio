@@ -1,5 +1,5 @@
 import { migrateAsset, type Asset } from '../model';
-import { validateAsset } from '../schema/validate';
+import { validateAssetForPersistence } from '../schema/validate';
 import { StorageError } from './db';
 
 export interface CurrentAssetDocument {
@@ -13,7 +13,7 @@ export function migrateAndValidateAssetDocument(
   label = 'asset',
 ): CurrentAssetDocument {
   const { data, appliedMigrations } = migrateAsset(raw);
-  const result = validateAsset(data);
+  const result = validateAssetForPersistence(data);
   if (!result.valid) {
     throw new StorageError(`${label} の内容が不正です: ${result.errors.join(' / ')}`);
   }
