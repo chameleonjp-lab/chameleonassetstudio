@@ -230,6 +230,7 @@ Frame別判定は、アセット共通判定を基準にし、既存colliderの�
 - rectは完全な`x / y / width / height`、circleは完全な`x / y / radius`を保存する。geometryを保存せず`visible`だけを上書きしてよい。geometryの部分形やrect / circleの同居は許可しない。canonical writer / UIはentry固有`id`、`name`、`purpose`、`shape`、`enabled`を生成・編集・解釈しないが、既存dataでrecognized override fieldと併存する同名fieldは未知fieldとしてexact保持する。それらだけではentryを成立させない。
 - entryにないgeometryまたは`visible`はAsset共通値へfield単位でfallbackする。`id` / `name` / `purpose` / `shape`は常にAsset共通値を使う。
 - field不在と空配列はAsset共通値だけを使う。最後のentryを解除した新規保存ではfield自体を省略し、旧dataへ空配列を補完しない。
+- field単位resetで最後のrecognized override fieldを除くと未知fieldだけが残る場合は理由付きで拒否し、未知fieldを含むentry全体のlossを示して明示的な全解除を求める。
 - Frame / override / geometryの未知fieldは保持するが解釈しない。未知field内部のIDらしき値を複製・反転時に推測して書き換えない。
 - JSON Schemaは構造を検証し、共通runtime意味検証はAsset collider ID一意、Frame内参照一意、dangling参照、shape一致、有限値、正寸法を確認する。意味上無効なdataを黙って修復・fallbackしない。
 - Frame複製、Asset複製、左右反転、Family linked mirror / refresh、canvas resize、D4 alignment、共通collider削除・shape変更の規則はADR-0024に従う。

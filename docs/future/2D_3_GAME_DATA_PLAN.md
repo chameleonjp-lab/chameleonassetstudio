@@ -108,10 +108,10 @@ ADR-0010 / 0011で将来境界、ADR-0024で正式な詳細契約を固定する
 ### 6.1 UI、保存、復旧
 
 - 既定はAsset共通編集とし、再生停止中に明示選択したFrameだけをFrame別scopeで編集する。Frame / collider / scope選択、全体表示切替、previewは保存しない。
-- geometryの初回編集は現在の有効geometryを完全形で保存する。`visible`は「共通 / 表示 / 非表示」の3状態とし、個別fieldまたはentry全体を明示解除できる。
+- geometryの初回編集は現在の有効geometryを完全形で保存する。`visible`は「共通 / 表示 / 非表示」の3状態とし、個別fieldまたはentry全体を明示解除できる。field単位解除で未知fieldだけが残る場合は理由付きで拒否し、未知fieldを含むentry全体のlossを示して明示的な全解除を求める。
 - 入力中は一時表示だけを変え、Enter / blurで最大1 History、Escape取消、no-opはHistoryなしとする。
 - 専用runtime検証を編集・保存・複製・反転・resize・削除・書き出しで共用する。意味不正は自動修復せず、Frame / collider / 理由を表示する。
-- 既存History、autosave、IndexedDB、原子的rollbackを使う。保存失敗ではReact state、Asset、Project参照、History、IndexedDBの未確定変更を保存前へ戻し、pending autosaveを破棄する。metadata-only操作なのでBlobは不変である。元の失敗は`AutosaveQueue.error`へ保持し、利用者へのerror表示を消さない。
+- 既存History、autosave、IndexedDB、原子的rollbackを使う。保存失敗ではReact state、Asset、Project参照、History、IndexedDBの未確定変更を保存前へ戻し、pending autosaveを破棄する。metadata-only操作なのでBlobは不変である。元の失敗は`AutosaveQueue`のerror state（`SaveState.status === 'error'`と`errorMessage`）として保持し、利用者へのerror表示を消さない。
 
 ### 6.2 現行書き出しとの境界
 
@@ -195,7 +195,7 @@ Slice BではADR-0024に`Frame.colliderOverrides?`のcanonical schema形、seman
 - 有効値の解決: 上書き不在時はAsset共通値へfallbackし、上書き存在時はFrame値を優先する。rectの位置・幅・高さ、circleの位置・半径を編集してpreviewへ反映する。
 - 表示意味: `visible`は編集・debug表示だけへ作用し、ゲーム内の有効 / 無効として解釈しない。`enabled`を暗黙に作成、解釈、編集しない。
 - Frame共有: 同じFrameを参照する複数Animationで、同じ上書き結果を得る。
-- 操作: Frame複製、Asset複製、flip、linked mirror / refresh、canvas resize、D4非追従、共通collider削除・shape変更拒否。
+- 操作: Frame複製、Asset複製、flip、linked mirror / refresh、canvas resize、D4非追従、共通collider削除・shape変更拒否、未知fieldだけを残すfield単位reset拒否と明示的なentry全解除。
 - 保存: History、Undo / Redo、autosave、IndexedDB、旧`.casproj`、新データroundtrip、保存失敗時の原子的復旧。
 - 書き出し: 許可形式の保持と、Atlas / Sprite Sheet / 製品ZIPのBlob読込前の理由付き拒否。ZIPではhelper / exampleも生成しない。
 - 375 x 667 Chromium: 44px以上の操作対象、16px以上の入力文字、横overflowなし。
