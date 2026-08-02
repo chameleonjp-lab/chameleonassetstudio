@@ -96,11 +96,23 @@ Atlas versionは引き続きmigration対象ではない。現行versionだけを
 
 - PNG / WebPは静止画なので、Timeline metadataの有無だけを理由に止めない。
 - 単体`asset.json`と`.casproj`はcanonical dataを保持できる。
-- product export ZIPにはcanonical `asset.json`と固定fps派生物が同居する。export対象Animationが参照するFrameの可変時間または対象Animationのeventがある場合は、H1=E1によりZIP全体を理由付きで止める。どのAnimationも参照しないFrameのoverrideだけでは派生出力を止めない。
+- product export ZIPにはcanonical `asset.json`と固定fps派生物が同居する。export対象Animationが参照するFrameの可変時間または対象Animationのeventがある場合は、H1=E1によりZIP全体を理由付きで止める。どのAnimationも参照しないFrameの`durationMs` overrideだけでは派生出力を止めない。
 - H1=E1を採用し、`atlas.json`、それを含むZIP、helpers、examplesを理由付きで止める。明示loss確認後に現行fpsへ均一化しeventを除外するE2は採らない。
 - Atlas 0.1.0へduration / eventを追加したり、Frameをresampleしたりする変更はGroup 12で先取りせず、2D-4の形式version契約へ送る。
 
 T1 Slice AはE1を製品exportへ実装する。拒否理由は対象Animationと失われる情報を示し、Blob読込や保存開始より前に停止する。Atlas 0.1.0自体の表現拡張は行わず、可変時間・eventを保持できる派生形式は2D-4へ残す。
+
+### 4.3 Group 13のFrame別collider上書き境界（O1 Slice B）
+
+現行`atlas.json`、helpers、examplesはAsset共通colliderだけを表現し、Frame別上書きを表現できない。ADR-0024の契約に従い、Slice Cではcanonicalな`Frame.colliderOverrides`が1件以上あるAssetをlossyな派生出力へ黙って流さない。
+
+- PNG / WebPは静止画なので許可する。
+- 単体`asset.json`と`.casproj`はcanonical dataを保持できるため許可する。
+- Atlas生成API、単体`atlas.json`、product export ZIPは、Blob読込・画像decode・canvas・ZIP生成・download開始より前に理由付きで拒否する。ZIPに含まれるhelpers / examplesも生成しない。
+- 拒否理由にはFrame、collider、失われる情報、許可される代替としてPNG / WebP / 単体`asset.json` / `.casproj`を示す。
+- `colliderOverrides`不在と空配列だけのAssetは、Frame別の差分がないためこの理由では拒否しない。
+
+Slice Bはdocs-onlyであり、この拒否処理はまだ製品へ追加しない。Atlas `0.1.0`、ZIP構成、helper APIを拡張せず、Slice B merge後のSlice Cで共通preflightとして実装・検証する。
 
 ---
 

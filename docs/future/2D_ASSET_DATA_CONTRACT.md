@@ -12,7 +12,7 @@
 > **現状:** 現在の正本は `docs/DATA_FORMAT.md`、`src/core/model/`、`src/core/schema/` である。ADR-0019によりAssetは`0.2.0`、Project / export-presets / Chameleon Atlas / アプリは`0.1.0`で、`.casproj`は各文書を独立にmigrateする。
 > **本書の役割:** 2D 完成形で必要になるデータの意味と、形式変更前に必ず決める契約を定義する。本文だけで現在の型、schema、ZIP 構成、migration を変更してはいけない。Family / Variantは別契約`2D_2_VARIANT_BATCH_PLAN.md`で実装済み。来歴は`2D_2_IMPORT_PLAN.md`のP1に基づき、group 11 Slice B（PR #126）でoptionalな`Asset.provenance?`として実装済みである。
 > **Group 12:** T1 / R1 / P1とH1=E1 / H2=L1 / H3=M1はaccepted。T1 Slice AはPR #153、merge `e8fac95`、P1 Slice CはPR #154、merge `1c700e7`でmainへ反映済みである。ADR-2026-07-24-027でR1をB1 / B2へ分割し、PR #157 final head `834cc38`、merge `bf13cac`、CI Run #501全成功、非GitHub・非Opusの固定head独立review `BLOCKER 0 / MUST 0 / SHOULD 0`としてB1を実装済みとした。B2の資源上限、warning、hard capとH3数値budgetは後続に残す。
-> **Group 13:** PR #215のdocs-only監査とPR #216の採用記録後、G1 Slice Aを本Draft PRで実装中である。Slice Aは既存gameAttributesと型別設定の安全な表示・確定だけを補修し、保存形式は変えない。O1は正式契約と製品実装を別sliceへ分け、P1によりpolygonは2D Pro Gateまで`unsupported`を維持する。O1の正確な永続表現を契約するまで、現在の型、schema、version、migration、保存・書き出し形式を変更してはいけない。
+> **Group 13:** PR #215のdocs-only監査とPR #216の採用記録後、G1 Slice AはPR #217 final head `e28e4de43f6825fdd5f0d206983e0760359f0503`、merge `bc48487ef47de113f96e80cf625b56b0e245efce`としてmainへ反映済みである。現在はO1の正確な永続表現をADR-0024へ固定するdocs-only Slice Bであり、製品実装はSlice B merge後のSlice Cに限る。P1によりpolygonは2D Pro Gateまで`unsupported`を維持する。Slice Bでは現在の型、schema、version、migration、保存・書き出し実装を変更してはいけない。
 
 ## 1. 目的
 
@@ -217,14 +217,26 @@ Group 12のB1は、有限値、参照、循環、H2=L1など入力の正しさ�
 
 ### 9.2 将来の拡張順
 
-> この項目は `docs/adr/0010-collider-override-and-polygon-boundary.md`、`docs/adr/0011-motion-forward-compatibility.md` で決定済み（frame 単位上書きのみ許可、animation 単位は不採用。境界確定のみ、実装は別 PR）。
+> Frame単位だけを許可する境界はADR-0010 / 0011、canonicalな永続・fallback・検証・UI・変換・保存・export拒否の詳細はGroup 13 O1 Slice BのADR-0024で決定済みである。Slice Bは契約だけで、製品実装は別PRとする。
 
 1. アセット共通の rect / circle を正しく編集・反転・書き出しできるようにする。
 2. Frame別の上書き規則を設計する。Animation別上書きは導入しない。
 3. 必要なら polygon を追加する。
 4. 対象 engine ごとに raw data、debug draw、実際の collider 変換のどこまで提供するかを検証する。
 
-Frame別判定は、アセット共通判定を基準にし、既存colliderの位置・サイズ・`visible`だけをFrame単位で上書きする。colliderの追加・削除、`purpose`変更、`shape`変更は上書きで行わない。Group 13ではO1として採用済みだが、複製・反転・resize、canonical schema、semantic validation、書き出し拒否の正確な契約は`docs/future/2D_3_GAME_DATA_PLAN.md`のSlice Bで固定する。Slice Bがmainへmergeされるまで製品実装しない。
+Frame別判定は、アセット共通判定を基準にし、既存colliderの位置・サイズ・`visible`だけをFrame単位で上書きする。colliderの追加・削除、`purpose`変更、`shape`変更、ゲーム内の有効 / 無効、Animation単位上書きは行わない。
+
+- `Frame.colliderOverrides?`は順序に意味を持たない配列とし、各entryは`colliderId`でAsset共通colliderを参照する。
+- rectは完全な`x / y / width / height`、circleは完全な`x / y / radius`を保存する。geometryを保存せず`visible`だけを上書きしてよい。geometryの部分形やrect / circleの同居は許可しない。canonical writer / UIはentry固有`id`、`name`、`purpose`、`shape`、`enabled`を生成・編集・解釈しないが、既存dataでrecognized override fieldと併存する同名fieldは未知fieldとしてexact保持する。それらだけではentryを成立させない。
+- entryにないgeometryまたは`visible`はAsset共通値へfield単位でfallbackする。`id` / `name` / `purpose` / `shape`は常にAsset共通値を使う。
+- field不在と空配列はAsset共通値だけを使う。最後のentryを解除した新規保存ではfield自体を省略し、旧dataへ空配列を補完しない。
+- field単位resetで最後のrecognized override fieldを除くと未知fieldだけが残る場合は理由付きで拒否し、未知fieldを含むentry全体のlossを示して明示的な全解除を求める。
+- Frame / override / geometryの未知fieldは保持するが解釈しない。未知field内部のIDらしき値を複製・反転時に推測して書き換えない。
+- JSON Schemaは構造を検証し、共通runtime意味検証はAsset collider ID一意、Frame内参照一意、dangling参照、shape一致、有限値、正寸法を確認する。意味上無効なdataを黙って修復・fallbackしない。
+- Frame複製、Asset複製、左右反転、Family linked mirror / refresh、canvas resize、D4 alignment、共通collider削除・shape変更の規則はADR-0024に従う。
+- PNG / WebP / 単体`asset.json` / `.casproj`は許可し、Frame別上書きを表現できないAtlas生成API、`atlas.json`、product ZIPはBlob読込・decode・canvas・ZIP生成より前に理由付きで拒否する。
+
+O1は2026-08-02に採用済みで、本Slice Bがこの契約を固定する。Slice Bがmainへmergeされるまで製品実装しない。
 
 ### 9.3 polygon を追加する条件
 

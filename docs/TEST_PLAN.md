@@ -87,11 +87,26 @@ R1 parity fixtureは左右Part、親子3段以上、非zero pivot、bind pose、
 
 bake性能はNode core、実browser core、製品pathを分けて測る。coreはwarm-up 3 / 記録10のraw sample、median、nearest-rank p95、fixture hash、生成分と最終AssetのFrame / LayerState、compact / pretty JSON byte、sheet pixelを残す。製品pathは実装後にwarm-up 1 / 記録3でReact、保存、Undo / Redo、reload、`asset.json` / `.casproj` / ZIPを測る。NodeやPlaywright viewportだけでiPhone Gateを通過させない。
 
-### 3.3 Group 13 G1 Slice A（implementation-in-draft）
+### 3.3 Group 13 G1 Slice A（完了）
 
 正本は`docs/future/2D_3_GAME_DATA_PLAN.md`。unitは`src/features/editor/gameDataSafety.test.ts`と`src/core/model/assetOps.test.ts`で、文字列・有限数値だけの編集許可、構造値の型付き表示、現在種別と一致しないtile / gimmick / effect / 全Layer background設定の列挙、設定・属性の意味上のno-opが元Asset参照を返すことを固定する。
 
 Chromium E2Eは`e2e/game-data-safety.spec.ts`で、配列・object・boolean・nullの読み取り専用表示と別属性編集後のexact保持、重複key上書き拒否、Enter / blurの1 History、Enter後blurの二重commitなし、Esc取消、正規化後no-op、Undo / Redo、autosave、reload、`asset.json`、旧設定の種別変更後保持と全種類の個別削除、375 x 667で44px・16px・横overflowなしを確認する。既存`assettypes.spec.ts`と`gamedata.spec.ts`は削除・緩和しない。ローカルでbrowser binaryを取得できない場合もskipへ変えず、GitHub Actions Chromiumの成功を合格証拠とする。物理SafariはGroup 13の追加停止Gateにせず、リリース全体の端末確認へ残す。
+
+PR #217 final head `e28e4de43f6825fdd5f0d206983e0760359f0503`のCI Run #650はunit 803件、Chromium E2E 180件、H3測定、Pages公開・閉鎖経路を全成功した。固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`で、merge `bc48487ef47de113f96e80cf625b56b0e245efce`としてmainへ反映済みである。
+
+### 3.4 Group 13 O1 Slice B / C
+
+Slice Bはdocs-only契約であり、製品testは追加しない。Slice CではADR-0024を正本として、次をすべて自動検証する。
+
+- schemaと意味検証: rect / circleの完全geometry、`visible`だけの上書き、field単位fallback、field不在、空配列、partial rect / circle、rect / circle同居、recognized override fieldなし、空`colliderId`、予約名fieldのexact保持・非解釈、未知field保持、重複Asset collider ID、Frame内重複参照、dangling参照、shape不一致、非有限値、0以下の寸法を扱う。無効dataを黙って修復・fallbackしない。
+- 編集: Frame選択・停止中だけのscope、rect / circle編集とpreview、`visible`のinherit / show / hide、geometry resetと全reset、未知fieldだけを残すfield単位resetの理由付き拒否と明示的なentry全解除、Enter / blurの最大1 History、Escape取消、no-op抑止、`visible: false`の再編集を扱う。
+- 変換: Frame複製のdeep copy、Asset複製時のID map、左右反転、Family linked mirror / refresh、canvas resizeの同一delta、D4 alignmentでのbyte-equivalent保持、参照中colliderの削除・shape変更拒否を扱う。
+- 保存・復旧: History / autosave / IndexedDB、reload、旧dataのfield不在維持、新dataの`asset.json` / `.casproj` exact roundtrip、容量・保存失敗時rollback、pending autosave破棄、`SaveState.status === 'error'`と`errorMessage`の表示保持を扱う。
+- 書き出し: PNG / WebP / 単体`asset.json` / `.casproj`は許可し、canonicalな上書きが1件以上あればAtlas API、`atlas.json`、product ZIPをBlob読込・decode・canvas・ZIP生成・downloadより前に理由付きで拒否する。空配列だけでは拒否しない。
+- 端末: 375 x 667でtouch、44px target、16px input、横overflowなし、Tab / Enter / Escapeを確認する。既存testを削除・skip・緩和せず、CIのfailed / flaky / skippedを0件にする。
+
+`src/core/model/motionContract.fixtures.test.ts`の先行`colliderOverrides` fixtureは、参照先Asset colliderを持つ意味上validなdataへ直す。意味検証をfixtureに合わせて弱めない。物理SafariはSlice B / Cだけの追加停止Gateにはせず、リリース全体の端末確認へ残す。
 
 ## 4. テスト変更と失敗時の扱い
 

@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 2D Export Compatibility Matrix
 
-最終更新日: 2026-07-23
+最終更新日: 2026-08-02
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 2D 入出力・対象別書き出し・検証基準
 状態: accepted（設計と確認基準。docs-only）
@@ -12,6 +12,7 @@
 > **現状:** mainはPNG / JPEG / WebP、連番、手動格子 sprite sheet、Tileset、Chameleon独自atlasの限定再取り込み、PNG / WebP / Chameleon 独自 atlas / JSON / ZIP の書き出し、Canvas 2D / PixiJS / Phaser の sample・helper、Godot / Unity の取り込み説明を持つ。SVG / GIF source保存のAsset 0.2.0基盤はADR-0019 / PR #135、SVG / GIF / APNGの新規Asset製品入口は1A + 2A + 3A / ADR-0020 / PR #138、安全境界のpost-merge補修はPR #144でmainへ反映済みである。
 > **重要:** 現行 `atlas.json` は Chameleon 独自形式であり、Phaser、PixiJS、Tiled、Unity、Godot の標準形式そのものではない。外部ツールで実行確認するまで `verified` と表示してはいけない。
 > **Group 12:** T1 Slice A / ADR-0021でFrame単位durationとeventをoptionalに追加した。現行atlas / sample / helperは固定fpsだけを表現するため、H1=E1に従い、対象Animationにlossがある場合は固定fps atlas / product ZIP / helper / exampleを理由付きで拒否する。PNG / WebP、単体`asset.json`、`.casproj`は許可する。Atlas 0.1.0の形式は変更しない。
+> **Group 13:** G1 Slice AはPR #217でmainへ反映済みである。O1 Slice B / ADR-0024では、PNG / WebPは静止画像なのでFrame別collider metadataの有無を理由に止めず、canonical metadataを保持できる単体`asset.json` / `.casproj`も許可する。Frame別上書きを表現できない現行Atlas生成API、`atlas.json`、product ZIPはBlob読込・decode・canvas・ZIP生成より前に理由付きで拒否する。空配列だけでは拒否しない。Slice Bはdocs-onlyで、製品実装はmerge後のSlice Cに限る。polygonはP1により2D Pro Gateまで`unsupported`である。
 
 ## 1. 目的
 
@@ -119,7 +120,7 @@ Generic Web は対象ツール名ではないため、`generic-web-v1` のよう
 
 | 対象 | 現在提供するもの | 現在のラベル | まだ言えないこと |
 |---|---|---|---|
-| Generic | PNG / WebP / `asset.json` / Chameleon atlas / ZIP。 | `generic` | 他ツールがChameleon atlasをそのまま読めること。可変時間・eventは現行atlasで表現できない。 |
+| Generic | PNG / WebP / `asset.json` / Chameleon atlas / ZIP。 | `generic` | 他ツールがChameleon atlasをそのまま読めること。可変時間・event・Frame別collider上書きは現行atlasで表現できない。O1 Slice CではFrame別上書きがあるAtlas / ZIPを理由付きで拒否する。 |
 | Canvas 2D | sample HTML と helper。 | `candidate`（外部実行確認前）。 | 実ゲーム全般での互換性、`verified`、可変時間・event。 |
 | PixiJS v8 | sample HTML と helper。 | `candidate`（外部実行確認前）。 | PixiJS標準atlas JSONとしての完全互換、`verified`、可変時間・event。 |
 | Phaser 4 | sample HTML と helper。 | `candidate`（外部実行確認前）。 | Phaser標準atlas / Aseprite JSONとしての完全互換、`verified`、可変時間・event。 |

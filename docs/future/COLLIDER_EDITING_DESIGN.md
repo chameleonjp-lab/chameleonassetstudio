@@ -10,7 +10,7 @@
 
 ---
 
-> **現状:** Phase 19-Cのrect / circle表示・選択・直接編集は後続実装で完了した。将来境界はADR-0010を正本とし、Frame単位上書きだけを採用してAnimation単位上書きを採用しない。2026-08-02のGroup 13判断でO1を採用し、G1後に正式契約Slice Bと製品実装Slice Cへ分ける。P1によりpolygonは2D Pro Gateまで`unsupported`を維持する。このdocs-only採用記録ではアプリ本体、TypeScript型、JSON Schema、`asset.json` version、`.casproj`構造、export ZIP構成、dependencies、GitHub Actionsを変更しない。
+> **現状:** Phase 19-Cのrect / circle表示・選択・直接編集は後続実装で完了した。将来境界はADR-0010を正本とし、Frame単位上書きだけを採用してAnimation単位上書きを採用しない。2026-08-02のGroup 13判断でO1を採用し、G1はPR #217でmainへ反映済みである。現在はADR-0024へ正式契約を固定するdocs-only Slice Bで、製品実装はSlice B merge後のSlice Cに限る。P1によりpolygonは2D Pro Gateまで`unsupported`を維持する。本Slice Bではアプリ本体、TypeScript型、JSON Schema、`asset.json` version、`.casproj`構造、export ZIP構成、dependencies、GitHub Actionsを変更しない。
 
 ## 1. 結論
 
@@ -129,13 +129,23 @@ Phase 19-B の左右反転コピーは、判定も反転対象にする。Phase 
 
 ## 7. フレーム別判定の扱い
 
-フレーム別判定は、既存colliderの位置・サイズをFrameごとに調整する用途があるが、現行 `Frame` はlayer statesだけを持ち、collider statesを持たない。Phase 19-Cでは実装しない。
+フレーム別判定は、既存colliderの位置・サイズをFrameごとに調整する用途がある。現行`Frame`はlayer statesと任意の`durationMs`を持つが、collider statesを持たないため、Slice Bでは契約だけを固定し、製品実装はSlice Cで行う。
 
 ADR-0010により、正本は`Asset.colliders`、上書きはFrame単位、優先順位は「Frame上書き > Asset共通」と決定済みである。最初の上書きは既存colliderの位置、サイズ、`visible`だけを扱い、追加・削除、`purpose`変更、`shape`変更、Animation単位上書きは行わない。
 
 ここで`visible`は編集・debug表示だけを制御し、ゲーム内の当たり判定の有効 / 無効を表さない。攻撃や被弾の有効時間帯を表すには`enabled`等の別fieldが必要であり、O1には含めず別の人間判断へ分離する。
 
-Group 13のdocs-only監査では、複製・反転・canvas resize・D4 frame alignment・共通collider削除・現行Atlasの理由付き拒否までを実装前契約候補として整理した。O1は2026-08-02に採用済みだが、canonical schema形、semantic validation、UI操作、保存と書き出し拒否の契約は未確定である。正式契約Slice Bがmainへmergeされるまで、`Frame.colliderOverrides`を製品へ追加しない。
+Group 13 O1 Slice B / ADR-0024は、次を正式契約とする。
+
+- `Frame.colliderOverrides?`は順序に意味を持たない配列で、各entryは`colliderId`でAsset共通colliderを参照する。rect / circleのgeometryを保存する場合はshapeに一致する完全形とし、`visible`だけのentryも許可する。
+- entryにないgeometryまたは`visible`はAsset共通値へfield単位でfallbackする。`id` / `name` / `purpose` / `shape`は共通値だけを使う。不在と空配列は共通値だけを使い、最後の解除時はfield自体を省略する。
+- JSON Schemaは構造を検証し、共通runtime意味検証が重複ID、Frame内重複参照、dangling参照、shape不一致、非有限値、0以下の寸法を拒否する。無効dataを黙って修復・fallbackしない。
+- 既定scopeはAsset共通編集である。Frame scopeは再生停止中にFrameを明示選択した場合だけ使う。geometryの初回変更は実効値の完全形をcopyし、`visible`はinherit / show / hideの3状態にする。geometry resetと全override resetを分ける。
+- Frame複製はdeep copy、Asset複製は共通colliderのID mapで参照を書き換える。左右反転とFamily linked mirror / refreshは共通colliderと同じ対応ID・鏡映式を使い、canvas resizeは同じdeltaを1回だけ加える。D4 alignmentはoverrideをbyte-equivalentに保つ。参照中の共通collider削除・shape変更は、先にoverrideを明示解除するまで拒否する。
+- History / autosave / IndexedDBの既存経路で保存し、容量・保存失敗時はAsset、Project参照、Blob、History、画面stateをrollbackする。旧dataへfieldを補完せず、`asset.json` / `.casproj`でexact roundtripする。
+- PNG / WebP / 単体`asset.json` / `.casproj`は許可する。現行Atlas生成API、`atlas.json`、product ZIPはFrame別上書きを表現できないため、Blob読込・decode・canvas・ZIP生成より前に理由付きで拒否する。
+
+正式契約Slice Bがmainへmergeされるまで、`Frame.colliderOverrides`を製品へ追加しない。
 
 ## 8. 多角形判定を入れる場合の schema 候補
 
@@ -162,7 +172,7 @@ type PolygonCollider = {
 - engine helper で衝突判定まで提供するのか、debug draw と raw data 提供に留めるのか。
 - migrate を走らせず additive union にできるか。
 
-推奨は、最初に入れるなら `points` はアセット座標の絶対座標、最小 3 点、debug draw と raw data export までに限定する案である。ただし、これは Opus 4.8 設計レビューと人間確認が必要である。
+過去の設計候補として、最初に入れる場合は`points`をアセット座標の絶対座標、最小3点、debug drawとraw data exportまでに限定する案がある。ただしP1を採用した現在は未採用であり、2D Pro Gateまで`unsupported`を維持する。再開には別の設計レビューと人間確認が必要である。
 
 ## 9. 多角形判定の export 影響
 
@@ -205,7 +215,7 @@ migrateまたはversion更新が必要になる条件:
 - `.casproj` 内で collider を別ファイルへ分離する場合。
 - export ZIP の colliders を `asset.json` 以外へ分離し、既存 helper の読み込み先を変える場合。
 
-ADR-0015に従い、`Frame.colliderOverrides?`をoptional・additiveに追加するO1採用範囲ではAsset `0.2.0`を維持し、migrationを追加しない。ただし正確な永続表現はSlice Bで固定し、TypeScript型とJSON Schema、field不在の旧data roundtrip、未知field保持、保存失敗時rollback、Atlas / product ZIP / helperの理由付き拒否はSlice Cの同じ実装Gateで検証する。
+ADR-0015 / ADR-0024に従い、`Frame.colliderOverrides?`をoptional・additiveに追加するO1採用範囲ではAsset `0.2.0`を維持し、migrationを追加しない。Slice Bで正確な永続表現を固定し、TypeScript型とJSON Schema、field不在の旧data roundtrip、未知field保持、保存失敗時rollback、Atlas / product ZIPの理由付き拒否はSlice Cの同じ実装Gateで検証する。
 
 多角形判定は`Collider.shape` unionと既存helperの解釈を広げるため、optional field追加と同一視しない。version / migrate / feature gateは別設計と人間判断で決める。
 
