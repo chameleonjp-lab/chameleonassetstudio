@@ -93,8 +93,10 @@ test('画像を取り込まずに新規アセットを作成すると、型と s
   await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
 
   // キャンバスに表示され、アセット一覧にも並ぶ
-  await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
-  await expect(properties.getByRole('button', { name: '主人公' })).toBeVisible();
+  await expect(page.getByLabel('アセットキャンバス')).toBeVisible({ timeout: 10_000 });
+  await expect(properties.getByRole('button', { name: '主人公' })).toBeVisible({
+    timeout: 10_000,
+  });
 
   // IndexedDB 上で assetType='character' と body の矩形当たり判定 1 件を確認する
   await expect.poll(async () => (await readAllAssets(page)).length).toBe(1);
@@ -128,8 +130,8 @@ test('item を新規作成すると当たり判定は付かない（character �
   await properties.getByLabel('新規アセットの種別').selectOption('item');
   await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
 
-  await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
-  await expect.poll(async () => (await readAllAssets(page)).length).toBe(1);
+  await expect(page.getByLabel('アセットキャンバス')).toBeVisible({ timeout: 10_000 });
+  await expect.poll(async () => (await readAllAssets(page)).length, { timeout: 10_000 }).toBe(1);
   const [created] = await readAllAssets(page);
   expect(created.assetType).toBe('item');
   expect(created.colliders).toHaveLength(0);
@@ -146,7 +148,7 @@ test('Asset種別をProject要約と同期し、独立copyをBlobごと追加し
   const properties = page.getByRole('complementary', { name: 'プロパティ' });
   await properties.getByLabel('新規アセット名').fill('原本');
   await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
-  await expect.poll(async () => (await readAllAssets(page)).length).toBe(1);
+  await expect.poll(async () => (await readAllAssets(page)).length, { timeout: 10_000 }).toBe(1);
 
   await properties.getByLabel('アセット種別').selectOption('tile');
   await expect(page.getByRole('status')).toContainText('保存済み');
@@ -195,7 +197,7 @@ test('アセットを削除すると一覧と IndexedDB から消え、空状態
   const properties = page.getByRole('complementary', { name: 'プロパティ' });
   await properties.getByLabel('新規アセット名').fill('捨てアセット');
   await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
-  await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
+  await expect(page.getByLabel('アセットキャンバス')).toBeVisible({ timeout: 10_000 });
 
   await expect.poll(async () => (await readAllAssets(page)).length).toBe(1);
   const [before] = await readAllAssets(page);
@@ -243,7 +245,7 @@ test('判定の数値を編集した直後にアセットを削除しても、�
   await properties.getByLabel('新規アセット名').fill('競合アセット');
   await properties.getByLabel('新規アセットの種別').selectOption('character');
   await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
-  await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
+  await expect(page.getByLabel('アセットキャンバス')).toBeVisible({ timeout: 10_000 });
 
   // starter の body 矩形当たり判定の X 座標を編集する。
   // onChange は onLiveChange（= applyAssetSnapshot）経由で 800ms デバウンスの自動保存を予約する。

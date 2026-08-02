@@ -1,8 +1,8 @@
 # 0024-frame-collider-override-contract
 
-ステータス: accepted（2026-08-02 人間承認 O1。Slice BはPR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`で完了。Slice CはDraft実装・固定head検証必須・未merge）
+ステータス: accepted / implemented-in-main（2026-08-02 人間承認 O1。Slice BはPR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`、Slice C製品実装と補修はPR #219 / merge `202f2e2f97fa4441e515d85a41bfb73234daf64e`とPR #220 / merge `8e81c29c3d0141e76dfe6b0cdea611db1a1f72d0`でmain反映済み。E2E待機安定化PR #221はDraft・未mergeで、Group 13 closeout前）
 上位文書: `docs/future/2D_3_GAME_DATA_PLAN.md`（§5〜§6.2、§9〜§12）、`docs/future/2D_ASSET_DATA_CONTRACT.md`（§9.2）
-関連 fixture: Slice C `2D-3-COLLIDER-OVERRIDE`で追加する
+関連 fixture: Slice C `2D-3-COLLIDER-OVERRIDE`で実装済み、PR #221の固定head検証を継続する
 
 ---
 
@@ -10,7 +10,7 @@
 
 ADR-0010は、当たり判定の正本を`Asset.colliders`に残し、上書きをFrame単位だけに置き、既存colliderの位置・サイズ・`visible`だけを変更できる境界を決めた。ADR-0011は`Frame.colliderOverrides?`をoptional・additiveにできる前方互換条件を決めた。Group 13では2026-08-02の人間判断でO1を採用したため、製品実装前にcanonicalな永続表現、fallback、検証、UI、参照変換、保存、書き出し拒否を一意にする。
 
-本ADRはSlice Bで固定しmainへ反映した正本契約である。Slice Cはこの契約どおりTypeScript型、JSON Schema、製品UI、保存処理、書き出し処理、試験を実装中であり、CIと固定head独立監査が完了するまで検証済みとは扱わない。
+本ADRはSlice Bで固定しmainへ反映した正本契約である。Slice Cはこの契約どおりTypeScript型、JSON Schema、製品UI、保存処理、書き出し処理、試験をPR #219 / #220でmainへ反映した。PR #221は製品契約を変えずE2Eの非同期待機を安定化するDraftであり、固定head検証とGroup 13 closeoutは未完了である。
 
 ## 決定
 
@@ -122,11 +122,11 @@ Atlas `0.1.0`へAsset共通値だけを出してFrame値を落とさない。拒
 
 ## 影響と fixture
 
-- Slice Bの影響はdocsだけだった。Slice Cでは型、schema、製品挙動、試験を追加する一方、version、migration、IndexedDB / `.casproj`配置、export ZIP構成、dependencyは変更しない。
-- Slice Cの必須fixture: field不在、空配列、rect / circle / visible-only、partial geometry、rect / circle同居、recognized override fieldなし、空`colliderId`、予約名fieldのexact保持・非解釈、未知fieldだけを残すfield単位reset拒否と明示的なentry全解除、fallback、重複、参照切れ、shape不一致、非有限値、0以下寸法、共有Frame、Frame / Asset複製、flip、linked mirror、resize、D4非追従、削除拒否、History、Undo / Redo、autosave、IndexedDB、旧 / 新`.casproj`、保存失敗rollbackとerror表示保持、許可 / 拒否export、375 x 667。
+- Slice Bの影響はdocsだけだった。Slice Cは型、schema、製品挙動、試験を追加し、version、migration、IndexedDB / `.casproj`配置、export ZIP構成、dependencyは変更せずmainへ反映した。
+- Slice Cの実装済み必須fixture: field不在、空配列、rect / circle / visible-only、partial geometry、rect / circle同居、recognized override fieldなし、空`colliderId`、予約名fieldのexact保持・非解釈、未知fieldだけを残すfield単位reset拒否と明示的なentry全解除、fallback、重複、参照切れ、shape不一致、非有限値、0以下寸法、共有Frame、Frame / Asset複製、flip、linked mirror、resize、D4非追従、削除拒否、History、Undo / Redo、autosave、IndexedDB、旧 / 新`.casproj`、保存失敗rollbackとerror表示保持、許可 / 拒否export、375 x 667。
 - 既存`motionContract.fixtures.test.ts`の参照切れ例は、検証を弱めず、実在するAsset共通colliderを持つ正常fixtureへ直す。
 - 物理SafariはGroup 13の追加停止Gateにせず、2D Pro全体の端末確認へ残す。
 
 ## 再検討条件
 
-Animation単位上書き、Frame別collider追加・削除、`purpose` / `shape`変更、`enabled`、geometryの部分patch、polygon、Atlasへの保持またはloss確認付き変換を導入する場合は、別ADR、形式・互換性監査、人間承認を必要とする。Slice CはPR #218のmain反映と明示指示後に開始したが、Ready化・merge・Group 13 closeoutは別の判断とする。
+Animation単位上書き、Frame別collider追加・削除、`purpose` / `shape`変更、`enabled`、geometryの部分patch、polygon、Atlasへの保持またはloss確認付き変換を導入する場合は、別ADR、形式・互換性監査、人間承認を必要とする。Slice C製品実装はmain反映済みだが、PR #221のReady化・mergeとGroup 13 closeoutは別の判断とする。

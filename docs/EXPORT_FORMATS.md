@@ -112,7 +112,7 @@ T1 Slice AはE1を製品exportへ実装する。拒否理由は対象Animation�
 - 拒否理由にはFrame、collider、失われる情報、許可される代替としてPNG / WebP / 単体`asset.json` / `.casproj`を示す。
 - `colliderOverrides`不在と空配列だけのAssetは、Frame別の差分がないためこの理由では拒否しない。
 
-Slice BはPR #218でmainへ反映済みである。Slice CはAtlas `0.1.0`、ZIP構成、helper APIを拡張せず、この拒否を直接APIとUIが共用するpreflightとして実装中である。本DraftのCIと固定head独立監査が完了するまで検証済みとは扱わない。
+Slice BはPR #218でmainへ反映済みである。Slice CはAtlas `0.1.0`、ZIP構成、helper APIを拡張せず、この拒否を直接APIとUIが共用するpreflightとしてPR #219 / #220でmainへ反映した。E2E待機安定化PR #221の固定head検証とGroup 13 closeoutは未完了である。
 
 ---
 

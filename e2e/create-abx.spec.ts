@@ -67,7 +67,7 @@ test('自由な矩形sizeと明示tile starterを保存・再読込できる', a
   await properties.getByLabel('新規アセットのテンプレート').selectOption('tile-floor');
   await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
 
-  await expect.poll(async () => (await readAllAssets(page)).length).toBe(1);
+  await expect.poll(async () => (await readAllAssets(page)).length, { timeout: 10_000 }).toBe(1);
   const [created] = await readAllAssets(page);
   expect(created.canvasSize).toEqual({ width: 320, height: 180 });
   expect(created.tile).toEqual({
@@ -91,7 +91,7 @@ test('character starterはbody Partを明示した場合だけ作る', async ({ 
   await properties.getByLabel('character body Partを作成').check();
   await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
 
-  await expect.poll(async () => (await readAllAssets(page)).length).toBe(1);
+  await expect.poll(async () => (await readAllAssets(page)).length, { timeout: 10_000 }).toBe(1);
   const [created] = await readAllAssets(page);
   expect(created.colliders.map((collider) => collider.purpose)).toContain('body');
   expect(created.parts).toHaveLength(1);
