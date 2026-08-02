@@ -169,7 +169,7 @@ PR #53（`2D-1B-STORAGE`）は、詳細契約 Gate より先に main へマー�
 | ID | 分類 | 完成させる内容 |
 |---|---|---|
 | `2D-2-PROJECT` | 必須 | 1つのProject内で、複数Asset、Family / Variant、source / edit / preview / exportの関係と変更影響を管理する。 |
-| `2D-2-CREATE` | 必須 | 空キャンバス、asset type template、複製、図形、パーツ、文字から作成を開始する。PR #55はpartial。 |
+| `2D-2-CREATE` | 必須 | 空キャンバス、asset type template、複製、図形、パーツ、文字から作成を開始する。PR #55はmerge時点でpartialだったが、後続PR #93〜#101で現在契約範囲を補完した。 |
 | `2D-2-RASTER` | 必須 | brush、eraser、fill、selection、shape、text、transform、align、grid、snapを完成させる。 |
 | `2D-2-REPAIR` | 必須 | 透明化、透明縁、trim、余白統一、resize、palette、色違い、flip、outline、frameずれ修正を提供する。 |
 | `2D-2-VARIANT` | 必須 | linked variantと独立copy、反転、palette、装備差分、解像度差分、手動調整保護を実装する。 |
@@ -192,13 +192,13 @@ PR #53（`2D-1B-STORAGE`）は、詳細契約 Gate より先に main へマー�
 - 新規形式を扱う場合、`editable-import`、`rasterized-import`、`reference-only` の区別が UI と docs に出る。
 - 元データ、手動調整、Undo / Redo、保存の安全性が保たれる。
 
-PR #55（`2D-2-CREATE-01`）は、`2D-1B-GATE` より先に main へマージされた先行実装である。revert せず provisional / ahead-of-gate として保持するが、`2D-2-CREATE` 全体完了ではない。対応付けは次の通り。
+PR #55（`2D-2-CREATE-01`）は、`2D-1B-GATE` より先にmainへマージされた先行partial実装だった。現在はPR #93〜#101でCreateの残範囲、PR #117〜#122でFamily / Variantを補完し、Group 8Aの現在契約範囲はcompletedである。履歴上の対応付けは次の通り。
 
-| PR #55 の成果 | 詳細 work package | 現在の状態 | 未完了 / 再監査項目 |
+| PR #55 の成果 | 詳細 work package | 現在の状態 | 当時の未完了 / 現在の補完 |
 |---|---|---|---|
-| 空キャンバス作成、型・サイズ選択、透明アセット生成 | `2D-2-CREATE` | partial / provisional implemented | 図形、パーツからの作成、文字、全型の完成テンプレート、矩形・自由サイズが未完了。 |
+| 空キャンバス作成、型・サイズ選択、透明アセット生成 | `2D-2-CREATE` | completed by follow-up | PR #55時点の残範囲はPR #93〜#101で補完した。 |
 | アセット削除 | `2D-2-CREATE` に付随する操作 | implemented / Gate再監査済み | 後続の保存基盤補修により`deleteAssetBundle`がProject参照、Asset、Blob、snapshotを単一transactionで更新し、autosave flush後に実行する。 |
-| 複数 Asset / Family / Variant 管理 | `2D-2-PROJECT` | 未完了 | 1つの Project 内で複数 Asset、Asset Family、Variant、source / edit / preview / export の関係を管理する要件は未完了。クラウド型の複数 project 管理拡張ではない。 |
+| 複数 Asset / Family / Variant 管理 | `2D-2-PROJECT` | completed by follow-up | PR #93 / #94でProject内の複数Asset、PR #117〜#122でFamily / Variantと派生関係を補完した。クラウド型の複数project管理拡張ではない。 |
 
 ### 2D-3: 動きとゲーム用情報を完成させる
 
@@ -211,7 +211,7 @@ PR #55（`2D-2-CREATE-01`）は、`2D-1B-GATE` より先に main へマージさ
 | `2D-3-TIMELINE` | 必須 | frame animation、onion skin、可変時間、loop、名前付きeventを実装する。 |
 | `2D-3-RIG` | 必須 | part parent、pivot、bind pose、rotation / scale、part replace、簡易rig、frame bake、rig flipを実装する。 |
 | `2D-3-GAME-DATA` | 必須 | origin、anchor、rect / circle、tile collision、background、gimmick、effect情報を型別に編集する。 |
-| `2D-3-COLLIDER-OVERRIDE` | 判断必須 | asset共通判定を基準とするanimation / frame別上書き規則を決定する。必須へ変更しない。 |
+| `2D-3-COLLIDER-OVERRIDE` | 判断必須 | asset共通判定を基準とするFrame別上書き規則を決定する。Animation別上書きは採用せず、必須へ変更しない。 |
 | `2D-3-POLYGON` | 判断必須 | 点座標、自己交差、頂点順、flip、schema、migration、helper、target変換を決める。 |
 | `2D-3-TYPE-PROFILES` | 必須 | character、item、background、tile、gimmick、effect、UI / iconの契約profileを定義する。 |
 | `2D-3-PREVIEW` | 必須 | 接地、origin、anchor、collider、tile、背景、gimmick、effectのゲーム風previewを実装する。 |
@@ -524,7 +524,7 @@ PR 運用 Gate:
 | 10 | `2D-2-VARIANT` + `2D-2-BATCH` | linked variant、独立copy、装備差分、解像度差分、手動調整保護、一括変更、対象preview、部分失敗、Undoを実装する。 | Codex + Opus 4.8 review | 9の現在実装可能範囲完了 | 契約が重ならない 2D-3 と条件付き並行可 | completed | 契約監査はPR #116、Slice AはPR #117、Slice BはPR #118、補修はPR #120、Slice CはPR #121、Slice DはPR #122（merge `e98bcf0` / CI Run #398全成功）でmainへmerge済み。Slice D遡及Opus reviewは`BLOCKER 0 / MUST 0 / SHOULD 2 / NOTE 5`で、SHOULD 2件（縮小canvas warning E2E、docs status同期）はcloseout補修で対応しgroup 10をcompletedとする。 |
 | 11 | `2D-2-IMPORT-GATE` + `2D-2-IMPORT-OPTIONAL` + `2D-2-AI-BOUNDARY` | PNG / JPEG / WebP、連番、sprite sheet、tileset、既知atlas bundleの取り込みと、任意形式・AI境界のADR判断を行う。 | Fable5または人間判断 + Codex実装 / docs | 10 | 判断必須項目はADR後のみ | completed | 契約監査PR #124、Slice A PR #125、Slice B PR #126、Slice C PR #127/#128、Slice D PR #129、Slice D closeout PR #133、Slice E source契約補正PR #135、製品実装PR #138、post-merge補修PR #144をmainへ反映済み。PR #144 final head `1980ae6`のCI Run #450は全成功。Opus 4.8 unavailableの記録を残し、3担当の固定head独立read-only reviewで`BLOCKER 0 / MUST 0 / SHOULD 2 / NOTE 1`を確認後、人間がmergeを判断した。SHOULDはtest debt、NOTEはiPhone Safari実機Gateと非blockingなmemory課題へ残し、group 11を完了とする。 |
 | 12 | `2D-3-TIMELINE` + `2D-3-RIG` | frame animation、onion skin、可変時間、loop、event、part parent、pivot、bind pose、rotation / scale、part replace、簡易rig、frame bake、rig flipを実装する。 | Codex。新しいデータ意味はFable5または人間判断 | 8B、関連2D-1A契約 | 2D-2 と条件付き並行可 | completed | PR #146〜#209の契約・実装・CI・独立確認を完了した。D1〜D4は指定3端末で確認済み。2026-08-02の人間判断でT1 / P1 / B1の物理Safari Gateも完了扱いとした。B2は未測定・未実装の性能課題として`2D-6-PERFORMANCE`へ延期し、Group 12完了条件から外した。warning / hard cap / 採用上限は未決定であり、極端な生成量の停止リスクを残す。Group 12をcloseoutし、Group 13の契約監査を開始可能とする。 |
-| 13 | `2D-3-GAME-DATA` + `2D-3-COLLIDER-OVERRIDE` + `2D-3-POLYGON` | origin、anchor、rect / circle、tile collision、background、gimmick、effect情報を編集し、frame別上書きとpolygonは判断後に扱う。 | Fable5または人間判断 + Codex実装 | 12、2D-1A-MOTION | 判断必須項目はADR後のみ | 契約監査開始可能 | 未着手。最初に既存game dataの必須範囲と、判断必須の`2D-3-COLLIDER-OVERRIDE` / `2D-3-POLYGON`を分離する。 |
+| 13 | `2D-3-GAME-DATA` + `2D-3-COLLIDER-OVERRIDE` + `2D-3-POLYGON` | origin、anchor、rect / circle、tile collision、background、gimmick、effect情報を編集し、frame別上書きとpolygonは判断後に扱う。 | Fable5または人間判断 + Codex実装 | 12、2D-1A-MOTION | 判断必須項目はADR後のみ | human-decision-pending | docs-only監査で既存Game Data、Frame別上書き、polygonを分離した。正本は`docs/future/2D_3_GAME_DATA_PLAN.md`。候補`G1/G2 + O1/O2 + P1/P2`は未採用で、製品実装は開始しない。 |
 | 14 | `2D-3-PREVIEW` + `2D-3-IMPACT` | 接地、origin、anchor、collider、tile、背景、gimmick、effectのゲーム風previewと、source変更影響の列挙を実装する。 | Codex + Opus 4.8 必須 review | 13 | 2D-4 fixture設計と並行可 | 13後 | 未着手。 |
 | 15 | `2D-4-CORE` + `2D-4-SHEET` + `2D-4-SCALE` | 共通export core、決定的再出力、fixed grid sheet、packed atlas、multi-page、1x / 2x / 3x、scale、trim、padding、extrudeを固定する。 | Fable5契約固定 + Codex + Opus 4.8 必須 review | 9、14 | 2D-5手順準備のみ可 | 14後 | 未着手。 |
 | 16 | `2D-4-PACKAGE` + `2D-4-PREFLIGHT` + `2D-4-GENERIC-WEB` | generic manifest、sidecar、README、import notes、verification record、preflight、Generic Web / Canvas 2D fixtureを実装する。 | Codex + Opus 4.8 必須 review | 15 | 2D-6 と並行可 | 15後 | 未着手。 |
@@ -540,7 +540,7 @@ PR 運用 Gate:
 
 PR #53・PR #55は先行merge済みのためrevertしない。PR #53の`2D-1B-*`再監査・補修はPR #70〜#91で完了し、`2D-1B-GATE`もCI Run #269、Opus 4.8 review、人間確認を経て正式完了した。`2D-2-PROJECT + 2D-2-CREATE`はPR #93〜#101、Family / VariantはPR #117〜#122、`2D-2-RASTER + 2D-2-REPAIR`はPR #102〜#115、group 11 importはPR #124〜#144で現在契約範囲を完了した。Group 12は契約監査PR #146、計測準備PR #147、Pages分離PR #148 / #149、T1 Slice A PR #153、P1 Slice C PR #154、R1 Slice B1 PR #157、D1 PR #201、D2 PR #204、D3 PR #206、D4契約PR #208、D4製品実装PR #209をmainへ反映した。D4の最終head `16f5ae2`に対するCI Run #623と固定headの3方向独立reviewは全成功した。D1〜D4の物理Safari確認は完了した。2026-08-02の人間判断でT1 / P1 / B1の物理Safari Gateも完了扱いとした。正式B0、H3数値budget、B2は`2D-6-PERFORMANCE`へ延期し、Group 12の完了条件から外した。Group 12をcloseoutし、Group 13の契約監査を開始可能とする。
 
-D1〜D4は`implemented / CI-passed / independently-verified / merged`で、指定3端末の物理Safari確認も完了した。T1 / P1 / B1の物理Safari Gateは2026-08-02の人間判断で完了扱いとする。B2は`deferred to 2D-6-PERFORMANCE / unimplemented / unmeasured`であり、Group 12はcompleted、次はGroup 13の契約監査である。
+D1〜D4は`implemented / CI-passed / independently-verified / merged`で、指定3端末の物理Safari確認も完了した。T1 / P1 / B1の物理Safari Gateは2026-08-02の人間判断で完了扱いとする。B2は`deferred to 2D-6-PERFORMANCE / unimplemented / unmeasured`であり、Group 12はcompletedである。実行表は分割行を含む全27工程で、14工程が完了し、現在は15工程目のGroup 13を`human-decision-pending`として扱う。
 
 本書に新しいアイデアがあっても、実装担当が独断で `asset.json`、`.casproj`、export ZIP、dependencies、3D、外部 API を変えてはいけない。
 
@@ -553,7 +553,7 @@ D1〜D4は`implemented / CI-passed / independently-verified / merged`で、指�
 | 章・節 | 要件 | 対応 work package | 状態 |
 |---|---|---|---|
 | §1〜§3 | 2D Pro の目的、対象ユーザー、作成から再編集までの一連の体験 | `2D-0-DOCS`, `2D-2-*`, `2D-3-*`, `2D-4-*`, `2D-6-*` | `2D-0` 完了。体験実装は未完了。 |
-| §4 Create / Import / Edit / Repair | 空キャンバス、template、画像 import、修正、非破壊境界 | `2D-2-PROJECT`, `2D-2-CREATE`, `2D-2-RASTER`, `2D-2-REPAIR`, `2D-2-IMPORT-OPTIONAL` | PR #55 は `2D-2-CREATE` partial。 |
+| §4 Create / Import / Edit / Repair | 空キャンバス、template、画像 import、修正、非破壊境界 | `2D-2-PROJECT`, `2D-2-CREATE`, `2D-2-RASTER`, `2D-2-REPAIR`, `2D-2-IMPORT-OPTIONAL` | Group 8A、9、11の現在契約範囲はcompleted。PR #55の先行partialは後続PR #93〜#144で補完した。 |
 | §5 Game Data | animation、origin、anchor、collider、asset profile | `2D-1A-MOTION`, `2D-3-TIMELINE`, `2D-3-GAME-DATA`, `2D-3-COLLIDER-OVERRIDE`, `2D-3-POLYGON` | 未完了。 |
 | §6 Validate / Preview | preflight、理由付き検査、ゲーム風 preview | `2D-1A-VALIDATION`, `2D-3-PREVIEW`, `2D-4-PREFLIGHT`, `2D-6-A11Y` | 未完了。 |
 | §7 Export / Reopen | PNG / WebP / JSON / ZIP、manifest、import notes、再編集 | `2D-1B-CASPROJ`, `2D-1B-GATE`, `2D-4-*`, `2D-5-*` | 2D-1B-CASPROJ / GATEはcompleted。2D-4 / 2D-5は未完了。 |

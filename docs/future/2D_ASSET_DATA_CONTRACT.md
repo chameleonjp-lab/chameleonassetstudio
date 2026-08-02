@@ -219,11 +219,11 @@ Group 12のB1は、有限値、参照、循環、H2=L1など入力の正しさ�
 > この項目は `docs/adr/0010-collider-override-and-polygon-boundary.md`、`docs/adr/0011-motion-forward-compatibility.md` で決定済み（frame 単位上書きのみ許可、animation 単位は不採用。境界確定のみ、実装は別 PR）。
 
 1. アセット共通の rect / circle を正しく編集・反転・書き出しできるようにする。
-2. フレーム別または animation 別の上書き規則を設計する。
+2. Frame別の上書き規則を設計する。Animation別上書きは導入しない。
 3. 必要なら polygon を追加する。
 4. 対象 engine ごとに raw data、debug draw、実際の collider 変換のどこまで提供するかを検証する。
 
-フレーム別判定の推奨は、アセット共通判定を基準にして、animation または frame が必要な項目だけを上書きする方式である。上書きには、位置・サイズ・有効状態・目的・追加 / 削除のどこまで許すかを先に決める。
+Frame別判定は、アセット共通判定を基準にし、既存colliderの位置・サイズ・`visible`だけをFrame単位で上書きする。colliderの追加・削除、`purpose`変更、`shape`変更は上書きで行わない。Group 13の実装時期、複製・反転・resize、書き出し拒否の契約は`docs/future/2D_3_GAME_DATA_PLAN.md`で人間判断待ちとする。
 
 ### 9.3 polygon を追加する条件
 
