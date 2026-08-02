@@ -4,7 +4,7 @@
 work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 監査基準: `main@236571c241bf84747f71f260f3bea99e6abe7f25`
 マージ後基準: PR #146 merge `cb21ea4` / PR #147 final head `1ba671f7` / merge `24a089c` / PR #148 final head `0cfc1ea` / merge `fbdeb357` / PR #149 merge `536318f` / PR #153 merge `e8fac95` / PR #154 final head `fdf75f0` / merge `1c700e7` / PR #157 final head `834cc38` / merge `bf13cac` / PR #201 final head `25cd332` / merge `c1d08e3` / PR #204 final head `8ebeb27` / merge `eeaea39` / PR #206 final head `ac84b8c` / merge `3081495` / PR #208 final head `ef41a4b` / merge `ea67920` / PR #209 final head `16f5ae2` / merge `5e25d0d`
-状態: `T1 Slice A merged / P1 Slice C merged / R1 Slice B1 merged and independently verified / Slice B2 numeric Gate pending / Slice D1-D4 merged and independently verified / D1-D4 physical iPhone and iPad Safari passed / T1-P1-B1 physical Safari Gate pending / formal B0 deferred`
+状態: `Group 12 completed / T1-P1-B1-D1-D4 merged and independently verified / D1-D4 physical Safari passed / T1-P1-B1 physical Safari completed by 2026-08-02 human decision / B2 deferred to 2D-6-PERFORMANCE and unmeasured / formal B0 deferred / Group 13 contract audit unblocked`
 関連: `docs/adr/0008-motion-time-semantics.md`, `docs/adr/0009-animation-event-boundary.md`, `docs/adr/0021-frame-duration-semantics.md`, `docs/adr/0022-rig-flip-and-bake-parity.md`, `docs/adr/0023-part-layer-replacement.md`, `docs/future/2D_3_H3_MEASUREMENT_PROTOCOL.md`
 
 ---
@@ -17,11 +17,11 @@ work package: Group 12 `2D-3-TIMELINE + 2D-3-RIG`
 - **R1**: rig flipは既存flipとは別sliceとする。ID参照、位置、回転、可動域を鏡映し、bake前後の結果一致を必須にする。
 - **P1**: 初回part replaceは既存`Part.layerIds`の静的な差し替えだけとする。時間依存の衣装・状態切替は別ADRへ分離する。
 
-PR #146の契約監査は17文書、製品コード変更なしでmainへ反映済みである。後続の人間判断H1=E1、H2=L1、H3=M1と計測専用`tools/h3/`はPR #147 final head `1ba671f7`、merge `24a089c`でmainへ反映された。CI Run #460とmerge後CI Run #461は全job成功し、固定headの最終独立reviewは全3系統`BLOCKER 0 / MUST 0`だった。PR #148 merge `fbdeb357`で24時間配信基盤、PR #149 merge `536318f`でPages rootのサービス本体と`/h3/`の分離を実装した。T1 Slice AはPR #153 final head `7f684a7`、merge `e8fac95`としてmainへ反映済みで、CI Run #489と固定headの独立reviewを通過した。P1 Slice CはPR #154 final head `fdf75f0`、merge `1c700e7`としてmainへ反映済みで、CI Run #492と固定headの独立review `BLOCKER 0 / MUST 0 / SHOULD 0`を通過した。2026-07-23の人間判断により、正式B0の4端末収集は当面保留し、H3を問題発生時の診断手段として維持する。2026-07-24の人間判断ADR-2026-07-24-027でSlice BをB1とB2へ分割し、PR #157 final head `834cc38397c300895f50c1efdb86d94f3870a0a8`、merge `bf13cac3db854c30b33e9b2ef97d389a2372e961`でB1をmainへ反映した。CI Run #501は全job成功し、非GitHub・非Opusの固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。B2の数値budget、warning、hard cap、採用上限での実機測定、Group 12完了判定は、後続の明示判断まで開始しない。2026-07-27のADR-2026-07-27-028でA1+B1を採用し、Slice DをD1〜D4へ分けた。D1はPR #201 final head `25cd3327b93850f1af1733c2b43585e3fa0a667b`、merge `c1d08e3b4cadd7c3a3064ab8e824b17f67feb243`でmainへ反映し、CI Run #596全成功、固定head独立review `BLOCKER 0 / MUST 0 / SHOULD 0`として完了した。2026-07-28のADR-2026-07-28-029でA1+B1+C1を採用し、D2の再生順、read-only、UI-only表示と試験条件を確定した。docs-only決定PR #203 merge `73f0eafe69dd42c820f92e9f039e49fe2e2d9d28`後、D2はPR #204 final head `8ebeb279e9d7b9ef9a15700d80d4a6cd7ab1d57f`、merge `eeaea39522d0f31bfe786ca0da27176bfd5ee859`でmainへ反映した。CI Run #603のclean attemptはunit 763件、Chromium E2E 168件、H3、Pages open / closed routeをすべて成功し、固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。
+PR #146の契約監査は17文書、製品コード変更なしでmainへ反映済みである。後続の人間判断H1=E1、H2=L1、H3=M1と計測専用`tools/h3/`はPR #147 final head `1ba671f7`、merge `24a089c`でmainへ反映された。CI Run #460とmerge後CI Run #461は全job成功し、固定headの最終独立reviewは全3系統`BLOCKER 0 / MUST 0`だった。PR #148 merge `fbdeb357`で24時間配信基盤、PR #149 merge `536318f`でPages rootのサービス本体と`/h3/`の分離を実装した。T1 Slice AはPR #153 final head `7f684a7`、merge `e8fac95`としてmainへ反映済みで、CI Run #489と固定headの独立reviewを通過した。P1 Slice CはPR #154 final head `fdf75f0`、merge `1c700e7`としてmainへ反映済みで、CI Run #492と固定headの独立review `BLOCKER 0 / MUST 0 / SHOULD 0`を通過した。2026-07-23の人間判断により、正式B0の4端末収集は当面保留し、H3を問題発生時の診断手段として維持する。2026-07-24の人間判断ADR-2026-07-24-027でSlice BをB1とB2へ分割し、PR #157 final head `834cc38397c300895f50c1efdb86d94f3870a0a8`、merge `bf13cac3db854c30b33e9b2ef97d389a2372e961`でB1をmainへ反映した。CI Run #501は全job成功し、非GitHub・非Opusの固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。B2の数値budget、warning、hard cap、採用上限での実機測定、Group 12完了判定は当時、後続の明示判断まで開始しない扱いだった。2026-08-02の§20で、B2は`2D-6-PERFORMANCE`へ延期し、Group 12完了条件から除外した。2026-07-27のADR-2026-07-27-028でA1+B1を採用し、Slice DをD1〜D4へ分けた。D1はPR #201 final head `25cd3327b93850f1af1733c2b43585e3fa0a667b`、merge `c1d08e3b4cadd7c3a3064ab8e824b17f67feb243`でmainへ反映し、CI Run #596全成功、固定head独立review `BLOCKER 0 / MUST 0 / SHOULD 0`として完了した。2026-07-28のADR-2026-07-28-029でA1+B1+C1を採用し、D2の再生順、read-only、UI-only表示と試験条件を確定した。docs-only決定PR #203 merge `73f0eafe69dd42c820f92e9f039e49fe2e2d9d28`後、D2はPR #204 final head `8ebeb279e9d7b9ef9a15700d80d4a6cd7ab1d57f`、merge `eeaea39522d0f31bfe786ca0da27176bfd5ee859`でmainへ反映した。CI Run #603のclean attemptはunit 763件、Chromium E2E 168件、H3、Pages open / closed routeをすべて成功し、固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。
 
 2026-07-29のADR-2026-07-29-030でD3の`P1+A1+B1+C1`を承認した。PR #205 merge `66debcaf974fe965757f39be8a433d86546eed19`で実装Gateを満了し、PR #206 final head `ac84b8c2d6141f6353c3e07dbb2dbfae9a2f5c98`、merge `3081495a979d10176a05eb2907e7cede55cc8c9a`でmainへ反映した。CI Run #610はunit 769件、Chromium E2E 170件、H3、Pages open / closed routeを含む31 stepを全成功し、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D3は`implemented / CI-passed / independently-verified / merged`としてcloseoutする。
 
-同日のADR-2026-07-29-031でD4の`A1+B1+C1`を承認した。D4は選択中Animationの基準Frameと対象Frameを重ね、対象Frame全体へ同じ手動移動量を適用する。確定前はUIだけの一時表示、確定時は1 Historyとし、不足するFrame / LayerState / transformを自動生成しない。契約PR #208 merge `ea67920`で実装前Gateを満了し、PR #209 final head `16f5ae2a62928c92f039710e935f3c66c113b0c1`、merge `5e25d0d4e1a4c6680afdd5f5d05ef51d0f8bdea8`で製品コードと試験をmainへ反映した。CI Run #623はunit 799件、Chromium E2E 176件、H3 1件、Pages open / closed各1件を全成功し、failed / flaky / skippedは0件、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D4を`implemented / CI-passed / independently-verified / merged`とする。D1〜D4の物理Safari確認は、D4を2026-08-01、D1〜D3を2026-08-02に指定3端末で問題なしと人間確認済みである。B2とT1 / P1 / B1の物理iPhone / iPad SafariのGroup 12 closeout Gateは未完了のまま維持する。
+同日のADR-2026-07-29-031でD4の`A1+B1+C1`を承認した。D4は選択中Animationの基準Frameと対象Frameを重ね、対象Frame全体へ同じ手動移動量を適用する。確定前はUIだけの一時表示、確定時は1 Historyとし、不足するFrame / LayerState / transformを自動生成しない。契約PR #208 merge `ea67920`で実装前Gateを満了し、PR #209 final head `16f5ae2a62928c92f039710e935f3c66c113b0c1`、merge `5e25d0d4e1a4c6680afdd5f5d05ef51d0f8bdea8`で製品コードと試験をmainへ反映した。CI Run #623はunit 799件、Chromium E2E 176件、H3 1件、Pages open / closed各1件を全成功し、failed / flaky / skippedは0件、固定headの3方向独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`だった。D4を`implemented / CI-passed / independently-verified / merged`とする。D1〜D4の物理Safari確認は、D4を2026-08-01、D1〜D3を2026-08-02に指定3端末で問題なしと人間確認済みである。2026-08-02の人間判断でT1 / P1 / B1の物理Safari Gateを完了扱いとし、B2は`2D-6-PERFORMANCE`へ延期した。B2をGroup 12完了条件から外してGroup 12をcloseoutし、Group 13の契約監査を開始可能とする。
 
 ## 2. 監査方法と現状
 
@@ -44,7 +44,7 @@ PR #146の契約監査は17文書、製品コード変更なしでmainへ反映�
 
 これらはPR #146 final head `20871f7`で文書化し、CI Run #457成功、固定head独立review `BLOCKER 0 / MUST 0 / SHOULD 0`を確認した。PR #146はmerge `cb21ea4`としてmainへ反映され、merge後CI Run #458も成功した。上の監査基準は履歴として維持し、現在状態を古いSHAへ書き換えない。
 
-merge後の人間判断はH1=E1、H2=L1、H3=M1である。E1 / L1の意味は§6、M1の再現手順は`2D_3_H3_MEASUREMENT_PROTOCOL.md`を正本とする。T1 Slice AはPR #153、P1 Slice CはPR #154、R1 Slice B1はPR #157でmainへ反映済みである。H3の数値budgetと資源上限は後続のまま維持する。ADR-2026-07-24-027でSlice Bの分割を確定し、B1は座標修正、数値・参照・構造preflight、利用可能な独立rig反転コピー、完全ID remap、保存・再読込・parity検査まで完了し、B2は資源上限とGroup 12完了Gateを扱う。
+merge後の人間判断はH1=E1、H2=L1、H3=M1である。E1 / L1の意味は§6、M1の再現手順は`2D_3_H3_MEASUREMENT_PROTOCOL.md`を正本とする。T1 Slice AはPR #153、P1 Slice CはPR #154、R1 Slice B1はPR #157でmainへ反映済みである。H3の数値budgetと資源上限は後続のまま維持する。ADR-2026-07-24-027でSlice Bの分割を確定し、B1は座標修正、数値・参照・構造preflight、利用可能な独立rig反転コピー、完全ID remap、保存・再読込・parity検査まで完了した。同ADRではB2が資源上限とGroup 12完了Gateを扱うとしていたが、Group 12完了条件については2026-08-02の§20が置き換えた。
 
 ## 3. T1: Frame単位の可変時間
 
@@ -147,7 +147,7 @@ H3=M1として、数値を決めず再現可能な測定を先に行う。正本
 
 120 Frame超warning / 240 Frame hard capは測定caseの旧候補であり、採用値、製品定数、合否基準ではない。Frameに加えて生成・最終LayerState、compact / pretty JSON byte、sheet pixel、推定RGBAを記録する。PC Chromium、iPhone 17 Pro Safari、iPhone 11 Pro Safari、iPad Pro 2018 Safariのcore測定後も、製品実装後のReact、保存、Undo / Redo、reload、`asset.json` / `.casproj` / ZIPを別Gateで測り、数値を別途人間承認する。
 
-2026-07-23の人間判断では、正式B0をGroup 12開始前の一律停止条件から外した。移設前commitのiPhone 17 Pro baseline結果2件は参考記録に限り、数値採用には使わない。H3数値が未決定の間は数値warning / hard capと、それに依存するB2およびGroup 12完了判定を保留する。一方、サービス公開、T1 Slice A、P1 Slice Cに加え、数値budgetへ依存しないB1はPR #157で実装・検証・main反映済みである。公開利用で性能や端末固有の問題が見えた場合、本プロトコルを再実行し、必要なら製品path Gateへ検査項目を追加する。
+2026-07-23の人間判断では、正式B0をGroup 12開始前の一律停止条件から外した。移設前commitのiPhone 17 Pro baseline結果2件は参考記録に限り、数値採用には使わない。当時はH3数値が未決定の間、数値warning / hard capと、それに依存するB2およびGroup 12完了判定を保留した。一方、サービス公開、T1 Slice A、P1 Slice Cに加え、数値budgetへ依存しないB1はPR #157で実装・検証・main反映済みである。Group 12完了条件は2026-08-02の§20が置き換え、B2は`2D-6-PERFORMANCE`へ延期した。公開利用で性能や端末固有の問題が見えた場合、本プロトコルを再実行し、必要なら製品path Gateへ検査項目を追加する。
 
 ## 7. bake preflight
 
@@ -170,7 +170,7 @@ Frameを1件も割り当てる前に、UI、意味検証、bake関数が同じ�
 - 生成Frame、生成・最終LayerState、推定serialized bytes、sheet pixelを割当前に計算して表示する。
 - H3と後続人間承認で採用した値に限り、warningとhard capへ使う。
 - hard cap超過時は1件も割り当てず、Asset、Blob、History、autosaveを変更しない。
-- 採用上限でPC Chromium、iPhone Safari、iPad Safariの製品pathを測り、Group 12完了判定へ使う。
+- 採用上限でPC Chromium、iPhone Safari、iPad Safariの製品pathを測り、`2D-6-PERFORMANCE`の完了判定と2D Pro Gateの証拠へ使う。Group 12の完了条件へ戻さない。
 
 ## 8. 実装sliceとGate
 
@@ -179,7 +179,7 @@ Frameを1件も割り当てる前に、UI、意味検証、bake関数が同じ�
 | A | T1 model / schema / scheduler / event / inspection | `Frame.durationMs?`と`Animation.events?`のoptional追加、consumer統一 | E1拒否、旧data roundtrip、mock clock、保存・export Gate |
 | B0 | H3測定 | 必要時にmainの同一commitから`/h3/`を24時間開き、現行coreを固定matrixでPC / Safari実機測定 | 2026-07-23時点では保留。問題発生時に再実行し、後続数値は別途人間承認 |
 | B1 | H3非依存のbake安全化とR1 | 座標修正、数値・参照・構造preflight、画面から使える独立rig反転コピー、完全ID remap | source不変、保存失敗rollback、保存・reload・`.casproj`、全Frame transform / pixel parity、mobile viewport |
-| B2 | 資源数値Gate | 生成量表示、採用後のwarning / hard cap、資源超過の原子的拒否 | H3数値決定、採用上限でPC / iPhone / iPad product-path実測、Group 12完了判定 |
+| B2 | 資源数値Gate | `2D-6-PERFORMANCE`へ延期。生成量表示、採用後のwarning / hard cap、資源超過の原子的拒否は未実装 | H3数値決定、採用上限でPC / iPhone / iPad product-path実測、`2D-6-PERFORMANCE`完了判定。Group 12から除外済み（§20） |
 | C | P1 | `Part.layerIds`だけの置換UIとinspection | L1拒否、exact write-set、1 History、次回bakeのみ反映 |
 | D1 | preview安全 | 永続編集防護、明示停止、一時的な出現位置 | PR #201 / CI #596 / 固定head独立reviewで完了 |
 | D2 | onion skin | 選択中Animationの再生順による前後1出現、loop端、反復Frameの出現位置選択、read-only、UI-only、固定25% | PR #204 / CI #603 / 固定head独立reviewで完了 |
@@ -188,7 +188,7 @@ Frameを1件も割り当てる前に、UI、意味検証、bake関数が同じ�
 
 PR #154はSlice Cだけを扱い、既存Part 1件の`layerIds`差し替えUI、H2=L1検証、read-only inspection、H2違反だけを割当前に止める狭いbake refusal、History・保存roundtripを実装した。T1のschema・scheduler・export契約は変更していない。
 
-ADR-2026-07-24-027により、後続をB1とB2へ分けた。B1は有限値・座標・参照・構造検査とR1をPR #157で実装し、資源上限を先取りしていない。B2はH3数値と別の人間承認後に扱う。D1はPR #201、D2はPR #204、D3はPR #206、D4はPR #209で完了した。B2の資源数値GateはD4 closeoutと分離し、後続の人間承認まで開始しない。
+ADR-2026-07-24-027により、後続をB1とB2へ分けた。B1は有限値・座標・参照・構造検査とR1をPR #157で実装し、資源上限を先取りしていない。D1はPR #201、D2はPR #204、D3はPR #206、D4はPR #209で完了した。B2の資源数値GateはD4 closeoutおよびGroup 12完了条件から分離し、`2D-6-PERFORMANCE`で数値と別の人間承認を得るまで開始しない。
 
 1 PR 1 sliceを守る。schemaを変更するT1と、schema不要のR1/P1を同じ製品PRへ混ぜない。各実装PRは固定headでlint、format、build、全unit、Chromium E2Eを成功させ、skip / retryを理由なく残さない。
 
@@ -196,16 +196,16 @@ ADR-2026-07-24-027により、後続をB1とB2へ分けた。B1は有限値・�
 
 | Slice | Unit / contract | Chromium E2E・保存 | 実機 |
 | --- | --- | --- | --- |
-| T1 | fallback、override、反復Frame、loop / event、安全payload、Frame単体複製はevent不変、Asset複製 / flipはevent ID再採番とframeId張替え、delete | mock clock順序、event ID一意性・発火回数、Undo / Redo、reload、IndexedDB、`.casproj`、E1対象拒否と許可対象 | 長いtimeline、keyboard、入力zoom、44px、縦横 |
-| R1 / B1 | 完全ID graph、再採番対象とTextureRef保持、鏡映式、source不変、double flip、親子 / pivot / bind / limit / scale、有限値・参照・循環・H2=L1、frameCountの有限・安全整数、`1e-6` transform / RGBA oracle | 画面から独立copy作成、新規entryなし・既存Undo / Redo stack完全一致、保存失敗rollback、保存・reload、`.casproj` decode直後exact＋製品importのcontainer ID map適用後exact＋再parity、375 × 667 / 667 × 375 | B1 merge Gateには数値上限の実機合格を要求しない。物理Safari確認はGroup 12 closeoutへ残す |
-| 資源 / B2 | 生成Frame / LayerState / JSON byte / sheet pixelの境界、理由code、warning / hard cap | 採用値の直前・一致・超過、超過時Asset / Blob / History / autosave不変 | 採用上限でbake、操作応答、PC / iPhone / iPad Safari reload / crashなし |
-| P1 | missing / duplicate / empty / order / ownership、他field不変 | 既存bake不変、次回bake反映、1 History、Undo / Redo、reload | touch選択、長いLayer一覧、keyboard後の確定 / 取消 |
-| D1 | preview guard、保存しないoccurrence index | pan・zoom・Layer選択、保存編集拒否、IndexedDB不変、明示停止、停止後編集再開、反復Frame / loop / rewind | 物理SafariはGroup 12 closeoutへ残す |
-| D2 | 再生順の前後1出現、loop端、反復Frameの出現位置選択、赤系の「前」・青系の「次」、固定25%、UI-only | `A → B → A`の1番目・3番目の選択、初期off、前・次の個別切替、再生中非表示、停止後復元、Asset / History不変、reloadでoff、375 × 667 / 44px / 横overflowなし | 物理SafariはGroup 12 closeoutへ残す |
-| D3 | exact write-set、global unique event ID、重複名、空名・0 Frame拒否、順序・payload・未知項目保持、反復Frameの全出現・全loop発火、入力Asset不変。新規追加・明示参照変更ではAnimation外・参照切れFrameを拒否し、既存の無効参照は読込・表示・名前変更で保持 | add / rename / ref change / delete、Enter / blurの1 History、Enter後blurの二重commitなし、Esc取消、削除cancel / confirm、Undo / Redo、IndexedDB / reload、preview guard、375 × 667 / 44px / 16px input / keyboard / touch emulation / 横overflowなし | 物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはGroup 12 closeoutへ残す |
-| D4 | 候補の初出順・重複除去、基準と対象の相違、選択Animation / 基準Frame / 対象Frameの一意解決、Layer 0件と選択対象ID重複の拒否、完全LayerState、有限delta / 結果座標、全対象positionへの同一delta、Asset内のexact write-set、`Project.updatedAt`同期と他Project field不変、入力Asset不変、shared Frameのdistinct Animation数・総出現数 | 複数Animation・反復fixtureで正確な影響件数、基準 / 対象の文字、基準のread-only・半透明、対象の通常表示、D2設定不変、1px方向操作とX / Y入力、一時表示中のAsset・History・IndexedDB不変、取消button / Esc、0差分、確定1 History、Undo / Redo、autosave / reload / `.casproj`、Layer 0件・重複ID・不足data拒否と永続状態不変、preview guard、375 × 667 / 44px / 16px input / keyboard / touch emulation / 入力zoom防止 / 横overflowなし | 物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはGroup 12 closeoutへ残す |
+| T1 | fallback、override、反復Frame、loop / event、安全payload、Frame単体複製はevent不変、Asset複製 / flipはevent ID再採番とframeId張替え、delete | mock clock順序、event ID一意性・発火回数、Undo / Redo、reload、IndexedDB、`.casproj`、E1対象拒否と許可対象 | 2026-08-02の人間判断によりGroup 12物理Safari Gateを完了扱い。個別操作結果、OS / Safari version、確認時commitは未記録 |
+| R1 / B1 | 完全ID graph、再採番対象とTextureRef保持、鏡映式、source不変、double flip、親子 / pivot / bind / limit / scale、有限値・参照・循環・H2=L1、frameCountの有限・安全整数、`1e-6` transform / RGBA oracle | 画面から独立copy作成、新規entryなし・既存Undo / Redo stack完全一致、保存失敗rollback、保存・reload、`.casproj` decode直後exact＋製品importのcontainer ID map適用後exact＋再parity、375 × 667 / 667 × 375 | 2026-08-02の人間判断によりGroup 12物理Safari Gateを完了扱い。個別操作結果、OS / Safari version、確認時commitは未記録 |
+| 資源 / B2 | `2D-6-PERFORMANCE`へ延期。生成Frame / LayerState / JSON byte / sheet pixelの境界、理由code、warning / hard capは未実装 | 採用値の直前・一致・超過、超過時Asset / Blob / History / autosave不変は未検証 | 採用上限でのPC / iPhone / iPad product-pathは未測定。Group 12合格証拠へ流用しない |
+| P1 | missing / duplicate / empty / order / ownership、他field不変 | 既存bake不変、次回bake反映、1 History、Undo / Redo、reload | 2026-08-02の人間判断によりGroup 12物理Safari Gateを完了扱い。個別操作結果、OS / Safari version、確認時commitは未記録 |
+| D1 | preview guard、保存しないoccurrence index | pan・zoom・Layer選択、保存編集拒否、IndexedDB不変、明示停止、停止後編集再開、反復Frame / loop / rewind | 2026-08-01〜02にiPhone 17 Pro、iPhone 11 Pro、iPad Pro 2018で確認済み。正確なOS / Safari versionは未記録 |
+| D2 | 再生順の前後1出現、loop端、反復Frameの出現位置選択、赤系の「前」・青系の「次」、固定25%、UI-only | `A → B → A`の1番目・3番目の選択、初期off、前・次の個別切替、再生中非表示、停止後復元、Asset / History不変、reloadでoff、375 × 667 / 44px / 横overflowなし | 2026-08-01〜02にiPhone 17 Pro、iPhone 11 Pro、iPad Pro 2018で確認済み。正確なOS / Safari versionは未記録 |
+| D3 | exact write-set、global unique event ID、重複名、空名・0 Frame拒否、順序・payload・未知項目保持、反復Frameの全出現・全loop発火、入力Asset不変。新規追加・明示参照変更ではAnimation外・参照切れFrameを拒否し、既存の無効参照は読込・表示・名前変更で保持 | add / rename / ref change / delete、Enter / blurの1 History、Enter後blurの二重commitなし、Esc取消、削除cancel / confirm、Undo / Redo、IndexedDB / reload、preview guard、375 × 667 / 44px / 16px input / keyboard / touch emulation / 横overflowなし | 2026-08-01〜02にiPhone 17 Pro、iPhone 11 Pro、iPad Pro 2018で確認済み。正確なOS / Safari versionは未記録 |
+| D4 | 候補の初出順・重複除去、基準と対象の相違、選択Animation / 基準Frame / 対象Frameの一意解決、Layer 0件と選択対象ID重複の拒否、完全LayerState、有限delta / 結果座標、全対象positionへの同一delta、Asset内のexact write-set、`Project.updatedAt`同期と他Project field不変、入力Asset不変、shared Frameのdistinct Animation数・総出現数 | 複数Animation・反復fixtureで正確な影響件数、基準 / 対象の文字、基準のread-only・半透明、対象の通常表示、D2設定不変、1px方向操作とX / Y入力、一時表示中のAsset・History・IndexedDB不変、取消button / Esc、0差分、確定1 History、Undo / Redo、autosave / reload / `.casproj`、Layer 0件・重複ID・不足data拒否と永続状態不変、preview guard、375 × 667 / 44px / 16px input / keyboard / touch emulation / 入力zoom防止 / 横overflowなし | 2026-08-01〜02にiPhone 17 Pro、iPhone 11 Pro、iPad Pro 2018で確認済み。正確なOS / Safari versionは未記録 |
 
-Playwrightのmobile viewportは実iPhone Safariの代替にしない。Group 12完了前にsafe area、software keyboard、入力zoom、orientation、touch target、bake時のmemoryとreloadを実機で記録する。
+Playwrightのmobile viewportは実iPhone Safariの代替にしない。Group 12内の実機Gateは上表の記録どおり完了扱いとするが、safe area、software keyboard、入力zoom、orientation、touch target、bake時のmemoryとreloadは、リリース全体または`2D-6-PERFORMANCE`で必要な証拠として未取得分を残す。
 
 ## 10. 互換性と対象外
 
@@ -219,7 +219,7 @@ Playwrightのmobile viewportは実iPhone Safariの代替にしない。Group 12�
 
 次のいずれかに該当したら、影響するsliceだけを止めて人間判断へ戻す。
 
-- H3数値が未決定の間は、数値warning / hard cap、B2、Group 12完了判定を確定しない。これはサービス公開、T1 Slice A、P1 Slice C、B1の停止条件ではない。
+- 2026-08-02の後続判断により、H3数値未決定はGroup 12 closeoutとGroup 13契約監査の停止条件ではない。数値warning / hard capとB2実装は`2D-6-PERFORMANCE`で別に扱い、測定と人間承認前に製品定数へ入れない。
 - accepted座標式とbake parityを同時に満たせない。
 - optional追加だけでは旧Asset 0.2.0のroundtripを維持できない。
 - 公開利用で停止、極端な遅延、保存・書き出し失敗などが再現した。この場合はM1 protocolまたは製品path Gateを再開する。
@@ -246,7 +246,7 @@ Playwrightのmobile viewportは実iPhone Safariの代替にしない。Group 12�
 ### 対象外
 
 - H3数値の採用。
-- Slice Bの数値上限とGroup 12全体の完了判定。
+- B2の数値上限、warning / hard cap、`2D-6-PERFORMANCE`での製品path実測。Group 12完了条件からは除外済み（§20）。
 - `asset.json`、`.casproj`、export ZIP、IndexedDB layout、dependencyの変更。
 - Ready化、merge、PagesのUnpublish。
 
@@ -256,7 +256,7 @@ Playwrightのmobile viewportは実iPhone Safariの代替にしない。Group 12�
 
 - P1 Slice Cは`implemented / CI-passed / independently-verified / merged`である。
 - CI #492はunit 732件、Chromium 159件、H3 1件、Pages公開・閉鎖各1件を成功した。
-- 物理iPhone Safari、safe area、software keyboard、実機reloadはGroup 12 closeout Gateとして未完了のまま維持する。
+- PR #154 closeout時点では、物理iPhone Safari、safe area、software keyboard、実機reloadをGroup 12 closeout Gateへ残した。現在のGroup 12状態は§20を正本とする。
 - R1の意味はacceptedだが、ADR-2026-07-23-026はR1、bake共通preflight、Slice B数値上限を先行許可の対象外にしている。
 - H3非依存R1を独立sliceへ分けるか、Slice BをH3再開まで一体で保留するかは、このcloseout時点では人間判断が必要だった。
 - 後続のADR-2026-07-24-027でA1を採用し、B1 / B2の分割とB1先行を確定した。
@@ -277,13 +277,13 @@ Playwrightのmobile viewportは実iPhone Safariの代替にしない。Group 12�
 - B1の反転は現在と同じ「新しいAssetを作る操作」として画面から利用できるようにする。元Assetを変更せず、Undo / Redo対象外とし、新しいentryを追加せず既存のUndo / Redo stackも変更しない。保存失敗時はProject参照、Asset、Blob、画面stateへの新Asset追加を全て取り消す。
 - B1は数値warning、hard cap、H3の候補値を製品定数へ入れず、Group 12完了を名乗らない。
 - B1の安全整数検査を通る非常に大きい生成量の停止リスクはB2まで残る。B1だけで資源安全や任意入力への応答保証を証明したとは扱わない。
-- B2は生成Frame / LayerState / serialized bytes / sheet pixelの採用値、warning、hard cap、資源超過の原子的拒否、採用上限でのPC / iPhone / iPad product-path実測、Group 12完了判定を扱う。
+- 2026-07-24の決定時点では、B2が生成Frame / LayerState / serialized bytes / sheet pixelの採用値、warning、hard cap、資源超過の原子的拒否、採用上限でのPC / iPhone / iPad product-path実測、Group 12完了判定を扱うとした。Group 12完了条件の部分は§20が置き換え、その他の未実装要件は`2D-6-PERFORMANCE`へ維持する。
 
 ### 実装順
 
 1. 本決定をdocs-only Draft PRで正本へ反映する。
 2. そのPRがmainへ入った後、B1を1 branch / 1 Draft PR / 単一writerで実装する。
-3. B1のCIと独立検証後も、B2とGroup 12 closeoutはH3数値の後続判断まで保留する。
+3. 2026-07-24の決定時点では、B1のCIと独立検証後もB2とGroup 12 closeoutをH3数値の後続判断まで保留した。Group 12完了条件は§20が後から置き換えた。
 
 ### 対象外
 
@@ -299,8 +299,8 @@ Playwrightのmobile viewportは実iPhone Safariの代替にしない。Group 12�
 - final headは`834cc38397c300895f50c1efdb86d94f3870a0a8`、merge commitは`bf13cac3db854c30b33e9b2ef97d389a2372e961`である。
 - CI Run #501はlint、format、build、unit 758件、Chromium E2E 165件、H3 Chromium、Pages open / closed routeを含め全job成功した。
 - 非GitHub・非Opusの固定head独立reviewは、仕様・判断、実装・データ安全、テスト・iPhone境界の3方向すべて`BLOCKER 0 / MUST 0 / SHOULD 0`である。
-- PR #157 closeout時点でB1を`implemented / CI-passed / independently-verified / merged`とした。B2、物理iPhone / iPad Safari、資源上限、Group 12完了判定は未完了のまま維持する。Slice Dの現在状態は§14〜§17を正本とする。
-- Group 13はGroup 12完了に依存するため、現時点では開始しない。
+- PR #157 closeout時点でB1を`implemented / CI-passed / independently-verified / merged`とした。その時点ではB2、物理iPhone / iPad Safari、資源上限、Group 12完了判定を未完了とした。後続のSlice D履歴は§14〜§19、現在のGroup 12状態は§20を正本とする。
+- PR #157 closeout時点ではGroup 13を開始しなかった。Group 12完了後の現在は、§20によりGroup 13の契約監査を開始可能とする。
 
 ## 14. Slice Dの分割とD1 Gate（ADR-2026-07-27-028）
 
@@ -311,7 +311,7 @@ Slice Dは次の順で進め、各段階を別の契約・実装判断として�
 3. **D3**: eventの追加、名前変更、参照Frame変更、削除。payload編集は含めない。
 4. **D4**: ADR-2026-07-29-031のA1+B1+C1に従い、基準Frameと対象Frameを重ねて対象Frame全体を手動移動する。
 
-D1の合格条件は、preview中のpan・zoom・Layer選択が使えること、保存を伴うキャンバス操作・入力・Undo / Redoが拒否されること、IndexedDB上のAssetが変わらないこと、手動previewとnon-loop完了後に停止できること、反復Frameの出現位置がloopごとに戻ること、停止後に通常編集を再開できることとする。375 × 667のChromium E2Eで保存不変と横overflowなしを確認し、物理iPhone SafariはGroup 12 closeout Gateへ残す。
+D1の合格条件は、preview中のpan・zoom・Layer選択が使えること、保存を伴うキャンバス操作・入力・Undo / Redoが拒否されること、IndexedDB上のAssetが変わらないこと、手動previewとnon-loop完了後に停止できること、反復Frameの出現位置がloopごとに戻ること、停止後に通常編集を再開できることとする。375 × 667のChromium E2Eで保存不変と横overflowなしを確認した。物理Safariの後続結果は§19〜§20へ記録した。
 
 D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependencyを変更しない。D2〜D4、event payload編集、B2の数値上限、Group 12完了判定も対象外とする。
 ## 15. PR #201 merge後closeoutとD2 Gate（ADR-2026-07-28-029）
@@ -321,7 +321,7 @@ D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.caspr
 - PR #201 final head `25cd3327b93850f1af1733c2b43585e3fa0a667b`、merge `c1d08e3b4cadd7c3a3064ab8e824b17f67feb243`でD1をmainへ反映した。
 - CI Run #596はlint、format、build、unit 758件、Chromium E2E 166件、H3 Chromium、Pages open / closed routeを含め全job成功した。
 - 固定head独立reviewは`BLOCKER 0 / MUST 0 / SHOULD 0`である。
-- D1は`implemented / CI-passed / independently-verified / merged`とする。物理iPhone SafariはGroup 12 closeoutへ残す。
+- D1は`implemented / CI-passed / independently-verified / merged`とする。物理Safariの後続結果は§19〜§20へ記録した。
 
 ### 15.2 D2の表示契約
 
@@ -342,7 +342,7 @@ D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.caspr
 - 375 × 667のChromium E2Eで`A → B → A`の1番目・3番目を選び分け、初期off、前・次の個別切替、文字と色、25%、再生中非表示、停止後復元、44px、横overflowなしを確認する。
 - D2のon / off前後でIndexedDB上のAssetとUndo / Redo stackが完全一致し、reload後にoffへ戻ることを確認する。
 - D1のpan、zoom、Layer選択、保存編集拒否、明示停止を回帰させない。
-- 物理iPhone SafariはGroup 12 closeout Gateへ残す。
+- 物理iPhone Safariは当時Group 12 closeout Gateへ残した。後続結果は§19〜§20へ記録した。
 
 ### 15.4 対象外
 
@@ -358,7 +358,7 @@ D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.caspr
 - PR #204 final head `8ebeb279e9d7b9ef9a15700d80d4a6cd7ab1d57f`、merge `eeaea39522d0f31bfe786ca0da27176bfd5ee859`でD2をmainへ反映した。
 - CI Run #603のclean attemptはlint、format、build、unit 763件、Chromium E2E 168件、H3 Chromium、Pages open / closed routeを含め全job成功し、failed / flaky / retry / skippedは0件だった。
 - 固定head独立reviewの最終結果は`BLOCKER 0 / MUST 0 / SHOULD 0`である。
-- D2は`implemented / CI-passed / independently-verified / merged`とする。物理iPhone SafariはGroup 12 closeoutへ残す。
+- D2は`implemented / CI-passed / independently-verified / merged`とする。物理Safariの後続結果は§19〜§20へ記録した。
 
 ### 16.2 D3の参照Frameと追加契約
 
@@ -382,7 +382,7 @@ D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.caspr
 
 - Unit / contractでexact write-set、global unique ID、重複名、空名・0 Frame拒否、順序・payload・未知項目保持、反復Frameの全出現・全loop発火、入力Asset不変を確認する。新規追加または明示的な参照変更ではAnimation外・参照切れFrameを拒否し、既存の無効参照は読み込み・表示・名前編集で保持して自動削除・自動再割当しないことを確認する。
 - Chromium E2Eでadd / rename / ref change / delete、Enter / blurの1 History、Enter後blurの二重commitなし、Esc取消、削除cancel / confirm、Undo / Redo、IndexedDB / reload、preview guardを確認する。
-- Chromiumの375 × 667で44px以上の操作対象、16px以上の入力文字、keyboard操作、入力zoom防止、touch emulation、横overflowなしを確認する。物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはGroup 12 closeout Gateへ残し、Playwrightのmobile viewportで代替しない。
+- Chromiumの375 × 667で44px以上の操作対象、16px以上の入力文字、keyboard操作、入力zoom防止、touch emulation、横overflowなしを確認する。物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはPlaywrightのmobile viewportで代替せず、後続結果を§19〜§20へ記録した。
 - D3製品実装は、このdocs-only決定PRがmainへmergeされた後に、最新mainから別の1 branch / 1 Draft PR / 単一writerで行う。このGateはPR #205のmergeで満了し、PR #206 final head `ac84b8c2d6141f6353c3e07dbb2dbfae9a2f5c98`、merge `3081495a979d10176a05eb2907e7cede55cc8c9a`、CI Run #610、固定head独立reviewを経て完了した。
 - payload編集、event並べ替え、出現位置固有event、Frame削除時のcascade、D4 frame alignment、B2資源上限、Group 12完了判定は対象外とする。
 - schema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependencyを変更しない。今回のdocs-only PRでは製品コード、Ready化、mergeを行わない。
@@ -394,7 +394,7 @@ D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.caspr
 - PR #206 final head `ac84b8c2d6141f6353c3e07dbb2dbfae9a2f5c98`、merge `3081495a979d10176a05eb2907e7cede55cc8c9a`でD3をmainへ反映した。
 - CI Run #610はlint、format、build、unit 769件、Chromium E2E 170件、H3 Chromium、Pages open / closed routeを含む31 stepを全成功し、failure、skip、retryは0件だった。
 - 固定headの仕様、実装・データ安全、テスト・CI・mobileの3方向独立reviewは、すべて`BLOCKER 0 / MUST 0 / SHOULD 0`である。
-- D3は`implemented / CI-passed / independently-verified / merged`とする。物理iPhone SafariはGroup 12 closeoutへ残す。
+- D3は`implemented / CI-passed / independently-verified / merged`とする。物理Safariの後続結果は§19〜§20へ記録した。
 
 ### 17.2 D4の対象選択と手動表示契約
 
@@ -428,7 +428,7 @@ D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.caspr
 - Unit / contractで候補の重複除去、同一Frame拒否、選択Animation / 基準Frame / 対象Frameの一意解決、Layer 0件拒否、Layer ID一意性、完全LayerState preflight、有限値、shared Frameのdistinct Animation数と総出現数、全対象positionへの同一delta、Asset内のexact write-set、通常保存では`Project.updatedAt`だけが同期されること、その他Project field不変、no-op、拒否時を含む入力Asset不変を確認する。
 - Chromium E2Eでは複数Animationと反復出現で共有するFrameを使い、確定前に正確なdistinct Animation数と総出現数が表示されることを確認する。「基準」「対象」の文字、基準Frameのread-only・半透明表示、対象Frameの通常表示、alignment前後のD2 onion skin設定不変、方向操作、X / Y入力も確認する。
 - 取消buttonとEscを別々に実行し、draft破棄とAsset・History・autosave・IndexedDB不変を確認する。0差分、確定1 History、Undo / Redo、autosave / reload / `.casproj`、Layer 0件・重複ID・不足dataの理由付き拒否、拒否時の永続状態不変、preview guardも確認する。
-- Chromiumの375 × 667で44px以上の操作対象、16px以上の数値入力、keyboardとtouch emulation、入力zoom防止、横overflowなしを確認する。物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはGroup 12 closeout Gateへ残し、Playwrightのmobile viewportで代替しない。
+- Chromiumの375 × 667で44px以上の操作対象、16px以上の数値入力、keyboardとtouch emulation、入力zoom防止、横overflowなしを確認する。物理iPhone Safariのsoftware keyboard、safe area、実touch、orientationはPlaywrightのmobile viewportで代替せず、後続結果を§18〜§20へ記録した。
 - D4製品実装は、契約PR #208がmainへmergeされた後、main `0cbc699`から別のDraft PR / 単一writerで開始し、PR #209 final head `16f5ae2`、merge `5e25d0d`、CI #623、固定head独立reviewを経てcloseoutした。
 - Layer単位・全Frame一括移動、canvas drag、自動整列、透明外周解析、画像内容比較、rotation / scale / opacity / visibility調整、Frame複製、共有Frameの自動分離は対象外とする。
 - PR #209ではschema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependency、B2資源上限、Group 12完了判定を変更していない。
@@ -448,7 +448,7 @@ D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.caspr
 - 確認範囲は、基準Frameと対象Frameの選択、上下左右の1px移動、X / Y数値入力、確定、取消、Undo / Redo、Safari再読み込み、software keyboard、safe area、実touch、縦横orientation、横overflowである。
 - 本確認では各端末の正確なOS / Safari versionを新たに記録していない。端末名と利用者報告をD4の物理操作証拠とし、H3の正式B0、性能値、数値budgetには使わない。
 - 本確認はD4だけを対象とした。2026-08-01時点ではT1、P1、B1、D1〜D3の物理Safari確認、B2、Group 12全体の完了判定を未完了のまま維持した。D1〜D3の後続結果は§19を正本とする。
-- Group 13はGroup 12完了に依存するため開始しない。
+- この時点ではGroup 13を開始しなかった。2026-08-02の後続closeout判断は§20を正本とする。
 
 ## 19. D1〜D3物理Safari確認（2026-08-02）
 
@@ -458,5 +458,30 @@ D1ではschema、version、migration、IndexedDB layout、`asset.json`、`.caspr
 - D3では、eventの追加、名前変更、参照Frame変更、削除取消・確定、Undo / Redo、Frame preview中の編集拒否、保存後のSafari再読み込みを確認した。
 - 共通範囲としてsoftware keyboard、safe area、実touch、縦横orientation、Safari下部bar、横overflowを確認した。
 - 各端末の正確なOS / Safari versionは新たに記録していない。端末名と利用者報告をD1〜D3の物理操作証拠とし、H3の正式B0、性能値、数値budgetには使わない。
-- これによりD1〜D4の物理Safari確認は完了した。T1、P1、B1の物理Safari確認、B2、採用上限でのPC / iPhone / iPad product-path実測、Group 12全体の完了判定は未完了のまま維持する。
-- Group 13はGroup 12完了に依存するため開始しない。
+- これによりD1〜D4の物理Safari確認は完了した。この記録時点ではT1、P1、B1の物理Safari確認、B2、採用上限でのPC / iPhone / iPad product-path実測、Group 12全体の完了判定を未完了としたが、同日後続のGroup 12 closeout判断は§20を正本とする。
+- この時点ではGroup 13を開始しなかった。2026-08-02の後続closeout判断は§20を正本とする。
+
+## 20. Group 12 closeoutとB2延期（2026-08-02）
+
+### 状態
+
+- accepted（2026-08-02 人間判断）
+- Group 12: completed
+- T1 / P1 / B1の物理Safari Gate: 完了扱い
+- B2: `deferred to 2D-6-PERFORMANCE / unimplemented / unmeasured`
+- Group 13: 契約監査開始可能
+
+### 決定
+
+- 利用者から「実機確認系は一旦全て完了扱いで進める」と明示されたため、T1 / P1 / B1のGroup 12物理Safari Gateを完了扱いにする。
+- この判断は個別操作結果、正確なOS / Safari version、確認時commit、H3 raw値を新たに取得したことを意味しない。D1〜D4の既存端末証拠と区別する。
+- 正式B0とB2の数値budget、warning、hard cap、採用上限でのPC / iPhone / iPad product-path実測は完了扱いにしない。
+- B2を未測定・未実装の性能課題として`2D-6-PERFORMANCE`へ延期し、Group 12の完了条件から外す。120 / 240 Frameは未採用候補のまま維持する。
+- B1の安全整数検査を通る極端に大きい生成量では、同期bakeによる画面停止やメモリ不足が残り得る。公開利用で停止、極端な遅延、保存・書き出し失敗が再現した場合は、H3と製品path測定を再開する。
+- T1 / P1 / B1 / D1〜D4の実装、CI、独立確認、今回の人間判断をもってGroup 12をcloseoutし、Group 13の契約監査を次の正式作業とする。
+
+### 変更しないこと
+
+- warning / hard cap / 採用上限の数値。
+- 製品コード、test code、schema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependency。
+- 2D Pro Gate全体の完了、3D開始、Ready化、merge。

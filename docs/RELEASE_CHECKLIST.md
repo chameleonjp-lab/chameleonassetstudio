@@ -1,6 +1,6 @@
 # Chameleon Asset Studio リリースチェックリスト
 
-最終更新日: 2026-07-24
+最終更新日: 2026-08-02
 対象: v1.0.0 判定
 上位文書: `docs/implementation/TEST_AND_RELEASE.md` / `docs/implementation/PHASES_14_17.md`（Phase 17）
 
@@ -64,7 +64,7 @@ Slice Eについては各実機で、Files pickerからSVG / GIF / APNGを選ん
 - [ ] iPhone Safariでsafe areaと下部操作バーが重ならず、確定・取消・loss確認を操作できる
 - [ ] iPhone Safariでsoftware keyboard表示中も入力、focus、確定・取消、横overflowに問題がない
 
-P1 Slice Cについては、Playwrightの375 × 667 / 667 × 375を実機Safariの代替にせず、Group 12完了前に確認端末・iOS・Safari・commit SHAを記録する。
+P1 Slice CのGroup 12物理Safari Gateは、2026-08-02の人間判断により完了扱いとする。個別操作結果、iOS / Safari version、確認時commitは新たに記録していないため、以下の詳細項目はリリース全体で必要になった場合の確認候補として残す。
 
 - [ ] iPhone SE 2 / 3世代相当で20件以上の構成Layer一覧を縦横表示し、指スクロール、選択、確定、取消、横overflowなしを確認する
 - [ ] software keyboard表示中も構成Layerの確定・取消へ到達でき、入力zoom、safe area、下部バーとの重なりがない
@@ -84,12 +84,12 @@ P1 Slice Cについては、Playwrightの375 × 667 / 667 × 375を実機Safari�
 - 本格的なエフェクトエディタ / パーティクル（effect はメタデータの最小対応のみ）
 - Rive / Spine の取り込み補助（docs 上の関係説明のみ。互換は名乗らない）
 - 大画像（4096²）連続編集のメモリ計測（4 章）
-- Group 12契約監査PR #146はmerge `cb21ea4`で完了し、T1 / R1 / P1とH1=E1 / H2=L1 / H3=M1をacceptedとした。T1 Slice AはPR #153、merge `e8fac95`、P1 Slice CはPR #154、merge `1c700e7`で実装済み。ADR-2026-07-24-027でR1をB1 / B2へ分割し、PR #157 final head `834cc38`、merge `bf13cac`、CI Run #501全成功、非GitHub・非Opusの固定head独立review `BLOCKER 0 / MUST 0 / SHOULD 0`としてB1を実装・検証・main反映済みとした。B2のH3数値budget、warning、hard cap、採用上限での実機確認は未着手
+- Group 12契約監査PR #146はmerge `cb21ea4`で完了し、T1 / R1 / P1とH1=E1 / H2=L1 / H3=M1をacceptedとした。T1 Slice AはPR #153、P1 Slice CはPR #154、R1 Slice B1はPR #157、D1〜D4はPR #201 / #204 / #206 / #209で実装・検証・main反映済みである。D1〜D4の指定3端末確認に加え、2026-08-02の人間判断でT1 / P1 / B1のGroup 12物理Safari Gateも完了扱いとした。B2のH3数値budget、warning、hard cap、採用上限でのproduct-path実測は未着手のまま`2D-6-PERFORMANCE`へ延期し、Group 12をcloseoutした。
 - PR #147 final head `1ba671f7`、merge `24a089c`でH3計測準備をmainへ反映済み。PR #148 final head `0cfc1ea`、merge `fbdeb357`で24時間配信基盤を反映し、CI Run #462 / #463は全job成功した
-- H3は`docs/future/2D_3_H3_MEASUREMENT_PROTOCOL.md`に従い、PC Chromium、iPhone 17 Pro / 11 Pro Safari、iPad Pro 2018 Safariのcore結果を先に記録する。120 / 240 Frameは未採用候補
+- H3は`docs/future/2D_3_H3_MEASUREMENT_PROTOCOL.md`に従い、`2D-6-PERFORMANCE`で必要になった時にPC Chromium、iPhone 17 Pro / 11 Pro Safari、iPad Pro 2018 Safariのcore結果を収集する。120 / 240 Frameは未採用候補であり、Group 12の合格値ではない。
 - 配信前にPages sourceが`GitHub Actions`であること、本体rootとH3 `/h3/`、画面のsource commit、開始 / 終了時刻、HTTPSを確認する。JSON保存後は`close-now`を実行してH3だけを閉じる。未完了でも24時間後に新規計測を拒否することを確認する。サービス本体も止める明示判断がない限りUnpublishしない
 - 公開workflowのChromium baselineと結果schema確認が成功していることを確認する。これは参考値であり、iPhone / iPad Safari結果の代替にしない
-- B1はPR #157のChromium E2Eで独立rig反転コピー、複数深度History不変、保存失敗rollbackとBlob欠落拒否を確認済みである。iPhone SE級のmobile Chromium viewportではtap、保存・reload、44px touch target、横overflowを確認した。物理iPhone / iPad Safariでのsafe area、software keyboard、実タッチ操作と、後続承認した上限のrig bake、保存・reload、memoryはB2 / Group 12 closeoutのproduct-path Gateとして確認する
+- B1はPR #157のChromium E2Eで独立rig反転コピー、複数深度History不変、保存失敗rollbackとBlob欠落拒否を確認済みである。iPhone SE級のmobile Chromium viewportではtap、保存・reload、44px touch target、横overflowを確認した。物理Safari Gateは2026-08-02の人間判断でGroup 12内では完了扱いとしたが、採用上限のrig bake、保存・reload、memoryは未測定のまま`2D-6-PERFORMANCE`へ延期する。
 
 ## 6. リリース手順（3 の手動確認後。4 は任意）
 

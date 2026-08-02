@@ -1,6 +1,6 @@
 # Decision Log
 
-最終更新日: 2026-07-30
+最終更新日: 2026-08-02
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 重要方針の変更経緯・決定記録
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
@@ -1332,3 +1332,39 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 - D4を`implemented / CI-passed / independently-verified / merged`としてcloseoutする。
 - PR #209ではschema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependency、B2資源上限、Group 12完了判定を変更していない。
 - B2の採用数値、warning、hard cap、採用上限でのPC / iPhone / iPad product-path実測、物理iPhone / iPad Safari、Group 12完了判定は別の人間判断までpendingとする。
+
+## ADR-2026-08-02-032: B2を2D-6-PERFORMANCEへ延期してGroup 12をcloseoutする
+
+### 状態
+
+- accepted（2026-08-02 人間判断）
+- 対象: Group 12 `2D-3-TIMELINE + 2D-3-RIG` closeout
+- 基準main: `8ed4790b6f8ceb2dacd0dbcda550b7f5c615cce5`
+- Group 12: completed
+- Group 13: 契約監査開始可能
+
+### 確認できた事実
+
+- T1 / P1 / B1 / D1〜D4は実装、CI、独立確認、main反映まで完了している。
+- D1〜D4は指定3端末の物理Safari確認を記録済みである。
+- B1は有限値、参照、循環、Layer所属、算出後frameCountの安全整数を割当前に検査するが、資源量のwarning / hard capを持たない。
+- B2の採用上限、PC / iPhone / iPad product-path raw測定、数値budgetは未実施である。
+
+### 決定
+
+- 本決定はADR-2026-07-24-027、ADR-2026-07-29-031、ADR-0022のうち、B2および物理Safari GateをGroup 12完了条件とする部分だけを置き換える。B2の未実装要件、性能測定手順、残存リスクは維持する。
+- 「実機確認系は一旦全て完了扱いで進める」という人間判断を、T1 / P1 / B1のGroup 12物理Safari Gateへ適用する。
+- 個別操作結果、正確なOS / Safari version、確認時commitを取得済みとは扱わない。
+- B2を`2D-6-PERFORMANCE`へ延期し、Group 12の完了条件から外す。B2は`unimplemented / unmeasured`のまま維持する。
+- 数値warning / hard cap、120 / 240 Frame、採用上限を承認しない。極端な生成量の停止・メモリ不足リスクを残す。
+- Group 12をcloseoutし、Group 13の契約監査を次の正式作業とする。
+
+### 再開条件
+
+- 公開利用でbake停止、極端な遅延、保存・書き出し失敗、reload / crash、Safari固有問題が再現した。
+- `2D-6-PERFORMANCE`で性能budgetまたは資源上限を採用する段階に入った。
+
+### 変更しないこと
+
+- 製品コード、test code、schema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependency。
+- 2D Pro Gate全体の完了、3D開始、Ready化、merge。
