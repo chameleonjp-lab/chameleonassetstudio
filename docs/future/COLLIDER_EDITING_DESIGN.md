@@ -10,7 +10,7 @@
 
 ---
 
-> **現状:** この文書は Phase 19-C の実装前に読む設計整理であり、実装済み機能一覧ではない。この PR ではアプリ本体、TypeScript 型、JSON Schema、`asset.json` version、`.casproj` 構造、export ZIP 構成、dependencies、GitHub Actions は変更しない。多角形判定、rect / circle 編集 UI、Export Preset、Unity / Godot / RPG Maker / Blender 向け出力、3D 関連は実装しない。
+> **現状:** Phase 19-Cのrect / circle表示・選択・直接編集は後続実装で完了した。将来境界はADR-0010を正本とし、Frame単位上書きだけを候補にしてAnimation単位上書きを採用しない。polygonは`unsupported`を維持する。Group 13の実装時期と追加契約は`docs/future/2D_3_GAME_DATA_PLAN.md`で人間判断待ちである。このdocs-only監査ではアプリ本体、TypeScript型、JSON Schema、`asset.json` version、`.casproj`構造、export ZIP構成、dependencies、GitHub Actionsを変更しない。
 
 ## 1. 結論
 
@@ -131,16 +131,9 @@ Phase 19-B の左右反転コピーは、判定も反転対象にする。Phase 
 
 フレーム別判定は、攻撃・被弾タイミングの確認に重要だが、現行 `Frame` は layer states を持つだけで、collider states を持たない。Phase 19-C では実装しない。
 
-将来案:
+ADR-0010により、正本は`Asset.colliders`、上書きはFrame単位、優先順位は「Frame上書き > Asset共通」と決定済みである。最初の上書きは既存colliderの位置、サイズ、`visible`だけを扱い、追加・削除、`purpose`変更、`shape`変更、Animation単位上書きは行わない。
 
-1. **asset-level collider + frame override**  
-   通常は `Asset.colliders` を正本にし、特定 frame だけ位置、サイズ、visible を上書きする。
-2. **animation/frame local collider**  
-   animation または frame に collider 配列を持たせる。攻撃判定には分かりやすいが、schema と helper 影響が大きい。
-3. **timeline event と collider visible の連動**  
-   attack window などを event として持ち、既存 collider の visible / enabled を時間で切り替える。
-
-Phase 19-C の次実装では、フレーム別判定に備えて UI 文言を「アセット共通判定」と誤解なく表示する程度に留める。`asset.json` 構造は変えない。
+Group 13のdocs-only監査では、複製・反転・canvas resize・D4 frame alignment・共通collider削除・現行Atlasの理由付き拒否までを実装前契約候補として整理した。人間が`O1`を採用するまで、`Frame.colliderOverrides`を製品へ追加しない。
 
 ## 8. 多角形判定を入れる場合の schema 候補
 
