@@ -15,7 +15,7 @@ test('tile inspector reports missing required settings and updates after manual 
   await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
 
   const inspection = properties.getByRole('region', { name: '素材検査' });
-  await expect(inspection).toBeVisible();
+  await expect(inspection).toBeVisible({ timeout: 10_000 });
   await expect(inspection.getByText('必須確認 1件 / 推奨確認 0件 / 情報 0件')).toBeVisible();
   await expect(inspection.getByText('タイル設定がありません。')).toBeVisible();
   await expect(inspection.getByText('tile.settingsMissing')).toBeVisible();

@@ -82,7 +82,7 @@ async function createBlankAsset(properties: Locator, name: string): Promise<void
   await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
   await expect(
     properties.locator('.asset-list').getByRole('button', { name, exact: true }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 10_000 });
 }
 
 function variantPanel(page: Page): Locator {

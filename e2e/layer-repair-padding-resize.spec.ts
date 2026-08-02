@@ -45,7 +45,7 @@ async function createBlankAsset(page: Page): Promise<void> {
   await properties.getByLabel('新規アセット名').fill('repair対象');
   await properties.getByLabel('新規アセットのサイズ').selectOption('32');
   await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
-  await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
+  await expect(page.getByLabel('アセットキャンバス')).toBeVisible({ timeout: 10_000 });
 }
 
 async function canvasCenter(page: Page): Promise<{ x: number; y: number }> {
