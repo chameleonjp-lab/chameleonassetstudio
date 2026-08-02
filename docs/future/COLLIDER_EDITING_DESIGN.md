@@ -1,6 +1,6 @@
 # Collider Editing Design
 
-最終更新日: 2026-07-09  
+最終更新日: 2026-08-02
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 文書種別: Phase 19-C「判定編集強化」の docs-first 設計  
 基礎要件: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
@@ -10,7 +10,7 @@
 
 ---
 
-> **現状:** Phase 19-Cのrect / circle表示・選択・直接編集は後続実装で完了した。将来境界はADR-0010を正本とし、Frame単位上書きだけを候補にしてAnimation単位上書きを採用しない。polygonは`unsupported`を維持する。Group 13の実装時期と追加契約は`docs/future/2D_3_GAME_DATA_PLAN.md`で人間判断待ちである。このdocs-only監査ではアプリ本体、TypeScript型、JSON Schema、`asset.json` version、`.casproj`構造、export ZIP構成、dependencies、GitHub Actionsを変更しない。
+> **現状:** Phase 19-Cのrect / circle表示・選択・直接編集は後続実装で完了した。将来境界はADR-0010を正本とし、Frame単位上書きだけを採用してAnimation単位上書きを採用しない。2026-08-02のGroup 13判断でO1を採用し、G1後に正式契約Slice Bと製品実装Slice Cへ分ける。P1によりpolygonは2D Pro Gateまで`unsupported`を維持する。このdocs-only採用記録ではアプリ本体、TypeScript型、JSON Schema、`asset.json` version、`.casproj`構造、export ZIP構成、dependencies、GitHub Actionsを変更しない。
 
 ## 1. 結論
 
@@ -135,7 +135,7 @@ ADR-0010により、正本は`Asset.colliders`、上書きはFrame単位、優�
 
 ここで`visible`は編集・debug表示だけを制御し、ゲーム内の当たり判定の有効 / 無効を表さない。攻撃や被弾の有効時間帯を表すには`enabled`等の別fieldが必要であり、O1には含めず別の人間判断へ分離する。
 
-Group 13のdocs-only監査では、複製・反転・canvas resize・D4 frame alignment・共通collider削除・現行Atlasの理由付き拒否までを実装前契約候補として整理した。人間が`O1`を採用するまで、`Frame.colliderOverrides`を製品へ追加しない。
+Group 13のdocs-only監査では、複製・反転・canvas resize・D4 frame alignment・共通collider削除・現行Atlasの理由付き拒否までを実装前契約候補として整理した。O1は2026-08-02に採用済みだが、canonical schema形、semantic validation、UI操作、保存と書き出し拒否の契約は未確定である。正式契約Slice Bがmainへmergeされるまで、`Frame.colliderOverrides`を製品へ追加しない。
 
 ## 8. 多角形判定を入れる場合の schema 候補
 
@@ -205,7 +205,7 @@ migrateまたはversion更新が必要になる条件:
 - `.casproj` 内で collider を別ファイルへ分離する場合。
 - export ZIP の colliders を `asset.json` 以外へ分離し、既存 helper の読み込み先を変える場合。
 
-ADR-0015に従い、`Frame.colliderOverrides?`をoptional・additiveに追加するO1候補はAsset `0.2.0`を維持し、migrationを追加しない。ただしTypeScript型とJSON Schema、field不在の旧data roundtrip、未知field保持、保存失敗時rollback、Atlas / product ZIP / helperの理由付き拒否は同じ実装Gateで検証する。
+ADR-0015に従い、`Frame.colliderOverrides?`をoptional・additiveに追加するO1採用範囲ではAsset `0.2.0`を維持し、migrationを追加しない。ただし正確な永続表現はSlice Bで固定し、TypeScript型とJSON Schema、field不在の旧data roundtrip、未知field保持、保存失敗時rollback、Atlas / product ZIP / helperの理由付き拒否はSlice Cの同じ実装Gateで検証する。
 
 多角形判定は`Collider.shape` unionと既存helperの解釈を広げるため、optional field追加と同一視しない。version / migrate / feature gateは別設計と人間判断で決める。
 
