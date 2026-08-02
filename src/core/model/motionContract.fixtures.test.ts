@@ -194,6 +194,17 @@ describe('ADR-0011 / 0021: optional追加と未知fieldの前方互換', () => {
     };
     const asset = {
       ...baseAsset,
+      colliders: [
+        ...baseAsset.colliders,
+        {
+          id: 'col_1',
+          name: 'future body',
+          purpose: 'body' as const,
+          shape: 'rect' as const,
+          visible: true,
+          rect: { x: 0, y: 0, width: 10, height: 10 },
+        },
+      ],
       frames: [frameWithOverrides],
       animations: [animationWithEvents],
     };

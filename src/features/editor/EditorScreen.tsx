@@ -72,6 +72,7 @@ import {
   createLinkedVariantFingerprint,
   generateId,
   inspectLinkedVariant,
+  inspectFrameColliderOverrides,
   inspectFrameAlignment,
   prepareLinkedVariantRefresh,
   previewFrameAlignment,
@@ -340,6 +341,8 @@ type PendingImageImport = PendingNewAssetsImageImport | PendingLayerImageImport;
 interface EditorPersistentMutationOptions {
   allowPendingImageImport?: boolean;
   allowFrameAlignment?: boolean;
+  /** 停止中に明示選択したFrameのcollider overrideだけをcanonical Assetへ保存する。 */
+  allowFramePreview?: boolean;
 }
 
 function frameAlignmentDeltaForDraft(draft: FrameAlignmentDraft): FrameAlignmentDelta | null {
@@ -835,6 +838,13 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const selectedAnimation =
     selectedAsset?.animations.find((animation) => animation.id === selectedAnimationId) ?? null;
   const framePreviewActive = previewFrameId !== null;
+  const selectedPreviewFrame = useMemo(
+    () =>
+      selectedAsset && previewFrameId
+        ? ((selectedAsset.frames ?? []).find((frame) => frame.id === previewFrameId) ?? null)
+        : null,
+    [previewFrameId, selectedAsset],
+  );
   const availableFrameIds = useMemo(
     () => new Set((selectedAsset?.frames ?? []).map((frame) => frame.id)),
     [selectedAsset],
@@ -922,8 +932,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     ({
       allowPendingImageImport = false,
       allowFrameAlignment = false,
+      allowFramePreview = false,
     }: EditorPersistentMutationOptions = {}) => {
-      if (framePreviewActive) {
+      if (framePreviewActive && !allowFramePreview) {
         setEditorError(FRAME_PREVIEW_EDIT_MESSAGE);
         return false;
       }
@@ -961,9 +972,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       snapshot: Asset,
       {
         allowFrameAlignment = false,
-      }: Pick<EditorPersistentMutationOptions, 'allowFrameAlignment'> = {},
+        allowFramePreview = false,
+      }: Pick<EditorPersistentMutationOptions, 'allowFrameAlignment' | 'allowFramePreview'> = {},
     ) => {
-      if (framePreviewActive) {
+      if (framePreviewActive && !allowFramePreview) {
         setEditorError(FRAME_PREVIEW_EDIT_MESSAGE);
         return false;
       }
@@ -1004,7 +1016,11 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   );
 
   const handleHistoryUndo = useCallback(async () => {
-    if (!canStartEditorPersistentMutation()) {
+    const allowFramePreview =
+      framePreviewActive &&
+      !isPlaying &&
+      (historyState.undoLabel?.startsWith('Frame別当たり判定') ?? false);
+    if (!canStartEditorPersistentMutation({ allowFramePreview })) {
       return;
     }
     try {
@@ -1015,10 +1031,20 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         `元に戻せませんでした: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
-  }, [canStartEditorPersistentMutation, history]);
+  }, [
+    canStartEditorPersistentMutation,
+    framePreviewActive,
+    history,
+    historyState.undoLabel,
+    isPlaying,
+  ]);
 
   const handleHistoryRedo = useCallback(async () => {
-    if (!canStartEditorPersistentMutation()) {
+    const allowFramePreview =
+      framePreviewActive &&
+      !isPlaying &&
+      (historyState.redoLabel?.startsWith('Frame別当たり判定') ?? false);
+    if (!canStartEditorPersistentMutation({ allowFramePreview })) {
       return;
     }
     try {
@@ -1029,7 +1055,13 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         `やり直せませんでした: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
-  }, [canStartEditorPersistentMutation, history]);
+  }, [
+    canStartEditorPersistentMutation,
+    framePreviewActive,
+    history,
+    historyState.redoLabel,
+    isPlaying,
+  ]);
 
   /** 変更を適用し、履歴へ積む。 */
   const commitAssetChange = useCallback(
@@ -1037,7 +1069,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       label: string,
       before: Asset,
       next: Asset,
-      options: Pick<EditorPersistentMutationOptions, 'allowFrameAlignment'> = {},
+      options: Pick<
+        EditorPersistentMutationOptions,
+        'allowFrameAlignment' | 'allowFramePreview'
+      > = {},
     ) => {
       if (!canStartEditorPersistentMutation(options)) {
         return false;
@@ -1045,10 +1080,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       const pushed = history.push({
         label,
         undo: () => {
-          applyAssetSnapshot(before);
+          applyAssetSnapshot(before, options);
         },
         redo: () => {
-          applyAssetSnapshot(next);
+          applyAssetSnapshot(next, options);
         },
       });
       if (!pushed) {
@@ -3205,6 +3240,34 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     commitAssetChange(label, selectedAsset, next);
   };
 
+  /** 停止中の選択Frameに対するO1専用commit。派生previewAssetは保存へ流さない。 */
+  const commitFrameColliderChange = (label: string, next: Asset) => {
+    if (!selectedAsset || !selectedPreviewFrame || isPlaying || next === selectedAsset) {
+      return;
+    }
+    const inspection = inspectFrameColliderOverrides(next);
+    if (!inspection.valid) {
+      setEditorError(
+        `Frame別当たり判定を保存できません: ${inspection.issues
+          .map((issue) => `${issue.path} [${issue.code}] ${issue.message}`)
+          .join(' / ')}`,
+      );
+      return;
+    }
+    if (
+      commitAssetChange(
+        `Frame別当たり判定: ${label.replace(/^Frame別当たり判定\s*/, '')}`,
+        selectedAsset,
+        next,
+        {
+          allowFramePreview: true,
+        },
+      )
+    ) {
+      setEditorError(null);
+    }
+  };
+
   /** 画像ファイルを選択中アセットのレイヤーとして追加する（Phase 7）。 */
   const handleAddImageLayer = async (event: ChangeEvent<HTMLInputElement>) => {
     // value のリセットで FileList が空になる前に配列へ写す
@@ -3363,7 +3426,13 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         <div className="editor-history-buttons">
           <button
             type="button"
-            disabled={!historyState.canUndo || persistentMutationBlocked || framePreviewActive}
+            disabled={
+              !historyState.canUndo ||
+              persistentMutationBlocked ||
+              isPlaying ||
+              (framePreviewActive &&
+                !(historyState.undoLabel?.startsWith('Frame別当たり判定') ?? false))
+            }
             onClick={() => void handleHistoryUndo()}
             title={historyState.undoLabel ?? undefined}
           >
@@ -3371,7 +3440,13 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           </button>
           <button
             type="button"
-            disabled={!historyState.canRedo || persistentMutationBlocked || framePreviewActive}
+            disabled={
+              !historyState.canRedo ||
+              persistentMutationBlocked ||
+              isPlaying ||
+              (framePreviewActive &&
+                !(historyState.redoLabel?.startsWith('Frame別当たり判定') ?? false))
+            }
             onClick={() => void handleHistoryRedo()}
             title={historyState.redoLabel ?? undefined}
           >
@@ -3439,8 +3514,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             <div className={`canvas-editor-frame${dragOver ? ' drag-over' : ''}`}>
               {framePreviewActive && (
                 <p className="editor-note" role="status" aria-label="フレームプレビューの編集制限">
-                  フレームをプレビュー中です。パン・ズーム・レイヤー選択だけ利用できます。
-                  保存を伴う編集へ戻るには、タイムラインの「停止」を押してください。
+                  フレームをプレビュー中です。キャンバスはパン・ズーム・レイヤー選択だけ利用できます。
+                  停止中はプロパティの「Frame別」から当たり判定だけ編集できます。
                 </p>
               )}
               <nav
@@ -4675,6 +4750,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               onCommitFieldEdit={commitLayerEdit}
               selectedColliderId={selectedColliderId}
               onSelectCollider={setSelectedColliderId}
+              selectedFrame={selectedPreviewFrame}
+              isPlaying={isPlaying}
+              onFrameCommit={commitFrameColliderChange}
+              onFrameError={setEditorError}
             />
           ) : (
             <p className="editor-note">

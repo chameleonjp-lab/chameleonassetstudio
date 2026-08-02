@@ -281,6 +281,65 @@ describe('Slice C family variant recipe / fingerprint', () => {
     ]);
   });
 
+  it('linked mirror / refreshでFrame collider overrideを鏡映しfamily collider mapへ張り替える', async () => {
+    const base = baseAsset();
+    base.frames![0].colliderOverrides = [
+      {
+        colliderId: 'col_body',
+        rect: { x: 100, y: 20, width: 30, height: 40, futureGeometry: { keep: true } },
+        visible: false,
+        futureEntry: { keep: true },
+      },
+    ];
+    const draft = createLinkedMirrorVariantDraft(base, { now: NOW });
+    const targetFrameId = draft.recipe.idMap.frames[base.frames![0].id];
+    const targetColliderId = draft.recipe.idMap.colliders.col_body;
+    expect(
+      draft.asset.frames?.find((frame) => frame.id === targetFrameId)?.colliderOverrides,
+    ).toEqual([
+      {
+        colliderId: targetColliderId,
+        rect: { x: 512 - 100 - 30, y: 20, width: 30, height: 40, futureGeometry: { keep: true } },
+        visible: false,
+        futureEntry: { keep: true },
+      },
+    ]);
+
+    const baseBlobs = blobsFor(base);
+    const variantBlobs = blobsFor(draft.asset);
+    const variant: LinkedAssetFamilyVariant = {
+      assetId: draft.asset.id,
+      kind: 'linked-mirror',
+      recipe: draft.recipe,
+      fingerprint: await createLinkedVariantFingerprint({
+        base,
+        variant: draft.asset,
+        recipe: draft.recipe,
+        baseBlobs,
+        variantBlobs,
+        now: NOW,
+      }),
+    };
+    const changedBase = structuredClone(base);
+    changedBase.frames![0].colliderOverrides![0].rect!.x = 120;
+    const refreshed = await prepareLinkedVariantRefresh({
+      base: changedBase,
+      variantAsset: draft.asset,
+      variant,
+      baseBlobs,
+      variantBlobs,
+      now: new Date('2026-07-18T01:00:00.000Z'),
+    });
+    expect(
+      refreshed.afterAsset.frames?.find((frame) => frame.id === targetFrameId)
+        ?.colliderOverrides?.[0],
+    ).toMatchObject({
+      colliderId: targetColliderId,
+      rect: { x: 512 - 120 - 30, y: 20, width: 30, height: 40 },
+      futureEntry: { keep: true },
+    });
+  });
+
   it('write-set内の手動削除をmanual-adjustedとして検出し、同じtarget IDで復元する', async () => {
     const fixture = await mirrorFixture();
     const removedTargetId = fixture.variant.recipe.idMap.layers[fixture.base.layers[0].id];

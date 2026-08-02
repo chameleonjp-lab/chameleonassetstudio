@@ -506,6 +506,43 @@
         }
       }
     },
+    "frameColliderRect": {
+      "type": "object",
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "frameColliderCircle": {
+      "type": "object",
+      "required": ["x", "y", "radius"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "radius": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "frameColliderOverride": {
+      "type": "object",
+      "required": ["colliderId"],
+      "properties": {
+        "colliderId": { "type": "string", "minLength": 1 },
+        "rect": { "$ref": "#/definitions/frameColliderRect" },
+        "circle": { "$ref": "#/definitions/frameColliderCircle" },
+        "visible": { "type": "boolean" }
+      },
+      "oneOf": [
+        { "required": ["rect"], "not": { "required": ["circle"] } },
+        { "required": ["circle"], "not": { "required": ["rect"] } },
+        {
+          "required": ["visible"],
+          "not": { "anyOf": [{ "required": ["rect"] }, { "required": ["circle"] }] }
+        }
+      ]
+    },
     "frame": {
       "type": "object",
       "required": ["id", "name", "layerStates"],
@@ -526,6 +563,10 @@
           "items": {
             "$ref": "#/definitions/frameLayerState"
           }
+        },
+        "colliderOverrides": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/frameColliderOverride" }
         }
       }
     },

@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react';
 import {
   ANCHOR_ROLES,
   COLLIDER_PURPOSES,
@@ -5,6 +6,13 @@ import {
   addRectCollider,
   removeAnchor,
   removeCollider,
+  findFrameColliderOverride,
+  frameColliderReferenceReason,
+  resetFrameColliderGeometry,
+  resetFrameColliderOverride,
+  resolveFrameColliders,
+  setFrameColliderGeometry,
+  setFrameColliderVisible,
   resetOriginToBottomCenter,
   setOrigin,
   updateAnchor,
@@ -12,7 +20,10 @@ import {
   type AnchorRole,
   type Asset,
   type ColliderPurpose,
+  type Frame,
+  type FrameColliderOverrideMutationResult,
 } from '../../core/model';
+import { CommittedInput } from './CommittedInput';
 import { colliderPurposeColor, isSelectedCollider } from './colliderDisplay';
 import { applyEditSnap } from './snap';
 
@@ -38,6 +49,12 @@ interface GameDataPanelProps {
   onCommitFieldEdit: () => void;
   selectedColliderId: string | null;
   onSelectCollider: (colliderId: string) => void;
+  /** タイムラインで明示選択した停止中Frame。 */
+  selectedFrame: Frame | null;
+  isPlaying: boolean;
+  /** Frame collider override専用のcanonical commit経路。 */
+  onFrameCommit: (label: string, next: Asset) => void;
+  onFrameError: (message: string) => void;
 }
 
 const PURPOSE_LABELS: Record<ColliderPurpose, string> = {
@@ -63,7 +80,21 @@ export function GameDataPanel({
   onCommitFieldEdit,
   selectedColliderId,
   onSelectCollider,
+  selectedFrame,
+  isPlaying,
+  onFrameCommit,
+  onFrameError,
 }: GameDataPanelProps) {
+  const [colliderScope, setColliderScope] = useState<'asset' | 'frame'>('asset');
+
+  useEffect(() => {
+    setColliderScope('asset');
+  }, [asset.id]);
+
+  useEffect(() => {
+    if (!selectedFrame || isPlaying) setColliderScope('asset');
+  }, [isPlaying, selectedFrame]);
+
   const numberValue = (raw: string): number => Number(raw) || 0;
   const snappedNumberValue = (raw: string): number => {
     const value = numberValue(raw);
@@ -217,16 +248,46 @@ export function GameDataPanel({
       )}
 
       <h4 className="gamedata-heading">当たり判定</h4>
+      <label className="editor-field gamedata-collider-scope">
+        当たり判定の編集範囲
+        <select
+          aria-label="当たり判定の編集範囲"
+          value={colliderScope}
+          onChange={(event) => setColliderScope(event.target.value as 'asset' | 'frame')}
+        >
+          <option value="asset">Asset共通</option>
+          <option value="frame" disabled={!selectedFrame || isPlaying}>
+            選択Frame{selectedFrame ? `「${selectedFrame.name}」` : '（タイムラインで選択）'}
+          </option>
+        </select>
+      </label>
+      <p className="editor-note" role="status">
+        {colliderScope === 'frame' && selectedFrame
+          ? `Frame別編集中: 「${selectedFrame.name}」。省略した値はAsset共通値を使います。`
+          : isPlaying
+            ? 'Animation再生中はFrame別編集へ切り替えられません。停止してFrameを選択してください。'
+            : 'Asset共通を編集中です。Frame別編集はタイムラインで停止中のFrameを選択して切り替えます。'}
+      </p>
       <div className="gamedata-buttons">
         <button type="button" aria-pressed={showColliders} onClick={onToggleShowColliders}>
           判定を表示
         </button>
-        <button type="button" onClick={() => onCommit('矩形判定を追加', addRectCollider(asset))}>
-          矩形判定を追加
-        </button>
-        <button type="button" onClick={() => onCommit('円判定を追加', addCircleCollider(asset))}>
-          円判定を追加
-        </button>
+        {colliderScope === 'asset' && (
+          <>
+            <button
+              type="button"
+              onClick={() => onCommit('矩形判定を追加', addRectCollider(asset))}
+            >
+              矩形判定を追加
+            </button>
+            <button
+              type="button"
+              onClick={() => onCommit('円判定を追加', addCircleCollider(asset))}
+            >
+              円判定を追加
+            </button>
+          </>
+        )}
       </div>
       <ul className="gamedata-legend" aria-label="判定用途の色凡例">
         {COLLIDER_PURPOSES.map((purpose) => (
@@ -241,7 +302,7 @@ export function GameDataPanel({
           </li>
         ))}
       </ul>
-      {asset.colliders.length > 0 && (
+      {colliderScope === 'asset' && asset.colliders.length > 0 && (
         <ul className="gamedata-list" aria-label="当たり判定一覧">
           {asset.colliders.map((collider) => {
             const selected = isSelectedCollider(collider.id, selectedColliderId);
@@ -281,7 +342,14 @@ export function GameDataPanel({
                   <button
                     type="button"
                     aria-label={`判定「${collider.name}」を削除`}
-                    onClick={() => onCommit('判定削除', removeCollider(asset, collider.id))}
+                    onClick={() => {
+                      const reason = frameColliderReferenceReason(asset, collider.id);
+                      if (reason) {
+                        onFrameError(reason);
+                        return;
+                      }
+                      onCommit('判定削除', removeCollider(asset, collider.id));
+                    }}
                   >
                     削除
                   </button>
@@ -434,6 +502,239 @@ export function GameDataPanel({
           })}
         </ul>
       )}
+      {colliderScope === 'frame' && selectedFrame && !isPlaying && (
+        <FrameColliderOverridePanel
+          asset={asset}
+          frame={selectedFrame}
+          snapEnabled={snapEnabled}
+          gridSize={gridSize}
+          selectedColliderId={selectedColliderId}
+          onSelectCollider={onSelectCollider}
+          onCommit={onFrameCommit}
+          onError={onFrameError}
+        />
+      )}
     </div>
+  );
+}
+
+interface FrameColliderOverridePanelProps {
+  asset: Asset;
+  frame: Frame;
+  snapEnabled: boolean;
+  gridSize: number;
+  selectedColliderId: string | null;
+  onSelectCollider: (colliderId: string) => void;
+  onCommit: (label: string, next: Asset) => void;
+  onError: (message: string) => void;
+}
+
+const OVERRIDE_KNOWN_KEYS = new Set(['colliderId', 'rect', 'circle', 'visible']);
+
+function FrameColliderOverridePanel({
+  asset,
+  frame,
+  snapEnabled,
+  gridSize,
+  selectedColliderId,
+  onSelectCollider,
+  onCommit,
+  onError,
+}: FrameColliderOverridePanelProps) {
+  const effectiveColliders = useMemo(
+    () => resolveFrameColliders(asset, frame.id),
+    [asset, frame.id],
+  );
+  const commitResult = (label: string, result: FrameColliderOverrideMutationResult) => {
+    if (!result.ok) {
+      onError(result.message);
+      return;
+    }
+    if (result.changed) onCommit(label, result.asset);
+  };
+  const normalizeNumber = (raw: string, current: number, positive: boolean): string => {
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) return String(current);
+    const snapped = positive ? Math.max(1, parsed) : applyEditSnap(parsed, snapEnabled, gridSize);
+    return String(snapped);
+  };
+
+  if (asset.colliders.length === 0) {
+    return <p className="editor-note">先にAsset共通の当たり判定を追加してください。</p>;
+  }
+
+  return (
+    <ul className="gamedata-list" aria-label={`Frame「${frame.name}」の当たり判定上書き`}>
+      {asset.colliders.map((collider, index) => {
+        const effective = effectiveColliders[index];
+        const override = findFrameColliderOverride(frame, collider.id);
+        const unknownKeys = override
+          ? Object.keys(override).filter((key) => !OVERRIDE_KNOWN_KEYS.has(key))
+          : [];
+        const selected = isSelectedCollider(collider.id, selectedColliderId);
+        const commitGeometryField = (field: string, raw: string) => {
+          if (effective.shape === 'rect') {
+            const current = effective.rect[field as keyof typeof effective.rect] as number;
+            const value = Number(
+              normalizeNumber(raw, current, field === 'width' || field === 'height'),
+            );
+            commitResult(
+              'Frame別当たり判定 geometry変更',
+              setFrameColliderGeometry(asset, frame.id, collider.id, {
+                ...structuredClone(effective.rect),
+                [field]: value,
+              }),
+            );
+          } else {
+            const current = effective.circle[field as keyof typeof effective.circle] as number;
+            const value = Number(normalizeNumber(raw, current, field === 'radius'));
+            commitResult(
+              'Frame別当たり判定 geometry変更',
+              setFrameColliderGeometry(asset, frame.id, collider.id, {
+                ...structuredClone(effective.circle),
+                [field]: value,
+              }),
+            );
+          }
+        };
+        const fields =
+          effective.shape === 'rect'
+            ? ([
+                ['x', 'X'],
+                ['y', 'Y'],
+                ['width', '幅'],
+                ['height', '高さ'],
+              ] as const)
+            : ([
+                ['x', 'X'],
+                ['y', 'Y'],
+                ['radius', '半径'],
+              ] as const);
+        const geometry = effective.shape === 'rect' ? effective.rect : effective.circle;
+
+        return (
+          <li key={collider.id} className={`gamedata-row${selected ? ' selected' : ''}`}>
+            <div className="gamedata-row-header">
+              <span
+                className={`gamedata-collider-swatch${collider.purpose === 'sensor' ? ' sensor' : ''}`}
+                style={{ backgroundColor: purposeColor(collider.purpose) }}
+                aria-hidden="true"
+              />
+              <strong>{collider.name}</strong>
+              <span className="gamedata-shape">{collider.shape === 'rect' ? '矩形' : '円'}</span>
+              <button
+                type="button"
+                aria-label={`Frame「${frame.name}」の判定「${collider.name}」を選択`}
+                aria-pressed={selected}
+                onClick={() => onSelectCollider(collider.id)}
+              >
+                選択
+              </button>
+            </div>
+            <p className="editor-note">
+              位置・サイズ: {override?.rect || override?.circle ? 'Frame値' : 'Asset共通値'} / 表示:{' '}
+              {override?.visible === undefined
+                ? `Asset共通（${collider.visible ? '表示' : '非表示'}）`
+                : override.visible
+                  ? 'Frameで表示'
+                  : 'Frameで非表示'}
+            </p>
+            <div className="gamedata-inline-fields">
+              {fields.map(([field, label]) => {
+                const current = geometry[field as keyof typeof geometry] as number;
+                return (
+                  <label key={field} className="editor-field">
+                    {label}
+                    <CommittedInput
+                      type="number"
+                      inputMode="decimal"
+                      min={
+                        field === 'width' || field === 'height' || field === 'radius'
+                          ? 1
+                          : undefined
+                      }
+                      aria-label={`Frame「${frame.name}」判定「${collider.name}」${label}`}
+                      value={String(current)}
+                      normalize={(raw) =>
+                        normalizeNumber(
+                          raw,
+                          current,
+                          field === 'width' || field === 'height' || field === 'radius',
+                        )
+                      }
+                      onCommit={(raw) => commitGeometryField(field, raw)}
+                    />
+                  </label>
+                );
+              })}
+            </div>
+            <label className="editor-field">
+              Frame別の表示
+              <select
+                aria-label={`Frame「${frame.name}」判定「${collider.name}」の表示`}
+                value={
+                  override?.visible === undefined ? 'inherit' : override.visible ? 'show' : 'hide'
+                }
+                onChange={(event) => {
+                  const value = event.target.value;
+                  commitResult(
+                    'Frame別当たり判定 表示変更',
+                    setFrameColliderVisible(
+                      asset,
+                      frame.id,
+                      collider.id,
+                      value === 'inherit' ? undefined : value === 'show',
+                    ),
+                  );
+                }}
+              >
+                <option value="inherit">Asset共通値を使う</option>
+                <option value="show">表示</option>
+                <option value="hide">非表示</option>
+              </select>
+            </label>
+            <div className="gamedata-buttons gamedata-override-actions">
+              <button
+                type="button"
+                disabled={!override?.rect && !override?.circle}
+                onClick={() =>
+                  commitResult(
+                    'Frame別当たり判定 geometry解除',
+                    resetFrameColliderGeometry(asset, frame.id, collider.id),
+                  )
+                }
+              >
+                位置・サイズを共通へ戻す
+              </button>
+              <button
+                type="button"
+                disabled={!override}
+                onClick={() => {
+                  const message =
+                    unknownKeys.length > 0
+                      ? `未知field（${unknownKeys.join('、')}）を含む、このFrameの上書き全体を削除します。よろしいですか？`
+                      : 'このFrameの位置・サイズと表示の上書きをすべて解除します。よろしいですか？';
+                  if (!window.confirm(message)) {
+                    return;
+                  }
+                  commitResult(
+                    'Frame別当たり判定 上書き全解除',
+                    resetFrameColliderOverride(asset, frame.id, collider.id),
+                  );
+                }}
+              >
+                このFrameの上書きをすべて解除
+              </button>
+            </div>
+            {unknownKeys.length > 0 && (
+              <p className="export-warning" role="status">
+                未知field（{unknownKeys.join('、')}
+                ）を保持中です。field単位の解除で未知fieldだけが残る場合は拒否します。
+              </p>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }

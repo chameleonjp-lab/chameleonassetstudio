@@ -109,7 +109,13 @@ function rigReasons(asset: Asset, label: string): string[] {
   return reasons;
 }
 
-const SUPPORTED_FRAME_KEYS = new Set(['id', 'name', 'layerStates', 'durationMs']);
+const SUPPORTED_FRAME_KEYS = new Set([
+  'id',
+  'name',
+  'layerStates',
+  'durationMs',
+  'colliderOverrides',
+]);
 const SUPPORTED_FRAME_LAYER_STATE_KEYS = new Set(['layerId', 'visible', 'transform', 'opacity']);
 const SUPPORTED_ANIMATION_KEYS = new Set([
   'id',
@@ -946,6 +952,15 @@ function mirrorRefreshAsset(
       ...structuredClone(state),
       layerId: ownMappedId(generatedToTarget.layers, state.layerId) ?? state.layerId,
     })),
+    ...(frame.colliderOverrides
+      ? {
+          colliderOverrides: frame.colliderOverrides.map((override) => ({
+            ...structuredClone(override),
+            colliderId:
+              ownMappedId(generatedToTarget.colliders, override.colliderId) ?? override.colliderId,
+          })),
+        }
+      : {}),
   }));
   const expectedAnimations = generated.animations.map((animation) => ({
     ...structuredClone(animation),

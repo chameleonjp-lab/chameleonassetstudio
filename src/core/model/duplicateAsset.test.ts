@@ -34,6 +34,14 @@ describe('duplicateAsset', () => {
         name: 'frame',
         durationMs: 125,
         layerStates: [{ layerId: layer.id, transform: structuredClone(layer.transform) }],
+        colliderOverrides: [
+          {
+            colliderId: source.colliders[0].id,
+            rect: { x: 1, y: 2, width: 3, height: 4, futureGeometry: { exact: true } },
+            futureEntry: { idLike: source.colliders[0].id },
+          },
+        ],
+        futureFrame: { exact: true },
       },
     ];
     source.animations = [
@@ -87,6 +95,14 @@ describe('duplicateAsset', () => {
     expect(copy.frames?.[0].id).not.toBe('frame_source');
     expect(copy.frames?.[0].durationMs).toBe(125);
     expect(copy.frames?.[0].layerStates[0].layerId).toBe(copy.layers[0].id);
+    expect(copy.frames?.[0].colliderOverrides?.[0].colliderId).toBe(copy.colliders[0].id);
+    expect(copy.frames?.[0].colliderOverrides?.[0].colliderId).not.toBe(source.colliders[0].id);
+    expect(copy.frames?.[0].colliderOverrides?.[0]).toMatchObject({
+      rect: { x: 1, y: 2, width: 3, height: 4, futureGeometry: { exact: true } },
+      // 未知field内のIDらしい文字列は推測変換しない。
+      futureEntry: { idLike: source.colliders[0].id },
+    });
+    expect(copy.frames?.[0].futureFrame).toEqual({ exact: true });
     expect(copy.animations[0].frameIds).toEqual([copy.frames?.[0].id]);
     expect(copy.animations[0].events?.[0]).toMatchObject({
       name: 'hand_left_attack',
@@ -109,10 +125,16 @@ describe('duplicateAsset', () => {
         preserved: boolean;
       }
     ).preserved = false;
+    (copy.frames?.[0].colliderOverrides?.[0].futureEntry as { idLike: string }).idLike = 'changed';
+    (copy.frames?.[0].futureFrame as { exact: boolean }).exact = false;
     expect(source.animations[0].events?.[0].payload).toEqual({ power: 2 });
     expect(
       (source.animations[0].events?.[0] as unknown as Record<string, unknown>).futureEventField,
     ).toEqual({ preserved: true });
+    expect(source.frames[0].colliderOverrides?.[0].futureEntry).toEqual({
+      idLike: source.colliders[0].id,
+    });
+    expect(source.frames[0].futureFrame).toEqual({ exact: true });
   });
 
   it('copy側の入れ子を変更しても元Assetを変更しない', () => {

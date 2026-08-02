@@ -1,5 +1,5 @@
 import { generateId, type Asset, type TextureRef } from '../model';
-import { validateAsset } from '../schema/validate';
+import { validateAssetForPersistence } from '../schema/validate';
 import { migrateAndValidateAssetDocument } from './assetDocument';
 import {
   INDEX_BY_ASSET,
@@ -99,7 +99,7 @@ function findEditTexture(asset: Asset, blobKey: string): TextureRef | undefined 
 }
 
 function assertValidSnapshotAsset(asset: Asset, assetId: string, blobKey: string): TextureRef {
-  const result = validateAsset(asset);
+  const result = validateAssetForPersistence(asset);
   if (!result.valid) {
     throw new StorageError(`復旧点のAssetが不正です: ${result.errors.join(' / ')}`);
   }

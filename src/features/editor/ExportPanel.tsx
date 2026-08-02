@@ -4,6 +4,10 @@ import {
   formatFixedFpsAnimationLosses,
 } from '../../core/export/animationLoss';
 import {
+  findColliderOverrideExportLosses,
+  formatColliderOverrideExportLosses,
+} from '../../core/export/colliderOverrideLoss';
+import {
   downloadBlob,
   exportAssetJson,
   exportImage,
@@ -88,8 +92,14 @@ export function ExportPanel({ asset, project, projectAssets }: ExportPanelProps)
   const [error, setError] = useState<string | null>(null);
   const [completedFileName, setCompletedFileName] = useState<string | null>(null);
   const fixedFpsLosses = findFixedFpsAnimationLosses(asset);
-  const zipLossMessage =
-    fixedFpsLosses.length > 0 ? formatFixedFpsAnimationLosses(fixedFpsLosses) : null;
+  const colliderOverrideLosses = findColliderOverrideExportLosses(asset);
+  const zipLossMessages = [
+    ...(fixedFpsLosses.length > 0 ? [formatFixedFpsAnimationLosses(fixedFpsLosses)] : []),
+    ...(colliderOverrideLosses.length > 0
+      ? [formatColliderOverrideExportLosses(colliderOverrideLosses)]
+      : []),
+  ];
+  const zipLossMessage = zipLossMessages.length > 0 ? zipLossMessages.join(' ') : null;
 
   const runExport = async (kind: ExportKind) => {
     setError(null);

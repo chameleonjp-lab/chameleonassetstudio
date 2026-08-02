@@ -1,6 +1,7 @@
 import type { Asset } from './asset';
 import { generateId } from './factories';
 import type { PartPose } from './part';
+import { assertFrameColliderOverridesValid } from './frameColliderOverrides';
 
 export interface DuplicateAssetOptions {
   now?: Date;
@@ -24,6 +25,7 @@ function clonePose(pose: PartPose): PartPose {
  * 呼び出し側は各Blobを新しいAsset ID配下へcopyする。
  */
 export function duplicateAsset(asset: Asset, options: DuplicateAssetOptions = {}): Asset {
+  assertFrameColliderOverridesValid(asset);
   const iso = (options.now ?? new Date()).toISOString();
   const textureIdMap = new Map(
     asset.textures.map((texture) => [texture.id, generateId('texture')]),
@@ -31,6 +33,9 @@ export function duplicateAsset(asset: Asset, options: DuplicateAssetOptions = {}
   const layerIdMap = new Map(asset.layers.map((layer) => [layer.id, generateId('layer')]));
   const partIdMap = new Map(asset.parts.map((part) => [part.id, generateId('part')]));
   const frameIdMap = new Map((asset.frames ?? []).map((frame) => [frame.id, generateId('frame')]));
+  const colliderIdMap = new Map(
+    asset.colliders.map((collider) => [collider.id, generateId('col')]),
+  );
 
   return {
     ...asset,
@@ -80,11 +85,11 @@ export function duplicateAsset(asset: Asset, options: DuplicateAssetOptions = {}
     })),
     colliders: asset.colliders.map((collider) =>
       collider.shape === 'rect'
-        ? { ...collider, id: generateId('col'), rect: { ...collider.rect } }
-        : { ...collider, id: generateId('col'), circle: { ...collider.circle } },
+        ? { ...collider, id: colliderIdMap.get(collider.id)!, rect: { ...collider.rect } }
+        : { ...collider, id: colliderIdMap.get(collider.id)!, circle: { ...collider.circle } },
     ),
     frames: asset.frames?.map((frame) => ({
-      ...frame,
+      ...structuredClone(frame),
       id: frameIdMap.get(frame.id)!,
       layerStates: frame.layerStates.map((state) => ({
         ...state,
@@ -99,6 +104,14 @@ export function duplicateAsset(asset: Asset, options: DuplicateAssetOptions = {}
             }
           : {}),
       })),
+      ...(frame.colliderOverrides
+        ? {
+            colliderOverrides: frame.colliderOverrides.map((override) => ({
+              ...structuredClone(override),
+              colliderId: colliderIdMap.get(override.colliderId) ?? override.colliderId,
+            })),
+          }
+        : {}),
     })),
     animations: asset.animations.map((animation) => ({
       ...animation,

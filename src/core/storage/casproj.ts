@@ -15,7 +15,11 @@ import {
   migrateProject,
   validateProjectFamilies,
 } from '../model';
-import { validateAsset, validateExportPresets, validateProject } from '../schema/validate';
+import {
+  validateAssetForPersistence,
+  validateExportPresets,
+  validateProject,
+} from '../schema/validate';
 import {
   ArchivePreflight,
   InputSafetyError,
@@ -274,7 +278,7 @@ export async function exportCasproj(bundle: CasprojBundle): Promise<Blob> {
   }
   assertProjectFamilyConsistency(bundle.project, 'project.json');
   for (const asset of bundle.assets) {
-    const assetResult = validateAsset(asset);
+    const assetResult = validateAssetForPersistence(asset);
     if (!assetResult.valid) {
       throw new CasprojError(
         `asset（id: ${asset.id}）の内容が不正です: ${assetResult.errors.join(' / ')}`,
@@ -410,7 +414,7 @@ export async function importCasproj(
       appliedMigrations.push(
         ...assetMigration.appliedMigrations.map((entry) => `${path}: ${entry}`),
       );
-      const assetResult = validateAsset(assetMigration.data);
+      const assetResult = validateAssetForPersistence(assetMigration.data);
       if (!assetResult.valid) {
         throw new CasprojError(`${path} の内容が不正です: ${assetResult.errors.join(' / ')}`);
       }

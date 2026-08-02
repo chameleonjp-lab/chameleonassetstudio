@@ -1,5 +1,34 @@
 import type { LayerTransform } from './layer';
 
+/** Frame別に保存する矩形当たり判定の完全geometry。未知fieldは非破壊で保持する。 */
+export interface FrameColliderRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  [key: string]: unknown;
+}
+
+/** Frame別に保存する円当たり判定の完全geometry。未知fieldは非破壊で保持する。 */
+export interface FrameColliderCircle {
+  x: number;
+  y: number;
+  radius: number;
+  [key: string]: unknown;
+}
+
+/**
+ * Asset共通colliderをFrame単位で上書きするcanonical entry。
+ * rect / circle / visibleの少なくとも1つを持つことはSchemaと意味検証で保証する。
+ */
+export interface FrameColliderOverride {
+  colliderId: string;
+  rect?: FrameColliderRect;
+  circle?: FrameColliderCircle;
+  visible?: boolean;
+  [key: string]: unknown;
+}
+
 /** フレーム内での 1 レイヤーの状態。省略した項目はレイヤー本体の値を使う。 */
 export interface FrameLayerState {
   layerId: string;
@@ -16,6 +45,10 @@ export interface Frame {
   layerStates: FrameLayerState[];
   /** このフレームを表示する時間（ms）。未指定時は参照先Animationのfpsを使う。 */
   durationMs?: number;
+  /** Asset共通colliderの位置・サイズ・debug表示だけをFrame単位で上書きする。 */
+  colliderOverrides?: FrameColliderOverride[];
+  /** 将来fieldをload / clone / saveで落とさない。 */
+  [key: string]: unknown;
 }
 
 export const ANIMATION_NAME_SUGGESTIONS = [

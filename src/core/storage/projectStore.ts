@@ -1,6 +1,6 @@
 import type { Asset, Project, ProjectAssetEntry, TextureRef } from '../model';
 import { generateId, migrateProject, validateProjectFamilies } from '../model';
-import { validateAsset, validateProject } from '../schema/validate';
+import { validateAssetForPersistence, validateProject } from '../schema/validate';
 import { migrateAndValidateAssetDocument } from './assetDocument';
 import {
   INDEX_BY_PROJECT,
@@ -351,7 +351,7 @@ export async function saveProjectBundle(
   }
   assertProjectFamiliesValid(project);
   for (const asset of assets) {
-    const assetResult = validateAsset(asset);
+    const assetResult = validateAssetForPersistence(asset);
     if (!assetResult.valid) {
       throw new StorageError(formatValidationErrors('asset', assetResult.errors));
     }
@@ -576,7 +576,7 @@ export async function saveAssetRevision({
   deleteBlobKeys = [],
   sourceBlobTransitions = {},
 }: AssetRevisionInput): Promise<void> {
-  const result = validateAsset(asset);
+  const result = validateAssetForPersistence(asset);
   if (!result.valid) {
     throw new StorageError(formatValidationErrors('asset', result.errors));
   }
@@ -995,7 +995,7 @@ export async function saveAssetBatchRevision(input: SaveAssetBatchRevisionInput)
       );
     }
     expectationAssetIds.add(expectation.asset.id);
-    const result = validateAsset(expectation.asset);
+    const result = validateAssetForPersistence(expectation.asset);
     if (!result.valid) {
       throw new StorageError(formatValidationErrors('batch read expectation asset', result.errors));
     }
@@ -1038,7 +1038,7 @@ export async function saveAssetBatchRevision(input: SaveAssetBatchRevisionInput)
       ['batch保存前 asset', target.beforeAsset],
       ['batch保存後 asset', target.afterAsset],
     ] as const) {
-      const result = validateAsset(asset);
+      const result = validateAssetForPersistence(asset);
       if (!result.valid) {
         throw new StorageError(formatValidationErrors(label, result.errors));
       }
@@ -1551,7 +1551,7 @@ export async function purgeAllTrash(): Promise<void> {
 }
 
 export async function saveAsset(projectId: string, asset: Asset): Promise<void> {
-  const result = validateAsset(asset);
+  const result = validateAssetForPersistence(asset);
   if (!result.valid) {
     throw new StorageError(formatValidationErrors('asset', result.errors));
   }

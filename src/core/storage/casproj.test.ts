@@ -139,6 +139,42 @@ describe('casproj の書き出しと読み込み', () => {
     expect(imported.bundle.assets[0].version).toBe('0.2.0');
   });
 
+  it('Frame collider overrideと未知fieldをAsset 0.2.0のままexact roundtripする', async () => {
+    const overrideAsset = structuredClone(asset);
+    overrideAsset.frames![0].colliderOverrides = [
+      {
+        colliderId: 'col_body',
+        rect: { x: 1, y: 2, width: 3, height: 4, futureGeometry: { exact: true } },
+        visible: false,
+        name: 'reserved-is-unknown',
+        futureEntry: { exact: true },
+      },
+      { colliderId: 'col_pickup', visible: true },
+    ];
+    overrideAsset.frames![0].futureFrame = { exact: true };
+    const bundle: CasprojBundle = {
+      project,
+      assets: [overrideAsset],
+      files: overrideAsset.textures.map((texture, index) => ({
+        path: `assets/${overrideAsset.id}/${texture.path}`,
+        bytes: new Uint8Array([index + 1]),
+      })),
+    };
+
+    const imported = await importCasproj(await exportCasproj(bundle));
+    expect(imported.appliedMigrations).toEqual([]);
+    expect(imported.bundle.assets).toEqual([overrideAsset]);
+    expect(imported.bundle.assets[0].version).toBe('0.2.0');
+  });
+
+  it('意味不正なFrame collider overrideを.casproj正本へ出さない', async () => {
+    const invalid = structuredClone(asset);
+    invalid.frames![0].colliderOverrides = [{ colliderId: 'col_missing', visible: false }];
+    await expect(exportCasproj({ project, assets: [invalid], files: [] })).rejects.toThrow(
+      /frame-override-dangling-collider/,
+    );
+  });
+
   it('D4移動後の全Layer位置・順序・未知fieldをexact roundtripする', async () => {
     const before = frameAlignmentAsset();
     const applied = applyFrameAlignment(

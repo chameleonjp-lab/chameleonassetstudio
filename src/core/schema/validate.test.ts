@@ -13,6 +13,7 @@ import {
 import {
   validateAnimation,
   validateAsset,
+  validateAssetForPersistence,
   validateExportPresets,
   validateProject,
 } from './validate';
@@ -46,6 +47,60 @@ describe('validateAsset', () => {
       expect(result.valid).toBe(false);
       expect(result.errors.join('\n')).toContain('/frames/0/durationMs');
     }
+  });
+
+  it('Frame.colliderOverridesのcanonical構造と未知field保持を検証する', () => {
+    const asset = clone(characterAsset) as unknown as Asset;
+    asset.frames![0].colliderOverrides = [
+      {
+        colliderId: 'col_body',
+        rect: { x: 1, y: 2, width: 3, height: 4, futureGeometry: 'keep' },
+        visible: false,
+        name: 'reserved-is-unknown',
+        futureEntry: { keep: true },
+      },
+      { colliderId: 'col_pickup', visible: true },
+    ];
+    expect(validateAsset(asset)).toEqual({ valid: true, errors: [] });
+    expect(validateAssetForPersistence(asset)).toEqual({ valid: true, errors: [] });
+  });
+
+  it.each([
+    {
+      name: 'partial rect',
+      value: { colliderId: 'col_body', rect: { x: 1, y: 2, width: 3 } },
+    },
+    {
+      name: 'rectとcircle同居',
+      value: {
+        colliderId: 'col_body',
+        rect: { x: 1, y: 2, width: 3, height: 4 },
+        circle: { x: 1, y: 2, radius: 3 },
+      },
+    },
+    { name: 'recognized fieldなし', value: { colliderId: 'col_body', name: 'reserved' } },
+    { name: '空colliderId', value: { colliderId: '', visible: true } },
+    {
+      name: '非正寸法',
+      value: { colliderId: 'col_body', rect: { x: 1, y: 2, width: 0, height: 4 } },
+    },
+  ])('$nameを構造検証で拒否する', ({ value }) => {
+    const asset = clone(characterAsset) as unknown as Asset;
+    asset.frames![0].colliderOverrides = [value] as NonNullable<
+      Asset['frames']
+    >[number]['colliderOverrides'];
+    expect(validateAsset(asset).valid).toBe(false);
+  });
+
+  it('意味不正を保存境界でstable code/path付きで拒否する', () => {
+    const asset = clone(characterAsset) as unknown as Asset;
+    asset.frames![0].colliderOverrides = [{ colliderId: 'col_missing', visible: true }];
+    expect(validateAsset(asset)).toEqual({ valid: true, errors: [] });
+    const result = validateAssetForPersistence(asset);
+    expect(result.valid).toBe(false);
+    expect(result.errors.join('\n')).toContain(
+      '/frames/0/colliderOverrides/0/colliderId [frame-override-dangling-collider]',
+    );
   });
 
   it('id が無い asset は検証で落ちる', () => {

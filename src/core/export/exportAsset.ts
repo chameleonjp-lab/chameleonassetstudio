@@ -6,9 +6,10 @@ import { strToU8, zip, type Zippable } from 'fflate';
 import { decodeImageSource, type DecodedImageSource } from '../images/decodeImageSource';
 import { blobKeyFor } from '../images/importImage';
 import { applyFrameToAsset, type Asset } from '../model';
-import { validateAsset } from '../schema/validate';
+import { validateAssetForPersistence } from '../schema/validate';
 import { loadBlob } from '../storage';
 import { assertFixedFpsAnimationExportSafe } from './animationLoss';
+import { assertColliderOverrideExportSafe } from './colliderOverrideLoss';
 import { buildAtlas, computeSheetLayout, type AtlasJson } from './atlas';
 import { buildGodotGuide, buildUnityGuide } from './engineGuides';
 import { buildCanvasExample, buildPhaserExample, buildPixiExample } from './examples';
@@ -23,7 +24,7 @@ export class ExportError extends Error {
 
 /** 書き出し前の schema 検証（要件 11.9）。不正な場合は理由をまとめて ExportError にする。 */
 function assertValidAsset(asset: Asset): void {
-  const result = validateAsset(asset);
+  const result = validateAssetForPersistence(asset);
   if (!result.valid) {
     throw new ExportError(`アセットの内容が不正です: ${result.errors.join(' / ')}`);
   }
@@ -191,6 +192,7 @@ export function exportAssetJson(asset: Asset): Blob {
 export async function exportSpriteSheet(asset: Asset): Promise<{ sheet: Blob; atlas: AtlasJson }> {
   assertValidAsset(asset);
   assertFixedFpsAnimationExportSafe(asset);
+  assertColliderOverrideExportSafe(asset);
   const frames = asset.frames ?? [];
   const frameIds = frames.length > 0 ? frames.map((frame) => frame.id) : ['default'];
   const layout = computeSheetLayout(frameIds, asset.canvasSize.width, asset.canvasSize.height);
@@ -312,6 +314,7 @@ function zipAsync(data: Zippable): Promise<Uint8Array> {
 export async function exportZip(asset: Asset): Promise<Blob> {
   assertValidAsset(asset);
   assertFixedFpsAnimationExportSafe(asset);
+  assertColliderOverrideExportSafe(asset);
   const assetJsonBlob = exportAssetJson(asset);
   const pngBlob = await exportImage(asset, 'image/png');
   let webpBlob: Blob | null = null;

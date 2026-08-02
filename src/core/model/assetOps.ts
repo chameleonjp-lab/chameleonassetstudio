@@ -10,6 +10,11 @@ import type { BackgroundLayerSettings, Layer } from './layer';
 import type { Part, PartPose, PartType } from './part';
 import { validatePartLayerReplacement, type PartLayerReplacementError } from './partLayerContract';
 import type { RigAnimation } from './rig';
+import {
+  assertFrameColliderOverridesValid,
+  frameColliderReferenceReason,
+  resolveFrameColliders,
+} from './frameColliderOverrides';
 
 function touch(asset: Asset): Asset {
   return { ...asset, updatedAt: new Date().toISOString() };
@@ -303,6 +308,10 @@ export function updateCollider(asset: Asset, colliderId: string, patch: Collider
 }
 
 export function removeCollider(asset: Asset, colliderId: string): Asset {
+  assertFrameColliderOverridesValid(asset);
+  if (frameColliderReferenceReason(asset, colliderId)) {
+    return asset;
+  }
   return touch({
     ...asset,
     colliders: asset.colliders.filter((collider) => collider.id !== colliderId),
@@ -365,6 +374,7 @@ export function moveFrameOrder(
 
 /** フレームを複製して直後に挿入する。 */
 export function duplicateFrame(asset: Asset, frameId: string): Asset {
+  assertFrameColliderOverridesValid(asset);
   const frames = asset.frames ?? [];
   const index = frames.findIndex((frame) => frame.id === frameId);
   if (index < 0) {
@@ -372,19 +382,9 @@ export function duplicateFrame(asset: Asset, frameId: string): Asset {
   }
   const source = frames[index];
   const copy: Frame = {
+    ...structuredClone(source),
     id: generateId('frame'),
     name: `${source.name}_copy`,
-    ...(source.durationMs !== undefined ? { durationMs: source.durationMs } : {}),
-    layerStates: source.layerStates.map((state) => ({
-      ...state,
-      transform: state.transform
-        ? {
-            position: { ...state.transform.position },
-            scale: { ...state.transform.scale },
-            rotation: state.transform.rotation,
-          }
-        : undefined,
-    })),
   };
   const next = [...frames];
   next.splice(index + 1, 0, copy);
@@ -490,6 +490,7 @@ export function applyFrameToAsset(asset: Asset, frameId: string): Asset {
   const stateByLayerId = new Map(frame.layerStates.map((state) => [state.layerId, state]));
   return {
     ...asset,
+    colliders: resolveFrameColliders(asset, frameId),
     layers: asset.layers.map((layer) => {
       const state = stateByLayerId.get(layer.id);
       if (!state) {
