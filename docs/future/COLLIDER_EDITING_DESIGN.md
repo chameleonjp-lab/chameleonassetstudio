@@ -129,9 +129,11 @@ Phase 19-B の左右反転コピーは、判定も反転対象にする。Phase 
 
 ## 7. フレーム別判定の扱い
 
-フレーム別判定は、攻撃・被弾タイミングの確認に重要だが、現行 `Frame` は layer states を持つだけで、collider states を持たない。Phase 19-C では実装しない。
+フレーム別判定は、既存colliderの位置・サイズをFrameごとに調整する用途があるが、現行 `Frame` はlayer statesだけを持ち、collider statesを持たない。Phase 19-Cでは実装しない。
 
 ADR-0010により、正本は`Asset.colliders`、上書きはFrame単位、優先順位は「Frame上書き > Asset共通」と決定済みである。最初の上書きは既存colliderの位置、サイズ、`visible`だけを扱い、追加・削除、`purpose`変更、`shape`変更、Animation単位上書きは行わない。
+
+ここで`visible`は編集・debug表示だけを制御し、ゲーム内の当たり判定の有効 / 無効を表さない。攻撃や被弾の有効時間帯を表すには`enabled`等の別fieldが必要であり、O1には含めず別の人間判断へ分離する。
 
 Group 13のdocs-only監査では、複製・反転・canvas resize・D4 frame alignment・共通collider削除・現行Atlasの理由付き拒否までを実装前契約候補として整理した。人間が`O1`を採用するまで、`Frame.colliderOverrides`を製品へ追加しない。
 
@@ -195,15 +197,17 @@ Phase 19-C の次実装 PR で守る条件:
 - rect / circle の既存フィールドの意味を変えない。
 - `visible` の意味を「編集・debug 表示」から勝手に「ゲーム内有効 / 無効」へ変えない。
 
-migrate が必要になる条件:
+migrateまたはversion更新が必要になる条件:
 
 - `Collider.shape` の union を増やし、古い validator では読めないデータを書き出す場合。
 - 既存 collider の座標系、原点、単位、`visible` の意味を変える場合。
-- フレーム別判定など、`Frame` / `Animation` に collider 状態を保存する場合。
+- optional・additiveではなく、既存Frame / Animationの意味や必須構造を変える場合。
 - `.casproj` 内で collider を別ファイルへ分離する場合。
 - export ZIP の colliders を `asset.json` 以外へ分離し、既存 helper の読み込み先を変える場合。
 
-多角形判定を additive に追加するだけでも、古いアプリや helper との前方互換性が問題になるため、version / migrate / feature gate の判断が必要である。
+ADR-0015に従い、`Frame.colliderOverrides?`をoptional・additiveに追加するO1候補はAsset `0.2.0`を維持し、migrationを追加しない。ただしTypeScript型とJSON Schema、field不在の旧data roundtrip、未知field保持、保存失敗時rollback、Atlas / product ZIP / helperの理由付き拒否は同じ実装Gateで検証する。
+
+多角形判定は`Collider.shape` unionと既存helperの解釈を広げるため、optional field追加と同一視しない。version / migrate / feature gateは別設計と人間判断で決める。
 
 ## 11. 既存 E2E を弱くしない条件
 
