@@ -176,7 +176,7 @@ P1により2D Pro Gateまで`unsupported`を維持し、必要性と対象別出
 
 各sliceは1 branch、1 Draft Pull Request、単一writerとする。CI失敗は同じPull Requestで直す。
 
-Slice BはADR-0024に`Frame.colliderOverrides?`のcanonical schema形、semantic validation、UI操作、保存と書き出し拒否の正確な契約を固定し、PR #218でmainへ反映済みである。Slice Cはこの契約を実装するが、CIと固定head独立監査が完了するまで検証済みとは扱わない。P1によりpolygonは`unsupported`を維持し、Group 13 closeoutで延期先とGroup 14開始条件を同期する。
+Slice BはADR-0024に`Frame.colliderOverrides?`のcanonical schema形、semantic validation、UI操作、保存と書き出し拒否の正確な契約を固定し、PR #218でmainへ反映済みである。Slice Cはこの契約どおりPR #219 / #220で製品実装・検証・補修をmainへ反映済みである。PR #221は製品契約を変えないE2E待機安定化として固定head検証を残す。P1によりpolygonは`unsupported`を維持し、Group 13 closeoutで延期先とGroup 14開始条件を同期する。
 
 ## 10. 必須検証
 

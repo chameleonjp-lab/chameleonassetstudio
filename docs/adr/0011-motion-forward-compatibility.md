@@ -27,8 +27,8 @@ ADR-0008〜0010 は、frame 別 `durationMs` 上書き・`Animation.events`・`F
 ## 影響と fixture
 
 - 影響 docs: `docs/future/2D_ASSET_DATA_CONTRACT.md` §8.2, §9.2, §13。
-- 影響実装: `durationMs` / `events`は実装済み。O1 Slice Bはdocs-onlyで、`colliderOverrides`の製品実装はSlice Cへ分離する。
-- fixture: `src/core/model/motionContract.fixtures.test.ts` の ADR-0011 セクションは、`durationMs`の有無、`events`、`colliderOverrides`のような追加fieldをvalidatorが扱う前提を固定する。O1 Slice Cでは、`colliderOverrides`が参照するAsset colliderをfixtureへ追加して意味上validにし、無効参照を許可する根拠には使わない。
+- 影響実装: `durationMs` / `events`は実装済み。O1 Slice Bはdocs-only契約、`colliderOverrides`の製品実装・補修はSlice CのPR #219 / #220でmainへ反映済みである。
+- fixture: `src/core/model/motionContract.fixtures.test.ts` の ADR-0011 セクションは、`durationMs`の有無、`events`、`colliderOverrides`のような追加fieldをvalidatorが扱う前提を固定する。O1 Slice Cで、`colliderOverrides`が参照するAsset colliderをfixtureへ追加して意味上validにし、無効参照を許可する根拠には使わない。PR #221の固定head検証とGroup 13 closeoutを残す。
 
 ## 再検討条件
 
