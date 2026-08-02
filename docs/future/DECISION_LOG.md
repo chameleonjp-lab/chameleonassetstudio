@@ -1373,25 +1373,23 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 
 ### 状態
 
-- human-decision-pending
+- accepted（2026-08-02 人間承認、`G1+O1+P1`）
 - 対象: Group 13 `2D-3-GAME-DATA + 2D-3-COLLIDER-OVERRIDE + 2D-3-POLYGON`
-- 基準main: `fac5deb0549a9fe8dd1c14c5f895204c75a73045`
+- 監査基準main: `fac5deb0549a9fe8dd1c14c5f895204c75a73045`
+- 監査PR: #215、merge `55fb2c3710e3678225d485b1bad7edbbf1d54fcb`
 - 正本: `docs/future/2D_3_GAME_DATA_PLAN.md`
 
 ### 確認できた事実
 
 - origin、anchor、rect / circle、tile、background、gimmick、effect、tag、gameAttributesは既存の型、schema、画面、History、autosave、IndexedDB、`asset.json`、`.casproj`へ接続済みである。
 - 構造を持つgameAttributesは現在の文字入力で意味を失い得る。Asset種別変更後の旧種別設定は非破壊で残るが、見落としやすい。
-- ADR-0010はFrame単位上書き、位置・サイズ・`visible`だけ、polygon unsupportedを決定済みだが、実装時期は未決定である。`visible`は編集・debug表示であり、ゲーム内の有効 / 無効はO1に含めない。
+- ADR-0010はFrame単位上書き、位置・サイズ・`visible`だけ、polygon unsupportedを決定済みである。PR #215の監査時点では実装時期が未決定だったが、2026-08-02のO1採用によりG1後の契約・実装sliceへ置いた。`visible`は編集・debug表示であり、ゲーム内の有効 / 無効はO1に含めない。
 - 現行Atlas `0.1.0`、helpers、examplesはFrame別上書きとpolygonを表現できない。
 
-### 判断候補
+### 採用判断
 
-- `G1`（推奨）: 既存Game Dataのデータ損失防止、旧種別設定警告、入力確定単位を仕上げる。
-- `G2`: 既存Game Dataを現状のまま完了扱いにする。
-- `O1`（推奨）: ADR-0010の限定Frame上書きをG1後の独立sliceとして実装する。扱う能力は位置・サイズ調整とdebug表示上書きであり、ゲーム内の有効 / 無効ではない。
-- `O2`: Group 13では不採用とし、2D Pro Gate後のfuture backlog `POST-2D-COLLIDER-OVERRIDE`へ延期する。採用記録をもってoverrideのGroup 13 Gateはcloseし、G側完了とP側close条件を満たした後にGroup 14へ進める。
-- `P1`（推奨）: polygonを2D Pro Gateまで`unsupported`として別work packageへ延期する。
-- `P2`: Group 13でpolygonの別設計から開始する。
+- `G1`（採用）: 既存Game Dataのデータ損失防止、旧種別設定警告、入力確定単位を仕上げる。G2は採用しない。
+- `O1`（採用）: ADR-0010の限定Frame上書きをG1後の独立sliceとして実装する。扱う能力は位置・サイズ調整とdebug表示上書きであり、ゲーム内の有効 / 無効ではない。O2は採用しない。
+- `P1`（採用）: polygonを2D Pro Gateまで`unsupported`として別work packageへ延期する。P2は採用しない。
 
-推奨組み合わせは`G1+O1+P1`である。人間の明示回答まで、どの候補もacceptedとして扱わず、製品コード、schema、version、migration、保存形式、export形式を変更しない。
+採用順は、docs-only採用記録、G1のSlice A、O1の正式契約Slice B、Slice B merge後のO1製品実装Slice C、P1のunsupported維持を同期するGroup 13 closeoutとする。Slice Bではcanonical schema形、semantic validation、UI操作、保存と書き出し拒否を固定する。この採用記録だけでは製品コード、schema、version、migration、保存形式、export形式を変更せず、Group 13を完了扱いにしない。
