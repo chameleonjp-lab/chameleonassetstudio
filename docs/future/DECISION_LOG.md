@@ -1368,6 +1368,7 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 
 - 製品コード、test code、schema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependency。
 - 2D Pro Gate全体の完了、3D開始、Ready化、merge。
+
 ## ADR-2026-08-02-033: Group 13 Game Data / collider override / polygonの実装分割
 
 ### 状態
@@ -1381,15 +1382,15 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 
 - origin、anchor、rect / circle、tile、background、gimmick、effect、tag、gameAttributesは既存の型、schema、画面、History、autosave、IndexedDB、`asset.json`、`.casproj`へ接続済みである。
 - 構造を持つgameAttributesは現在の文字入力で意味を失い得る。Asset種別変更後の旧種別設定は非破壊で残るが、見落としやすい。
-- ADR-0010はFrame単位上書き、位置・サイズ・`visible`だけ、polygon unsupportedを決定済みだが、実装時期は未決定である。
+- ADR-0010はFrame単位上書き、位置・サイズ・`visible`だけ、polygon unsupportedを決定済みだが、実装時期は未決定である。`visible`は編集・debug表示であり、ゲーム内の有効 / 無効はO1に含めない。
 - 現行Atlas `0.1.0`、helpers、examplesはFrame別上書きとpolygonを表現できない。
 
 ### 判断候補
 
 - `G1`（推奨）: 既存Game Dataのデータ損失防止、旧種別設定警告、入力確定単位を仕上げる。
 - `G2`: 既存Game Dataを現状のまま完了扱いにする。
-- `O1`（推奨）: ADR-0010の限定Frame上書きをG1後の独立sliceとして実装する。
-- `O2`: Frame上書きをGroup 14以降へ延期する。
+- `O1`（推奨）: ADR-0010の限定Frame上書きをG1後の独立sliceとして実装する。扱う能力は位置・サイズ調整とdebug表示上書きであり、ゲーム内の有効 / 無効ではない。
+- `O2`: Group 13では不採用とし、2D Pro Gate後のfuture backlog `POST-2D-COLLIDER-OVERRIDE`へ延期する。採用記録をもってoverrideのGroup 13 Gateはcloseし、G側完了とP側close条件を満たした後にGroup 14へ進める。
 - `P1`（推奨）: polygonを2D Pro Gateまで`unsupported`として別work packageへ延期する。
 - `P2`: Group 13でpolygonの別設計から開始する。
 
