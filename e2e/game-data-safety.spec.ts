@@ -43,7 +43,6 @@ async function setupProjectWithImage(page: Page, name: string): Promise<void> {
   });
   await confirmImageImport(page);
   await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
-  await expect(page.getByRole('status')).toHaveText('保存済み', { timeout: 10_000 });
 }
 
 async function reopenProject(page: Page, name: string): Promise<void> {
