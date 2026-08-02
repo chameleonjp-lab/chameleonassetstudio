@@ -169,7 +169,7 @@ PR #53（`2D-1B-STORAGE`）は、詳細契約 Gate より先に main へマー�
 | ID | 分類 | 完成させる内容 |
 |---|---|---|
 | `2D-2-PROJECT` | 必須 | 1つのProject内で、複数Asset、Family / Variant、source / edit / preview / exportの関係と変更影響を管理する。 |
-| `2D-2-CREATE` | 必須 | 空キャンバス、asset type template、複製、図形、パーツ、文字から作成を開始する。PR #55はpartial。 |
+| `2D-2-CREATE` | 必須 | 空キャンバス、asset type template、複製、図形、パーツ、文字から作成を開始する。PR #55はmerge時点でpartialだったが、後続PR #93〜#101で現在契約範囲を補完した。 |
 | `2D-2-RASTER` | 必須 | brush、eraser、fill、selection、shape、text、transform、align、grid、snapを完成させる。 |
 | `2D-2-REPAIR` | 必須 | 透明化、透明縁、trim、余白統一、resize、palette、色違い、flip、outline、frameずれ修正を提供する。 |
 | `2D-2-VARIANT` | 必須 | linked variantと独立copy、反転、palette、装備差分、解像度差分、手動調整保護を実装する。 |
@@ -192,13 +192,13 @@ PR #53（`2D-1B-STORAGE`）は、詳細契約 Gate より先に main へマー�
 - 新規形式を扱う場合、`editable-import`、`rasterized-import`、`reference-only` の区別が UI と docs に出る。
 - 元データ、手動調整、Undo / Redo、保存の安全性が保たれる。
 
-PR #55（`2D-2-CREATE-01`）は、`2D-1B-GATE` より先に main へマージされた先行実装である。revert せず provisional / ahead-of-gate として保持するが、`2D-2-CREATE` 全体完了ではない。対応付けは次の通り。
+PR #55（`2D-2-CREATE-01`）は、`2D-1B-GATE` より先にmainへマージされた先行partial実装だった。現在はPR #93〜#101でCreateの残範囲、PR #117〜#122でFamily / Variantを補完し、Group 8Aの現在契約範囲はcompletedである。履歴上の対応付けは次の通り。
 
-| PR #55 の成果 | 詳細 work package | 現在の状態 | 未完了 / 再監査項目 |
+| PR #55 の成果 | 詳細 work package | 現在の状態 | 当時の未完了 / 現在の補完 |
 |---|---|---|---|
-| 空キャンバス作成、型・サイズ選択、透明アセット生成 | `2D-2-CREATE` | partial / provisional implemented | 図形、パーツからの作成、文字、全型の完成テンプレート、矩形・自由サイズが未完了。 |
+| 空キャンバス作成、型・サイズ選択、透明アセット生成 | `2D-2-CREATE` | completed by follow-up | PR #55時点の残範囲はPR #93〜#101で補完した。 |
 | アセット削除 | `2D-2-CREATE` に付随する操作 | implemented / Gate再監査済み | 後続の保存基盤補修により`deleteAssetBundle`がProject参照、Asset、Blob、snapshotを単一transactionで更新し、autosave flush後に実行する。 |
-| 複数 Asset / Family / Variant 管理 | `2D-2-PROJECT` | 未完了 | 1つの Project 内で複数 Asset、Asset Family、Variant、source / edit / preview / export の関係を管理する要件は未完了。クラウド型の複数 project 管理拡張ではない。 |
+| 複数 Asset / Family / Variant 管理 | `2D-2-PROJECT` | completed by follow-up | PR #93 / #94でProject内の複数Asset、PR #117〜#122でFamily / Variantと派生関係を補完した。クラウド型の複数project管理拡張ではない。 |
 
 ### 2D-3: 動きとゲーム用情報を完成させる
 
@@ -211,7 +211,7 @@ PR #55（`2D-2-CREATE-01`）は、`2D-1B-GATE` より先に main へマージさ
 | `2D-3-TIMELINE` | 必須 | frame animation、onion skin、可変時間、loop、名前付きeventを実装する。 |
 | `2D-3-RIG` | 必須 | part parent、pivot、bind pose、rotation / scale、part replace、簡易rig、frame bake、rig flipを実装する。 |
 | `2D-3-GAME-DATA` | 必須 | origin、anchor、rect / circle、tile collision、background、gimmick、effect情報を型別に編集する。 |
-| `2D-3-COLLIDER-OVERRIDE` | 判断必須 | asset共通判定を基準とするanimation / frame別上書き規則を決定する。必須へ変更しない。 |
+| `2D-3-COLLIDER-OVERRIDE` | 判断必須 | asset共通判定を基準とするFrame別上書き規則を決定する。Animation別上書きは採用せず、必須へ変更しない。 |
 | `2D-3-POLYGON` | 判断必須 | 点座標、自己交差、頂点順、flip、schema、migration、helper、target変換を決める。 |
 | `2D-3-TYPE-PROFILES` | 必須 | character、item、background、tile、gimmick、effect、UI / iconの契約profileを定義する。 |
 | `2D-3-PREVIEW` | 必須 | 接地、origin、anchor、collider、tile、背景、gimmick、effectのゲーム風previewを実装する。 |
