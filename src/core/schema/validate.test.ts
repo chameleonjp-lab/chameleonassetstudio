@@ -71,6 +71,10 @@ describe('validateAsset', () => {
       value: { colliderId: 'col_body', rect: { x: 1, y: 2, width: 3 } },
     },
     {
+      name: 'partial circle',
+      value: { colliderId: 'col_pickup', circle: { x: 1, y: 2 } },
+    },
+    {
       name: 'rectとcircle同居',
       value: {
         colliderId: 'col_body',

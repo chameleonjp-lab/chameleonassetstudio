@@ -17,17 +17,38 @@ export interface FrameColliderCircle {
   [key: string]: unknown;
 }
 
-/**
- * Asset共通colliderをFrame単位で上書きするcanonical entry。
- * rect / circle / visibleの少なくとも1つを持つことはSchemaと意味検証で保証する。
- */
-export interface FrameColliderOverride {
+interface FrameColliderOverrideBase {
   colliderId: string;
-  rect?: FrameColliderRect;
-  circle?: FrameColliderCircle;
-  visible?: boolean;
   [key: string]: unknown;
 }
+
+/** Asset共通の矩形colliderに対する完全geometry上書き。 */
+export type FrameColliderRectOverride = FrameColliderOverrideBase & {
+  rect: FrameColliderRect;
+  circle?: never;
+  visible?: boolean;
+};
+
+/** Asset共通の円colliderに対する完全geometry上書き。 */
+export type FrameColliderCircleOverride = FrameColliderOverrideBase & {
+  rect?: never;
+  circle: FrameColliderCircle;
+  visible?: boolean;
+};
+
+/** geometryを共通値へfallbackし、debug表示だけを上書きするentry。 */
+export type FrameColliderVisibleOverride = FrameColliderOverrideBase & {
+  rect?: never;
+  circle?: never;
+  visible: boolean;
+};
+
+/**
+ * Asset共通colliderをFrame単位で上書きするcanonical entry。
+ * rect / circle / visible-onlyを排他的unionで表し、recognized fieldなしを型でも許さない。
+ */
+export type FrameColliderOverride =
+  FrameColliderRectOverride | FrameColliderCircleOverride | FrameColliderVisibleOverride;
 
 /** フレーム内での 1 レイヤーの状態。省略した項目はレイヤー本体の値を使う。 */
 export interface FrameLayerState {

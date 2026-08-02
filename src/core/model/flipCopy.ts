@@ -4,7 +4,7 @@
  * 元アセットは変更しない（非破壊）。schema / version は変えない。
  */
 import type { Anchor, AnchorRole } from './anchor';
-import type { Frame } from './animation';
+import type { Frame, FrameColliderOverride } from './animation';
 import type { Asset } from './asset';
 import type { Collider } from './collider';
 import { generateId } from './factories';
@@ -312,30 +312,37 @@ function createFlipCopyAsset(
     })),
     ...(frame.colliderOverrides
       ? {
-          colliderOverrides: frame.colliderOverrides.map((override, index) => ({
-            ...structuredClone(override),
-            colliderId: mappedId(
-              colliderIdMap,
-              override.colliderId,
-              `frames[id=${frame.id}].colliderOverrides[${index}].colliderId`,
-            ),
-            ...(override.rect
-              ? {
+          colliderOverrides: frame.colliderOverrides.map(
+            (override, index): FrameColliderOverride => {
+              const cloned = structuredClone(override);
+              const colliderId = mappedId(
+                colliderIdMap,
+                override.colliderId,
+                `frames[id=${frame.id}].colliderOverrides[${index}].colliderId`,
+              );
+              if (cloned.rect) {
+                return {
+                  ...cloned,
+                  colliderId,
                   rect: {
-                    ...structuredClone(override.rect),
-                    x: 2 * mirrorX - override.rect.x - override.rect.width,
+                    ...cloned.rect,
+                    x: 2 * mirrorX - cloned.rect.x - cloned.rect.width,
                   },
-                }
-              : {}),
-            ...(override.circle
-              ? {
+                };
+              }
+              if (cloned.circle) {
+                return {
+                  ...cloned,
+                  colliderId,
                   circle: {
-                    ...structuredClone(override.circle),
-                    x: reflectX(override.circle.x),
+                    ...cloned.circle,
+                    x: reflectX(cloned.circle.x),
                   },
-                }
-              : {}),
-          })),
+                };
+              }
+              return { ...cloned, colliderId };
+            },
+          ),
         }
       : {}),
   }));

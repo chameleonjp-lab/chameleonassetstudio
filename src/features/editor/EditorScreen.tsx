@@ -1207,7 +1207,12 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       onEvent: (event) => {
         setFiredAnimationEvents((current) => [...current, event]);
       },
-      onComplete: () => setIsPlaying(false),
+      onComplete: () => {
+        setIsPlaying(false);
+        setPreviewFrameId(null);
+        setPreviewOccurrenceIndex(null);
+        setFiredAnimationEvents([]);
+      },
     });
     animationPlaybackRef.current = playback;
     playback.start();

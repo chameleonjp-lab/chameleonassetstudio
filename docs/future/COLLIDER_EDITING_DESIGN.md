@@ -10,7 +10,7 @@
 
 ---
 
-> **現状:** Phase 19-Cのrect / circle表示・選択・直接編集は後続実装で完了した。将来境界はADR-0010を正本とし、Frame単位上書きだけを採用してAnimation単位上書きを採用しない。2026-08-02のGroup 13判断でO1を採用し、G1はPR #217、O1正式契約Slice BはPR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`でmainへ反映済みである。現在はADR-0024どおりの製品実装Slice CをDraftで実装中・未検証である。P1によりpolygonは2D Pro Gateまで`unsupported`を維持する。Slice Cでは`asset.json` version、migration、`.casproj`配置、export ZIP構成、dependencies、GitHub Actionsを変更しない。
+> **現状:** Phase 19-Cのrect / circle表示・選択・直接編集は後続実装で完了した。将来境界はADR-0010を正本とし、Frame単位上書きだけを採用してAnimation単位上書きを採用しない。2026-08-02のGroup 13判断でO1を採用し、G1はPR #217、O1正式契約Slice BはPR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`でmainへ反映済みである。現在のADR-0024製品実装Slice CはDraft実装・固定head検証必須・未mergeである。P1によりpolygonは2D Pro Gateまで`unsupported`を維持する。Slice Cでは`asset.json` version、migration、`.casproj`配置、export ZIP構成、dependencies、GitHub Actionsを変更しない。
 
 ## 1. 結論
 

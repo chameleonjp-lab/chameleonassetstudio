@@ -473,15 +473,50 @@ describe('フレームとアニメーション（Phase 9）', () => {
     expect(validateAsset(next).valid).toBe(true);
   });
 
-  it('applyFrameToAsset はレイヤーへ transform を適用し、updatedAt を変えない', async () => {
+  it('applyFrameToAsset は共有Frameのレイヤーと実効colliderをpreviewへ適用し、updatedAt を変えない', async () => {
     const { applyFrameToAsset } = await import('./assetOps');
-    const next = applyFrameToAsset(baseAsset, 'frame_idle_1');
+    const source = structuredClone(baseAsset);
+    source.frames![1].colliderOverrides = [
+      {
+        colliderId: 'col_body',
+        rect: { x: 5, y: 6, width: 7, height: 8 },
+        visible: false,
+      },
+      {
+        colliderId: 'col_pickup',
+        circle: { x: 9, y: 10, radius: 11 },
+        visible: true,
+      },
+    ];
+    source.animations.push({
+      id: 'anim_shared',
+      name: 'shared',
+      fps: 12,
+      loop: false,
+      frameIds: ['frame_idle_1'],
+    });
+    const next = applyFrameToAsset(source, 'frame_idle_1');
     const body = next.layers.find((l) => l.id === 'layer_body')!;
     expect(body.transform.position).toEqual({ x: 0, y: -4 });
-    expect(next.updatedAt).toBe(baseAsset.updatedAt);
-    expect(next.frames).toBe(baseAsset.frames);
+    expect(next.colliders[0]).toMatchObject({
+      id: 'col_body',
+      shape: 'rect',
+      visible: false,
+      rect: { x: 5, y: 6, width: 7, height: 8 },
+    });
+    expect(next.colliders[1]).toMatchObject({
+      id: 'col_pickup',
+      shape: 'circle',
+      visible: true,
+      circle: { x: 9, y: 10, radius: 11 },
+    });
+    expect(next.updatedAt).toBe(source.updatedAt);
+    expect(next.frames).toBe(source.frames);
+    expect(
+      source.animations.filter((animation) => animation.frameIds.includes('frame_idle_1')),
+    ).toHaveLength(2);
     // 存在しないフレーム id では元のアセットをそのまま返す
-    expect(applyFrameToAsset(baseAsset, 'missing')).toBe(baseAsset);
+    expect(applyFrameToAsset(source, 'missing')).toBe(source);
   });
 });
 

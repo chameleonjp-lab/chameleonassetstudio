@@ -54,7 +54,7 @@ interface GameDataPanelProps {
   isPlaying: boolean;
   /** Frame collider override専用のcanonical commit経路。 */
   onFrameCommit: (label: string, next: Asset) => void;
-  onFrameError: (message: string) => void;
+  onFrameError: (message: string | null) => void;
 }
 
 const PURPOSE_LABELS: Record<ColliderPurpose, string> = {
@@ -526,10 +526,31 @@ interface FrameColliderOverridePanelProps {
   selectedColliderId: string | null;
   onSelectCollider: (colliderId: string) => void;
   onCommit: (label: string, next: Asset) => void;
-  onError: (message: string) => void;
+  onError: (message: string | null) => void;
 }
 
 const OVERRIDE_KNOWN_KEYS = new Set(['colliderId', 'rect', 'circle', 'visible']);
+const RECT_KNOWN_KEYS = new Set(['x', 'y', 'width', 'height']);
+const CIRCLE_KNOWN_KEYS = new Set(['x', 'y', 'radius']);
+
+function unknownOverridePaths(override: NonNullable<Frame['colliderOverrides']>[number]): string[] {
+  const paths = Object.keys(override).filter((key) => !OVERRIDE_KNOWN_KEYS.has(key));
+  if (override.rect) {
+    paths.push(
+      ...Object.keys(override.rect)
+        .filter((key) => !RECT_KNOWN_KEYS.has(key))
+        .map((key) => `rect.${key}`),
+    );
+  }
+  if (override.circle) {
+    paths.push(
+      ...Object.keys(override.circle)
+        .filter((key) => !CIRCLE_KNOWN_KEYS.has(key))
+        .map((key) => `circle.${key}`),
+    );
+  }
+  return paths;
+}
 
 function FrameColliderOverridePanel({
   asset,
@@ -548,14 +569,19 @@ function FrameColliderOverridePanel({
   const commitResult = (label: string, result: FrameColliderOverrideMutationResult) => {
     if (!result.ok) {
       onError(result.message);
-      return;
+      return false;
     }
-    if (result.changed) onCommit(label, result.asset);
+    if (result.changed) {
+      onCommit(label, result.asset);
+    } else {
+      onError(null);
+    }
+    return true;
   };
-  const normalizeNumber = (raw: string, current: number, positive: boolean): string => {
+  const normalizeNumber = (raw: string, positive: boolean): string => {
     const parsed = Number(raw);
-    if (!Number.isFinite(parsed)) return String(current);
-    const snapped = positive ? Math.max(1, parsed) : applyEditSnap(parsed, snapEnabled, gridSize);
+    if (!Number.isFinite(parsed)) return raw;
+    const snapped = positive ? parsed : applyEditSnap(parsed, snapEnabled, gridSize);
     return String(snapped);
   };
 
@@ -568,17 +594,28 @@ function FrameColliderOverridePanel({
       {asset.colliders.map((collider, index) => {
         const effective = effectiveColliders[index];
         const override = findFrameColliderOverride(frame, collider.id);
-        const unknownKeys = override
-          ? Object.keys(override).filter((key) => !OVERRIDE_KNOWN_KEYS.has(key))
-          : [];
+        const unknownPaths = override ? unknownOverridePaths(override) : [];
+        const unknownGeometryPaths = unknownPaths.filter(
+          (path) => path.startsWith('rect.') || path.startsWith('circle.'),
+        );
         const selected = isSelectedCollider(collider.id, selectedColliderId);
         const commitGeometryField = (field: string, raw: string) => {
-          if (effective.shape === 'rect') {
-            const current = effective.rect[field as keyof typeof effective.rect] as number;
-            const value = Number(
-              normalizeNumber(raw, current, field === 'width' || field === 'height'),
+          const parsed = Number(raw);
+          if (!Number.isFinite(parsed)) {
+            onError(
+              `Frame「${frame.name}」の判定「${collider.name}」${field}は有限な数値で入力してください。`,
             );
-            commitResult(
+            return false;
+          }
+          if ((field === 'width' || field === 'height' || field === 'radius') && parsed <= 0) {
+            onError(
+              `Frame「${frame.name}」の判定「${collider.name}」${field}は0より大きい値を入力してください。`,
+            );
+            return false;
+          }
+          if (effective.shape === 'rect') {
+            const value = Number(normalizeNumber(raw, field === 'width' || field === 'height'));
+            return commitResult(
               'Frame別当たり判定 geometry変更',
               setFrameColliderGeometry(asset, frame.id, collider.id, {
                 ...structuredClone(effective.rect),
@@ -586,9 +623,8 @@ function FrameColliderOverridePanel({
               }),
             );
           } else {
-            const current = effective.circle[field as keyof typeof effective.circle] as number;
-            const value = Number(normalizeNumber(raw, current, field === 'radius'));
-            commitResult(
+            const value = Number(normalizeNumber(raw, field === 'radius'));
+            return commitResult(
               'Frame別当たり判定 geometry変更',
               setFrameColliderGeometry(asset, frame.id, collider.id, {
                 ...structuredClone(effective.circle),
@@ -658,7 +694,6 @@ function FrameColliderOverridePanel({
                       normalize={(raw) =>
                         normalizeNumber(
                           raw,
-                          current,
                           field === 'width' || field === 'height' || field === 'radius',
                         )
                       }
@@ -697,12 +732,20 @@ function FrameColliderOverridePanel({
               <button
                 type="button"
                 disabled={!override?.rect && !override?.circle}
-                onClick={() =>
+                onClick={() => {
+                  if (
+                    unknownGeometryPaths.length > 0 &&
+                    !window.confirm(
+                      `未知field（${unknownGeometryPaths.join('、')}）を含む位置・サイズの上書きを削除します。よろしいですか？`,
+                    )
+                  ) {
+                    return;
+                  }
                   commitResult(
                     'Frame別当たり判定 geometry解除',
                     resetFrameColliderGeometry(asset, frame.id, collider.id),
-                  )
-                }
+                  );
+                }}
               >
                 位置・サイズを共通へ戻す
               </button>
@@ -711,8 +754,8 @@ function FrameColliderOverridePanel({
                 disabled={!override}
                 onClick={() => {
                   const message =
-                    unknownKeys.length > 0
-                      ? `未知field（${unknownKeys.join('、')}）を含む、このFrameの上書き全体を削除します。よろしいですか？`
+                    unknownPaths.length > 0
+                      ? `未知field（${unknownPaths.join('、')}）を含む、このFrameの上書き全体を削除します。よろしいですか？`
                       : 'このFrameの位置・サイズと表示の上書きをすべて解除します。よろしいですか？';
                   if (!window.confirm(message)) {
                     return;
@@ -726,9 +769,9 @@ function FrameColliderOverridePanel({
                 このFrameの上書きをすべて解除
               </button>
             </div>
-            {unknownKeys.length > 0 && (
+            {unknownPaths.length > 0 && (
               <p className="export-warning">
-                未知field（{unknownKeys.join('、')}
+                未知field（{unknownPaths.join('、')}
                 ）を保持中です。field単位の解除で未知fieldだけが残る場合は拒否します。
               </p>
             )}

@@ -8,7 +8,7 @@
 
 ## 文脈
 
-ADR-0008〜0010 は、frame 別 `durationMs` 上書き・`Animation.events`・`Frame.colliderOverrides` という3つの将来フィールドの境界を定義した。本ADRは、それらを導入する際に旧dataが意味不変で読めることと、schemaが未知フィールドを許容する実装だったことを先に記録した。`Frame.durationMs?`と`Animation.events?`はGroup 12で実装済み、`Frame.colliderOverrides?`はGroup 13 O1 Slice B / PR #218で詳細契約を完了し、Slice Cで製品実装中・未検証である。
+ADR-0008〜0010 は、frame 別 `durationMs` 上書き・`Animation.events`・`Frame.colliderOverrides` という3つの将来フィールドの境界を定義した。本ADRは、それらを導入する際に旧dataが意味不変で読めることと、schemaが未知フィールドを許容する実装だったことを先に記録した。`Frame.durationMs?`と`Animation.events?`はGroup 12で実装済み、`Frame.colliderOverrides?`はGroup 13 O1 Slice B / PR #218で詳細契約を完了し、Slice CをDraft実装・固定head検証必須・未mergeとして扱う。
 
 ## 決定
 

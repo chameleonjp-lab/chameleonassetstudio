@@ -91,6 +91,29 @@ describe('復旧点（snapshot）の所有境界', () => {
     expect(new Uint8Array(await restored.beforeBlob.arrayBuffer())).toEqual(bytes);
   });
 
+  it('Frame collider overrideと未知fieldをsnapshotでexact保存・復元する', async () => {
+    const overrideAsset = structuredClone(baseAsset);
+    overrideAsset.frames![0].colliderOverrides = [
+      {
+        colliderId: 'col_body',
+        rect: { x: 1, y: 2, width: 3, height: 4, futureGeometry: { exact: true } },
+        visible: false,
+        futureEntry: { exact: true },
+      },
+    ];
+    const { project, key } = await seedStoredAsset({ asset: overrideAsset });
+    await saveCurrentSnapshot({
+      projectId: project.id,
+      asset: overrideAsset,
+      key,
+      label: 'O1 metadata',
+    });
+    const [summary] = await listSnapshots(overrideAsset.id);
+    const restored = await restoreSnapshot(summary.id);
+    expect(restored.asset).toEqual(overrideAsset);
+    expect(restored.beforeAsset).toEqual(overrideAsset);
+  });
+
   it('保存済みedit Blobと異なる入力Blobを拒否してsnapshotを残さない', async () => {
     const { project, asset, key } = await seedStoredAsset();
     await expect(

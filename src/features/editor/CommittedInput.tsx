@@ -5,7 +5,8 @@ interface CommittedInputProps extends Omit<
   'defaultValue' | 'onBlur' | 'onChange' | 'onFocus' | 'onKeyDown' | 'value'
 > {
   value: string;
-  onCommit: (value: string) => void;
+  /** falseを返すと確定を拒否し、表示値を保存済み値へ戻す。 */
+  onCommit: (value: string) => boolean | void;
   normalize?: (value: string) => string;
 }
 
@@ -29,7 +30,10 @@ export function CommittedInput({ value, onCommit, normalize, ...inputProps }: Co
     const normalized = normalize ? normalize(draft) : draft;
     setDraft(normalized);
     if (normalized !== value) {
-      onCommit(normalized);
+      const accepted = onCommit(normalized);
+      if (accepted === false) {
+        setDraft(value);
+      }
     }
   };
 

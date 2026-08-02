@@ -316,7 +316,7 @@ Group 12のT1 Slice A / ADR-0021で、`Frame.durationMs?`と`Animation.events?`�
 
 Group 13のO1 Slice B / ADR-0024は、`Frame.colliderOverrides?`をoptionalな配列として契約し、PR #218でmainへ反映した。Slice Cはこの型とJSON Schemaを実装中である。各entryは`colliderId`でAsset共通colliderを参照し、rectの完全な`x / y / width / height`、circleの完全な`x / y / radius`、または`visible`だけを持つ。geometryの一部だけ、rectとcircleの同居は許可しない。canonical writer / UIはentry固有`id`、`name`、`purpose`、`shape`、`enabled`を生成・編集・解釈しない。既存dataでrecognized override fieldと併存する同名fieldは未知fieldとしてexact保持するが、それだけでentryをvalidにしない。不在fieldはAsset共通値へfallbackし、`visible`は編集・debug表示だけを表す。配列順は意味を持たず、不在と空配列はAsset共通値だけを使う。新しい編集で最後のentryを解除した場合はfield自体を省略する。
 
-Slice Cでは、構造検証に加えてcollider IDの一意性、Frame内重複参照、dangling参照、shape一致、有限値と正寸法を共通runtime意味検証へ接続する。Frame / override / geometryの未知fieldは保持するが解釈しない。Assetは`0.2.0`、migrationなし、IndexedDBと`.casproj`の配置不変を維持し、旧dataへfieldを補完しない。本DraftのCIと固定head独立監査が完了するまで実装済み・検証済みとは扱わない。
+Slice Cでは、構造検証に加えてcollider IDの一意性、Frame内重複参照、dangling参照、shape一致、有限値と正寸法を共通runtime意味検証へ接続する。Frame / override / geometryの未知fieldは保持するが解釈しない。TypeScript型もrect / circle / visible-onlyの排他的unionとし、geometry更新は未知fieldをmerge保持してdeep semantic no-opを抑止する。Assetは`0.2.0`、migrationなし、IndexedDBと`.casproj`の配置不変を維持し、旧dataへfieldを補完しない。固定headごとのCIと独立監査を必須とし、mergeまでGroup 13完了へ数えない。
 
 ### 6.7 型別設定（Phase 14）
 
