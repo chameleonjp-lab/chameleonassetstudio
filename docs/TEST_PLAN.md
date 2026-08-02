@@ -97,7 +97,7 @@ PR #217 final head `e28e4de43f6825fdd5f0d206983e0760359f0503`のCI Run #650はun
 
 ### 3.4 Group 13 O1 Slice B / C
 
-Slice Bはdocs-only契約としてPR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`で完了した。現在のSlice CはADR-0024を正本として、次をすべて自動検証するtestをDraft実装する。固定headごとのCIと独立監査を必須とし、mergeまでGroup 13完了へ数えない。
+Slice Bはdocs-only契約としてPR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`で完了した。Slice Cの製品実装と次の自動検証はPR #219 / #220でmainへ反映済みである。PR #221はassertionの意味を変えずE2Eの非同期待機を安定化するDraftで、固定headごとのCIと独立監査、Group 13 closeoutを終えるまで完了数は14/27を維持する。
 
 - schemaと意味検証: rect / circleの完全geometry、`visible`だけの上書き、field単位fallback、field不在、空配列、partial rect / circle、rect / circle同居、recognized override fieldなし、空`colliderId`、予約名fieldのexact保持・非解釈、未知field保持、重複Asset collider ID、Frame内重複参照、dangling参照、shape不一致、非有限値、0以下の寸法を扱う。無効dataを黙って修復・fallbackしない。
 - 編集: Frame選択・停止中だけのscope、自動再生完了後のFrame編集selection解除、残る視覚previewが編集権限を与えないこと、rect / circle編集とpreview、`visible`のinherit / show / hide、geometry resetと全reset、未知geometry pathを含む削除警告、未知fieldだけを残すfield単位resetの理由付き拒否と明示的なentry全解除、Enter / blurの最大1 History、Escape取消、deep semantic no-op抑止、非正寸法の理由付き拒否、`visible: false`の再編集を扱う。
