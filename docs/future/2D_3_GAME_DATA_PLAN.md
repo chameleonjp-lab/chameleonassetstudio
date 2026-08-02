@@ -2,8 +2,8 @@
 
 最終更新日: 2026-08-02  
 対象: Group 13 `2D-3-GAME-DATA + 2D-3-COLLIDER-OVERRIDE + 2D-3-POLYGON`  
-基準main: `fac5deb0549a9fe8dd1c14c5f895204c75a73045`  
-状態: `human-decision-pending`  
+基準main: `55fb2c3710e3678225d485b1bad7edbbf1d54fcb`
+状態: `accepted: G1 + O1 + P1 / implementation-not-started`
 
 ---
 
@@ -15,13 +15,14 @@ Group 13を、次の3つへ分離する。
 2. Frameごとの当たり判定上書き。
 3. polygon colliderの採否。
 
-本書はdocs-only契約監査であり、候補の採用、製品実装、schema変更、version変更を行わない。
+PR #215でdocs-only契約監査をmainへ反映し、2026-08-02の人間判断で`G1+O1+P1`を採用した。本書はその採用判断と実装順を記録するが、製品実装、schema変更、version変更は行わない。
 
 ## 2. 現在位置
 
-- Group 12はcompletedで、Group 13の契約監査を開始できる。
+- Group 12はcompletedで、Group 13の契約監査PR #215もmainへ反映済みである。
 - 2D完成ロードマップは27工程で、Group 12までの14工程が完了している。
 - 現在は15工程目のGroup 13である。
+- `G1+O1+P1`はacceptedだが、製品実装は未着手であり、完了数は14工程のままである。
 - Group 14はGroup 13完了後に開始する。
 - 同じ目的のopen Pull Requestは監査開始時点で0件である。
 
@@ -59,19 +60,19 @@ balanced profileでは、すべてのAssetへanchorやcolliderを強制しない
 
 `gameAttributes`はschema上、配列やobjectを含むJSON値を保持できる。一方、現在の入力欄は文字列と数値向けであり、配列やobjectを文字列化して編集すると意味を失う。
 
-推奨は、文字列と有限数値だけを通常入力で編集し、配列・object・boolean・nullは読み取り専用で表示することである。構造を持つ値を編集する専用JSON editorはGroup 13の必須範囲に含めない。
+G1では、文字列と有限数値だけを通常入力で編集し、配列・object・boolean・nullは読み取り専用で表示する。構造を持つ値を編集する専用JSON editorはGroup 13の必須範囲に含めない。
 
 ### 4.2 Asset種別を変えた後の旧設定
 
 Asset種別を変えても、以前の`tile`、`gimmick`、`effect`、Layerのbackground設定はデータ内に残る。これは非破壊保持として安全だが、画面から見えにくい。
 
-推奨は自動削除せず、別種別の設定が残っていることを理由付きで表示し、削除は利用者の明示操作だけで行うことである。
+G1では自動削除せず、別種別の設定が残っていることを理由付きで表示し、削除は利用者の明示操作だけで行う。
 
 ### 4.3 入力ごとのHistory
 
 原点、anchor、colliderの数値・文字入力は、入力中の変更を確定時の1 Historyへまとめる。種別設定とgame attributesは入力のたびにHistoryを作り得る。
 
-推奨は、文字・数値入力をEnterまたはフォーカス離脱で最大1 Historyへまとめ、Escで取消、no-opではHistoryを作らない既存方式へ揃えることである。
+G1では、文字・数値入力をEnterまたはフォーカス離脱で最大1 Historyへまとめ、Escで取消、no-opではHistoryを作らない既存方式へ揃える。
 
 ## 5. Frame別collider上書きの既存決定
 
@@ -123,36 +124,36 @@ polygonを採用するには、少なくとも次を別の設計で固定する�
 - `.casproj`、atlas、helpers、target adapter、E2E
 - 古いrect / circleと旧`.casproj`の互換性
 
-推奨は2D Pro Gateまで`unsupported`を維持し、必要性と対象別出力の条件が揃った後の別work packageへ送ることである。
+P1により2D Pro Gateまで`unsupported`を維持し、必要性と対象別出力の条件が揃った後の別work packageへ送る。
 
-## 8. 人間判断候補
+## 8. 採用判断
 
 ### G1: 既存Game Dataの仕上げ
 
 | 候補 | 内容 | 影響 |
 |---|---|---|
-| **G1（推奨）** | §3の既存範囲をGroup 13必須範囲とし、§4のデータ損失防止、旧種別設定の警告、入力確定単位を補修する。 | schema、version、migration、export形式を変えず、既存機能を安全に仕上げられる。 |
-| G2 | 既存実装をそのまま完了扱いにする。 | 早いが、構造を持つgameAttributesの誤編集と、旧種別設定の見落としを残す。 |
+| **G1（採用）** | §3の既存範囲をGroup 13必須範囲とし、§4のデータ損失防止、旧種別設定の警告、入力確定単位を補修する。 | schema、version、migration、export形式を変えず、既存機能を安全に仕上げられる。 |
+| G2（不採用） | 既存実装をそのまま完了扱いにする。 | 早いが、構造を持つgameAttributesの誤編集と、旧種別設定の見落としを残す。 |
 
 ### O1: Frame別collider上書き
 
 | 候補 | 内容 | 影響 |
 |---|---|---|
-| **O1（推奨）** | §5〜§6.1の限定仕様で、G1後の独立sliceとして実装する。 | 既存colliderのFrame別位置・サイズ調整とdebug表示上書きを扱える。ゲーム内の有効 / 無効は扱わない。複製、反転、resize、保存、書き出し拒否まで横断テストが必要。 |
-| O2 | Group 13では不採用とし、2D Pro Gate後のfuture backlog `POST-2D-COLLIDER-OVERRIDE`へ延期する。 | O2の採用記録をもって`2D-3-COLLIDER-OVERRIDE`のGroup 13 Gateはcloseできる。別ADRがacceptedになるまでFrame上書きは実装しない。 |
+| **O1（採用）** | §5〜§6.1の限定仕様で、G1後の独立sliceとして実装する。 | 既存colliderのFrame別位置・サイズ調整とdebug表示上書きを扱える。ゲーム内の有効 / 無効は扱わない。複製、反転、resize、保存、書き出し拒否まで横断テストが必要。 |
+| O2（不採用） | Group 13では不採用とし、2D Pro Gate後のfuture backlog `POST-2D-COLLIDER-OVERRIDE`へ延期する。 | O2の採用記録をもって`2D-3-COLLIDER-OVERRIDE`のGroup 13 Gateはcloseできる。別ADRがacceptedになるまでFrame上書きは実装しない。 |
 
 ### P1: polygon
 
 | 候補 | 内容 | 影響 |
 |---|---|---|
-| **P1（推奨）** | 2D Pro Gateまで`unsupported`を維持し、別work packageへ延期する。 | rect / circleの互換性を守り、Group 13を先へ進められる。 |
-| P2 | Group 13で別設計から開始する。 | schema、version、migration、全export / target対応までGroup 13が大幅に広がる。 |
+| **P1（採用）** | 2D Pro Gateまで`unsupported`を維持し、別work packageへ延期する。 | rect / circleの互換性を守り、Group 13を先へ進められる。 |
+| P2（不採用） | Group 13で別設計から開始する。 | schema、version、migration、全export / target対応までGroup 13が大幅に広がる。 |
 
-推奨組み合わせは`G1+O1+P1`である。人間が採用するまで、どの候補も`accepted`として扱わない。
+2026-08-02の人間判断で`G1+O1+P1`をacceptedとした。この採用はGroup 13の実装順と能力境界だけを許可し、製品コード、schema、version、migration、保存形式、export形式の変更自体を完了扱いにしない。
 
-## 9. 実装分割案
+## 9. 実装分割
 
-人間が推奨組み合わせを採用した場合も、同じ実装PRへ混ぜない。
+採用した`G1+O1+P1`を同じ実装PRへ混ぜない。
 
 1. Slice A `2D-3-GAME-DATA-CLOSEOUT`: G1の既存範囲補修。
 2. Slice B `2D-3-COLLIDER-OVERRIDE-CONTRACT`: O1の正式schema / data / export拒否契約。
@@ -161,7 +162,7 @@ polygonを採用するには、少なくとも次を別の設計で固定する�
 
 各sliceは1 branch、1 Draft Pull Request、単一writerとする。CI失敗は同じPull Requestで直す。
 
-O2を採用した場合はSlice B / Cを作らない。G1ならSlice Aの完了後、G2なら現状完了の記録後に、O2の延期先とP1 / P2の状態を正本へ記録してGroup 13をcloseし、Group 14へ進む。P2を選ぶ場合はpolygon設計の完了がGroup 13 close条件として残る。
+Slice Bでは`Frame.colliderOverrides?`のcanonical schema形、semantic validation、UI操作、保存と書き出し拒否の正確な契約を固定する。Slice Bがmainへmergeされるまで、Slice Cの製品実装を開始しない。P1によりpolygonは`unsupported`を維持し、Group 13 closeoutで延期先とGroup 14開始条件を同期する。
 
 ## 10. 必須検証
 
@@ -196,7 +197,8 @@ O2を採用した場合はSlice B / Cを作らない。G1ならSlice Aの完了�
 
 ## 12. 次のGate
 
-1. 本docs-only監査をmainへ置く。
-2. 人間が`G1/G2 + O1/O2 + P1/P2`を明示決定する。
-3. accepted判断を正本へ記録する。
-4. 採用した組み合わせに従い、§9の該当sliceまたはcloseoutへ進む。G1の場合だけSlice Aを単一writerで開始する。
+1. PR #215のdocs-only監査をmainへ置く。完了済み。
+2. 人間が`G1+O1+P1`を明示決定する。2026-08-02に完了済み。
+3. 本docs-only採用記録をmainへ置く。このPRでは製品コードを変更しない。
+4. 採用記録のmerge後、Slice AのG1だけを単一writerで開始する。
+5. Slice Aのmerge後、Slice BでO1の正式契約を固定し、そのmerge後にだけSlice Cの製品実装へ進む。

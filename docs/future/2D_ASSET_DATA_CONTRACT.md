@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 2D Asset Data Contract
 
-最終更新日: 2026-07-24
+最終更新日: 2026-08-02
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 2D 完成形の保存・座標・互換性契約
 状態: accepted（保存契約。Family / Variantとsource provenanceは実装済み、後続項目を含む）
@@ -12,6 +12,7 @@
 > **現状:** 現在の正本は `docs/DATA_FORMAT.md`、`src/core/model/`、`src/core/schema/` である。ADR-0019によりAssetは`0.2.0`、Project / export-presets / Chameleon Atlas / アプリは`0.1.0`で、`.casproj`は各文書を独立にmigrateする。
 > **本書の役割:** 2D 完成形で必要になるデータの意味と、形式変更前に必ず決める契約を定義する。本文だけで現在の型、schema、ZIP 構成、migration を変更してはいけない。Family / Variantは別契約`2D_2_VARIANT_BATCH_PLAN.md`で実装済み。来歴は`2D_2_IMPORT_PLAN.md`のP1に基づき、group 11 Slice B（PR #126）でoptionalな`Asset.provenance?`として実装済みである。
 > **Group 12:** T1 / R1 / P1とH1=E1 / H2=L1 / H3=M1はaccepted。T1 Slice AはPR #153、merge `e8fac95`、P1 Slice CはPR #154、merge `1c700e7`でmainへ反映済みである。ADR-2026-07-24-027でR1をB1 / B2へ分割し、PR #157 final head `834cc38`、merge `bf13cac`、CI Run #501全成功、非GitHub・非Opusの固定head独立review `BLOCKER 0 / MUST 0 / SHOULD 0`としてB1を実装済みとした。B2の資源上限、warning、hard capとH3数値budgetは後続に残す。
+> **Group 13:** PR #215のdocs-only監査後、2026-08-02の人間判断で`G1+O1+P1`をacceptedとした。G1を先に補修し、O1は正式契約と製品実装を別sliceへ分ける。P1によりpolygonは2D Pro Gateまで`unsupported`を維持する。O1の正確な永続表現を契約するまで、現在の型、schema、version、migration、保存・書き出し形式を変更してはいけない。
 
 ## 1. 目的
 
@@ -223,7 +224,7 @@ Group 12のB1は、有限値、参照、循環、H2=L1など入力の正しさ�
 3. 必要なら polygon を追加する。
 4. 対象 engine ごとに raw data、debug draw、実際の collider 変換のどこまで提供するかを検証する。
 
-Frame別判定は、アセット共通判定を基準にし、既存colliderの位置・サイズ・`visible`だけをFrame単位で上書きする。colliderの追加・削除、`purpose`変更、`shape`変更は上書きで行わない。Group 13の実装時期、複製・反転・resize、書き出し拒否の契約は`docs/future/2D_3_GAME_DATA_PLAN.md`で人間判断待ちとする。
+Frame別判定は、アセット共通判定を基準にし、既存colliderの位置・サイズ・`visible`だけをFrame単位で上書きする。colliderの追加・削除、`purpose`変更、`shape`変更は上書きで行わない。Group 13ではO1として採用済みだが、複製・反転・resize、canonical schema、semantic validation、書き出し拒否の正確な契約は`docs/future/2D_3_GAME_DATA_PLAN.md`のSlice Bで固定する。Slice Bがmainへmergeされるまで製品実装しない。
 
 ### 9.3 polygon を追加する条件
 
