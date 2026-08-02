@@ -79,19 +79,26 @@ async function readBlobDigests(page: Page): Promise<Array<{ key: string; bytes: 
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
-    const records = await new Promise<Array<{ key: string; blob: Blob }>>((resolve, reject) => {
-      const request = db.transaction('blobs', 'readonly').objectStore('blobs').getAll();
-      request.onsuccess = () => resolve(request.result as Array<{ key: string; blob: Blob }>);
-      request.onerror = () => reject(request.error);
-    });
-    db.close();
-    return Promise.all(
-      records.map(async (record) => ({
-        key: record.key,
-        bytes: [...new Uint8Array(await record.blob.arrayBuffer())],
-      })),
+    const records = await new Promise<Array<{ key: string; bytes: ArrayBuffer }>>(
+      (resolve, reject) => {
+        const request = db.transaction('blobs', 'readonly').objectStore('blobs').getAll();
+        request.onsuccess = () =>
+          resolve(request.result as Array<{ key: string; bytes: ArrayBuffer }>);
+        request.onerror = () => reject(request.error);
+      },
     );
+    db.close();
+    return records
+      .map((record) => ({
+        key: record.key,
+        bytes: [...new Uint8Array(record.bytes)],
+      }))
+      .sort((left, right) => left.key.localeCompare(right.key));
   });
+}
+
+function saveStatus(page: Page) {
+  return page.locator('.editor-save-status');
 }
 
 async function reopenProject(page: Page, name: string): Promise<void> {
@@ -121,7 +128,7 @@ async function setupO1Project(page: Page, name: string): Promise<void> {
   await page.getByRole('button', { name: 'フレーム追加' }).click();
   await page.getByLabel('新しいアニメーション名').fill('o1_animation');
   await page.getByRole('button', { name: '作成', exact: true }).click();
-  await expect(page.getByRole('status')).toHaveText('保存済み', { timeout: 10_000 });
+  await expect(saveStatus(page)).toHaveText('保存済み', { timeout: 10_000 });
   await reopenProject(page, name);
 }
 
@@ -203,7 +210,7 @@ test('Frame別geometry/visibleを1履歴で確定・取消・Undo/Redo・reload�
   await expect(x).toHaveValue('5');
   await visible.selectOption('hide');
   await expect(page.getByText(/Frameで非表示/)).toBeVisible();
-  await expect(page.getByRole('status')).toHaveText('保存済み', { timeout: 10_000 });
+  await expect(saveStatus(page)).toHaveText('保存済み', { timeout: 10_000 });
 
   const stored = await readStoredAsset(page);
   expect(stored.version).toBe('0.2.0');
@@ -243,13 +250,13 @@ test('参照中collider削除と未知fieldだけを残すresetを拒否し、�
   await page.getByRole('button', { name: 'frame_1', exact: true }).click();
 
   await page.getByRole('button', { name: '判定「body」を削除' }).click();
-  await expect(page.getByRole('alert')).toContainText('Frame上書き');
+  await expect(page.getByRole('alert').filter({ hasText: 'Frame上書き' })).toBeVisible();
   expect((await readStoredAsset(page)).colliders).toHaveLength(1);
 
   await page.getByLabel('当たり判定の編集範囲').selectOption('frame');
   await expect(page.getByText(/未知field（name、futureEntry）を保持中/)).toBeVisible();
   await page.getByRole('button', { name: '位置・サイズを共通へ戻す' }).click();
-  await expect(page.getByRole('alert')).toContainText('未知field');
+  await expect(page.getByRole('alert').filter({ hasText: '未知field' })).toBeVisible();
   expect((await readStoredAsset(page)).frames[0].colliderOverrides?.[0]).toHaveProperty('rect');
 
   page.once('dialog', (dialog) => dialog.dismiss());
@@ -258,7 +265,7 @@ test('参照中collider削除と未知fieldだけを残すresetを拒否し、�
 
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'このFrameの上書きをすべて解除' }).click();
-  await expect(page.getByRole('status')).toHaveText('保存済み', { timeout: 10_000 });
+  await expect(saveStatus(page)).toHaveText('保存済み', { timeout: 10_000 });
   expect((await readStoredAsset(page)).frames[0]).not.toHaveProperty('colliderOverrides');
 });
 
@@ -287,7 +294,7 @@ test('保存失敗はBlobを変えずAsset/Project/History/UIを戻しerrorを�
   const width = page.getByLabel('Frame「frame_1」判定「body」幅');
   await width.fill('20');
   await width.press('Enter');
-  await expect(page.getByRole('status')).toContainText('保存失敗', { timeout: 10_000 });
+  await expect(saveStatus(page)).toContainText('保存失敗', { timeout: 10_000 });
   await expect(width).toHaveValue('32');
   await expect(page.getByRole('button', { name: '元に戻す' })).toBeDisabled();
   await expect.poll(async () => readStoredAsset(page)).toEqual(beforeAsset);
@@ -296,7 +303,7 @@ test('保存失敗はBlobを変えずAsset/Project/History/UIを戻しerrorを�
 
   await width.fill('24');
   await width.press('Enter');
-  await expect(page.getByRole('status')).toHaveText('保存済み', { timeout: 10_000 });
+  await expect(saveStatus(page)).toHaveText('保存済み', { timeout: 10_000 });
   await expect
     .poll(async () => (await readStoredAsset(page)).frames[0].colliderOverrides?.[0])
     .toMatchObject({
@@ -333,7 +340,7 @@ test.describe('mobile O1', () => {
     await width.tap();
     await width.fill('28');
     await width.press('Enter');
-    await expect(page.getByRole('status')).toHaveText('保存済み', { timeout: 10_000 });
+    await expect(saveStatus(page)).toHaveText('保存済み', { timeout: 10_000 });
 
     const metrics = await page.evaluate(() => {
       const scopeSelect = document.querySelector<HTMLSelectElement>(
