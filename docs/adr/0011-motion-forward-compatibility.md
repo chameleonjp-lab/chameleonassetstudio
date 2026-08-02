@@ -15,7 +15,7 @@ ADR-0008〜0010 は、frame 別 `durationMs` 上書き・`Animation.events`・`F
 - 本契約の追加フィールド（frame 単位 `durationMs` / `Animation.events` / `Frame.colliderOverrides`）は**すべて optional・additive** とし、不在時の既定挙動はfps再生、イベントなし、アセット共通判定だけと一致させる。`Frame.colliderOverrides?`を追加するO1でもAsset `0.2.0`を維持し、このfieldのためのmigrationを追加しない。
 - 現行 JSON Schema は `animation` / `frame` / `frameLayerState` / root（`asset.schema.json` トップレベル）のいずれも `additionalProperties` を指定していない（= 未知フィールドを許容する）という事実を記録する。
 - ただし「旧アプリが新データを再保存したとき、未知フィールドが保持されるか」は編集経路の実装依存であり、本 ADR では**保証しない**。将来フィールドを正式導入する際、既存編集経路（`assetOps.ts` 等のオブジェクトスプレッド）が未知フィールドを保持するかどうかを個別に確認し、必要なら version を上げるかどうかを `2D-1A-MIGRATION` の契約で判断する（本 ADR は先取りしない）。
-- 追加フィールドの導入gate: schema / `DATA_FORMAT.md` / `EXPORT_FORMATS.md`、旧data fixture + roundtrip、flip / 複製 / export影響、独立review + 人間確認を満たす契約レーン別PRでのみ導入できる。O1はADR-0024のdocs-only Slice Bを先にmainへ置き、その後のSlice Cで実装する。
+- 追加フィールドの導入gate: schema / `DATA_FORMAT.md` / `EXPORT_FORMATS.md`、旧data fixture + roundtrip、flip / 複製 / export影響、独立review + 人間確認を満たす契約レーン別PRでのみ導入できる。O1はADR-0024のdocs-only Slice Bを先にmainへ置き、Slice CのPR #219 / #220でこのgateを満たして実装・補修済みである。
 
 ## 根拠
 
