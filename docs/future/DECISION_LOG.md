@@ -1368,3 +1368,29 @@ ADR-025後、移設前commitのiPhone 17 Pro baseline結果2件はハーネス�
 
 - 製品コード、test code、schema、version、migration、IndexedDB layout、`asset.json`、`.casproj`、export ZIP、dependency。
 - 2D Pro Gate全体の完了、3D開始、Ready化、merge。
+## ADR-2026-08-02-033: Group 13 Game Data / collider override / polygonの実装分割
+
+### 状態
+
+- human-decision-pending
+- 対象: Group 13 `2D-3-GAME-DATA + 2D-3-COLLIDER-OVERRIDE + 2D-3-POLYGON`
+- 基準main: `fac5deb0549a9fe8dd1c14c5f895204c75a73045`
+- 正本: `docs/future/2D_3_GAME_DATA_PLAN.md`
+
+### 確認できた事実
+
+- origin、anchor、rect / circle、tile、background、gimmick、effect、tag、gameAttributesは既存の型、schema、画面、History、autosave、IndexedDB、`asset.json`、`.casproj`へ接続済みである。
+- 構造を持つgameAttributesは現在の文字入力で意味を失い得る。Asset種別変更後の旧種別設定は非破壊で残るが、見落としやすい。
+- ADR-0010はFrame単位上書き、位置・サイズ・`visible`だけ、polygon unsupportedを決定済みだが、実装時期は未決定である。
+- 現行Atlas `0.1.0`、helpers、examplesはFrame別上書きとpolygonを表現できない。
+
+### 判断候補
+
+- `G1`（推奨）: 既存Game Dataのデータ損失防止、旧種別設定警告、入力確定単位を仕上げる。
+- `G2`: 既存Game Dataを現状のまま完了扱いにする。
+- `O1`（推奨）: ADR-0010の限定Frame上書きをG1後の独立sliceとして実装する。
+- `O2`: Frame上書きをGroup 14以降へ延期する。
+- `P1`（推奨）: polygonを2D Pro Gateまで`unsupported`として別work packageへ延期する。
+- `P2`: Group 13でpolygonの別設計から開始する。
+
+推奨組み合わせは`G1+O1+P1`である。人間の明示回答まで、どの候補もacceptedとして扱わず、製品コード、schema、version、migration、保存形式、export形式を変更しない。
