@@ -22,7 +22,7 @@ PR #215でdocs-only契約監査、PR #216で`G1+O1+P1`の採用記録をmainへ�
 - Group 12とGroup 13はcompletedである。
 - 2D完成ロードマップは27工程で、15工程が完了している。
 - 現在は16工程目のGroup 14 `2D-3-PREVIEW + 2D-3-IMPACT`である。
-- `G1+O1+P1`はacceptedで、G1 Slice AはPR #217、O1正式契約Slice BはPR #218、製品実装・補修・E2E待機安定化はPR #219〜#221として完了した。CI Run #650 / #658 / #663 / #669と各固定head独立確認は成功済みである。
+- `G1+O1+P1`はacceptedである。PR #215 / #216 / #218は契約監査・採用記録・O1正式契約を`accepted / merged`、PR #217はG1を`implemented / CI-passed / independently-verified / merged`、PR #219 / #220はO1製品実装・補修を`implemented / CI-passed / merged`とする。PR #221 final headは累積状態を`CI-passed / independently-verified / merged`として確認し、Group 13全体をcompletedとする。
 - P1によりpolygonは2D Pro Gateまで`unsupported`を維持する。現行Atlas `0.1.0`、Sprite Sheet、product ZIPのFrame別上書き事前拒否もGroup 15〜17の形式契約まで維持する。
 - Group 14は契約監査を開始できる。製品実装前に、利用者体験、変更可能なデータ、受入条件、試験、保存・書き出し影響をone-sheet handoffへ固定し、人間またはFableの承認を得る。
 
