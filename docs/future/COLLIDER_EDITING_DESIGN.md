@@ -1,6 +1,6 @@
 # Collider Editing Design
 
-最終更新日: 2026-08-02
+最終更新日: 2026-08-03
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 文書種別: Phase 19-C「判定編集強化」の docs-first 設計  
 基礎要件: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
@@ -10,7 +10,7 @@
 
 ---
 
-> **現状:** Phase 19-Cのrect / circle表示・選択・直接編集は後続実装で完了した。将来境界はADR-0010を正本とし、Frame単位上書きだけを採用してAnimation単位上書きを採用しない。2026-08-02のGroup 13判断でO1を採用し、G1はPR #217、O1正式契約Slice BはPR #218、ADR-0024製品実装Slice Cと補修はPR #219 / #220でmainへ反映済みである。E2E待機安定化PR #221はDraft・未mergeで、Group 13 closeout前のため進捗は14/27を維持する。P1によりpolygonは2D Pro Gateまで`unsupported`を維持する。O1では`asset.json` version、migration、`.casproj`配置、export ZIP構成、dependencies、GitHub Actionsを変更していない。
+> **現状:** Phase 19-Cのrect / circle表示・選択・直接編集は後続実装で完了した。将来境界はADR-0010を正本とし、Frame単位上書きだけを採用してAnimation単位上書きを採用しない。2026-08-02のGroup 13判断でO1を採用し、G1はPR #217、O1正式契約Slice BはPR #218、ADR-0024製品実装Slice Cと補修はPR #219 / #220、E2E待機安定化はPR #221 / merge `65df697e36f53ee20464d7bb74940f8713317d65`でmainへ反映済みである。CI Run #669と固定head独立監査を成功し、Group 13をcompleted、進捗を15/27とした。P1によりpolygonは2D Pro Gateまで`unsupported`を維持する。O1では`asset.json` version、migration、`.casproj`配置、export ZIP構成、dependencies、GitHub Actionsを変更していない。
 
 ## 1. 結論
 
@@ -129,7 +129,7 @@ Phase 19-B の左右反転コピーは、判定も反転対象にする。Phase 
 
 ## 7. フレーム別判定の扱い
 
-フレーム別判定は、既存colliderの位置・サイズをFrameごとに調整する用途がある。Slice Bで契約を固定し、Slice Cで`Frame.colliderOverrides?`をoptionalに追加する製品実装と補修をPR #219 / #220としてmainへ反映した。PR #221の固定head検証とGroup 13 closeoutは未完了である。
+フレーム別判定は、既存colliderの位置・サイズをFrameごとに調整する用途がある。Slice Bで契約を固定し、Slice Cで`Frame.colliderOverrides?`をoptionalに追加する製品実装と補修をPR #219 / #220としてmainへ反映した。PR #221の固定head検証とmain反映も完了し、Group 13をcloseoutした。
 
 ADR-0010により、正本は`Asset.colliders`、上書きはFrame単位、優先順位は「Frame上書き > Asset共通」と決定済みである。最初の上書きは既存colliderの位置、サイズ、`visible`だけを扱い、追加・削除、`purpose`変更、`shape`変更、Animation単位上書きは行わない。
 
@@ -145,7 +145,7 @@ Group 13 O1 Slice B / ADR-0024は、次を正式契約とする。
 - History / autosave / IndexedDBの既存経路で保存し、容量・保存失敗時は未確定のAsset、Project参照、History、画面state、IndexedDB metadata、pending autosaveをrollbackする。O1はmetadata-onlyなのでBlobは変更しない。失敗理由は`SaveState.status === 'error'` / `errorMessage`に残す。旧dataへfieldを補完せず、`asset.json` / `.casproj`でexact roundtripする。
 - PNG / WebP / 単体`asset.json` / `.casproj`は許可する。現行Atlas生成API、`atlas.json`、product ZIPはFrame別上書きを表現できないため、Blob読込・decode・canvas・ZIP生成より前に理由付きで拒否する。
 
-正式契約Slice BはPR #218、`Frame.colliderOverrides?`の製品実装と補修はPR #219 / #220でmainへmerge済みである。E2E待機安定化PR #221は製品契約を変えないDraftで、固定head CI・独立監査とGroup 13 closeoutを残す。
+正式契約Slice BはPR #218、`Frame.colliderOverrides?`の製品実装と補修はPR #219 / #220、製品契約を変えないE2E待機安定化はPR #221でmainへmerge済みである。CI Run #669と固定head独立監査を成功し、Group 13はcompletedである。
 
 ## 8. 多角形判定を入れる場合の schema 候補
 

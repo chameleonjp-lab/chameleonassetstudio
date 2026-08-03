@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 2D Asset Data Contract
 
-最終更新日: 2026-08-02
+最終更新日: 2026-08-03
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 2D 完成形の保存・座標・互換性契約
 状態: accepted（保存契約。Family / Variantとsource provenanceは実装済み、後続項目を含む）
@@ -12,7 +12,7 @@
 > **現状:** 現在の正本は `docs/DATA_FORMAT.md`、`src/core/model/`、`src/core/schema/` である。ADR-0019によりAssetは`0.2.0`、Project / export-presets / Chameleon Atlas / アプリは`0.1.0`で、`.casproj`は各文書を独立にmigrateする。
 > **本書の役割:** 2D 完成形で必要になるデータの意味と、形式変更前に必ず決める契約を定義する。本文だけで現在の型、schema、ZIP 構成、migration を変更してはいけない。Family / Variantは別契約`2D_2_VARIANT_BATCH_PLAN.md`で実装済み。来歴は`2D_2_IMPORT_PLAN.md`のP1に基づき、group 11 Slice B（PR #126）でoptionalな`Asset.provenance?`として実装済みである。
 > **Group 12:** T1 / R1 / P1とH1=E1 / H2=L1 / H3=M1はaccepted。T1 Slice AはPR #153、merge `e8fac95`、P1 Slice CはPR #154、merge `1c700e7`でmainへ反映済みである。ADR-2026-07-24-027でR1をB1 / B2へ分割し、PR #157 final head `834cc38`、merge `bf13cac`、CI Run #501全成功、非GitHub・非Opusの固定head独立review `BLOCKER 0 / MUST 0 / SHOULD 0`としてB1を実装済みとした。B2の資源上限、warning、hard capとH3数値budgetは後続に残す。
-> **Group 13:** PR #215のdocs-only監査とPR #216の採用記録後、G1 Slice AはPR #217 final head `e28e4de43f6825fdd5f0d206983e0760359f0503`、merge `bc48487ef47de113f96e80cf625b56b0e245efce`としてmainへ反映済みである。O1の正確な永続表現を固定したADR-0024 / Slice BもPR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`、製品実装と補修はPR #219 / #220としてmainへ反映済みである。E2E待機安定化PR #221はDraft・未mergeで、Group 13 closeout前のため進捗は14/27を維持する。P1によりpolygonは2D Pro Gateまで`unsupported`を維持する。O1ではAsset version、migration、IndexedDB / `.casproj`配置、export ZIP構成、dependencyを変更していない。
+> **Group 13:** PR #215のdocs-only監査とPR #216の採用記録後、G1 Slice AはPR #217 final head `e28e4de43f6825fdd5f0d206983e0760359f0503`、merge `bc48487ef47de113f96e80cf625b56b0e245efce`としてmainへ反映済みである。O1の正確な永続表現を固定したADR-0024 / Slice BはPR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`、製品実装と補修はPR #219 / #220、E2E待機安定化はPR #221 / merge `65df697e36f53ee20464d7bb74940f8713317d65`としてmainへ反映した。CI Run #669と固定head独立監査まで成功し、Group 13をcompleted、進捗を15/27とする。P1によりpolygonは2D Pro Gateまで`unsupported`を維持する。O1ではAsset version、migration、IndexedDB / `.casproj`配置、export ZIP構成、dependencyを変更していない。
 
 ## 1. 目的
 
@@ -217,7 +217,7 @@ Group 12のB1は、有限値、参照、循環、H2=L1など入力の正しさ�
 
 ### 9.2 将来の拡張順
 
-> Frame単位だけを許可する境界はADR-0010 / 0011、canonicalな永続・fallback・検証・UI・変換・保存・export拒否の詳細はGroup 13 O1 Slice BのADR-0024で決定済みである。Slice BはPR #218、製品実装Slice Cと補修はPR #219 / #220でmainへ反映済みである。E2E待機安定化PR #221とGroup 13 closeoutが終わるまで完了数は14/27を維持する。
+> Frame単位だけを許可する境界はADR-0010 / 0011、canonicalな永続・fallback・検証・UI・変換・保存・export拒否の詳細はGroup 13 O1 Slice BのADR-0024で決定済みである。Slice BはPR #218、製品実装Slice Cと補修はPR #219 / #220、E2E待機安定化はPR #221でmainへ反映済みである。Group 13をcloseoutし、完了数は15/27である。
 
 1. アセット共通の rect / circle を正しく編集・反転・書き出しできるようにする。
 2. Frame別の上書き規則を設計する。Animation別上書きは導入しない。
@@ -236,7 +236,7 @@ Frame別判定は、アセット共通判定を基準にし、既存colliderの�
 - Frame複製、Asset複製、左右反転、Family linked mirror / refresh、canvas resize、D4 alignment、共通collider削除・shape変更の規則はADR-0024に従う。
 - PNG / WebP / 単体`asset.json` / `.casproj`は許可し、Frame別上書きを表現できないAtlas生成API、`atlas.json`、product ZIPはBlob読込・decode・canvas・ZIP生成より前に理由付きで拒否する。
 
-O1は2026-08-02に採用済みで、Slice B / PR #218がこの契約をmainへ固定した。Slice C製品実装と補修はPR #219 / #220でmainへ反映済みである。PR #221は製品契約を変えないE2E待機安定化のDraftであり、固定head検証とGroup 13 closeoutは未完了である。
+O1は2026-08-02に採用済みで、Slice B / PR #218がこの契約をmainへ固定した。Slice C製品実装と補修はPR #219 / #220、製品契約を変えないE2E待機安定化はPR #221でmainへ反映済みである。CI Run #669と固定head独立監査を成功し、Group 13をcloseoutした。Group 14はpreview・変更影響表示へこの解決結果を使えるが、保存形式と現行Atlas系の事前拒否は変更しない。
 
 ### 9.3 polygon を追加する条件
 

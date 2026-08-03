@@ -8,7 +8,7 @@
 
 ## 文脈
 
-ADR-0008〜0010 は、frame 別 `durationMs` 上書き・`Animation.events`・`Frame.colliderOverrides` という3つの将来フィールドの境界を定義した。本ADRは、それらを導入する際に旧dataが意味不変で読めることと、schemaが未知フィールドを許容する実装だったことを先に記録した。`Frame.durationMs?`と`Animation.events?`はGroup 12で実装済み、`Frame.colliderOverrides?`はGroup 13 O1 Slice B / PR #218で詳細契約を完了し、Slice C製品実装と補修もPR #219 / #220でmainへ反映済みである。E2E待機安定化PR #221とGroup 13 closeoutを残す。
+ADR-0008〜0010 は、frame 別 `durationMs` 上書き・`Animation.events`・`Frame.colliderOverrides` という3つの将来フィールドの境界を定義した。本ADRは、それらを導入する際に旧dataが意味不変で読めることと、schemaが未知フィールドを許容する実装だったことを先に記録した。`Frame.durationMs?`と`Animation.events?`はGroup 12、`Frame.colliderOverrides?`はGroup 13 O1 Slice B / PR #218の詳細契約とPR #219 / #220の製品実装・補修、PR #221のE2E待機安定化を経てmainへ反映済みである。Group 13は15/27としてcloseoutした。
 
 ## 決定
 
@@ -28,7 +28,7 @@ ADR-0008〜0010 は、frame 別 `durationMs` 上書き・`Animation.events`・`F
 
 - 影響 docs: `docs/future/2D_ASSET_DATA_CONTRACT.md` §8.2, §9.2, §13。
 - 影響実装: `durationMs` / `events`は実装済み。O1 Slice Bはdocs-only契約、`colliderOverrides`の製品実装・補修はSlice CのPR #219 / #220でmainへ反映済みである。
-- fixture: `src/core/model/motionContract.fixtures.test.ts` の ADR-0011 セクションは、`durationMs`の有無、`events`、`colliderOverrides`のような追加fieldをvalidatorが扱う前提を固定する。O1 Slice Cで、`colliderOverrides`が参照するAsset colliderをfixtureへ追加して意味上validにし、無効参照を許可する根拠には使わない。PR #221の固定head検証とGroup 13 closeoutを残す。
+- fixture: `src/core/model/motionContract.fixtures.test.ts` の ADR-0011 セクションは、`durationMs`の有無、`events`、`colliderOverrides`のような追加fieldをvalidatorが扱う前提を固定する。O1 Slice Cでは、`colliderOverrides`が参照するAsset colliderをfixtureへ追加して意味上validにし、無効参照を許可する根拠には使わない。PR #221 final head `45a41a19153334017801fd0354ffd0f678d9a30b`のCI Run #669と独立監査まで成功済みである。
 
 ## 再検討条件
 
