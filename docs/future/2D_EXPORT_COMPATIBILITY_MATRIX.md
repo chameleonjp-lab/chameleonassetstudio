@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 2D Export Compatibility Matrix
 
-最終更新日: 2026-08-02
+最終更新日: 2026-08-03
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 2D 入出力・対象別書き出し・検証基準
 状態: accepted（設計と確認基準。docs-only）
@@ -12,7 +12,7 @@
 > **現状:** mainはPNG / JPEG / WebP、連番、手動格子 sprite sheet、Tileset、Chameleon独自atlasの限定再取り込み、PNG / WebP / Chameleon 独自 atlas / JSON / ZIP の書き出し、Canvas 2D / PixiJS / Phaser の sample・helper、Godot / Unity の取り込み説明を持つ。SVG / GIF source保存のAsset 0.2.0基盤はADR-0019 / PR #135、SVG / GIF / APNGの新規Asset製品入口は1A + 2A + 3A / ADR-0020 / PR #138、安全境界のpost-merge補修はPR #144でmainへ反映済みである。
 > **重要:** 現行 `atlas.json` は Chameleon 独自形式であり、Phaser、PixiJS、Tiled、Unity、Godot の標準形式そのものではない。外部ツールで実行確認するまで `verified` と表示してはいけない。
 > **Group 12:** T1 Slice A / ADR-0021でFrame単位durationとeventをoptionalに追加した。現行atlas / sample / helperは固定fpsだけを表現するため、H1=E1に従い、対象Animationにlossがある場合は固定fps atlas / product ZIP / helper / exampleを理由付きで拒否する。PNG / WebP、単体`asset.json`、`.casproj`は許可する。Atlas 0.1.0の形式は変更しない。
-> **Group 13:** G1 Slice AはPR #217、O1正式契約Slice BはPR #218、Slice C製品実装と補修はPR #219 / #220でmainへ反映済みである。ADR-0024に従い、PNG / WebPは静止画像なのでFrame別collider metadataの有無を理由に止めず、canonical metadataを保持できる単体`asset.json` / `.casproj`も許可する。Frame別上書きを表現できない現行Atlas生成API、`atlas.json`、product ZIPはBlob読込・decode・canvas・ZIP生成より前に理由付きで拒否する。空配列だけでは拒否しない。E2E待機安定化PR #221はDraft・未mergeで、Group 13 closeout前である。polygonはP1により2D Pro Gateまで`unsupported`である。
+> **Group 13:** G1 Slice AはPR #217、O1正式契約Slice BはPR #218、Slice C製品実装と補修はPR #219 / #220、E2E待機安定化はPR #221 / merge `65df697e36f53ee20464d7bb74940f8713317d65`でmainへ反映済みである。ADR-0024に従い、PNG / WebPは静止画像なのでFrame別collider metadataの有無を理由に止めず、canonical metadataを保持できる単体`asset.json` / `.casproj`も許可する。Frame別上書きを表現できない現行Atlas生成API、`atlas.json`、product ZIPはBlob読込・decode・canvas・ZIP生成より前に理由付きで拒否する。空配列だけでは拒否しない。CI Run #669と固定head独立監査を成功し、Group 13をcompletedとした。polygonはP1により2D Pro Gateまで`unsupported`である。この拒否はGroup 14で解除せず、共通export形式と対象別fixtureを扱うGroup 15〜17へ引き継ぐ。
 
 ## 1. 目的
 

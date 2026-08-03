@@ -1,6 +1,6 @@
 # Decision Log
 
-最終更新日: 2026-08-02
+最終更新日: 2026-08-03
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 重要方針の変更経緯・決定記録
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
@@ -1446,3 +1446,40 @@ PR #216はmerge `f54526210f0d563cff408b0e66c4234b90c4324f`としてmainへ反映
 - 旧dataへfieldを補完せず、Asset `0.2.0`、migrationなし、IndexedDB / `.casproj`配置、Atlas `0.1.0`、export ZIP構成、dependencyを維持する。
 - Animation単位上書き、Frame別collider追加・削除、`purpose` / `shape` / `enabled`、polygonは実装しない。
 - CIと固定headの3方向独立read-only監査が完了するまで、Slice Cを実装済み・検証済みとは扱わない。Draftを維持し、Ready化・merge・Group 13 closeoutは行わない。
+
+## ADR-2026-08-03-036: Group 13 closeoutとGroup 14開始Gate
+
+### 状態
+
+- accepted（PR #219〜#221のmain反映と固定head検証に基づくcloseout記録。新しい製品仕様の採用ではない）
+- 対象: Group 13 `2D-3-GAME-DATA + 2D-3-COLLIDER-OVERRIDE + 2D-3-POLYGON`
+- 基準main: `65df697e36f53ee20464d7bb74940f8713317d65`
+- 次: Group 14 `2D-3-PREVIEW + 2D-3-IMPACT`契約監査
+
+### 完了証拠
+
+- G1 Slice AはPR #217 / merge `bc48487ef47de113f96e80cf625b56b0e245efce`、O1正式契約Slice BはPR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`で完了した。
+- O1製品実装はPR #219 / merge `202f2e2f97fa4441e515d85a41bfb73234daf64e`、補修はPR #220 / merge `8e81c29c3d0141e76dfe6b0cdea611db1a1f72d0`でmainへ反映した。
+- E2E待機安定化PR #221はfinal head `45a41a19153334017801fd0354ffd0f678d9a30b`、merge `65df697e36f53ee20464d7bb74940f8713317d65`でmainへ反映した。assertionの意味条件、retry、worker数、test全体timeout、workflow定義は変更していない。
+- CI Run #669はUnit 78 files / 842 passed、Chromium E2E 184 passed、H3 1 passed、Pages open / closed各1 passedで、failed / flaky / skipped / retryは0件だった。
+- PR #221固定headの仕様、データ・保存・export、試験・端末の3方向独立read-only監査は`BLOCKER 0 / MUST 0 / SHOULD 0`だった。
+
+### closeout
+
+- G1を`accepted / implemented / CI-passed / independently-verified / merged`とする。
+- O1を`accepted / implemented / CI-passed / independently-verified / merged`とする。
+- P1は採用済みの延期判断として、polygonを2D Pro Gateまで`unsupported`に維持する。polygon未実装はGroup 13の未完了を意味しない。
+- Group 13をcompletedとし、2D完成進捗を15/27へ更新する。現在位置は16工程目のGroup 14である。
+
+### 維持する境界
+
+- Asset `0.2.0`、Atlas `0.1.0`、migration、IndexedDB / `.casproj`配置、export ZIP構成、dependencyを変更しない。
+- PNG / WebP / 単体`asset.json` / `.casproj`は許可する。Frame別上書きを表現できないSprite Sheet、Atlas、`atlas.json`、helpers・examplesを含むproduct ZIPは処理開始前に理由付きで拒否する。
+- 上記export拒否はGroup 14で解除せず、共通export形式と対象別fixtureを扱うGroup 15〜17へ引き継ぐ。
+- 物理SafariはGroup 13専用の追加停止Gateにせず、2D Pro全体の端末確認へ残す。
+
+### 次のGate
+
+- Group 14の契約監査とone-sheet handoff作成を開始できる。
+- one-sheet handoffは、完成させる利用者体験、変更可能なデータ、変更禁止データ、受入条件、Unit / E2E / fixture、保存・書き出し影響、対象外を固定する。
+- Group 14の製品実装は、one-sheet handoffを人間またはFableが承認した後に、別branch・別Draft PR・単一writerで開始する。

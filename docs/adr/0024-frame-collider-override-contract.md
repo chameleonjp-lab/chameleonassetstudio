@@ -1,8 +1,8 @@
 # 0024-frame-collider-override-contract
 
-ステータス: accepted / implemented-in-main（2026-08-02 人間承認 O1。Slice BはPR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`、Slice C製品実装と補修はPR #219 / merge `202f2e2f97fa4441e515d85a41bfb73234daf64e`とPR #220 / merge `8e81c29c3d0141e76dfe6b0cdea611db1a1f72d0`でmain反映済み。E2E待機安定化PR #221はDraft・未mergeで、Group 13 closeout前）
+ステータス: accepted / implemented-in-main / independently-verified / Group 13 completed（2026-08-02 人間承認 O1。Slice BはPR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`、Slice C製品実装と補修はPR #219 / merge `202f2e2f97fa4441e515d85a41bfb73234daf64e`とPR #220 / merge `8e81c29c3d0141e76dfe6b0cdea611db1a1f72d0`、E2E待機安定化はPR #221 / merge `65df697e36f53ee20464d7bb74940f8713317d65`でmain反映済み）
 上位文書: `docs/future/2D_3_GAME_DATA_PLAN.md`（§5〜§6.2、§9〜§12）、`docs/future/2D_ASSET_DATA_CONTRACT.md`（§9.2）
-関連 fixture: Slice C `2D-3-COLLIDER-OVERRIDE`で実装済み、PR #221の固定head検証を継続する
+関連 fixture: Slice C `2D-3-COLLIDER-OVERRIDE`で実装済み、PR #221 final head `45a41a19153334017801fd0354ffd0f678d9a30b`のCI Run #669で検証済み
 
 ---
 
@@ -10,7 +10,7 @@
 
 ADR-0010は、当たり判定の正本を`Asset.colliders`に残し、上書きをFrame単位だけに置き、既存colliderの位置・サイズ・`visible`だけを変更できる境界を決めた。ADR-0011は`Frame.colliderOverrides?`をoptional・additiveにできる前方互換条件を決めた。Group 13では2026-08-02の人間判断でO1を採用したため、製品実装前にcanonicalな永続表現、fallback、検証、UI、参照変換、保存、書き出し拒否を一意にする。
 
-本ADRはSlice Bで固定しmainへ反映した正本契約である。Slice Cはこの契約どおりTypeScript型、JSON Schema、製品UI、保存処理、書き出し処理、試験をPR #219 / #220でmainへ反映した。PR #221は製品契約を変えずE2Eの非同期待機を安定化するDraftであり、固定head検証とGroup 13 closeoutは未完了である。
+本ADRはSlice Bで固定しmainへ反映した正本契約である。Slice Cはこの契約どおりTypeScript型、JSON Schema、製品UI、保存処理、書き出し処理、試験をPR #219 / #220でmainへ反映した。PR #221は製品契約を変えずE2Eの非同期待機だけを安定化し、CI Run #669と固定head独立監査を成功してmainへ反映した。Group 13は15/27としてcloseout済みである。
 
 ## 決定
 
@@ -129,4 +129,4 @@ Atlas `0.1.0`へAsset共通値だけを出してFrame値を落とさない。拒
 
 ## 再検討条件
 
-Animation単位上書き、Frame別collider追加・削除、`purpose` / `shape`変更、`enabled`、geometryの部分patch、polygon、Atlasへの保持またはloss確認付き変換を導入する場合は、別ADR、形式・互換性監査、人間承認を必要とする。Slice C製品実装はmain反映済みだが、PR #221のReady化・mergeとGroup 13 closeoutは別の判断とする。
+Animation単位上書き、Frame別collider追加・削除、`purpose` / `shape`変更、`enabled`、geometryの部分patch、polygon、Atlasへの保持またはloss確認付き変換を導入する場合は、別ADR、形式・互換性監査、人間承認を必要とする。Group 13 closeout後もこの再検討条件を維持し、Group 14のpreview・変更影響表示は保存形式やAtlas拒否を変更しない。

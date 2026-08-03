@@ -1,9 +1,9 @@
 # 2D-3 Game Data / Collider Override / Polygon Plan
 
-最終更新日: 2026-08-02  
+最終更新日: 2026-08-03
 対象: Group 13 `2D-3-GAME-DATA + 2D-3-COLLIDER-OVERRIDE + 2D-3-POLYGON`  
-基準main: `8e81c29c3d0141e76dfe6b0cdea611db1a1f72d0`
-状態: `accepted: G1 + O1 + P1 / G1 merged / O1 Slice B merged / Slice C implementation + follow-up merged / PR #221 verification-stability Draft / Group 13 closeout pending`
+基準main: `65df697e36f53ee20464d7bb74940f8713317d65`
+状態: `accepted: G1 + O1 + P1 / implemented / CI-passed / independently-verified / merged / Group 13 completed`
 
 ---
 
@@ -15,17 +15,16 @@ Group 13を、次の3つへ分離する。
 2. Frameごとの当たり判定上書き。
 3. polygon colliderの採否。
 
-PR #215でdocs-only契約監査、PR #216で`G1+O1+P1`の採用記録をmainへ反映した。G1 Slice AはPR #217で実装・検証・main反映まで完了し、O1のcanonical schema / data / UI / 保存 / export拒否契約を固定したSlice BもPR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`としてmainへ反映済みである。Slice C製品実装はPR #219 / merge `202f2e2f97fa4441e515d85a41bfb73234daf64e`、補修はPR #220 / merge `8e81c29c3d0141e76dfe6b0cdea611db1a1f72d0`でmainへ反映した。PR #221はE2E非同期待機の安定化だけを扱うDraftで、固定head CIと独立監査、Group 13 closeoutを終えるまで完了へ数えない。Asset version、migration、IndexedDB / `.casproj`配置、export ZIP構成、dependenciesは変更しない。
+PR #215でdocs-only契約監査、PR #216で`G1+O1+P1`の採用記録をmainへ反映した。G1 Slice AはPR #217で実装・検証・main反映まで完了し、O1のcanonical schema / data / UI / 保存 / export拒否契約を固定したSlice BもPR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`としてmainへ反映済みである。Slice C製品実装はPR #219 / merge `202f2e2f97fa4441e515d85a41bfb73234daf64e`、補修はPR #220 / merge `8e81c29c3d0141e76dfe6b0cdea611db1a1f72d0`、E2E非同期待機の安定化はPR #221 final head `45a41a19153334017801fd0354ffd0f678d9a30b`、merge `65df697e36f53ee20464d7bb74940f8713317d65`でmainへ反映した。CI Run #669と固定headの3方向独立監査を成功し、Group 13をcompletedとする。Asset version、migration、IndexedDB / `.casproj`配置、export ZIP構成、dependenciesは変更しない。
 
 ## 2. 現在位置
 
-- Group 12はcompletedで、Group 13の契約監査PR #215もmainへ反映済みである。
-- 2D完成ロードマップは27工程で、Group 12までの14工程が完了している。
-- 現在は15工程目のGroup 13である。
-- `G1+O1+P1`はacceptedで、G1 Slice AはPR #217 merge `bc48487ef47de113f96e80cf625b56b0e245efce`として完了した。CI Run #650と固定head独立確認は成功済みである。
-- O1正式契約Slice BはPR #218、製品実装と補修はPR #219 / #220でmainへ反映済みである。E2E待機安定化PR #221とGroup 13 closeoutは未完了で、完了数は14工程のままである。
-- Group 14はGroup 13完了後に開始する。
-- PR #221ではE2E待機安定化とmerge後状態同期だけを扱う。polygonとGroup 13 closeoutは含めない。
+- Group 12とGroup 13はcompletedである。
+- 2D完成ロードマップは27工程で、15工程が完了している。
+- 現在は16工程目のGroup 14 `2D-3-PREVIEW + 2D-3-IMPACT`である。
+- `G1+O1+P1`はacceptedで、G1 Slice AはPR #217、O1正式契約Slice BはPR #218、製品実装・補修・E2E待機安定化はPR #219〜#221として完了した。CI Run #650 / #658 / #663 / #669と各固定head独立確認は成功済みである。
+- P1によりpolygonは2D Pro Gateまで`unsupported`を維持する。現行Atlas `0.1.0`、Sprite Sheet、product ZIPのFrame別上書き事前拒否もGroup 15〜17の形式契約まで維持する。
+- Group 14は契約監査を開始できる。製品実装前に、利用者体験、変更可能なデータ、受入条件、試験、保存・書き出し影響をone-sheet handoffへ固定し、人間またはFableの承認を得る。
 
 ## 3. 監査で確認した既存実装
 
@@ -171,12 +170,12 @@ P1により2D Pro Gateまで`unsupported`を維持し、必要性と対象別出
 
 1. Slice A `2D-3-GAME-DATA-CLOSEOUT`: G1の既存範囲補修。PR #217で完了済み。
 2. Slice B `2D-3-COLLIDER-OVERRIDE-CONTRACT`: O1の正式schema / data / UI / 保存 / export拒否契約。PR #218で完了済み。
-3. Slice C `2D-3-COLLIDER-OVERRIDE`: ADR-0024に従う製品実装。PR #219 / #220でmain反映済み。E2E待機安定化PR #221は固定head検証必須・未mergeとして扱う。
-4. Group 13 closeout: P1のunsupported維持、Group 14開始条件、残リスクを同期する。
+3. Slice C `2D-3-COLLIDER-OVERRIDE`: ADR-0024に従う製品実装。PR #219 / #220でmain反映済み。E2E待機安定化PR #221もCI Run #669と固定head独立監査を成功してmainへ反映済みである。
+4. Group 13 closeout: P1のunsupported維持、Group 14開始条件、残リスク、進捗15/27を同期し、completedとする。
 
 各sliceは1 branch、1 Draft Pull Request、単一writerとする。CI失敗は同じPull Requestで直す。
 
-Slice BはADR-0024に`Frame.colliderOverrides?`のcanonical schema形、semantic validation、UI操作、保存と書き出し拒否の正確な契約を固定し、PR #218でmainへ反映済みである。Slice Cはこの契約どおりPR #219 / #220で製品実装・検証・補修をmainへ反映済みである。PR #221は製品契約を変えないE2E待機安定化として固定head検証を残す。P1によりpolygonは`unsupported`を維持し、Group 13 closeoutで延期先とGroup 14開始条件を同期する。
+Slice BはADR-0024に`Frame.colliderOverrides?`のcanonical schema形、semantic validation、UI操作、保存と書き出し拒否の正確な契約を固定し、PR #218でmainへ反映済みである。Slice Cはこの契約どおりPR #219 / #220で製品実装・検証・補修をmainへ反映し、PR #221で製品契約を変えずE2E待機を安定化した。P1によりpolygonは`unsupported`を維持し、Group 14へpreviewと変更影響表示だけを引き継ぐ。
 
 ## 10. 必須検証
 
@@ -219,5 +218,6 @@ Slice BはADR-0024に`Frame.colliderOverrides?`のcanonical schema形、semantic
 4. 採用記録のmerge後、Slice AのG1だけを単一writerで開始する。PR #217で完了済み。
 5. Slice AのCI Run #650と固定head独立確認を通し、人間がmergeする。完了済み。
 6. Slice BでO1の正式契約を固定し、CIと固定head独立確認を通す。PR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`で完了済み。
-7. Slice CでADR-0024どおり製品実装し、補修までmainへ反映する。PR #219 / #220で完了済み。E2E待機安定化PR #221は固定head検証必須・未mergeである。
-8. PR #221の人間merge後、別のGroup 13 closeoutでP1の`unsupported`維持、Group 14開始条件、残リスク、進捗を同期する。
+7. Slice CでADR-0024どおり製品実装し、補修までmainへ反映する。PR #219 / #220で完了済み。E2E待機安定化PR #221もCI Run #669と固定head独立監査を成功し、merge `65df697e36f53ee20464d7bb74940f8713317d65`として完了済みである。
+8. P1の`unsupported`維持、Group 14開始条件、残リスク、進捗15/27を同期してGroup 13をcloseoutする。完了済み。
+9. Group 14の契約監査を開始し、one-sheet handoffの人間またはFable承認後だけ製品実装へ進む。

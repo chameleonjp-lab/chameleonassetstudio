@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 書き出し形式書
 
-最終更新日: 2026-07-23
+最終更新日: 2026-08-03
 対象バージョン: アプリ 0.1.0 / Asset 0.2.0 / atlas 0.1.0
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`
 
@@ -112,7 +112,7 @@ T1 Slice AはE1を製品exportへ実装する。拒否理由は対象Animation�
 - 拒否理由にはFrame、collider、失われる情報、許可される代替としてPNG / WebP / 単体`asset.json` / `.casproj`を示す。
 - `colliderOverrides`不在と空配列だけのAssetは、Frame別の差分がないためこの理由では拒否しない。
 
-Slice BはPR #218でmainへ反映済みである。Slice CはAtlas `0.1.0`、ZIP構成、helper APIを拡張せず、この拒否を直接APIとUIが共用するpreflightとしてPR #219 / #220でmainへ反映した。E2E待機安定化PR #221の固定head検証とGroup 13 closeoutは未完了である。
+Slice BはPR #218でmainへ反映済みである。Slice CはAtlas `0.1.0`、ZIP構成、helper APIを拡張せず、この拒否を直接APIとUIが共用するpreflightとしてPR #219 / #220でmainへ反映した。E2E待機安定化PR #221もmerge `65df697e36f53ee20464d7bb74940f8713317d65`としてmainへ反映し、Group 13をcloseoutした。この拒否境界はGroup 14でも維持し、Frame別上書きを表現できる共通export形式と対象別fixtureの契約をGroup 15〜17で固定するまで解除しない。
 
 ---
 
