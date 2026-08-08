@@ -79,7 +79,7 @@ Group 14では、次を変更しない。
 
 Editorから入れる読み取り専用モードとし、Preview、Impact、既存素材検査を同じ画面の中で確認する。編集画面へ戻る操作を用意するが、このモードから編集用commit callbackを呼ばない。
 
-## 5. P1 Previewの共通規則（提案）
+## 5. G14-P1 Previewの共通規則（提案）
 
 ### 5.1 共通表示
 
@@ -128,7 +128,7 @@ Previewは不足データを黙って補わない。
 | 画像decodeに失敗 | 画像表示不能。エラーを画面内に表示 |
 | Atlas等が現行境界で拒否される | 既存の拒否理由を表示。Group 14で解除しない |
 
-## 6. I1 Impactの規則（提案）
+## 6. G14-I1 Impactの規則（提案）
 
 ### 6.1 影響の入力
 
@@ -178,7 +178,7 @@ Impactの結果、展開状態、フィルター、選択状態は次へ書き�
 - .casproj、JSON、export ZIP
 - verification record
 
-## 7. U1 Game Check Modeの規則（提案）
+## 7. G14-U1 Game Check Modeの規則（提案）
 
 ### 7.1 入口と出口
 
@@ -255,6 +255,55 @@ Group 14の自動Gateは、既存のPlaywright環境で幅375、高さ667、port
 - CI成功後、Opus 4.8または同等の独立reviewを行う。
 - 物理SafariはGroup 14の後続端末信頼性Gateへ残す。
 
+### 8.4 no-saveのwrite-setと比較oracle（実装前に固定する提案）
+
+読み取り専用を「verified」と扱うには、単に画面上の入力を置かないだけでは足りない。実装PRでは、既存の保存経路に合わせて次のwrite-setを比較対象にする。実際のIndexedDB store名は既存のstorage inventoryを参照し、名前を推測して固定しない。
+
+- Asset、Project、Frame、Animation、Game Dataの保存値。
+- updatedAt、History、Undo / Redo、autosaveのpending状態。
+- IndexedDBの全対象storeのrecord、metadata、revision、削除・復元情報。
+- TextureやsourceのBlob bytes、byteLength、hash、Blob URL管理状態。
+- .casprojの出力bytesとmanifestのhash。
+- export bytes、export manifest、verification record。Game Check Modeはexportを開始しないため、新規生成物がないことを確認する。
+- mode、selected Frame、再生時刻、scrub、overlay、parallax、Impact展開などのUI-only stateは、保存write-setへ入らないこと。
+
+比較oracleは次の順とする。
+
+1. fixtureを読み込み、Asset、Project、History、autosave、IndexedDB、Blob、出力関連のbefore snapshotを取る。
+2. Game Check Modeへ入り、6種別のPreview、再生、停止、Frame選択、overlay、Impact、縦scroll、戻る操作を行う。
+3. after snapshotを取り、保存対象の値、revision、record数、Blob bytes / hash、既存出力bytes / manifestをbeforeと比較する。
+4. reloadまたは再オープン後に同じ比較を行い、画面内の一時stateだけが消え、保存済みデータが変わっていないことを確認する。
+5. 変更があった場合は、UI-only境界の失敗として不合格にする。テストを弱めたり、対象を省略したりしない。
+
+このone-sheetでは実行証拠を作成しない。実装PRで、使用したsnapshot helper、対象store一覧、比較結果、artifact URLを記録する。
+
+### 8.5 Fixture、test、artifactの識別子（実装PRで確定する提案）
+
+one-sheet承認後の実装PRでは、次の識別子を使ってfixtureとテストを追跡する。fixture bytesのhashは、実際のfixtureファイルを作成した時点で固定し、このdocs-only PRには未記録とする。
+
+| ID | 対象 | 期待する状態 |
+|---|---|---|
+| G14-P1-character-normal | character正常 | 接地線、origin、anchor、実効collider、Frame / Animationを表示 |
+| G14-P1-item-normal | item正常 | 自動物理を加えず、origin、anchor、実効colliderを表示 |
+| G14-P1-background-normal | background正常 | loop、parallax設定、画像表示を確認 |
+| G14-P1-tile-normal | tile正常 | tileSizeと3×3反復、collisionを確認 |
+| G14-P1-gimmick-normal | gimmick正常 | movementPresetの名前と既知方向を表示 |
+| G14-P1-effect-normal | effect正常 | anchor、duration、loop、blend、再生を確認 |
+| G14-P1-invalid-collider | semantic-invalid | 自動修復せず理由表示 |
+| G14-P1-dangling-reference | dangling reference | 参照IDと表示不能理由を表示 |
+| G14-P1-missing-blob | missing Blob | 画像表示不能と未評価を表示 |
+| G14-P1-decode-failure | decode failure | エラー理由を表示し画面を落とさない |
+| G14-I1-linked-direct | direct linked variant / Frame reference | 確定として対象pathを列挙 |
+| G14-I1-manual-unassessed | manual variant / past export / record | 未評価として列挙 |
+| G14-EXPORT-atlas-reject | Atlas / Sprite Sheet / product ZIP | 既存の拒否理由を表示しbytesを生成しない |
+
+実装PRで固定するtest名と実行方法の候補は次のとおりである。
+
+- Unit: Preview投影、実効collider、invalid表示、I1確度分類、UI-only境界。
+- E2E: game-check-mode-375x667。既存repositoryのe2e scriptとPlaywright設定に従い、375×667 portrait・touch操作で実行する。
+- Artifact: CI job URL、Playwright report、375×667 screenshot、before / after no-save snapshot、fixture hash一覧。
+- 期待値: 対象fixtureの失敗・flaky・不意のskipは0件。docs-onlyのCI Run #674はこの期待値の証拠ではない。
+
 ## 9. Fixtureの最小構成（実装前の提案）
 
 各assetTypeについて、次の状態を用意する。
@@ -286,7 +335,21 @@ Group 14の自動Gateは、既存のPlaywright環境で幅375、高さ667、port
 5. 別branch、別Draft PR、単一writerで製品実装を開始する。
 6. schema、version、migration、保存、export、Atlas拒否へ影響する提案が出た場合は、Group 14を停止して別の人間判断へ戻す。
 
-## 11. 人間判断に戻す3点
+## 11. Group 14からGroup 15への境界
+
+Group 14の工程順は次のとおりとする。
+
+1. Group 13の完了確認。現在のmainではcompleted、進捗15/27、polygon unsupported、Atlas系事前拒否維持。
+2. Group 14のone-sheetを人間またはFableが承認し、契約状態をacceptedへ同期する。
+3. 基準mainを再確認し、別branch・別Draft PR・単一writerでGroup 14製品実装を行う。
+4. Group 14のUnit、Chromium E2E、CI、独立review、必要な人間確認を完了し、Group 14をmergedへ進める。
+5. その後にGroup 15へ進む。
+
+Group 15は、2D-4-CORE + 2D-4-SHEET + 2D-4-SCALEであり、共通export core、決定的再出力、sheet、atlas、scale、trim、padding、extrudeを扱う。Group 14のone-sheet承認は、Group 15のexport契約を採用したことを意味しない。
+
+ロードマップが許す2D-4 fixture設計の準備は並行できるが、Group 14ではexport実装、形式変更、Atlas拒否解除を開始しない。Group 15の契約と受入条件は、Group 14完了後に別途固定する。
+
+## 12. 人間判断に戻す3点
 
 この文書の提案を承認する場合、次の3点をまとめて確認してほしい。
 
@@ -294,7 +357,7 @@ Group 14の自動Gateは、既存のPlaywright環境で幅375、高さ667、port
 2. G14-I1：確定・可能性・未評価の意味、Impactの対象path、direct / transitiveの範囲、current export compatibilityと既存Atlas拒否の分離。
 3. G14-U1：ゲーム確認の入口・出口、UI-only state、画面構成、375×667 Chromium Gate、物理Safariを後続へ残す境界。
 
-## 12. 監査証拠
+## 13. 監査証拠
 
 基準main 2b87779d42920abc8a9f61a05f164b29605768ea、open PR 0件に対して、3方向のread-only監査を行った。
 
