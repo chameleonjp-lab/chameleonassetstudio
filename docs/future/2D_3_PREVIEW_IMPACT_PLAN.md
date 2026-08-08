@@ -302,7 +302,7 @@ one-sheet承認後の実装PRでは、次の識別子を使ってfixtureとテ�
 - Unit: Preview投影、実効collider、invalid表示、I1確度分類、UI-only境界。
 - E2E: game-check-mode-375x667。既存repositoryのe2e scriptとPlaywright設定に従い、375×667 portrait・touch操作で実行する。
 - Artifact: CI job URL、Playwright report、375×667 screenshot、before / after no-save snapshot、fixture hash一覧。
-- 期待値: 対象fixtureの失敗・flaky・不意のskipは0件。docs-onlyのCI Run #674はこの期待値の証拠ではない。
+- 期待値: 対象fixtureの失敗・flaky・不意のskipは0件。docs-onlyのCI Run #675はこの期待値の証拠ではない。
 
 ## 9. Fixtureの最小構成（実装前の提案）
 
