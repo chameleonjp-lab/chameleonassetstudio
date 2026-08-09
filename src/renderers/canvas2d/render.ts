@@ -273,6 +273,10 @@ export interface GameOverlayOptions {
   origin: Vec2;
   anchors: Anchor[];
   colliders: Collider[];
+  /** origin の表示切替。ゲーム確認モードのUI状態であり、保存形式には含めない。 */
+  showOrigin?: boolean;
+  /** anchor の表示切替。ゲーム確認モードのUI状態であり、保存形式には含めない。 */
+  showAnchors?: boolean;
   /** 判定の一括表示（要件 11.6「判定だけを表示・非表示にできる」）。 */
   showColliders: boolean;
   /** パネルで選択中の判定。保存形式には含めない UI 状態。 */
@@ -335,6 +339,8 @@ export function drawGameOverlays(ctx: CanvasRenderingContext2D, options: GameOve
     origin,
     anchors,
     colliders,
+    showOrigin = true,
+    showAnchors = true,
     showColliders,
     selectedColliderId,
     showColliderHandles,
@@ -395,47 +401,51 @@ export function drawGameOverlays(ctx: CanvasRenderingContext2D, options: GameOve
     }
   }
 
-  // アンカー（ひし形マーカー + 名前）
-  for (const anchor of anchors) {
-    const point = worldToScreen(view, anchor.position);
-    ctx.save();
-    ctx.fillStyle = ANCHOR_COLOR;
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(point.x, point.y - 6);
-    ctx.lineTo(point.x + 6, point.y);
-    ctx.lineTo(point.x, point.y + 6);
-    ctx.lineTo(point.x - 6, point.y);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    drawLabel(ctx, anchor.name, point.x + 8, point.y + 4);
-    ctx.restore();
+  if (showAnchors) {
+    // アンカー（ひし形マーカー + 名前）
+    for (const anchor of anchors) {
+      const point = worldToScreen(view, anchor.position);
+      ctx.save();
+      ctx.fillStyle = ANCHOR_COLOR;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(point.x, point.y - 6);
+      ctx.lineTo(point.x + 6, point.y);
+      ctx.lineTo(point.x, point.y + 6);
+      ctx.lineTo(point.x - 6, point.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      drawLabel(ctx, anchor.name, point.x + 8, point.y + 4);
+      ctx.restore();
+    }
   }
 
-  // 原点（十字 + 円のガイド。接地感の基準として常に見えるようにする）
-  const originScreen = worldToScreen(view, origin);
-  ctx.save();
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(originScreen.x - 10, originScreen.y);
-  ctx.lineTo(originScreen.x + 10, originScreen.y);
-  ctx.moveTo(originScreen.x, originScreen.y - 10);
-  ctx.lineTo(originScreen.x, originScreen.y + 10);
-  ctx.stroke();
-  ctx.strokeStyle = ORIGIN_COLOR;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(originScreen.x - 10, originScreen.y);
-  ctx.lineTo(originScreen.x + 10, originScreen.y);
-  ctx.moveTo(originScreen.x, originScreen.y - 10);
-  ctx.lineTo(originScreen.x, originScreen.y + 10);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(originScreen.x, originScreen.y, 5, 0, Math.PI * 2);
-  ctx.stroke();
-  drawLabel(ctx, '原点', originScreen.x + 8, originScreen.y - 8);
-  ctx.restore();
+  if (showOrigin) {
+    // 原点（十字 + 円のガイド。接地感の基準として常に見えるようにする）
+    const originScreen = worldToScreen(view, origin);
+    ctx.save();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(originScreen.x - 10, originScreen.y);
+    ctx.lineTo(originScreen.x + 10, originScreen.y);
+    ctx.moveTo(originScreen.x, originScreen.y - 10);
+    ctx.lineTo(originScreen.x, originScreen.y + 10);
+    ctx.stroke();
+    ctx.strokeStyle = ORIGIN_COLOR;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(originScreen.x - 10, originScreen.y);
+    ctx.lineTo(originScreen.x + 10, originScreen.y);
+    ctx.moveTo(originScreen.x, originScreen.y - 10);
+    ctx.lineTo(originScreen.x, originScreen.y + 10);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(originScreen.x, originScreen.y, 5, 0, Math.PI * 2);
+    ctx.stroke();
+    drawLabel(ctx, '原点', originScreen.x + 8, originScreen.y - 8);
+    ctx.restore();
+  }
 }

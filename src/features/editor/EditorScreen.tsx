@@ -153,6 +153,7 @@ import {
 import { ExportPanel } from './ExportPanel';
 import type { FrameAlignmentDraft } from './FrameAlignmentPanel';
 import { GameAttributesPanel } from './GameAttributesPanel';
+import { GameCheckMode } from './GameCheckMode';
 import { GameDataPanel } from './GameDataPanel';
 import { ImportFrameSetPanel } from './ImportFrameSetPanel';
 import { ImportPreviewDialog, type ImportPreviewContent } from './ImportPreviewDialog';
@@ -511,6 +512,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   );
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
+  const [gameCheckOpen, setGameCheckOpen] = useState(false);
   const layerEditBeforeRef = useRef<Asset | null>(null);
 
   // 新規アセット作成フォーム（2D-2-CREATE-01）。画像を取り込まず、型とサイズだけで空キャンバスを作る。
@@ -1161,6 +1163,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setShowNextOnionSkin(false);
     setFrameAlignmentDraft(null);
     setSelectedColliderId(null);
+  }, [selectedAssetId]);
+
+  useEffect(() => {
+    setGameCheckOpen(false);
   }, [selectedAssetId]);
 
   // アセット / レイヤーを切り替えたらselection・copy buffer・paste preview・text draftを解除する
@@ -3402,6 +3408,18 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     );
   }
 
+  if (gameCheckOpen && project && selectedAsset) {
+    return (
+      <GameCheckMode
+        key={selectedAsset.id}
+        asset={selectedAsset}
+        project={project}
+        projectAssets={assets}
+        onClose={() => setGameCheckOpen(false)}
+      />
+    );
+  }
+
   const mobileNavItems: Array<{ view: MobileView; label: string }> = [
     { view: 'canvas', label: '編集' },
     { view: 'properties', label: 'プロパティ' },
@@ -3476,6 +3494,20 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         >
           ？ 操作ガイド
         </a>
+        <button
+          type="button"
+          disabled={!selectedAsset || persistentMutationBlocked}
+          title={
+            !selectedAsset
+              ? 'アセットを選択するとゲーム確認を開けます。'
+              : persistentMutationBlocked
+                ? '処理完了後にゲーム確認を開けます。'
+                : '読み取り専用のゲーム確認を開く'
+          }
+          onClick={() => setGameCheckOpen(true)}
+        >
+          ゲーム確認
+        </button>
         <div className="editor-panel-toggles">
           <button type="button" aria-pressed={leftOpen} onClick={() => setLeftOpen((v) => !v)}>
             ツール
