@@ -918,9 +918,11 @@ export function buildGameImpact(
     const uiSummary = uiEntries.map(([key, value]) => `${key}=${JSON.stringify(value)}`).join(', ');
     pushImpact(result, {
       kind: 'ui-state',
-      path: `Game Check Mode.uiState[${uiSummary}]`,
+      // 行選択もUI-only値の1つなので、値をpathへ含めると自分を選択した瞬間に
+      // idが変わって選択解除される。値はstate / checkedへ残し、行の同一性は固定する。
+      path: 'Game Check Mode.uiState',
       confidence: '可能性',
-      state: 'UI-only現在値',
+      state: `UI-only現在値（${uiSummary}）`,
       reason: '現在のUI-only状態がPreviewの説明用表示に影響する候補です。',
       checked: `現在のUI-only値を読み取り（${uiSummary}）`,
       unchecked: 'Asset、Project、Historyへの書き込みとengine固有挙動は評価対象外',

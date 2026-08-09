@@ -22,6 +22,7 @@ type MatrixState = (typeof MATRIX_STATES)[number];
 
 type NegativeFixture =
   | 'G14-P1-invalid-collider'
+  | 'G14-P1-runtime-invalid-colliders'
   | 'G14-P1-dangling-reference'
   | 'G14-P1-missing-blob'
   | 'G14-P1-decode-failure'
@@ -30,6 +31,7 @@ type NegativeFixture =
 
 const NEGATIVE_FIXTURES = new Set<NegativeFixture>([
   'G14-P1-invalid-collider',
+  'G14-P1-runtime-invalid-colliders',
   'G14-P1-dangling-reference',
   'G14-P1-missing-blob',
   'G14-P1-decode-failure',
@@ -184,6 +186,9 @@ function makeFixture(selection: FixtureSelection): Asset {
   switch (selection.legacy) {
     case 'G14-P1-invalid-collider':
       applyTypeSpecificInvalid(asset);
+      break;
+    case 'G14-P1-runtime-invalid-colliders':
+      delete (asset as Partial<Asset>).colliders;
       break;
     case 'G14-P1-dangling-reference':
       asset.animations[0].frameIds = ['G14-P1-missing-frame'];

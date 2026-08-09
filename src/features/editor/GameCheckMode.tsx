@@ -16,6 +16,7 @@ import {
 } from '../../core/model';
 import { findFixedFpsAnimationLosses } from '../../core/export/animationLoss';
 import { findColliderOverrideExportLosses } from '../../core/export/colliderOverrideLoss';
+import { validateAssetForPersistence } from '../../core/schema/validate';
 import { loadBlob } from '../../core/storage';
 import {
   renderScene,
@@ -81,6 +82,89 @@ function impactKindLabel(kind: GameImpactItem['kind']): string {
     unassessed: '未評価範囲',
   };
   return labels[kind];
+}
+
+/** 実ファイルを生成せず、現行Atlas preflightと同じ拒否境界を安全に説明する。 */
+function buildAtlasImpactItems(asset: Asset): GameImpactItem[] {
+  try {
+    const assetValidation = validateAssetForPersistence(asset);
+    if (!assetValidation.valid) {
+      return assetValidation.errors.map((message, index) => ({
+        id: `export:atlas-preflight:asset:${index}`,
+        kind: 'export',
+        path: 'export/atlas preflight',
+        confidence: '確定',
+        state: '既存Atlas境界で拒否',
+        reason: `既存Atlas preflightが拒否します。${message}`,
+        checked: '既存exportと同じAsset schema・Frame collider意味検査を実行（書き出しは未実行）',
+        unchecked: '実ファイルの生成、engine読込、当たり判定結果は未確認',
+        recheck: 'Assetを保存形式に合う値へ修正したときに再確認',
+      }));
+    }
+
+    const exportItems: GameImpactItem[] = [];
+    for (const loss of findFixedFpsAnimationLosses(asset)) {
+      exportItems.push({
+        id: `export:fixed-fps:${loss.animationId}:${loss.kind}`,
+        kind: 'export',
+        path: `export/atlas[animationId=${loss.animationId}]`,
+        confidence: '確定',
+        state: '既存Atlas境界で拒否',
+        reason:
+          loss.kind === 'frame-duration'
+            ? `個別表示時間（${loss.frameNames.join('、')}）をAtlas系へ保持できません。`
+            : `Animation event（${loss.eventNames.join('、')}）をAtlas系へ保持できません。`,
+        checked: '既存の固定fps export検査を実行（書き出しは未実行）',
+        unchecked: '実ファイルの生成、engine読込、再生結果は未確認',
+        recheck: 'Animationのframe順、duration、event、export preset変更時に再確認',
+      });
+    }
+    for (const loss of findColliderOverrideExportLosses(asset)) {
+      exportItems.push({
+        id: `export:collider:${loss.frameId}`,
+        kind: 'export',
+        path: `export/atlas[frameId=${loss.frameId}]`,
+        confidence: '確定',
+        state: '既存Atlas境界で拒否',
+        reason: `Frame別collider（${loss.colliderNames.join('、')}）はAtlas 0.1.0で失われるため、既存境界で拒否されます。`,
+        checked: '既存のcollider override export検査を実行（書き出しは未実行）',
+        unchecked: '実ファイルの生成、engine読込、当たり判定結果は未確認',
+        recheck: 'Frame別colliderまたはexport preset変更時に再確認',
+      });
+    }
+    if (exportItems.length > 0) {
+      return exportItems;
+    }
+    return [
+      {
+        id: 'export:atlas:compatible',
+        kind: 'export',
+        path: 'export/atlas compatibility',
+        confidence: '可能性',
+        state: 'export未実行',
+        reason: '現在の値からは既知のAtlas拒否理由が見つかりません。実際の出力成功は保証しません。',
+        checked: '既存exportと同じAsset schema・意味検査とloss検査を実行（書き出しは未実行）',
+        unchecked: '実ファイル生成、manifest、engine読込は未確認',
+        recheck: 'Asset、Animation、Frame、collider、export preset変更時に再確認',
+      },
+    ];
+  } catch {
+    // runtime-invalid値をcanonical値へ補完しない。現行preflightの例外は拒否として表示する。
+    return [
+      {
+        id: 'export:atlas:runtime-invalid',
+        kind: 'export',
+        path: 'export/atlas preflight',
+        confidence: '確定',
+        state: '既存Atlas境界で拒否',
+        reason:
+          '現在のcolliderまたはFrame値が保存形式の前提を満たさないため、既存Atlas preflightが拒否します。',
+        checked: '既存Atlas preflightを安全に実行（書き出しは未実行）',
+        unchecked: '不正値の補完、実ファイル生成、engine読込は未実行',
+        recheck: 'colliderとFrameを保存形式に合う値へ修正したときに再確認',
+      },
+    ];
+  }
 }
 
 export function GameCheckMode({
@@ -164,52 +248,7 @@ export function GameCheckMode({
         scrubOccurrenceIndex,
       },
     }).filter((item) => item.kind !== 'export');
-    const fixedFpsLosses = findFixedFpsAnimationLosses(asset);
-    const colliderLosses = findColliderOverrideExportLosses(asset);
-    const exportItems: GameImpactItem[] = [];
-    for (const loss of fixedFpsLosses) {
-      exportItems.push({
-        id: `export:fixed-fps:${loss.animationId}:${loss.kind}`,
-        kind: 'export',
-        path: `export/atlas[animationId=${loss.animationId}]`,
-        confidence: '確定',
-        state: '既存Atlas境界で拒否',
-        reason:
-          loss.kind === 'frame-duration'
-            ? `個別表示時間（${loss.frameNames.join('、')}）をAtlas系へ保持できません。`
-            : `Animation event（${loss.eventNames.join('、')}）をAtlas系へ保持できません。`,
-        checked: '既存の固定fps export検査を実行（書き出しは未実行）',
-        unchecked: '実ファイルの生成、engine読込、再生結果は未確認',
-        recheck: 'Animationのframe順、duration、event、export preset変更時に再確認',
-      });
-    }
-    for (const loss of colliderLosses) {
-      exportItems.push({
-        id: `export:collider:${loss.frameId}`,
-        kind: 'export',
-        path: `export/atlas[frameId=${loss.frameId}]`,
-        confidence: '確定',
-        state: '既存Atlas境界で拒否',
-        reason: `Frame別collider（${loss.colliderNames.join('、')}）はAtlas 0.1.0で失われるため、既存境界で拒否されます。`,
-        checked: '既存のcollider override export検査を実行（書き出しは未実行）',
-        unchecked: '実ファイルの生成、engine読込、当たり判定結果は未確認',
-        recheck: 'Frame別colliderまたはexport preset変更時に再確認',
-      });
-    }
-    if (exportItems.length === 0) {
-      exportItems.push({
-        id: 'export:atlas:compatible',
-        kind: 'export',
-        path: 'export/atlas compatibility',
-        confidence: '可能性',
-        state: 'export未実行',
-        reason: '現在の値からは既知のAtlas拒否理由が見つかりません。実際の出力成功は保証しません。',
-        checked: '既存のloss検査だけを実行（書き出しは未実行）',
-        unchecked: '実ファイル生成、manifest、engine読込は未確認',
-        recheck: 'Asset、Animation、Frame、collider、export preset変更時に再確認',
-      });
-    }
-    return [...baseImpact, ...exportItems];
+    return [...baseImpact, ...buildAtlasImpactItems(asset)];
   }, [
     animationId,
     asset,

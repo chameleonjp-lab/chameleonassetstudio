@@ -63,6 +63,7 @@ const NEGATIVE_FIXTURE_IDS = [
   'G14-P1-dangling-reference',
   'G14-P1-missing-blob',
   'G14-P1-decode-failure',
+  'G14-P1-runtime-invalid-colliders',
   'G14-P1-character-unset',
   'G14-P1-background-invalid',
 ] as const;
@@ -84,10 +85,26 @@ const MATRIX_STATES = [
 const MATRIX_FIXTURE_IDS = MATRIX_ASSET_TYPES.flatMap((assetType) =>
   MATRIX_STATES.map((state) => `G14-P1-${assetType}-${state}`),
 );
+const TYPE_SPECIFIC_UNSET_REASONS: Readonly<Record<AssetType, RegExp>> = {
+  character: /colliderが未設定/,
+  item: /colliderが未設定/,
+  background: /parallax設定がない/,
+  tile: /tileSizeが未設定または不正/,
+  gimmick: /movementPresetがない/,
+  effect: /durationまたは再生設定が不正/,
+};
+const TYPE_SPECIFIC_INVALID_REASONS: Readonly<Record<AssetType, RegExp>> = {
+  character: /shapeが一致しません/,
+  item: /shapeが一致しません/,
+  background: /parallax速度またはloop設定が不正/,
+  tile: /tileSizeが未設定または不正/,
+  gimmick: /既知のmovementPresetがない/,
+  effect: /durationまたは再生設定が不正/,
+};
 
 const ACCEPTANCE_FIXTURE_IDS = [
   ...NORMAL_FIXTURES.map((fixture) => fixture.id),
-  ...NEGATIVE_FIXTURE_IDS.slice(0, 4),
+  ...NEGATIVE_FIXTURE_IDS.slice(0, 5),
   'G14-I1-linked-direct',
   'G14-I1-manual-unassessed',
   'G14-EXPORT-atlas-reject',
@@ -606,6 +623,45 @@ async function captureEditorUiState(page: Page): Promise<EditorUiState> {
   };
 }
 
+async function waitForEditorIdle(page: Page): Promise<void> {
+  await expect(page.locator('.editor')).toHaveAttribute('aria-busy', 'false');
+  await expect(page.locator('.editor-save-status')).toHaveText('保存済み');
+  await expect
+    .poll(async () => (await captureEditorUiState(page)).autosave)
+    .toMatchObject({
+      state: { status: 'saved' },
+      hasTimer: false,
+      hasPendingTask: false,
+      isRunning: false,
+      lastError: null,
+    });
+}
+
+/** Game Check入場前にUndo / Redoの両stackを非空にし、消去も検出できるoracleにする。 */
+async function seedNonEmptyHistory(page: Page): Promise<void> {
+  await page
+    .getByRole('list', { name: 'レイヤー一覧' })
+    .getByRole('button', { name: 'body', exact: true })
+    .click();
+  const flip = page.getByRole('button', { name: '左右反転', exact: true });
+  for (const expectedUndoCount of [1, 2, 3]) {
+    await flip.click();
+    await expect
+      .poll(async () => (await captureEditorUiState(page)).history.undoLabels.length)
+      .toBe(expectedUndoCount);
+    await waitForEditorIdle(page);
+  }
+
+  await page.getByRole('button', { name: '元に戻す', exact: true }).click();
+  await expect
+    .poll(async () => {
+      const { history } = await captureEditorUiState(page);
+      return { undo: history.undoLabels.length, redo: history.redoLabels.length };
+    })
+    .toEqual({ undo: 2, redo: 1 });
+  await waitForEditorIdle(page);
+}
+
 async function installBlobUrlAudit(page: Page): Promise<void> {
   await page.addInitScript(() => {
     const active = new Set<string>();
@@ -771,11 +827,19 @@ test.describe('Group 14 Game Check Mode', () => {
     await importFixture(page, fixture);
 
     await selectAsset(page, 'G14-P1-character-normal');
+    await seedNonEmptyHistory(page);
     const beforeExports = await captureExports(page);
     await waitForBlobUrlsSettled(page);
     const beforeStorage = await readStorageSnapshot(page);
     const beforeUi = await captureEditorUiState(page);
     expect(beforeUi.history.pendingPush).toBe(false);
+    expect(beforeUi.history.undoLabels.length).toBeGreaterThan(0);
+    expect(beforeUi.history.redoLabels.length).toBeGreaterThan(0);
+    expect(beforeUi.history.state).toMatchObject({
+      canUndo: true,
+      canRedo: true,
+      isBusy: false,
+    });
     expect(beforeUi.autosave).toMatchObject({
       hasTimer: false,
       hasPendingTask: false,
@@ -885,6 +949,12 @@ test.describe('Group 14 Game Check Mode', () => {
         const impactSelection = page.getByRole('button', { name: /Impact行を選択：/ }).first();
         await impactSelection.click();
         await expect(impactSelection).toHaveAttribute('aria-pressed', 'true');
+        await impactKindFilter.selectOption('ui-state');
+        const uiStateSelection = page
+          .getByRole('button', { name: /Impact行を選択：Game Check Mode\.uiState/ })
+          .first();
+        await uiStateSelection.click();
+        await expect(uiStateSelection).toHaveAttribute('aria-pressed', 'true');
         await impactKindFilter.selectOption('all');
 
         await closeButton.focus();
@@ -1002,13 +1072,67 @@ test.describe('Group 14 Game Check Mode', () => {
     await reopenButton.click();
     await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
     await selectAsset(page, 'G14-P1-character-normal');
+    await openGameCheck(page);
+    await expect(page.getByLabel('Preview Frame')).toHaveValue('frame_idle_0');
+    await expect(page.getByLabel('再生位置')).toHaveValue('0');
+    await expect(page.getByRole('button', { name: '再生', exact: true })).toBeVisible();
+    await expect(page.getByRole('checkbox', { name: 'origin・接地線' })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: 'anchor', exact: true })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: '実効collider', exact: true })).toBeChecked();
+    await expect(
+      page.getByRole('checkbox', { name: '種別固有の説明表示', exact: true }),
+    ).toBeChecked();
+    await expect(page.getByRole('button', { name: /変更影響（Impact）/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    await expect(page.getByLabel('Impact種類')).toHaveValue('all');
+    await expect(page.getByLabel('Impact確度')).toHaveValue('all');
+    await expect(page.locator('.game-check-impact-select[aria-pressed="true"]')).toHaveCount(0);
+    await attachJson(testInfo, 'G14-reopen-ui-only-defaults.json', {
+      frameId: 'frame_idle_0',
+      scrubOccurrenceIndex: 0,
+      isPlaying: false,
+      overlays: { origin: true, anchors: true, colliders: true, type: true },
+      impact: { open: true, kindFilter: 'all', confidenceFilter: 'all', selected: null },
+    });
+    await page
+      .locator('.game-check-header')
+      .getByRole('button', { name: 'Editorへ戻る', exact: true })
+      .click();
+    await expect(page.locator('.editor')).toBeVisible();
     const reloadExports = await captureExports(page);
     await waitForBlobUrlsSettled(page);
     const reloadStorage = await readStorageSnapshot(page);
     const reloadUi = await captureEditorUiState(page);
     const reloadBlobUrls = await readBlobUrlAudit(page);
     expect(reloadStorage).toEqual(beforeStorage);
-    expect(reloadUi).toEqual(beforeUi);
+    expect(reloadUi).toMatchObject({
+      saveStatus: '',
+      undo: { disabled: true, title: null },
+      redo: { disabled: true, title: null },
+      autosave: {
+        state: { status: 'idle' },
+        hasTimer: false,
+        hasPendingTask: false,
+        isRunning: false,
+        lastError: null,
+      },
+      localStorage: beforeUi.localStorage,
+      sessionStorage: beforeUi.sessionStorage,
+    });
+    expect(reloadUi.history).toEqual({
+      state: {
+        canUndo: false,
+        canRedo: false,
+        undoLabel: null,
+        redoLabel: null,
+        isBusy: false,
+      },
+      undoLabels: [],
+      redoLabels: [],
+      pendingPush: false,
+    });
     expect(reloadBlobUrls.activeCount).toBe(0);
     expect(reloadBlobUrls.createdCount).toBe(reloadBlobUrls.revokedCount);
     expectCanonicalExportsEqual(reloadExports, beforeExports);
@@ -1030,6 +1154,10 @@ test.describe('Group 14 Game Check Mode', () => {
       { id: 'G14-P1-dangling-reference', expected: /G14-P1-missing-frame|G14-P1-missing-texture/ },
       { id: 'G14-P1-missing-blob', expected: /Blobが見つからない/ },
       { id: 'G14-P1-decode-failure', expected: /デコードできない/ },
+      {
+        id: 'G14-P1-runtime-invalid-colliders',
+        expected: /collidersが配列ではありません/,
+      },
       { id: 'G14-P1-character-unset', expected: /originが未設定/ },
     ];
     for (const fixtureCase of cases) {
@@ -1040,6 +1168,26 @@ test.describe('Group 14 Game Check Mode', () => {
       await expect(page.getByLabel('不足・不正・表示不能の理由')).toContainText(
         fixtureCase.expected,
       );
+      if (fixtureCase.id === 'G14-P1-runtime-invalid-colliders') {
+        await expect(page.getByText(/既存Atlas preflightが拒否します/).first()).toBeVisible();
+      }
+      if (fixtureCase.id === 'G14-P1-character-unset') {
+        const atlasPreflightImpact = page.getByRole('listitem').filter({
+          has: page.getByRole('button', {
+            name: 'Impact行を選択：export/atlas preflight',
+            exact: true,
+          }),
+        });
+        await expect(atlasPreflightImpact).toContainText(
+          /既存Atlas preflightが拒否します.*origin/i,
+        );
+        await expect(
+          page.getByRole('button', {
+            name: 'Impact行を選択：export/atlas compatibility',
+            exact: true,
+          }),
+        ).toHaveCount(0);
+      }
       await expectNoHorizontalOverflow(page);
     }
 
@@ -1073,12 +1221,18 @@ test.describe('Group 14 Game Check Mode', () => {
           await expect(page.getByLabel('不足・不正・表示不能の理由')).toContainText(
             /originが未設定/,
           );
+          await expect(page.getByLabel('不足・不正・表示不能の理由')).toContainText(
+            TYPE_SPECIFIC_UNSET_REASONS[assetType],
+          );
         } else if (state === 'frame-override') {
           await expect(page.getByText(/Frame別collider/).first()).toBeVisible();
           await expect(page.getByRole('checkbox', { name: '実効collider' })).toBeChecked();
         } else if (state === 'dangling-invalid') {
           await expect(page.getByLabel('不足・不正・表示不能の理由')).toContainText(
             /missing-frame|missing-texture|参照/,
+          );
+          await expect(page.getByLabel('不足・不正・表示不能の理由')).toContainText(
+            TYPE_SPECIFIC_INVALID_REASONS[assetType],
           );
           await expect(page.getByRole('button', { name: '再生', exact: true })).toBeDisabled();
           await expect(page.getByRole('status').filter({ hasText: '停止中' })).toBeVisible();
