@@ -15,6 +15,13 @@ export interface HistoryState {
   isBusy: boolean;
 }
 
+export interface HistorySnapshot {
+  state: HistoryState;
+  undoLabels: string[];
+  redoLabels: string[];
+  pendingPush: boolean;
+}
+
 const DEFAULT_LIMIT = 100;
 
 /**
@@ -41,6 +48,16 @@ export class History {
 
   getState(): HistoryState {
     return this.state;
+  }
+
+  /** 読み取り専用境界の検証用。undo/redo関数自体は公開しない。 */
+  getSnapshot(): HistorySnapshot {
+    return {
+      state: { ...this.state },
+      undoLabels: this.undoStack.map((entry) => entry.label),
+      redoLabels: this.redoStack.map((entry) => entry.label),
+      pendingPush: this.pendingPush !== null,
+    };
   }
 
   subscribe(listener: (state: HistoryState) => void): () => void {

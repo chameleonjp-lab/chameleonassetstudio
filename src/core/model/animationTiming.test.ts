@@ -192,6 +192,21 @@ describe('animation playback scheduler', () => {
     expect(playback.isRunning()).toBe(false);
   });
 
+  it('scrubで選んだ反復Frameの出現位置から再生を開始する', () => {
+    const clock = new TestClock();
+    const onFrameStart = vi.fn();
+    const playback = createAnimationPlayback({
+      animation,
+      frames,
+      clock,
+      onFrameStart,
+    });
+
+    playback.start(2);
+
+    expect(onFrameStart.mock.calls).toEqual([['frame_a', 2]]);
+  });
+
   it('再生中のstartは旧予約を取消し、先頭Frameの時間とイベントから再開する', () => {
     const clock = new TestClock();
     const onFrameStart = vi.fn();

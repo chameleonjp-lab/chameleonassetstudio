@@ -31,6 +31,11 @@ export interface RenderSceneOptions {
   referenceOverlay?: RenderReferenceOverlay;
   onionSkins?: readonly RenderOnionSkin[];
   selectedLayerId: string | null;
+  /**
+   * Game Check Mode専用の3×3実画。未指定時の通常Editor描画は従来どおり。
+   * 中央セルを現在のviewに置き、周囲8セルをtileSize間隔で描く。
+   */
+  tileRepeat?: { tileSize: Size };
 }
 
 const CHECKER_CELL_PX = 12;
@@ -212,12 +217,11 @@ export function drawGrid(
   ctx.restore();
 }
 
-/** 1 フレーム分の描画。イベント駆動で呼ぶ（常時ループはしない）。 */
-export function renderScene(ctx: CanvasRenderingContext2D, options: RenderSceneOptions): void {
-  const { view, viewport, canvasSize, layers, referenceOverlay, onionSkins, selectedLayerId } =
-    options;
-  ctx.clearRect(0, 0, viewport.width, viewport.height);
-
+function drawSceneContents(
+  ctx: CanvasRenderingContext2D,
+  options: Omit<RenderSceneOptions, 'viewport' | 'tileRepeat'>,
+): void {
+  const { view, canvasSize, layers, referenceOverlay, onionSkins, selectedLayerId } = options;
   drawCheckerboard(ctx, view, canvasSize);
 
   for (const entry of referenceOverlay?.layers ?? []) {
@@ -259,9 +263,63 @@ export function renderScene(ctx: CanvasRenderingContext2D, options: RenderSceneO
   }
 }
 
+function finitePositive(value: number): boolean {
+  return Number.isFinite(value) && value > 0;
+}
+
+/** 中央cellを現在viewに保ったまま、中央と周囲8cellの描画viewを返す。 */
+export function tileRepeatViews(view: ViewTransform, tileSize: Size): ViewTransform[] {
+  if (!finitePositive(tileSize.width) || !finitePositive(tileSize.height)) {
+    return [view];
+  }
+  const views: ViewTransform[] = [];
+  for (let row = -1; row <= 1; row += 1) {
+    for (let column = -1; column <= 1; column += 1) {
+      views.push({
+        ...view,
+        offsetX: view.offsetX + column * tileSize.width * view.scale,
+        offsetY: view.offsetY + row * tileSize.height * view.scale,
+      });
+    }
+  }
+  return views;
+}
+
+/** 1 フレーム分の描画。イベント駆動で呼ぶ（常時ループはしない）。 */
+export function renderScene(ctx: CanvasRenderingContext2D, options: RenderSceneOptions): void {
+  const { view, viewport, tileRepeat } = options;
+  ctx.clearRect(0, 0, viewport.width, viewport.height);
+
+  const tileSize = tileRepeat?.tileSize;
+  if (!tileSize || !finitePositive(tileSize.width) || !finitePositive(tileSize.height)) {
+    drawSceneContents(ctx, options);
+    return;
+  }
+
+  for (const repeatedView of tileRepeatViews(view, tileSize)) {
+    const topLeft = worldToScreen(repeatedView, { x: 0, y: 0 });
+    const bottomRight = worldToScreen(repeatedView, {
+      x: tileSize.width,
+      y: tileSize.height,
+    });
+
+    // 各セルをtileSizeでclipし、隣接セルへはみ出した画素を推測補完しない。
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
+    ctx.clip();
+    drawSceneContents(ctx, {
+      ...options,
+      view: repeatedView,
+      canvasSize: tileSize,
+    });
+    ctx.restore();
+  }
+}
+
 // ---- ゲーム用情報のオーバーレイ（Phase 8） ----
 
-import type { Anchor, Collider, Vec2 } from '../../core/model';
+import { COLLIDER_PURPOSES, type Anchor, type Collider, type Vec2 } from '../../core/model';
 
 const ORIGIN_COLOR = '#1f9d3a';
 const ANCHOR_COLOR = '#ff8800';
@@ -270,7 +328,8 @@ const ANCHOR_COLOR = '#ff8800';
 
 export interface GameOverlayOptions {
   view: ViewTransform;
-  origin: Vec2;
+  /** invalid / unset時はnull。座標を推測して描画しない。 */
+  origin: Vec2 | null;
   anchors: Anchor[];
   colliders: Collider[];
   /** origin の表示切替。ゲーム確認モードのUI状態であり、保存形式には含めない。 */
@@ -286,6 +345,68 @@ export interface GameOverlayOptions {
 }
 
 const COLLIDER_HANDLE_SIZE = 8;
+
+function isFiniteVec2(value: unknown): value is Vec2 {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const point = value as { x?: unknown; y?: unknown };
+  return (
+    typeof point.x === 'number' &&
+    Number.isFinite(point.x) &&
+    typeof point.y === 'number' &&
+    Number.isFinite(point.y)
+  );
+}
+
+function isRenderableAnchor(value: unknown): value is Anchor {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const anchor = value as Partial<Anchor>;
+  return (
+    typeof anchor.id === 'string' &&
+    typeof anchor.name === 'string' &&
+    typeof anchor.role === 'string' &&
+    isFiniteVec2(anchor.position)
+  );
+}
+
+function isRenderableCollider(value: unknown): value is Collider {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const collider = value as Partial<Collider> & {
+    rect?: { x?: unknown; y?: unknown; width?: unknown; height?: unknown };
+    circle?: { x?: unknown; y?: unknown; radius?: unknown };
+  };
+  if (
+    typeof collider.id !== 'string' ||
+    typeof collider.name !== 'string' ||
+    typeof collider.visible !== 'boolean' ||
+    typeof collider.purpose !== 'string' ||
+    !COLLIDER_PURPOSES.includes(collider.purpose as Collider['purpose'])
+  ) {
+    return false;
+  }
+  if (collider.shape === 'rect') {
+    return (
+      isFiniteVec2(collider.rect) &&
+      typeof collider.rect?.width === 'number' &&
+      finitePositive(collider.rect.width) &&
+      typeof collider.rect.height === 'number' &&
+      finitePositive(collider.rect.height)
+    );
+  }
+  if (collider.shape === 'circle') {
+    return (
+      isFiniteVec2(collider.circle) &&
+      typeof collider.circle?.radius === 'number' &&
+      finitePositive(collider.circle.radius)
+    );
+  }
+  return false;
+}
 
 /** 判定の操作ハンドル 1 個を描く（画面座標基準の固定サイズ。view.scale に依存しない）。 */
 function drawColliderHandle(ctx: CanvasRenderingContext2D, point: Vec2, color: string): void {
@@ -348,6 +469,9 @@ export function drawGameOverlays(ctx: CanvasRenderingContext2D, options: GameOve
 
   if (showColliders) {
     for (const collider of colliders) {
+      if (!isRenderableCollider(collider)) {
+        continue;
+      }
       if (!collider.visible) {
         continue;
       }
@@ -404,6 +528,9 @@ export function drawGameOverlays(ctx: CanvasRenderingContext2D, options: GameOve
   if (showAnchors) {
     // アンカー（ひし形マーカー + 名前）
     for (const anchor of anchors) {
+      if (!isRenderableAnchor(anchor)) {
+        continue;
+      }
       const point = worldToScreen(view, anchor.position);
       ctx.save();
       ctx.fillStyle = ANCHOR_COLOR;
@@ -422,7 +549,7 @@ export function drawGameOverlays(ctx: CanvasRenderingContext2D, options: GameOve
     }
   }
 
-  if (showOrigin) {
+  if (showOrigin && isFiniteVec2(origin)) {
     // 原点（十字 + 円のガイド。接地感の基準として常に見えるようにする）
     const originScreen = worldToScreen(view, origin);
     ctx.save();

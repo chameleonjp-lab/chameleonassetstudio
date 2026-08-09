@@ -10,11 +10,23 @@ const SEVERITY_LABELS: Record<InspectionSeverity, string> = {
 
 interface InspectionPanelProps {
   asset: Asset;
+  /** Game Checkのruntime-invalid fixtureでは、canonical値を推測せず検査不能として表示する。 */
+  tolerateInvalidRuntime?: boolean;
 }
 
 /** A+B+X 契約の読み取り専用検査結果を表示する。修正や保存制御は行わない。 */
-export function InspectionPanel({ asset }: InspectionPanelProps) {
-  const issues = useMemo(() => inspectAsset(asset), [asset]);
+export function InspectionPanel({ asset, tolerateInvalidRuntime = false }: InspectionPanelProps) {
+  const inspection = useMemo(() => {
+    try {
+      return { issues: inspectAsset(asset), unavailable: false };
+    } catch (error) {
+      if (!tolerateInvalidRuntime) {
+        throw error;
+      }
+      return { issues: [], unavailable: true };
+    }
+  }, [asset, tolerateInvalidRuntime]);
+  const { issues } = inspection;
   const counts = issues.reduce<Record<InspectionSeverity, number>>(
     (result, issue) => {
       result[issue.severity] += 1;
@@ -29,13 +41,18 @@ export function InspectionPanel({ asset }: InspectionPanelProps) {
       <p className="editor-note">
         現在の素材を確認して不足・矛盾・推奨項目を表示します。検査結果は保存されず、保存・autosave・.casproj・exportも止めません。
       </p>
+      {inspection.unavailable && (
+        <p className="import-error" role="alert">
+          保存形式として不正なruntime値があるため、素材検査は値を推測せず実行しません。上の理由一覧で対象pathを確認してください。
+        </p>
+      )}
       <p className="editor-note" aria-live="polite">
         必須確認 {counts.error}件 / 推奨確認 {counts.warning}件 / 情報 {counts.info}件
       </p>
 
-      {issues.length === 0 ? (
+      {!inspection.unavailable && issues.length === 0 ? (
         <p className="editor-note">問題は見つかりませんでした。</p>
-      ) : (
+      ) : !inspection.unavailable ? (
         <ul className="gamedata-list" aria-label="素材検査の結果">
           {issues.map((issue) => (
             <li key={issue.id} className="gamedata-row">
@@ -53,7 +70,7 @@ export function InspectionPanel({ asset }: InspectionPanelProps) {
             </li>
           ))}
         </ul>
-      )}
+      ) : null}
     </section>
   );
 }

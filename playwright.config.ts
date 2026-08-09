@@ -11,7 +11,9 @@ export default defineConfig({
   expect: {
     timeout: process.env.CI ? 10_000 : 5_000,
   },
-  reporter: process.env.CI ? 'github' : 'list',
+  reporter: process.env.CI
+    ? [['github'], ['html', { open: 'never', outputFolder: 'playwright-report' }]]
+    : 'list',
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',

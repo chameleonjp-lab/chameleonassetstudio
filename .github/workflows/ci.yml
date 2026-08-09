@@ -43,7 +43,7 @@ jobs:
             esac
 
             case "$file" in
-              src/* | e2e/* | tools/h3/* | tools/pages/* | public/* | index.html | package.json | package-lock.json | playwright.config.* | vite.config.* | .github/workflows/*)
+              src/* | e2e/* | tools/game-check-e2e/* | tools/h3/* | tools/pages/* | public/* | index.html | package.json | package-lock.json | playwright.config.* | vite.config.* | .github/workflows/*)
                 e2e=true
                 ;;
             esac
@@ -81,6 +81,16 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e
+      - name: Upload Playwright report and Group 14 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 14
       - run: npm run measure:h3:chromium
       - name: Define the CI H3 publication window
         shell: bash

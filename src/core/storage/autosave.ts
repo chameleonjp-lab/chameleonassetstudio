@@ -7,6 +7,14 @@ export interface SaveState {
   lastSavedAt?: string;
 }
 
+export interface AutosaveSnapshot {
+  state: SaveState;
+  hasTimer: boolean;
+  hasPendingTask: boolean;
+  isRunning: boolean;
+  lastError: string | null;
+}
+
 export type SaveTask = () => Promise<void>;
 
 /**
@@ -48,6 +56,22 @@ export class AutosaveQueue {
 
   getState(): SaveState {
     return this.state;
+  }
+
+  /** 読み取り専用境界の検証用。保存task自体は公開しない。 */
+  getSnapshot(): AutosaveSnapshot {
+    return {
+      state: { ...this.state },
+      hasTimer: this.timer !== null,
+      hasPendingTask: this.pendingTask !== null,
+      isRunning: this.currentRun !== null,
+      lastError:
+        this.lastError === null
+          ? null
+          : this.lastError instanceof Error
+            ? this.lastError.message
+            : String(this.lastError),
+    };
   }
 
   subscribe(listener: (state: SaveState) => void): () => void {
