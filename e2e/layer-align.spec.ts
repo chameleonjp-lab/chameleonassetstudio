@@ -61,15 +61,32 @@ async function selectLayer(page: Page, name: string): Promise<void> {
     .click();
 }
 
-/** 選択中レイヤーの X / Y を設定して確定する（blur で commit）。 */
+async function waitForLayerPosition(
+  page: Page,
+  name: string,
+  expected: { x: number; y: number },
+): Promise<void> {
+  await expect
+    .poll(async () => (await positionByName(page)).get(name))
+    .toEqual(expected);
+  await expect(page.locator('.editor')).toHaveAttribute('aria-busy', 'false');
+}
+
+/** 選択中レイヤーの X / Y を、各軸の保存完了後に次へ進みながら確定する。 */
 async function setLayerPosition(page: Page, name: string, x: number, y: number): Promise<void> {
   await selectLayer(page, name);
+  const before = (await positionByName(page)).get(name);
+  expect(before).toBeDefined();
+
   const xInput = page.getByLabel('X', { exact: true });
   await xInput.fill(String(x));
   await xInput.blur();
+  await waitForLayerPosition(page, name, { x, y: before!.y });
+
   const yInput = page.getByLabel('Y', { exact: true });
   await yInput.fill(String(y));
   await yInput.blur();
+  await waitForLayerPosition(page, name, { x, y });
 }
 
 async function checkLayer(page: Page, name: string): Promise<void> {
