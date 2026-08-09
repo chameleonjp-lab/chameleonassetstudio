@@ -19,15 +19,15 @@ Group 13で使ったP1（polygonをunsupportedにする判断）と、この文�
 | 項目 | 状態 |
 |---|---|
 | Work package | Group 14 / 2D-3-PREVIEW + 2D-3-IMPACT |
-| 基準main | 6c89339dccac411ceb78a72f7300db5d4df5423f |
+| 基準main | cd3c3ffa8043353cfbb8a901f46daafea3945101（PR #225 merge後） |
 | Group 13 | completed、進捗15/27 |
 | 契約状態 | accepted（G14-P1 + G14-I1 + G14-U1） |
-| 実装状態 | not-started |
-| 検証状態 | unverified |
-| open Pull Request | 0件（基準確認時） |
-| この文書の目的 | P1・I1・U1の承認済み詳細契約を記録し、実装境界を引き継ぐ |
-| 次に許可される行動 | accepted同期PRのmain反映後に、基準mainを再確認し、別branch・別Draft PR・単一writerでGroup 14製品実装を開始する |
-| この同期PRで変更しない範囲 | product code、test、schema、保存、export、Ready化、merge |
+| 実装状態 | PR #225でmainへ実装済み。§8のcloseout補修を別branchで実施中 |
+| 検証状態 | CI Run #682は成功。§8.2〜§8.5の補修CI・artifact・固定head独立reviewはpending |
+| open Pull Request | closeout補修Draft PRの作成前（基準確認時） |
+| この文書の目的 | P1・I1・U1のaccepted契約と、実装・closeout補修の状態を分離して記録する |
+| 次に許可される行動 | Group 14 closeout補修をDraft PRへ反映し、Chromium CIと固定head独立reviewを通す |
+| この補修で変更しない範囲 | schema、version、migration、保存形式、IndexedDB配置、.casproj、export ZIP、dependency、polygon、Ready化、merge |
 
 作業状態、影響の確度、検証の状態、export互換性の主張は別の軸で扱う。次の語を同じ意味で使わない。
 
@@ -359,6 +359,8 @@ Group 15は、2D-4-CORE + 2D-4-SHEET + 2D-4-SCALEであり、共通export core�
 
 ## 13. 監査証拠
 
+この節はaccepted同期時点の履歴記録である。PR #225以後の現在状態とcloseout証拠は§14を正本とする。
+
 基準main 6c89339dccac411ceb78a72f7300db5d4df5423f、open PR 0件に対して、承認後の3方向read-only監査を行った。
 
 | 担当 | 結果 |
@@ -367,6 +369,21 @@ Group 15は、2D-4-CORE + 2D-4-SHEET + 2D-4-SCALEであり、共通export core�
 | 実装・データ契約 | accepted同期後も保存・schema・export境界は変更不要と確認 |
 | テスト・CI・iPhone | CI #677はdocs-only分類成功で、製品検証の証拠ではないと確認 |
 
-統合結論は、承認済みG14-P1 + G14-I1 + G14-U1をacceptedとして記録し、既存Group 13の型・保存・export境界を変更せず、別Draft PRで製品実装へ進める状態になった。現時点の実装はnot-started、検証はunverifiedである。
+accepted同期時点の統合結論は、承認済みG14-P1 + G14-I1 + G14-U1をacceptedとして記録し、既存Group 13の型・保存・export境界を変更せず、別Draft PRで製品実装へ進める状態になった、というものである。当時の実装状態はnot-started、検証はunverifiedだった。
 
 このaccepted同期PRで変更するファイルは、このone-sheetと上位2計画書だけである。製品コード、test、schema、version、migration、保存、export、CI定義、依存関係、polygonは変更しない。
+
+## 14. 実装後のcloseout補修
+
+PR #225はGroup 14製品実装をmainへ反映し、merge commitは`cd3c3ffa8043353cfbb8a901f46daafea3945101`である。CI Run #682はlint、format、build、Unit 850件、Chromium E2E 185件、H3、Pages open / closedを全成功した。一方で固定head reviewがなく、§8.2〜§8.5で要求した6種fixture、異常系、Blob bytes hashを含むno-save oracle、reload比較、375×667 screenshot、fixture hash、Playwright artifactが不足していたため、この成功だけではGroup 14をcloseoutしない。
+
+後続のcloseout補修は`agent/group14-verification-hardening-20260809`で行う。補修範囲は次のとおりである。
+
+- dangling Animationを別Animationへ暗黙fallbackせず、origin、anchor、collider、backgroundの不正値を推測描画しない。
+- tileをguideだけでなく中央と周囲8セルへ実画し、種別固有overlayをOFFにしたときは反復画像、parallax変位、種別guideを一緒に隠す。
+- Impactへsource / edit、選択Animation / Frame、asset type固有Game Data、linked Variantの既存状態、UI-only state、確認済み、未確認、再確認条件を表示し、kind / confidence filterと行選択をUI-onlyで提供する。
+- scrub、Escape、44px操作対象、明示focus、内部縦scroll、reduced-motionを固定する。
+- §8.5の13 IDをE2Eから追跡し、IndexedDB全store、Blob / ArrayBuffer SHA-256、History stack / pending、autosave timer / pending / running / error、Blob URL、`.casproj` raw bytes / entry bytes / manifest、asset export、reload後をbefore / after比較する。
+- CIでPlaywright HTML report、test-results、375×667 screenshot、fixture hash、before / after / reload snapshotをartifactとして保存する。
+
+ローカルGateは2026-08-09時点でlint、format、build、Unit 79 files / 870 tests、Playwright 194 tests / 35 filesの静的列挙を成功した。ローカル環境にChromium executableがないため、ブラウザ実走、artifact URL、固定head独立reviewはDraft PRのCI後に記録する。現時点の状態は`implemented / local-gates-passed / CI-pending / independently-unverified / unmerged`であり、進捗は15/27のまま、Group 15製品実装はblockedとする。

@@ -75,13 +75,12 @@ function drawCharacterGroundLine(
 function drawTileRepeatGuide(
   ctx: CanvasRenderingContext2D,
   view: ViewTransform,
-  asset: Asset,
   tileWidth: number,
   tileHeight: number,
 ): void {
   const center = worldToScreen(view, {
-    x: asset.canvasSize.width / 2,
-    y: asset.canvasSize.height / 2,
+    x: tileWidth / 2,
+    y: tileHeight / 2,
   });
   const width = tileWidth * 3 * view.scale;
   const height = tileHeight * 3 * view.scale;
@@ -107,7 +106,7 @@ function drawTileRepeatGuide(
     ctx.lineTo(left + width, y);
     ctx.stroke();
   }
-  drawLabel(ctx, 'tile 3×3（説明用）', left + 8, top + 18);
+  drawLabel(ctx, 'tile 3×3（中央＋周囲8セルの実画）', left + 8, top + 18);
   ctx.restore();
 }
 
@@ -156,7 +155,7 @@ export function drawGameCheckTypeOverlay(
     drawCharacterGroundLine(ctx, view, asset, overlay.groundLineY);
   }
   if (overlay.tile) {
-    drawTileRepeatGuide(ctx, view, asset, overlay.tile.tileWidth, overlay.tile.tileHeight);
+    drawTileRepeatGuide(ctx, view, overlay.tile.tileWidth, overlay.tile.tileHeight);
   }
   if (overlay.gimmickPreset) {
     drawGimmickDirection(ctx, view, asset, overlay.gimmickPreset);

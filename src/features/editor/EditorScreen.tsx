@@ -89,6 +89,7 @@ import {
   type AssetCreationTemplateId,
   type AssetType,
   type FrameAlignmentDelta,
+  type GameImpactVariantState,
   type Layer,
   type Project,
   type Size,
@@ -163,7 +164,8 @@ import { RigPanel } from './RigPanel';
 import { TimelinePanel } from './TimelinePanel';
 import { resolveOnionSkinOccurrences } from './onionSkin';
 import { CANVAS_TOOL_GUIDE_BY_ID, CANVAS_TOOL_GUIDES } from './toolHelp';
-import { VariantPanel, type VariantInspectionView } from './VariantPanel';
+import { VariantPanel } from './VariantPanel';
+import { variantInspectionLabel, type VariantInspectionView } from './variantInspectionView';
 import { applyEditSnap } from './snap';
 import './editor.css';
 
@@ -533,6 +535,19 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [variantInspections, setVariantInspections] = useState<
     Record<string, VariantInspectionView>
   >({});
+  const gameCheckVariantStates = useMemo<Readonly<Record<string, GameImpactVariantState>>>(
+    () =>
+      Object.fromEntries(
+        Object.entries(variantInspections).map(([assetId, view]) => [
+          assetId,
+          {
+            label: `${variantInspectionLabel(view)}${view.inspection ? ` [${view.inspection.status}]` : ''}`,
+            assessed: view.state === 'ready' && view.inspection !== undefined,
+          },
+        ]),
+      ),
+    [variantInspections],
+  );
   const [variantPreview, setVariantPreview] = useState<VariantRefreshPreviewState | null>(null);
 
   const handleNewAssetTypeChange = (assetType: AssetType) => {
@@ -572,6 +587,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [showNextOnionSkin, setShowNextOnionSkin] = useState(false);
   const [frameAlignmentDraft, setFrameAlignmentDraft] = useState<FrameAlignmentDraft | null>(null);
   const frameAlignmentDraftRef = useRef<FrameAlignmentDraft | null>(null);
+  const gameCheckButtonRef = useRef<HTMLButtonElement | null>(null);
   const assetsRef = useRef<Asset[]>([]);
   const selectedAssetIdRef = useRef<string | null>(null);
   const selectedAnimationIdRef = useRef<string | null>(null);
@@ -703,7 +719,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   useEffect(() => {
     let cancelled = false;
     setVariantPreview(null);
-    const panelVisible = isMobileViewport ? mobileView === 'properties' : rightOpen;
+    const panelVisible =
+      gameCheckOpen || (isMobileViewport ? mobileView === 'properties' : rightOpen);
     const selectedFamily = (project?.families ?? []).find(
       (family) => family.id === selectedFamilyId,
     );
@@ -757,7 +774,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     return () => {
       cancelled = true;
     };
-  }, [assets, isMobileViewport, mobileView, project, rightOpen, selectedFamilyId]);
+  }, [assets, gameCheckOpen, isMobileViewport, mobileView, project, rightOpen, selectedFamilyId]);
   useEffect(() => {
     if (!selectedTextureSize) {
       return;
@@ -3415,7 +3432,11 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         asset={selectedAsset}
         project={project}
         projectAssets={assets}
-        onClose={() => setGameCheckOpen(false)}
+        variantStates={gameCheckVariantStates}
+        onClose={() => {
+          setGameCheckOpen(false);
+          window.requestAnimationFrame(() => gameCheckButtonRef.current?.focus());
+        }}
       />
     );
   }
@@ -3447,7 +3468,12 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   );
 
   return (
-    <div className="editor" aria-busy={persistentMutationBlocked}>
+    <div
+      className="editor"
+      aria-busy={persistentMutationBlocked}
+      data-history-snapshot={JSON.stringify(history.getSnapshot())}
+      data-autosave-snapshot={JSON.stringify(autosave.getSnapshot())}
+    >
       <header className="editor-topbar">
         <button type="button" onClick={handleBack}>
           ← ホーム
@@ -3495,8 +3521,12 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           ？ 操作ガイド
         </a>
         <button
+          ref={gameCheckButtonRef}
           type="button"
           disabled={!selectedAsset || persistentMutationBlocked}
+          aria-describedby={
+            !selectedAsset || persistentMutationBlocked ? 'game-check-entry-reason' : undefined
+          }
           title={
             !selectedAsset
               ? 'アセットを選択するとゲーム確認を開けます。'
@@ -3508,6 +3538,13 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         >
           ゲーム確認
         </button>
+        {(!selectedAsset || persistentMutationBlocked) && (
+          <span id="game-check-entry-reason" className="editor-note game-check-entry-reason">
+            {!selectedAsset
+              ? 'アセットを選択するとゲーム確認を開けます。'
+              : '処理完了後にゲーム確認を開けます。'}
+          </span>
+        )}
         <div className="editor-panel-toggles">
           <button type="button" aria-pressed={leftOpen} onClick={() => setLeftOpen((v) => !v)}>
             ツール

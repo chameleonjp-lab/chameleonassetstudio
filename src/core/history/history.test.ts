@@ -30,6 +30,24 @@ async function pushAndWait(history: History, entry: Parameters<History['push']>[
 }
 
 describe('History', () => {
+  it('読み取り専用snapshotでstack labelとpendingを関数本体なしに比較できる', async () => {
+    const history = new History();
+    const state = { value: 1 };
+
+    history.push(makeCounterEntry('+1', state, 1));
+    expect(history.getSnapshot()).toMatchObject({
+      undoLabels: [],
+      redoLabels: [],
+      pendingPush: true,
+    });
+    await history.waitForPending();
+    expect(history.getSnapshot()).toMatchObject({
+      undoLabels: ['+1'],
+      redoLabels: [],
+      pendingPush: false,
+    });
+  });
+
   it('pushは保存確認中をbusyにし、確定後だけUndo可能にする', async () => {
     const history = new History();
     const state = { value: 1 };

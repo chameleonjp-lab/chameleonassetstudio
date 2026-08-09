@@ -22,6 +22,25 @@ beforeEach(async () => {
 });
 
 describe('AutosaveQueue', () => {
+  it('読み取り専用snapshotでpending task・timer・実行状態を比較できる', async () => {
+    const queue = new AutosaveQueue({ delayMs: 60_000 });
+    queue.schedule(async () => {});
+
+    expect(queue.getSnapshot()).toMatchObject({
+      hasTimer: true,
+      hasPendingTask: true,
+      isRunning: false,
+      lastError: null,
+    });
+    await queue.flush();
+    expect(queue.getSnapshot()).toMatchObject({
+      hasTimer: false,
+      hasPendingTask: false,
+      isRunning: false,
+      lastError: null,
+    });
+  });
+
   it('保存タスクが実行され、状態が saving -> saved と遷移する', async () => {
     const queue = new AutosaveQueue({ delayMs: 5 });
     const states: SaveState[] = [];

@@ -4,16 +4,10 @@ import type {
   AssetFamily,
   AssetFamilyVariant,
   FamilyVariantWriteSet,
-  LinkedVariantInspection,
   LinkedVariantRefreshArtifact,
   Project,
 } from '../../core/model';
-
-export interface VariantInspectionView {
-  state: 'checking' | 'ready' | 'error';
-  inspection?: LinkedVariantInspection;
-  error?: string;
-}
+import { variantInspectionLabel, type VariantInspectionView } from './variantInspectionView';
 
 interface VariantPanelProps {
   project: Project;
@@ -68,25 +62,6 @@ function variantKindLabel(variant: AssetFamilyVariant): string {
       return 'linked palette';
     case 'manual':
       return 'manual（自動更新なし）';
-  }
-}
-
-function inspectionLabel(view: VariantInspectionView | undefined): string {
-  if (!view || view.state === 'checking') {
-    return '状態を確認中';
-  }
-  if (view.state === 'error' || !view.inspection) {
-    return '状態を確認できません';
-  }
-  switch (view.inspection.status) {
-    case 'up-to-date':
-      return '同期済み';
-    case 'ready':
-      return '更新候補（stale）';
-    case 'manual-adjusted':
-      return view.inspection.stale ? '手動調整あり（baseにも更新候補）' : '手動調整あり';
-    case 'ineligible':
-      return '更新不可';
   }
 }
 
@@ -389,7 +364,7 @@ function FamilyVariantList({
             <span className="variant-badge">{variantKindLabel(variant)}</span>
             {variant.kind !== 'manual' && (
               <span className="variant-state-text">
-                {inspectionLabel(inspections[variant.assetId])}
+                {variantInspectionLabel(inspections[variant.assetId])}
               </span>
             )}
             <button
@@ -679,7 +654,7 @@ export function VariantPanel({
           ) : (
             <div className="variant-linked-refresh" aria-live="polite">
               <p className="variant-state-text" role="status" aria-live="polite">
-                状態: {inspectionLabel(selectedInspection)}
+                状態: {variantInspectionLabel(selectedInspection)}
               </p>
               {selectedInspection?.state === 'error' && (
                 <p className="editor-note">{selectedInspection.error}</p>

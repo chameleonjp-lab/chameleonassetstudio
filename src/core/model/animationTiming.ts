@@ -73,7 +73,8 @@ export interface AnimationPlaybackOptions {
 }
 
 export interface AnimationPlayback {
-  start(): void;
+  /** 指定したAnimation.frameIds上の出現位置から再生する。省略時は先頭。 */
+  start(occurrenceIndex?: number): void;
   stop(): void;
   isRunning(): boolean;
 }
@@ -143,14 +144,19 @@ export function createAnimationPlayback(options: AnimationPlaybackOptions): Anim
   };
 
   return {
-    start() {
+    start(startOccurrenceIndex = 0) {
       clearScheduled();
-      if (options.animation.frameIds.length === 0) {
+      if (
+        options.animation.frameIds.length === 0 ||
+        !Number.isInteger(startOccurrenceIndex) ||
+        startOccurrenceIndex < 0 ||
+        startOccurrenceIndex >= options.animation.frameIds.length
+      ) {
         running = false;
         options.onComplete?.();
         return;
       }
-      occurrenceIndex = 0;
+      occurrenceIndex = startOccurrenceIndex;
       running = true;
       emitCurrent();
     },
