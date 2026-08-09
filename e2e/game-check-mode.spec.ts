@@ -461,6 +461,7 @@ async function restoreArchiveClock(page: Page): Promise<void> {
 }
 
 async function captureExports(page: Page): Promise<ExportEvidence> {
+  const blobUrlStart = (await readBlobUrlAudit(page)).createdCount;
   await installFixedArchiveClock(page);
   try {
     await page
@@ -475,6 +476,7 @@ async function captureExports(page: Page): Promise<ExportEvidence> {
     };
   } finally {
     await restoreArchiveClock(page);
+    await revokeBlobUrlsCreatedSince(page, blobUrlStart);
   }
 }
 
@@ -618,8 +620,9 @@ async function installBlobUrlAudit(page: Page): Promise<void> {
       return url;
     };
     URL.revokeObjectURL = (url: string) => {
-      active.delete(url);
-      revoked.push(url);
+      if (active.delete(url)) {
+        revoked.push(url);
+      }
       originalRevoke(url);
     };
     Object.defineProperty(window, '__g14BlobUrlAudit', {
@@ -652,6 +655,25 @@ async function readBlobUrlAudit(page: Page) {
 
 async function waitForBlobUrlsSettled(page: Page): Promise<void> {
   await expect.poll(async () => (await readBlobUrlAudit(page)).activeCount).toBe(0);
+}
+
+/** export evidence取得で作ったdownload URLだけを片付け、Game Check由来のleak判定と分離する。 */
+async function revokeBlobUrlsCreatedSince(page: Page, createdCount: number): Promise<void> {
+  await page.evaluate((start) => {
+    const audit = (
+      window as typeof window & {
+        __g14BlobUrlAudit?: {
+          active: Set<string>;
+          created: string[];
+        };
+      }
+    ).__g14BlobUrlAudit;
+    for (const url of audit?.created.slice(start) ?? []) {
+      if (audit?.active.has(url)) {
+        URL.revokeObjectURL(url);
+      }
+    }
+  }, createdCount);
 }
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
@@ -760,6 +782,7 @@ test.describe('Group 14 Game Check Mode', () => {
       isRunning: false,
     });
     const beforeBlobUrls = await readBlobUrlAudit(page);
+    expect(beforeBlobUrls.createdCount).toBe(beforeBlobUrls.revokedCount);
     await attachJson(testInfo, 'G14-before-no-save-snapshot.json', {
       storage: beforeStorage,
       editor: beforeUi,
@@ -788,7 +811,7 @@ test.describe('Group 14 Game Check Mode', () => {
       ).toBeVisible();
       await expect(page.getByText(fixtureCase.detail).first()).toBeVisible();
       await expect(page.getByText(/物理演算・engine固有挙動/)).toBeVisible();
-      await expect(page.getByText(/Blobが見つかりません/)).toHaveCount(0);
+      await expect(page.getByText(/画像表示不能/)).toHaveCount(0);
       await expectNoHorizontalOverflow(page);
 
       if (fixtureCase.type === 'character') {
@@ -957,6 +980,7 @@ test.describe('Group 14 Game Check Mode', () => {
     expect(afterStorage).toEqual(beforeStorage);
     expect(afterUi).toEqual(beforeUi);
     expect(afterBlobUrls.activeCount).toBe(beforeBlobUrls.activeCount);
+    expect(afterBlobUrls.createdCount).toBe(afterBlobUrls.revokedCount);
     expectCanonicalExportsEqual(afterExports, beforeExports);
     await attachJson(testInfo, 'G14-after-no-save-snapshot.json', {
       storage: afterStorage,
@@ -986,6 +1010,7 @@ test.describe('Group 14 Game Check Mode', () => {
     expect(reloadStorage).toEqual(beforeStorage);
     expect(reloadUi).toEqual(beforeUi);
     expect(reloadBlobUrls.activeCount).toBe(0);
+    expect(reloadBlobUrls.createdCount).toBe(reloadBlobUrls.revokedCount);
     expectCanonicalExportsEqual(reloadExports, beforeExports);
     await attachJson(testInfo, 'G14-reload-no-save-snapshot.json', {
       storage: reloadStorage,
@@ -1003,8 +1028,8 @@ test.describe('Group 14 Game Check Mode', () => {
     const cases: ReadonlyArray<{ id: string; expected: RegExp }> = [
       { id: 'G14-P1-invalid-collider', expected: /shape|形状/ },
       { id: 'G14-P1-dangling-reference', expected: /G14-P1-missing-frame|G14-P1-missing-texture/ },
-      { id: 'G14-P1-missing-blob', expected: /Blobが見つかりません/ },
-      { id: 'G14-P1-decode-failure', expected: /デコードできません/ },
+      { id: 'G14-P1-missing-blob', expected: /Blobが見つからない/ },
+      { id: 'G14-P1-decode-failure', expected: /デコードできない/ },
       { id: 'G14-P1-character-unset', expected: /originが未設定/ },
     ];
     for (const fixtureCase of cases) {
@@ -1059,7 +1084,7 @@ test.describe('Group 14 Game Check Mode', () => {
           await expect(page.getByRole('status').filter({ hasText: '停止中' })).toBeVisible();
         } else if (state === 'missing-or-decode') {
           await expect(page.getByLabel('不足・不正・表示不能の理由')).toContainText(
-            /Blobが見つかりません|デコードできません/,
+            /Blobが見つからない|デコードできない/,
           );
         } else {
           await expect(page.getByText(/既存境界で拒否されます/).first()).toBeVisible();
