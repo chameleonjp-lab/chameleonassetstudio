@@ -66,9 +66,7 @@ async function waitForLayerPosition(
   name: string,
   expected: { x: number; y: number },
 ): Promise<void> {
-  await expect
-    .poll(async () => (await positionByName(page)).get(name))
-    .toEqual(expected);
+  await expect.poll(async () => (await positionByName(page)).get(name)).toEqual(expected);
   await expect(page.locator('.editor')).toHaveAttribute('aria-busy', 'false');
 }
 
