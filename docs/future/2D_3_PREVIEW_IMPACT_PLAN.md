@@ -1,16 +1,16 @@
 # Chameleon Asset Studio Group 14 one-sheet
 
-最終更新日: 2026-08-08  
+最終更新日: 2026-08-09  
 対象リポジトリ: chameleonjp-lab/chameleonassetstudio  
 対象work package: Group 14 / 2D-3-PREVIEW + 2D-3-IMPACT  
-基準main SHA: 2b87779d42920abc8a9f61a05f164b29605768ea  
-文書状態: human-decision-pending（提案。製品実装の許可ではない）
+基準main SHA: 6c89339dccac411ceb78a72f7300db5d4df5423f  
+文書状態: accepted（G14-P1 + G14-I1 + G14-U1を2026-08-09に承認。Group 14限定）
 
 ## 0. この文書の扱い
 
-この文書は、Group 13完了後に開始するGroup 14の製品実装前契約を、1枚のhandoffとして確認するための提案である。
+この文書は、Group 13完了後に開始するGroup 14の製品実装前契約を、承認済み契約として記録するためのone-sheetである。
 
-今回の「後続対応開始」は、運用仕様に従い、未採用契約を実装せず、次の人間判断地点まで進む指示として扱う。したがって、この文書ではP1・I1・U1の詳細を提案するが、acceptedとは記録しない。
+2026-08-09、ユーザーは「G14-P1 + G14-I1 + G14-U1で承認」と明示した。運用仕様に従い、このone-sheetでは3点の詳細をaccepted契約として記録し、Group 14限定で適用する。
 
 Group 13で使ったP1（polygonをunsupportedにする判断）と、この文書のP1（preview）は別である。polygonのunsupported境界はこのGroup 14でも維持する。
 
@@ -19,15 +19,15 @@ Group 13で使ったP1（polygonをunsupportedにする判断）と、この文�
 | 項目 | 状態 |
 |---|---|
 | Work package | Group 14 / 2D-3-PREVIEW + 2D-3-IMPACT |
-| 基準main | 2b87779d42920abc8a9f61a05f164b29605768ea |
+| 基準main | 6c89339dccac411ceb78a72f7300db5d4df5423f |
 | Group 13 | completed、進捗15/27 |
-| 契約状態 | human-decision-pending |
+| 契約状態 | accepted（G14-P1 + G14-I1 + G14-U1） |
 | 実装状態 | not-started |
 | 検証状態 | unverified |
 | open Pull Request | 0件（基準確認時） |
-| この文書の目的 | P1・I1・U1の詳細契約を人間またはFableへ提示する |
-| 次に許可される行動 | one-sheetの人間またはFable承認後に、実装範囲を再固定する |
-| 直ちに許可されない行動 | product code、test、schema、保存、export、Ready化、merge |
+| この文書の目的 | P1・I1・U1の承認済み詳細契約を記録し、実装境界を引き継ぐ |
+| 次に許可される行動 | accepted同期PRのmain反映後に、基準mainを再確認し、別branch・別Draft PR・単一writerでGroup 14製品実装を開始する |
+| この同期PRで変更しない範囲 | product code、test、schema、保存、export、Ready化、merge |
 
 作業状態、影響の確度、検証の状態、export互換性の主張は別の軸で扱う。次の語を同じ意味で使わない。
 
@@ -65,7 +65,7 @@ Group 14では、次を変更しない。
 
 既存のFrame collider overrideは、Asset共通colliderを基準に、Frame overrideを優先し、visibleを表示専用として扱うGroup 13の契約を再利用する。
 
-## 4. 提案する高位契約
+## 4. 採用した高位契約
 
 ### 4.1 G14-P1: ゲーム風preview
 
@@ -79,7 +79,7 @@ Group 14では、次を変更しない。
 
 Editorから入れる読み取り専用モードとし、Preview、Impact、既存素材検査を同じ画面の中で確認する。編集画面へ戻る操作を用意するが、このモードから編集用commit callbackを呼ばない。
 
-## 5. G14-P1 Previewの共通規則（提案）
+## 5. G14-P1 Previewの共通規則（採用契約）
 
 ### 5.1 共通表示
 
@@ -95,14 +95,14 @@ Frameを選択したときは、既存のFrame collider解決規則を使う。o
 
 ### 5.2 FrameとAnimationの初期状態
 
-次を実装時の初期値候補とする。人間またはFableの承認前は確定しない。
+次を実装時の初期値として採用する。
 
 - Animationがある場合は先頭のAnimation、Frameがある場合は先頭のFrameを初期表示する。
 - AnimationもFrameもない場合は静止画として表示し、未設定を示す。
 - 再生は初期停止とする。
 - 再生、停止、Frame選択、scrub、表示切替はUI-only stateとする。
 
-### 5.3 6素材種別の表示マトリクス（提案）
+### 5.3 6素材種別の表示マトリクス（採用）
 
 | assetType | 共通overlay | 種別固有の説明表示 | 未設定・不正時 | 保証しないこと |
 |---|---|---|---|---|
@@ -113,7 +113,7 @@ Frameを選択したときは、既存のFrame collider解決規則を使う。o
 | gimmick | origin、anchor、実効collider、Frame / Animation | movementPresetの名前と、既知の方向だけを静的な矢印で表示する | 未知のpresetは軌跡を作らず未評価表示 | 物理、AI、状態遷移、実行時の軌道 |
 | effect | origin、anchor、Frame / Animation | anchor、duration、loop、blendの設定を表示し、可能なとき再生する | durationや再生対象が不正なら静止表示と未評価理由 | engineごとのblend、粒子物理、実行時の見え方 |
 
-この表の「接地線」「3×3反復」「parallax位置」「movementPresetからの矢印」「effect timingの優先順位」は、実装契約として人間またはFableが確認するまで提案扱いとする。
+この表の「接地線」「3×3反復」「parallax位置」「movementPresetからの矢印」「effect timingの優先順位」は、G14-P1の採用契約として実装する。
 
 ### 5.4 不足・不正・表示不能
 
@@ -128,7 +128,7 @@ Previewは不足データを黙って補わない。
 | 画像decodeに失敗 | 画像表示不能。エラーを画面内に表示 |
 | Atlas等が現行境界で拒否される | 既存の拒否理由を表示。Group 14で解除しない |
 
-## 6. G14-I1 Impactの規則（提案）
+## 6. G14-I1 Impactの規則（採用契約）
 
 ### 6.1 影響の入力
 
@@ -178,7 +178,7 @@ Impactの結果、展開状態、フィルター、選択状態は次へ書き�
 - .casproj、JSON、export ZIP
 - verification record
 
-## 7. G14-U1 Game Check Modeの規則（提案）
+## 7. G14-U1 Game Check Modeの規則（採用契約）
 
 ### 7.1 入口と出口
 
@@ -203,7 +203,7 @@ Impactの結果、展開状態、フィルター、選択状態は次へ書き�
 
 ### 7.3 画面の構成
 
-縦方向に次の順で表示することを提案する。
+縦方向に次の順で表示する。
 
 1. modeのタイトルと「説明用表示。物理演算・engine固有挙動は保証しない」の凡例。
 2. Preview領域。
@@ -249,13 +249,13 @@ Group 14の自動Gateは、既存のPlaywright環境で幅375、高さ667、port
 
 ### 8.3 CIとレビュー
 
-- このone-sheetだけを含むPRでは、Markdown-only分類を実行し、製品build、Unit、E2Eを製品実装の成功証拠として扱わない。
+- accepted同期PRのようなMarkdown-only PRでは、変更分類を実行し、製品build、Unit、E2Eを製品実装の成功証拠として扱わない。
 - 製品実装PRでは、lint、format、build、Unit、Chromium E2Eを実行する。
 - src、e2e、ブラウザ表示、CI、依存関係に触れた場合はE2Eを省略しない。
 - CI成功後、Opus 4.8または同等の独立reviewを行う。
 - 物理SafariはGroup 14の後続端末信頼性Gateへ残す。
 
-### 8.4 no-saveのwrite-setと比較oracle（実装前に固定する提案）
+### 8.4 no-saveのwrite-setと比較oracle（実装で固定する契約）
 
 読み取り専用を「verified」と扱うには、単に画面上の入力を置かないだけでは足りない。実装PRでは、既存の保存経路に合わせて次のwrite-setを比較対象にする。実際のIndexedDB store名は既存のstorage inventoryを参照し、名前を推測して固定しない。
 
@@ -277,7 +277,7 @@ Group 14の自動Gateは、既存のPlaywright環境で幅375、高さ667、port
 
 このone-sheetでは実行証拠を作成しない。実装PRで、使用したsnapshot helper、対象store一覧、比較結果、artifact URLを記録する。
 
-### 8.5 Fixture、test、artifactの識別子（実装PRで確定する提案）
+### 8.5 Fixture、test、artifactの識別子（実装PRで固定する契約）
 
 one-sheet承認後の実装PRでは、次の識別子を使ってfixtureとテストを追跡する。fixture bytesのhashは、実際のfixtureファイルを作成した時点で固定し、このdocs-only PRには未記録とする。
 
@@ -302,9 +302,9 @@ one-sheet承認後の実装PRでは、次の識別子を使ってfixtureとテ�
 - Unit: Preview投影、実効collider、invalid表示、I1確度分類、UI-only境界。
 - E2E: game-check-mode-375x667。既存repositoryのe2e scriptとPlaywright設定に従い、375×667 portrait・touch操作で実行する。
 - Artifact: CI job URL、Playwright report、375×667 screenshot、before / after no-save snapshot、fixture hash一覧。
-- 期待値: 対象fixtureの失敗・flaky・不意のskipは0件。docs-onlyのCI Run #676はこの期待値の証拠ではない。
+- 期待値: 対象fixtureの失敗・flaky・不意のskipは0件。docs-onlyのCI Run #677はこの期待値の証拠ではない。
 
-## 9. Fixtureの最小構成（実装前の提案）
+## 9. Fixtureの最小構成（実装PRで固定する契約）
 
 各assetTypeについて、次の状態を用意する。
 
@@ -328,10 +328,10 @@ one-sheet承認後の実装PRでは、次の識別子を使ってfixtureとテ�
 
 次のすべてを満たすまでproduct codeへ進まない。
 
-1. 人間またはFableが、6種別の表示マトリクスと不足・不正時の扱いを承認する。
-2. 人間またはFableが、I1の確度、Impactの対象path、linked variantの範囲、未評価の範囲を承認する。
-3. 人間またはFableが、U1の入口・出口、UI-only state、375×667受入条件を承認する。
-4. このone-sheetをaccepted状態へ同期し、基準mainを再確認する。
+1. G14-P1の承認済み表示マトリクスと不足・不正時の扱いを実装契約として使う。
+2. G14-I1の承認済み確度、Impactの対象path、linked variantの範囲、未評価の範囲を実装契約として使う。
+3. G14-U1の承認済み入口・出口、UI-only state、375×667受入条件を実装契約として使う。
+4. accepted同期PRをmainへ反映し、基準mainを再確認する。
 5. 別branch、別Draft PR、単一writerで製品実装を開始する。
 6. schema、version、migration、保存、export、Atlas拒否へ影響する提案が出た場合は、Group 14を停止して別の人間判断へ戻す。
 
@@ -340,7 +340,7 @@ one-sheet承認後の実装PRでは、次の識別子を使ってfixtureとテ�
 Group 14の工程順は次のとおりとする。
 
 1. Group 13の完了確認。現在のmainではcompleted、進捗15/27、polygon unsupported、Atlas系事前拒否維持。
-2. Group 14のone-sheetを人間またはFableが承認し、契約状態をacceptedへ同期する。
+2. 2026-08-09、ユーザーがG14-P1 + G14-I1 + G14-U1を承認し、このone-sheetをacceptedへ同期する。
 3. 基準mainを再確認し、別branch・別Draft PR・単一writerでGroup 14製品実装を行う。
 4. Group 14のUnit、Chromium E2E、CI、独立review、必要な人間確認を完了し、Group 14をmergedへ進める。
 5. その後にGroup 15へ進む。
@@ -349,9 +349,9 @@ Group 15は、2D-4-CORE + 2D-4-SHEET + 2D-4-SCALEであり、共通export core�
 
 ロードマップが許す2D-4 fixture設計の準備は並行できるが、Group 14ではexport実装、形式変更、Atlas拒否解除を開始しない。Group 15の契約と受入条件は、Group 14完了後に別途固定する。
 
-## 12. 人間判断に戻す3点
+## 12. 承認記録
 
-この文書の提案を承認する場合、次の3点をまとめて確認してほしい。
+この文書で承認した内容は、次の3点である。適用範囲はGroup 14に限る。
 
 1. G14-P1：6素材種別の表示マトリクス、接地線、tile 3×3、parallax、gimmick方向、effect timing、不足・不正時の扱い。
 2. G14-I1：確定・可能性・未評価の意味、Impactの対象path、direct / transitiveの範囲、current export compatibilityと既存Atlas拒否の分離。
@@ -359,14 +359,14 @@ Group 15は、2D-4-CORE + 2D-4-SHEET + 2D-4-SCALEであり、共通export core�
 
 ## 13. 監査証拠
 
-基準main 2b87779d42920abc8a9f61a05f164b29605768ea、open PR 0件に対して、3方向のread-only監査を行った。
+基準main 6c89339dccac411ceb78a72f7300db5d4df5423f、open PR 0件に対して、承認後の3方向read-only監査を行った。
 
 | 担当 | 結果 |
 |---|---|
-| 仕様・判断 | BLOCKER 2 / MUST 8 / SHOULD 4 / NOTE 4 |
-| 実装・データ契約 | BLOCKER 0 / MUST 6 / SHOULD 4 / NOTE 3 |
-| テスト・CI・iPhone | BLOCKER 2 / MUST 6 / SHOULD 4 / NOTE 4 |
+| 仕様・判断 | accepted同期前の状態不一致を確認 |
+| 実装・データ契約 | accepted同期後も保存・schema・export境界は変更不要と確認 |
+| テスト・CI・iPhone | CI #677はdocs-only分類成功で、製品検証の証拠ではないと確認 |
 
-統合結論は、既存Group 13の型・保存・export境界を変更せずに実装できる見込みだが、one-sheet承認前の製品実装は不可である。
+統合結論は、承認済みG14-P1 + G14-I1 + G14-U1をacceptedとして記録し、既存Group 13の型・保存・export境界を変更せず、別Draft PRで製品実装へ進める状態になった。現時点の実装はnot-started、検証はunverifiedである。
 
-このPRで変更したファイルは、このone-sheetだけである。製品コード、test、schema、version、migration、保存、export、CI定義、依存関係、polygonは変更しない。
+このaccepted同期PRで変更するファイルは、このone-sheetと上位2計画書だけである。製品コード、test、schema、version、migration、保存、export、CI定義、依存関係、polygonは変更しない。
