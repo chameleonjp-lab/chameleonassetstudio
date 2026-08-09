@@ -1,14 +1,14 @@
 # Chameleon Asset Studio Group 14 one-sheet
 
-最終更新日: 2026-08-09  
-対象リポジトリ: chameleonjp-lab/chameleonassetstudio  
-対象work package: Group 14 / 2D-3-PREVIEW + 2D-3-IMPACT  
-基準main SHA: 6c89339dccac411ceb78a72f7300db5d4df5423f  
-文書状態: accepted（G14-P1 + G14-I1 + G14-U1を2026-08-09に承認。Group 14限定）
+最終更新日: 2026-08-10
+対象リポジトリ: chameleonjp-lab/chameleonassetstudio
+対象work package: Group 14 / 2D-3-PREVIEW + 2D-3-IMPACT
+基準main SHA: 217c695f22ee494f0ee2166f44d496de09fa3e8e
+文書状態: accepted contract / work package completed（G14-P1 + G14-I1 + G14-U1。Group 14限定）
 
 ## 0. この文書の扱い
 
-この文書は、Group 13完了後に開始するGroup 14の製品実装前契約を、承認済み契約として記録するためのone-sheetである。
+この文書は、Group 13完了後に開始したGroup 14の製品実装前契約と完了証拠を、1枚で記録するためのone-sheetである。§§2〜13は採用した契約と当時の監査履歴として保持し、PR #225以後の時系列と完了証拠は§14を正本とする。
 
 2026-08-09、ユーザーは「G14-P1 + G14-I1 + G14-U1で承認」と明示した。運用仕様に従い、このone-sheetでは3点の詳細をaccepted契約として記録し、Group 14限定で適用する。
 
@@ -19,15 +19,15 @@ Group 13で使ったP1（polygonをunsupportedにする判断）と、この文�
 | 項目 | 状態 |
 |---|---|
 | Work package | Group 14 / 2D-3-PREVIEW + 2D-3-IMPACT |
-| 基準main | cd3c3ffa8043353cfbb8a901f46daafea3945101（PR #225 merge後） |
-| Group 13 | completed、進捗15/27 |
+| 基準main | 217c695f22ee494f0ee2166f44d496de09fa3e8e（PR #227 merge後） |
+| Group 14 | completed、全27工程中16工程完了 |
 | 契約状態 | accepted（G14-P1 + G14-I1 + G14-U1） |
-| 実装状態 | PR #225でmainへ実装済み。§8のcloseout補修を別branchで実施中 |
-| 検証状態 | CI Run #682は成功。§8.2〜§8.5の補修CI・artifact・固定head独立reviewはpending |
-| open Pull Request | closeout補修Draft PRの作成前（基準確認時） |
-| この文書の目的 | P1・I1・U1のaccepted契約と、実装・closeout補修の状態を分離して記録する |
-| 次に許可される行動 | Group 14 closeout補修をDraft PRへ反映し、Chromium CIと固定head独立reviewを通す |
-| この補修で変更しない範囲 | schema、version、migration、保存形式、IndexedDB配置、.casproj、export ZIP、dependency、polygon、Ready化、merge |
+| 実装状態 | PR #225初期実装、PR #226 verification hardening、PR #227最終補修をmainへ反映済み |
+| 検証状態 | CI Run #689の全job成功、artifact検査、固定headの3方向read-only reviewを完了 |
+| open Pull Request | 0件（2026-08-10の基準確認時。closeout文書同期Draft PRの作成前） |
+| この文書の目的 | P1・I1・U1のaccepted契約を保持し、実装・検証・closeoutの完了証拠を§14へ記録する |
+| 次に許可される行動 | Group 15の契約監査だけ。製品実装は契約・受入条件の人間採用前まで開始しない |
+| この同期で変更しない範囲 | schema、version、migration、保存形式、IndexedDB配置、.casproj、export ZIP、dependency、polygon、現行Atlas拒否、Group 15仕様採用、Ready化、merge |
 
 作業状態、影響の確度、検証の状態、export互換性の主張は別の軸で扱う。次の語を同じ意味で使わない。
 
@@ -290,12 +290,15 @@ one-sheet承認後の実装PRでは、次の識別子を使ってfixtureとテ�
 | G14-P1-gimmick-normal | gimmick正常 | movementPresetの名前と既知方向を表示 |
 | G14-P1-effect-normal | effect正常 | anchor、duration、loop、blend、再生を確認 |
 | G14-P1-invalid-collider | semantic-invalid | 自動修復せず理由表示 |
+| G14-P1-runtime-invalid-colliders | runtime-invalid | 保存形式の前提を満たさないcolliders値でも補完・例外終了せず、既存Atlas preflightの拒否理由を表示 |
 | G14-P1-dangling-reference | dangling reference | 参照IDと表示不能理由を表示 |
 | G14-P1-missing-blob | missing Blob | 画像表示不能と未評価を表示 |
 | G14-P1-decode-failure | decode failure | エラー理由を表示し画面を落とさない |
 | G14-I1-linked-direct | direct linked variant / Frame reference | 確定として対象pathを列挙 |
 | G14-I1-manual-unassessed | manual variant / past export / record | 未評価として列挙 |
 | G14-EXPORT-atlas-reject | Atlas / Sprite Sheet / product ZIP | 既存の拒否理由を表示しbytesを生成しない |
+
+accepted同期時点は上記のうち`G14-P1-runtime-invalid-colliders`を除く13 IDだった。PR #227で既存の「不正値でも落ちず理由表示」契約を補強する1 IDとして追加し、現在のacceptance fixtureは当初13 ID + 補強1 IDの計14 IDである。新しい製品仕様の追加ではない。
 
 実装PRで固定するtest名と実行方法の候補は次のとおりである。
 
@@ -341,13 +344,13 @@ Group 14の工程順は次のとおりとする。
 
 1. Group 13の完了確認。現在のmainではcompleted、進捗15/27、polygon unsupported、Atlas系事前拒否維持。
 2. 2026-08-09、ユーザーがG14-P1 + G14-I1 + G14-U1を承認し、このone-sheetをacceptedへ同期する。
-3. 基準mainを再確認し、別branch・別Draft PR・単一writerでGroup 14製品実装を行う。
-4. Group 14のUnit、Chromium E2E、CI、独立review、必要な人間確認を完了し、Group 14をmergedへ進める。
-5. その後にGroup 15へ進む。
+3. PR #225で初期実装を行い、PR #226で§8のverification hardening、PR #227で固定head review後の最終補修を行う。
+4. CI Run #689、artifact検査、固定headの3方向read-only reviewを完了し、PR #227をmainへ反映する。
+5. Group 14をcompleted、進捗16/27とし、その後にGroup 15の契約監査だけへ進む。
 
 Group 15は、2D-4-CORE + 2D-4-SHEET + 2D-4-SCALEであり、共通export core、決定的再出力、sheet、atlas、scale、trim、padding、extrudeを扱う。Group 14のone-sheet承認は、Group 15のexport契約を採用したことを意味しない。
 
-ロードマップが許す2D-4 fixture設計の準備は並行できるが、Group 14ではexport実装、形式変更、Atlas拒否解除を開始しない。Group 15の契約と受入条件は、Group 14完了後に別途固定する。
+Group 15の現在状態は`contract-audit-unblocked / product-not-started / unaccepted`である。旧`docs/future/EXPORT_QUALITY_DESIGN.md`のPhase 20案を、そのままGroup 15のaccepted契約とは扱わない。common manifest、target優先度、直接生成しない範囲、determinismをbyte同一と意味同一のどちらで定義するか、pack順とtie-break、rotation、page上限、trim座標と透明Frame、padding / extrude、1x / 2x / 3xの単一・同時出力、命名・丸め、manifest / atlas version、既存ZIP互換、export-presets schema / migration、現行Atlas拒否の維持・解消を別handoffで固定し、人間が採用するまで製品実装を開始しない。
 
 ## 12. 承認記録
 
@@ -373,17 +376,41 @@ accepted同期時点の統合結論は、承認済みG14-P1 + G14-I1 + G14-U1を
 
 このaccepted同期PRで変更するファイルは、このone-sheetと上位2計画書だけである。製品コード、test、schema、version、migration、保存、export、CI定義、依存関係、polygonは変更しない。
 
-## 14. 実装後のcloseout補修
+## 14. 補修と完了証拠
 
-PR #225はGroup 14製品実装をmainへ反映し、merge commitは`cd3c3ffa8043353cfbb8a901f46daafea3945101`である。CI Run #682はlint、format、build、Unit 850件、Chromium E2E 185件、H3、Pages open / closedを全成功した。一方で固定head reviewがなく、§8.2〜§8.5で要求した6種fixture、異常系、Blob bytes hashを含むno-save oracle、reload比較、375×667 screenshot、fixture hash、Playwright artifactが不足していたため、この成功だけではGroup 14をcloseoutしない。
+PR #225はGroup 14の初期製品実装をmainへ反映し、merge commitは`cd3c3ffa8043353cfbb8a901f46daafea3945101`である。CI Run #682はlint、format、build、Unit 850件、Chromium E2E 185件、H3、Pages open / closedを全成功したが、当時は§8.2〜§8.5のfixture、no-save oracle、artifact、固定head独立reviewが不足していたため、この時点ではcloseoutしなかった。
 
-後続のcloseout補修は`agent/group14-verification-hardening-20260809`で行う。補修範囲は次のとおりである。
+PR #226はverification hardeningを行い、merge commit `280ab99d39a4857bb6bd7acd0d8f5479d3650766`としてmainへ反映した。その固定head reviewで残った、runtime-invalid値を補完せずAtlas preflight拒否として表示すること、UI-only Impact行のIDを値変更後も維持すること、非空のUndo / Redoを使ってno-saveを検証することの3 MUSTは、PR #227で補修した。PR #227 final headは`95c1e9de81a7c445cbae3e8846a7582c55dd7ded`、merge commitと2026-08-10時点の基準mainは`217c695f22ee494f0ee2166f44d496de09fa3e8e`である。
 
-- dangling Animationを別Animationへ暗黙fallbackせず、origin、anchor、collider、backgroundの不正値を推測描画しない。
-- tileをguideだけでなく中央と周囲8セルへ実画し、種別固有overlayをOFFにしたときは反復画像、parallax変位、種別guideを一緒に隠す。
-- Impactへsource / edit、選択Animation / Frame、asset type固有Game Data、linked Variantの既存状態、UI-only state、確認済み、未確認、再確認条件を表示し、kind / confidence filterと行選択をUI-onlyで提供する。
-- scrub、Escape、44px操作対象、明示focus、内部縦scroll、reduced-motionを固定する。
-- §8.5の13 IDをE2Eから追跡し、IndexedDB全store、Blob / ArrayBuffer SHA-256、History stack / pending、autosave timer / pending / running / error、Blob URL、`.casproj` raw bytes / entry bytes / manifest、asset export、reload後をbefore / after比較する。
-- CIでPlaywright HTML report、test-results、375×667 screenshot、fixture hash、before / after / reload snapshotをartifactとして保存する。
+### 14.1 CIとartifact
 
-ローカルGateは2026-08-09時点でlint、format、build、Unit 79 files / 870 tests、Playwright 194 tests / 35 filesの静的列挙を成功した。ローカル環境にChromium executableがないため、ブラウザ実走、artifact URL、固定head独立reviewはDraft PRのCI後に記録する。現時点の状態は`implemented / local-gates-passed / CI-pending / independently-unverified / unmerged`であり、進捗は15/27のまま、Group 15製品実装はblockedとする。
+[CI Run #689](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/31319970728)（Actions ID `31319970728`、attempt 1）は`classify-changes`、`build-and-test`、`e2e`の全jobを成功した。lint、format、build、Unit 79 files / 870 passed、Chromium E2E 194 passed、Group 14専用10 tests、H3 1 passed、Pages open / closed各1 passedで、failed / flaky / skipped / retryは0件だった。PR CIはhead `95c1e9de81a7c445cbae3e8846a7582c55dd7ded`をbase `280ab99d39a4857bb6bd7acd0d8f5479d3650766`へ統合したsynthetic merge `5d49f2152ab11450e1189811fdb8867c28203763`を検査した。synthetic mergeと最終main merge `217c695f22ee494f0ee2166f44d496de09fa3e8e`の変更ファイル差分は0件である。
+
+| 項目 | 記録 |
+|---|---|
+| Artifact | [playwright-report-31319970728-1](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/31319970728/artifacts/9039925430) |
+| Artifact ID / size | `9039925430` / 727,638 bytes |
+| Artifact digest | `sha256:2456b487e140a6ef3ada2aa8cec6f94ca15747581d69b651f6b527bebb5d0bde` |
+| 保持期限 | 2026-08-23T15:05:50Z。期限切れ後もID、完全digest、主要hashと件数を本節へ保持する |
+| Fixture archive | 11,904 bytes、raw SHA-256 `83a396abdeda8d7a439726ae0e90feb9a4297faa57ff5a08e1319e9a818fa4ab`、manifest SHA-256 `e680aee83806ecc62b0860be653d52d35528918969c1988aefcebe96e827ee4a`、26 entries |
+| Browser harness | 3 source files、manifest SHA-256 `3981b3328c028af3a53ce07e6339fe409fbce0c6e0a308307e94585b0c521d64` |
+
+artifactの物理ファイルはPlaywright HTML report 1件とPNG 3件である。JSON証拠8件はHTML report内の添付であり、独立した`test-results/`ファイルがあるとは扱わない。添付は`G14-fixture-hash.json`、`G14-before-no-save-snapshot.json`、`G14-game-check-375x667.png`、`G14-tile-single-overlay-off-375x667.png`、`G14-tile-3x3-375x667.png`、`G14-after-no-save-snapshot.json`、`G14-reopen-ui-only-defaults.json`、`G14-reload-no-save-snapshot.json`である。全画面375×667は2枚で、tile single overlay offは353×287のcanvas cropである。
+
+acceptance fixtureは§8.5の当初13 IDに`G14-P1-runtime-invalid-colliders`を補強した14 IDである。6素材種別それぞれの正常状態と5異常状態、合計6種別×6状態を検証した。no-save oracleでは、before / afterのIndexedDB全store、Editor state、`asset.json`、`.casproj`を完全一致で確認した。Historyは空状態ではなくbefore / afterともUndo 2件、Redo 1件、`canUndo=true / canRedo=true / pendingPush=false`であり、autosaveはsaved、timer / pending task / running / errorなしだった。reload後は保存済みdata、IndexedDB、出力がbeforeと一致し、UI-only state、History、autosaveのsession stateだけが既定値へ戻った。Game Check中のdownloadは0件、Atlas ZIP生成bytesは0、Blob URLは各時点active 0でcreatedとrevokedが一致した。
+
+### 14.2 3方向read-only review
+
+固定head `95c1e9de81a7c445cbae3e8846a7582c55dd7ded`と基準main `217c695f22ee494f0ee2166f44d496de09fa3e8e`を対象に、2026-08-10、ChatGPT Workの3担当がGitHub外でread-only reviewを行った。GitHub上のsubmitted review、review thread、conversation commentは0件であり、次は外部独立reviewの記録である。全担当とも`Changed files: none`だった。
+
+| 担当 | 結果 | closeoutでの扱い |
+|---|---|---|
+| 仕様・判断 | `BLOCKER 0 / MUST 4 / SHOULD 1` | MUSTは3正本文書のstale状態、完了証拠、14 fixture ID、Group 15境界の同期であり、本closeout文書同期で対応する。製品仕様の追加ではない |
+| 実装・データ契約 | `BLOCKER 0 / MUST 0 / SHOULD 0 / NOTE 2` | PR #227の3 MUST閉鎖と、schema・保存・export互換性の維持を確認した |
+| テスト・CI・証拠 | CI / artifact側`BLOCKER 0 / MUST 0 / SHOULD 0`、文書drift `G14-CI-01`はMUST | Run #689、artifact、fixture、no-save / reload証拠は充足し、文書driftは本同期で対応する |
+
+Group 14開始前の`15a08d2`から基準main `217c695f22ee494f0ee2166f44d496de09fa3e8e`まで、Asset / Project / export schema、version定数、migration、IndexedDB定義、`.casproj`、製品export、Atlas形式、`package.json`、`package-lock.json`のblobは同一である。History / autosaveの保存挙動と状態遷移も不変だが、検査用の読み取り専用snapshot観測APIは追加されている。polygon `unsupported`と現行Atlas系の事前拒否も維持する。
+
+Game Checkは実際のAtlas生成やengine読込を実行していない。「既知のAtlas拒否理由なし」は可能性表示であり、実export成功やengine挙動を保証しない。物理Safariは採用済み契約どおりGroup 14の追加停止Gateにせず、後続`2D-6`へ残す。
+
+以上によりGroup 14を`accepted / implemented / CI-passed / independently-verified / merged / completed`、全27工程中16工程完了とする。次の正式作業は17工程目のGroup 15契約監査だけであり、Group 15の仕様採用と製品実装は行っていない。

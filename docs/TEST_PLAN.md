@@ -1,6 +1,6 @@
 # Chameleon Asset Studio テスト計画書
 
-最終更新日: 2026-08-03
+最終更新日: 2026-08-10
 対象バージョン: アプリ 0.1.0 / Asset 0.2.0 / Project・export-presets・atlas 0.1.0
 詳細な対象一覧の正本: `docs/implementation/TEST_AND_RELEASE.md`
 
@@ -99,7 +99,7 @@ PR #217 final head `e28e4de43f6825fdd5f0d206983e0760359f0503`のCI Run #650はun
 
 Slice Bはdocs-only契約としてPR #218 / merge `bbe9df960170942ddac67cad737b77fcb93d7e8d`で完了した。Slice Cの製品実装と次の自動検証はPR #219 / #220でmainへ反映済みである。PR #221はassertionの意味を変えずE2Eの非同期待機だけを安定化し、final head `45a41a19153334017801fd0354ffd0f678d9a30b`、merge `65df697e36f53ee20464d7bb74940f8713317d65`としてmainへ反映した。CI Run #669はUnit 78 files / 842 passed、Chromium E2E 184 passed、H3 1 passed、Pages open / closed各1 passedで、failed / flaky / skipped / retryは0件だった。固定headの3方向独立reviewも`BLOCKER 0 / MUST 0 / SHOULD 0`である。Group 13をcloseoutし、完了数を15/27とする。
 
-375 x 667はO1専用E2Eを含むChromiumで確認済みである。物理SafariはGroup 13専用の追加停止Gateにせず、リリース全体の端末確認へ残す。Group 14はone-sheetをacceptedとし、PR #225 / merge `cd3c3ffa`で製品実装をmainへ反映した。現在は別Draft PRでcloseout補修中であり、IndexedDB全store、Blob / ArrayBuffer SHA-256、History / Undo / Redo、autosave表示、Blob URL、固定clockでの`.casproj` raw bytes / entry manifest、asset export、reload後をbefore / after比較する。CIでは375 x 667 screenshot、fixture hash、before / after / reload snapshot、Playwright reportをartifact化し、固定head独立reviewまでGroup 14を未完了とする。
+375 x 667はO1専用E2Eを含むChromiumで確認済みである。物理SafariはGroup 13専用の追加停止Gateにせず、リリース全体の端末確認へ残す。
 
 - schemaと意味検証: rect / circleの完全geometry、`visible`だけの上書き、field単位fallback、field不在、空配列、partial rect / circle、rect / circle同居、recognized override fieldなし、空`colliderId`、予約名fieldのexact保持・非解釈、未知field保持、重複Asset collider ID、Frame内重複参照、dangling参照、shape不一致、非有限値、0以下の寸法を扱う。無効dataを黙って修復・fallbackしない。
 - 編集: Frame選択・停止中だけのscope、自動再生完了後のFrame編集selection解除、残る視覚previewが編集権限を与えないこと、rect / circle編集とpreview、`visible`のinherit / show / hide、geometry resetと全reset、未知geometry pathを含む削除警告、未知fieldだけを残すfield単位resetの理由付き拒否と明示的なentry全解除、Enter / blurの最大1 History、Escape取消、deep semantic no-op抑止、非正寸法の理由付き拒否、`visible: false`の再編集を扱う。
@@ -111,6 +111,16 @@ Slice Bはdocs-only契約としてPR #218 / merge `bbe9df960170942ddac67cad737b7
 `src/core/model/motionContract.fixtures.test.ts`の先行`colliderOverrides` fixtureは、参照先Asset colliderを持つ意味上validなdataへ直す。意味検証をfixtureに合わせて弱めない。物理SafariはSlice B / Cだけの追加停止Gateにはせず、リリース全体の端末確認へ残す。
 
 Slice Cの専用testは、model / resolver / semantic validationを`src/core/model/frameColliderOverrides.test.ts`、Atlas / ZIPのloss判定を`src/core/export/colliderOverrideLoss.test.ts`、製品操作・保存失敗・書き出し・375 x 667を`e2e/collider-overrides.spec.ts`へ固定する。既存のschema、asset操作、複製・反転・linked refresh・canvas resize、storage、`.casproj`、export / Atlas testも同じ契約へ更新し、既存回帰を削除・緩和しない。
+
+### 3.5 Group 14 Preview / Impact（完了）
+
+正本は`docs/future/2D_3_PREVIEW_IMPACT_PLAN.md`。PR #225で初期実装、PR #226 / merge `280ab99d39a4857bb6bd7acd0d8f5479d3650766`でverification hardening、PR #227 final head `95c1e9de81a7c445cbae3e8846a7582c55dd7ded` / merge `217c695f22ee494f0ee2166f44d496de09fa3e8e`で最終補修をmainへ反映した。CI Run #689（Actions ID `31319970728`）はUnit 79 files / 870 passed、Chromium E2E 194 passed、Group 14専用10 tests、H3 1 passed、Pages open / closed各1 passedを成功し、failed / flaky / skipped / retryは0件だった。
+
+acceptance fixtureは当初13 ID + runtime-invalid補強1 IDの計14 IDで、6素材種別の正常状態と5異常状態を検証した。375×667の全画面証拠2枚と353×287のcanvas crop 1枚、fixture hash、before / after / reload snapshotをPlaywright HTML reportへ添付した。artifact IDは`9039925430`、digestは`sha256:2456b487e140a6ef3ada2aa8cec6f94ca15747581d69b651f6b527bebb5d0bde`である。JSON証拠はHTML report内の添付であり、独立した`test-results/`ファイルではない。
+
+no-save oracleは空でないHistoryを使い、before / afterともUndo 2件・Redo 1件を保持したまま、IndexedDB全store、Editor state、`asset.json`、`.casproj`の完全一致を確認した。reload後は保存済みdataと出力を維持し、UI-only state、History、autosaveのsession stateだけが初期化された。Game Check中のdownloadは0件、Atlas ZIP生成bytesは0、Blob URLはactive 0でcreated / revokedが一致した。固定headの仕様・判断、実装・データ契約、テスト・CI・証拠の3方向read-only reviewを完了し、Group 14をcompleted、進捗16/27とする。
+
+このGateは実際のAtlas生成、engine読込、物理Safariを検証した証拠ではない。History / autosaveの保存挙動は不変だが、検査用の読み取り専用snapshot観測APIは追加されている。schema、version、migration、IndexedDB配置、`.casproj`、export ZIP、dependency、polygon `unsupported`、現行Atlas拒否境界は変更していない。次のGroup 15は契約監査だけを開始可能とし、製品実装は契約・受入条件の人間採用前まで開始しない。
 
 ## 4. テスト変更と失敗時の扱い
 
