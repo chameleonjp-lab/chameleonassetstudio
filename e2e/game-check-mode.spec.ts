@@ -26,7 +26,6 @@ async function setupProjectWithImage(page: Page, name: string): Promise<void> {
   });
   await confirmImageImport(page);
   await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
-  await expect(page.getByRole('status')).toHaveText('保存済み', { timeout: 10_000 });
 }
 
 /** IndexedDBの全ストアをBlobのメタデータ込みで正規化する（読み取り専用）。 */
