@@ -299,7 +299,7 @@ describe('game preview projection', () => {
     ).toMatchObject({ kind: 'source-edit', confidence: '可能性' });
   });
 
-  it('選択Animation・FrameとUI-only stateをImpactに反映し、入力を変更しない', () => {
+  it('選択Animation・FrameとUI-only stateをImpactに反映し、行IDと入力を変更しない', () => {
     const context = {
       selection: { animationId: 'anim_idle', frameId: 'frame_idle_1', occurrenceIndex: 1 },
       uiState: { isPlaying: false, showOrigin: true, parallaxPosition: 0 },
@@ -311,7 +311,11 @@ describe('game preview projection', () => {
     const impact = buildGameImpact(baseAsset, project, [baseAsset], context);
     const changed = buildGameImpact(baseAsset, project, [baseAsset], {
       ...context,
-      uiState: { ...context.uiState, showOrigin: false },
+      uiState: {
+        ...context.uiState,
+        showOrigin: false,
+        selectedImpactId: 'ui-state:Game Check Mode.uiState:13',
+      },
     });
 
     expect(impact.find((item) => item.path === 'animations[id=anim_idle]')).toMatchObject({
@@ -324,9 +328,11 @@ describe('game preview projection', () => {
     });
     const uiImpact = impact.find((item) => item.kind === 'ui-state');
     const changedUiImpact = changed.find((item) => item.kind === 'ui-state');
-    expect(uiImpact?.path).toContain('showOrigin=true');
-    expect(changedUiImpact?.path).toContain('showOrigin=false');
-    expect(changedUiImpact?.id).not.toBe(uiImpact?.id);
+    expect(uiImpact?.path).toBe('Game Check Mode.uiState');
+    expect(uiImpact?.state).toContain('showOrigin=true');
+    expect(changedUiImpact?.state).toContain('showOrigin=false');
+    expect(changedUiImpact?.state).toContain('selectedImpactId=');
+    expect(changedUiImpact?.id).toBe(uiImpact?.id);
     expect(baseAsset).toEqual(assetBefore);
     expect(project).toEqual(projectBefore);
     expect(context).toEqual(contextBefore);
