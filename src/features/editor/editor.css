@@ -2522,3 +2522,292 @@
     transparent 2px 4px
   );
 }
+
+/* Group 14: 読み取り専用のゲーム確認モード */
+.game-check-mode {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 100dvh;
+  overflow: auto;
+  background: Canvas;
+  color: CanvasText;
+}
+
+.game-check-header,
+.game-check-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #8884;
+}
+
+.game-check-header > div:first-child {
+  min-width: 0;
+}
+
+.game-check-header h1 {
+  margin: 0;
+  font-size: 1.1rem;
+  overflow-wrap: anywhere;
+}
+
+.game-check-kicker {
+  margin: 0 0 0.2rem;
+  color: #146c5b;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.game-check-note,
+.game-check-footer p,
+.game-check-preview-status {
+  margin: 0.3rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.game-check-close,
+.game-check-footer button {
+  flex: none;
+  min-height: 44px;
+}
+
+.game-check-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.9fr);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.game-check-preview-section {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  overflow: auto;
+}
+
+.game-check-canvas-wrapper {
+  position: relative;
+  flex: 1;
+  min-height: 20rem;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #8888;
+  border-radius: 8px;
+  background: #20242c;
+}
+
+.game-check-canvas-wrapper canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.game-check-issues {
+  max-height: 12rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.5rem 1.8rem;
+  overflow: auto;
+  border: 1px solid #d9770666;
+  border-radius: 6px;
+  background: color-mix(in srgb, Canvas 92%, #f59e0b 8%);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.game-check-issues code,
+.game-check-impact-list code {
+  overflow-wrap: anywhere;
+}
+
+.game-check-controls {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border-left: 1px solid #8884;
+  overflow: auto;
+}
+
+.game-check-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.55rem;
+  padding: 0.7rem;
+  border: 1px solid #8886;
+  border-radius: 7px;
+  background: color-mix(in srgb, Canvas 96%, #457b9d 4%);
+}
+
+.game-check-card h2 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.game-check-card select,
+.game-check-card input[type='range'] {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.game-check-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.game-check-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 32px;
+  overflow-wrap: anywhere;
+}
+
+.game-check-checkbox input {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+
+.game-check-detail-list,
+.game-check-impact-list,
+.game-check-legend {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.game-check-impact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.game-check-impact-list li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.game-check-impact-list p,
+.game-check-impact-list small {
+  display: block;
+  margin: 0.2rem 0 0;
+}
+
+.game-check-impact-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.game-check-confidence-confirmed {
+  color: #146c5b;
+}
+
+.game-check-confidence-possible {
+  color: #9a6700;
+}
+
+.game-check-confidence-unassessed {
+  color: #6b4c9a;
+}
+
+.game-check-section-toggle {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.45rem 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+}
+
+.game-check-inspection {
+  overflow: hidden;
+}
+
+.game-check-inspection summary {
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.game-check-footer {
+  flex-wrap: wrap;
+  border-top: 1px solid #8884;
+  border-bottom: 0;
+}
+
+.game-check-footer p {
+  flex: 1 1 20rem;
+}
+
+@media (max-width: 767px) {
+  .game-check-header {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 0.65rem;
+  }
+
+  .game-check-header button,
+  .game-check-footer button,
+  .game-check-actions button,
+  .game-check-card select,
+  .game-check-card input[type='range'] {
+    min-height: 44px;
+  }
+
+  .game-check-card select {
+    font-size: 16px;
+  }
+
+  .game-check-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .game-check-preview-section {
+    flex: none;
+    padding: 0.65rem;
+    overflow: visible;
+  }
+
+  .game-check-canvas-wrapper {
+    min-height: 18rem;
+  }
+
+  .game-check-controls {
+    flex: none;
+    padding: 0.65rem;
+    border-top: 1px solid #8884;
+    border-left: 0;
+    overflow: visible;
+  }
+
+  .game-check-footer {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 0.65rem;
+  }
+}
