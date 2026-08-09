@@ -1,0 +1,39 @@
+/* Group 14 post-merge: 375×667の操作領域とキーボードfocusを契約どおり固定する。 */
+.game-check-mode .game-check-checkbox {
+  min-height: 44px;
+  padding-block: 6px;
+}
+
+.game-check-mode .game-check-checkbox input {
+  min-width: 24px;
+  min-height: 24px;
+}
+
+.game-check-mode .game-check-card select,
+.game-check-mode .game-check-card input[type='range'],
+.game-check-mode .game-check-actions button,
+.game-check-mode .game-check-inspection summary {
+  min-height: 44px;
+}
+
+.game-check-mode button:focus-visible,
+.game-check-mode select:focus-visible,
+.game-check-mode input:focus-visible,
+.game-check-mode summary:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 2px;
+}
+
+.game-check-mode:focus {
+  outline: none;
+}
+
+.game-check-impact-meta {
+  display: grid;
+  gap: 0.2rem;
+  margin-top: 0.3rem;
+}
+
+.game-check-impact-meta small {
+  margin: 0;
+}
