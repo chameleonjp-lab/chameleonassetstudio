@@ -120,7 +120,7 @@ acceptance fixtureは当初13 ID + runtime-invalid補強1 IDの計14 IDで、6�
 
 no-save oracleは空でないHistoryを使い、before / afterともUndo 2件・Redo 1件を保持したまま、IndexedDB全store、Editor state、`asset.json`、`.casproj`の完全一致を確認した。reload後は保存済みdataと出力を維持し、UI-only state、History、autosaveのsession stateだけが初期化された。Game Check中のdownloadは0件、Atlas ZIP生成bytesは0、Blob URLはactive 0でcreated / revokedが一致した。固定headの仕様・判断、実装・データ契約、テスト・CI・証拠の3方向read-only reviewを完了し、Group 14をcompleted、進捗16/27とする。
 
-このGateは実際のAtlas生成、engine読込、物理Safariを検証した証拠ではない。History / autosaveの保存挙動は不変だが、検査用の読み取り専用snapshot観測APIは追加されている。schema、version、migration、IndexedDB配置、`.casproj`、export ZIP、dependency、polygon `unsupported`、現行Atlas拒否境界は変更していない。次のGroup 15は契約監査だけを開始可能とし、製品実装は契約・受入条件の人間採用前まで開始しない。
+このGateは実際のAtlas生成、engine読込、物理Safariを検証した証拠ではない。History / autosaveの保存挙動は不変だが、検査用の読み取り専用snapshot観測APIは追加されている。schema、version、migration、IndexedDB配置、`.casproj`、export ZIP、dependency、polygon `unsupported`、現行Atlas拒否境界は変更していない。Group 15はG15-H1〜H3のhandoffまで完了したが、製品実装と実際のAtlas生成・engine読込・物理Safariの確認はまだ開始していない。
 
 ### 3.6 Group 15 Common Export / Sheet / Scale（契約採用・handoff完了・実装前）
 
