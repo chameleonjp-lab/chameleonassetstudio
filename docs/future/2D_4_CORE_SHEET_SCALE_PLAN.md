@@ -1,9 +1,9 @@
 # Chameleon Asset Studio Group 15 契約監査
 
-最終更新日: 2026-08-11  
+最終更新日: 2026-08-12  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 文書種別: docs-only 契約監査・人間判断 handoff
-状態: `accepted: G15-C1 A + G15-C2 A + G15-C3 A / implemented: 2D-4-CORE / CI-passed / independently-verified / implementation-handoff-complete`
+状態: `accepted: G15-C1 A + G15-C2 A + G15-C3 A / implemented: 2D-4-CORE / CI-passed / independently-verified / implementing: 2D-4-SHEET`
 上位文書: `docs/IMPLEMENTATION_PLAN.md`, `docs/future/2D_COMPLETION_ROADMAP.md`
 関連文書: `docs/future/2D_ASSET_DATA_CONTRACT.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/EXPORT_FORMATS.md`, `docs/future/EXPORT_QUALITY_DESIGN.md`
 
@@ -13,19 +13,19 @@
 
 Group 15 `2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE`について、共通export core、決定的な再出力、sheet / atlas、trim、padding、extrude、scale、既存出力との境界を、人間が採用できる粒度まで分解する。
 
-今回の変更は、handoffで固定した共通export coreを実装し、対応するunit・E2E・CI証拠と本正本を同期する `2D-4-CORE` の実装PRである。SHEET / SCALEの製品実装は後続PRへ分ける。
+今回の変更は、CORE完了後のhandoffに従い、既存legacy出力を保ったまま新distributionのfixed-grid / packed / trim / padding / multi-pageを実装する `2D-4-SHEET` の実装PRである。SCALEとdistribution UIは後続PRへ分ける。
 
 ## 1. GitHub確認済みの現在地
 
 | 項目 | 確認結果 |
 |---|---|
-| 基準main | `e43fca92be77a01d95120e5e979cfa0bee714fdf`（PR #234 merge） |
+| 基準main | `4715a73aa1e7cc91bea1444fbbe30e5cad20bbe1`（PR #235 merge） |
 | PR #232 | Group 15の実装handoff文書を修正し、2D-4-CORE実装開始条件をmainへ同期。merge済み（merge commit `08e09cea7c48923da40e8302411905da6070ffd0`） |
 | Group 14 | completed、進捗16/27。CI Run #689と固定headの3方向read-only reviewを完了 |
-| CORE実装着手時のopen PR | 0件。今回の採用記録・実装用の重複PRなし |
+| SHEET着手時のopen PR | 0件。CORE closeout PR #235のmerge後に確認した。 |
 | PR #233 | `2D-4-CORE`を実装し、CI Run #707成功後にmainへmerge済み。merge commitは`4ae44f647d66c184c55febfbe8577e682be2877f` |
-| Group 15契約 | `accepted: G15-C1 A + G15-C2 A + G15-C3 A`。G15-H1〜H3 Aの具体値と受入証拠はhandoff済み、COREはCI-passed / independently-verified |
-| 製品実装 | `implemented: 2D-4-CORE`。現行Atlas系の事前拒否、既存ZIP、Atlas `0.1.0`を維持。次は`2D-4-SHEET` |
+| Group 15契約 | `accepted: G15-C1 A + G15-C2 A + G15-C3 A`。G15-H1〜H3 Aを維持し、COREはCI-passed / independently-verified、SHEETを実装中。 |
+| 製品実装 | `implemented: 2D-4-CORE / CI-passed / independently-verified`。次の単一writer作業は`2D-4-SHEET`で、既存Atlas `0.1.0`・legacy ZIP・保存形式を維持する。 |
 
 ## 2. GitHub正本で確認した既存事実
 
@@ -65,6 +65,17 @@ Group 15 `2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE`について、共通export core�
 - 既存export ZIPの実装変更、Atlas拒否の解除、helper APIの変更。
 - Unity、Godot、RPG Maker MZの直接生成、外部parser、dependency追加。
 - 3D、WebGPU、SaaS、外部アカウント。
+
+### 3.8 Group 15 2D-4-SHEET（実装中）
+
+`2D-4-SHEET`は、SHEET用の純関数レイアウトと新distribution ZIPのページ画像生成を実装する。対象は次のとおりである。
+
+- `fixed-grid`と明示profileの`packed`を追加し、packedは高さ降順、幅降順、canonical frame順でshelf配置する。
+- 不透明画素のtrim、完全透明Frameの保持、source size / content rect / content offset、セル間padding、rotationなし、extrude=0、2048×2048・最大4ページを固定する。
+- `exportZip`、Atlas `0.1.0`、`asset.json`、`.casproj`、schema、version、migration、保存処理は変更しない。
+- distribution helperは複数pageとmanifest frame参照を扱い、legacy helper APIは維持する。
+
+必須証拠は、fixed-grid / packedの純unit、5 frame fixture、透明Frame、page上限、manifest semantic、packed distribution ZIP、legacy ZIPの不変、sheet artifactである。distribution UI、scale、物理iPhone Safariは後続Gateへ残す。
 
 ## 4. 採用記録（Gate B）
 
@@ -180,7 +191,7 @@ CI証拠の最低条件:
 3. `2D-4-SCALE`: 1x / 2x / 3x、丸め、命名、single / multi outputのうち採用した範囲。
 4. 各実装はcode、unit、必要なE2E、docsを同じDraft PRへまとめ、CI成功後に独立reviewを行う。
 
-## 8. 今回の2D-4-CORE実装で変更しないもの
+## 8. Group 15で変更しないもの
 
 - JSON Schema、version、migration、保存形式、ExportPreset、既存UIのdistribution配線。
 - `asset.json`、`.casproj`、IndexedDB、History、autosave、Blob、既存export ZIP、Atlas `0.1.0`。
@@ -189,15 +200,15 @@ CI証拠の最低条件:
 
 ## 9. 次の許可された作業
 
-- `2D-4-CORE`のCI Run #707とartifactを確認し、accepted範囲の実装証拠を確定する。
-- COREの固定headを独立read-only検証し、`BLOCKER 0 / MUST 0`を記録する。
-- 次のPRで `2D-4-SHEET`、その後に `2D-4-SCALE` とdistribution UIを進める。
+- `2D-4-SHEET`のDraft PRでCIとartifactを確認し、accepted範囲の実装証拠を確定する。
+- SHEETの固定headを独立read-only検証し、`BLOCKER 0 / MUST 0`を記録する。
+- SHEET完了後に `2D-4-SCALE` とdistribution UIを進める。
 - `src/core/model/exportPreset.ts`、schema、version、migration、保存形式、既存Atlas / ZIP、現行拒否境界は、別のaccepted判断なしに変更しない。
 
 ## 10. 次回への引き継ぎ
 
 - 契約状態は `accepted: G15-C1 A + G15-C2 A + G15-C3 A` とする。
-- 実装状態は `implemented: 2D-4-CORE`、handoff状態は `complete`、検証状態は `CI-passed / independently-verified`である。次の実装は`2D-4-SHEET`とする。
+- 実装状態は `implemented: 2D-4-CORE / CI-passed / independently-verified`、現在の実装は`2D-4-SHEET`である。SHEET完了後に`2D-4-SCALE`へ進む。
 - G15-H1〜H3 Aの固定値、実装対象ファイル、対象外境界、受入ID、CI証拠に加え、CORE sliceの実装範囲を本書へ記録した。
 - iPhone SafariはGroup 15だけの追加停止Gateにせず、375×667のChromium E2EをGroup 15必須、物理iPhone Safariをリリース全体の端末Gateとして扱う。
 

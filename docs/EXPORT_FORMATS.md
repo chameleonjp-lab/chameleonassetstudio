@@ -183,23 +183,40 @@ Rive / Spine との関係と、独自形式（`asset.json` / `.casproj`）が正
 
 ---
 
-## 11. distribution profile（Group 15 / 2D-4-CORE）
+## 11. distribution profile（Group 15 / 2D-4-CORE + 2D-4-SHEET）
 
-`exportDistributionZip(asset, { profile: 'fixed-grid' })` は、既存の`exportZip(asset)`とは別のdistribution出力境界である。既定のlegacy ZIPには`manifest.json`を追加せず、既存の`chameleon-atlas` `0.1.0`、ファイルパス、helper API、Atlasの拒否境界も変更しない。
+`exportDistributionZip(asset, { profile: 'fixed-grid' | 'packed', padding })` は、既存の`exportZip(asset)`とは別のdistribution出力境界である。既定のlegacy ZIPには`manifest.json`や新しいpage画像を追加せず、既存の`chameleon-atlas` `0.1.0`、ファイルパス、helper API、Atlasの拒否境界を維持する。
 
-現在のCORE sliceで生成するdistribution manifestは次を固定する。
+### 11.1 CORE
+
+COREで固定したdistribution manifestは次のとおりである。
 
 | フィールド | 内容 |
 | --- | --- |
 | `format` / `version` | `chameleon-distribution` / `0.1.0` |
-| `profile` / `scale` | `fixed-grid` / `1` |
+| `profile` / `scale` | `fixed-grid`または`packed` / `1` |
 | `source` | `asset.json`をcanonical sourceとして参照 |
 | `files` | manifest、asset、Atlas、page、main画像、README、examples、helpers、engine guideのentry path |
-| `pages` | 現行のfixed-grid sheetを`atlas/spritesheet.png`として参照。rotationは`false` |
-| `frames` | page、rect、source size、content rect、content offset、rotationを記録 |
+| `pages` | distribution sheetのpage path、幅、高さ、rotation（常に`false`） |
+| `frames` | page、rect、source size、content rect、content offset、rotation（常に`false`） |
 | metadata | `animations`、`origin`、`anchors`、`colliders`、tile / effect（存在時） |
 | `integrity` | unsigned manifestのcanonical JSONに対するSHA-256 hex digest |
 
-manifestはundefined fieldを除外し、object keyを辞書順に並べたcanonical JSONで計算する。ZIP entryもpath順に並べ、同一Asset・同一条件のmanifest bytes、entry path、hashを再出力比較できる。PNGの全環境byte一致までは要求しない。
+manifestはundefined fieldを除外し、object keyを辞書順に並べてhashを計算する。ZIP entryもpath順に並べ、同一Asset・同一条件のmanifest bytes、entry path、hashを再出力比較できる。PNGの全環境byte一致までは要求しない。
 
-このCORE sliceのdistributionはfixed-grid・rotationなし・single page・scale 1だけを扱う。packed、trim、padding / extrude、multi-page、scale 1x / 2x / 3xの選択、distribution用UI、375×667のproduct-path E2Eは、後続の`2D-4-SHEET` / `2D-4-SCALE` / UI sliceで追加する。asset.jsonと`.casproj`は引き続き等倍のcanonical dataであり、現行の可変時間・event・Frame別collider上書き・polygonの理由付き拒否も維持する。
+### 11.2 SHEET
+
+`2D-4-SHEET`は、既存legacy ZIPの出力を変更せず、新distribution ZIPへ次のsheetを追加する。
+
+- `fixed-grid`: 現行と同じ行優先・rotationなしのセル配置。paddingはセル間だけに置き、外周には置かない。
+- `packed`: 高さ降順、幅降順、canonical sourceのframe順で安定shelf配置する。rotationは常に無効。
+- pageは出力pixelで`2048×2048`、最大4ページ。page pathは`atlas/pages/page-000.png`から3桁連番にする。
+- 1 frameがpageに収まらない、または5ページ目が必要な場合は、理由付きで拒否する。fixed-gridは、assetのcanvasサイズとframe数だけで確認できる範囲をBlob読込前に検査する。
+- packedでは不透明画素の最小矩形をtrimし、manifestの`sourceSize`、`contentRect`、`contentOffset`で元座標へ戻せるようにする。完全透明Frameも削除せず、1×1の透明rectとして残す。
+- paddingは非負整数として扱い、frame間だけへ入れる。extrudeは今回`0`で、エッジ画素の複製は行わない。
+- manifestのframe順はcanonical source順を保ち、配置の並べ替えはpage上の位置だけへ適用する。既存のAtlas JSONとlegacy sheetは互換確認用に維持する。
+- distribution helperはmanifestの複数pageを読み込み、page番号とtrim情報を持つframe参照を返す。既存legacy helper APIは変更しない。
+
+### 11.3 後続範囲
+
+scaleの`1x / 2x / 3x`選択、distribution用UI、375×667のproduct-path E2E、engine読込検証、extrudeの採用は後続の`2D-4-SCALE` / UI / package sliceで扱う。`asset.json`と`.casproj`は引き続き等倍のcanonical dataであり、schema、version、migration、保存、既存legacy ZIP、Atlas `0.1.0`、現行の可変時間・event・Frame別collider上書き・polygonの理由付き拒否は変更しない。

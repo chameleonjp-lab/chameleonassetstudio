@@ -60,6 +60,10 @@ export const CURRENT_ATLAS_VERSION = '0.1.0' as const;
 export const DISTRIBUTION_FORMAT = 'chameleon-distribution' as const;
 export const CURRENT_DISTRIBUTION_VERSION = '0.1.0' as const;
 export const DISTRIBUTION_PROFILE = 'fixed-grid' as const;
+export const DISTRIBUTION_PACKED_PROFILE = 'packed' as const;
+export type DistributionProfile = typeof DISTRIBUTION_PROFILE | typeof DISTRIBUTION_PACKED_PROFILE;
+export const DISTRIBUTION_PAGE_SIZE = 2048 as const;
+export const DISTRIBUTION_MAX_PAGES = 4 as const;
 
 export interface DistributionFileReferences {
   manifest: string;
@@ -84,10 +88,35 @@ export interface DistributionManifestFrame {
   rotated: false;
 }
 
+export interface DistributionSheetFrameInput {
+  id: string;
+  name: string;
+  sourceSize: { width: number; height: number };
+  contentRect: { x: number; y: number; width: number; height: number };
+}
+
+export interface DistributionSheetFrameLayout extends DistributionManifestFrame {
+  id: string;
+}
+
+export interface DistributionSheetPageLayout {
+  path: string;
+  width: number;
+  height: number;
+  frameIds: string[];
+}
+
+export interface DistributionSheetLayout {
+  profile: DistributionProfile;
+  padding: number;
+  pages: DistributionSheetPageLayout[];
+  frames: DistributionSheetFrameLayout[];
+}
+
 export interface DistributionManifest {
   format: typeof DISTRIBUTION_FORMAT;
   version: typeof CURRENT_DISTRIBUTION_VERSION;
-  profile: typeof DISTRIBUTION_PROFILE;
+  profile: DistributionProfile;
   scale: 1;
   source: { assetJson: string; canonical: true };
   files: DistributionFileReferences;
@@ -100,6 +129,232 @@ export interface DistributionManifest {
   tile?: Asset['tile'];
   effect?: Asset['effect'];
   integrity?: { algorithm: 'SHA-256'; manifestHash: string };
+}
+
+export function normalizeDistributionPadding(value?: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return 0;
+  }
+  return Math.floor(value);
+}
+
+function assertDistributionSheetFrameInput(input: DistributionSheetFrameInput): void {
+  const { width, height } = input.sourceSize;
+  const rect = input.contentRect;
+  const validInteger = (value: number) => Number.isInteger(value) && Number.isFinite(value);
+  if (
+    !validInteger(width) ||
+    !validInteger(height) ||
+    width <= 0 ||
+    height <= 0 ||
+    !validInteger(rect.x) ||
+    !validInteger(rect.y) ||
+    !validInteger(rect.width) ||
+    !validInteger(rect.height) ||
+    rect.x < 0 ||
+    rect.y < 0 ||
+    rect.width < 0 ||
+    rect.height < 0 ||
+    rect.x + rect.width > width ||
+    rect.y + rect.height > height
+  ) {
+    throw new Error('distribution sheetのsourceSizeまたはcontentRectが正の整数範囲外です');
+  }
+}
+
+function pagePath(index: number): string {
+  return `atlas/pages/page-${String(index).padStart(3, '0')}.png`;
+}
+
+function frameLayout(
+  input: DistributionSheetFrameInput,
+  placement: { page: number; x: number; y: number; width: number; height: number },
+): DistributionSheetFrameLayout {
+  return {
+    id: input.id,
+    name: input.name,
+    page: placement.page,
+    rect: {
+      x: placement.x,
+      y: placement.y,
+      width: placement.width,
+      height: placement.height,
+    },
+    sourceSize: { ...input.sourceSize },
+    contentRect: { ...input.contentRect },
+    contentOffset: { x: input.contentRect.x, y: input.contentRect.y },
+    rotated: false,
+  };
+}
+
+function computeFixedGridDistributionLayout(
+  inputs: readonly DistributionSheetFrameInput[],
+  padding: number,
+): DistributionSheetLayout {
+  const cellWidth = Math.max(...inputs.map((input) => input.sourceSize.width));
+  const cellHeight = Math.max(...inputs.map((input) => input.sourceSize.height));
+  const maxColumns = Math.floor((DISTRIBUTION_PAGE_SIZE + padding) / (cellWidth + padding));
+  const maxRows = Math.floor((DISTRIBUTION_PAGE_SIZE + padding) / (cellHeight + padding));
+  if (maxColumns < 1 || maxRows < 1) {
+    throw new Error(
+      `1フレームがdistribution pageの上限 ${DISTRIBUTION_PAGE_SIZE}×${DISTRIBUTION_PAGE_SIZE} に収まりません`,
+    );
+  }
+
+  const columns = Math.min(Math.ceil(Math.sqrt(inputs.length)), maxColumns);
+  const rowsPerPage = maxRows;
+  const pageCapacity = columns * rowsPerPage;
+  const pageCount = Math.ceil(inputs.length / pageCapacity);
+  if (pageCount > DISTRIBUTION_MAX_PAGES) {
+    throw new Error(`distribution pageが上限の${DISTRIBUTION_MAX_PAGES}ページを超えます`);
+  }
+
+  const pages: DistributionSheetPageLayout[] = [];
+  const frames: DistributionSheetFrameLayout[] = [];
+  for (let page = 0; page < pageCount; page += 1) {
+    const pageInputs = inputs.slice(page * pageCapacity, (page + 1) * pageCapacity);
+    const pageFrameIds = pageInputs.map((input) => input.id);
+    pages.push({
+      path: pagePath(page),
+      width: DISTRIBUTION_PAGE_SIZE,
+      height: DISTRIBUTION_PAGE_SIZE,
+      frameIds: pageFrameIds,
+    });
+    pageInputs.forEach((input, localIndex) => {
+      const column = localIndex % columns;
+      const row = Math.floor(localIndex / columns);
+      frames.push(
+        frameLayout(input, {
+          page,
+          x: column * (cellWidth + padding),
+          y: row * (cellHeight + padding),
+          width: input.sourceSize.width,
+          height: input.sourceSize.height,
+        }),
+      );
+    });
+  }
+
+  const frameById = new Map(frames.map((frame) => [frame.id, frame]));
+  return {
+    profile: DISTRIBUTION_PROFILE,
+    padding,
+    pages,
+    frames: inputs.map((input) => {
+      const frame = frameById.get(input.id);
+      if (!frame) {
+        throw new Error(`distribution frameの配置が見つかりません: ${input.id}`);
+      }
+      return frame;
+    }),
+  };
+}
+
+function computePackedDistributionLayout(
+  inputs: readonly DistributionSheetFrameInput[],
+  padding: number,
+): DistributionSheetLayout {
+  const sorted = inputs
+    .map((input, index) => ({
+      input,
+      index,
+      width: Math.max(1, input.contentRect.width),
+      height: Math.max(1, input.contentRect.height),
+    }))
+    .sort(
+      (left, right) =>
+        right.height - left.height || right.width - left.width || left.index - right.index,
+    );
+
+  const placements = new Map<
+    string,
+    { page: number; x: number; y: number; width: number; height: number }
+  >();
+  const pages: DistributionSheetPageLayout[] = [];
+  let page = 0;
+  let cursorX = 0;
+  let cursorY = 0;
+  let rowHeight = 0;
+
+  const startPage = () => {
+    pages.push({
+      path: pagePath(page),
+      width: DISTRIBUTION_PAGE_SIZE,
+      height: DISTRIBUTION_PAGE_SIZE,
+      frameIds: [],
+    });
+  };
+  startPage();
+
+  for (const item of sorted) {
+    if (item.width > DISTRIBUTION_PAGE_SIZE || item.height > DISTRIBUTION_PAGE_SIZE) {
+      throw new Error(
+        `trim後のフレームがdistribution pageの上限 ${DISTRIBUTION_PAGE_SIZE}×${DISTRIBUTION_PAGE_SIZE} に収まりません: ${item.input.name}`,
+      );
+    }
+
+    if (cursorX > 0 && cursorX + item.width > DISTRIBUTION_PAGE_SIZE) {
+      cursorX = 0;
+      cursorY += rowHeight + padding;
+      rowHeight = 0;
+    }
+    if (cursorY + item.height > DISTRIBUTION_PAGE_SIZE) {
+      page += 1;
+      if (page >= DISTRIBUTION_MAX_PAGES) {
+        throw new Error(`distribution pageが上限の${DISTRIBUTION_MAX_PAGES}ページを超えます`);
+      }
+      cursorX = 0;
+      cursorY = 0;
+      rowHeight = 0;
+      startPage();
+    }
+
+    placements.set(item.input.id, {
+      page,
+      x: cursorX,
+      y: cursorY,
+      width: item.width,
+      height: item.height,
+    });
+    pages[page].frameIds.push(item.input.id);
+    cursorX += item.width + padding;
+    rowHeight = Math.max(rowHeight, item.height);
+  }
+
+  return {
+    profile: DISTRIBUTION_PACKED_PROFILE,
+    padding,
+    pages,
+    frames: inputs.map((input) => {
+      const placement = placements.get(input.id);
+      if (!placement) {
+        throw new Error(`distribution frameの配置が見つかりません: ${input.id}`);
+      }
+      return frameLayout(input, placement);
+    }),
+  };
+}
+
+/**
+ * distribution用のfixed-gridまたはpacked配置を決定する。
+ * 配列順はcanonical sourceのフレーム順として保持し、packedの並べ替えは配置だけに使う。
+ */
+export function computeDistributionSheetLayout(
+  inputs: readonly DistributionSheetFrameInput[],
+  options: { profile?: DistributionProfile; padding?: number } = {},
+): DistributionSheetLayout {
+  if (inputs.length === 0) {
+    throw new Error('distribution sheetには1件以上のフレームが必要です');
+  }
+  inputs.forEach(assertDistributionSheetFrameInput);
+  const profile = options.profile ?? DISTRIBUTION_PROFILE;
+  if (profile !== DISTRIBUTION_PROFILE && profile !== DISTRIBUTION_PACKED_PROFILE) {
+    throw new Error(`未対応のdistribution profileです: ${profile}`);
+  }
+  const padding = normalizeDistributionPadding(options.padding);
+  return profile === DISTRIBUTION_PROFILE
+    ? computeFixedGridDistributionLayout(inputs, padding)
+    : computePackedDistributionLayout(inputs, padding);
 }
 
 function canonicalizeJsonValue(value: unknown): unknown {
@@ -133,24 +388,50 @@ function atlasBounds(atlas: AtlasJson): { width: number; height: number } {
 }
 
 /**
- * legacy Atlasからdistribution manifestの共通部分を組み立てる。
- * fixed-gridのみを担当し、packed / trim / scaleは後続sliceで拡張する。
+ * legacy AtlasとSHEET layoutからdistribution manifestの共通部分を組み立てる。
+ * layout指定時はfixed-grid / packed / trim情報を反映し、layout未指定時はCORE互換のfallbackを使う。
  */
 export function buildDistributionManifest(
   asset: Asset,
   atlas: AtlasJson,
   entryPaths: readonly string[],
+  sheetLayout?: DistributionSheetLayout,
 ): Omit<DistributionManifest, 'integrity'> {
   const paths = [...new Set(entryPaths)].sort();
-  const pagePath = `atlas/${atlas.texture}`;
   const bounds = atlasBounds(atlas);
-  const pagePaths = paths.filter((path) => path.startsWith('atlas/') && path.endsWith('.png'));
-  const pages = pagePaths.length > 0 ? pagePaths : [pagePath];
+  const fallbackPagePath = `atlas/${atlas.texture}`;
+  const fallbackPagePaths = paths.filter(
+    (path) => path.startsWith('atlas/') && path.endsWith('.png'),
+  );
+  const pages = sheetLayout
+    ? sheetLayout.pages.map((page) => page.path)
+    : fallbackPagePaths.length > 0
+      ? fallbackPagePaths
+      : [fallbackPagePath];
+  const manifestFrames = sheetLayout
+    ? sheetLayout.frames.map((frame) => ({
+        name: frame.name,
+        page: frame.page,
+        rect: { ...frame.rect },
+        sourceSize: { ...frame.sourceSize },
+        contentRect: { ...frame.contentRect },
+        contentOffset: { ...frame.contentOffset },
+        rotated: false as const,
+      }))
+    : atlas.frames.map((frame) => ({
+        name: frame.name,
+        page: 0,
+        rect: { x: frame.x, y: frame.y, width: frame.width, height: frame.height },
+        sourceSize: { width: asset.canvasSize.width, height: asset.canvasSize.height },
+        contentRect: { x: 0, y: 0, width: frame.width, height: frame.height },
+        contentOffset: { x: 0, y: 0 },
+        rotated: false as const,
+      }));
 
   return {
     format: DISTRIBUTION_FORMAT,
     version: CURRENT_DISTRIBUTION_VERSION,
-    profile: DISTRIBUTION_PROFILE,
+    profile: sheetLayout?.profile ?? DISTRIBUTION_PROFILE,
     scale: 1,
     source: { assetJson: 'asset.json', canonical: true },
     files: {
@@ -165,21 +446,20 @@ export function buildDistributionManifest(
       helpers: paths.filter((path) => path.startsWith('helpers/')).sort(),
       engines: paths.filter((path) => path.startsWith('engines/')).sort(),
     },
-    pages: pages.map((path) => ({
-      path,
-      width: bounds.width,
-      height: bounds.height,
-      rotated: false as const,
-    })),
-    frames: atlas.frames.map((frame) => ({
-      name: frame.name,
-      page: 0,
-      rect: { x: frame.x, y: frame.y, width: frame.width, height: frame.height },
-      sourceSize: { width: asset.canvasSize.width, height: asset.canvasSize.height },
-      contentRect: { x: 0, y: 0, width: frame.width, height: frame.height },
-      contentOffset: { x: 0, y: 0 },
-      rotated: false as const,
-    })),
+    pages: sheetLayout
+      ? sheetLayout.pages.map((page) => ({
+          path: page.path,
+          width: page.width,
+          height: page.height,
+          rotated: false as const,
+        }))
+      : pages.map((path) => ({
+          path,
+          width: bounds.width,
+          height: bounds.height,
+          rotated: false as const,
+        })),
+    frames: manifestFrames,
     animations: atlas.animations,
     origin: atlas.origin,
     anchors: atlas.anchors,

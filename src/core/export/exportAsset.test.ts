@@ -59,6 +59,13 @@ class TestCanvas {
       rotate: vi.fn(),
       scale: vi.fn(),
       drawImage: vi.fn(),
+      getImageData: (_x: number, _y: number, width: number, height: number) => {
+        const data = new Uint8ClampedArray(width * height * 4);
+        for (let index = 3; index < data.length; index += 4) {
+          data[index] = 255;
+        }
+        return { data };
+      },
       globalAlpha: 1,
     };
   }
@@ -234,6 +241,72 @@ describe('exportAsset texture kind boundary', () => {
       )}\n`,
       'utf8',
     );
+  });
+
+  it('SHEETのpacked distributionはtrim pageとpaddingをmanifestへ反映し、legacyを維持する', async () => {
+    const asset = assetReferencing('edit');
+    const packedBlob = await exportDistributionZip(asset, {
+      profile: 'packed',
+      padding: 3,
+    });
+    const legacyBlob = await exportZip(asset);
+    const packedEntries = unzipSync(new Uint8Array(await packedBlob.arrayBuffer()));
+    const legacyEntries = unzipSync(new Uint8Array(await legacyBlob.arrayBuffer()));
+    const manifest = JSON.parse(new TextDecoder().decode(packedEntries['manifest.json']));
+
+    expect(manifest.profile).toBe('packed');
+    expect(manifest.pages).toEqual([
+      {
+        path: 'atlas/pages/page-000.png',
+        width: 2048,
+        height: 2048,
+        rotated: false,
+      },
+    ]);
+    expect(packedEntries['atlas/pages/page-000.png']).toBeInstanceOf(Uint8Array);
+    expect(manifest.frames).toHaveLength(asset.frames?.length ?? 1);
+    expect(manifest.frames[0]).toMatchObject({
+      page: 0,
+      rect: { width: 512, height: 512 },
+      sourceSize: { width: 512, height: 512 },
+      contentRect: { x: 0, y: 0, width: 512, height: 512 },
+      contentOffset: { x: 0, y: 0 },
+      rotated: false,
+    });
+    expect(legacyEntries['manifest.json']).toBeUndefined();
+    expect(legacyEntries['atlas/spritesheet.png']).toBeInstanceOf(Uint8Array);
+
+    await mkdir('test-results', { recursive: true });
+    await writeFile(
+      'test-results/group15-sheet-evidence.json',
+      `${JSON.stringify(
+        {
+          workPackage: '2D-4-SHEET',
+          profile: manifest.profile,
+          padding: 3,
+          pages: manifest.pages,
+          frames: manifest.frames.map((frame: { name: string; page: number; rect: unknown }) => ({
+            name: frame.name,
+            page: frame.page,
+            rect: frame.rect,
+          })),
+          legacyAtlasPreserved: legacyEntries['atlas/spritesheet.png'] instanceof Uint8Array,
+          packedPagePresent: packedEntries['atlas/pages/page-000.png'] instanceof Uint8Array,
+        },
+        null,
+        2,
+      )}
+`,
+      'utf8',
+    );
+  });
+
+  it('distribution page外の入力はBlob読込前に理由付きで拒否する', async () => {
+    const asset = assetReferencing('edit');
+    asset.canvasSize = { width: 2049, height: 512 };
+
+    await expect(exportDistributionZip(asset)).rejects.toThrow(/2048/);
+    expect(loadBlobMock).not.toHaveBeenCalled();
   });
 
   it('distribution ZIPも既存の理由付き拒否をBlob読込前に維持する', async () => {
