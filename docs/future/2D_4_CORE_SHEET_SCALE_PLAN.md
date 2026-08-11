@@ -3,11 +3,11 @@
 最終更新日: 2026-08-11  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 文書種別: docs-only 契約監査・人間判断 handoff
-状態: `accepted: G15-C1 A + G15-C2 A + G15-C3 A / product-not-started / implementation-handoff-pending`
+状態: `accepted: G15-C1 A + G15-C2 A + G15-C3 A / product-not-started / implementation-handoff-complete`
 上位文書: `docs/IMPLEMENTATION_PLAN.md`, `docs/future/2D_COMPLETION_ROADMAP.md`
 関連文書: `docs/future/2D_ASSET_DATA_CONTRACT.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/EXPORT_FORMATS.md`, `docs/future/EXPORT_QUALITY_DESIGN.md`
 
-> この文書はGroup 15の契約候補、採用記録、実装handoffを管理する正本である。2026-08-11に人間が `G15-C1 A + G15-C2 A + G15-C3 A` を明示採用した。契約はacceptedだが、製品実装はまだ開始していない。具体的な実装固定値と受入証拠をhandoffへ固定するまで、product code、schema、version、保存、書き出し、Atlas拒否解除は変更しない。
+> この文書はGroup 15の契約候補、採用記録、実装handoffを管理する正本である。2026-08-11に人間が `G15-C1 A + G15-C2 A + G15-C3 A` を明示採用し、G15-H1〜H3の実装handoffも固定した。契約はaccepted、handoffはcompleteだが、製品実装はまだ開始していない。product code、schema、version、保存、既存書き出し、Atlas拒否解除は変更しない。
 
 ## 0. 今回の目的
 
@@ -19,8 +19,8 @@ Group 15 `2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE`について、共通export core�
 
 | 項目 | 確認結果 |
 |---|---|
-| 基準main | `cc428f154ab193353a09c920afdd8fb03fda5286`（PR #230 merge） |
-| PR #230 | Group 15の契約状態をdocs-onlyでmainへ同期。merge済み（merge commit `cc428f154ab193353a09c920afdd8fb03fda5286`） |
+| 基準main | `0adb67a4192d6684e5e4679c87b2a758cff40654`（PR #231 merge） |
+| PR #231 | Group 15のA案採用記録と実装handoff開始条件をdocs-onlyでmainへ同期。merge済み（merge commit `0adb67a4192d6684e5e4679c87b2a758cff40654`） |
 | Group 14 | completed、進捗16/27。CI Run #689と固定headの3方向read-only reviewを完了 |
 | open PR | 0件。今回の採用記録・実装用の重複PRなし |
 | Group 15契約 | `accepted: G15-C1 A + G15-C2 A + G15-C3 A`。製品実装は未開始で、具体値のhandoff待ち |
@@ -99,14 +99,42 @@ Group 15 `2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE`について、共通export core�
 | B | 任意の正数scaleと複数倍率の同時出力を採用し、`@2x`等の命名規則を固定する。 | 表現力は高いが、丸め、容量、ZIP構成、UI、検証が増える。 |
 | C | 同じ入力から生成したZIPのbyte完全一致を全ブラウザで保証する。 | Canvas / PNG encoder差を含むため、現行実装だけでは実現可能性が未確認。別の画像生成方式や依存追加が必要になる可能性がある。 |
 
-### 採用範囲と実装開始前の未固定値
+### 実装handoff（G15-H1〜H3 A）
 
-- `G15-C1 A`: `asset.json` / `.casproj`をcanonical sourceとして維持し、common manifestはdistribution側の派生物に限定する。既存ZIPとAtlas `0.1.0`はlegacy/defaultとして残し、特定engineのproject全体は直接生成しない。
-- `G15-C2 A`: fixed grid・行優先・rotationなしを既定にする。packedは明示profileに分け、trimはsource size・content offsetを保持し、完全透明Frameを消さない。paddingはセル間spacing・外周なし、extrudeは初回未採用とする。
-- `G15-C3 A`: 1x / 2x / 3xを個別出力し、canonical sourceは常に等倍とする。PNG byte完全一致は保証せず、canonical JSON・entry順・manifest hash・意味同一性を検査する。
-- 具体的なmanifest path / version、packedの同率tie-break、page境界と上限、scaleの命名と丸め、distribution ZIPへの露出は、実装handoffで固定する。ここを推測で埋めず、固定前は製品コードを変更しない。
-- 実装対象候補は `src/core/export/atlas.ts`、`src/core/export/exportAsset.ts`、`src/core/model/exportPreset.ts`と関連するunit / E2E / fixture / docs。ただし実装PRの基準mainで実在と呼び出し経路を再確認する。`src/core/export/exportPreset.ts`は基準main上の実在pathとして扱わない。
-- `G15-MOBILE`は375×667のChromium touch / warning / refusal / download完了をGroup 15で必須とし、物理iPhone Safariはリリース全体の端末Gateに残す。
+handoff日: `2026-08-11`  
+基準main SHA: `0adb67a4192d6684e5e4679c87b2a758cff40654`（PR #231 merge）  
+handoff状態: `complete / product-not-started`
+
+G15-H1〜H3のA案を、次の固定値で実装担当へ渡す。これは新しい仕様候補ではなく、採用済みG15-C1〜C3を実装可能な粒度へ落としたhandoffである。
+
+| Handoff | 固定内容 |
+|---|---|
+| **G15-H1 A: common manifest** | 新しいdistribution profileのパッケージ直下に `manifest.json` を置く。形式名は `chameleon-distribution`、versionは `0.1.0`。manifestはcanonical sourceではなく派生物で、`asset.json` / `.casproj`を置き換えない。既存のlegacy/default ZIPには追加せず、既存Atlas `0.1.0`のpath・field・helper APIも変更しない。manifestはscale、profile、page、frame rect、source size、content offset、animation、origin、anchor、collider、参照ファイルを意味上保持し、canonical JSONとentry順をhash検査の対象にする。 |
+| **G15-H2 A: packed / page** | 既定は現行fixed grid・行優先・rotationなし。packedは明示profileだけで使い、height降順 → width降順 → canonical sourceのframe順の順に並べる安定shelf配置（左から右、上から下、page順）とする。pageは出力pixelで `2048×2048`、最大`4`ページ、pathは `atlas/pages/page-000.png` から3桁連番とする。rotationは常に無効。paddingはセル間のみ・外周なしの非負整数、extrudeは初回`0`。1 frameがpageに収まらない、または5ページ目が必要な場合は、canvas / Blob / ZIP生成 / downloadより前に理由付きで拒否する。 |
+| **G15-H3 A: scale / naming / rounding** | scaleは整数の`1`、`2`、`3`から1つだけ選んで出力し、同時複数出力は行わない。新distribution ZIPの名前は既存の安全なasset名を使った `{assetName}-distribution-{scale}x.zip` とし、ZIP内のlegacy-like path（`textures/main.png`、`atlas/...`）はscaleごとに変えず、manifestのscaleで識別する。画像寸法とframe rect、source size、content offset、origin、anchor、colliderなどの出力pixel値はscale後に最近傍整数へ丸め、同率は絶対値が大きい側へ丸める。長さ・寸法・半径は0未満にしない。scaleは `asset.json` / `.casproj`へ混ぜず、拡大描画はnearest-neighborを既定とする。 |
+
+固定境界:
+
+- 既存 `exportZip(asset)` の既定出力、既存ZIP entry、Atlas `0.1.0`、現行の理由付き拒否は変更しない。
+- `src/core/model/exportPreset.ts`、JSON Schema、version、migration、IndexedDB、History、autosave、Blob保存は今回の実装PRでも対象外とする。scaleはまずexport関数層へ渡す。
+- H1のmanifestは新distributionの派生物であり、`asset.json` / `.casproj`へmanifest fieldを追加しない。
+- packedのlossやpage上限に該当した場合は、理由を表示し、Blob読込・canvas合成・ZIP生成・downloadを開始しない。
+
+実装PRの変更予定ファイル（このhandoffの基準。追加・削除が必要になった場合は実装を止め、handoffを更新する）:
+
+- `src/core/export/atlas.ts`
+- `src/core/export/exportAsset.ts`
+- `src/core/export/helpers.ts`
+- `src/core/export/atlas.test.ts`
+- `src/core/export/exportAsset.test.ts`
+- `src/core/export/helpers.test.ts`
+- `src/core/export/contract.fixtures.test.ts`
+- `e2e/export.spec.ts`
+- `.github/workflows/ci.yml`
+- `docs/EXPORT_FORMATS.md`
+- `docs/future/2D_4_CORE_SHEET_SCALE_PLAN.md`
+
+実装順は、`2D-4-CORE` → `2D-4-SHEET` → `2D-4-SCALE`。各PRは単一writer、code + tests + docsを同じDraft PRへ入れ、CI成功後に独立検証する。
 
 ## 5. 実装PRの受入条件
 
@@ -136,11 +164,11 @@ CI証拠の最低条件:
 
 採用判断は完了したが、次のhandoff条件を満たすまでproduct codeへ進まない。
 
-1. 完了: G15-C1〜C3の人間判断が明示され、decision IDとして本正本へ記録される。
-2. 未完了: `asset.json`、`.casproj`、export ZIP、Atlas version、export-presets schema / migrationへの影響を、採用案の境界内で確認する。
+1. 完了: G15-C1〜C3の人間判断が明示され、decision IDとして本正本へ記録されている。
+2. 完了: `asset.json`、`.casproj`、export ZIP、Atlas version、export-presets schema / migrationへの影響を、採用案の境界内で対象外として固定した。
 3. 完了: 既存Atlas / ZIPを維持し、現行の理由付き拒否を製品実装前に解除しない。
-4. 未完了: 実装対象ファイル、対象外ファイル、unit / E2E / fixture、決定性の測定方法、CI証拠をhandoffへ固定する。
-5. 実装handoff完了後にmainを再確認し、別branch・別Draft PR・単一writerで実装を始める。
+4. 完了: 実装対象ファイル、対象外ファイル、unit / E2E / fixture、決定性の測定方法、CI証拠をG15-H1〜H3 handoffへ固定した。
+5. 次の許可行動: merge後のmainを再確認し、`2D-4-CORE`を別branch・別Draft PR・単一writerで開始する。
 
 ## 7. 次の実装handoffと分割
 
@@ -160,13 +188,13 @@ CI証拠の最低条件:
 
 ## 9. 次の許可された作業
 
-- 今回の採用記録PRをmainへ反映する。
-- merge後にmainを再確認し、実装handoffで具体的なpath/version、packedのtie-break、page境界と上限、extrude、命名、丸め規則、実装対象ファイルを固定する。
-- handoffが固定されるまで、`atlas.ts`、`exportAsset.ts`、`src/core/model/exportPreset.ts`、schema、UI、ZIP生成を変更しない。
+- G15-H1〜H3の実装handoffをmainへ反映する。
+- merge後にmainを再確認し、`2D-4-CORE`の実装Draft PRを作成する。
+- `src/core/model/exportPreset.ts`、schema、version、migration、保存形式、既存Atlas / ZIP、現行拒否境界は、別のaccepted判断なしに変更しない。
 
 ## 10. 次回への引き継ぎ
 
 - 契約状態は `accepted: G15-C1 A + G15-C2 A + G15-C3 A` とする。
-- 実装状態は `product-not-started`、検証状態は未開始である。
-- 現行のExportPreset定義は `src/core/model/exportPreset.ts` として再確認済み。実装担当は着手時にmainの実在ファイルを再確認し、存在しないpathをhandoffへ持ち込まない。
+- 実装状態は `product-not-started`、handoff状態は `complete`、検証状態は未開始である。
+- G15-H1〜H3 Aの固定値、実装対象ファイル、対象外境界、受入ID、CI証拠を本書へ記録した。
 - iPhone SafariはGroup 15だけの追加停止Gateにせず、375×667のChromium E2EをGroup 15必須、物理iPhone Safariをリリース全体の端末Gateとして扱う。
