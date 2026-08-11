@@ -26,9 +26,12 @@ describe('distribution scale primitives', () => {
   });
 
   it('座標は符号を保ち、寸法は0未満にしない', () => {
-    expect(
-      scaleDistributionRect({ x: -0.75, y: 0.25, width: 2.25, height: -1 }, 2),
-    ).toEqual({ x: -2, y: 1, width: 5, height: 0 });
+    expect(scaleDistributionRect({ x: -0.75, y: 0.25, width: 2.25, height: -1 }, 2)).toEqual({
+      x: -2,
+      y: 1,
+      width: 5,
+      height: 0,
+    });
     expect(scaleDistributionSize({ width: -1, height: 2.25 }, 2)).toEqual({
       width: 0,
       height: 5,
