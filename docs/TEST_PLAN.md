@@ -120,9 +120,9 @@ acceptance fixtureは当初13 ID + runtime-invalid補強1 IDの計14 IDで、6�
 
 no-save oracleは空でないHistoryを使い、before / afterともUndo 2件・Redo 1件を保持したまま、IndexedDB全store、Editor state、`asset.json`、`.casproj`の完全一致を確認した。reload後は保存済みdataと出力を維持し、UI-only state、History、autosaveのsession stateだけが初期化された。Game Check中のdownloadは0件、Atlas ZIP生成bytesは0、Blob URLはactive 0でcreated / revokedが一致した。固定headの仕様・判断、実装・データ契約、テスト・CI・証拠の3方向read-only reviewを完了し、Group 14をcompleted、進捗16/27とする。
 
-このGateは実際のAtlas生成、engine読込、物理Safariを検証した証拠ではない。History / autosaveの保存挙動は不変だが、検査用の読み取り専用snapshot観測APIは追加されている。schema、version、migration、IndexedDB配置、`.casproj`、export ZIP、dependency、polygon `unsupported`、現行Atlas拒否境界は変更していない。Group 15はG15-H1〜H3のhandoffまで完了したが、製品実装と実際のAtlas生成・engine読込・物理Safariの確認はまだ開始していない。
+このGateは実際のengine読込、distribution UI、物理Safariを検証した証拠ではない。History / autosaveの保存挙動は不変だが、検査用の読み取り専用snapshot観測APIは追加されている。schema、version、migration、IndexedDB配置、`.casproj`、export ZIP、dependency、polygon `unsupported`、現行Atlas拒否境界は変更していない。Group 15はG15-H1〜H3のhandoffと`2D-4-CORE`の製品実装・CI・独立確認を完了したが、SHEET / SCALE、distribution UI、engine読込、物理Safariの確認は後続範囲である。
 
-### 3.6 Group 15 Common Export / Sheet / Scale（契約採用・handoff完了・CORE実装中）
+### 3.6 Group 15 Common Export / Sheet / Scale（契約採用・handoff完了・CORE独立確認済み）
 
 正本は`docs/future/2D_4_CORE_SHEET_SCALE_PLAN.md`。2026-08-11に`G15-C1 A + G15-C2 A + G15-C3 A`を採用した。これは契約採用の記録であり、製品コード・テストコード・schema・既存Atlas / ZIPをこのdocs-only変更で実装するものではない。
 
@@ -153,11 +153,11 @@ CI証拠は対象head SHAとworkflow runを明示的に紐付け、failed / flak
 
 Group 15の必須端末確認はChromium 375×667とする。物理iPhone SafariはGroup 15だけの追加停止Gateにはせず、`docs/RELEASE_CHECKLIST.md`に残るリリース全体の端末Gateとして確認する。
 
-### 3.7 Group 15 2D-4-CORE（実装中）
+### 3.7 Group 15 2D-4-CORE（実装・CI・独立確認完了）
 
 `2D-4-CORE`のunitは、legacy ZIPにmanifestを追加しないこと、新distributionのmanifest形式・profile・scale、canonical JSON、entry順、SHA-256 hash、fixed-gridのsource size / content offset、既存の理由付き拒否を確認する。unit成功時は`test-results/group15-core-evidence.json`を生成し、CIで欠落を失敗としてartifact化する。
 
-既存`e2e/export.spec.ts`はlegacy ZIPのentry pathを完全一致（WebPは対応環境のみ許可）で確認し、manifestがlegacy ZIPへ混入しないことを確認する。packed、trim、padding、multi-page、scale、375×667のdistribution UI、before / after / reloadの全証拠は後続のSHEET / SCALE / UI sliceで追加する。
+既存`e2e/export.spec.ts`はlegacy ZIPのentry pathを完全一致（WebPは対応環境のみ許可）で確認し、manifestがlegacy ZIPへ混入しないことを確認する。CI Run #707（workflow ID `31478935075`）は`classify-changes`、`build-and-test`、`e2e`の全jobが成功し、CORE証拠artifact ID `9096417804`（digest `sha256:d6868ce878edbc03ad5c9a5986c08c1812691a6c0738df79275ada3529a5b1c7`）とPlaywright artifact ID `9096547560`（digest `sha256:dd88d6496a683190d4264d17a0649f4b7dd7f1bc383c7ef83b406e5b56248077`）を取得した。固定head `d6f28dab5bcbeb38a44ce50caddfe32732c69acc`の親担当read-only独立確認は`BLOCKER 0 / MUST 0`で、ローカルCORE対象unit 38/38、lint、format:check、buildも成功した。packed、trim、padding、multi-page、scale、375×667のdistribution UI、before / after / reloadの全証拠は後続のSHEET / SCALE / UI sliceで追加する。
 
 ## 4. テスト変更と失敗時の扱い
 
