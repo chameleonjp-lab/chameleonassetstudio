@@ -67,9 +67,7 @@ function getContext2d(
   canvas: OffscreenCanvas | HTMLCanvasElement,
 ): OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D {
   const context = canvas.getContext("2d") as
-    | OffscreenCanvasRenderingContext2D
-    | CanvasRenderingContext2D
-    | null;
+    OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null;
   if (!context) {
     throw new ExportError("この環境では Canvas 2D が使えません。");
   }
