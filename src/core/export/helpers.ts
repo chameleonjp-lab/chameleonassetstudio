@@ -73,9 +73,9 @@ export async function loadChameleonDistributionManifest(url) {
 }
 
 /**
- * distribution manifestからAtlasと画像を読み込む。
+ * distribution manifestからAtlasと複数pageの画像を読み込む。
  * @param {string} url manifest.jsonへのURL
- * @returns {Promise<{ manifest: object, atlas: object, image: HTMLImageElement }>}
+ * @returns {Promise<{ manifest: object, atlas: object, images: HTMLImageElement[], image: HTMLImageElement }>
  */
 export function getDistributionFrameRect(manifest, frameName) {
   const frame = manifest.frames.find((candidate) => candidate.name === frameName);
@@ -279,10 +279,10 @@ export async function loadChameleonDistributionManifest(PIXI, url) {
 }
 
 /**
- * distribution manifestからAtlasと画像を読み込む。
+ * distribution manifestからAtlasと複数pageの画像を読み込む。
  * @param {typeof import('pixi.js')} PIXI
  * @param {string} url manifest.jsonへのURL
- * @returns {Promise<{ manifest: object, atlas: object, baseTexture: object }>}
+ * @returns {Promise<{ manifest: object, atlas: object, baseTextures: object[], baseTexture: object }>
  */
 export function getDistributionFrameRect(manifest, frameName) {
   const frame = manifest.frames.find((candidate) => candidate.name === frameName);
@@ -450,7 +450,7 @@ export async function loadChameleonDistributionManifest(url) {
 }
 
 /**
- * distribution manifestを使ってPhaserのJSONと画像を登録する。
+ * distribution manifestを使ってPhaserのJSONと複数page画像を登録する。
  * @param {Phaser.Scene} scene
  * @param {string} key
  * @param {string} url manifest.jsonへのURL
