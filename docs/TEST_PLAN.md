@@ -172,6 +172,18 @@ PR #238のfinal headは`c2dc87ee1506f0a68b283eb3accf09d78921011a`、merge commit
 
 distribution UI、375×667 product-pathの追加証拠、engine読込、物理iPhone Safariは後続Gateで扱う。
 
+### 3.10 Group 16 Package / Preflight / Generic Web（契約監査・人間判断待ち）
+
+正本は`docs/future/2D_4_PACKAGE_PREFLIGHT_GENERIC_WEB_PLAN.md`。基準main `d691031`で、Group 16のproduct implementationはまだ開始していない。package入口、sidecar、import notes、verification record、preflightの`block` / `warning` / 秘密情報検出、Generic Web受入証拠の3判断を人間が採用するまで、製品コード・unit・E2E・CI workflowは変更しない。
+
+採用後の必須確認候補は、次のとおりである。
+
+- package入口からmanifest、canonical `asset.json`、sidecar、README、import notes、verification record、画像、複数pageを一貫して参照でき、legacy ZIPとAtlas `0.1.0`を変更しない。
+- preflightはassetを変更せず、問題を`code`、`severity`、`path`、`message`で返す。`block`がある場合はBlob読込、decode、canvas、ZIP生成、downloadを開始しない。既存の可変時間・event、Frame別collider上書き、polygonの理由付き拒否を維持する。
+- Generic Web / Canvas 2D fixtureはHTTP経由でpackageを読み、frame、trim offset、scale、origin、anchor、rect / circle、animation、複数pageを確認する。通常viewportと`375×667`を対象にし、fixture hash、manifest hash、browser情報、console error、download件数をCI artifactへ残す。
+
+このdocs-only監査PRではコード用テストを実行せず、Markdown差分検査とdocs-only分類だけを確認する。採用後の実装PRでは、変更範囲に応じてlint、format、build、unit、E2E、artifact、固定head独立確認を必須とする。
+
 ## 4. テスト変更と失敗時の扱い
 
 テストは現在の仕様を確認する手段であり、変更禁止の仕様書ではない。
