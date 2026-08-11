@@ -158,9 +158,7 @@ function assertDistributionSheetFrameInput(input: DistributionSheetFrameInput): 
     rect.x + rect.width > width ||
     rect.y + rect.height > height
   ) {
-    throw new Error(
-      'distribution sheetのsourceSizeまたはcontentRectが正の整数範囲外です',
-    );
+    throw new Error('distribution sheetのsourceSizeまたはcontentRectが正の整数範囲外です');
   }
 }
 
@@ -195,12 +193,8 @@ function computeFixedGridDistributionLayout(
 ): DistributionSheetLayout {
   const cellWidth = Math.max(...inputs.map((input) => input.sourceSize.width));
   const cellHeight = Math.max(...inputs.map((input) => input.sourceSize.height));
-  const maxColumns = Math.floor(
-    (DISTRIBUTION_PAGE_SIZE + padding) / (cellWidth + padding),
-  );
-  const maxRows = Math.floor(
-    (DISTRIBUTION_PAGE_SIZE + padding) / (cellHeight + padding),
-  );
+  const maxColumns = Math.floor((DISTRIBUTION_PAGE_SIZE + padding) / (cellWidth + padding));
+  const maxRows = Math.floor((DISTRIBUTION_PAGE_SIZE + padding) / (cellHeight + padding));
   if (maxColumns < 1 || maxRows < 1) {
     throw new Error(
       `1フレームがdistribution pageの上限 ${DISTRIBUTION_PAGE_SIZE}×${DISTRIBUTION_PAGE_SIZE} に収まりません`,
@@ -212,9 +206,7 @@ function computeFixedGridDistributionLayout(
   const pageCapacity = columns * rowsPerPage;
   const pageCount = Math.ceil(inputs.length / pageCapacity);
   if (pageCount > DISTRIBUTION_MAX_PAGES) {
-    throw new Error(
-      `distribution pageが上限の${DISTRIBUTION_MAX_PAGES}ページを超えます`,
-    );
+    throw new Error(`distribution pageが上限の${DISTRIBUTION_MAX_PAGES}ページを超えます`);
   }
 
   const pages: DistributionSheetPageLayout[] = [];
@@ -271,9 +263,7 @@ function computePackedDistributionLayout(
     }))
     .sort(
       (left, right) =>
-        right.height - left.height ||
-        right.width - left.width ||
-        left.index - right.index,
+        right.height - left.height || right.width - left.width || left.index - right.index,
     );
 
   const placements = new Map<
@@ -297,10 +287,7 @@ function computePackedDistributionLayout(
   startPage();
 
   for (const item of sorted) {
-    if (
-      item.width > DISTRIBUTION_PAGE_SIZE ||
-      item.height > DISTRIBUTION_PAGE_SIZE
-    ) {
+    if (item.width > DISTRIBUTION_PAGE_SIZE || item.height > DISTRIBUTION_PAGE_SIZE) {
       throw new Error(
         `trim後のフレームがdistribution pageの上限 ${DISTRIBUTION_PAGE_SIZE}×${DISTRIBUTION_PAGE_SIZE} に収まりません: ${item.input.name}`,
       );
@@ -314,9 +301,7 @@ function computePackedDistributionLayout(
     if (cursorY + item.height > DISTRIBUTION_PAGE_SIZE) {
       page += 1;
       if (page >= DISTRIBUTION_MAX_PAGES) {
-        throw new Error(
-          `distribution pageが上限の${DISTRIBUTION_MAX_PAGES}ページを超えます`,
-        );
+        throw new Error(`distribution pageが上限の${DISTRIBUTION_MAX_PAGES}ページを超えます`);
       }
       cursorX = 0;
       cursorY = 0;
