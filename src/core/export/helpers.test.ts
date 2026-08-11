@@ -16,6 +16,8 @@ describe('buildCanvasHelpers', () => {
 
   it('主要関数名を含む', () => {
     expect(source).toContain('loadChameleonAtlas');
+    expect(source).toContain('getDistributionFrameRect');
+    expect(source).toContain('manifest.pages');
     expect(source).toContain('getFrameRect');
     expect(source).toContain('applyOrigin');
     expect(source).toContain('getAnchorByRole');
@@ -45,6 +47,8 @@ describe('buildPixiHelpers', () => {
 
   it('主要関数名を含む', () => {
     expect(source).toContain('loadChameleonPixi');
+    expect(source).toContain('getDistributionFrameRect');
+    expect(source).toContain('manifest.pages');
     expect(source).toContain('createPixiFrameTextures');
     expect(source).toContain('createPixiAnimatedSprite');
     expect(source).toContain('applyPixiOrigin');
@@ -71,6 +75,8 @@ describe('buildPhaserHelpers', () => {
 
   it('主要関数名を含む', () => {
     expect(source).toContain('preloadChameleonAsset');
+    expect(source).toContain('getDistributionFrameRect');
+    expect(source).toContain('manifest.pages');
     expect(source).toContain('registerChameleonSpritesheet');
     expect(source).toContain('createChameleonAnims');
     expect(source).toContain('getAnchorByRole');
