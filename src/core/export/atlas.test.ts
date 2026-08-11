@@ -50,12 +50,17 @@ describe('computeSheetLayout', () => {
 });
 
 describe('computeDistributionSheetLayout', () => {
-  const input = (id: string, width: number, height: number, contentRect = {
-    x: 0,
-    y: 0,
-    width,
-    height,
-  }) => ({
+  const input = (
+    id: string,
+    width: number,
+    height: number,
+    contentRect = {
+      x: 0,
+      y: 0,
+      width,
+      height,
+    },
+  ) => ({
     id,
     name: id,
     sourceSize: { width, height },
@@ -103,13 +108,15 @@ describe('computeDistributionSheetLayout', () => {
     );
 
     expect(layout.profile).toBe('packed');
-    expect(layout.frames.map(({ id, page, rect, contentRect, contentOffset }) => ({
-      id,
-      page,
-      rect,
-      contentRect,
-      contentOffset,
-    }))).toEqual([
+    expect(
+      layout.frames.map(({ id, page, rect, contentRect, contentOffset }) => ({
+        id,
+        page,
+        rect,
+        contentRect,
+        contentOffset,
+      })),
+    ).toEqual([
       {
         id: 'a',
         page: 0,
@@ -145,9 +152,7 @@ describe('computeDistributionSheetLayout', () => {
       contentRect: { width: 0, height: 0 },
     });
 
-    const fivePages = Array.from({ length: 5 }, (_, index) =>
-      input(`frame-${index}`, 2048, 2048),
-    );
+    const fivePages = Array.from({ length: 5 }, (_, index) => input(`frame-${index}`, 2048, 2048));
     expect(() =>
       computeDistributionSheetLayout(fivePages, { profile: 'packed', padding: 1 }),
     ).toThrow(/4ページ/);
@@ -191,14 +196,14 @@ describe('computeDistributionSheetLayout', () => {
     });
     expect(manifest.frames).toEqual(
       layout.frames.map((frame) => ({
-      name: frame.name,
-      page: frame.page,
-      rect: frame.rect,
-      sourceSize: frame.sourceSize,
-      contentRect: frame.contentRect,
-      contentOffset: frame.contentOffset,
-      rotated: frame.rotated,
-    })),
+        name: frame.name,
+        page: frame.page,
+        rect: frame.rect,
+        sourceSize: frame.sourceSize,
+        contentRect: frame.contentRect,
+        contentOffset: frame.contentOffset,
+        rotated: frame.rotated,
+      })),
     );
     expect(canonicalJson(manifest)).toContain('contentOffset');
   });
