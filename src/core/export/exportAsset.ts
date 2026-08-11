@@ -315,7 +315,7 @@ function assertDistributionSheetFixedGridPreflight(
   }
 }
 
-function contentRectFromCanvas(function contentRectFromCanvas(
+function contentRectFromCanvas(
   canvas: OffscreenCanvas | HTMLCanvasElement,
   sourceSize: { width: number; height: number },
 ): { x: number; y: number; width: number; height: number } {
@@ -463,8 +463,6 @@ async function renderDistributionPages(
   return { layout, pages };
 }
 
-/**
- * ZIP に同梱する README.md の内容を作る（純関数）。
 /**
  * ZIP に同梱する README.md の内容を作る（純関数）。
  * アセット名、内容説明、座標系、原点・アンカー・当たり判定の説明を含める。
