@@ -315,9 +315,11 @@ describe('exportAsset texture kind boundary', () => {
       manifests.push(manifest);
 
       expect(manifest.scale).toBe(scale);
-      expect(manifest.pages.every((page: { width: number; height: number }) => (
-        page.width === 2048 && page.height === 2048
-      ))).toBe(true);
+      expect(
+        manifest.pages.every(
+          (page: { width: number; height: number }) => page.width === 2048 && page.height === 2048,
+        ),
+      ).toBe(true);
       expect(manifest.frames[0]).toMatchObject({
         sourceSize: { width: 512 * scale, height: 512 * scale },
         rect: { width: 512 * scale, height: 512 * scale },
@@ -335,12 +337,8 @@ describe('exportAsset texture kind boundary', () => {
       { x: 512, y: 896 },
       { x: 768, y: 1344 },
     ]);
-    expect(getDistributionZipFileName(asset, 1)).toBe(
-      'tomato_player_full-distribution-1x.zip',
-    );
-    expect(getDistributionZipFileName(asset, 2)).toBe(
-      'tomato_player_full-distribution-2x.zip',
-    );
+    expect(getDistributionZipFileName(asset, 1)).toBe('tomato_player_full-distribution-1x.zip');
+    expect(getDistributionZipFileName(asset, 2)).toBe('tomato_player_full-distribution-2x.zip');
 
     await mkdir('test-results', { recursive: true });
     await writeFile(
@@ -373,15 +371,11 @@ describe('exportAsset texture kind boundary', () => {
   it('不正scaleとscale後のpage外入力はBlob読込前に拒否する', async () => {
     const asset = assetReferencing('edit');
 
-    await expect(
-      exportDistributionZip(asset, { scale: 4 }),
-    ).rejects.toThrow(/1、2、3/);
+    await expect(exportDistributionZip(asset, { scale: 4 })).rejects.toThrow(/1、2、3/);
     expect(loadBlobMock).not.toHaveBeenCalled();
 
     asset.canvasSize = { width: 1024, height: 512 };
-    await expect(
-      exportDistributionZip(asset, { scale: 3 }),
-    ).rejects.toThrow(/2048/);
+    await expect(exportDistributionZip(asset, { scale: 3 })).rejects.toThrow(/2048/);
     expect(loadBlobMock).not.toHaveBeenCalled();
   });
   it('distribution page外の入力はBlob読込前に理由付きで拒否する', async () => {
