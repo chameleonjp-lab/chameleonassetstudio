@@ -119,7 +119,7 @@ export interface DistributionManifest {
   format: typeof DISTRIBUTION_FORMAT;
   version: typeof CURRENT_DISTRIBUTION_VERSION;
   profile: DistributionProfile;
-  scale: 1;
+  scale: DistributionScale;
   source: { assetJson: string; canonical: true };
   files: DistributionFileReferences;
   pages: Array<{ path: string; width: number; height: number; rotated: false }>;
