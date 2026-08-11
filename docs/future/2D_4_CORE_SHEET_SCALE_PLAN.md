@@ -23,7 +23,7 @@ Group 15 `2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE`について、共通export core�
 | PR #231 | Group 15のA案採用記録と実装handoff開始条件をdocs-onlyでmainへ同期。merge済み（merge commit `0adb67a4192d6684e5e4679c87b2a758cff40654`） |
 | Group 14 | completed、進捗16/27。CI Run #689と固定headの3方向read-only reviewを完了 |
 | open PR | 0件。今回の採用記録・実装用の重複PRなし |
-| Group 15契約 | `accepted: G15-C1 A + G15-C2 A + G15-C3 A`。製品実装は未開始で、具体値のhandoff待ち |
+| Group 15契約 | `accepted: G15-C1 A + G15-C2 A + G15-C3 A`。製品実装は未開始で、G15-H1〜H3 Aの具体値と受入証拠はhandoff済み |
 | 製品実装 | 未開始。現行Atlas系の事前拒否を維持 |
 
 ## 2. GitHub正本で確認した既存事実
@@ -71,7 +71,7 @@ Group 15 `2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE`について、共通export core�
 人間の明示判断: `G15-C1 A + G15-C2 A + G15-C3 A`  
 採用結果: 3つのA案を採用。B案とC案は採用しない。  
 採用範囲: canonical sourceとdistribution出力を分離し、既存Atlas / ZIPをlegacy/defaultとして保ち、fixed gridを既定にし、packedを明示profileへ分け、trimと1x / 2x / 3xを後続実装で扱う。  
-実装状態: `product-not-started / implementation-handoff-pending`
+実装状態: `product-not-started / implementation-handoff-complete`
 
 以下の各表は、採用したA案の内容と、比較対象として保持する不採用案を記録する。
 
