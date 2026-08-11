@@ -1,6 +1,6 @@
 # Chameleon Asset Studio テスト計画書
 
-最終更新日: 2026-08-10
+最終更新日: 2026-08-11
 対象バージョン: アプリ 0.1.0 / Asset 0.2.0 / Project・export-presets・atlas 0.1.0
 詳細な対象一覧の正本: `docs/implementation/TEST_AND_RELEASE.md`
 
@@ -121,6 +121,29 @@ acceptance fixtureは当初13 ID + runtime-invalid補強1 IDの計14 IDで、6�
 no-save oracleは空でないHistoryを使い、before / afterともUndo 2件・Redo 1件を保持したまま、IndexedDB全store、Editor state、`asset.json`、`.casproj`の完全一致を確認した。reload後は保存済みdataと出力を維持し、UI-only state、History、autosaveのsession stateだけが初期化された。Game Check中のdownloadは0件、Atlas ZIP生成bytesは0、Blob URLはactive 0でcreated / revokedが一致した。固定headの仕様・判断、実装・データ契約、テスト・CI・証拠の3方向read-only reviewを完了し、Group 14をcompleted、進捗16/27とする。
 
 このGateは実際のAtlas生成、engine読込、物理Safariを検証した証拠ではない。History / autosaveの保存挙動は不変だが、検査用の読み取り専用snapshot観測APIは追加されている。schema、version、migration、IndexedDB配置、`.casproj`、export ZIP、dependency、polygon `unsupported`、現行Atlas拒否境界は変更していない。次のGroup 15は契約監査だけを開始可能とし、製品実装は契約・受入条件の人間採用前まで開始しない。
+
+### 3.6 Group 15 Common Export / Sheet / Scale（契約採用・実装前）
+
+正本は`docs/future/2D_4_CORE_SHEET_SCALE_PLAN.md`。2026-08-11に`G15-C1 A + G15-C2 A + G15-C3 A`を採用した。これは契約採用の記録であり、製品コード・テストコード・schema・既存Atlas / ZIPをこのdocs-only変更で実装するものではない。
+
+実装PRでは次の受入IDを必須にする。
+
+| ID | 必須確認 |
+|---|---|
+| G15-CORE-LEGACY | 既定設定で既存Atlas `0.1.0`と既存ZIPの意味・entry pathを維持する。 |
+| G15-CORE-NOLOSS | 可変時間、event、Frame別collider上書き、polygonなど現行形式で表現できない入力を、Blob読込・canvas・ZIP生成・downloadより前に理由付きで拒否する。 |
+| G15-CORE-REPEAT | 同一入力・同一条件でcanonical JSON、entry順、manifest hash、意味同一性を比較する。PNGの全環境byte一致は要求しない。 |
+| G15-SHEET-GRID | 1 / 2 / 5 / 16 frameのfixed grid・行優先・rotationなしと、1 frameの不変性を確認する。 |
+| G15-SHEET-PACK | packed明示profileのtie-break、rotationなし、page分割、page上限をfixtureとmanifest検査で固定する。既定profileと混同しない。 |
+| G15-SHEET-TRIM | content rect、source size、offset、完全透明Frameを保持する。 |
+| G15-SHEET-BLEED | セル間padding・外周なし、extrude初回未採用、Frame rectとhelperの整合をpixel fixtureで確認する。 |
+| G15-SCALE-123 | 1x / 2x / 3xの寸法、Atlas座標、origin / anchor / collider / source sizeの丸めと整合を確認する。 |
+| G15-COMPAT | 新しいdistribution出力が既存`atlas.json` `0.1.0`と既存ZIPを黙って壊さないことを確認する。 |
+| G15-MOBILE | 375×667のtouch、長いwarning、拒否表示、出力開始、download完了を一連で確認する。 |
+
+CI証拠は対象head SHAとworkflow runを明示的に紐付け、failed / flaky / skipped / retryを0件にする。既存testのskip、only、期待値弱体化、timeout緩和で失敗を隠さない。fixture hash、manifest hash、before / after / reload、download件数をartifactへ残し、artifact欠落はwarningではなく失敗とする。
+
+Group 15の必須端末確認はChromium 375×667とする。物理iPhone SafariはGroup 15だけの追加停止Gateにはせず、`docs/RELEASE_CHECKLIST.md`に残るリリース全体の端末Gateとして確認する。
 
 ## 4. テスト変更と失敗時の扱い
 
