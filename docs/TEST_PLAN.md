@@ -161,7 +161,7 @@ Group 15の必須端末確認はChromium 375×667とする。物理iPhone Safari
 
 ### 3.8 Group 15 2D-4-SHEET
 
-`2D-4-SHEET`では、fixed-grid / packedの純unit、trim rect、完全透明Frame、セル間padding、rotationなし、extrude=0、2048×2048・最大4ページ、manifest semantic、packed distribution ZIP、legacy ZIP不変を確認する。SHEET artifactは`test-results/group15-sheet-evidence.json`として生成し、CIで欠落を失敗扱いにする。distribution UIと375×667 product-path E2Eは後続UI sliceへ残す。
+`2D-4-SHEET`では、fixed-grid / packedの純unit、trim rect、完全透明Frame、セル間padding、rotationなし、extrude=0、2048×2048・最大4ページ、manifest semantic、packed distribution ZIP、legacy ZIP不変を確認する。SHEET artifactは`test-results/group15-sheet-evidence.json`として生成し、CIで欠落を失敗扱いにする。CI Run #715（Actions ID `31508887474`）は`classify-changes`、`build-and-test`、`e2e`の全jobが成功し、SHEET artifact ID `9108232872`（digest `sha256:9cbae9b40220e253abf6d7112849f3f6f8f83efed6e82278cfa9e64ea8370a2b`）とCORE artifact ID `9108232358`（digest `sha256:f16d9468795b5770ec1d8c1e0b5f385c83efe9ef4f936e2054034be924280e60`）を取得した。親担当の固定head read-only確認でもscope、実装契約、test/CI証拠にBLOCKER / MUSTはなかった。ローカル対象unitは48/48、lint、format:check、buildも成功した。distribution UIと375×667 product-path E2Eは後続UI sliceへ残す。
 
 ## 4. テスト変更と失敗時の扱い
 
