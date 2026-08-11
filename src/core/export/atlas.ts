@@ -57,6 +57,138 @@ export const ATLAS_FORMAT = 'chameleon-atlas' as const;
 /** atlas.json の現行バージョン。破壊的変更時は上げる。 */
 export const CURRENT_ATLAS_VERSION = '0.1.0' as const;
 
+export const DISTRIBUTION_FORMAT = 'chameleon-distribution' as const;
+export const CURRENT_DISTRIBUTION_VERSION = '0.1.0' as const;
+export const DISTRIBUTION_PROFILE = 'fixed-grid' as const;
+
+export interface DistributionFileReferences {
+  manifest: string;
+  assetJson: string;
+  atlasJson: string;
+  pages: string[];
+  mainPng: string;
+  mainWebp: string | null;
+  readme: string;
+  examples: string[];
+  helpers: string[];
+  engines: string[];
+}
+
+export interface DistributionManifestFrame {
+  name: string;
+  page: number;
+  rect: { x: number; y: number; width: number; height: number };
+  sourceSize: { width: number; height: number };
+  contentRect: { x: number; y: number; width: number; height: number };
+  contentOffset: { x: number; y: number };
+  rotated: false;
+}
+
+export interface DistributionManifest {
+  format: typeof DISTRIBUTION_FORMAT;
+  version: typeof CURRENT_DISTRIBUTION_VERSION;
+  profile: typeof DISTRIBUTION_PROFILE;
+  scale: 1;
+  source: { assetJson: string; canonical: true };
+  files: DistributionFileReferences;
+  pages: Array<{ path: string; width: number; height: number; rotated: false }>;
+  frames: DistributionManifestFrame[];
+  animations: AtlasJson['animations'];
+  origin: AtlasJson['origin'];
+  anchors: AtlasJson['anchors'];
+  colliders: AtlasJson['colliders'];
+  tile?: Asset['tile'];
+  effect?: Asset['effect'];
+  integrity?: { algorithm: 'SHA-256'; manifestHash: string };
+}
+
+function canonicalizeJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonicalizeJsonValue);
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, entry]) => entry !== undefined)
+        .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+        .map(([key, entry]) => [key, canonicalizeJsonValue(entry)]),
+    );
+  }
+  return value;
+}
+
+/** 決定性検査に使うJSON。配列順は意味として保持し、objectのkeyだけを整列する。 */
+export function canonicalJson(value: unknown): string {
+  return JSON.stringify(canonicalizeJsonValue(value));
+}
+
+function atlasBounds(atlas: AtlasJson): { width: number; height: number } {
+  return atlas.frames.reduce(
+    (bounds, frame) => ({
+      width: Math.max(bounds.width, frame.x + frame.width),
+      height: Math.max(bounds.height, frame.y + frame.height),
+    }),
+    { width: 0, height: 0 },
+  );
+}
+
+/**
+ * legacy Atlasからdistribution manifestの共通部分を組み立てる。
+ * fixed-gridのみを担当し、packed / trim / scaleは後続sliceで拡張する。
+ */
+export function buildDistributionManifest(
+  asset: Asset,
+  atlas: AtlasJson,
+  entryPaths: readonly string[],
+): Omit<DistributionManifest, 'integrity'> {
+  const paths = [...new Set(entryPaths)].sort();
+  const pagePath = `atlas/${atlas.texture}`;
+  const bounds = atlasBounds(atlas);
+  const pagePaths = paths.filter((path) => path.startsWith('atlas/') && path.endsWith('.png'));
+  const pages = pagePaths.length > 0 ? pagePaths : [pagePath];
+
+  return {
+    format: DISTRIBUTION_FORMAT,
+    version: CURRENT_DISTRIBUTION_VERSION,
+    profile: DISTRIBUTION_PROFILE,
+    scale: 1,
+    source: { assetJson: 'asset.json', canonical: true },
+    files: {
+      manifest: 'manifest.json',
+      assetJson: 'asset.json',
+      atlasJson: 'atlas/atlas.json',
+      pages,
+      mainPng: 'textures/main.png',
+      mainWebp: paths.includes('textures/main.webp') ? 'textures/main.webp' : null,
+      readme: 'README.md',
+      examples: paths.filter((path) => path.startsWith('examples/')).sort(),
+      helpers: paths.filter((path) => path.startsWith('helpers/')).sort(),
+      engines: paths.filter((path) => path.startsWith('engines/')).sort(),
+    },
+    pages: pages.map((path) => ({
+      path,
+      width: bounds.width,
+      height: bounds.height,
+      rotated: false as const,
+    })),
+    frames: atlas.frames.map((frame) => ({
+      name: frame.name,
+      page: 0,
+      rect: { x: frame.x, y: frame.y, width: frame.width, height: frame.height },
+      sourceSize: { width: asset.canvasSize.width, height: asset.canvasSize.height },
+      contentRect: { x: 0, y: 0, width: frame.width, height: frame.height },
+      contentOffset: { x: 0, y: 0 },
+      rotated: false as const,
+    })),
+    animations: atlas.animations,
+    origin: atlas.origin,
+    anchors: atlas.anchors,
+    colliders: atlas.colliders,
+    ...(atlas.tile ? { tile: atlas.tile } : {}),
+    ...(atlas.effect ? { effect: atlas.effect } : {}),
+  };
+}
+
 /** `atlas/atlas.json` に対応する内容。 */
 export interface AtlasJson {
   format: typeof ATLAS_FORMAT;
