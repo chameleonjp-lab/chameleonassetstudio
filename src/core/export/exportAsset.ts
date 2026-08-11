@@ -592,8 +592,8 @@ async function sha256Hex(text: string): Promise<string> {
 }
 
 /**
- * legacy/default ZIPを変更せず、manifest.jsonを追加したdistribution ZIPを作る。
- * fixed-gridの共通coreだけを担当し、packed / trim / scaleは後続sliceで扱う。
+ * legacy/default ZIPを変更せず、manifest.jsonとSHEET pageを追加したdistribution ZIPを作る。
+ * fixed-grid / packed / trim / multi-pageを扱い、scaleは後続sliceへ残す.
  */
 export async function exportDistributionZip(
   asset: Asset,
