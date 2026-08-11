@@ -16,7 +16,6 @@ import {
   canonicalJson,
   computeDistributionSheetLayout,
   computeSheetLayout,
-  DISTRIBUTION_MAX_PAGES,
   DISTRIBUTION_PAGE_SIZE,
   type AtlasJson,
   type DistributionManifest,
