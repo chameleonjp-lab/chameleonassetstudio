@@ -1,55 +1,55 @@
-import { describe, expect, it } from 'vitest';
-import type { Asset } from '../model';
-import characterAsset from '../samples/asset.character.json';
+import { describe, expect, it } from "vitest";
+import type { Asset } from "../model";
+import characterAsset from "../samples/asset.character.json";
 import {
   buildAtlas,
   buildDistributionManifest,
   canonicalJson,
   computeSheetLayout,
-} from './atlas';
+} from "./atlas";
 
 const baseAsset = characterAsset as unknown as Asset;
 
-describe('computeSheetLayout', () => {
-  it('1 件なら 1 列 1 行になる', () => {
-    const layout = computeSheetLayout(['a'], 32, 48);
+describe("computeSheetLayout", () => {
+  it("1 件なら 1 列 1 行になる", () => {
+    const layout = computeSheetLayout(["a"], 32, 48);
     expect(layout.columns).toBe(1);
     expect(layout.rows).toBe(1);
-    expect(layout.positions).toEqual([{ frameId: 'a', x: 0, y: 0 }]);
+    expect(layout.positions).toEqual([{ frameId: "a", x: 0, y: 0 }]);
     expect(layout.width).toBe(32);
     expect(layout.height).toBe(48);
   });
 
-  it('2 件なら 2 列 1 行になる', () => {
-    const layout = computeSheetLayout(['a', 'b'], 10, 20);
+  it("2 件なら 2 列 1 行になる", () => {
+    const layout = computeSheetLayout(["a", "b"], 10, 20);
     expect(layout.columns).toBe(2);
     expect(layout.rows).toBe(1);
     expect(layout.positions).toEqual([
-      { frameId: 'a', x: 0, y: 0 },
-      { frameId: 'b', x: 10, y: 0 },
+      { frameId: "a", x: 0, y: 0 },
+      { frameId: "b", x: 10, y: 0 },
     ]);
     expect(layout.width).toBe(20);
     expect(layout.height).toBe(20);
   });
 
-  it('5 件なら 3 列 2 行になり、左上から行優先で並ぶ', () => {
-    const layout = computeSheetLayout(['a', 'b', 'c', 'd', 'e'], 10, 10);
+  it("5 件なら 3 列 2 行になり、左上から行優先で並ぶ", () => {
+    const layout = computeSheetLayout(["a", "b", "c", "d", "e"], 10, 10);
     expect(layout.columns).toBe(3);
     expect(layout.rows).toBe(2);
     expect(layout.positions).toEqual([
-      { frameId: 'a', x: 0, y: 0 },
-      { frameId: 'b', x: 10, y: 0 },
-      { frameId: 'c', x: 20, y: 0 },
-      { frameId: 'd', x: 0, y: 10 },
-      { frameId: 'e', x: 10, y: 10 },
+      { frameId: "a", x: 0, y: 0 },
+      { frameId: "b", x: 10, y: 0 },
+      { frameId: "c", x: 20, y: 0 },
+      { frameId: "d", x: 0, y: 10 },
+      { frameId: "e", x: 10, y: 10 },
     ]);
     expect(layout.width).toBe(30);
     expect(layout.height).toBe(20);
   });
 });
 
-describe('buildAtlas', () => {
-  it('フレーム名・アニメーション・origin / anchors / colliders が入る', () => {
+describe("buildAtlas", () => {
+  it("フレーム名・アニメーション・origin / anchors / colliders が入る", () => {
     const frameIds = (baseAsset.frames ?? []).map((frame) => frame.id);
     const layout = computeSheetLayout(
       frameIds,
@@ -58,146 +58,165 @@ describe('buildAtlas', () => {
     );
     const atlas = buildAtlas(baseAsset, layout);
 
-    expect(atlas.format).toBe('chameleon-atlas');
-    expect(atlas.version).toBe('0.1.0');
-    expect(atlas.texture).toBe('spritesheet.png');
+    expect(atlas.format).toBe("chameleon-atlas");
+    expect(atlas.version).toBe("0.1.0");
+    expect(atlas.texture).toBe("spritesheet.png");
     expect(atlas.cellSize).toEqual({ width: 512, height: 512 });
-    expect(atlas.frames.map((frame) => frame.name)).toEqual(['idle_0', 'idle_1']);
-    expect(atlas.frames[1]).toMatchObject({ x: 512, y: 0, width: 512, height: 512 });
+    expect(atlas.frames.map((frame) => frame.name)).toEqual([
+      "idle_0",
+      "idle_1",
+    ]);
+    expect(atlas.frames[1]).toMatchObject({
+      x: 512,
+      y: 0,
+      width: 512,
+      height: 512,
+    });
     // Animation.frameIds が Frame.name へ解決される
     expect(atlas.animations).toEqual([
-      { name: 'idle', fps: 8, loop: true, frames: ['idle_0', 'idle_1'] },
+      { name: "idle", fps: 8, loop: true, frames: ["idle_0", "idle_1"] },
     ]);
     expect(atlas.origin).toEqual({ x: 256, y: 448 });
     expect(atlas.anchors).toEqual([
-      { name: 'foot', role: 'foot', x: 256, y: 448 },
-      { name: 'hand_right', role: 'hand_right', x: 352, y: 288 },
+      { name: "foot", role: "foot", x: 256, y: 448 },
+      { name: "hand_right", role: "hand_right", x: 352, y: 288 },
     ]);
     expect(atlas.colliders).toEqual(baseAsset.colliders);
   });
 
-  it('参照中Frameの個別時間またはeventを固定fpsへ落とさず理由付きで拒否する', () => {
+  it("参照中Frameの個別時間またはeventを固定fpsへ落とさず理由付きで拒否する", () => {
     const durationAsset = structuredClone(baseAsset);
     durationAsset.frames![0].durationMs = 120;
-    expect(() => buildAtlas(durationAsset, computeSheetLayout(['frame_idle_0'], 32, 32))).toThrow(
-      /個別表示時間/,
-    );
+    expect(() =>
+      buildAtlas(durationAsset, computeSheetLayout(["frame_idle_0"], 32, 32)),
+    ).toThrow(/個別表示時間/);
 
     const eventAsset = structuredClone(baseAsset);
-    eventAsset.animations[0].events = [{ id: 'event_1', name: 'step', frameId: 'frame_idle_0' }];
-    expect(() => buildAtlas(eventAsset, computeSheetLayout(['frame_idle_0'], 32, 32))).toThrow(
-      /イベント/,
-    );
+    eventAsset.animations[0].events = [
+      { id: "event_1", name: "step", frameId: "frame_idle_0" },
+    ];
+    expect(() =>
+      buildAtlas(eventAsset, computeSheetLayout(["frame_idle_0"], 32, 32)),
+    ).toThrow(/イベント/);
   });
 
-  it('Frame collider overrideを直接APIでもAtlasへ落とさず事前拒否する', () => {
+  it("Frame collider overrideを直接APIでもAtlasへ落とさず事前拒否する", () => {
     const asset = structuredClone(baseAsset);
-    asset.frames![0].colliderOverrides = [{ colliderId: 'col_body', visible: false }];
-    expect(() => buildAtlas(asset, computeSheetLayout(['frame_idle_0'], 32, 32))).toThrow(
-      /frame_idle_0.*col_body.*asset\.json.*\.casproj/s,
-    );
+    asset.frames![0].colliderOverrides = [
+      { colliderId: "col_body", visible: false },
+    ];
+    expect(() =>
+      buildAtlas(asset, computeSheetLayout(["frame_idle_0"], 32, 32)),
+    ).toThrow(/frame_idle_0.*col_body.*asset\.json.*\.casproj/s);
   });
 
-  it('フレームが 0 件なら default 1 コマになる', () => {
+  it("フレームが 0 件なら default 1 コマになる", () => {
     const noFrameAsset: Asset = { ...baseAsset, frames: [] };
     const layout = computeSheetLayout(
-      ['default'],
+      ["default"],
       noFrameAsset.canvasSize.width,
       noFrameAsset.canvasSize.height,
     );
     const atlas = buildAtlas(noFrameAsset, layout);
-    expect(atlas.frames).toEqual([{ name: 'default', x: 0, y: 0, width: 512, height: 512 }]);
+    expect(atlas.frames).toEqual([
+      { name: "default", x: 0, y: 0, width: 512, height: 512 },
+    ]);
     expect(atlas.animations).toEqual([
-      { name: 'idle', fps: 8, loop: true, frames: ['frame_idle_0', 'frame_idle_1'] },
+      {
+        name: "idle",
+        fps: 8,
+        loop: true,
+        frames: ["frame_idle_0", "frame_idle_1"],
+      },
     ]);
   });
 
-  it('tile アセットは tile 設定がそのまま atlas.json に入り、cellSize は実配置のまま', () => {
+  it("tile アセットは tile 設定がそのまま atlas.json に入り、cellSize は実配置のまま", () => {
     const tileAsset: Asset = {
       ...baseAsset,
-      assetType: 'tile',
+      assetType: "tile",
       tile: {
         tileSize: { width: 32, height: 32 },
-        collisionType: 'solid',
-        visualType: 'floor',
+        collisionType: "solid",
+        visualType: "floor",
       },
     };
     const layout = computeSheetLayout(
-      ['default'],
+      ["default"],
       tileAsset.canvasSize.width,
       tileAsset.canvasSize.height,
     );
     const atlas = buildAtlas(tileAsset, layout);
     expect(atlas.tile).toEqual({
       tileSize: { width: 32, height: 32 },
-      collisionType: 'solid',
-      visualType: 'floor',
+      collisionType: "solid",
+      visualType: "floor",
     });
     // Sprite Sheet の実配置（canvasSize セル）と食い違わないこと
     expect(atlas.cellSize).toEqual({ width: 512, height: 512 });
   });
 
-  it('tile 設定が無ければ atlas.json に tile フィールドは入らない', () => {
-    const layout = computeSheetLayout(['default'], 512, 512);
+  it("tile 設定が無ければ atlas.json に tile フィールドは入らない", () => {
+    const layout = computeSheetLayout(["default"], 512, 512);
     const atlas = buildAtlas(baseAsset, layout);
-    expect('tile' in atlas).toBe(false);
+    expect("tile" in atlas).toBe(false);
   });
 
-  it('非 tile アセットに tile 設定が残っていても atlas.json には出ない', () => {
+  it("非 tile アセットに tile 設定が残っていても atlas.json には出ない", () => {
     const characterWithTile: Asset = {
       ...baseAsset,
-      assetType: 'character',
+      assetType: "character",
       tile: {
         tileSize: { width: 32, height: 32 },
-        collisionType: 'solid',
-        visualType: 'floor',
+        collisionType: "solid",
+        visualType: "floor",
       },
     };
-    const layout = computeSheetLayout(['default'], 512, 512);
+    const layout = computeSheetLayout(["default"], 512, 512);
     const atlas = buildAtlas(characterWithTile, layout);
-    expect('tile' in atlas).toBe(false);
+    expect("tile" in atlas).toBe(false);
   });
 
-  it('effect アセットは effect 設定がそのまま atlas.json に入る', () => {
+  it("effect アセットは effect 設定がそのまま atlas.json に入る", () => {
     const effectAsset: Asset = {
       ...baseAsset,
-      assetType: 'effect',
+      assetType: "effect",
       effect: {
-        effectType: 'spark',
+        effectType: "spark",
         durationMs: 500,
         loop: false,
-        blendMode: 'normal',
+        blendMode: "normal",
       },
     };
-    const layout = computeSheetLayout(['default'], 512, 512);
+    const layout = computeSheetLayout(["default"], 512, 512);
     const atlas = buildAtlas(effectAsset, layout);
     expect(atlas.effect).toEqual({
-      effectType: 'spark',
+      effectType: "spark",
       durationMs: 500,
       loop: false,
-      blendMode: 'normal',
+      blendMode: "normal",
     });
   });
 
-  it('非 effect アセットに effect 設定が残っていても atlas.json には出ない', () => {
+  it("非 effect アセットに effect 設定が残っていても atlas.json には出ない", () => {
     const characterWithEffect: Asset = {
       ...baseAsset,
-      assetType: 'character',
+      assetType: "character",
       effect: {
-        effectType: 'spark',
+        effectType: "spark",
         durationMs: 500,
         loop: false,
-        blendMode: 'normal',
+        blendMode: "normal",
       },
     };
-    const layout = computeSheetLayout(['default'], 512, 512);
+    const layout = computeSheetLayout(["default"], 512, 512);
     const atlas = buildAtlas(characterWithEffect, layout);
-    expect('effect' in atlas).toBe(false);
+    expect("effect" in atlas).toBe(false);
   });
 });
 
-describe('distribution manifest core', () => {
-  it('legacy Atlasを変更せず、fixed-grid manifestを決定的に組み立てる', () => {
+describe("distribution manifest core", () => {
+  it("legacy Atlasを変更せず、fixed-grid manifestを決定的に組み立てる", () => {
     const atlas = buildAtlas(
       baseAsset,
       computeSheetLayout(
@@ -206,28 +225,30 @@ describe('distribution manifest core', () => {
         baseAsset.canvasSize.height,
       ),
     );
-    const first = buildDistributionManifest(
-      baseAsset,
-      atlas,
-      ['README.md', 'atlas/atlas.json', 'textures/main.png', 'asset.json'],
-    );
-    const second = buildDistributionManifest(
-      baseAsset,
-      atlas,
-      ['asset.json', 'textures/main.png', 'atlas/atlas.json', 'README.md'],
-    );
+    const first = buildDistributionManifest(baseAsset, atlas, [
+      "README.md",
+      "atlas/atlas.json",
+      "textures/main.png",
+      "asset.json",
+    ]);
+    const second = buildDistributionManifest(baseAsset, atlas, [
+      "asset.json",
+      "textures/main.png",
+      "atlas/atlas.json",
+      "README.md",
+    ]);
 
     expect(canonicalJson(first)).toBe(canonicalJson(second));
-    expect(first.format).toBe('chameleon-distribution');
-    expect(first.version).toBe('0.1.0');
-    expect(first.profile).toBe('fixed-grid');
+    expect(first.format).toBe("chameleon-distribution");
+    expect(first.version).toBe("0.1.0");
+    expect(first.profile).toBe("fixed-grid");
     expect(first.scale).toBe(1);
     expect(first.files).toMatchObject({
-      manifest: 'manifest.json',
-      assetJson: 'asset.json',
-      atlasJson: 'atlas/atlas.json',
-      pages: ['atlas/spritesheet.png'],
-      mainPng: 'textures/main.png',
+      manifest: "manifest.json",
+      assetJson: "asset.json",
+      atlasJson: "atlas/atlas.json",
+      pages: ["atlas/spritesheet.png"],
+      mainPng: "textures/main.png",
       mainWebp: null,
     });
     expect(first.frames[0]).toMatchObject({
