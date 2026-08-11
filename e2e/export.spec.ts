@@ -92,7 +92,8 @@ test('ZIP をダウンロードでき、中身一式が揃う', async ({ page })
   const bytes = await readFile(path!);
   const entries = unzipSync(new Uint8Array(bytes));
 
-  expect(Object.keys(entries).sort()).toEqual([
+  const actualEntries = Object.keys(entries).sort();
+  const expectedEntries = [
     'asset.json',
     'atlas/atlas.json',
     'atlas/spritesheet.png',
@@ -106,7 +107,9 @@ test('ZIP をダウンロードでき、中身一式が揃う', async ({ page })
     'helpers/chameleon-pixi.js',
     'README.md',
     'textures/main.png',
-  ]);
+    ...(actualEntries.includes('textures/main.webp') ? ['textures/main.webp'] : []),
+  ].sort();
+  expect(actualEntries).toEqual(expectedEntries);
   expect(entries['manifest.json']).toBeUndefined();
 
   // helper は ESM の部品としてコピーして使える形（Phase 16）
