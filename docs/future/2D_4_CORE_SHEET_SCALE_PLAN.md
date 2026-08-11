@@ -3,11 +3,11 @@
 最終更新日: 2026-08-11  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 文書種別: docs-only 契約監査・人間判断 handoff
-状態: `accepted: G15-C1 A + G15-C2 A + G15-C3 A / implementing: 2D-4-CORE / implementation-handoff-complete`
+状態: `accepted: G15-C1 A + G15-C2 A + G15-C3 A / implemented: 2D-4-CORE / CI-passed / independently-verified / implementation-handoff-complete`
 上位文書: `docs/IMPLEMENTATION_PLAN.md`, `docs/future/2D_COMPLETION_ROADMAP.md`
 関連文書: `docs/future/2D_ASSET_DATA_CONTRACT.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/EXPORT_FORMATS.md`, `docs/future/EXPORT_QUALITY_DESIGN.md`
 
-> この文書はGroup 15の契約、採用記録、実装handoffを管理する正本である。2026-08-11に人間が `G15-C1 A + G15-C2 A + G15-C3 A` を明示採用し、G15-H1〜H3の実装handoffも固定した。契約とhandoffはcompleteで、現在は `2D-4-CORE` の製品実装を進めている。schema、version、保存、既存書き出し、Atlas拒否解除は変更しない。
+> この文書はGroup 15の契約、採用記録、実装handoffを管理する正本である。2026-08-11に人間が `G15-C1 A + G15-C2 A + G15-C3 A` を明示採用し、G15-H1〜H3の実装handoffも固定した。`2D-4-CORE` は実装・CI・独立確認を完了し、次の許可作業は `2D-4-SHEET` である。schema、version、保存、既存書き出し、Atlas拒否解除は変更しない。
 
 ## 0. 今回の目的
 
@@ -19,12 +19,13 @@ Group 15 `2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE`について、共通export core�
 
 | 項目 | 確認結果 |
 |---|---|
-| 基準main | `08e09cea7c48923da40e8302411905da6070ffd0`（PR #232 merge） |
+| 基準main | `e43fca92be77a01d95120e5e979cfa0bee714fdf`（PR #234 merge） |
 | PR #232 | Group 15の実装handoff文書を修正し、2D-4-CORE実装開始条件をmainへ同期。merge済み（merge commit `08e09cea7c48923da40e8302411905da6070ffd0`） |
 | Group 14 | completed、進捗16/27。CI Run #689と固定headの3方向read-only reviewを完了 |
-| open PR | 0件。今回の採用記録・実装用の重複PRなし |
-| Group 15契約 | `accepted: G15-C1 A + G15-C2 A + G15-C3 A`。G15-H1〜H3 Aの具体値と受入証拠はhandoff済み、現在は2D-4-COREを実装中 |
-| 製品実装 | 未開始。現行Atlas系の事前拒否を維持 |
+| CORE実装着手時のopen PR | 0件。今回の採用記録・実装用の重複PRなし |
+| PR #233 | `2D-4-CORE`を実装し、CI Run #707成功後にmainへmerge済み。merge commitは`4ae44f647d66c184c55febfbe8577e682be2877f` |
+| Group 15契約 | `accepted: G15-C1 A + G15-C2 A + G15-C3 A`。G15-H1〜H3 Aの具体値と受入証拠はhandoff済み、COREはCI-passed / independently-verified |
+| 製品実装 | `implemented: 2D-4-CORE`。現行Atlas系の事前拒否、既存ZIP、Atlas `0.1.0`を維持。次は`2D-4-SHEET` |
 
 ## 2. GitHub正本で確認した既存事実
 
@@ -71,7 +72,7 @@ Group 15 `2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE`について、共通export core�
 人間の明示判断: `G15-C1 A + G15-C2 A + G15-C3 A`  
 採用結果: 3つのA案を採用。B案とC案は採用しない。  
 採用範囲: canonical sourceとdistribution出力を分離し、既存Atlas / ZIPをlegacy/defaultとして保ち、fixed gridを既定にし、packedを明示profileへ分け、trimと1x / 2x / 3xを後続実装で扱う。  
-実装状態: `implementing: 2D-4-CORE / implementation-handoff-complete`
+実装状態: `implemented: 2D-4-CORE / CI-passed / independently-verified / implementation-handoff-complete`
 
 以下の各表は、採用したA案の内容と、比較対象として保持する不採用案を記録する。
 
@@ -103,7 +104,7 @@ Group 15 `2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE`について、共通export core�
 
 handoff日: `2026-08-11`  
 基準main SHA: `0adb67a4192d6684e5e4679c87b2a758cff40654`（PR #231 merge）  
-handoff状態: `complete / implementing: 2D-4-CORE`
+handoff状態: `complete / implemented: 2D-4-CORE / next: 2D-4-SHEET`
 
 G15-H1〜H3のA案を、次の固定値で実装担当へ渡す。これは新しい仕様候補ではなく、採用済みG15-C1〜C3を実装可能な粒度へ落としたhandoffである。
 
@@ -162,13 +163,13 @@ CI証拠の最低条件:
 
 ## 6. 実装開始Gate
 
-採用判断とhandoffは完了し、現在は `2D-4-CORE` を実装中である。次の検証条件を満たすまでSHEET / SCALEへ進まない。
+採用判断とhandoff、`2D-4-CORE`の実装・CI・独立確認を完了した。SHEET / SCALEは、COREの記録をmainへ同期した後、個別PRとして進める。
 
 1. 完了: G15-C1〜C3の人間判断が明示され、decision IDとして本正本へ記録されている。
 2. 完了: `asset.json`、`.casproj`、export ZIP、Atlas version、export-presets schema / migrationへの影響を、採用案の境界内で対象外として固定した。
 3. 完了: 既存Atlas / ZIPを維持し、現行の理由付き拒否を製品実装前に解除しない。
 4. 完了: 実装対象ファイル、対象外ファイル、unit / E2E / fixture、決定性の測定方法、CI証拠をG15-H1〜H3 handoffへ固定した。
-5. 実装中: `2D-4-CORE`のDraft PRへcode・tests・docsを集約し、CI成功後に独立検証する。
+5. 完了: `2D-4-CORE`のDraft PRへcode・tests・docsを集約し、CI Run #707成功後に独立read-only検証を完了した。
 
 ## 7. 次の実装handoffと分割
 
@@ -188,26 +189,28 @@ CI証拠の最低条件:
 
 ## 9. 次の許可された作業
 
-- `2D-4-CORE` Draft PRのCIを確認し、失敗時は同じbranchで最小修正する。
-- CI成功後に独立検証を行い、accepted範囲の実装証拠を確定する。
+- `2D-4-CORE`のCI Run #707とartifactを確認し、accepted範囲の実装証拠を確定する。
+- COREの固定headを独立read-only検証し、`BLOCKER 0 / MUST 0`を記録する。
 - 次のPRで `2D-4-SHEET`、その後に `2D-4-SCALE` とdistribution UIを進める。
 - `src/core/model/exportPreset.ts`、schema、version、migration、保存形式、既存Atlas / ZIP、現行拒否境界は、別のaccepted判断なしに変更しない。
 
 ## 10. 次回への引き継ぎ
 
 - 契約状態は `accepted: G15-C1 A + G15-C2 A + G15-C3 A` とする。
-- 実装状態は `implementing: 2D-4-CORE`、handoff状態は `complete`、検証状態はCI待ちである。
+- 実装状態は `implemented: 2D-4-CORE`、handoff状態は `complete`、検証状態は `CI-passed / independently-verified`である。次の実装は`2D-4-SHEET`とする。
 - G15-H1〜H3 Aの固定値、実装対象ファイル、対象外境界、受入ID、CI証拠に加え、CORE sliceの実装範囲を本書へ記録した。
 - iPhone SafariはGroup 15だけの追加停止Gateにせず、375×667のChromium E2EをGroup 15必須、物理iPhone Safariをリリース全体の端末Gateとして扱う。
 
 ## 11. 2D-4-CORE 実装記録
 
-実装基準はmain `08e09cea7c48923da40e8302411905da6070ffd0`（PR #232 merge）とし、専用branchで単一writerが実装を開始した。
+実装基準はmain `08e09cea7c48923da40e8302411905da6070ffd0`（PR #232 merge）とし、専用branchで単一writerが実装した。PR #233のmerge後の最新mainは`e43fca92be77a01d95120e5e979cfa0bee714fdf`である。
 
 - `src/core/export/atlas.ts`にdistribution manifestの型、canonical JSON、fixed-gridの共通manifest組み立てを追加した。
 - `src/core/export/exportAsset.ts`に`exportDistributionZip`を追加した。legacy `exportZip`は変更せず、distribution側だけに`manifest.json`とSHA-256 integrityを付与する。
 - `src/core/export/helpers.ts`の既存legacy helper APIを維持したまま、distribution manifestを読む導線を生成helperへ追加した。
 - export unitはlegacy manifest不在、manifest形式、canonical bytes、entry順、hash、preflightのBlob読込前拒否を確認する。CI成功時は`test-results/group15-core-evidence.json`をartifactとして保存し、欠落を失敗扱いにする。
 - legacy ZIPのE2Eは既存entry pathを完全一致で確認し、WebP対応時の`textures/main.webp`だけを任意entryとして許可し、`manifest.json`混入を拒否する。Playwright retryは0とする。
+- CI Run #707（workflow ID `31478935075`）は`classify-changes`、`build-and-test`、`e2e`の全jobがsuccess。CORE証拠artifactはID `9096417804`、digest `sha256:d6868ce878edbc03ad5c9a5986c08c1812691a6c0738df79275ada3529a5b1c7`、Playwright artifactはID `9096547560`、digest `sha256:dd88d6496a683190d4264d17a0649f4b7dd7f1bc383c7ef83b406e5b56248077`である。
+- 固定head `d6f28dab5bcbeb38a44ce50caddfe32732c69acc`を親担当がread-onlyで独立確認した。GitHub上のreview登録は0件だが、legacy出力・拒否境界・manifest分離・CI artifact・テスト範囲を確認し、判定は`BLOCKER 0 / MUST 0`とする。ローカル再現でもCORE対象unit 38/38、lint、format:check、buildが成功した。
 
-このsliceの検証待ちはDraft PRのCIである。packed、trim、padding / extrude、multi-page、scale 1x / 2x / 3x、distribution UI、375×667のdistribution product-path証拠は後続sliceの対象とし、今回の実装範囲へ取り込まない。
+このsliceの検証は完了した。packed、trim、padding / extrude、multi-page、scale 1x / 2x / 3x、distribution UI、375×667のdistribution product-path証拠は後続の`2D-4-SHEET` / `2D-4-SCALE` / UI sliceの対象とし、今回の実装範囲へ取り込まない。
