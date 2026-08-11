@@ -3,29 +3,29 @@
 最終更新日: 2026-08-12  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 文書種別: docs-only 契約監査・人間判断 handoff
-状態: `accepted: G15-C1 A + G15-C2 A + G15-C3 A / implemented: 2D-4-CORE + 2D-4-SHEET / merged / implementing: 2D-4-SCALE / CI-pending`
+状態: `accepted: G15-C1 A + G15-C2 A + G15-C3 A / implemented: 2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE / CI-passed / independently-verified / merged / next: 2D-4-PACKAGE + 2D-4-PREFLIGHT + 2D-4-GENERIC-WEB`
 上位文書: `docs/IMPLEMENTATION_PLAN.md`, `docs/future/2D_COMPLETION_ROADMAP.md`
 関連文書: `docs/future/2D_ASSET_DATA_CONTRACT.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/EXPORT_FORMATS.md`, `docs/future/EXPORT_QUALITY_DESIGN.md`
 
-> この文書はGroup 15の契約、採用記録、実装handoff、実装closeoutを管理する正本である。2026-08-11に人間が `G15-C1 A + G15-C2 A + G15-C3 A` を明示採用し、G15-H1〜H3の実装handoffも固定した。`2D-4-CORE`と`2D-4-SHEET`は実装・CI・独立確認・mainへのmergeを完了し、次の許可作業は採用済みG15-H3 Aに基づく `2D-4-SCALE` である。schema、version、保存、既存書き出し、Atlas拒否解除は変更しない。
+> この文書はGroup 15の契約、採用記録、実装handoff、実装closeoutを管理する正本である。2026-08-11に人間が `G15-C1 A + G15-C2 A + G15-C3 A` を明示採用し、G15-H1〜H3の実装handoffも固定した。`2D-4-CORE`、`2D-4-SHEET`、`2D-4-SCALE`は実装・CI・独立確認・mainへのmergeを完了し、次の許可作業は `2D-4-PACKAGE + 2D-4-PREFLIGHT + 2D-4-GENERIC-WEB` である。schema、version、保存、既存書き出し、Atlas拒否解除は変更しない。
 
 ## 0. 今回の目的
 
 Group 15 `2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE`について、共通export core、決定的な再出力、sheet / atlas、trim、padding、extrude、scale、既存出力との境界を、人間が採用できる粒度まで分解する。
 
-今回の記録は、CORE完了後のhandoffに従うSHEET実装PR #236とpost-merge closeoutを反映し、採用済みG15-H3 Aに基づくSCALE実装PRへ進むものである。既存legacy出力を保ったまま、新distributionのscaleだけを追加し、distribution UIは後続PRへ分ける。
+今回の記録は、SHEET実装PR #236後のSCALE実装PR #238とpost-merge closeoutを反映する。PR #238のfinal headは `c2dc87ee1506f0a68b283eb3accf09d78921011a`、merge commitは `a6f15d0b8bff90323d363827be62804959a0e7b0`。CI Run #724（workflow ID `31518786336`）は全job成功し、scale evidence artifact `9112190870`（digest `sha256:00b3fb7b2b266c8ff4eb306d64d1a88b9f0ebfc1733054ea8cff0e0d3573a2e4`）を取得した。親の固定head read-only確認でもBLOCKER / MUSTはなかった。既存legacy出力を保ったままSCALEを完了し、distribution UIは後続PRへ分ける。
 
 ## 1. GitHub確認済みの現在地
 
 | 項目 | 確認結果 |
 |---|---|
-| 基準main | `a8ff65d5a4005b813d93110dbc66be93822bfec5`（PR #237 merge） |
+| 基準main | `a6f15d0b8bff90323d363827be62804959a0e7b0`（PR #238 merge） |
 | PR #232 | Group 15の実装handoff文書を修正し、2D-4-CORE実装開始条件をmainへ同期。merge済み（merge commit `08e09cea7c48923da40e8302411905da6070ffd0`） |
 | Group 14 | completed、進捗16/27。CI Run #689と固定headの3方向read-only reviewを完了 |
-| SHEET closeout後のopen PR | 0件。PR #236 merge後に確認した。 |
+| SCALE実装PR #238 | final head `c2dc87ee1506f0a68b283eb3accf09d78921011a`、merge `a6f15d0b8bff90323d363827be62804959a0e7b0`。CI Run #724全job成功、SCALE artifact `9112190870`を記録し、merge後のopen PRは0件。 |
 | PR #233 | `2D-4-CORE`を実装し、CI Run #707成功後にmainへmerge済み。merge commitは`4ae44f647d66c184c55febfbe8577e682be2877f` |
-| Group 15契約 | `accepted: G15-C1 A + G15-C2 A + G15-C3 A`。G15-H1〜H3 Aを維持し、COREとSHEETはCI-passed / independently-verified / merged。SCALEを実装中。 |
-| 製品実装 | `implemented: 2D-4-CORE + 2D-4-SHEET / merged / implementing: 2D-4-SCALE / CI-pending`。既存Atlas `0.1.0`・legacy ZIP・保存形式を維持する。 |
+| Group 15契約 | `accepted: G15-C1 A + G15-C2 A + G15-C3 A`。G15-H1〜H3 Aを維持し、CORE、SHEET、SCALEはCI-passed / independently-verified / merged。 |
+| 製品実装 | `implemented: 2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE / CI-passed / independently-verified / merged / next: 2D-4-PACKAGE + 2D-4-PREFLIGHT + 2D-4-GENERIC-WEB`。既存Atlas `0.1.0`・legacy ZIP・保存形式を維持する。 |
 
 ## 2. GitHub正本で確認した既存事実
 
@@ -83,7 +83,7 @@ Group 15 `2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE`について、共通export core�
 人間の明示判断: `G15-C1 A + G15-C2 A + G15-C3 A`  
 採用結果: 3つのA案を採用。B案とC案は採用しない。  
 採用範囲: canonical sourceとdistribution出力を分離し、既存Atlas / ZIPをlegacy/defaultとして保ち、fixed gridを既定にし、packedを明示profileへ分け、trimと1x / 2x / 3xを個別のSHEET / SCALE実装で扱う。  
-実装状態: `implemented: 2D-4-CORE + 2D-4-SHEET / merged / implementing: 2D-4-SCALE / CI-pending`
+実装状態: `implemented: 2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE / CI-passed / independently-verified / merged / next: 2D-4-PACKAGE + 2D-4-PREFLIGHT + 2D-4-GENERIC-WEB`
 
 以下の各表は、採用したA案の内容と、比較対象として保持する不採用案を記録する。
 
@@ -115,7 +115,7 @@ Group 15 `2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE`について、共通export core�
 
 handoff日: `2026-08-11`  
 基準main SHA: `0adb67a4192d6684e5e4679c87b2a758cff40654`（PR #231 merge）  
-handoff状態: `complete / implemented: 2D-4-CORE + 2D-4-SHEET / CI-passed / independently-verified / merged / next: 2D-4-SCALE`
+handoff状態: `complete / implemented: 2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE / CI-passed / independently-verified / merged / next: 2D-4-PACKAGE + 2D-4-PREFLIGHT + 2D-4-GENERIC-WEB`
 
 G15-H1〜H3のA案を、次の固定値で実装担当へ渡す。これは新しい仕様候補ではなく、採用済みG15-C1〜C3を実装可能な粒度へ落としたhandoffである。
 
@@ -200,15 +200,15 @@ CI証拠の最低条件:
 
 ## 9. 次の許可された作業
 
-- `2D-4-SCALE`の単一writer Draft PRで、採用済みG15-H3 Aの実装証拠を作成中である。
-- SCALEの固定headに対してCIと独立read-only検証を行い、`BLOCKER 0 / MUST 0`を記録する。
-- SCALE完了後にdistribution UI、375×667 product-path E2E、engine読込検証を進める。
+- PR #238の単一writer Draft PRで、採用済みG15-H3 Aの実装証拠を作成し、mainへmergeした。
+- SCALEの固定headに対してCI Run #724と親の独立read-only検証を行い、`BLOCKER 0 / MUST 0`を記録した。
+- 次に`2D-4-PACKAGE + 2D-4-PREFLIGHT + 2D-4-GENERIC-WEB`を進め、distribution UI、375×667 product-path E2E、engine読込検証は後続Gateで扱う。
 - `src/core/model/exportPreset.ts`、schema、version、migration、保存形式、既存Atlas / ZIP、現行拒否境界は、別のaccepted判断なしに変更しない。
 
 ## 10. 次回への引き継ぎ
 
 - 契約状態は `accepted: G15-C1 A + G15-C2 A + G15-C3 A` とする。
-- 実装状態は `implemented: 2D-4-CORE + 2D-4-SHEET / merged / implementing: 2D-4-SCALE / CI-pending` とする。
+- 実装状態は `implemented: 2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE / CI-passed / independently-verified / merged / next: 2D-4-PACKAGE + 2D-4-PREFLIGHT + 2D-4-GENERIC-WEB` とする。
 - G15-H1〜H3 Aの固定値、実装対象ファイル、対象外境界、受入ID、CI証拠に加え、CORE sliceの実装範囲を本書へ記録した。
 - iPhone SafariはGroup 15だけの追加停止Gateにせず、375×667のChromium E2EをGroup 15必須、物理iPhone Safariをリリース全体の端末Gateとして扱う。
 
@@ -224,7 +224,7 @@ CI証拠の最低条件:
 - CI Run #707（workflow ID `31478935075`）は`classify-changes`、`build-and-test`、`e2e`の全jobがsuccess。CORE証拠artifactはID `9096417804`、digest `sha256:d6868ce878edbc03ad5c9a5986c08c1812691a6c0738df79275ada3529a5b1c7`、Playwright artifactはID `9096547560`、digest `sha256:dd88d6496a683190d4264d17a0649f4b7dd7f1bc383c7ef83b406e5b56248077`である。
 - 固定head `d6f28dab5bcbeb38a44ce50caddfe32732c69acc`を親担当がread-onlyで独立確認した。GitHub上のreview登録は0件だが、legacy出力・拒否境界・manifest分離・CI artifact・テスト範囲を確認し、判定は`BLOCKER 0 / MUST 0`とする。ローカル再現でもCORE対象unit 38/38、lint、format:check、buildが成功した。
 
-SHEET sliceの検証は完了した。PR #236の最終head `d3a178b5614a00f72f1bd0e706b95e28d4c5189b`、merge `4d55e898d78729c92fd4c9c55188edaa64eba8e5`、CI Run #716（Actions ID `31510296044`）は全job成功。SHEET artifact ID `9108792430`（digest `sha256:4115f8382b18f4d02f1fb8320ab50f5d271040ce1d1439f514b66615fac51513`）、CORE artifact ID `9108792006`（digest `sha256:ddc802084338a77e3377df350bfcd1e7e3c7fae6d10d07a3526efbff7b05e078`）、Playwright artifact ID `9108931876`（digest `sha256:1e81e587f82d0c26d519de558bd0114c263c046b250163e734d977f3432342fe`）を記録した。固定headの3方向read-only確認は`BLOCKER 0 / MUST 0`で、次の許可作業は`2D-4-SCALE`である。packed、trim、padding / extrude、multi-pageはSHEETで完了し、scale 1x / 2x / 3xの実装を現在の`2D-4-SCALE` Draft PRで進め、distribution UI、375×667のdistribution product-path証拠、engine読込、物理iPhone Safariは後続範囲とする。
+SHEET / SCALE sliceの検証は完了した。SHEETはPR #236、SCALEはPR #238でmainへmerge済みである。SCALEのfinal head `c2dc87ee1506f0a68b283eb3accf09d78921011a`、merge `a6f15d0b8bff90323d363827be62804959a0e7b0`、CI Run #724（workflow ID `31518786336`）は全3 job成功した。SCALE artifact `9112190870`（digest `sha256:00b3fb7b2b266c8ff4eb306d64d1a88b9f0ebfc1733054ea8cff0e0d3573a2e4`）を取得し、親の固定head read-only確認はBLOCKER 0 / MUST 0だった。次の許可作業は`2D-4-PACKAGE + 2D-4-PREFLIGHT + 2D-4-GENERIC-WEB`であり、distribution UI、375×667のdistribution product-path証拠、engine読込、物理iPhone Safariは後続範囲とする。
 
 
 ## 12. 2D-4-SHEET post-merge closeout
@@ -236,4 +236,4 @@ SHEET sliceの検証は完了した。PR #236の最終head `d3a178b5614a00f72f1b
 - artifact: SHEET `9108792430`（`sha256:4115f8382b18f4d02f1fb8320ab50f5d271040ce1d1439f514b66615fac51513`）、CORE `9108792006`（`sha256:ddc802084338a77e3377df350bfcd1e7e3c7fae6d10d07a3526efbff7b05e078`）、Playwright `9108931876`（`sha256:1e81e587f82d0c26d519de558bd0114c263c046b250163e734d977f3432342fe`）
 - 独立確認: 固定headに対する3方向read-only監査は`BLOCKER 0 / MUST 0`。GitHubレビュー登録は0件で、Opusレビュー済みとは扱わない。
 - 互換性: legacy `exportZip`、Atlas `0.1.0`、schema、version、migration、保存形式は維持。
-- 現在: `2D-4-SCALE`を単一writer作業として実装中。distribution UI、375×667 product-path E2E、engine読込、物理iPhone Safariは後続Gateへ残す。
+- 完了: `2D-4-SCALE`はPR #238、CI Run #724、SCALE artifact、親の独立read-only確認を経てmainへmerge済み。次は`2D-4-PACKAGE + 2D-4-PREFLIGHT + 2D-4-GENERIC-WEB`である。distribution UI、375×667 product-path E2E、engine読込、物理iPhone Safariは後続Gateへ残す。
