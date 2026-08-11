@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Asset } from '../model';
 import characterAsset from '../samples/asset.character.json';
-import { buildAtlas, computeSheetLayout } from './atlas';
+import { buildAtlas, buildDistributionManifest, canonicalJson, computeSheetLayout } from './atlas';
 
 const baseAsset = characterAsset as unknown as Asset;
 
@@ -58,7 +58,12 @@ describe('buildAtlas', () => {
     expect(atlas.texture).toBe('spritesheet.png');
     expect(atlas.cellSize).toEqual({ width: 512, height: 512 });
     expect(atlas.frames.map((frame) => frame.name)).toEqual(['idle_0', 'idle_1']);
-    expect(atlas.frames[1]).toMatchObject({ x: 512, y: 0, width: 512, height: 512 });
+    expect(atlas.frames[1]).toMatchObject({
+      x: 512,
+      y: 0,
+      width: 512,
+      height: 512,
+    });
     // Animation.frameIds が Frame.name へ解決される
     expect(atlas.animations).toEqual([
       { name: 'idle', fps: 8, loop: true, frames: ['idle_0', 'idle_1'] },
@@ -103,7 +108,12 @@ describe('buildAtlas', () => {
     const atlas = buildAtlas(noFrameAsset, layout);
     expect(atlas.frames).toEqual([{ name: 'default', x: 0, y: 0, width: 512, height: 512 }]);
     expect(atlas.animations).toEqual([
-      { name: 'idle', fps: 8, loop: true, frames: ['frame_idle_0', 'frame_idle_1'] },
+      {
+        name: 'idle',
+        fps: 8,
+        loop: true,
+        frames: ['frame_idle_0', 'frame_idle_1'],
+      },
     ]);
   });
 
@@ -188,5 +198,52 @@ describe('buildAtlas', () => {
     const layout = computeSheetLayout(['default'], 512, 512);
     const atlas = buildAtlas(characterWithEffect, layout);
     expect('effect' in atlas).toBe(false);
+  });
+});
+
+describe('distribution manifest core', () => {
+  it('legacy Atlasを変更せず、fixed-grid manifestを決定的に組み立てる', () => {
+    const atlas = buildAtlas(
+      baseAsset,
+      computeSheetLayout(
+        (baseAsset.frames ?? []).map((frame) => frame.id),
+        baseAsset.canvasSize.width,
+        baseAsset.canvasSize.height,
+      ),
+    );
+    const first = buildDistributionManifest(baseAsset, atlas, [
+      'README.md',
+      'atlas/atlas.json',
+      'textures/main.png',
+      'asset.json',
+    ]);
+    const second = buildDistributionManifest(baseAsset, atlas, [
+      'asset.json',
+      'textures/main.png',
+      'atlas/atlas.json',
+      'README.md',
+    ]);
+
+    expect(canonicalJson(first)).toBe(canonicalJson(second));
+    expect(first.format).toBe('chameleon-distribution');
+    expect(first.version).toBe('0.1.0');
+    expect(first.profile).toBe('fixed-grid');
+    expect(first.scale).toBe(1);
+    expect(first.files).toMatchObject({
+      manifest: 'manifest.json',
+      assetJson: 'asset.json',
+      atlasJson: 'atlas/atlas.json',
+      pages: ['atlas/spritesheet.png'],
+      mainPng: 'textures/main.png',
+      mainWebp: null,
+    });
+    expect(first.frames[0]).toMatchObject({
+      page: 0,
+      rect: { x: 0, y: 0, width: 512, height: 512 },
+      sourceSize: { width: 512, height: 512 },
+      contentRect: { x: 0, y: 0, width: 512, height: 512 },
+      contentOffset: { x: 0, y: 0 },
+      rotated: false,
+    });
   });
 });

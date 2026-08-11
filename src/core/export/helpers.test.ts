@@ -7,6 +7,7 @@ const asset = characterAsset as unknown as Asset;
 
 describe('buildCanvasHelpers', () => {
   const source = buildCanvasHelpers(asset);
+  expect(source).toContain('loadChameleonDistribution');
 
   it('export 文を含む', () => {
     expect(source).toMatch(/export function/);
@@ -35,6 +36,7 @@ describe('buildCanvasHelpers', () => {
 
 describe('buildPixiHelpers', () => {
   const source = buildPixiHelpers(asset);
+  expect(source).toContain('loadChameleonDistribution');
 
   it('export 文を含む', () => {
     expect(source).toMatch(/export function/);
@@ -61,6 +63,7 @@ describe('buildPixiHelpers', () => {
 
 describe('buildPhaserHelpers', () => {
   const source = buildPhaserHelpers(asset);
+  expect(source).toContain('loadChameleonDistribution');
 
   it('export 文を含む', () => {
     expect(source).toMatch(/export function/);

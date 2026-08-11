@@ -1,7 +1,15 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import { unzipSync } from 'fflate';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Asset } from '../model';
 import characterAsset from '../samples/asset.character.json';
-import { exportAssetJson, exportImage, exportSpriteSheet, exportZip } from './exportAsset';
+import {
+  exportAssetJson,
+  exportDistributionZip,
+  exportImage,
+  exportSpriteSheet,
+  exportZip,
+} from './exportAsset';
 
 const {
   loadBlobMock,
@@ -55,7 +63,9 @@ class TestCanvas {
     };
   }
   async convertToBlob(options?: { type?: string }) {
-    return new Blob([new Uint8Array([1])], { type: options?.type ?? 'image/png' });
+    return new Blob([new Uint8Array([1])], {
+      type: options?.type ?? 'image/png',
+    });
   }
 }
 
@@ -79,7 +89,10 @@ describe('exportAsset texture kind boundary', () => {
     if (!asset.textures.some((candidate) => candidate.id === texture.id)) {
       asset.textures.push(texture);
     }
-    asset.layers = asset.layers.map((layer) => ({ ...layer, textureId: texture.id }));
+    asset.layers = asset.layers.map((layer) => ({
+      ...layer,
+      textureId: texture.id,
+    }));
     return asset;
   }
 
@@ -172,6 +185,62 @@ describe('exportAsset texture kind boundary', () => {
     await expect(exportImage(asset, 'image/png')).rejects.toThrow(
       /frame-override-dangling-collider/,
     );
+    expect(loadBlobMock).not.toHaveBeenCalled();
+  });
+
+  it('distribution ZIPをlegacy ZIPと分離し、manifest hashとentry順を固定する', async () => {
+    const asset = assetReferencing('edit');
+    const firstBlob = await exportDistributionZip(asset);
+    const secondBlob = await exportDistributionZip(asset);
+    const legacyBlob = await exportZip(asset);
+    const firstEntries = unzipSync(new Uint8Array(await firstBlob.arrayBuffer()));
+    const secondEntries = unzipSync(new Uint8Array(await secondBlob.arrayBuffer()));
+    const legacyEntries = unzipSync(new Uint8Array(await legacyBlob.arrayBuffer()));
+
+    expect(firstEntries['manifest.json']).toBeInstanceOf(Uint8Array);
+    expect(legacyEntries['manifest.json']).toBeUndefined();
+    expect(Object.keys(firstEntries)).toEqual(Object.keys(secondEntries));
+    expect(firstEntries['manifest.json']).toEqual(secondEntries['manifest.json']);
+
+    const manifest = JSON.parse(new TextDecoder().decode(firstEntries['manifest.json']));
+    expect(manifest).toMatchObject({
+      format: 'chameleon-distribution',
+      version: '0.1.0',
+      profile: 'fixed-grid',
+      scale: 1,
+      files: {
+        manifest: 'manifest.json',
+        atlasJson: 'atlas/atlas.json',
+      },
+      integrity: { algorithm: 'SHA-256' },
+    });
+    expect(manifest.integrity.manifestHash).toMatch(/^[0-9a-f]{64}$/);
+
+    await mkdir('test-results', { recursive: true });
+    await writeFile(
+      'test-results/group15-core-evidence.json',
+      `${JSON.stringify(
+        {
+          workPackage: '2D-4-CORE',
+          manifestHash: manifest.integrity.manifestHash,
+          entryPaths: Object.keys(firstEntries),
+          legacyManifestAbsent: legacyEntries['manifest.json'] === undefined,
+          repeatedManifestEqual: firstEntries['manifest.json'].every(
+            (byte, index) => byte === secondEntries['manifest.json'][index],
+          ),
+        },
+        null,
+        2,
+      )}\n`,
+      'utf8',
+    );
+  });
+
+  it('distribution ZIPも既存の理由付き拒否をBlob読込前に維持する', async () => {
+    const asset = assetReferencing('edit');
+    asset.frames![0].durationMs = 180;
+
+    await expect(exportDistributionZip(asset)).rejects.toThrow(/個別表示時間/);
     expect(loadBlobMock).not.toHaveBeenCalled();
   });
 });
