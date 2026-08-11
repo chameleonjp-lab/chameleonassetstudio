@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 書き出し形式書
 
-最終更新日: 2026-08-11
+最終更新日: 2026-08-12
 対象バージョン: アプリ 0.1.0 / Asset 0.2.0 / atlas 0.1.0
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`
 
@@ -185,7 +185,7 @@ Rive / Spine との関係と、独自形式（`asset.json` / `.casproj`）が正
 
 ## 11. distribution profile（Group 15 / 2D-4-CORE + 2D-4-SHEET）
 
-`exportDistributionZip(asset, { profile: 'fixed-grid' | 'packed', padding })` は、既存の`exportZip(asset)`とは別のdistribution出力境界である。既定のlegacy ZIPには`manifest.json`や新しいpage画像を追加せず、既存の`chameleon-atlas` `0.1.0`、ファイルパス、helper API、Atlasの拒否境界を維持する。
+`exportDistributionZip(asset, { profile: 'fixed-grid' | 'packed', padding, scale })` は、既存の`exportZip(asset)`とは別のdistribution出力境界である。既定のlegacy ZIPには`manifest.json`や新しいpage画像を追加せず、既存の`chameleon-atlas` `0.1.0`、ファイルパス、helper API、Atlasの拒否境界を維持する。
 
 ### 11.1 CORE
 
@@ -194,7 +194,7 @@ COREで固定したdistribution manifestは次のとおりである。
 | フィールド | 内容 |
 | --- | --- |
 | `format` / `version` | `chameleon-distribution` / `0.1.0` |
-| `profile` / `scale` | `fixed-grid`または`packed` / `1` |
+| `profile` / `scale` | `fixed-grid`または`packed` / 選択された`1`・`2`・`3` |
 | `source` | `asset.json`をcanonical sourceとして参照 |
 | `files` | manifest、asset、Atlas、page、main画像、README、examples、helpers、engine guideのentry path |
 | `pages` | distribution sheetのpage path、幅、高さ、rotation（常に`false`） |
@@ -217,6 +217,18 @@ manifestはundefined fieldを除外し、object keyを辞書順に並べてhash�
 - manifestのframe順はcanonical source順を保ち、配置の並べ替えはpage上の位置だけへ適用する。既存のAtlas JSONとlegacy sheetは互換確認用に維持する。
 - distribution helperはmanifestの複数pageを読み込み、page番号とtrim情報を持つframe参照を返す。既存legacy helper APIは変更しない。
 
-### 11.3 後続範囲
+### 11.3 SCALE（Group 15 / 2D-4-SCALE）
 
-scaleの`1x / 2x / 3x`選択、distribution用UI、375×667のproduct-path E2E、engine読込検証、extrudeの採用は後続の`2D-4-SCALE` / UI / package sliceで扱う。`asset.json`と`.casproj`は引き続き等倍のcanonical dataであり、schema、version、migration、保存、既存legacy ZIP、Atlas `0.1.0`、現行の可変時間・event・Frame別collider上書き・polygonの理由付き拒否は変更しない。
+`exportDistributionZip(asset, { profile, padding, scale })` の `scale` は、`1`、`2`、`3`のいずれか1つを受け付け、未指定時は`1`とする。同時に複数倍率を出力しない。
+
+- `asset.json`と`.casproj`は等倍のcanonical sourceとして、そのまま同梱する。
+- distribution page、frame rect、source size、content rect、content offset、origin、anchor、collider、tile sizeはscale後のpixel値へ変換する。
+- scale後の値は最近傍整数へ丸め、同率は絶対値が大きい側へ丸める。寸法・長さ・半径は0未満にしない。
+- pageは出力pixelで`2048×2048`、最大4ページ、rotationなしとし、scale後のサイズで事前検査する。超過時はBlob読込、canvas合成、ZIP生成、downloadを開始せず理由付きで拒否する。
+- 拡大描画はnearest-neighbor（`imageSmoothingEnabled = false`）を既定とする。
+- distribution ZIPのファイル名は`{assetName}-distribution-{scale}x.zip`とする。ZIP内のlegacy-like pathはscaleごとに変えず、manifestの`scale`で識別する。
+- 既存`exportZip`、既存Atlas `0.1.0`、既存ZIP entry、schema、version、migration、保存形式は変更しない。
+
+### 11.4 後続範囲
+
+distribution用UI、375×667のproduct-path E2E、engine読込検証、物理iPhone Safariは後続Gateで扱う。`.asset.json` / `.casproj`へのscale保存や、Atlas `0.1.0`へのscale field追加は行わない。
