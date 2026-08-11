@@ -289,7 +289,9 @@ function assertDistributionSheetFixedGridPreflight(
       padding: options.padding,
     });
   } catch (error) {
-    throw new ExportError(error instanceof Error ? error.message : 'distribution sheetを配置できません');
+    throw new ExportError(
+      error instanceof Error ? error.message : 'distribution sheetを配置できません',
+    );
   }
 }
 
@@ -375,10 +377,14 @@ async function renderDistributionPages(
       padding: options.padding,
     });
   } catch (error) {
-    throw new ExportError(error instanceof Error ? error.message : 'distribution sheetを配置できません');
+    throw new ExportError(
+      error instanceof Error ? error.message : 'distribution sheetを配置できません',
+    );
   }
 
-  const canvases = layout.pages.map(() => createCanvas(DISTRIBUTION_PAGE_SIZE, DISTRIBUTION_PAGE_SIZE));
+  const canvases = layout.pages.map(() =>
+    createCanvas(DISTRIBUTION_PAGE_SIZE, DISTRIBUTION_PAGE_SIZE),
+  );
   const contexts = canvases.map(getContext2d);
   for (const frame of layout.frames) {
     const renderedFrame = rendered.find((candidate) => candidate.definition.id === frame.id);
@@ -630,16 +636,8 @@ export async function exportDistributionZip(
       bytes: new Uint8Array(await page.arrayBuffer()),
     })),
   );
-  const entryPaths = [
-    ...Object.keys(legacyEntries),
-    ...pageEntries.map((entry) => entry.path),
-  ];
-  const unsignedManifest = buildDistributionManifest(
-    asset,
-    atlas,
-    entryPaths,
-    rendered.layout,
-  );
+  const entryPaths = [...Object.keys(legacyEntries), ...pageEntries.map((entry) => entry.path)];
+  const unsignedManifest = buildDistributionManifest(asset, atlas, entryPaths, rendered.layout);
   const manifestHash = await sha256Hex(canonicalJson(unsignedManifest));
   const manifest: DistributionManifest = {
     ...unsignedManifest,
