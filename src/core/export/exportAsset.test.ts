@@ -6,6 +6,7 @@ import characterAsset from '../samples/asset.character.json';
 import {
   exportAssetJson,
   exportDistributionZip,
+  getDistributionZipFileName,
   exportImage,
   exportSpriteSheet,
   exportZip,
@@ -301,6 +302,82 @@ describe('exportAsset texture kind boundary', () => {
     );
   });
 
+  it('1x/2x/3xを個別に出力し、metadataとlegacy ZIPを維持する', async () => {
+    const asset = assetReferencing('edit');
+    const legacyBlob = await exportZip(asset);
+    const legacyEntries = unzipSync(new Uint8Array(await legacyBlob.arrayBuffer()));
+    const manifests = [];
+
+    for (const scale of [1, 2, 3] as const) {
+      const blob = await exportDistributionZip(asset, { scale });
+      const entries = unzipSync(new Uint8Array(await blob.arrayBuffer()));
+      const manifest = JSON.parse(new TextDecoder().decode(entries['manifest.json']));
+      manifests.push(manifest);
+
+      expect(manifest.scale).toBe(scale);
+      expect(
+        manifest.pages.every(
+          (page: { width: number; height: number }) => page.width === 2048 && page.height === 2048,
+        ),
+      ).toBe(true);
+      expect(manifest.frames[0]).toMatchObject({
+        sourceSize: { width: 512 * scale, height: 512 * scale },
+        rect: { width: 512 * scale, height: 512 * scale },
+      });
+      expect(entries['atlas/pages/page-000.png']).toBeInstanceOf(Uint8Array);
+      expect(entries['asset.json']).toEqual(legacyEntries['asset.json']);
+      expect(entries['textures/main.png']).toEqual(legacyEntries['textures/main.png']);
+      expect(entries['atlas/spritesheet.png']).toEqual(legacyEntries['atlas/spritesheet.png']);
+      expect(entries['atlas/atlas.json']).toEqual(legacyEntries['atlas/atlas.json']);
+      expect(entries['manifest.json']).not.toEqual(legacyEntries['asset.json']);
+    }
+
+    expect(manifests.map((manifest) => manifest.origin)).toEqual([
+      { x: 256, y: 448 },
+      { x: 512, y: 896 },
+      { x: 768, y: 1344 },
+    ]);
+    expect(getDistributionZipFileName(asset, 1)).toBe('tomato_player_full-distribution-1x.zip');
+    expect(getDistributionZipFileName(asset, 2)).toBe('tomato_player_full-distribution-2x.zip');
+
+    await mkdir('test-results', { recursive: true });
+    await writeFile(
+      'test-results/group15-scale-evidence.json',
+      JSON.stringify(
+        {
+          workPackage: '2D-4-SCALE',
+          scales: manifests.map((manifest) => ({
+            scale: manifest.scale,
+            manifestHash: manifest.integrity.manifestHash,
+            pageCount: manifest.pages.length,
+            frameSourceSize: manifest.frames[0].sourceSize,
+            origin: manifest.origin,
+          })),
+          legacyPreserved: true,
+          selectedScaleOnly: true,
+          filenameExamples: [
+            getDistributionZipFileName(asset, 1),
+            getDistributionZipFileName(asset, 2),
+            getDistributionZipFileName(asset, 3),
+          ],
+        },
+        null,
+        2,
+      ) + '\n',
+      'utf8',
+    );
+  });
+
+  it('不正scaleとscale後のpage外入力はBlob読込前に拒否する', async () => {
+    const asset = assetReferencing('edit');
+
+    await expect(exportDistributionZip(asset, { scale: 4 })).rejects.toThrow(/1、2、3/);
+    expect(loadBlobMock).not.toHaveBeenCalled();
+
+    asset.canvasSize = { width: 1024, height: 512 };
+    await expect(exportDistributionZip(asset, { scale: 3 })).rejects.toThrow(/2048/);
+    expect(loadBlobMock).not.toHaveBeenCalled();
+  });
   it('distribution page外の入力はBlob読込前に理由付きで拒否する', async () => {
     const asset = assetReferencing('edit');
     asset.canvasSize = { width: 2049, height: 512 };

@@ -83,6 +83,14 @@ jobs:
           path: test-results/group15-sheet-evidence.json
           if-no-files-found: error
           retention-days: 14
+      - name: Upload Group 15 scale evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: group15-scale-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/group15-scale-evidence.json
+          if-no-files-found: error
+          retention-days: 14
 
   e2e:
     needs: changes
