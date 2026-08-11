@@ -252,9 +252,7 @@ describe('exportAsset texture kind boundary', () => {
     const legacyBlob = await exportZip(asset);
     const packedEntries = unzipSync(new Uint8Array(await packedBlob.arrayBuffer()));
     const legacyEntries = unzipSync(new Uint8Array(await legacyBlob.arrayBuffer()));
-    const manifest = JSON.parse(
-      new TextDecoder().decode(packedEntries['manifest.json']),
-    );
+    const manifest = JSON.parse(new TextDecoder().decode(packedEntries['manifest.json']));
 
     expect(manifest.profile).toBe('packed');
     expect(manifest.pages).toEqual([
