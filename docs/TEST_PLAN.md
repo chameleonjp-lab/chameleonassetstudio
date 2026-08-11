@@ -120,11 +120,11 @@ acceptance fixtureは当初13 ID + runtime-invalid補強1 IDの計14 IDで、6�
 
 no-save oracleは空でないHistoryを使い、before / afterともUndo 2件・Redo 1件を保持したまま、IndexedDB全store、Editor state、`asset.json`、`.casproj`の完全一致を確認した。reload後は保存済みdataと出力を維持し、UI-only state、History、autosaveのsession stateだけが初期化された。Game Check中のdownloadは0件、Atlas ZIP生成bytesは0、Blob URLはactive 0でcreated / revokedが一致した。固定headの仕様・判断、実装・データ契約、テスト・CI・証拠の3方向read-only reviewを完了し、Group 14をcompleted、進捗16/27とする。
 
-このGateは実際のengine読込、distribution UI、物理Safariを検証した証拠ではない。History / autosaveの保存挙動は不変だが、検査用の読み取り専用snapshot観測APIは追加されている。schema、version、migration、IndexedDB配置、`.casproj`、export ZIP、dependency、polygon `unsupported`、現行Atlas拒否境界は変更していない。Group 15はG15-H1〜H3のhandoffと`2D-4-CORE`、`2D-4-SHEET`の製品実装・CI・独立確認を完了し、次は`2D-4-SCALE`である。distribution UI、engine読込、物理iPhone Safariの確認は後続範囲である。
+このGateは実際のengine読込、distribution UI、物理Safariを検証した証拠ではない。History / autosaveの保存挙動は不変だが、検査用の読み取り専用snapshot観測APIは追加されている。schema、version、migration、IndexedDB配置、`.casproj`、export ZIP、dependency、polygon `unsupported`、現行Atlas拒否境界は変更していない。Group 15はG15-H1〜H3のhandoffと`2D-4-CORE`、`2D-4-SHEET`、`2D-4-SCALE`の製品実装・CI・独立確認・mergeを完了し、進捗は17/27である。次は`2D-4-PACKAGE + 2D-4-PREFLIGHT + 2D-4-GENERIC-WEB`で、distribution UI、engine読込、物理iPhone Safariの確認は後続範囲である。
 
-### 3.6 Group 15 Common Export / Sheet / Scale（契約採用・CORE/SHEET完了・SCALE待ち）
+### 3.6 Group 15 Common Export / Sheet / Scale（契約採用・CORE/SHEET/SCALE完了）
 
-正本は`docs/future/2D_4_CORE_SHEET_SCALE_PLAN.md`。2026-08-11に`G15-C1 A + G15-C2 A + G15-C3 A`を採用し、CORE closeoutとSHEETの製品実装・CI・独立確認・mergeを完了した。次は採用済みG15-H3 Aに基づく`2D-4-SCALE`である。
+正本は`docs/future/2D_4_CORE_SHEET_SCALE_PLAN.md`。2026-08-11に`G15-C1 A + G15-C2 A + G15-C3 A`を採用し、PR #233（CORE）、PR #236（SHEET）、PR #238（SCALE）をmainへmergeした。PR #238のSCALE実装・CI・親の固定head read-only確認まで完了し、Group 15は17/27工程まで進んだ。次は`2D-4-PACKAGE + 2D-4-PREFLIGHT + 2D-4-GENERIC-WEB`である。
 
 実装handoffは`G15-H1〜H3 A`として完了した。実装PRは次の固定値を使う。
 
@@ -162,6 +162,15 @@ Group 15の必須端末確認はChromium 375×667とする。物理iPhone Safari
 ### 3.8 Group 15 2D-4-SHEET
 
 `2D-4-SHEET`では、fixed-grid / packedの純unit、trim rect、完全透明Frame、セル間padding、rotationなし、extrude=0、2048×2048・最大4ページ、manifest semantic、packed distribution ZIP、legacy ZIP不変を確認した。CI Run #716（Actions ID `31510296044`）は`classify-changes`、`build-and-test`、`e2e`の全jobが成功し、SHEET artifact ID `9108792430`（digest `sha256:4115f8382b18f4d02f1fb8320ab50f5d271040ce1d1439f514b66615fac51513`）、CORE artifact ID `9108792006`（digest `sha256:ddc802084338a77e3377df350bfcd1e7e3c7fae6d10d07a3526efbff7b05e078`）、Playwright artifact ID `9108931876`（digest `sha256:1e81e587f82d0c26d519de558bd0114c263c046b250163e734d977f3432342fe`）を取得した。最終head `d3a178b5614a00f72f1bd0e706b95e28d4c5189b`の固定head 3方向read-only確認は`BLOCKER 0 / MUST 0`で、ローカル対象unit 48/48、lint、format:check、buildも成功した。distribution UIと375×667 product-path E2E、物理iPhone Safariは後続Gateへ残す。
+
+
+### 3.9 Group 15 2D-4-SCALE（実装・CI・独立確認・merge完了）
+
+`2D-4-SCALE`では、採用済みG15-H3 Aに従い、distribution出力で`1` / `2` / `3`のいずれか1つを選ぶscale、最近傍整数への丸め、scale後のpage preflight、nearest-neighbor描画、manifest metadata、distribution ZIP名、既存legacy ZIP不変を確認した。scaleは`asset.json` / `.casproj`へ保存せず、Atlas `0.1.0`と保存形式も変更していない。
+
+PR #238のfinal headは`c2dc87ee1506f0a68b283eb3accf09d78921011a`、merge commitは`a6f15d0b8bff90323d363827be62804959a0e7b0`である。CI Run #724（workflow ID `31518786336`）は`classify-changes`、`build-and-test`、`e2e`の全jobが成功し、lint、format、build、unit、Chromium E2E、H3 Pages確認まで通過した。SCALE evidence artifact `9112190870`（digest `sha256:00b3fb7b2b266c8ff4eb306d64d1a88b9f0ebfc1733054ea8cff0e0d3573a2e4`）を取得し、親の固定head read-only確認は`BLOCKER 0 / MUST 0`だった。
+
+distribution UI、375×667 product-pathの追加証拠、engine読込、物理iPhone Safariは後続Gateで扱う。
 
 ## 4. テスト変更と失敗時の扱い
 

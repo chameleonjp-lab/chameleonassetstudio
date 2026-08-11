@@ -183,7 +183,7 @@ Rive / Spine との関係と、独自形式（`asset.json` / `.casproj`）が正
 
 ---
 
-## 11. distribution profile（Group 15 / 2D-4-CORE + 2D-4-SHEET）
+## 11. distribution profile（Group 15 / 2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE）
 
 `exportDistributionZip(asset, { profile: 'fixed-grid' | 'packed', padding, scale })` は、既存の`exportZip(asset)`とは別のdistribution出力境界である。既定のlegacy ZIPには`manifest.json`や新しいpage画像を追加せず、既存の`chameleon-atlas` `0.1.0`、ファイルパス、helper API、Atlasの拒否境界を維持する。
 
