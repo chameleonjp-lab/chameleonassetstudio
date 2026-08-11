@@ -77,11 +77,43 @@ export async function loadChameleonDistributionManifest(url) {
  * @param {string} url manifest.jsonへのURL
  * @returns {Promise<{ manifest: object, atlas: object, image: HTMLImageElement }>}
  */
+export function getDistributionFrameRect(manifest, frameName) {
+  const frame = manifest.frames.find((candidate) => candidate.name === frameName);
+  if (!frame) {
+    return undefined;
+  }
+  return {
+    page: frame.page,
+    ...frame.rect,
+    sourceSize: frame.sourceSize,
+    contentRect: frame.contentRect,
+    contentOffset: frame.contentOffset,
+  };
+}
+
+async function loadDistributionImage(url) {
+  const image = new Image();
+  image.src = url;
+  if (typeof image.decode === 'function') {
+    await image.decode();
+  } else {
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = reject;
+    });
+  }
+  return image;
+}
+
 export async function loadChameleonDistribution(url) {
   const manifest = await loadChameleonDistributionManifest(url);
-  const atlasUrl = new URL(manifest.files.atlasJson, new URL(url, window.location.href)).href;
-  const { atlas, image } = await loadChameleonAtlas(atlasUrl);
-  return { manifest, atlas, image };
+  const baseUrl = new URL(url, window.location.href);
+  const atlasUrl = new URL(manifest.files.atlasJson, baseUrl).href;
+  const atlas = await (await fetch(atlasUrl)).json();
+  const images = await Promise.all(
+    manifest.pages.map((page) => loadDistributionImage(new URL(page.path, baseUrl).href)),
+  );
+  return { manifest, atlas, images, image: images[0] };
 }
 
 /**
@@ -252,11 +284,31 @@ export async function loadChameleonDistributionManifest(PIXI, url) {
  * @param {string} url manifest.jsonへのURL
  * @returns {Promise<{ manifest: object, atlas: object, baseTexture: object }>}
  */
+export function getDistributionFrameRect(manifest, frameName) {
+  const frame = manifest.frames.find((candidate) => candidate.name === frameName);
+  if (!frame) {
+    return undefined;
+  }
+  return {
+    page: frame.page,
+    ...frame.rect,
+    sourceSize: frame.sourceSize,
+    contentRect: frame.contentRect,
+    contentOffset: frame.contentOffset,
+  };
+}
+
 export async function loadChameleonDistribution(PIXI, url) {
   const manifest = await loadChameleonDistributionManifest(PIXI, url);
-  const atlasUrl = new URL(manifest.files.atlasJson, new URL(url, window.location.href)).href;
-  const { atlas, baseTexture } = await loadChameleonPixi(PIXI, atlasUrl);
-  return { manifest, atlas, baseTexture };
+  const baseUrl = new URL(url, window.location.href);
+  const atlasUrl = new URL(manifest.files.atlasJson, baseUrl).href;
+  const atlas = await (await fetch(atlasUrl)).json();
+  const baseTextures = await Promise.all(
+    manifest.pages.map((page) =>
+      PIXI.Assets.load(new URL(page.path, baseUrl).href),
+    ),
+  );
+  return { manifest, atlas, baseTextures, baseTexture: baseTextures[0] };
 }
 
 /**
@@ -403,12 +455,31 @@ export async function loadChameleonDistributionManifest(url) {
  * @param {string} key
  * @param {string} url manifest.jsonへのURL
  */
+export function getDistributionFrameRect(manifest, frameName) {
+  const frame = manifest.frames.find((candidate) => candidate.name === frameName);
+  if (!frame) {
+    return undefined;
+  }
+  return {
+    page: frame.page,
+    ...frame.rect,
+    sourceSize: frame.sourceSize,
+    contentRect: frame.contentRect,
+    contentOffset: frame.contentOffset,
+  };
+}
+
 export async function loadChameleonDistribution(scene, key, url) {
   const manifest = await loadChameleonDistributionManifest(url);
   const baseUrl = new URL(url, window.location.href);
   scene.load.json(key + '-manifest', baseUrl.href);
   scene.load.json(key + '-atlas', new URL(manifest.files.atlasJson, baseUrl).href);
-  scene.load.image(key + '-sheet', new URL(manifest.files.pages[0], baseUrl).href);
+  manifest.pages.forEach((page, index) => {
+    scene.load.image(
+      key + '-page-' + index,
+      new URL(page.path, baseUrl).href,
+    );
+  });
   return manifest;
 }
 
