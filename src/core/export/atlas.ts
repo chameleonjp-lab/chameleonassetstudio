@@ -64,6 +64,8 @@ export const DISTRIBUTION_PACKED_PROFILE = 'packed' as const;
 export type DistributionProfile = typeof DISTRIBUTION_PROFILE | typeof DISTRIBUTION_PACKED_PROFILE;
 export const DISTRIBUTION_PAGE_SIZE = 2048 as const;
 export const DISTRIBUTION_MAX_PAGES = 4 as const;
+export const DISTRIBUTION_SCALES = [1, 2, 3] as const;
+export type DistributionScale = (typeof DISTRIBUTION_SCALES)[number];
 
 export interface DistributionFileReferences {
   manifest: string;
@@ -129,6 +131,97 @@ export interface DistributionManifest {
   tile?: Asset['tile'];
   effect?: Asset['effect'];
   integrity?: { algorithm: 'SHA-256'; manifestHash: string };
+}
+
+export function normalizeDistributionScale(value?: number): DistributionScale {
+  if (value === undefined) {
+    return 1;
+  }
+  if (!DISTRIBUTION_SCALES.includes(value as DistributionScale)) {
+    throw new Error('distribution scaleは1、2、3のいずれかで指定してください');
+  }
+  return value as DistributionScale;
+}
+
+/**
+ * scale後の値を最近傍整数へ丸める。同率は絶対値が大きい側へ丸める。
+ * 座標は負値を許容し、長さ・寸法側では呼び出し元が0未満を許可しない。
+ */
+export function roundDistributionPixel(value: number, scale: DistributionScale): number {
+  if (!Number.isFinite(value)) {
+    throw new Error('distribution pixel値は有限数で指定してください');
+  }
+  const scaled = value * scale;
+  if (scaled === 0) {
+    return 0;
+  }
+  return Math.sign(scaled) * Math.floor(Math.abs(scaled) + 0.5);
+}
+
+export function scaleDistributionPoint(
+  point: { x: number; y: number },
+  scale: DistributionScale,
+): { x: number; y: number } {
+  return {
+    x: roundDistributionPixel(point.x, scale),
+    y: roundDistributionPixel(point.y, scale),
+  };
+}
+
+export function scaleDistributionSize(
+  size: { width: number; height: number },
+  scale: DistributionScale,
+): { width: number; height: number } {
+  return {
+    width: Math.max(0, roundDistributionPixel(size.width, scale)),
+    height: Math.max(0, roundDistributionPixel(size.height, scale)),
+  };
+}
+
+export function scaleDistributionRect(
+  rect: { x: number; y: number; width: number; height: number },
+  scale: DistributionScale,
+): { x: number; y: number; width: number; height: number } {
+  const size = scaleDistributionSize(rect, scale);
+  return {
+    x: roundDistributionPixel(rect.x, scale),
+    y: roundDistributionPixel(rect.y, scale),
+    ...size,
+  };
+}
+
+function scaleDistributionColliders(
+  colliders: Asset['colliders'],
+  scale: DistributionScale,
+): Asset['colliders'] {
+  return colliders.map((collider) =>
+    collider.shape === 'rect'
+      ? {
+          ...collider,
+          rect: scaleDistributionRect(collider.rect, scale),
+        }
+      : {
+          ...collider,
+          circle: {
+            ...collider.circle,
+            ...scaleDistributionPoint(collider.circle, scale),
+            radius: Math.max(0, roundDistributionPixel(collider.circle.radius, scale)),
+          },
+        },
+  );
+}
+
+function scaleDistributionTile(
+  tile: Asset['tile'],
+  scale: DistributionScale,
+): Asset['tile'] {
+  if (!tile) {
+    return undefined;
+  }
+  return {
+    ...tile,
+    tileSize: scaleDistributionSize(tile.tileSize, scale),
+  };
 }
 
 export function normalizeDistributionPadding(value?: number): number {
@@ -396,9 +489,11 @@ export function buildDistributionManifest(
   atlas: AtlasJson,
   entryPaths: readonly string[],
   sheetLayout?: DistributionSheetLayout,
+  scale: DistributionScale = 1,
 ): Omit<DistributionManifest, 'integrity'> {
+  const normalizedScale = normalizeDistributionScale(scale);
   const paths = [...new Set(entryPaths)].sort();
-  const bounds = atlasBounds(atlas);
+  const bounds = scaleDistributionSize(atlasBounds(atlas), normalizedScale);
   const fallbackPagePath = `atlas/${atlas.texture}`;
   const fallbackPagePaths = paths.filter(
     (path) => path.startsWith('atlas/') && path.endsWith('.png'),
@@ -421,9 +516,15 @@ export function buildDistributionManifest(
     : atlas.frames.map((frame) => ({
         name: frame.name,
         page: 0,
-        rect: { x: frame.x, y: frame.y, width: frame.width, height: frame.height },
-        sourceSize: { width: asset.canvasSize.width, height: asset.canvasSize.height },
-        contentRect: { x: 0, y: 0, width: frame.width, height: frame.height },
+        rect: scaleDistributionRect(
+          { x: frame.x, y: frame.y, width: frame.width, height: frame.height },
+          normalizedScale,
+        ),
+        sourceSize: scaleDistributionSize(asset.canvasSize, normalizedScale),
+        contentRect: scaleDistributionRect(
+          { x: 0, y: 0, width: frame.width, height: frame.height },
+          normalizedScale,
+        ),
         contentOffset: { x: 0, y: 0 },
         rotated: false as const,
       }));
@@ -432,7 +533,7 @@ export function buildDistributionManifest(
     format: DISTRIBUTION_FORMAT,
     version: CURRENT_DISTRIBUTION_VERSION,
     profile: sheetLayout?.profile ?? DISTRIBUTION_PROFILE,
-    scale: 1,
+    scale: normalizedScale,
     source: { assetJson: 'asset.json', canonical: true },
     files: {
       manifest: 'manifest.json',
@@ -461,10 +562,14 @@ export function buildDistributionManifest(
         })),
     frames: manifestFrames,
     animations: atlas.animations,
-    origin: atlas.origin,
-    anchors: atlas.anchors,
-    colliders: atlas.colliders,
-    ...(atlas.tile ? { tile: atlas.tile } : {}),
+    origin: scaleDistributionPoint(atlas.origin, normalizedScale),
+    anchors: atlas.anchors.map((anchor) => ({
+      ...anchor,
+      x: roundDistributionPixel(anchor.x, normalizedScale),
+      y: roundDistributionPixel(anchor.y, normalizedScale),
+    })),
+    colliders: scaleDistributionColliders(atlas.colliders, normalizedScale),
+    ...(atlas.tile ? { tile: scaleDistributionTile(atlas.tile, normalizedScale) } : {}),
     ...(atlas.effect ? { effect: atlas.effect } : {}),
   };
 }
