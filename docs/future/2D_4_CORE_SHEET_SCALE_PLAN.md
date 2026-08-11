@@ -3,29 +3,29 @@
 最終更新日: 2026-08-12  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 文書種別: docs-only 契約監査・人間判断 handoff
-状態: `accepted: G15-C1 A + G15-C2 A + G15-C3 A / implemented: 2D-4-CORE / CI-passed / independently-verified / implementing: 2D-4-SHEET`
+状態: `accepted: G15-C1 A + G15-C2 A + G15-C3 A / implemented: 2D-4-CORE + 2D-4-SHEET / CI-passed / independently-verified / merged / next: 2D-4-SCALE`
 上位文書: `docs/IMPLEMENTATION_PLAN.md`, `docs/future/2D_COMPLETION_ROADMAP.md`
 関連文書: `docs/future/2D_ASSET_DATA_CONTRACT.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/EXPORT_FORMATS.md`, `docs/future/EXPORT_QUALITY_DESIGN.md`
 
-> この文書はGroup 15の契約、採用記録、実装handoffを管理する正本である。2026-08-11に人間が `G15-C1 A + G15-C2 A + G15-C3 A` を明示採用し、G15-H1〜H3の実装handoffも固定した。`2D-4-CORE` は実装・CI・独立確認を完了し、次の許可作業は `2D-4-SHEET` である。schema、version、保存、既存書き出し、Atlas拒否解除は変更しない。
+> この文書はGroup 15の契約、採用記録、実装handoff、実装closeoutを管理する正本である。2026-08-11に人間が `G15-C1 A + G15-C2 A + G15-C3 A` を明示採用し、G15-H1〜H3の実装handoffも固定した。`2D-4-CORE`と`2D-4-SHEET`は実装・CI・独立確認・mainへのmergeを完了し、次の許可作業は採用済みG15-H3 Aに基づく `2D-4-SCALE` である。schema、version、保存、既存書き出し、Atlas拒否解除は変更しない。
 
 ## 0. 今回の目的
 
 Group 15 `2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE`について、共通export core、決定的な再出力、sheet / atlas、trim、padding、extrude、scale、既存出力との境界を、人間が採用できる粒度まで分解する。
 
-今回の変更は、CORE完了後のhandoffに従い、既存legacy出力を保ったまま新distributionのfixed-grid / packed / trim / padding / multi-pageを実装する `2D-4-SHEET` の実装PRである。SCALEとdistribution UIは後続PRへ分ける。
+今回の記録は、CORE完了後のhandoffに従うSHEET実装PR #236とpost-merge closeoutを反映するものである。既存legacy出力を保ったまま新distributionのfixed-grid / packed / trim / padding / multi-pageを実装し、SCALEとdistribution UIは後続PRへ分ける。
 
 ## 1. GitHub確認済みの現在地
 
 | 項目 | 確認結果 |
 |---|---|
-| 基準main | `4715a73aa1e7cc91bea1444fbbe30e5cad20bbe1`（PR #235 merge） |
+| 基準main | `4d55e898d78729c92fd4c9c55188edaa64eba8e5`（PR #236 merge） |
 | PR #232 | Group 15の実装handoff文書を修正し、2D-4-CORE実装開始条件をmainへ同期。merge済み（merge commit `08e09cea7c48923da40e8302411905da6070ffd0`） |
 | Group 14 | completed、進捗16/27。CI Run #689と固定headの3方向read-only reviewを完了 |
-| SHEET着手時のopen PR | 0件。CORE closeout PR #235のmerge後に確認した。 |
+| SHEET closeout後のopen PR | 0件。PR #236 merge後に確認した。 |
 | PR #233 | `2D-4-CORE`を実装し、CI Run #707成功後にmainへmerge済み。merge commitは`4ae44f647d66c184c55febfbe8577e682be2877f` |
-| Group 15契約 | `accepted: G15-C1 A + G15-C2 A + G15-C3 A`。G15-H1〜H3 Aを維持し、COREはCI-passed / independently-verified、SHEETを実装中。 |
-| 製品実装 | `implemented: 2D-4-CORE / CI-passed / independently-verified`。次の単一writer作業は`2D-4-SHEET`で、既存Atlas `0.1.0`・legacy ZIP・保存形式を維持する。 |
+| Group 15契約 | `accepted: G15-C1 A + G15-C2 A + G15-C3 A`。G15-H1〜H3 Aを維持し、COREとSHEETはCI-passed / independently-verified / merged。次はSCALE。 |
+| 製品実装 | `implemented: 2D-4-CORE + 2D-4-SHEET / CI-passed / independently-verified / merged`。次の単一writer作業は`2D-4-SCALE`で、既存Atlas `0.1.0`・legacy ZIP・保存形式を維持する。 |
 
 ## 2. GitHub正本で確認した既存事実
 
@@ -66,16 +66,16 @@ Group 15 `2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE`について、共通export core�
 - Unity、Godot、RPG Maker MZの直接生成、外部parser、dependency追加。
 - 3D、WebGPU、SaaS、外部アカウント。
 
-### 3.8 Group 15 2D-4-SHEET（実装中）
+### 3.8 Group 15 2D-4-SHEET（実装・CI・独立確認・merge完了）
 
-`2D-4-SHEET`は、SHEET用の純関数レイアウトと新distribution ZIPのページ画像生成を実装する。対象は次のとおりである。
+`2D-4-SHEET`では、SHEET用の純関数レイアウトと新distribution ZIPのページ画像生成を実装した。fixed-grid / packed / trim / padding / multi-page、rotationなし、extrude=0、2048×2048・最大4ページ、複数page helper、legacy ZIP不変を受入条件とした。distribution UI、scale、物理iPhone Safariは後続Gateへ残す。
 
 - `fixed-grid`と明示profileの`packed`を追加し、packedは高さ降順、幅降順、canonical frame順でshelf配置する。
 - 不透明画素のtrim、完全透明Frameの保持、source size / content rect / content offset、セル間padding、rotationなし、extrude=0、2048×2048・最大4ページを固定する。
 - `exportZip`、Atlas `0.1.0`、`asset.json`、`.casproj`、schema、version、migration、保存処理は変更しない。
 - distribution helperは複数pageとmanifest frame参照を扱い、legacy helper APIは維持する。
 
-必須証拠は、fixed-grid / packedの純unit、5 frame fixture、透明Frame、page上限、manifest semantic、packed distribution ZIP、legacy ZIPの不変、sheet artifactである。distribution UI、scale、物理iPhone Safariは後続Gateへ残す。
+必須証拠は、fixed-grid / packedの純unit、5 frame fixture、透明Frame、page上限、manifest semantic、packed distribution ZIP、legacy ZIPの不変、sheet artifactであり、PR #236とCI Run #716で確認した。
 
 ## 4. 採用記録（Gate B）
 
@@ -115,7 +115,7 @@ Group 15 `2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE`について、共通export core�
 
 handoff日: `2026-08-11`  
 基準main SHA: `0adb67a4192d6684e5e4679c87b2a758cff40654`（PR #231 merge）  
-handoff状態: `complete / implemented: 2D-4-CORE / next: 2D-4-SHEET`
+handoff状態: `complete / implemented: 2D-4-CORE + 2D-4-SHEET / CI-passed / independently-verified / merged / next: 2D-4-SCALE`
 
 G15-H1〜H3のA案を、次の固定値で実装担当へ渡す。これは新しい仕様候補ではなく、採用済みG15-C1〜C3を実装可能な粒度へ落としたhandoffである。
 
@@ -200,15 +200,15 @@ CI証拠の最低条件:
 
 ## 9. 次の許可された作業
 
-- `2D-4-SHEET`のDraft PRでCIとartifactを確認し、accepted範囲の実装証拠を確定する。
-- SHEETの固定headを独立read-only検証し、`BLOCKER 0 / MUST 0`を記録する。
-- SHEET完了後に `2D-4-SCALE` とdistribution UIを進める。
+- `2D-4-SCALE`のDraft PRでCIとartifactを確認し、採用済みG15-H3 Aの実装証拠を確定する。
+- SCALEの固定headを独立read-only検証し、`BLOCKER 0 / MUST 0`を記録する。
+- SCALE完了後にdistribution UI、375×667 product-path E2E、engine読込検証を進める。
 - `src/core/model/exportPreset.ts`、schema、version、migration、保存形式、既存Atlas / ZIP、現行拒否境界は、別のaccepted判断なしに変更しない。
 
 ## 10. 次回への引き継ぎ
 
 - 契約状態は `accepted: G15-C1 A + G15-C2 A + G15-C3 A` とする。
-- 実装状態は `implemented: 2D-4-CORE / CI-passed / independently-verified`、現在の実装は`2D-4-SHEET`である。SHEET完了後に`2D-4-SCALE`へ進む。
+- 実装状態は `implemented: 2D-4-CORE + 2D-4-SHEET / CI-passed / independently-verified / merged`、次の実装は`2D-4-SCALE`である。
 - G15-H1〜H3 Aの固定値、実装対象ファイル、対象外境界、受入ID、CI証拠に加え、CORE sliceの実装範囲を本書へ記録した。
 - iPhone SafariはGroup 15だけの追加停止Gateにせず、375×667のChromium E2EをGroup 15必須、物理iPhone Safariをリリース全体の端末Gateとして扱う。
 
@@ -224,4 +224,16 @@ CI証拠の最低条件:
 - CI Run #707（workflow ID `31478935075`）は`classify-changes`、`build-and-test`、`e2e`の全jobがsuccess。CORE証拠artifactはID `9096417804`、digest `sha256:d6868ce878edbc03ad5c9a5986c08c1812691a6c0738df79275ada3529a5b1c7`、Playwright artifactはID `9096547560`、digest `sha256:dd88d6496a683190d4264d17a0649f4b7dd7f1bc383c7ef83b406e5b56248077`である。
 - 固定head `d6f28dab5bcbeb38a44ce50caddfe32732c69acc`を親担当がread-onlyで独立確認した。GitHub上のreview登録は0件だが、legacy出力・拒否境界・manifest分離・CI artifact・テスト範囲を確認し、判定は`BLOCKER 0 / MUST 0`とする。ローカル再現でもCORE対象unit 38/38、lint、format:check、buildが成功した。
 
-このsliceの検証は完了した。packed、trim、padding / extrude、multi-page、scale 1x / 2x / 3x、distribution UI、375×667のdistribution product-path証拠は後続の`2D-4-SHEET` / `2D-4-SCALE` / UI sliceの対象とし、今回の実装範囲へ取り込まない。
+SHEET sliceの検証は完了した。PR #236の最終head `d3a178b5614a00f72f1bd0e706b95e28d4c5189b`、merge `4d55e898d78729c92fd4c9c55188edaa64eba8e5`、CI Run #716（Actions ID `31510296044`）は全job成功。SHEET artifact ID `9108792430`（digest `sha256:4115f8382b18f4d02f1fb8320ab50f5d271040ce1d1439f514b66615fac51513`）、CORE artifact ID `9108792006`（digest `sha256:ddc802084338a77e3377df350bfcd1e7e3c7fae6d10d07a3526efbff7b05e078`）、Playwright artifact ID `9108931876`（digest `sha256:1e81e587f82d0c26d519de558bd0114c263c046b250163e734d977f3432342fe`）を記録した。固定headの3方向read-only確認は`BLOCKER 0 / MUST 0`で、次の許可作業は`2D-4-SCALE`である。packed、trim、padding / extrude、multi-pageはSHEETで完了し、scale 1x / 2x / 3x、distribution UI、375×667のdistribution product-path証拠、engine読込、物理iPhone Safariは後続範囲である。
+
+
+## 12. 2D-4-SHEET post-merge closeout
+
+- 対象PR: #236（`feat: add Group 15 distribution sheet layouts`）
+- 最終head: `d3a178b5614a00f72f1bd0e706b95e28d4c5189b`
+- merge commit / 現在のmain: `4d55e898d78729c92fd4c9c55188edaa64eba8e5`
+- CI: Run #716（Actions ID `31510296044`）、`classify-changes` / `build-and-test` / `e2e` 全成功
+- artifact: SHEET `9108792430`（`sha256:4115f8382b18f4d02f1fb8320ab50f5d271040ce1d1439f514b66615fac51513`）、CORE `9108792006`（`sha256:ddc802084338a77e3377df350bfcd1e7e3c7fae6d10d07a3526efbff7b05e078`）、Playwright `9108931876`（`sha256:1e81e587f82d0c26d519de558bd0114c263c046b250163e734d977f3432342fe`）
+- 独立確認: 固定headに対する3方向read-only監査は`BLOCKER 0 / MUST 0`。GitHubレビュー登録は0件で、Opusレビュー済みとは扱わない。
+- 互換性: legacy `exportZip`、Atlas `0.1.0`、schema、version、migration、保存形式は維持。
+- 後続: `2D-4-SCALE`を次の単一writer作業とし、distribution UI、375×667 product-path E2E、engine読込、物理iPhone Safariは後続Gateへ残す。
