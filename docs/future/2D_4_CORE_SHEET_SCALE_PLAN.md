@@ -1,9 +1,9 @@
 # Chameleon Asset Studio Group 15 契約監査
 
-最終更新日: 2026-08-10  
+最終更新日: 2026-08-11  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 文書種別: docs-only 契約監査・人間判断 handoff
-状態: `contract-audit-in-progress / product-not-started / unaccepted`
+状態: `human-decision-pending / product-not-started / unaccepted`
 上位文書: `docs/IMPLEMENTATION_PLAN.md`, `docs/future/2D_COMPLETION_ROADMAP.md`
 関連文書: `docs/future/2D_ASSET_DATA_CONTRACT.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/EXPORT_FORMATS.md`, `docs/future/EXPORT_QUALITY_DESIGN.md`
 
@@ -15,15 +15,15 @@ Group 15 `2D-4-CORE + 2D-4-SHEET + 2D-4-SCALE`について、共通export core�
 
 今回の作業は契約監査だけであり、実装を開始するための承認記録ではない。
 
-## 1. 監査開始時点
+## 1. GitHub確認済みの現在地
 
 | 項目 | 確認結果 |
 |---|---|
-| 基準main | `589a4f8dff3154121a940f84eeb9a183076ec885`（PR #228 merge） |
-| PR #228 | Group 14完了同期。merge済み |
+| 基準main | `32d50e07cd83332cc9740b074876d0fd2da2d679`（PR #229 merge） |
+| PR #229 | Group 15契約監査をdocs-onlyでmainへ反映。merge済み（merge commit `32d50e07cd83332cc9740b074876d0fd2da2d679`） |
 | Group 14 | completed、進捗16/27。CI Run #689と固定headの3方向read-only reviewを完了 |
-| open PR | 0件。Group 15の重複branch / PRなし |
-| Group 15契約 | 未採用。`contract-audit-unblocked / product-not-started / unaccepted`から監査開始 |
+| open PR | 0件。契約採用・実装用の重複branch / PRなし |
+| Group 15契約 | 未採用。監査文書はPR #229でmainへ反映済み。G15-C1〜C3と受入条件は人間判断待ち（`human-decision-pending / product-not-started / unaccepted`） |
 | 製品実装 | 未開始。現行Atlas系の事前拒否を維持 |
 
 ## 2. GitHub正本で確認した既存事実
