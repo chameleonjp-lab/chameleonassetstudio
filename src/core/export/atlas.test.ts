@@ -190,7 +190,15 @@ describe('computeDistributionSheetLayout', () => {
       height: 2048,
     });
     expect(manifest.frames).toEqual(
-      layout.frames.map(({ id: _id, ...frame }) => frame),
+      layout.frames.map((frame) => ({
+      name: frame.name,
+      page: frame.page,
+      rect: frame.rect,
+      sourceSize: frame.sourceSize,
+      contentRect: frame.contentRect,
+      contentOffset: frame.contentOffset,
+      rotated: frame.rotated,
+    })),
     );
     expect(canonicalJson(manifest)).toContain('contentOffset');
   });
