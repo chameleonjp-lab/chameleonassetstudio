@@ -14,9 +14,14 @@ import {
   buildAtlas,
   buildDistributionManifest,
   canonicalJson,
+  computeDistributionSheetLayout,
   computeSheetLayout,
+  DISTRIBUTION_MAX_PAGES,
+  DISTRIBUTION_PAGE_SIZE,
   type AtlasJson,
   type DistributionManifest,
+  type DistributionSheetFrameInput,
+  type DistributionSheetLayout,
 } from './atlas';
 import { buildGodotGuide, buildUnityGuide } from './engineGuides';
 import { buildCanvasExample, buildPhaserExample, buildPixiExample } from './examples';
@@ -230,6 +235,204 @@ export async function exportSpriteSheet(asset: Asset): Promise<{ sheet: Blob; at
   }
 }
 
+interface DistributionFrameDefinition {
+  id: string;
+  name: string;
+  sourceSize: { width: number; height: number };
+}
+
+function distributionFrameDefinitions(asset: Asset): DistributionFrameDefinition[] {
+  const frames = asset.frames ?? [];
+  return frames.length > 0
+    ? frames.map((frame) => ({
+        id: frame.id,
+        name: frame.name,
+        sourceSize: { ...asset.canvasSize },
+      }))
+    : [
+        {
+          id: 'default',
+          name: 'default',
+          sourceSize: { ...asset.canvasSize },
+        },
+      ];
+}
+
+function assertDistributionSheetSourceFitsPage(asset: Asset): void {
+  if (
+    asset.canvasSize.width > DISTRIBUTION_PAGE_SIZE ||
+    asset.canvasSize.height > DISTRIBUTION_PAGE_SIZE
+  ) {
+    throw new ExportError(
+      `1フレームがdistribution pageの上限 ${DISTRIBUTION_PAGE_SIZE}×${DISTRIBUTION_PAGE_SIZE} に収まりません`,
+    );
+  }
+}
+
+function assertDistributionSheetFixedGridPreflight(
+  asset: Asset,
+  options: DistributionExportOptions,
+): void {
+  const inputs: DistributionSheetFrameInput[] = distributionFrameDefinitions(asset).map(
+    (frame) => ({
+      ...frame,
+      contentRect: {
+        x: 0,
+        y: 0,
+        width: frame.sourceSize.width,
+        height: frame.sourceSize.height,
+      },
+    }),
+  );
+  try {
+    computeDistributionSheetLayout(inputs, {
+      profile: options.profile ?? 'fixed-grid',
+      padding: options.padding,
+    });
+  } catch (error) {
+    throw new ExportError(error instanceof Error ? error.message : 'distribution sheetを配置できません');
+  }
+}
+
+function contentRectFromCanvas(
+  canvas: OffscreenCanvas | HTMLCanvasElement,
+  sourceSize: { width: number; height: number },
+): { x: number; y: number; width: number; height: number } {
+  const context = getContext2d(canvas);
+  if (typeof context.getImageData !== 'function') {
+    throw new ExportError('この環境ではtrimの画素検査に対応していません。');
+  }
+  const { data } = context.getImageData(0, 0, sourceSize.width, sourceSize.height);
+  let minX = sourceSize.width;
+  let minY = sourceSize.height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < sourceSize.height; y += 1) {
+    for (let x = 0; x < sourceSize.width; x += 1) {
+      if (data[(y * sourceSize.width + x) * 4 + 3] === 0) {
+        continue;
+      }
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+  if (maxX < 0 || maxY < 0) {
+    return { x: 0, y: 0, width: 0, height: 0 };
+  }
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX + 1,
+    height: maxY - minY + 1,
+  };
+}
+
+interface DistributionRenderedFrame {
+  definition: DistributionFrameDefinition;
+  canvas: OffscreenCanvas | HTMLCanvasElement;
+  contentRect: { x: number; y: number; width: number; height: number };
+}
+
+async function renderDistributionPages(
+  asset: Asset,
+  bitmaps: Map<string, DecodedImageSource>,
+  options: DistributionExportOptions,
+): Promise<{ layout: DistributionSheetLayout; pages: Blob[] }> {
+  const definitions = distributionFrameDefinitions(asset);
+  const rendered: DistributionRenderedFrame[] = [];
+  for (const definition of definitions) {
+    const frameCanvas = await compositeAssetToCanvas(
+      asset,
+      bitmaps,
+      definition.id === 'default' ? undefined : definition.id,
+    );
+    rendered.push({
+      definition,
+      canvas: frameCanvas,
+      contentRect:
+        options.profile === 'packed'
+          ? contentRectFromCanvas(frameCanvas, definition.sourceSize)
+          : {
+              x: 0,
+              y: 0,
+              width: definition.sourceSize.width,
+              height: definition.sourceSize.height,
+            },
+    });
+  }
+
+  const inputs: DistributionSheetFrameInput[] = rendered.map((frame) => ({
+    id: frame.definition.id,
+    name: frame.definition.name,
+    sourceSize: frame.definition.sourceSize,
+    contentRect: frame.contentRect,
+  }));
+  let layout: DistributionSheetLayout;
+  try {
+    layout = computeDistributionSheetLayout(inputs, {
+      profile: options.profile ?? 'fixed-grid',
+      padding: options.padding,
+    });
+  } catch (error) {
+    throw new ExportError(error instanceof Error ? error.message : 'distribution sheetを配置できません');
+  }
+
+  const canvases = layout.pages.map(() => createCanvas(DISTRIBUTION_PAGE_SIZE, DISTRIBUTION_PAGE_SIZE));
+  const contexts = canvases.map(getContext2d);
+  for (const frame of layout.frames) {
+    const renderedFrame = rendered.find((candidate) => candidate.definition.id === frame.id);
+    if (!renderedFrame) {
+      throw new ExportError(`distribution frameの描画元が見つかりません: ${frame.id}`);
+    }
+    const context = contexts[frame.page];
+    if (!context) {
+      throw new ExportError(`distribution pageの描画先が見つかりません: ${frame.page}`);
+    }
+    const source = renderedFrame.canvas;
+    const rect = frame.contentRect;
+    if (options.profile === 'packed') {
+      if (rect.width === 0 || rect.height === 0) {
+        continue;
+      }
+      context.drawImage(
+        source,
+        rect.x,
+        rect.y,
+        rect.width,
+        rect.height,
+        frame.rect.x,
+        frame.rect.y,
+        frame.rect.width,
+        frame.rect.height,
+      );
+    } else {
+      context.drawImage(
+        source,
+        0,
+        0,
+        renderedFrame.definition.sourceSize.width,
+        renderedFrame.definition.sourceSize.height,
+        frame.rect.x,
+        frame.rect.y,
+        frame.rect.width,
+        frame.rect.height,
+      );
+    }
+  }
+
+  const pages: Blob[] = [];
+  for (const canvas of canvases) {
+    const page = await encodeCanvas(canvas, 'image/png');
+    if (!page) {
+      throw new ExportError('distribution Sprite Sheetの書き出しに失敗しました。');
+    }
+    pages.push(page);
+  }
+  return { layout, pages };
+}
+
 /**
  * ZIP に同梱する README.md の内容を作る（純関数）。
  * アセット名、内容説明、座標系、原点・アンカー・当たり判定の説明を含める。
@@ -370,7 +573,8 @@ export async function exportZip(asset: Asset): Promise<Blob> {
 }
 
 export interface DistributionExportOptions {
-  profile?: 'fixed-grid';
+  profile?: 'fixed-grid' | 'packed';
+  padding?: number;
 }
 
 async function sha256Hex(text: string): Promise<string> {
@@ -390,8 +594,17 @@ export async function exportDistributionZip(
   asset: Asset,
   options: DistributionExportOptions = {},
 ): Promise<Blob> {
-  if (options.profile && options.profile !== 'fixed-grid') {
-    throw new ExportError(`未対応のdistribution profileです: ${options.profile}`);
+  const profile = options.profile ?? 'fixed-grid';
+  if (profile !== 'fixed-grid' && profile !== 'packed') {
+    throw new ExportError(`未対応のdistribution profileです: ${profile}`);
+  }
+
+  assertValidAsset(asset);
+  assertFixedFpsAnimationExportSafe(asset);
+  assertColliderOverrideExportSafe(asset);
+  assertDistributionSheetSourceFitsPage(asset);
+  if (profile === 'fixed-grid') {
+    assertDistributionSheetFixedGridPreflight(asset, options);
   }
 
   const legacyZip = await exportZip(asset);
@@ -401,8 +614,33 @@ export async function exportDistributionZip(
     throw new ExportError('legacy ZIPにAtlas JSONがありません。');
   }
   const atlas = JSON.parse(new TextDecoder().decode(atlasBytes)) as AtlasJson;
-  const entryPaths = Object.keys(legacyEntries);
-  const unsignedManifest = buildDistributionManifest(asset, atlas, entryPaths);
+
+  const bitmaps = await loadAssetBitmaps(asset);
+  let rendered: { layout: DistributionSheetLayout; pages: Blob[] };
+  try {
+    rendered = await renderDistributionPages(asset, bitmaps, options);
+  } finally {
+    for (const decoded of bitmaps.values()) {
+      decoded.close();
+    }
+  }
+
+  const pageEntries = await Promise.all(
+    rendered.pages.map(async (page, index) => ({
+      path: rendered.layout.pages[index].path,
+      bytes: new Uint8Array(await page.arrayBuffer()),
+    })),
+  );
+  const entryPaths = [
+    ...Object.keys(legacyEntries),
+    ...pageEntries.map((entry) => entry.path),
+  ];
+  const unsignedManifest = buildDistributionManifest(
+    asset,
+    atlas,
+    entryPaths,
+    rendered.layout,
+  );
   const manifestHash = await sha256Hex(canonicalJson(unsignedManifest));
   const manifest: DistributionManifest = {
     ...unsignedManifest,
@@ -410,7 +648,11 @@ export async function exportDistributionZip(
   };
   const entries: Record<string, Uint8Array> = { ...legacyEntries };
   entries['README.md'] = strToU8(buildExportReadme(asset, { distribution: true }));
-  entries['manifest.json'] = strToU8(`${canonicalJson(manifest)}\n`);
+  for (const page of pageEntries) {
+    entries[page.path] = page.bytes;
+  }
+  entries['manifest.json'] = strToU8(`${canonicalJson(manifest)}
+`);
   const orderedEntries = Object.fromEntries(
     Object.entries(entries).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0)),
   );
