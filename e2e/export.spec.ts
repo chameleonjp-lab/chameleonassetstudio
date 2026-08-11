@@ -92,23 +92,22 @@ test('ZIP をダウンロードでき、中身一式が揃う', async ({ page })
   const bytes = await readFile(path!);
   const entries = unzipSync(new Uint8Array(bytes));
 
-  expect(Object.keys(entries)).toEqual(
-    expect.arrayContaining([
-      'asset.json',
-      'textures/main.png',
-      'atlas/spritesheet.png',
-      'atlas/atlas.json',
-      'examples/example-canvas.html',
-      'examples/example-pixi.html',
-      'examples/example-phaser.html',
-      'helpers/chameleon-helpers.js',
-      'helpers/chameleon-pixi.js',
-      'helpers/chameleon-phaser.js',
-      'engines/README-godot.md',
-      'engines/README-unity.md',
-      'README.md',
-    ]),
-  );
+  expect(Object.keys(entries).sort()).toEqual([
+    'asset.json',
+    'atlas/atlas.json',
+    'atlas/spritesheet.png',
+    'engines/README-godot.md',
+    'engines/README-unity.md',
+    'examples/example-canvas.html',
+    'examples/example-phaser.html',
+    'examples/example-pixi.html',
+    'helpers/chameleon-helpers.js',
+    'helpers/chameleon-phaser.js',
+    'helpers/chameleon-pixi.js',
+    'README.md',
+    'textures/main.png',
+  ]);
+  expect(entries['manifest.json']).toBeUndefined();
 
   // helper は ESM の部品としてコピーして使える形（Phase 16）
   const canvasHelpers = Buffer.from(entries['helpers/chameleon-helpers.js']).toString('utf-8');
