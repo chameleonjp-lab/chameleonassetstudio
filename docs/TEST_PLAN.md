@@ -120,11 +120,19 @@ acceptance fixtureは当初13 ID + runtime-invalid補強1 IDの計14 IDで、6�
 
 no-save oracleは空でないHistoryを使い、before / afterともUndo 2件・Redo 1件を保持したまま、IndexedDB全store、Editor state、`asset.json`、`.casproj`の完全一致を確認した。reload後は保存済みdataと出力を維持し、UI-only state、History、autosaveのsession stateだけが初期化された。Game Check中のdownloadは0件、Atlas ZIP生成bytesは0、Blob URLはactive 0でcreated / revokedが一致した。固定headの仕様・判断、実装・データ契約、テスト・CI・証拠の3方向read-only reviewを完了し、Group 14をcompleted、進捗16/27とする。
 
-このGateは実際のAtlas生成、engine読込、物理Safariを検証した証拠ではない。History / autosaveの保存挙動は不変だが、検査用の読み取り専用snapshot観測APIは追加されている。schema、version、migration、IndexedDB配置、`.casproj`、export ZIP、dependency、polygon `unsupported`、現行Atlas拒否境界は変更していない。次のGroup 15は契約監査だけを開始可能とし、製品実装は契約・受入条件の人間採用前まで開始しない。
+このGateは実際のAtlas生成、engine読込、物理Safariを検証した証拠ではない。History / autosaveの保存挙動は不変だが、検査用の読み取り専用snapshot観測APIは追加されている。schema、version、migration、IndexedDB配置、`.casproj`、export ZIP、dependency、polygon `unsupported`、現行Atlas拒否境界は変更していない。Group 15はG15-H1〜H3のhandoffまで完了したが、製品実装と実際のAtlas生成・engine読込・物理Safariの確認はまだ開始していない。
 
-### 3.6 Group 15 Common Export / Sheet / Scale（契約採用・実装前）
+### 3.6 Group 15 Common Export / Sheet / Scale（契約採用・handoff完了・実装前）
 
 正本は`docs/future/2D_4_CORE_SHEET_SCALE_PLAN.md`。2026-08-11に`G15-C1 A + G15-C2 A + G15-C3 A`を採用した。これは契約採用の記録であり、製品コード・テストコード・schema・既存Atlas / ZIPをこのdocs-only変更で実装するものではない。
+
+実装handoffは`G15-H1〜H3 A`として完了した。実装PRは次の固定値を使う。
+
+- H1: 新distribution profileのパッケージ直下に`manifest.json`（`chameleon-distribution` / `0.1.0`）。legacy/default ZIPとAtlas `0.1.0`には追加しない。
+- H2: packedは明示profile、rotationなし、height降順 → width降順 → canonical frame順の安定shelf配置。pageは`2048×2048`、最大4ページ、`atlas/pages/page-000.png`から3桁連番。paddingはセル間のみ、extrudeは0。
+- H3: `1` / `2` / `3`から1つだけ出力し、ZIP名は`{assetName}-distribution-{scale}x.zip`。scale後の符号付き座標は最近傍・同率は絶対値が大きい側へ丸め、`asset.json` / `.casproj`は等倍のまま。
+
+変更対象は`src/core/export/atlas.ts`、`src/core/export/exportAsset.ts`、`src/core/export/helpers.ts`、対応するexport/fixture unit、`e2e/export.spec.ts`、CI artifact検査、`docs/EXPORT_FORMATS.md`とする。`src/core/model/exportPreset.ts`、JSON Schema、version、migration、保存形式、既存Atlas / ZIPは対象外である。
 
 実装PRでは次の受入IDを必須にする。
 
