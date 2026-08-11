@@ -2,7 +2,7 @@
  * アセットの書き出し（Phase 10、要件 11.9）。
  * Canvas 2D 合成、IndexedDB からの画像読み込み、Blob URL ダウンロードを使うためブラウザ専用。
  */
-import { strToU8, zip, type Zippable } from 'fflate';
+import { strToU8, unzipSync, zip, type Zippable } from 'fflate';
 import { decodeImageSource, type DecodedImageSource } from '../images/decodeImageSource';
 import { blobKeyFor } from '../images/importImage';
 import { applyFrameToAsset, type Asset } from '../model';
@@ -10,7 +10,14 @@ import { validateAssetForPersistence } from '../schema/validate';
 import { loadBlob } from '../storage';
 import { assertFixedFpsAnimationExportSafe } from './animationLoss';
 import { assertColliderOverrideExportSafe } from './colliderOverrideLoss';
-import { buildAtlas, computeSheetLayout, type AtlasJson } from './atlas';
+import {
+  buildAtlas,
+  buildDistributionManifest,
+  canonicalJson,
+  computeSheetLayout,
+  type AtlasJson,
+  type DistributionManifest,
+} from './atlas';
 import { buildGodotGuide, buildUnityGuide } from './engineGuides';
 import { buildCanvasExample, buildPhaserExample, buildPixiExample } from './examples';
 import { buildCanvasHelpers, buildPhaserHelpers, buildPixiHelpers } from './helpers';
@@ -225,7 +232,10 @@ export async function exportSpriteSheet(asset: Asset): Promise<{ sheet: Blob; at
  * ZIP に同梱する README.md の内容を作る（純関数）。
  * アセット名、内容説明、座標系、原点・アンカー・当たり判定の説明を含める。
  */
-export function buildExportReadme(asset: Asset): string {
+export function buildExportReadme(
+  asset: Asset,
+  options: { distribution?: boolean } = {},
+): string {
   const lines: string[] = [
     `# ${asset.displayName}`,
     '',
@@ -234,6 +244,9 @@ export function buildExportReadme(asset: Asset): string {
     '## 同梱ファイル',
     '',
     '- `asset.json` … アセットのメタデータ（原点・アンカー・当たり判定・アニメーションを含む）',
+    ...(options.distribution
+      ? ['- `manifest.json` … distribution出力のprofile、frame、座標、参照ファイル、検査hash']
+      : []),
     '- `textures/main.png` … 現在の表示状態を合成した画像',
     '- `textures/main.webp` … 同上の WebP 版（書き出し環境が対応している場合のみ同梱）',
     '- `atlas/spritesheet.png` … フレームを並べた Sprite Sheet',
@@ -354,6 +367,56 @@ export async function exportZip(asset: Asset): Promise<Blob> {
   }
 
   const zipped = await zipAsync(entries);
+  return new Blob([zipped.buffer as ArrayBuffer], { type: 'application/zip' });
+}
+
+
+export interface DistributionExportOptions {
+  profile?: 'fixed-grid';
+}
+
+async function sha256Hex(text: string): Promise<string> {
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) {
+    throw new ExportError('この環境ではdistribution manifestのSHA-256検査に対応していません。');
+  }
+  const digest = await subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * legacy/default ZIPを変更せず、manifest.jsonを追加したdistribution ZIPを作る。
+ * fixed-gridの共通coreだけを担当し、packed / trim / scaleは後続sliceで扱う。
+ */
+export async function exportDistributionZip(
+  asset: Asset,
+  options: DistributionExportOptions = {},
+): Promise<Blob> {
+  if (options.profile && options.profile !== 'fixed-grid') {
+    throw new ExportError(`未対応のdistribution profileです: ${options.profile}`);
+  }
+
+  const legacyZip = await exportZip(asset);
+  const legacyEntries = unzipSync(new Uint8Array(await legacyZip.arrayBuffer()));
+  const atlasBytes = legacyEntries['atlas/atlas.json'];
+  if (!atlasBytes) {
+    throw new ExportError('legacy ZIPにAtlas JSONがありません。');
+  }
+  const atlas = JSON.parse(new TextDecoder().decode(atlasBytes)) as AtlasJson;
+  const entryPaths = Object.keys(legacyEntries);
+  const unsignedManifest = buildDistributionManifest(asset, atlas, entryPaths);
+  const manifestHash = await sha256Hex(canonicalJson(unsignedManifest));
+  const manifest: DistributionManifest = {
+    ...unsignedManifest,
+    integrity: { algorithm: 'SHA-256', manifestHash },
+  };
+  const entries: Record<string, Uint8Array> = { ...legacyEntries };
+  entries['README.md'] = strToU8(buildExportReadme(asset, { distribution: true }));
+  entries['manifest.json'] = strToU8(`${canonicalJson(manifest)}\n`);
+  const orderedEntries = Object.fromEntries(
+    Object.entries(entries).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0)),
+  );
+  const zipped = await zipAsync(orderedEntries);
   return new Blob([zipped.buffer as ArrayBuffer], { type: 'application/zip' });
 }
 
