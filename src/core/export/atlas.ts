@@ -388,8 +388,8 @@ function atlasBounds(atlas: AtlasJson): { width: number; height: number } {
 }
 
 /**
- * legacy Atlasからdistribution manifestの共通部分を組み立てる。
- * fixed-gridのみを担当し、packed / trim / scaleは後続sliceで拡張する。
+ * legacy AtlasとSHEET layoutからdistribution manifestの共通部分を組み立てる。
+ * layout指定時はfixed-grid / packed / trim情報を反映し、layout未指定時はCORE互換のfallbackを使う。
  */
 export function buildDistributionManifest(
   asset: Asset,
