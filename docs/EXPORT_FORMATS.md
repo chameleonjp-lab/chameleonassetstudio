@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 書き出し形式書
 
-最終更新日: 2026-08-03
+最終更新日: 2026-08-11
 対象バージョン: アプリ 0.1.0 / Asset 0.2.0 / atlas 0.1.0
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`
 
@@ -180,3 +180,26 @@ Slice BはPR #218でmainへ反映済みである。Slice CはAtlas `0.1.0`、ZIP
 生成は `src/core/export/engineGuides.ts`（純関数）が行う。Godot のシーン / Unity のプレハブは自動生成しない（誤解される表現をしない）。各ガイドには、使うファイル一覧、座標系、原点 / pivot の換算式（Godot: `offset = Vector2(cellSize.width/2 - origin.x, cellSize.height/2 - origin.y)`、Unity: `pivot = (origin.x / width, 1 - origin.y / height)` と v 軸反転の注意）、アニメーション・当たり判定・アンカーの対応先を記載する。import helper script は将来課題（設計メモは `docs/ENGINE_INTEGRATION.md`）。
 
 Rive / Spine との関係と、独自形式（`asset.json` / `.casproj`）が正本であることは `docs/ENGINE_INTEGRATION.md` に定義する。
+
+---
+
+## 11. distribution profile（Group 15 / 2D-4-CORE）
+
+`exportDistributionZip(asset, { profile: 'fixed-grid' })` は、既存の`exportZip(asset)`とは別のdistribution出力境界である。既定のlegacy ZIPには`manifest.json`を追加せず、既存の`chameleon-atlas` `0.1.0`、ファイルパス、helper API、Atlasの拒否境界も変更しない。
+
+現在のCORE sliceで生成するdistribution manifestは次を固定する。
+
+| フィールド | 内容 |
+| --- | --- |
+| `format` / `version` | `chameleon-distribution` / `0.1.0` |
+| `profile` / `scale` | `fixed-grid` / `1` |
+| `source` | `asset.json`をcanonical sourceとして参照 |
+| `files` | manifest、asset、Atlas、page、main画像、README、examples、helpers、engine guideのentry path |
+| `pages` | 現行のfixed-grid sheetを`atlas/spritesheet.png`として参照。rotationは`false` |
+| `frames` | page、rect、source size、content rect、content offset、rotationを記録 |
+| metadata | `animations`、`origin`、`anchors`、`colliders`、tile / effect（存在時） |
+| `integrity` | unsigned manifestのcanonical JSONに対するSHA-256 hex digest |
+
+manifestはundefined fieldを除外し、object keyを辞書順に並べたcanonical JSONで計算する。ZIP entryもpath順に並べ、同一Asset・同一条件のmanifest bytes、entry path、hashを再出力比較できる。PNGの全環境byte一致までは要求しない。
+
+このCORE sliceのdistributionはfixed-grid・rotationなし・single page・scale 1だけを扱う。packed、trim、padding / extrude、multi-page、scale 1x / 2x / 3xの選択、distribution用UI、375×667のproduct-path E2Eは、後続の`2D-4-SHEET` / `2D-4-SCALE` / UI sliceで追加する。asset.jsonと`.casproj`は引き続き等倍のcanonical dataであり、現行の可変時間・event・Frame別collider上書き・polygonの理由付き拒否も維持する。
