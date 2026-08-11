@@ -77,7 +77,6 @@ describe('ADR-0004: buildAtlas の frames 絶対座標・cellSize・origin / anc
   });
 });
 
-
 describe('Group 15 SHEET fixtures', () => {
   it('5フレームのtrim rectをpackedへ安定配置し、完全透明Frameを保持する', () => {
     const layout = computeDistributionSheetLayout(
@@ -99,8 +98,6 @@ describe('Group 15 SHEET fixtures', () => {
       contentRect: { width: 0, height: 0 },
       rect: { width: 1, height: 1 },
     });
-    expect(layout.pages.every((page) => page.width === 2048 && page.height === 2048)).toBe(
-      true,
-    );
+    expect(layout.pages.every((page) => page.width === 2048 && page.height === 2048)).toBe(true);
   });
 });
