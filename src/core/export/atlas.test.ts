@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Asset } from '../model';
 import characterAsset from '../samples/asset.character.json';
-import { buildAtlas, buildDistributionManifest, canonicalJson, computeSheetLayout } from './atlas';
+import {
+  buildAtlas,
+  buildDistributionManifest,
+  canonicalJson,
+  computeDistributionSheetLayout,
+  computeSheetLayout,
+} from './atlas';
 
 const baseAsset = characterAsset as unknown as Asset;
 
@@ -40,6 +46,153 @@ describe('computeSheetLayout', () => {
     ]);
     expect(layout.width).toBe(30);
     expect(layout.height).toBe(20);
+  });
+});
+
+describe('computeDistributionSheetLayout', () => {
+  const input = (id: string, width: number, height: number, contentRect = {
+    x: 0,
+    y: 0,
+    width,
+    height,
+  }) => ({
+    id,
+    name: id,
+    sourceSize: { width, height },
+    contentRect,
+  });
+
+  it('fixed-gridはpaddingをセル間だけに加え、行優先の座標を保持する', () => {
+    const layout = computeDistributionSheetLayout(
+      [
+        input('a', 64, 32),
+        input('b', 64, 32),
+        input('c', 64, 32),
+        input('d', 64, 32),
+        input('e', 64, 32),
+      ],
+      { profile: 'fixed-grid', padding: 2 },
+    );
+
+    expect(layout.profile).toBe('fixed-grid');
+    expect(layout.padding).toBe(2);
+    expect(layout.pages).toEqual([
+      expect.objectContaining({
+        path: 'atlas/pages/page-000.png',
+        width: 2048,
+        height: 2048,
+      }),
+    ]);
+    expect(layout.frames.map(({ id, page, rect }) => ({ id, page, rect }))).toEqual([
+      { id: 'a', page: 0, rect: { x: 0, y: 0, width: 64, height: 32 } },
+      { id: 'b', page: 0, rect: { x: 66, y: 0, width: 64, height: 32 } },
+      { id: 'c', page: 0, rect: { x: 132, y: 0, width: 64, height: 32 } },
+      { id: 'd', page: 0, rect: { x: 0, y: 34, width: 64, height: 32 } },
+      { id: 'e', page: 0, rect: { x: 66, y: 34, width: 64, height: 32 } },
+    ]);
+  });
+
+  it('packedは高さ・幅・元のフレーム順で安定配置し、trim情報を保持する', () => {
+    const layout = computeDistributionSheetLayout(
+      [
+        input('a', 64, 64, { x: 4, y: 5, width: 10, height: 20 }),
+        input('b', 64, 64, { x: 1, y: 2, width: 32, height: 20 }),
+        input('c', 64, 64, { x: 0, y: 0, width: 20, height: 10 }),
+      ],
+      { profile: 'packed', padding: 2 },
+    );
+
+    expect(layout.profile).toBe('packed');
+    expect(layout.frames.map(({ id, page, rect, contentRect, contentOffset }) => ({
+      id,
+      page,
+      rect,
+      contentRect,
+      contentOffset,
+    }))).toEqual([
+      {
+        id: 'a',
+        page: 0,
+        rect: { x: 34, y: 0, width: 10, height: 20 },
+        contentRect: { x: 4, y: 5, width: 10, height: 20 },
+        contentOffset: { x: 4, y: 5 },
+      },
+      {
+        id: 'b',
+        page: 0,
+        rect: { x: 0, y: 0, width: 32, height: 20 },
+        contentRect: { x: 1, y: 2, width: 32, height: 20 },
+        contentOffset: { x: 1, y: 2 },
+      },
+      {
+        id: 'c',
+        page: 0,
+        rect: { x: 46, y: 0, width: 20, height: 10 },
+        contentRect: { x: 0, y: 0, width: 20, height: 10 },
+        contentOffset: { x: 0, y: 0 },
+      },
+    ]);
+  });
+
+  it('完全透明Frameも1件として残し、4ページ超過とページ外フレームを拒否する', () => {
+    const transparent = computeDistributionSheetLayout(
+      [input('empty', 64, 64, { x: 0, y: 0, width: 0, height: 0 })],
+      { profile: 'packed' },
+    );
+    expect(transparent.frames[0]).toMatchObject({
+      id: 'empty',
+      rect: { width: 1, height: 1 },
+      contentRect: { width: 0, height: 0 },
+    });
+
+    const fivePages = Array.from({ length: 5 }, (_, index) =>
+      input(`frame-${index}`, 2048, 2048),
+    );
+    expect(() =>
+      computeDistributionSheetLayout(fivePages, { profile: 'packed', padding: 1 }),
+    ).toThrow(/4ページ/);
+
+    expect(() =>
+      computeDistributionSheetLayout([input('oversized', 2049, 1)], {
+        profile: 'packed',
+      }),
+    ).toThrow(/2048/);
+  });
+
+  it('manifestはpackedのpage・rect・trim情報とhelper参照用のpage pathを保持する', () => {
+    const atlas = buildAtlas(
+      baseAsset,
+      computeSheetLayout(
+        (baseAsset.frames ?? []).map((frame) => frame.id),
+        baseAsset.canvasSize.width,
+        baseAsset.canvasSize.height,
+      ),
+    );
+    const layout = computeDistributionSheetLayout(
+      [
+        input('a', 64, 64, { x: 2, y: 3, width: 10, height: 12 }),
+        input('b', 64, 64, { x: 0, y: 0, width: 20, height: 8 }),
+      ],
+      { profile: 'packed', padding: 1 },
+    );
+    const manifest = buildDistributionManifest(
+      baseAsset,
+      atlas,
+      ['asset.json', 'atlas/atlas.json', 'README.md'],
+      layout,
+    );
+
+    expect(manifest.profile).toBe('packed');
+    expect(manifest.files.pages).toEqual(['atlas/pages/page-000.png']);
+    expect(manifest.pages[0]).toMatchObject({
+      path: 'atlas/pages/page-000.png',
+      width: 2048,
+      height: 2048,
+    });
+    expect(manifest.frames).toEqual(
+      layout.frames.map(({ id: _id, ...frame }) => frame),
+    );
+    expect(canonicalJson(manifest)).toContain('contentOffset');
   });
 });
 
