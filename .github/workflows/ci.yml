@@ -67,6 +67,14 @@ jobs:
       - run: npm run format:check
       - run: npm run build
       - run: npm run test
+      - name: Upload Group 15 core evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: group15-core-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/group15-core-evidence.json
+          if-no-files-found: error
+          retention-days: 14
 
   e2e:
     needs: changes
@@ -89,7 +97,7 @@ jobs:
           path: |
             playwright-report/
             test-results/
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 14
       - run: npm run measure:h3:chromium
       - name: Define the CI H3 publication window
