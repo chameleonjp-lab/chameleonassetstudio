@@ -58,6 +58,32 @@ export async function loadChameleonAtlas(url) {
   return { atlas, image };
 }
 
+
+/**
+ * distribution manifestを検証して読み込む。legacy Atlas helper APIは変更しない。
+ * @param {string} url manifest.jsonへのURL
+ * @returns {Promise<object>}
+ */
+export async function loadChameleonDistributionManifest(url) {
+  const manifest = await (await fetch(url)).json();
+  if (manifest.format !== 'chameleon-distribution' || manifest.version !== '0.1.0') {
+    throw new Error('対応していないdistribution manifestです。');
+  }
+  return manifest;
+}
+
+/**
+ * distribution manifestからAtlasと画像を読み込む。
+ * @param {string} url manifest.jsonへのURL
+ * @returns {Promise<{ manifest: object, atlas: object, image: HTMLImageElement }>}
+ */
+export async function loadChameleonDistribution(url) {
+  const manifest = await loadChameleonDistributionManifest(url);
+  const atlasUrl = new URL(manifest.files.atlasJson, new URL(url, window.location.href)).href;
+  const { atlas, image } = await loadChameleonAtlas(atlasUrl);
+  return { manifest, atlas, image };
+}
+
 /**
  * atlas.frames からフレーム名に対応する矩形を取得する。
  * @param {object} atlas atlas.json をパースしたもの
@@ -205,6 +231,34 @@ export async function loadChameleonPixi(PIXI, atlasUrl) {
   return { atlas, baseTexture };
 }
 
+
+/**
+ * distribution manifestを検証して読み込む。legacy Atlas helper APIは変更しない。
+ * @param {typeof import('pixi.js')} PIXI
+ * @param {string} url manifest.jsonへのURL
+ * @returns {Promise<object>}
+ */
+export async function loadChameleonDistributionManifest(PIXI, url) {
+  const manifest = await (await fetch(url)).json();
+  if (manifest.format !== 'chameleon-distribution' || manifest.version !== '0.1.0') {
+    throw new Error('対応していないdistribution manifestです。');
+  }
+  return manifest;
+}
+
+/**
+ * distribution manifestからAtlasと画像を読み込む。
+ * @param {typeof import('pixi.js')} PIXI
+ * @param {string} url manifest.jsonへのURL
+ * @returns {Promise<{ manifest: object, atlas: object, baseTexture: object }>}
+ */
+export async function loadChameleonDistribution(PIXI, url) {
+  const manifest = await loadChameleonDistributionManifest(PIXI, url);
+  const atlasUrl = new URL(manifest.files.atlasJson, new URL(url, window.location.href)).href;
+  const { atlas, baseTexture } = await loadChameleonPixi(PIXI, atlasUrl);
+  return { manifest, atlas, baseTexture };
+}
+
 /**
  * atlas.frames から、フレーム名 -> Texture の Map を作る（Rectangle で切り出し）。
  * @param {typeof import('pixi.js')} PIXI
@@ -327,6 +381,35 @@ export function registerChameleonSpritesheet(scene, key) {
     frameHeight: atlas.cellSize.height,
   });
   return atlas;
+}
+
+
+/**
+ * distribution manifestを検証し、Phaserの読み込み対象URLを返す。
+ * @param {string} url manifest.jsonへのURL
+ * @returns {Promise<object>}
+ */
+export async function loadChameleonDistributionManifest(url) {
+  const manifest = await (await fetch(url)).json();
+  if (manifest.format !== 'chameleon-distribution' || manifest.version !== '0.1.0') {
+    throw new Error('対応していないdistribution manifestです。');
+  }
+  return manifest;
+}
+
+/**
+ * distribution manifestを使ってPhaserのJSONと画像を登録する。
+ * @param {Phaser.Scene} scene
+ * @param {string} key
+ * @param {string} url manifest.jsonへのURL
+ */
+export async function loadChameleonDistribution(scene, key, url) {
+  const manifest = await loadChameleonDistributionManifest(url);
+  const baseUrl = new URL(url, window.location.href);
+  scene.load.json(key + '-manifest', baseUrl.href);
+  scene.load.json(key + '-atlas', new URL(manifest.files.atlasJson, baseUrl).href);
+  scene.load.image(key + '-sheet', new URL(manifest.files.pages[0], baseUrl).href);
+  return manifest;
 }
 
 /**
