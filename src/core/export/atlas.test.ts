@@ -5,11 +5,36 @@ import {
   buildAtlas,
   buildDistributionManifest,
   canonicalJson,
+  normalizeDistributionScale,
+  roundDistributionPixel,
+  scaleDistributionRect,
+  scaleDistributionSize,
   computeDistributionSheetLayout,
   computeSheetLayout,
 } from './atlas';
 
 const baseAsset = characterAsset as unknown as Asset;
+
+describe('distribution scale primitives', () => {
+  it('1/2/3だけを受け付け、同率は絶対値が大きい側へ丸める', () => {
+    expect([1, 2, 3].map((value) => normalizeDistributionScale(value))).toEqual([1, 2, 3]);
+    expect(() => normalizeDistributionScale(4)).toThrow(/1、2、3/);
+    expect(roundDistributionPixel(1.5, 1)).toBe(2);
+    expect(roundDistributionPixel(-1.5, 1)).toBe(-2);
+    expect(roundDistributionPixel(0.75, 2)).toBe(2);
+    expect(roundDistributionPixel(-0.75, 2)).toBe(-2);
+  });
+
+  it('座標は符号を保ち、寸法は0未満にしない', () => {
+    expect(
+      scaleDistributionRect({ x: -0.75, y: 0.25, width: 2.25, height: -1 }, 2),
+    ).toEqual({ x: -2, y: 1, width: 5, height: 0 });
+    expect(scaleDistributionSize({ width: -1, height: 2.25 }, 2)).toEqual({
+      width: 0,
+      height: 5,
+    });
+  });
+});
 
 describe('computeSheetLayout', () => {
   it('1 件なら 1 列 1 行になる', () => {
@@ -411,5 +436,33 @@ describe('distribution manifest core', () => {
       contentOffset: { x: 0, y: 0 },
       rotated: false,
     });
+
+    const scaled = buildDistributionManifest(
+      baseAsset,
+      atlas,
+      ['asset.json', 'atlas/atlas.json', 'textures/main.png'],
+      undefined,
+      2,
+    );
+    expect(scaled.scale).toBe(2);
+    expect(scaled.frames[0]).toMatchObject({
+      rect: { x: 0, y: 0, width: 1024, height: 1024 },
+      sourceSize: { width: 1024, height: 1024 },
+    });
+    expect(scaled.origin).toEqual({ x: 512, y: 896 });
+    expect(scaled.anchors).toEqual([
+      { name: 'foot', role: 'foot', x: 512, y: 896 },
+      { name: 'hand_right', role: 'hand_right', x: 704, y: 576 },
+    ]);
+    expect(scaled.colliders).toEqual([
+      {
+        ...baseAsset.colliders[0],
+        rect: { x: 384, y: 384, width: 256, height: 512 },
+      },
+      {
+        ...baseAsset.colliders[1],
+        circle: { x: 512, y: 640, radius: 192 },
+      },
+    ]);
   });
 });
