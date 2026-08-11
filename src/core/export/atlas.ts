@@ -211,10 +211,7 @@ function scaleDistributionColliders(
   );
 }
 
-function scaleDistributionTile(
-  tile: Asset['tile'],
-  scale: DistributionScale,
-): Asset['tile'] {
+function scaleDistributionTile(tile: Asset['tile'], scale: DistributionScale): Asset['tile'] {
   if (!tile) {
     return undefined;
   }
