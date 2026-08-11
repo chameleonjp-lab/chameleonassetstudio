@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Asset } from '../model';
 import characterAsset from '../samples/asset.character.json';
-import { buildAtlas, computeSheetLayout } from './atlas';
+import { buildAtlas, computeDistributionSheetLayout, computeSheetLayout } from './atlas';
 
 const baseAsset = characterAsset as unknown as Asset;
 
@@ -74,5 +74,33 @@ describe('ADR-0004: buildAtlas の frames 絶対座標・cellSize・origin / anc
     for (const frame of atlas.frames) {
       expect(Object.keys(frame).sort()).toEqual(['height', 'name', 'width', 'x', 'y']);
     }
+  });
+});
+
+
+describe('Group 15 SHEET fixtures', () => {
+  it('5フレームのtrim rectをpackedへ安定配置し、完全透明Frameを保持する', () => {
+    const layout = computeDistributionSheetLayout(
+      FRAME_IDS.map((id, index) => ({
+        id,
+        name: `f${index}`,
+        sourceSize: { width: 64, height: 64 },
+        contentRect:
+          index === 4
+            ? { x: 0, y: 0, width: 0, height: 0 }
+            : { x: index, y: index + 1, width: 16 + index, height: 20 - index },
+      })),
+      { profile: 'packed', padding: 2 },
+    );
+
+    expect(layout.frames).toHaveLength(5);
+    expect(layout.frames.map((frame) => frame.id)).toEqual(FRAME_IDS);
+    expect(layout.frames[4]).toMatchObject({
+      contentRect: { width: 0, height: 0 },
+      rect: { width: 1, height: 1 },
+    });
+    expect(layout.pages.every((page) => page.width === 2048 && page.height === 2048)).toBe(
+      true,
+    );
   });
 });
