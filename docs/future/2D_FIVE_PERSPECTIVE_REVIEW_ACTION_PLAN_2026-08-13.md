@@ -19,7 +19,7 @@
 | 項目 | 状態 |
 |---|---|
 | 最新main | `b5401529a552c38147d308d7209ad8483ffd85c4`。PR #240のmerge commit。 |
-| open Pull Request | 0件。 |
+| open Pull Request | 基準main `b5401529a552c38147d308d7209ad8483ffd85c4`時点（PR #241作成前）は0件。 |
 | 完了数 | 17/27。今回のdocs-only統合では変更しない。 |
 | Group 16 docs-only監査 | PR #240でmainへ反映済み。 |
 | Group 16契約 | `proposed / human-decision-pending`。`G16-C1`〜`G16-C3`は未採用。 |
