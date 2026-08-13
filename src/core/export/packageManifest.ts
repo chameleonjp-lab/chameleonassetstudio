@@ -1,9 +1,5 @@
 import type { Asset } from '../model';
-import {
-  canonicalJson,
-  type DistributionManifest,
-  type DistributionScale,
-} from './atlas';
+import { canonicalJson, type DistributionManifest, type DistributionScale } from './atlas';
 
 export const PACKAGE_FORMAT = 'chameleon-package' as const;
 export const CURRENT_PACKAGE_VERSION = '0.1.0' as const;
