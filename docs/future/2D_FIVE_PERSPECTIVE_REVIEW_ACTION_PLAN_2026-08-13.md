@@ -23,7 +23,7 @@
 | 完了数 | 17/27。今回のdocs-only統合では変更しない。 |
 | Group 16 docs-only監査 | PR #240でmainへ反映済み。 |
 | Group 16契約 | `accepted`。ユーザーが`G16-C1 A + G16-C2 A + G16-C3 A`を2026-08-13に採用。 |
-| Group 16製品実装 | `implementing / CI-passed / independently-verified / merge-pending`（Draft PR #242、CI Run #760）。 |
+| Group 16製品実装 | `implementing / CI-passed / independently-verified / merge-pending`（Draft PR #242、コードhead `b153fb93538506decf0fc4b6da06fa19bd6bdd54`、CI Run #762）。 |
 | 次の許可された行動 | Draft PR #242の維持、CI・固定head証跡の更新。Ready化・mergeは人間判断。 |
 
 PR #240のmergeは、監査文書を正本として置いたGate Aの完了である。2026-08-13のユーザー明示判断`G16-C1 A + G16-C2 A + G16-C3 A`でGate Bも完了した。実装・CI・固定head確認はDraft PR #242に記録し、Ready化・mergeだけを人間判断として残す。
@@ -224,6 +224,6 @@ Group 16の採用判断は完了しており、現在はDraft PR #242の検証�
 G16-C1 A + G16-C2 A + G16-C3 A
 ```
 
-この採用範囲でGroup 16のproduct code、unit、E2E、CI workflowを実装し、CI Run #760と固定head確認を完了した。
+この採用範囲でGroup 16のproduct code、unit、E2E、CI workflowを実装し、コードhead `b153fb93538506decf0fc4b6da06fa19bd6bdd54`のCI Run #762と固定head確認を完了した。
 
 単一writerがこのDraft Pull RequestでGroup 16のcode、tests、docs、CI evidenceを実装する。CI失敗と`BLOCKER` / `MUST`修正は同じbranchと同じPull Requestで行う。Ready化とmergeは人間が判断する。
