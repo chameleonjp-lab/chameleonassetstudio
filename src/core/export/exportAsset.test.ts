@@ -206,9 +206,13 @@ describe('exportAsset texture kind boundary', () => {
     const legacyEntries = unzipSync(new Uint8Array(await legacyBlob.arrayBuffer()));
 
     expect(firstEntries['manifest.json']).toBeInstanceOf(Uint8Array);
+    expect(firstEntries['package-manifest.json']).toBeInstanceOf(Uint8Array);
+    expect(firstEntries['targets/generic-web.json']).toBeInstanceOf(Uint8Array);
+    expect(firstEntries['verification/record.json']).toBeInstanceOf(Uint8Array);
     expect(legacyEntries['manifest.json']).toBeUndefined();
     expect(Object.keys(firstEntries)).toEqual(Object.keys(secondEntries));
     expect(firstEntries['manifest.json']).toEqual(secondEntries['manifest.json']);
+    expect(firstEntries['package-manifest.json']).toEqual(secondEntries['package-manifest.json']);
 
     const manifest = JSON.parse(new TextDecoder().decode(firstEntries['manifest.json']));
     expect(manifest).toMatchObject({
@@ -223,6 +227,28 @@ describe('exportAsset texture kind boundary', () => {
       integrity: { algorithm: 'SHA-256' },
     });
     expect(manifest.integrity.manifestHash).toMatch(/^[0-9a-f]{64}$/);
+
+    const packageManifest = JSON.parse(
+      new TextDecoder().decode(firstEntries['package-manifest.json']),
+    );
+    const verification = JSON.parse(
+      new TextDecoder().decode(firstEntries['verification/record.json']),
+    );
+    expect(packageManifest).toMatchObject({
+      format: 'chameleon-package',
+      profile: 'generic-web-v1',
+      status: 'candidate',
+      files: {
+        distributionManifest: 'manifest.json',
+        target: 'targets/generic-web.json',
+        verification: 'verification/record.json',
+      },
+    });
+    expect(verification).toMatchObject({
+      format: 'chameleon-verification-record',
+      profile: 'generic-web-v1',
+      manifestHash: manifest.integrity.manifestHash,
+    });
 
     await mkdir('test-results', { recursive: true });
     await writeFile(
