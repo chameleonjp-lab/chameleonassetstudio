@@ -45,9 +45,15 @@
         ).json();
         const sidecar = await (await fetch(new URL(packageManifest.files.target, baseUrl))).json();
         const frame = manifest.frames[0];
-        const image = new Image();
-        image.src = new URL(manifest.pages[frame.page].path, baseUrl).href;
-        await image.decode();
+        const images = await Promise.all(
+          manifest.pages.map(async (page) => {
+            const image = new Image();
+            image.src = new URL(page.path, baseUrl).href;
+            await image.decode();
+            return image;
+          }),
+        );
+        const image = images[frame.page];
         context.drawImage(
           image,
           frame.rect.x,
@@ -59,7 +65,7 @@
           frame.contentRect.width * 4,
           frame.contentRect.height * 4,
         );
-        status.textContent = `読み込み成功: ${frame.name} / ${packageManifest.profile} / ${sidecar.coordinateSystem.origin}`;
+        status.textContent = `読み込み成功: ${frame.name} / ${packageManifest.profile} / ${sidecar.coordinateSystem.origin} / ${images.length} pages`;
       } catch (error) {
         status.textContent = error instanceof Error ? error.message : String(error);
         throw error;
