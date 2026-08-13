@@ -268,6 +268,33 @@ describe('exportAsset texture kind boundary', () => {
       )}\n`,
       'utf8',
     );
+    await writeFile(
+      'test-results/group16-package-evidence.json',
+      `${JSON.stringify(
+        {
+          workPackage: '2D-4-PACKAGE + 2D-4-PREFLIGHT + 2D-4-GENERIC-WEB',
+          packageProfile: packageManifest.profile,
+          verificationProfile: verification.profile,
+          verificationStatus: verification.status,
+          fixtureHash: verification.fixtureHash,
+          manifestHash: verification.manifestHash,
+          packageEntries: Object.keys(firstEntries).filter((path) =>
+            path.startsWith('package-manifest') ||
+            path.startsWith('targets/generic-web') ||
+            path.startsWith('examples/example-generic-web') ||
+            path.startsWith('helpers/chameleon-generic-web') ||
+            path.startsWith('import-notes/generic-web') ||
+            path.startsWith('verification/record'),
+          ),
+          repeatedPackageManifestEqual: firstEntries['package-manifest.json'].every(
+            (byte, index) => byte === secondEntries['package-manifest.json'][index],
+          ),
+        },
+        null,
+        2,
+      )}\n`,
+      'utf8',
+    );
   });
 
   it('SHEETのpacked distributionはtrim pageとpaddingをmanifestへ反映し、legacyを維持する', async () => {
