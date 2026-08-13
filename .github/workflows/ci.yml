@@ -123,6 +123,14 @@ jobs:
             test-results/
           if-no-files-found: error
           retention-days: 14
+      - name: Upload Group 16 Generic Web evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: group16-generic-web-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/group16-generic-web-evidence.json
+          if-no-files-found: warn
+          retention-days: 14
       - run: npm run measure:h3:chromium
       - name: Define the CI H3 publication window
         shell: bash
