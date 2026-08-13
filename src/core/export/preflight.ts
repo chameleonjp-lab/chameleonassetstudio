@@ -1,4 +1,5 @@
 import type { Asset } from '../model';
+import { DISTRIBUTION_PAGE_SIZE, scaleDistributionSize } from './atlas';
 import { findFixedFpsAnimationLosses, formatFixedFpsAnimationLosses } from './animationLoss';
 import { findColliderOverrideExportLosses } from './colliderOverrideLoss';
 import { validateAssetForPersistence } from '../schema/validate';
@@ -282,6 +283,18 @@ export function inspectDistributionPreflight(
         '/padding',
         'paddingは0以上64以下の整数です。',
       );
+    }
+    if (validation.valid && options.scale !== undefined) {
+      const scaledSize = scaleDistributionSize(typedAsset.canvasSize, options.scale as 1 | 2 | 3);
+      if (scaledSize.width > DISTRIBUTION_PAGE_SIZE || scaledSize.height > DISTRIBUTION_PAGE_SIZE) {
+        pushIssue(
+          issues,
+          'PREFLIGHT-PAGE',
+          'block',
+          '/canvasSize',
+          `1フレームがdistribution pageの上限 ${DISTRIBUTION_PAGE_SIZE}×${DISTRIBUTION_PAGE_SIZE} にscale ${options.scale}で収まりません。`,
+        );
+      }
     }
 
     if (validation.valid && Array.isArray(typedAsset.animations)) {
