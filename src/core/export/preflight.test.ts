@@ -72,6 +72,19 @@ describe('distribution preflight', () => {
     expect(inspectDistributionPreflight(asset).valid).toBe(false);
   });
 
+  it('scale後のpage上限をBlob処理前にblockする', () => {
+    const asset = structuredClone(baseAsset);
+    asset.canvasSize = { width: 1024, height: 1024 };
+
+    const result = inspectDistributionPreflight(asset, { scale: 3 });
+
+    expect(result.blocks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'PREFLIGHT-PAGE', path: '/canvasSize' }),
+      ]),
+    );
+  });
+
   it('secret-like keyと値をメッセージへ露出しない', () => {
     const asset = structuredClone(baseAsset);
     asset.gameAttributes = { apiKey: 'sk_test_secret_value_123456' };
