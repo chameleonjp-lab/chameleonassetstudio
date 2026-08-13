@@ -6,19 +6,20 @@
 初回契約監査基準main SHA: `d69103113384f24c85d99ae8541769c2dfd8cfd9`  
 五視点レビュー統合基準main SHA: `b5401529a552c38147d308d7209ad8483ffd85c4`
 文書種別: docs-only 契約監査・人間判断 handoff
-状態: `proposed / human-decision-pending / product implementation not started`
+状態: `accepted / implementation in progress / product implementation not yet merged`
+採用判断: `G16-C1 A + G16-C2 A + G16-C3 A`（ユーザー明示、2026-08-13）
 docs-only監査状態: `merged`（PR #240 / merge `b5401529a552c38147d308d7209ad8483ffd85c4`）
 
 上位文書: `docs/IMPLEMENTATION_PLAN.md`, `docs/future/2D_COMPLETION_ROADMAP.md`
 関連文書: `docs/future/2D_4_CORE_SHEET_SCALE_PLAN.md`, `docs/EXPORT_FORMATS.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/adr/0014-validation-staging.md`, `docs/future/2D_FIVE_PERSPECTIVE_REVIEW_ACTION_PLAN_2026-08-13.md`
 
-> この文書はGroup 16の仕様候補を整理するための監査文書である。ここに書いた推奨案は、ユーザーが採用するまで製品仕様にならない。今回のPRでは、製品コード、テスト、JSON Schema、version、migration、保存形式、既存Atlas `0.1.0`、legacy ZIPを変更しない。
+> この文書はGroup 16の契約と実装handoffの正本である。監査段階では推奨案を製品仕様として扱わなかったが、2026-08-13にユーザーが`G16-C1 A + G16-C2 A + G16-C3 A`を明示採用した。既存Atlas `0.1.0`、legacy ZIP、schema、version、migration、保存形式は引き続き変更しない。
 
 ## 1. 今回の目的
 
 Group 15で、共通distribution manifest、fixed-grid / packed sheet、trim、padding、multi-page、scale 1 / 2 / 3までを実装し、mainへmergeした。Group 16では、その出力を人が持ち込める一つのgeneric packageとして説明し、書き出し前に問題を一覧化し、Generic Web / Canvas 2Dで読み込めることを確認する。
 
-ただし、Group 16はロードマップ上の次工程であり、具体的なpackage構成、preflightの停止基準、Generic Webの合格証拠はまだacceptedではない。先に3つの判断を固定する。
+Group 16はロードマップ上の次工程であり、具体的なpackage構成、preflightの停止基準、Generic Webの合格証拠は、ユーザーの採用判断によりacceptedになった。以下を実装の固定範囲とする。
 
 ## 2. GitHubと現行実装で確認した事実
 
@@ -118,9 +119,9 @@ Generic Webは特定engineの互換を意味しない。対象profile名、ブ�
 - package内の`verification/record.json`は、対象profile、source commit、fixture hash、manifest hash、期待結果、CI artifact参照だけを安定して記録する。ブラウザversion、実行日時、console error、download件数など動的な実行情報はCI artifactへ分離し、package本体のhash境界と証拠のhash境界を区別する。該当範囲を`verified`へ進めるには両方を対応付ける。
 - PixiJS、Phaser、Unity、Godot、RPG Maker MZの互換をこの証拠から推測しない。
 
-## 5. 採用後の実装handoff候補
+## 5. 採用済み実装handoff
 
-人間がG16-C1〜C3を採用した後、次の範囲を一つの実装Draft PRへ固定する。採用前にはこの一覧を実装に使わない。
+採用済みのG16-C1〜C3に基づき、次の範囲を一つの実装Draft PRへ固定する。
 
 ### 5.1 変更予定ファイル候補
 
@@ -167,28 +168,28 @@ Group 16のproduct implementationへ進む条件は次のとおりである。
 4. CIが対象headで成功し、writer以外の固定head確認で`BLOCKER 0 / MUST 0`になる。
 5. 人間がReady化・mergeを判断する。
 
-## 7. 人間への判断依頼
+## 7. 採用判断の記録
 
-次の形式で回答してほしい。
+ユーザーは次の判断を明示し、Gate Bを完了した。
 
 ```text
-G16-C1 [A/B/C] + G16-C2 [A/B/C] + G16-C3 [A/B/C]
+G16-C1 A + G16-C2 A + G16-C3 A
 ```
 
-推奨は `G16-C1 A + G16-C2 A + G16-C3 A` である。採用回答があるまで、Group 16のproduct code、unit、E2E、CI workflow変更は開始しない。
+この採用範囲に限って、Group 16のproduct code、unit、E2E、CI workflowの実装を開始する。
 
-## 8. 監査結論
+## 8. 採用後の状態
 
-- BLOCKER: Group 16の具体契約が未採用のため、product implementationは開始不可。
-- MUST: package入口、preflight severity、Generic Web受入証拠を人間が決める。
-- SHOULD: Group 15のdistribution manifest `0.1.0`とlegacy出力は変更しない案を優先する。
+- BLOCKER: 0（この契約同期時点）。
+- MUST: 0（G16-C1〜C3の採用判断を反映済み）。
+- SHOULD: Group 15のdistribution manifest `0.1.0`、legacy出力、既存helper API、現行の理由付き拒否を変更しない。
 - NOTE: 進捗は17/27のまま。物理iPhone Safari、PixiJS / Phaser、target別検証は後続工程で扱う。
 
 ---
 
 ## 9. 2026-08-13 五視点レビュー追補（proposal-only）
 
-PR #240 / merge `b5401529a552c38147d308d7209ad8483ffd85c4`により、この契約監査文書はmainへ反映済みである。これはdocs-only監査のGate A完了であり、`G16-C1`〜`G16-C3`の採用ではない。契約状態は`proposed / human-decision-pending`、製品実装は`not-started / unverified`、進捗は17/27のままとする。
+PR #240 / merge `b5401529a552c38147d308d7209ad8483ffd85c4`により、この契約監査文書はmainへ反映済みである。これはGate Aの完了であり、ユーザーの`G16-C1 A + G16-C2 A + G16-C3 A`採用によりGate Bも完了した。契約状態は`accepted`、製品実装はこのDraft PRで`implementing / unverified`、進捗は17/27のままとする。
 
 五視点レビューの横断結果と後続割当は、`docs/future/2D_FIVE_PERSPECTIVE_REVIEW_ACTION_PLAN_2026-08-13.md`を参照する。Group 16内では、unsafe pathと名前衝突、秘密値の非表示、古いpreflight結果、決定的な問題順序、package再読込、二重download、`verified`範囲、動的な検証記録とpackage hashの分離を、採用後handoffで固定する。この節だけを根拠に実装しない。
 
