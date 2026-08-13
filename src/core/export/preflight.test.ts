@@ -47,6 +47,22 @@ describe('distribution preflight', () => {
     );
   });
 
+  it('texture pathの完全一致も重複としてblockする', () => {
+    const asset = structuredClone(baseAsset);
+    asset.textures = [
+      { id: 'texture-a', path: 'textures/main.png', kind: 'edit' },
+      { id: 'texture-b', path: 'textures/main.png', kind: 'edit' },
+    ] as unknown as Asset['textures'];
+
+    const result = inspectDistributionPreflight(asset);
+
+    expect(result.blocks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'PREFLIGHT-COLLISION', path: '/textures/1/path' }),
+      ]),
+    );
+  });
+
   it('schema不正な配列でも問題一覧を返し、loss検査でthrowしない', () => {
     const asset = structuredClone(baseAsset) as unknown as Record<string, unknown>;
     asset.frames = [null];
