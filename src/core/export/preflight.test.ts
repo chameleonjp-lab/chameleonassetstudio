@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Asset } from '../model';
 import characterAsset from '../samples/asset.character.json';
-import {
-  inspectDistributionPreflight,
-  assertDistributionPreflight,
-} from './preflight';
+import { inspectDistributionPreflight, assertDistributionPreflight } from './preflight';
 
 const baseAsset = characterAsset as unknown as Asset;
 
@@ -42,7 +39,9 @@ describe('distribution preflight', () => {
     const secretIssues = result.blocks.filter((issue) => issue.code === 'PREFLIGHT-SECRET');
 
     expect(secretIssues.length).toBeGreaterThan(0);
-    expect(result.issues.map((issue) => issue.message).join(' ')).not.toContain('sk_test_secret_value');
+    expect(result.issues.map((issue) => issue.message).join(' ')).not.toContain(
+      'sk_test_secret_value',
+    );
   });
 
   it('同一入力の問題順が再現する', () => {
