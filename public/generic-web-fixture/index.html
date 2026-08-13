@@ -56,12 +56,12 @@
         const image = images[frame.page];
         context.drawImage(
           image,
-          frame.rect.x,
-          frame.rect.y,
-          frame.rect.width,
-          frame.rect.height,
-          16,
-          16,
+          frame.rect.x + frame.contentRect.x,
+          frame.rect.y + frame.contentRect.y,
+          frame.contentRect.width,
+          frame.contentRect.height,
+          16 + frame.contentOffset.x * 4,
+          16 + frame.contentOffset.y * 4,
           frame.contentRect.width * 4,
           frame.contentRect.height * 4,
         );
