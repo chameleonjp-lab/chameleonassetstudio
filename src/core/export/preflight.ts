@@ -216,6 +216,7 @@ export function inspectDistributionPreflight(
   options: DistributionPreflightOptions = {},
 ): DistributionPreflightResult {
   const issues: DistributionPreflightIssue[] = [];
+  const requestedScale = options.scale ?? 1;
   if (!isRecord(asset)) {
     pushIssue(issues, 'PREFLIGHT-SCHEMA', 'block', '/', 'Assetがobjectではありません。');
   } else {
@@ -284,15 +285,15 @@ export function inspectDistributionPreflight(
         'paddingは0以上64以下の整数です。',
       );
     }
-    if (validation.valid && options.scale !== undefined) {
-      const scaledSize = scaleDistributionSize(typedAsset.canvasSize, options.scale as 1 | 2 | 3);
+    if (validation.valid && [1, 2, 3].includes(requestedScale)) {
+      const scaledSize = scaleDistributionSize(typedAsset.canvasSize, requestedScale as 1 | 2 | 3);
       if (scaledSize.width > DISTRIBUTION_PAGE_SIZE || scaledSize.height > DISTRIBUTION_PAGE_SIZE) {
         pushIssue(
           issues,
           'PREFLIGHT-PAGE',
           'block',
           '/canvasSize',
-          `1フレームがdistribution pageの上限 ${DISTRIBUTION_PAGE_SIZE}×${DISTRIBUTION_PAGE_SIZE} にscale ${options.scale}で収まりません。`,
+          `1フレームがdistribution pageの上限 ${DISTRIBUTION_PAGE_SIZE}×${DISTRIBUTION_PAGE_SIZE} にscale ${requestedScale}で収まりません。`,
         );
       }
     }
