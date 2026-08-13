@@ -316,6 +316,7 @@ export function assertPackageClosure(
     'package-manifest.json',
     manifest.files.distributionManifest,
     manifest.files.assetJson,
+    manifest.files.atlasJson,
     manifest.files.target,
     manifest.files.verification,
   ]) {
