@@ -1,0 +1,16 @@
+{
+  "format": "chameleon-generic-web-sidecar",
+  "version": "0.1.0",
+  "profile": "generic-web-v1",
+  "assetType": "item",
+  "coordinateSystem": { "origin": "top-left", "xAxis": "right", "yAxis": "down", "unit": "px" },
+  "canvasSize": { "width": 32, "height": 32 },
+  "origin": { "x": 16, "y": 32 },
+  "anchors": [{ "name": "center", "role": "pivot", "position": { "x": 16, "y": 16 } }],
+  "colliders": [
+    { "name": "hitbox", "shape": "rect", "rect": { "x": 4, "y": 4, "width": 24, "height": 24 } },
+    { "name": "radius", "shape": "circle", "circle": { "x": 16, "y": 16, "radius": 12 } }
+  ],
+  "animations": [{ "name": "loop", "frameNames": ["fixture", "second"] }],
+  "limitations": []
+}

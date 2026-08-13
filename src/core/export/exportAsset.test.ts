@@ -206,9 +206,13 @@ describe('exportAsset texture kind boundary', () => {
     const legacyEntries = unzipSync(new Uint8Array(await legacyBlob.arrayBuffer()));
 
     expect(firstEntries['manifest.json']).toBeInstanceOf(Uint8Array);
+    expect(firstEntries['package-manifest.json']).toBeInstanceOf(Uint8Array);
+    expect(firstEntries['targets/generic-web.json']).toBeInstanceOf(Uint8Array);
+    expect(firstEntries['verification/record.json']).toBeInstanceOf(Uint8Array);
     expect(legacyEntries['manifest.json']).toBeUndefined();
     expect(Object.keys(firstEntries)).toEqual(Object.keys(secondEntries));
     expect(firstEntries['manifest.json']).toEqual(secondEntries['manifest.json']);
+    expect(firstEntries['package-manifest.json']).toEqual(secondEntries['package-manifest.json']);
 
     const manifest = JSON.parse(new TextDecoder().decode(firstEntries['manifest.json']));
     expect(manifest).toMatchObject({
@@ -224,6 +228,28 @@ describe('exportAsset texture kind boundary', () => {
     });
     expect(manifest.integrity.manifestHash).toMatch(/^[0-9a-f]{64}$/);
 
+    const packageManifest = JSON.parse(
+      new TextDecoder().decode(firstEntries['package-manifest.json']),
+    );
+    const verification = JSON.parse(
+      new TextDecoder().decode(firstEntries['verification/record.json']),
+    );
+    expect(packageManifest).toMatchObject({
+      format: 'chameleon-package',
+      profile: 'generic-web-v1',
+      status: 'candidate',
+      files: {
+        distributionManifest: 'manifest.json',
+        target: 'targets/generic-web.json',
+        verification: 'verification/record.json',
+      },
+    });
+    expect(verification).toMatchObject({
+      format: 'chameleon-verification-record',
+      profile: 'generic-web-v1',
+      manifestHash: manifest.integrity.manifestHash,
+    });
+
     await mkdir('test-results', { recursive: true });
     await writeFile(
       'test-results/group15-core-evidence.json',
@@ -235,6 +261,34 @@ describe('exportAsset texture kind boundary', () => {
           legacyManifestAbsent: legacyEntries['manifest.json'] === undefined,
           repeatedManifestEqual: firstEntries['manifest.json'].every(
             (byte, index) => byte === secondEntries['manifest.json'][index],
+          ),
+        },
+        null,
+        2,
+      )}\n`,
+      'utf8',
+    );
+    await writeFile(
+      'test-results/group16-package-evidence.json',
+      `${JSON.stringify(
+        {
+          workPackage: '2D-4-PACKAGE + 2D-4-PREFLIGHT + 2D-4-GENERIC-WEB',
+          packageProfile: packageManifest.profile,
+          verificationProfile: verification.profile,
+          verificationStatus: verification.status,
+          fixtureHash: verification.fixtureHash,
+          manifestHash: verification.manifestHash,
+          packageEntries: Object.keys(firstEntries).filter(
+            (path) =>
+              path.startsWith('package-manifest') ||
+              path.startsWith('targets/generic-web') ||
+              path.startsWith('examples/example-generic-web') ||
+              path.startsWith('helpers/chameleon-generic-web') ||
+              path.startsWith('import-notes/generic-web') ||
+              path.startsWith('verification/record'),
+          ),
+          repeatedPackageManifestEqual: firstEntries['package-manifest.json'].every(
+            (byte, index) => byte === secondEntries['package-manifest.json'][index],
           ),
         },
         null,
