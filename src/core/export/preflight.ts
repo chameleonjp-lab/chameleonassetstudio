@@ -1,5 +1,5 @@
 import type { Asset } from '../model';
-import { findFixedFpsAnimationLosses } from './animationLoss';
+import { findFixedFpsAnimationLosses, formatFixedFpsAnimationLosses } from './animationLoss';
 import { findColliderOverrideExportLosses } from './colliderOverrideLoss';
 import { validateAssetForPersistence } from '../schema/validate';
 
@@ -280,7 +280,7 @@ export function inspectDistributionPreflight(
           'PREFLIGHT-LOSS',
           'block',
           '/animations',
-          '固定fpsのdistributionでは時間またはイベントを保持できません。',
+          formatFixedFpsAnimationLosses(animationLosses),
         );
       }
     }
