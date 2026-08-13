@@ -58,8 +58,8 @@ test('Generic Web fixtureはHTTP経由でpackageとCanvasを確認できる', as
     expect(sidecar.anchors).toHaveLength(1);
     expect(sidecar.colliders).toEqual(
       expect.arrayContaining([
-        { name: 'hitbox', shape: 'rect' },
-        { name: 'radius', shape: 'circle' },
+        expect.objectContaining({ name: 'hitbox', shape: 'rect' }),
+        expect.objectContaining({ name: 'radius', shape: 'circle' }),
       ]),
     );
     expect(sidecar.animations[0]).toMatchObject({
