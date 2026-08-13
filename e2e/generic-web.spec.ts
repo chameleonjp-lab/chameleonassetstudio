@@ -73,6 +73,13 @@ test('Generic Web fixtureはHTTP経由でpackageとCanvasを確認できる', as
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);
+    expect(
+      await page.evaluate(() => {
+        const canvas = document.querySelector('canvas');
+        const context = canvas?.getContext('2d');
+        return context ? context.getImageData(80, 80, 1, 1).data[3] : 0;
+      }),
+    ).toBeGreaterThan(0);
   } finally {
     await mkdir('test-results', { recursive: true });
     await writeFile(
