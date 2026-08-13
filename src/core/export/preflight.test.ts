@@ -32,6 +32,30 @@ describe('distribution preflight', () => {
     expect(first.blocks.filter((issue) => issue.code === 'PREFLIGHT-COLLISION')).toHaveLength(2);
   });
 
+  it('Frame名のunsafe pathも出力前にblockする', () => {
+    const asset = structuredClone(baseAsset);
+    asset.frames = [
+      { id: 'frame-a', name: '../frame', durationMs: 100, colliderOverrides: [] },
+    ] as unknown as Asset['frames'];
+
+    const result = inspectDistributionPreflight(asset);
+
+    expect(result.blocks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'PREFLIGHT-PATH', path: '/frames/0/name' }),
+      ]),
+    );
+  });
+
+  it('schema不正な配列でも問題一覧を返し、loss検査でthrowしない', () => {
+    const asset = structuredClone(baseAsset) as unknown as Record<string, unknown>;
+    asset.frames = [null];
+    asset.animations = [null];
+
+    expect(() => inspectDistributionPreflight(asset)).not.toThrow();
+    expect(inspectDistributionPreflight(asset).valid).toBe(false);
+  });
+
   it('secret-like keyと値をメッセージへ露出しない', () => {
     const asset = structuredClone(baseAsset);
     asset.gameAttributes = { apiKey: 'sk_test_secret_value_123456' };
