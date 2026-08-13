@@ -4,13 +4,13 @@
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 五視点レビュー統合基準main SHA: `b5401529a552c38147d308d7209ad8483ffd85c4`  
 文書種別: docs-only 横断レビュー統合・後続work package割当  
-状態: `review-integrated / proposals-recorded / human-decision-pending / product implementation not started`
+状態: `review-integrated / G16 accepted / implementation in progress / remaining proposals pending`
 
 上位文書: `docs/IMPLEMENTATION_PLAN.md`, `docs/future/2D_COMPLETION_ROADMAP.md`  
 現在の契約正本: `docs/future/2D_4_PACKAGE_PREFLIGHT_GENERIC_WEB_PLAN.md`  
 関連文書: `docs/future/2D_COMPLETE_PRODUCT_SPEC.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/future/2D_DEVICE_RELIABILITY_SPEC.md`, `docs/TEST_PLAN.md`
 
-> この文書は、2026-08-13に行ったプロダクトマネージャー、クリエイター、デザイナー、シニアエンジニア、敵対的視点のレビューを、既存の2D完成ロードマップへ割り当てる。レビューの記録は仕様採用ではない。`G16-C1`〜`G16-C3`、後続UI、構造整理の具体契約は、各work packageで人間が採用するまで製品実装へ使わない。
+> この文書は、2026-08-13に行った五視点レビューを既存の2D完成ロードマップへ割り当てる。五視点レビューのGroup 17〜23提案は引き続きproposal-onlyである。一方、Group 16の`G16-C1 A + G16-C2 A + G16-C3 A`はユーザーが2026-08-13に採用し、このDraft PRの実装契約へ同期した。後続UI・構造整理の具体契約は各work packageで別途採用する。
 
 ---
 
@@ -22,8 +22,8 @@
 | open Pull Request | 基準main `b5401529a552c38147d308d7209ad8483ffd85c4`時点（PR #241作成前）は0件。 |
 | 完了数 | 17/27。今回のdocs-only統合では変更しない。 |
 | Group 16 docs-only監査 | PR #240でmainへ反映済み。 |
-| Group 16契約 | `proposed / human-decision-pending`。`G16-C1`〜`G16-C3`は未採用。 |
-| Group 16製品実装 | `not-started / unverified`。 |
+| Group 16契約 | `accepted`。ユーザーが`G16-C1 A + G16-C2 A + G16-C3 A`を2026-08-13に採用。 |
+| Group 16製品実装 | `implementing / unverified`（本Draft PR）。 |
 | 次の許可された行動 | 提案の記録と、`G16-C1`〜`G16-C3`の人間判断。 |
 
 PR #240のmergeは、監査文書を正本として置いたGate Aの完了である。推奨案の採用を示すGate Bではない。推奨`G16-C1 A + G16-C2 A + G16-C3 A`を、この文書だけでacceptedに変更しない。
@@ -80,9 +80,9 @@ PR #240のmergeは、監査文書を正本として置いたGate Aの完了で�
 
 ---
 
-## 5. Group 16へ入れる追補候補
+## 5. Group 16採用契約と実装範囲
 
-正式範囲は`2D-4-PACKAGE + 2D-4-PREFLIGHT + 2D-4-GENERIC-WEB`のままとする。次は`G16-C1`〜`G16-C3`採用後のhandoff候補であり、この文書だけでは採用しない。
+正式範囲は`2D-4-PACKAGE + 2D-4-PREFLIGHT + 2D-4-GENERIC-WEB`のままとする。`G16-C1 A + G16-C2 A + G16-C3 A`を採用済みであり、以下を実装handoffへ反映する。
 
 ### 5.1 packageとpreflight
 
@@ -226,4 +226,4 @@ G16-C1 [A/B/C] + G16-C2 [A/B/C] + G16-C3 [A/B/C]
 
 既存監査の推奨は`G16-C1 A + G16-C2 A + G16-C3 A`である。回答があるまではGroup 16のproduct code、unit、E2E、CI workflowを変更しない。
 
-採用後は、単一writerがGroup 16のcode、tests、docs、CI evidenceを一つのDraft Pull Requestへ実装する。CI失敗と`BLOCKER` / `MUST`修正は同じbranchと同じPull Requestで行う。Ready化とmergeは人間が判断する。
+単一writerがこのDraft Pull RequestでGroup 16のcode、tests、docs、CI evidenceを実装する。CI失敗と`BLOCKER` / `MUST`修正は同じbranchと同じPull Requestで行う。Ready化とmergeは人間が判断する。
