@@ -100,7 +100,7 @@ export function buildPackageManifest(
       atlasJson: 'atlas/atlas.json',
       pages: distributionManifest.pages.map((page) => page.path),
       mainPng: 'textures/main.png',
-      mainWebp: distributionManifest.files.mainWebp,
+      mainWebp: distributionManifest.files.mainWebp ? 'textures/main.webp' : null,
       target: 'targets/generic-web.json',
       example: 'examples/example-generic-web.html',
       helper: 'helpers/chameleon-generic-web.js',
