@@ -180,6 +180,15 @@ function inspectNameCollisions(
   const folded = new Map<string, { value: string; path: string }>();
   const normalized = new Map<string, { value: string; path: string }>();
   for (const item of values) {
+    if (unsafePath(item.value)) {
+      pushIssue(
+        issues,
+        'PREFLIGHT-PATH',
+        'block',
+        item.path,
+        '絶対path、親参照、URL scheme、制御文字、または逆向き区切りを含められません。',
+      );
+    }
     const exactPrevious = exact.get(item.value);
     const foldedKey = item.value.toLocaleLowerCase('en-US');
     const normalizedKey = item.value.normalize('NFC');
@@ -222,29 +231,32 @@ export function inspectDistributionPreflight(
     }
     if (Array.isArray(typedAsset.textures)) {
       inspectSafeNames(
-        typedAsset.textures.map((texture, index) => ({
-          value: texture.path,
-          path: `/textures/${index}/path`,
-        })),
+        typedAsset.textures.flatMap((texture, index) =>
+          isRecord(texture) && typeof texture.path === 'string'
+            ? [{ value: texture.path, path: `/textures/${index}/path` }]
+            : [],
+        ),
         issues,
         'PREFLIGHT-COLLISION',
       );
     }
     if (Array.isArray(typedAsset.frames)) {
       inspectNameCollisions(
-        typedAsset.frames.map((frame, index) => ({
-          value: frame.name,
-          path: `/frames/${index}/name`,
-        })),
+        typedAsset.frames.flatMap((frame, index) =>
+          isRecord(frame) && typeof frame.name === 'string'
+            ? [{ value: frame.name, path: `/frames/${index}/name` }]
+            : [],
+        ),
         issues,
       );
     }
     if (Array.isArray(typedAsset.animations)) {
       inspectNameCollisions(
-        typedAsset.animations.map((animation, index) => ({
-          value: animation.name,
-          path: `/animations/${index}/name`,
-        })),
+        typedAsset.animations.flatMap((animation, index) =>
+          isRecord(animation) && typeof animation.name === 'string'
+            ? [{ value: animation.name, path: `/animations/${index}/name` }]
+            : [],
+        ),
         issues,
       );
     }
@@ -272,7 +284,7 @@ export function inspectDistributionPreflight(
       );
     }
 
-    if (Array.isArray(typedAsset.animations)) {
+    if (validation.valid && Array.isArray(typedAsset.animations)) {
       const animationLosses = findFixedFpsAnimationLosses(typedAsset);
       if (animationLosses.length > 0) {
         pushIssue(
@@ -284,7 +296,11 @@ export function inspectDistributionPreflight(
         );
       }
     }
-    if (Array.isArray(typedAsset.colliders) && Array.isArray(typedAsset.frames)) {
+    if (
+      validation.valid &&
+      Array.isArray(typedAsset.colliders) &&
+      Array.isArray(typedAsset.frames)
+    ) {
       const colliderLosses = findColliderOverrideExportLosses(typedAsset);
       if (colliderLosses.length > 0) {
         pushIssue(
