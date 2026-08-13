@@ -158,7 +158,7 @@ function inspectSafeNames(
     }
     const key = item.value.normalize('NFC').toLocaleLowerCase('en-US');
     const previous = seen.get(key);
-    if (previous && previous.value !== item.value) {
+    if (previous) {
       pushIssue(
         issues,
         code,
