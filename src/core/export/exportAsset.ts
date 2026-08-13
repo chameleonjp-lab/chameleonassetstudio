@@ -29,6 +29,16 @@ import {
 import { buildGodotGuide, buildUnityGuide } from './engineGuides';
 import { buildCanvasExample, buildPhaserExample, buildPixiExample } from './examples';
 import { buildCanvasHelpers, buildPhaserHelpers, buildPixiHelpers } from './helpers';
+import { assertDistributionPreflight } from './preflight';
+import {
+  assertPackageClosure,
+  buildGenericWebExample,
+  buildGenericWebHelper,
+  buildGenericWebImportNotes,
+  buildGenericWebTarget,
+  buildPackageManifest,
+  buildVerificationRecord,
+} from './packageManifest';
 
 export class ExportError extends Error {
   constructor(message: string, options?: ErrorOptions) {
@@ -207,6 +217,11 @@ export function exportAssetJson(asset: Asset): Blob {
  * フレームがあれば全フレームを 1 枚のシートへ合成し、無ければ現在の表示状態を 'default' の 1 コマにする。
  */
 export async function exportSpriteSheet(asset: Asset): Promise<{ sheet: Blob; atlas: AtlasJson }> {
+  assertDistributionPreflight(asset, {
+    profile,
+    padding: options.padding,
+    scale,
+  });
   assertValidAsset(asset);
   assertFixedFpsAnimationExportSafe(asset);
   assertColliderOverrideExportSafe(asset);
@@ -600,6 +615,12 @@ export interface DistributionExportOptions {
   profile?: 'fixed-grid' | 'packed';
   padding?: number;
   scale?: number;
+  /** CI evidenceへ対応付ける対象commit。未指定時は安定したunrecorded値を使う。 */
+  sourceCommit?: string;
+  /** 動的なbrowser実行情報を記録するCI artifact参照。 */
+  artifactRef?: string;
+  /** Generic Web fixtureの固定hash。 */
+  fixtureHash?: string;
 }
 
 export function getDistributionZipFileName(asset: Asset, scale?: number): string {
@@ -692,6 +713,28 @@ export async function exportDistributionZip(
   }
   entries['manifest.json'] = strToU8(`${canonicalJson(manifest)}
 `);
+  const packageManifest = buildPackageManifest(manifest);
+  const verificationRecord = buildVerificationRecord(manifest, {
+    sourceCommit: options.sourceCommit,
+    artifactRef: options.artifactRef,
+    fixtureHash: options.fixtureHash,
+  });
+  entries['package-manifest.json'] = strToU8(`${canonicalJson(packageManifest)}
+`);
+  entries['targets/generic-web.json'] = strToU8(buildGenericWebTarget(asset));
+  entries['examples/example-generic-web.html'] = strToU8(buildGenericWebExample());
+  entries['helpers/chameleon-generic-web.js'] = strToU8(buildGenericWebHelper());
+  entries['import-notes/generic-web.md'] = strToU8(buildGenericWebImportNotes());
+  entries['verification/record.json'] = strToU8(`${canonicalJson(verificationRecord)}
+`);
+  entries['README.md'] = strToU8(`${buildExportReadme(asset, { distribution: true })}
+
+## Generic Web
+
+このpackageはGeneric Web / Canvas 2Dのfixture確認用です。HTTP経由で
+`examples/example-generic-web.html`を開き、対象profileと既知の制限を確認してください。
+`);
+  assertPackageClosure(entries, packageManifest, manifest);
   const orderedEntries = Object.fromEntries(
     Object.entries(entries).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0)),
   );
