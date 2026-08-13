@@ -180,18 +180,18 @@ G16-C1 A + G16-C2 A + G16-C3 A
 
 ## 8. 採用後の状態
 
-- BLOCKER: 0（この契約同期時点）。
-- MUST: 0（G16-C1〜C3の採用判断を反映済み）。
+- BLOCKER: 0（Draft PR #242の固定head read-only確認）。
+- MUST: 0（CI Run #760全job成功、固定head read-only確認済み）。
 - SHOULD: Group 15のdistribution manifest `0.1.0`、legacy出力、既存helper API、現行の理由付き拒否を変更しない。
+- CI証跡: build-and-test、Chromium E2E、Pages open / closed、Group 16 package / Generic Web evidence artifactが全て成功。
 - NOTE: 進捗は17/27のまま。物理iPhone Safari、PixiJS / Phaser、target別検証は後続工程で扱う。
 
 ---
 
 ## 9. 2026-08-13 五視点レビュー追補（proposal-only）
 
-PR #240 / merge `b5401529a552c38147d308d7209ad8483ffd85c4`により、この契約監査文書はmainへ反映済みである。これはGate Aの完了であり、ユーザーの`G16-C1 A + G16-C2 A + G16-C3 A`採用によりGate Bも完了した。契約状態は`accepted`、製品実装はこのDraft PRで`implementing / unverified`、進捗は17/27のままとする。
+PR #240 / merge `b5401529a552c38147d308d7209ad8483ffd85c4`により、この契約監査文書はmainへ反映済みである。これはGate Aの完了であり、ユーザーの`G16-C1 A + G16-C2 A + G16-C3 A`採用によりGate Bも完了した。契約状態は`accepted`、製品実装はDraft PR #242で`implementing / CI-passed / independently-verified / merge-pending`、CI Run #760は全job成功、進捗は17/27のままとする。
 
 五視点レビューの横断結果と後続割当は、`docs/future/2D_FIVE_PERSPECTIVE_REVIEW_ACTION_PLAN_2026-08-13.md`を参照する。Group 16内では、unsafe pathと名前衝突、秘密値の非表示、古いpreflight結果、決定的な問題順序、package再読込、二重download、`verified`範囲、動的な検証記録とpackage hashの分離を、採用後handoffで固定する。この節だけを根拠に実装しない。
 
 distribution製品UIはGroup 21A、`.casproj`再開・再生成はGroup 21B、性能・アクセシビリティ・安全性とEditor責務の段階分離はGroup 21C、代表projectと初回成功ループはGroup 22へ送る。Group 16の`375×667`確認はGeneric Web fixtureの表示確認であり、製品UIや物理Safariの合格を意味しない。
-
