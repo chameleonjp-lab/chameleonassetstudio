@@ -268,25 +268,29 @@ export function inspectDistributionPreflight(
       );
     }
 
-    const animationLosses = findFixedFpsAnimationLosses(typedAsset);
-    if (animationLosses.length > 0) {
-      pushIssue(
-        issues,
-        'PREFLIGHT-LOSS',
-        'block',
-        '/animations',
-        '固定fpsのdistributionでは時間またはイベントを保持できません。',
-      );
+    if (Array.isArray(typedAsset.animations)) {
+      const animationLosses = findFixedFpsAnimationLosses(typedAsset);
+      if (animationLosses.length > 0) {
+        pushIssue(
+          issues,
+          'PREFLIGHT-LOSS',
+          'block',
+          '/animations',
+          '固定fpsのdistributionでは時間またはイベントを保持できません。',
+        );
+      }
     }
-    const colliderLosses = findColliderOverrideExportLosses(typedAsset);
-    if (colliderLosses.length > 0) {
-      pushIssue(
-        issues,
-        'PREFLIGHT-LOSS',
-        'block',
-        '/frames',
-        'distributionではFrame別collider overrideを保持できません。',
-      );
+    if (Array.isArray(typedAsset.colliders) && Array.isArray(typedAsset.frames)) {
+      const colliderLosses = findColliderOverrideExportLosses(typedAsset);
+      if (colliderLosses.length > 0) {
+        pushIssue(
+          issues,
+          'PREFLIGHT-LOSS',
+          'block',
+          '/frames',
+          'distributionではFrame別collider overrideを保持できません。',
+        );
+      }
     }
   }
 
