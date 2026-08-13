@@ -224,10 +224,10 @@ export function drawGenericWebFrame(context, loaded, frameName, x = 0, y = 0) {
   const image = loaded.images[frame.page];
   context.drawImage(
     image,
-    frame.rect.x,
-    frame.rect.y,
-    frame.rect.width,
-    frame.rect.height,
+    frame.rect.x + frame.contentRect.x,
+    frame.rect.y + frame.contentRect.y,
+    frame.contentRect.width,
+    frame.contentRect.height,
     x + frame.contentOffset.x,
     y + frame.contentOffset.y,
     frame.contentRect.width,
