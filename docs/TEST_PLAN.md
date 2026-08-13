@@ -1,6 +1,6 @@
 # Chameleon Asset Studio テスト計画書
 
-最終更新日: 2026-08-12
+最終更新日: 2026-08-13
 対象バージョン: アプリ 0.1.0 / Asset 0.2.0 / Project・export-presets・atlas 0.1.0
 詳細な対象一覧の正本: `docs/implementation/TEST_AND_RELEASE.md`
 
@@ -172,15 +172,20 @@ PR #238のfinal headは`c2dc87ee1506f0a68b283eb3accf09d78921011a`、merge commit
 
 distribution UI、375×667 product-pathの追加証拠、engine読込、物理iPhone Safariは後続Gateで扱う。
 
-### 3.10 Group 16 Package / Preflight / Generic Web（契約監査・人間判断待ち）
+### 3.10 Group 16 Package / Preflight / Generic Web（監査文書反映済み・契約判断待ち）
 
-正本は`docs/future/2D_4_PACKAGE_PREFLIGHT_GENERIC_WEB_PLAN.md`。基準main `d691031`で、Group 16のproduct implementationはまだ開始していない。package入口、sidecar、import notes、verification record、preflightの`block` / `warning` / 秘密情報検出、Generic Web受入証拠の3判断を人間が採用するまで、製品コード・unit・E2E・CI workflowは変更しない。
+正本は`docs/future/2D_4_PACKAGE_PREFLIGHT_GENERIC_WEB_PLAN.md`。初回監査基準mainは`d691031`で、docs-only監査はPR #240 / merge `b5401529a552c38147d308d7209ad8483ffd85c4`によりmainへ反映済みである。これは契約採用ではない。Group 16のproduct implementationはまだ開始していない。package入口、sidecar、import notes、verification record、preflightの`block` / `warning` / 秘密情報検出、Generic Web受入証拠の3判断を人間が採用するまで、製品コード・unit・E2E・CI workflowは変更しない。
 
 採用後の必須確認候補は、次のとおりである。
 
 - package入口からmanifest、canonical `asset.json`、sidecar、README、import notes、verification record、画像、複数pageを一貫して参照でき、legacy ZIPとAtlas `0.1.0`を変更しない。
 - preflightはassetを変更せず、問題を`code`、`severity`、`path`、`message`で返す。`block`がある場合はBlob読込、decode、canvas、ZIP生成、downloadを開始しない。既存の可変時間・event、Frame別collider上書き、polygonの理由付き拒否を維持する。
-- Generic Web / Canvas 2D fixtureはHTTP経由でpackageを読み、frame、trim offset、scale、origin、anchor、rect / circle、animation、複数pageを確認する。通常viewportと`375×667`を対象にし、fixture hash、manifest hash、browser情報、console error、download件数をCI artifactへ残す。
+- Generic Web / Canvas 2D fixtureはHTTP経由でpackageを読み、frame、trim offset、scale、origin、anchor、rect / circle、animation、複数pageを確認する。通常viewportと`375×667`を対象にする。package内の安定した検証記録と、browser情報、実行日時、console error、download件数を持つCI artifactを同じheadで対応付ける。
+- Unitはunsafe path、ASCII大小文字・Unicode NFC名衝突、秘密値、安定順、非破壊性、古いpreflight結果、壊れた参照、package再読込、高速二重開始を確認する。
+- package生成後かつdownload前に、全JSON、全参照、entry hash、画像寸法、複数pageを再確認する。失敗時のdownloadは0件とする。
+- E2Eは通常成功、`block`、decode失敗、ZIP失敗、download失敗、再試行、`375×667`の長い問題一覧、Generic Webの404・console error、生成・download各1回、Blob URL解放を確認する。
+- CI artifactは対象head SHA、fixture hash、package hash、entry一覧とhash、問題一覧、before / after snapshot、download件数、Blob URL件数、browser情報、console errorを残す。artifact欠落、unexpected skip、flaky、retryは合格にしない。
+- `.casproj`の別session再読込と意味の同じpackage再生成はGroup 21B・22、distribution製品UIと物理iPhone SafariはGroup 21A・release Gateで確認し、Group 16完了の証拠と混同しない。
 
 このdocs-only監査PRではコード用テストを実行せず、Markdown差分検査とdocs-only分類だけを確認する。採用後の実装PRでは、変更範囲に応じてlint、format、build、unit、E2E、artifact、固定head独立確認を必須とする。
 
