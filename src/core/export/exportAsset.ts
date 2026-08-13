@@ -732,7 +732,7 @@ export async function exportDistributionZip(
 ## Generic Web
 
 このpackageはGeneric Web / Canvas 2Dのfixture確認用です。HTTP経由で
-`examples/example-generic-web.html`を開き、対象profileと既知の制限を確認してください。
+examples/example-generic-web.htmlを開き、対象profileと既知の制限を確認してください。
 `);
   assertPackageClosure(entries, packageManifest, manifest);
   const orderedEntries = Object.fromEntries(
