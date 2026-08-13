@@ -739,6 +739,7 @@ examples/example-generic-web.htmlを開き、対象profileと既知の制限を�
     Object.entries(entries).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0)),
   );
   const zipped = await zipAsync(orderedEntries);
+  assertPackageClosure(unzipSync(zipped), packageManifest, manifest);
   return new Blob([zipped.buffer as ArrayBuffer], { type: 'application/zip' });
 }
 
