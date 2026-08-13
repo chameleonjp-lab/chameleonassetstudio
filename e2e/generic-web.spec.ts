@@ -12,5 +12,7 @@ test('Generic Web fixtureはHTTP経由でpackageとCanvasを確認できる', as
   await expect(page.locator('#status')).toContainText('読み込み成功');
   await expect(page.locator('canvas')).toBeVisible();
   expect(consoleErrors).toEqual([]);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
 });
