@@ -278,13 +278,14 @@ describe('exportAsset texture kind boundary', () => {
           verificationStatus: verification.status,
           fixtureHash: verification.fixtureHash,
           manifestHash: verification.manifestHash,
-          packageEntries: Object.keys(firstEntries).filter((path) =>
-            path.startsWith('package-manifest') ||
-            path.startsWith('targets/generic-web') ||
-            path.startsWith('examples/example-generic-web') ||
-            path.startsWith('helpers/chameleon-generic-web') ||
-            path.startsWith('import-notes/generic-web') ||
-            path.startsWith('verification/record'),
+          packageEntries: Object.keys(firstEntries).filter(
+            (path) =>
+              path.startsWith('package-manifest') ||
+              path.startsWith('targets/generic-web') ||
+              path.startsWith('examples/example-generic-web') ||
+              path.startsWith('helpers/chameleon-generic-web') ||
+              path.startsWith('import-notes/generic-web') ||
+              path.startsWith('verification/record'),
           ),
           repeatedPackageManifestEqual: firstEntries['package-manifest.json'].every(
             (byte, index) => byte === secondEntries['package-manifest.json'][index],
