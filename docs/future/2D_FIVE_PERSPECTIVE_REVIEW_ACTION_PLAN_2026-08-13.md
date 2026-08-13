@@ -18,15 +18,15 @@
 
 | 項目 | 状態 |
 |---|---|
-| 最新main | `b5401529a552c38147d308d7209ad8483ffd85c4`。PR #240のmerge commit。 |
-| open Pull Request | 基準main `b5401529a552c38147d308d7209ad8483ffd85c4`時点（PR #241作成前）は0件。 |
+| 最新main | `c665872b0e3b4de36ab1ee3e9dc35e9a10331b8b`。PR #241のmerge commit。 |
+| open Pull Request | Draft PR #242（Group 16実装）が1件。PR #241 merge後の`main`を基準とする。 |
 | 完了数 | 17/27。今回のdocs-only統合では変更しない。 |
 | Group 16 docs-only監査 | PR #240でmainへ反映済み。 |
 | Group 16契約 | `accepted`。ユーザーが`G16-C1 A + G16-C2 A + G16-C3 A`を2026-08-13に採用。 |
-| Group 16製品実装 | `implementing / unverified`（本Draft PR）。 |
-| 次の許可された行動 | 提案の記録と、`G16-C1`〜`G16-C3`の人間判断。 |
+| Group 16製品実装 | `implementing / CI-passed / independently-verified / merge-pending`（Draft PR #242、CI Run #760）。 |
+| 次の許可された行動 | Draft PR #242の維持、CI・固定head証跡の更新。Ready化・mergeは人間判断。 |
 
-PR #240のmergeは、監査文書を正本として置いたGate Aの完了である。推奨案の採用を示すGate Bではない。推奨`G16-C1 A + G16-C2 A + G16-C3 A`を、この文書だけでacceptedに変更しない。
+PR #240のmergeは、監査文書を正本として置いたGate Aの完了である。2026-08-13のユーザー明示判断`G16-C1 A + G16-C2 A + G16-C3 A`でGate Bも完了した。実装・CI・固定head確認はDraft PR #242に記録し、Ready化・mergeだけを人間判断として残す。
 
 ---
 
@@ -218,12 +218,12 @@ Group 12から延期したB2の性能budget、warning、hard cap、採用上限p
 
 ## 9. 人間判断と次の行動
 
-現在必要な判断は、Group 16正本にある次の3件である。
+Group 16の採用判断は完了しており、現在はDraft PR #242の検証と人間によるReady化・merge判断を待つ。
 
 ```text
-G16-C1 [A/B/C] + G16-C2 [A/B/C] + G16-C3 [A/B/C]
+G16-C1 A + G16-C2 A + G16-C3 A
 ```
 
-既存監査の推奨は`G16-C1 A + G16-C2 A + G16-C3 A`である。回答があるまではGroup 16のproduct code、unit、E2E、CI workflowを変更しない。
+この採用範囲でGroup 16のproduct code、unit、E2E、CI workflowを実装し、CI Run #760と固定head確認を完了した。
 
 単一writerがこのDraft Pull RequestでGroup 16のcode、tests、docs、CI evidenceを実装する。CI失敗と`BLOCKER` / `MUST`修正は同じbranchと同じPull Requestで行う。Ready化とmergeは人間が判断する。
