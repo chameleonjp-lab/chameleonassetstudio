@@ -217,11 +217,6 @@ export function exportAssetJson(asset: Asset): Blob {
  * フレームがあれば全フレームを 1 枚のシートへ合成し、無ければ現在の表示状態を 'default' の 1 コマにする。
  */
 export async function exportSpriteSheet(asset: Asset): Promise<{ sheet: Blob; atlas: AtlasJson }> {
-  assertDistributionPreflight(asset, {
-    profile,
-    padding: options.padding,
-    scale,
-  });
   assertValidAsset(asset);
   assertFixedFpsAnimationExportSafe(asset);
   assertColliderOverrideExportSafe(asset);
@@ -661,6 +656,11 @@ export async function exportDistributionZip(
     throw new ExportError(`未対応のdistribution profileです: ${profile}`);
   }
 
+  assertDistributionPreflight(asset, {
+    profile,
+    padding: options.padding,
+    scale,
+  });
   assertValidAsset(asset);
   assertFixedFpsAnimationExportSafe(asset);
   assertColliderOverrideExportSafe(asset);
