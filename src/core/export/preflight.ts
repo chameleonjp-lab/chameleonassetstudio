@@ -25,7 +25,8 @@ export interface DistributionPreflightResult {
   valid: boolean;
 }
 
-const SECRET_KEY_PATTERN = /(api[_-]?key|authorization|bearer|credential|password|private[_-]?key|secret|token)/i;
+const SECRET_KEY_PATTERN =
+  /(api[_-]?key|authorization|bearer|credential|password|private[_-]?key|secret|token)/i;
 const SECRET_VALUE_PATTERNS = [
   /^-----BEGIN [A-Z0-9 ]+-----[\s\S]+-----END [A-Z0-9 ]+-----$/,
   /^Bearer\s+\S+$/i,
@@ -56,7 +57,10 @@ function pathFor(parent: string, key: string | number): string {
   return `${parent}/${String(key).replaceAll('~', '~0').replaceAll('/', '~1')}`;
 }
 
-function compareIssues(left: DistributionPreflightIssue, right: DistributionPreflightIssue): number {
+function compareIssues(
+  left: DistributionPreflightIssue,
+  right: DistributionPreflightIssue,
+): number {
   const severity = left.severity === right.severity ? 0 : left.severity === 'block' ? -1 : 1;
   return severity || left.code.localeCompare(right.code) || left.path.localeCompare(right.path);
 }
