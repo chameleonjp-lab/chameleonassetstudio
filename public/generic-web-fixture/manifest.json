@@ -4,15 +4,17 @@
   "profile": "fixed-grid",
   "scale": 1,
   "pages": [{ "path": "atlas/pages/page-000.svg", "width": 32, "height": 32, "rotated": false }],
-  "frames": [{
-    "name": "fixture",
-    "page": 0,
-    "rect": { "x": 0, "y": 0, "width": 32, "height": 32 },
-    "sourceSize": { "width": 32, "height": 32 },
-    "contentRect": { "x": 0, "y": 0, "width": 32, "height": 32 },
-    "contentOffset": { "x": 0, "y": 0 },
-    "rotated": false
-  }],
+  "frames": [
+    {
+      "name": "fixture",
+      "page": 0,
+      "rect": { "x": 0, "y": 0, "width": 32, "height": 32 },
+      "sourceSize": { "width": 32, "height": 32 },
+      "contentRect": { "x": 0, "y": 0, "width": 32, "height": 32 },
+      "contentOffset": { "x": 0, "y": 0 },
+      "rotated": false
+    }
+  ],
   "animations": [],
   "origin": { "x": 16, "y": 32 },
   "anchors": [],
