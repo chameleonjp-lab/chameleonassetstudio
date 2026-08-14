@@ -3,9 +3,9 @@
 最終更新日: 2026-08-14  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 正式work package: `2D-4-PIXIJS + 2D-4-PHASER + 2D-4-DOCS`  
-基準main SHA: `ea7f3964cf7f267622c23d386d8c59cacc4d117c`  
+基準main SHA: `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`
 文書種別: docs-only 契約監査・人間判断 handoff  
-状態: `accepted / implementing`
+状態: `accepted / implemented / CI-passed / independently-verified / merged`
 
 上位文書: `docs/IMPLEMENTATION_PLAN.md`, `docs/future/2D_COMPLETION_ROADMAP.md`  
 関連文書: `docs/future/2D_4_PACKAGE_PREFLIGHT_GENERIC_WEB_PLAN.md`, `docs/EXPORT_FORMATS.md`, `docs/ENGINE_INTEGRATION.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`
@@ -17,9 +17,9 @@
 | 項目 | 確認結果 | Group 17への意味 |
 |---|---|---|
 | Group 16 | PR #242 final head `6616ad30fdae7a05f98e0a0146ce69555bab1bfa`、merge `711bcec268d6e732a24c0c787c6054b41e415c27`、CI Run #765全job成功。 | Generic Web package、複数page、trim / offset、scale、sidecarの入力を再利用できる。 |
-| Group 17 Gate A | docs-only handoff PR #243、merge `9d33306fd7ad340065dac22548c218a8c4500383`。merge後closeout PR #244、merge `5a05100f66c8e6e84854028995a3ae31ba1c36a4`、PR #245、merge `ea7f3964cf7f267622c23d386d8c59cacc4d117c`。 | 契約文書とmerge後状態はmainへ反映済み。G17-C1〜C3はaccepted、product implementationは本PRで開始する。 |
+| Group 17 Gate A | docs-only handoff PR #243、merge `9d33306fd7ad340065dac22548c218a8c4500383`。merge後closeout PR #244、merge `5a05100f66c8e6e84854028995a3ae31ba1c36a4`、PR #245、merge `ea7f3964cf7f267622c23d386d8c59cacc4d117c`。実装PR #246 final head `9380494f7a662b9211f341d87a15f62d4b82986f`、merge `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`、CI Run #785全job成功。 | 契約文書、実装、証拠artifact、独立確認、merge後状態をmainへ反映済み。 |
 | 既存PixiJS | `src/core/export/examples.ts`と`helpers.ts`にPixiJS用HTML / helperがある。現在のHTMLは`pixi.js@8`というメジャー指定である。 | 対象versionをfixtureでは固定し、既存HTMLの扱いをdocsで明確にする。 |
-| 既存Phaser | Phaser 4.2.0のHTML / helperがあり、unitは生成文字列を確認している。 | 実ブラウザでの読込・表示・animation確認を追加する。 |
+| 既存Phaser | Phaser 4.2.0のHTML / helperがあり、unitは生成文字列を確認している。 | PR #246の専用fixtureで実ブラウザの読込・表示・animation確認を完了した。 |
 | 現行E2E | Generic Web / Canvas 2DのHTTP fixtureはあるが、PixiJS / Phaserの実行fixtureはない。既存fixtureのmanifest形状・package entryがG17の完全証拠を満たすとは限らない。 | 各engine専用の完全fixture data・adapter・別artifactで検証し、既存Generic Web fixtureをそのまま証拠に流用しない。 |
 | dependency | 本体の`package.json` / `package-lock.json`にPixiJS / Phaserは追加されていない。 | 本体bundleへ追加せず、既存のCDN方式を使う候補とする。 |
 | 既存package | `package-manifest.json`は`generic-web-v1`専用で、`targets/generic-web.json`を参照する。 | PixiJS / Phaser用targetを既存packageへ混ぜない。 |
@@ -38,10 +38,10 @@ Group 17の完了時に、次の範囲だけを対象version付きで説明で�
 ### 3.1 対象
 
 - PixiJS用HTTP fixtureとPhaser用HTTP fixtureを分離して作る。
-- Group 17専用の完全なfixture dataから、Group 16のdistribution manifest、複数page、sidecar、画像を読み込む。既存Generic Web fixtureの不足項目を推測で補わず、fixture内のmanifest・package entry・animation形状を実際に確認する。
+- Group 17専用の完全なfixture dataから、Group 16のdistribution manifest、package entry、複数page、sidecar、画像を読み込む。`asset.json` / target pathはpackage manifestの存在確認に留め、asset / targetの意味互換はG17のverified範囲に含めない。
 - frame rect、trim後のcontentRect / contentOffset、scale、origin、anchor、rect / circle collider、固定fps animationの順番を確認する。
 - 通常viewportとChromium `375×667`で表示を確認する。
-- fixtureごとに、対象version、fixture hash、manifest hash、browser version、viewport、console error、download件数、読込page数をartifactへ保存する。
+- fixtureごとに、対象version、runtime entry（index.html）hash、manifest hash、browser version、viewport、console error、download件数、読込page数をartifactへ保存する。
 - `docs/EXPORT_FORMATS.md`、`docs/ENGINE_INTEGRATION.md`、`docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`へ、対象versionと制限を反映する。
 
 ### 3.2 対象外
@@ -89,7 +89,7 @@ G17-C1 A + G17-C2 A + G17-C3 A
 
 ## 6. 採用記録
 
-2026-08-14、人間が`G17-C1 A + G17-C2 A + G17-C3 A`を採用した。G17-C1はPixiJS 8.12.0 / Phaser 4.2.0の固定CDN、G17-C2はengine別fixture・E2E・artifact、G17-C3は実行確認済み範囲だけを`verified`とする。契約状態は`accepted`、実装状態は`implementing`である。
+2026-08-14、人間が`G17-C1 A + G17-C2 A + G17-C3 A`を採用した。G17-C1はPixiJS 8.12.0 / Phaser 4.2.0の固定CDN、G17-C2はengine別fixture・E2E・artifact、G17-C3は実行確認済み範囲だけを`verified`とする。契約状態は`accepted`、実装状態は`implemented / CI-passed / independently-verified / merged`である。
 
 ## 7. 採用後の実装handoff候補
 
@@ -133,5 +133,5 @@ G17-C1 A + G17-C2 A + G17-C3 A
 G17-C1 [A/B/C] + G17-C2 [A/B/C] + G17-C3 [A/B/C]
 ```
 
-2026-08-14に`G17-C1 A + G17-C2 A + G17-C3 A`がacceptedとなったため、この文書の契約状態は`accepted`、Group 17のproduct implementationは`implementing`として扱う。
+2026-08-14に`G17-C1 A + G17-C2 A + G17-C3 A`がacceptedとなり、PR #246（merge `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`）でGroup 17は完了した。Group 18は別のdocs-only handoffと人間採用判断で扱う。
 

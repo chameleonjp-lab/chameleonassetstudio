@@ -2,15 +2,15 @@
 
 最終更新日: 2026-08-14  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
-五視点レビュー統合基準main SHA: `ea7f3964cf7f267622c23d386d8c59cacc4d117c`  
+五視点レビュー統合基準main SHA: `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`
 文書種別: docs-only 横断レビュー統合・後続work package割当  
-状態: `review-integrated / G16 merged / G17 accepted / implementation in progress / remaining proposals pending`
+状態: `review-integrated / G16 merged / G17 merged / G18 handoff pending / remaining proposals pending`
 
 上位文書: `docs/IMPLEMENTATION_PLAN.md`, `docs/future/2D_COMPLETION_ROADMAP.md`  
 現在の契約正本: `docs/future/2D_4_PIXIJS_PHASER_PLAN.md`  
 関連文書: `docs/future/2D_COMPLETE_PRODUCT_SPEC.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/future/2D_DEVICE_RELIABILITY_SPEC.md`, `docs/TEST_PLAN.md`, `docs/future/2D_4_PACKAGE_PREFLIGHT_GENERIC_WEB_PLAN.md`
 
-> この文書は、2026-08-13に行った五視点レビューを既存の2D完成ロードマップへ割り当てる。五視点レビューのGroup 17〜23提案は引き続きproposal-onlyである。一方、Group 16の`G16-C1 A + G16-C2 A + G16-C3 A`はユーザーが2026-08-13に採用し、このDraft PRの実装契約へ同期した。後続UI・構造整理の具体契約は各work packageで別途採用する。
+> この文書は、2026-08-13に行った五視点レビューを既存の2D完成ロードマップへ割り当てる。Group 17は`G17-C1 A + G17-C2 A + G17-C3 A`の採用・実装・CI・独立確認・mergeを完了した。Group 18〜23の提案はproposal-onlyであり、Group 18の具体契約はdocs-only handoffで人間判断を待つ。後続UI・構造整理の具体契約は各work packageで別途採用する。
 
 ---
 
@@ -18,16 +18,16 @@
 
 | 項目 | 状態 |
 |---|---|
-| 最新main | `ea7f3964cf7f267622c23d386d8c59cacc4d117c`。PR #245のmerge commit。 |
-| open Pull Request | 基準main `ea7f3964cf7f267622c23d386d8c59cacc4d117c`時点ではopen PR 0件。 |
+| 最新main | `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`。PR #246のmerge commit。 |
+| open Pull Request | 0件（Group 18 handoff作成前の確認）。 |
 | 完了数 | 17/27。今回のdocs-only統合では変更しない。 |
 | Group 16 docs-only監査 | PR #240でmainへ反映済み。 |
 | Group 16契約 | `accepted`。ユーザーが`G16-C1 A + G16-C2 A + G16-C3 A`を2026-08-13に採用。 |
 | Group 16製品実装 | `implemented / CI-passed / independently-verified / merged`（PR #242 final head `6616ad30fdae7a05f98e0a0146ce69555bab1bfa`、merge `711bcec268d6e732a24c0c787c6054b41e415c27`、CI Run #765）。 |
-| Group 17契約 | Gate A（PR #243 / #244 / #245のdocs反映）完了。2026-08-14に`G17-C1 A + G17-C2 A + G17-C3 A`をacceptedし、契約状態は`accepted`、product implementationは進行中。正本は`docs/future/2D_4_PIXIJS_PHASER_PLAN.md`。 |
-| 次の許可された行動 | G17-C1〜C3は2026-08-14にaccepted。単一writerがDraft PR #246で採用範囲のfixture・E2E・証拠・docsを実装中。 |
+| Group 17契約 | `accepted / implemented / CI-passed / independently-verified / merged`。PR #246 final head `9380494f7a662b9211f341d87a15f62d4b82986f`、merge `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`、CI Run #785。 |
+| 次の許可された行動 | Group 18のdocs-only handoffで`G18-C1〜C3`を提示する。採用回答まではproduct code・target fixtureを変更しない。 |
 
-PR #240のmergeはGroup 16監査のGate A、2026-08-13のユーザー明示判断`G16-C1 A + G16-C2 A + G16-C3 A`はGate Bであり、PR #242で実装・CI・固定head確認・mergeまで完了した。Group 17はPR #243 / #244 / #245のmain反映でGate Aを完了し、2026-08-14の`G17-C1 A + G17-C2 A + G17-C3 A`でGate Bを完了した。product implementationは進行中である。
+PR #240のmergeはGroup 16監査のGate A、2026-08-13のユーザー明示判断`G16-C1 A + G16-C2 A + G16-C3 A`はGate Bであり、PR #242で実装・CI・固定head確認・mergeまで完了した。Group 17はPR #243 / #244 / #245のmain反映でGate A、2026-08-14の`G17-C1 A + G17-C2 A + G17-C3 A`でGate Bを完了し、PR #246で実装・CI・独立確認・mergeまで完了した。Group 18はdocs-only Gate A handoffを開始し、Gate Bの採用回答を待つ。
 
 ---
 
@@ -219,12 +219,12 @@ Group 12から延期したB2の性能budget、warning、hard cap、採用上限p
 
 ## 9. 人間判断と次の行動
 
-Group 16の採用・実装・mergeは完了した。Group 17は2026-08-14にacceptedとなり、実装を進めている。
+Group 16とGroup 17の採用・実装・mergeは完了した。Group 18は`2D-5-EVIDENCE + 2D-5-LABELS`のdocs-only handoffを開始し、採用回答までは人間判断待ちである。
 
 ```text
 G16-C1 A + G16-C2 A + G16-C3 A
 ```
 
-Group 16はこの採用範囲でproduct code、unit、E2E、CI workflowを実装し、final head `6616ad30fdae7a05f98e0a0146ce69555bab1bfa`のCI Run #765と固定head確認を経てPR #242をmergeした。Group 17はPR #243〜#245でdocs-only handoff・merge後closeout・採用状態をmainへ反映し、2026-08-14のG17-C1〜C3採用後にPR #246でproduct fixture、E2E、CI証拠の実装を進めている。
+Group 16はこの採用範囲でproduct code、unit、E2E、CI workflowを実装し、PR #242をmergeした。Group 17はPR #243〜#245でdocs-only Gate Aを完了し、PR #246 final head `9380494f7a662b9211f341d87a15f62d4b82986f`、CI Run #785、engine別artifact、固定head確認を経てmerge `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`で完了した。次はGroup 18 handoffであり、正本は`docs/future/2D_5_EVIDENCE_LABELS_PLAN.md`。
 
-G17-C1〜C3は採用済みであり、単一writerがbranch `agent/group17-engine-fixtures-20260814` のDraft PR #246でfixture、E2E、証拠、docsを実装する。CI失敗と`BLOCKER` / `MUST`修正は同じbranchと同じPull Requestで行う。Ready化とmergeは人間が判断する。
+G17-C1〜C3は採用済み・merge済みである。Group 18の採用回答前に、target fixture、product UI、既存export形式、schema、保存形式、helper、dependenciesは変更しない。
