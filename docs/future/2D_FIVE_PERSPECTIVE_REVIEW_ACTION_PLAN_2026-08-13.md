@@ -4,7 +4,7 @@
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 五視点レビュー統合基準main SHA: `cdc80e1c1cce9af87e7384832b146507b51c2b21`
 文書種別: docs-only 横断レビュー統合・後続work package割当  
-状態: `review-integrated / G16 merged / G17 merged / G18 accepted / implementing / remaining proposals pending`
+状態: `review-integrated / G16 merged / G17 merged / G18 merged / remaining proposals pending`
 
 上位文書: `docs/IMPLEMENTATION_PLAN.md`, `docs/future/2D_COMPLETION_ROADMAP.md`  
 現在の契約正本: `docs/future/2D_5_EVIDENCE_LABELS_PLAN.md`  
@@ -225,4 +225,4 @@ Group 16とGroup 17の採用・実装・mergeは完了した。Group 18は2026-0
 G18-C1 A + G18-C2 A + G18-C3 A
 ```
 
-本Draft PRではstable recordとdynamic CI evidenceの分離、profile・target version・fixture単位のラベル境界、失効理由、契約artifact欠落検出を実装する。完了数はCI・独立確認・mergeまで17/27のままとする。Group 19〜23のtarget fixture、product UI、既存export形式、schema、保存形式、helper、dependenciesは変更しない。
+Group 18はPR #248（merge `3ab844d28d155a438dc8f10f8f9b22099a40093a`、CI Run #793）でstable/dynamic evidence分離、target version・fixture単位のラベル境界、失効理由、契約artifact欠落検出を実装し、独立確認・main反映まで完了した。完了数は18/27。次はGroup 19 / 20であり、target fixture、product UI、既存export形式、schema、保存形式、helper、dependenciesはそれぞれの採用範囲だけで変更する。
