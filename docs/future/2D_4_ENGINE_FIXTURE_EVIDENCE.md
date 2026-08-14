@@ -1,9 +1,11 @@
 # Group 17 engine fixture evidence
 
 最終更新日: 2026-08-14
-対象main: `ea7f3964cf7f267622c23d386d8c59cacc4d117c`
+対象main: `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`
 work package: `2D-4-PIXIJS + 2D-4-PHASER + 2D-4-DOCS`
 採用判断: `G17-C1 A + G17-C2 A + G17-C3 A`
+実装PR: #246（final head `9380494f7a662b9211f341d87a15f62d4b82986f`、merge `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`）
+CI: Run #785（全job成功、PixiJS / Phaser artifactあり）
 
 ## 役割
 
@@ -28,4 +30,4 @@ PixiJSとPhaserの実ブラウザfixtureで確認した範囲を記録する。�
 
 ## 状態
 
-`verified`はこの2つのfixtureと固定versionで確認した範囲だけに使う。CI実行後にartifact IDと対象headをPR本文へ追記する。CDN障害、画像読込失敗、実行時version不一致、artifact欠落は成功扱いにしない。
+`verified`はこの2つのfixtureと固定versionで確認した範囲だけに使う。PR #246で独立確認・mergeまで完了した。CI実行後にartifact IDと対象headをPR本文・handoffへ追記する。CDN障害、画像読込失敗、実行時version不一致、artifact欠落は成功扱いにしない。

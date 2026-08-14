@@ -5,12 +5,12 @@
 文書種別: 2D 入出力・対象別書き出し・検証基準
 状態: accepted（設計と確認基準。docs-only）
 上位文書: `2D_COMPLETE_PRODUCT_SPEC.md`
-関連文書: `2D_ASSET_DATA_CONTRACT.md`, `docs/EXPORT_FORMATS.md`, `docs/ENGINE_INTEGRATION.md`, `docs/future/ASSET_CREATION_AND_EXPORT_STRATEGY.md`
+関連文書: `2D_ASSET_DATA_CONTRACT.md`, `docs/EXPORT_FORMATS.md`, `docs/ENGINE_INTEGRATION.md`, `docs/future/ASSET_CREATION_AND_EXPORT_STRATEGY.md`, `docs/future/2D_5_EVIDENCE_LABELS_PLAN.md`
 
 ---
 
-> **現状:** mainはPNG / JPEG / WebP、連番、手動格子 sprite sheet、Tileset、Chameleon独自atlasの限定再取り込み、PNG / WebP / Chameleon 独自 atlas / JSON / ZIP の書き出し、Canvas 2D / PixiJS / Phaser の sample・helper、Godot / Unity の取り込み説明を持つ。SVG / GIF source保存のAsset 0.2.0基盤はADR-0019 / PR #135、SVG / GIF / APNGの新規Asset製品入口は1A + 2A + 3A / ADR-0020 / PR #138、安全境界のpost-merge補修はPR #144でmainへ反映済みである。
-> **重要:** 現行 `atlas.json` は Chameleon 独自形式であり、Phaser、PixiJS、Tiled、Unity、Godot の標準形式そのものではない。外部ツールで実行確認するまで `verified` と表示してはいけない。
+> **現状:** mainはPNG / JPEG / WebP、連番、手動格子 sprite sheet、Tileset、Chameleon独自atlasの限定再取り込み、PNG / WebP / Chameleon 独自 atlas / JSON / ZIP の書き出し、Canvas 2D / PixiJS / Phaser の sample・helper、Godot / Unity の取り込み説明を持つ。SVG / GIF source保存のAsset 0.2.0基盤はADR-0019 / PR #135、SVG / GIF / APNGの新規Asset製品入口は1A + 2A + 3A / ADR-0020 / PR #138、安全境界のpost-merge補修はPR #144でmainへ反映済みである。 Group 17でPixiJS 8.12.0 / Phaser 4.2.0の専用fixtureをCI確認済みであり、これらのverifiedはfixture-localの範囲に限る。
+> **重要:** 現行 `atlas.json` は Chameleon 独自形式であり、Phaser、PixiJS、Tiled、Unity、Godot の標準形式そのものではない。Group 17で確認したPixiJS 8.12.0 / Phaser 4.2.0のfixture-local範囲だけを `verified` とし、標準atlas完全互換や他versionまで広げてはいけない。Group 18でラベルと証拠の共通ルールを固定する。
 > **Group 12:** T1 Slice A / ADR-0021でFrame単位durationとeventをoptionalに追加した。現行atlas / sample / helperは固定fpsだけを表現するため、H1=E1に従い、対象Animationにlossがある場合は固定fps atlas / product ZIP / helper / exampleを理由付きで拒否する。PNG / WebP、単体`asset.json`、`.casproj`は許可する。Atlas 0.1.0の形式は変更しない。
 > **Group 13:** G1 Slice AはPR #217、O1正式契約Slice BはPR #218、Slice C製品実装と補修はPR #219 / #220、E2E待機安定化はPR #221 / merge `65df697e36f53ee20464d7bb74940f8713317d65`でmainへ反映済みである。ADR-0024に従い、PNG / WebPは静止画像なのでFrame別collider metadataの有無を理由に止めず、canonical metadataを保持できる単体`asset.json` / `.casproj`も許可する。Frame別上書きを表現できない現行Atlas生成API、`atlas.json`、product ZIPはBlob読込・decode・canvas・ZIP生成より前に理由付きで拒否する。空配列だけでは拒否しない。CI Run #669と固定head独立監査を成功し、Group 13をcompletedとした。polygonはP1により2D Pro Gateまで`unsupported`である。この拒否はGroup 14で解除せず、共通export形式と対象別fixtureを扱うGroup 15〜17へ引き継ぐ。
 
@@ -122,8 +122,8 @@ Generic Web は対象ツール名ではないため、`generic-web-v1` のよう
 |---|---|---|---|
 | Generic | PNG / WebP / `asset.json` / Chameleon atlas / ZIP。 | `generic` | 他ツールがChameleon atlasをそのまま読めること。可変時間・event・Frame別collider上書きは現行atlasで表現できない。O1 Slice CではFrame別上書きがあるAtlas / ZIPを理由付きで拒否する。 |
 | Canvas 2D | sample HTML と helper。 | `candidate`（外部実行確認前）。 | 実ゲーム全般での互換性、`verified`、可変時間・event。 |
-| PixiJS v8 | sample HTML と helper。 | `candidate`（外部実行確認前）。 | PixiJS標準atlas JSONとしての完全互換、`verified`、可変時間・event。 |
-| Phaser 4 | sample HTML と helper。 | `candidate`（外部実行確認前）。 | Phaser標準atlas / Aseprite JSONとしての完全互換、`verified`、可変時間・event。 |
+| PixiJS v8 | 専用fixture（8.12.0）と既存sample / helper。 | `verified`（8.12.0 fixture-local） | PixiJS標準atlas JSONの完全互換、他version、project自動生成、可変時間・event。 |
+| Phaser 4 | 専用fixture（4.2.0）と既存sample / helper。 | `verified`（4.2.0 fixture-local） | Phaser標準atlas / Aseprite JSONの完全互換、他version、project自動生成、可変時間・event。 |
 | Unity | ZIP 内の取り込みガイド。 | `import-notes` | 手動・自動を問わない verified preset。 |
 | Godot 4 | ZIP 内の取り込みガイド。 | `import-notes` | 手動・自動を問わない verified preset。 |
 | RPG Maker / Tiled / Construct / Blender | 将来方針のみ。 | `unsupported` | 出力・取り込み・検証済み対応。 |
