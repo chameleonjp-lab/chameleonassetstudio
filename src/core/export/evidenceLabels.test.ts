@@ -69,7 +69,9 @@ describe('Group 18 evidence labels', () => {
       fixtureHash: 'changed-fixture-hash',
     };
     expect(isVerificationCurrent(stable, changedFixture)).toBe(false);
-    expect(verificationInvalidationReasons(stable, changedFixture)).toContain('fixture-hash-changed');
+    expect(verificationInvalidationReasons(stable, changedFixture)).toContain(
+      'fixture-hash-changed',
+    );
 
     const failedCi = { ...matchingDynamic, ciConclusion: 'failure' as const };
     expect(verificationInvalidationReasons(stable, failedCi)).toContain('ci-failure');
