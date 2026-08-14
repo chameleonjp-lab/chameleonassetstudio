@@ -18,9 +18,9 @@
 
 | 項目 | 状態 |
 |---|---|
-| 最新main | `cdc80e1c1cce9af87e7384832b146507b51c2b21`。PR #247のmerge commit。 |
+| 最新main | `fcbf1cc9b7a1a9d0cdd588eaed59de3999bdcabb`。PR #249のmerge commit。 | Group 19 handoffの基準main。 |
 | open Pull Request | PR #249 merge後のmain `fcbf1cc`確認時は0件。このGroup 19 docs-only handoff Draft PRを作成する。 |
-| 完了数 | 17/27。今回のdocs-only統合では変更しない。 |
+| 完了数 | 18/27。Group 18 closeout済みで、Group 19 docs-only handoffは実装数を変更しない。 |
 | Group 16 docs-only監査 | PR #240でmainへ反映済み。 |
 | Group 16契約 | `accepted`。ユーザーが`G16-C1 A + G16-C2 A + G16-C3 A`を2026-08-13に採用。 |
 | Group 16製品実装 | `implemented / CI-passed / independently-verified / merged`（PR #242 final head `6616ad30fdae7a05f98e0a0146ce69555bab1bfa`、merge `711bcec268d6e732a24c0c787c6054b41e415c27`、CI Run #765）。 |
