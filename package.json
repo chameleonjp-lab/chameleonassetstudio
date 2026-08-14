@@ -21,7 +21,8 @@
     "pages:chromium": "playwright test --config tools/pages/playwright.config.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "evidence:group18": "node tools/evidence/write-group18-record.mjs"
   },
   "dependencies": {
     "ajv": "^8.17.1",
