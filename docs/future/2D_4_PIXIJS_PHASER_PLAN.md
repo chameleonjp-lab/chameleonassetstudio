@@ -20,7 +20,7 @@
 | Group 17 Gate A | docs-only handoff PR #243、merge `9d33306fd7ad340065dac22548c218a8c4500383`。 | 契約文書はmainへ反映済み。G17-C1〜C3の採用（Gate B）とproduct implementation開始（Gate C）は未完了。 |
 | 既存PixiJS | `src/core/export/examples.ts`と`helpers.ts`にPixiJS用HTML / helperがある。現在のHTMLは`pixi.js@8`というメジャー指定である。 | 対象versionをfixtureでは固定し、既存HTMLの扱いをdocsで明確にする。 |
 | 既存Phaser | Phaser 4.2.0のHTML / helperがあり、unitは生成文字列を確認している。 | 実ブラウザでの読込・表示・animation確認を追加する。 |
-| 現行E2E | Generic Web / Canvas 2DのHTTP fixtureはあるが、PixiJS / Phaserの実行fixtureはない。 | 各engineを別fixture・別artifactで検証する。 |
+| 現行E2E | Generic Web / Canvas 2DのHTTP fixtureはあるが、PixiJS / Phaserの実行fixtureはない。既存fixtureのmanifest形状・package entryがG17の完全証拠を満たすとは限らない。 | 各engine専用の完全fixture data・adapter・別artifactで検証し、既存Generic Web fixtureをそのまま証拠に流用しない。 |
 | dependency | 本体の`package.json` / `package-lock.json`にPixiJS / Phaserは追加されていない。 | 本体bundleへ追加せず、既存のCDN方式を使う候補とする。 |
 | 既存package | `package-manifest.json`は`generic-web-v1`専用で、`targets/generic-web.json`を参照する。 | PixiJS / Phaser用targetを既存packageへ混ぜない。 |
 
@@ -38,7 +38,7 @@ Group 17の完了時に、次の範囲だけを対象version付きで説明で�
 ### 3.1 対象
 
 - PixiJS用HTTP fixtureとPhaser用HTTP fixtureを分離して作る。
-- fixtureからGroup 16のdistribution manifest、複数page、sidecar、画像を読み込む。
+- Group 17専用の完全なfixture dataから、Group 16のdistribution manifest、複数page、sidecar、画像を読み込む。既存Generic Web fixtureの不足項目を推測で補わず、fixture内のmanifest・package entry・animation形状を実際に確認する。
 - frame rect、trim後のcontentRect / contentOffset、scale、origin、anchor、rect / circle collider、固定fps animationの順番を確認する。
 - 通常viewportとChromium `375×667`で表示を確認する。
 - fixtureごとに、対象version、fixture hash、manifest hash、browser version、viewport、console error、download件数、読込page数をartifactへ保存する。
@@ -94,7 +94,7 @@ G17-C1 A + G17-C2 A + G17-C3 A
 - 新規: `public/engine-fixtures/pixijs-v8/index.html`、`public/engine-fixtures/phaser-v4/index.html`。
 - 新規: `e2e/pixijs.spec.ts`、`e2e/phaser.spec.ts`。
 - 更新候補: `.github/workflows/ci.yml`（engine別evidence artifact）。
-- 更新候補: `src/core/export/examples.ts`（PixiJS CDNのversion固定。既存API・出力構造は維持）。
+- `src/core/export/examples.ts`は変更しない。PixiJSの固定URLはfixture内に置き、legacy ZIPの同梱bytesと既存出力を変えない。
 - 更新候補: `docs/EXPORT_FORMATS.md`、`docs/ENGINE_INTEGRATION.md`、`docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`。
 - 必要な場合のみ新規: `docs/future/2D_4_ENGINE_FIXTURE_EVIDENCE.md`。
 
@@ -115,7 +115,9 @@ G17-C1 A + G17-C2 A + G17-C3 A
 
 - 人間がG17-C1〜C3を採用するまでproduct code、fixture、CIを変更しない。
 - CDNのversionが固定できない、またはfixtureが対象versionを記録できない場合は実装を止める。
+- fixtureのmanifest、package entry、animation、複数page、trim / offsetが本番DistributionManifestの意味と一致しない場合は、実装を止めてfixture契約を修正する。
 - Group 16 packageへPixiJS / Phaserのtargetを混ぜる必要が出た場合は、別の契約判断へ戻す。
+- 既存helperがsingle legacy atlas前提でmulti-page、trim、offsetを扱えない場合は、helper APIを拡張せずfixture-local adapterで対応する。
 - 現行Atlasが表現できない情報を変換して成功扱いにする必要が出た場合は、理由付き未対応として記録する。
 - CIでengine本体の読込、画像表示、artifact保存のどれかが失敗した場合は、同じDraft PRで修正する。
 
