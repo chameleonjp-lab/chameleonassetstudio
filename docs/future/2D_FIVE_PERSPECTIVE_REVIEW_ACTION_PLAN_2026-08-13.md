@@ -25,7 +25,7 @@
 | Group 16契約 | `accepted`。ユーザーが`G16-C1 A + G16-C2 A + G16-C3 A`を2026-08-13に採用。 |
 | Group 16製品実装 | `implemented / CI-passed / independently-verified / merged`（PR #242 final head `6616ad30fdae7a05f98e0a0146ce69555bab1bfa`、merge `711bcec268d6e732a24c0c787c6054b41e415c27`、CI Run #765）。 |
 | Group 17契約 | Gate A（PR #243 / #244 / #245のdocs反映）完了。2026-08-14に`G17-C1 A + G17-C2 A + G17-C3 A`をacceptedし、契約状態は`accepted`、product implementationは進行中。正本は`docs/future/2D_4_PIXIJS_PHASER_PLAN.md`。 |
-| 次の許可された行動 | G17-C1〜C3の人間採用を待つ。採用後に単一writerで新しいDraft PRを作り、採用範囲だけを実装する。 |
+| 次の許可された行動 | G17-C1〜C3は2026-08-14にaccepted。単一writerがDraft PR #246で採用範囲のfixture・E2E・証拠・docsを実装中。 |
 
 PR #240のmergeはGroup 16監査のGate A、2026-08-13のユーザー明示判断`G16-C1 A + G16-C2 A + G16-C3 A`はGate Bであり、PR #242で実装・CI・固定head確認・mergeまで完了した。Group 17はPR #243 / #244 / #245のmain反映でGate Aを完了し、2026-08-14の`G17-C1 A + G17-C2 A + G17-C3 A`でGate Bを完了した。product implementationは進行中である。
 
@@ -219,12 +219,12 @@ Group 12から延期したB2の性能budget、warning、hard cap、採用上限p
 
 ## 9. 人間判断と次の行動
 
-Group 16の採用・実装・mergeは完了した。現在はGroup 17の契約候補について人間判断を待つ。
+Group 16の採用・実装・mergeは完了した。Group 17は2026-08-14にacceptedとなり、実装を進めている。
 
 ```text
 G16-C1 A + G16-C2 A + G16-C3 A
 ```
 
-Group 16はこの採用範囲でproduct code、unit、E2E、CI workflowを実装し、final head `6616ad30fdae7a05f98e0a0146ce69555bab1bfa`のCI Run #765と固定head確認を経てPR #242をmergeした。Group 17はPR #243とPR #244でdocs-only handoffとmerge後closeoutをmainへ反映済みだが、G17-C1〜C3の採用判断までproduct code、fixture、CIを変更しない。
+Group 16はこの採用範囲でproduct code、unit、E2E、CI workflowを実装し、final head `6616ad30fdae7a05f98e0a0146ce69555bab1bfa`のCI Run #765と固定head確認を経てPR #242をmergeした。Group 17はPR #243〜#245でdocs-only handoff・merge後closeout・採用状態をmainへ反映し、2026-08-14のG17-C1〜C3採用後にPR #246でproduct fixture、E2E、CI証拠の実装を進めている。
 
-G17-C1〜C3の採用後、単一writerが新しいbranchとDraft Pull RequestでGroup 17のfixture、E2E、証拠、docsを実装する。CI失敗と`BLOCKER` / `MUST`修正は同じbranchと同じPull Requestで行う。採用前のproduct code、fixture、CIは変更せず、Ready化とmergeは人間が判断する。
+G17-C1〜C3は採用済みであり、単一writerがbranch `agent/group17-engine-fixtures-20260814` のDraft PR #246でfixture、E2E、証拠、docsを実装する。CI失敗と`BLOCKER` / `MUST`修正は同じbranchと同じPull Requestで行う。Ready化とmergeは人間が判断する。

@@ -117,7 +117,7 @@ G17-C1 A + G17-C2 A + G17-C3 A
 
 ## 7. 停止条件
 
-- 人間がG17-C1〜C3を採用するまでproduct code、fixture、CIを変更しない。
+- G17-C1〜C3採用前はproduct code、fixture、CIを変更しない。採用後は本work packageの専用fixture、engine別E2E、証拠artifact、対象docsだけを変更する。
 - CDNのversionが固定できない、またはfixtureが対象versionを記録できない場合は実装を止める。
 - fixtureのmanifest、package entry、animation、複数page、trim / offsetが本番DistributionManifestの意味と一致しない場合は、実装を止めてfixture契約を修正する。
 - Group 16 packageへPixiJS / Phaserのtargetを混ぜる必要が出た場合は、別の契約判断へ戻す。
@@ -133,5 +133,5 @@ G17-C1 A + G17-C2 A + G17-C3 A
 G17-C1 [A/B/C] + G17-C2 [A/B/C] + G17-C3 [A/B/C]
 ```
 
-回答があるまでは、この文書の契約状態を`human-decision-pending`、Group 17のproduct implementationを`not-started`として扱う。
+2026-08-14に`G17-C1 A + G17-C2 A + G17-C3 A`がacceptedとなったため、この文書の契約状態は`accepted`、Group 17のproduct implementationは`implementing`として扱う。
 

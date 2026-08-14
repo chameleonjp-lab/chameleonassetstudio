@@ -561,7 +561,7 @@ D1〜D4は`implemented / CI-passed / independently-verified / merged`で、指�
 | 代表project、初回成功ループ、利用者向け説明、最終整合監査 | Group 22 |
 | 最終証拠と2D Pro Gate判断 | Group 23 |
 
-五視点レビューのGroup 17〜23への割当はproposal-onlyのままとする。Group 16の`G16-C1`〜`G16-C3`は2026-08-13のユーザー判断によりacceptedとなり、PR #242で実装・検証・mergeまで完了した。Group 17はdocs-only handoff PR #243 / merge `9d33306fd7ad340065dac22548c218a8c4500383`とmerge後closeout PR #244 / merge `5a05100f66c8e6e84854028995a3ae31ba1c36a4`でGate Aを完了したが、契約は`human-decision-pending`であり、G17-C1〜C3の採用前はproduct codeを変更しない。27工程の分母、17/27の完了数、Group 16〜23の順序は変更しない。
+五視点レビューのGroup 17〜23への割当はproposal-onlyのままとする。Group 16の`G16-C1`〜`G16-C3`は2026-08-13のユーザー判断によりacceptedとなり、PR #242で実装・検証・mergeまで完了した。Group 17はdocs-only handoff PR #243 / merge `9d33306fd7ad340065dac22548c218a8c4500383`、merge後closeout PR #244 / merge `5a05100f66c8e6e84854028995a3ae31ba1c36a4`、PR #245 / merge `ea7f3964cf7f267622c23d386d8c59cacc4d117c`でGate Aを完了した。2026-08-14に`G17-C1 A + G17-C2 A + G17-C3 A`をacceptedとし、契約は`accepted / implementing`、専用fixture・engine別E2E・CI証拠の実装をPR #246で進めている。27工程の分母、17/27の完了数、Group 16〜23の順序は変更しない。
 
 
 ## 7. 上位 4 仕様とのトレーサビリティ
@@ -595,7 +595,7 @@ D1〜D4は`implemented / CI-passed / independently-verified / merged`で、指�
 | 章・節 | 要件 | 対応 work package | 状態 |
 |---|---|---|---|
 | §1〜§3 | 対応ラベル、candidate / import-notes / verified / unsupported の区別 | `2D-4-PACKAGE`, `2D-5-*` | 未完了。 |
-| §4 Generic Web / Canvas 2D / PixiJS / Phaser | P0 出力と fixture 実行確認 | `2D-4-GENERIC-WEB`, `2D-4-PIXIJS`, `2D-4-PHASER` | 未完了。 |
+| §4 Generic Web / Canvas 2D / PixiJS / Phaser | P0 出力と fixture 実行確認 | `2D-4-GENERIC-WEB`, `2D-4-PIXIJS`, `2D-4-PHASER` | Generic Webはcompleted。PixiJS / PhaserはPR #246で実装・CI検証中。 |
 | §5 Unity 2D / Godot 2D / RPG Maker MZ | 対象バージョン付き検証 | `2D-5-UNITY`, `2D-5-GODOT`, `2D-5-RPGMZ` | 未完了。 |
 | §6 optional / future targets | Tiled、Construct、GameMaker、GDevelop、Blender texture など | `2D-5-P2-TARGETS` | Gate 後。 |
 | §7〜§9 | export gate、fixture、証拠、helper 採否 | `2D-4-PREFLIGHT`, `2D-5-HELPER-GATE`, `2D-5-NATIVE-RIG` | helper は判断必須、native rig は Gate 後。 |
