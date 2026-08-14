@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "profile": "phaser-v4",
   "status": "verified",
-  "engine": "phaser-v4",
+  "engine": "Phaser",
   "engineVersion": "4.2.0",
   "source": {
     "assetJson": "asset.json",
