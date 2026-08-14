@@ -17,7 +17,7 @@
 | 項目 | 確認結果 | Group 18への意味 |
 |---|---|---|
 | 最新main | `fcbf1cc9b7a1a9d0cdd588eaed59de3999bdcabb`。PR #249のmerge commit。 | Group 18 closeout後のGroup 19 handoff基準head。 |
-| open Pull Request | 0件。 | このhandoffが同一目的の唯一のDraft PRになる。 |
+| open Pull Request | 基準main `fcbf1cc`確認時点: 0件。現在はGroup 19 handoffのDraft PRを作成する。 |
 | Group 17 | PR #246（final head `9380494f7a662b9211f341d87a15f62d4b82986f`）をmerge。CI Run #785は全job成功、PixiJS / Phaser artifactを記録。 | fixture-localな `verified` の境界を再利用する。 |
 | Group 18 | `G18-C1 A + G18-C2 A + G18-C3 A`を2026-08-15に採用し、PR #248で実装・CI・独立確認・mergeまで完了。 | Group 19へ共通証拠契約を引き渡す。 |
 
