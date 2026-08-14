@@ -91,7 +91,7 @@ G17-C1 A + G17-C2 A + G17-C3 A
 
 2026-08-14、人間が`G17-C1 A + G17-C2 A + G17-C3 A`を採用した。G17-C1はPixiJS 8.12.0 / Phaser 4.2.0の固定CDN、G17-C2はengine別fixture・E2E・artifact、G17-C3は実行確認済み範囲だけを`verified`とする。契約状態は`accepted`、実装状態は`implementing`である。
 
-## 6. 採用後の実装handoff候補
+## 7. 採用後の実装handoff候補
 
 ### 6.1 変更候補
 
