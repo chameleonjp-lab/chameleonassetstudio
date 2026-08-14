@@ -1,9 +1,4 @@
-export const EVIDENCE_LABELS = [
-  'candidate',
-  'verified',
-  'import-notes',
-  'unsupported',
-] as const;
+export const EVIDENCE_LABELS = ['candidate', 'verified', 'import-notes', 'unsupported'] as const;
 
 export type EvidenceLabel = (typeof EVIDENCE_LABELS)[number];
 export type VerificationCiConclusion = 'success' | 'failure' | 'cancelled' | 'unknown';
@@ -97,9 +92,7 @@ export function buildStableVerificationRecord(
   };
 }
 
-export function validateStableVerificationRecord(
-  record: StableVerificationRecord,
-): string[] {
+export function validateStableVerificationRecord(record: StableVerificationRecord): string[] {
   const issues: string[] = [];
   if (record.format !== VERIFICATION_RECORD_FORMAT) issues.push('format');
   if (record.version !== VERIFICATION_RECORD_VERSION) issues.push('version');
