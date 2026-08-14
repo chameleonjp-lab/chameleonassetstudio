@@ -1,25 +1,25 @@
 # Chameleon Asset Studio Group 18 契約監査・実装 handoff
 
-最終更新日: 2026-08-14
+最終更新日: 2026-08-15
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 正式work package: `2D-5-EVIDENCE + 2D-5-LABELS`
-基準main SHA: `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`
+基準main SHA: `cdc80e1c1cce9af87e7384832b146507b51c2b21`
 文書種別: docs-only 契約監査・人間判断 handoff
-状態: `human-decision-pending / proposal-only`
+状態: `accepted / implementing`
 
 上位文書: `docs/IMPLEMENTATION_PLAN.md`, `docs/future/2D_COMPLETION_ROADMAP.md`
 関連文書: `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/future/2D_4_ENGINE_FIXTURE_EVIDENCE.md`, `docs/future/2D_FIVE_PERSPECTIVE_REVIEW_ACTION_PLAN_2026-08-13.md`
 
-> Group 17（PixiJS / Phaser）の専用fixture実装はPR #246でmainへmerge済みである。Group 18は、対象別検証を増やす前に、何を証拠と呼び、どの範囲を `candidate` / `verified` / `import-notes` / `unsupported` と表示できるかを固定するdocs-only handoffである。ここで案をmainへ置いても、人間が採用するまでproduct codeやtarget fixtureを変更しない。
+> Group 17（PixiJS / Phaser）の専用fixture実装はPR #246でmainへmerge済みである。Group 18では、対象別検証を増やす前に、何を証拠と呼び、どの範囲を `candidate` / `verified` / `import-notes` / `unsupported` と表示できるかを実装契約へ固定する。2026-08-15に人間が`G18-C1 A + G18-C2 A + G18-C3 A`を採用したため、本Draft PRでは契約unit、テンプレート、CIの契約artifact、docs同期だけを進める。
 
 ## 1. 現在確認できる事実
 
 | 項目 | 確認結果 | Group 18への意味 |
 |---|---|---|
-| 最新main | `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`。PR #246のmerge commit。 | Group 18の基準headを固定する。 |
+| 最新main | `cdc80e1c1cce9af87e7384832b146507b51c2b21`。PR #247のmerge commit。 | Group 18実装PRの基準headを固定する。 |
 | open Pull Request | 0件。 | このhandoffが同一目的の唯一のDraft PRになる。 |
 | Group 17 | PR #246（final head `9380494f7a662b9211f341d87a15f62d4b82986f`）をmerge。CI Run #785は全job成功、PixiJS / Phaser artifactを記録。 | fixture-localな `verified` の境界を再利用する。 |
-| Group 18 | ロードマップ上は未着手。採用判断は未確認。 | Gate Aとして契約案を提示し、Gate Bの明示採用を待つ。 |
+| Group 18 | `G18-C1 A + G18-C2 A + G18-C3 A`を2026-08-15に採用。 | Gate B完了。本PRで契約unit、テンプレート、CI契約artifact、docs同期を実装する。 |
 
 ## 2. 今回の目的
 
@@ -78,7 +78,7 @@ Group 19 / 20の対象別fixtureへ進む前に、検証結果の意味を再現
 G18-C1 A + G18-C2 A + G18-C3 A
 ```
 
-Group 17で確認した対象version・fixture単位のverified境界、Group 16で分離した安定record / 動的artifactの考え方と整合する。これは提案であり、採用判断前に実装契約へ昇格させない。
+Group 17で確認した対象version・fixture単位のverified境界、Group 16で分離した安定record / 動的artifactの考え方と整合する。2026-08-15の採用により、A案を実装契約へ昇格させる。
 
 ## 6. Gate Aで確認する受入ID
 
@@ -90,18 +90,34 @@ Group 17で確認した対象version・fixture単位のverified境界、Group 16
 | G18-INVALIDATION | version、fixture、manifest、source、受入項目の変更、CI失敗、artifact欠落時にverifiedを維持しない。 |
 | G18-NO-REGRESSION | Group 17専用fixture、既存Generic Web、legacy ZIP、schema、`.casproj`、export、helper、dependencyを変更しない。 |
 
-## 7. 採用後のhand-off境界
+## 7. 実装handoffと境界
 
-採用後に変更できるのは、Group 18の契約docs、ラベル・証拠の契約unit、必要な検証記録テンプレートとCIの欠落検出に限る。Group 19 / 20のtarget fixture、product UI、既存export形式、schema、保存形式、helper、dependenciesは別Group・別判断で扱う。
+G18-C1〜C3のA案を採用したため、次の範囲を本Draft PRで実装する。
 
-採用前に変更してよいのは、このdocs-only監査・handoffだけである。CIがdocs-onlyとして分類されても、Group 18が採用済みになったことを意味しない。
+- `src/core/export/evidenceLabels.ts` に、profile・target version・fixture ID単位の安定record、動的CI証拠、ラベル解決、失効理由を実装する。
+- `evidenceLabels.test.ts` で決定性、scope/hash/version不一致、受入項目欠落、CI失敗、artifact欠落、各ラベル境界を検証する。
+- `2D_5_EVIDENCE_LABELS_TEMPLATE.json` はstable recordのテンプレートとして扱い、target互換性を主張しない。
+- `tools/evidence/write-group18-record.mjs` とCI uploadで、stable recordと実行時情報を別artifactへ出力する。これは契約artifactであり、target runtimeの`verified`を自動付与しない。
 
-## 8. 人間判断
+stable recordには日時、browser version、CI conclusion、artifact digestを含めない。動的なrun、実行環境、artifact参照はCI側へ分離する。verifiedは同一profile・target version・fixture・source/fixture/manifest hash・受入項目・成功CI・artifact参照とdigestが揃ったときだけ成立し、いずれかが変わればcandidateへ戻す。
 
-次の形式で採用する。
+Group 19 / 20のtarget fixture、product UI、既存export形式、`asset.json`、`.casproj`、schema、migration、IndexedDB、既存Atlas `0.1.0`、helper API、package dependencies、Group 17専用fixtureと証拠は変更しない。
+
+## 8. 採用記録
+
+2026-08-15、人間が次を採用した。
 
 ```text
-G18-C1 [A/B/C] + G18-C2 [A/B/C] + G18-C3 [A/B/C]
+G18-C1 A + G18-C2 A + G18-C3 A
 ```
 
-採用回答があるまでは契約状態を `human-decision-pending` とし、Group 19 / 20のtarget実装を開始しない。
+契約状態は`accepted`、実装状態は`implementing`である。Group 18の本Draft PRでは証拠ラベル契約とCI契約artifactを実装し、target-specific runtime検証はGroup 19 / 20で別途扱う。完了数は独立確認とmergeまで17/27のままとする。
+## 9. 実装状態
+
+- stable recordとdynamic CI evidenceの分離契約: `src/core/export/evidenceLabels.ts`
+- 契約unit: `src/core/export/evidenceLabels.test.ts`
+- stable template: `docs/future/2D_5_EVIDENCE_LABELS_TEMPLATE.json`
+- CI contract artifact: `tools/evidence/write-group18-record.mjs`、`npm run evidence:group18`
+- artifact欠落はworkflowの`if-no-files-found: error`で失敗させる。
+
+このartifactの成功はGroup 18契約の生成成功を示すもので、Unity / Godot / RPG Maker MZ、未確認engine、別versionのruntime互換性をverifiedとは扱わない。
