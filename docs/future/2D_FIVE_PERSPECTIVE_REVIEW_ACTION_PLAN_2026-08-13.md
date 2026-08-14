@@ -10,7 +10,7 @@
 現在の契約正本: `docs/future/2D_5_EVIDENCE_LABELS_PLAN.md`  
 関連文書: `docs/future/2D_COMPLETE_PRODUCT_SPEC.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/future/2D_DEVICE_RELIABILITY_SPEC.md`, `docs/TEST_PLAN.md`, `docs/future/2D_4_PACKAGE_PREFLIGHT_GENERIC_WEB_PLAN.md`
 
-> この文書は、2026-08-13に行った五視点レビューを既存の2D完成ロードマップへ割り当てる。Group 17は`G17-C1 A + G17-C2 A + G17-C3 A`の採用・実装・CI・独立確認・mergeを完了した。Group 18は`G18-C1 A + G18-C2 A + G18-C3 A`を2026-08-15に採用し、証拠ラベル契約の実装を開始した。Group 19〜23の提案はproposal-onlyであり、後続UI・構造整理の具体契約は各work packageで別途採用する。
+> この文書は、2026-08-13に行った五視点レビューを既存の2D完成ロードマップへ割り当てる。Group 17はG17-C1 A + G17-C2 A + G17-C3 Aの採用・実装・CI・独立確認・mergeを完了した。Group 18はG18-C1 A + G18-C2 A + G18-C3 Aを2026-08-15に採用し、PR #248で実装・CI・独立確認・mergeまで完了した。Group 19〜23の提案はproposal-onlyであり、Group 19のUnity / Godot契約handoffを除く後続UI・構造整理の具体契約は各work packageで別途採用する。
 
 ---
 
@@ -19,7 +19,7 @@
 | 項目 | 状態 |
 |---|---|
 | 最新main | `cdc80e1c1cce9af87e7384832b146507b51c2b21`。PR #247のmerge commit。 |
-| open Pull Request | 基準main `cdc80e1`確認時は0件。現在は本Group 18 Draft PRを作成中。 |
+| open Pull Request | PR #249 merge後のmain `fcbf1cc`確認時は0件。このGroup 19 docs-only handoff Draft PRを作成する。 |
 | 完了数 | 17/27。今回のdocs-only統合では変更しない。 |
 | Group 16 docs-only監査 | PR #240でmainへ反映済み。 |
 | Group 16契約 | `accepted`。ユーザーが`G16-C1 A + G16-C2 A + G16-C3 A`を2026-08-13に採用。 |
@@ -27,7 +27,7 @@
 | Group 17契約 | `accepted / implemented / CI-passed / independently-verified / merged`。PR #246 final head `9380494f7a662b9211f341d87a15f62d4b82986f`、merge `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`、CI Run #785。 |
 | 次の許可された行動 | 採用済みG18契約のunit、stable template、CI contract artifact、docsを本Draft PRで実装する。target fixtureと既存exportは変更しない。 |
 
-PR #240のmergeはGroup 16監査のGate A、2026-08-13のユーザー明示判断`G16-C1 A + G16-C2 A + G16-C3 A`はGate Bであり、PR #242で実装・CI・固定head確認・mergeまで完了した。Group 17はPR #243 / #244 / #245のmain反映でGate A、2026-08-14の`G17-C1 A + G17-C2 A + G17-C3 A`でGate Bを完了し、PR #246で実装・CI・独立確認・mergeまで完了した。Group 18は2026-08-15に`G18-C1 A + G18-C2 A + G18-C3 A`を採用し、本Draft PRで契約unit、stable template、CI contract artifact、docs同期を実装する。
+PR #240のmergeはGroup 16監査のGate A、2026-08-13のユーザー明示判断G16-C1 A + G16-C2 A + G16-C3 AはGate Bであり、PR #242で実装・CI・固定head確認・mergeまで完了した。Group 17はPR #243 / #244 / #245のmain反映でGate A、2026-08-14のG17-C1 A + G17-C2 A + G17-C3 AでGate Bを完了し、PR #246で実装・CI・独立確認・mergeまで完了した。Group 18は2026-08-15のG18-C1 A + G18-C2 A + G18-C3 Aを採用し、PR #248 / merge 3ab844dで実装・CI・独立確認・mergeまで完了した。Group 19はdocs/future/2D_5_UNITY_GODOT_PLAN.mdで契約handoffを開始し、G19-C1〜C3の人間判断待ちである。
 
 ---
 
@@ -225,4 +225,4 @@ Group 16とGroup 17の採用・実装・mergeは完了した。Group 18は2026-0
 G18-C1 A + G18-C2 A + G18-C3 A
 ```
 
-Group 18はPR #248（merge `3ab844d28d155a438dc8f10f8f9b22099a40093a`、CI Run #793）でstable/dynamic evidence分離、target version・fixture単位のラベル境界、失効理由、契約artifact欠落検出を実装し、独立確認・main反映まで完了した。完了数は18/27。次はGroup 19 / 20であり、target fixture、product UI、既存export形式、schema、保存形式、helper、dependenciesはそれぞれの採用範囲だけで変更する。
+Group 18はPR #248（merge `3ab844d28d155a438dc8f10f8f9b22099a40093a`、CI Run #793）でstable/dynamic evidence分離、target version・fixture単位のラベル境界、失効理由、契約artifact欠落検出を実装し、独立確認・main反映まで完了した。完了数は18/27。次はGroup 19のUnity / Godot契約handoffであり、target fixture、product UI、既存export形式、schema、保存形式、helper、dependenciesは採用範囲だけで変更する。
