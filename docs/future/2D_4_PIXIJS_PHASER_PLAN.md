@@ -1,9 +1,9 @@
 # Chameleon Asset Studio Group 17 契約監査・実装 handoff
 
-最終更新日: 2026-08-13  
+最終更新日: 2026-08-14  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 正式work package: `2D-4-PIXIJS + 2D-4-PHASER + 2D-4-DOCS`  
-基準main SHA: `711bcec268d6e732a24c0c787c6054b41e415c27`  
+基準main SHA: `9d33306fd7ad340065dac22548c218a8c4500383`  
 文書種別: docs-only 契約監査・人間判断 handoff  
 状態: `human-decision-pending / implementation not-started`
 
@@ -17,6 +17,7 @@
 | 項目 | 確認結果 | Group 17への意味 |
 |---|---|---|
 | Group 16 | PR #242 final head `6616ad30fdae7a05f98e0a0146ce69555bab1bfa`、merge `711bcec268d6e732a24c0c787c6054b41e415c27`、CI Run #765全job成功。 | Generic Web package、複数page、trim / offset、scale、sidecarの入力を再利用できる。 |
+| Group 17 Gate A | docs-only handoff PR #243、merge `9d33306fd7ad340065dac22548c218a8c4500383`。 | 契約文書はmainへ反映済み。G17-C1〜C3の採用（Gate B）とproduct implementation開始（Gate C）は未完了。 |
 | 既存PixiJS | `src/core/export/examples.ts`と`helpers.ts`にPixiJS用HTML / helperがある。現在のHTMLは`pixi.js@8`というメジャー指定である。 | 対象versionをfixtureでは固定し、既存HTMLの扱いをdocsで明確にする。 |
 | 既存Phaser | Phaser 4.2.0のHTML / helperがあり、unitは生成文字列を確認している。 | 実ブラウザでの読込・表示・animation確認を追加する。 |
 | 現行E2E | Generic Web / Canvas 2DのHTTP fixtureはあるが、PixiJS / Phaserの実行fixtureはない。 | 各engineを別fixture・別artifactで検証する。 |
