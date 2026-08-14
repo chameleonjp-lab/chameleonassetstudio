@@ -7,8 +7,8 @@
 状態: `review-integrated / G16 merged / G17 contract decision pending / remaining proposals pending`
 
 上位文書: `docs/IMPLEMENTATION_PLAN.md`, `docs/future/2D_COMPLETION_ROADMAP.md`  
-現在の契約正本: `docs/future/2D_4_PACKAGE_PREFLIGHT_GENERIC_WEB_PLAN.md`  
-関連文書: `docs/future/2D_COMPLETE_PRODUCT_SPEC.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/future/2D_DEVICE_RELIABILITY_SPEC.md`, `docs/TEST_PLAN.md`, `docs/future/2D_4_PIXIJS_PHASER_PLAN.md`
+現在の契約正本: `docs/future/2D_4_PIXIJS_PHASER_PLAN.md`  
+関連文書: `docs/future/2D_COMPLETE_PRODUCT_SPEC.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/future/2D_DEVICE_RELIABILITY_SPEC.md`, `docs/TEST_PLAN.md`, `docs/future/2D_4_PACKAGE_PREFLIGHT_GENERIC_WEB_PLAN.md`
 
 > この文書は、2026-08-13に行った五視点レビューを既存の2D完成ロードマップへ割り当てる。五視点レビューのGroup 17〜23提案は引き続きproposal-onlyである。一方、Group 16の`G16-C1 A + G16-C2 A + G16-C3 A`はユーザーが2026-08-13に採用し、このDraft PRの実装契約へ同期した。後続UI・構造整理の具体契約は各work packageで別途採用する。
 
