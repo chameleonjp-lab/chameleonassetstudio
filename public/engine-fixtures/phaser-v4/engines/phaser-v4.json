@@ -1,0 +1,8 @@
+{
+  "engine": "Phaser",
+  "engineVersion": "4.2.0",
+  "cdnUrl": "https://cdn.jsdelivr.net/npm/phaser@4.2.0/dist/phaser.min.js",
+  "profile": "phaser-v4",
+  "verified": "fixture-local",
+  "sourceCommit": "ea7f3964cf7f267622c23d386d8c59cacc4d117c"
+}

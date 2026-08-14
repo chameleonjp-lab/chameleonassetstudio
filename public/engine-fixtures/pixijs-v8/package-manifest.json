@@ -1,0 +1,33 @@
+{
+  "format": "chameleon-engine-package",
+  "version": "0.1.0",
+  "profile": "pixijs-v8",
+  "status": "verified",
+  "engine": "PixiJS",
+  "engineVersion": "8.12.0",
+  "source": {
+    "assetJson": "asset.json",
+    "canonical": true
+  },
+  "coordinateSystem": {
+    "origin": "top-left",
+    "xAxis": "right",
+    "yAxis": "down",
+    "unit": "px"
+  },
+  "scale": 2,
+  "files": {
+    "distributionManifest": "manifest.json",
+    "assetJson": "asset.json",
+    "atlasJson": "atlas/atlas.json",
+    "pages": ["atlas/pages/page-000.svg", "atlas/pages/page-001.svg"],
+    "mainPng": "textures/main.png",
+    "mainWebp": null,
+    "target": "targets/pixijs-v8.json",
+    "example": "examples/example-pixijs.html",
+    "helper": "helpers/pixijs-adapter.js",
+    "importNotes": "import-notes/pixijs-v8.md",
+    "verification": "verification/record.json",
+    "readme": "README.md"
+  }
+}

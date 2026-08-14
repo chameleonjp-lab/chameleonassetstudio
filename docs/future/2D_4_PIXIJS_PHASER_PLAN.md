@@ -3,9 +3,9 @@
 最終更新日: 2026-08-14  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 正式work package: `2D-4-PIXIJS + 2D-4-PHASER + 2D-4-DOCS`  
-基準main SHA: `5a05100f66c8e6e84854028995a3ae31ba1c36a4`  
+基準main SHA: `ea7f3964cf7f267622c23d386d8c59cacc4d117c`  
 文書種別: docs-only 契約監査・人間判断 handoff  
-状態: `human-decision-pending / implementation not-started`
+状態: `accepted / implementing`
 
 上位文書: `docs/IMPLEMENTATION_PLAN.md`, `docs/future/2D_COMPLETION_ROADMAP.md`  
 関連文書: `docs/future/2D_4_PACKAGE_PREFLIGHT_GENERIC_WEB_PLAN.md`, `docs/EXPORT_FORMATS.md`, `docs/ENGINE_INTEGRATION.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`
@@ -17,7 +17,7 @@
 | 項目 | 確認結果 | Group 17への意味 |
 |---|---|---|
 | Group 16 | PR #242 final head `6616ad30fdae7a05f98e0a0146ce69555bab1bfa`、merge `711bcec268d6e732a24c0c787c6054b41e415c27`、CI Run #765全job成功。 | Generic Web package、複数page、trim / offset、scale、sidecarの入力を再利用できる。 |
-| Group 17 Gate A | docs-only handoff PR #243、merge `9d33306fd7ad340065dac22548c218a8c4500383`。merge後closeout PR #244、merge `5a05100f66c8e6e84854028995a3ae31ba1c36a4`。 | 契約文書とmerge後状態はmainへ反映済み。G17-C1〜C3の採用（Gate B）とproduct implementation開始（Gate C）は未完了。 |
+| Group 17 Gate A | docs-only handoff PR #243、merge `9d33306fd7ad340065dac22548c218a8c4500383`。merge後closeout PR #244、merge `5a05100f66c8e6e84854028995a3ae31ba1c36a4`、PR #245、merge `ea7f3964cf7f267622c23d386d8c59cacc4d117c`。 | 契約文書とmerge後状態はmainへ反映済み。G17-C1〜C3はaccepted、product implementationは本PRで開始する。 |
 | 既存PixiJS | `src/core/export/examples.ts`と`helpers.ts`にPixiJS用HTML / helperがある。現在のHTMLは`pixi.js@8`というメジャー指定である。 | 対象versionをfixtureでは固定し、既存HTMLの扱いをdocsで明確にする。 |
 | 既存Phaser | Phaser 4.2.0のHTML / helperがあり、unitは生成文字列を確認している。 | 実ブラウザでの読込・表示・animation確認を追加する。 |
 | 現行E2E | Generic Web / Canvas 2DのHTTP fixtureはあるが、PixiJS / Phaserの実行fixtureはない。既存fixtureのmanifest形状・package entryがG17の完全証拠を満たすとは限らない。 | 各engine専用の完全fixture data・adapter・別artifactで検証し、既存Generic Web fixtureをそのまま証拠に流用しない。 |
@@ -87,7 +87,11 @@ G17-C1 A + G17-C2 A + G17-C3 A
 
 推奨理由は、既存のCDN方式を保ちつつ、対象versionと実ブラウザ証拠を固定できるためである。PixiJS v8.12.0の公式配布案内はPixiJS公式更新記事にあり、Phaser v4.2.0の公式配布案内はPhaser公式リリースページにある。採用後はこの2 version以外の成功を推測しない。
 
-## 6. 採用後の実装handoff候補
+## 6. 採用記録
+
+2026-08-14、人間が`G17-C1 A + G17-C2 A + G17-C3 A`を採用した。G17-C1はPixiJS 8.12.0 / Phaser 4.2.0の固定CDN、G17-C2はengine別fixture・E2E・artifact、G17-C3は実行確認済み範囲だけを`verified`とする。契約状態は`accepted`、実装状態は`implementing`である。
+
+## 7. 採用後の実装handoff候補
 
 ### 6.1 変更候補
 
@@ -113,7 +117,7 @@ G17-C1 A + G17-C2 A + G17-C3 A
 
 ## 7. 停止条件
 
-- 人間がG17-C1〜C3を採用するまでproduct code、fixture、CIを変更しない。
+- G17-C1〜C3採用前はproduct code、fixture、CIを変更しない。採用後は本work packageの専用fixture、engine別E2E、証拠artifact、対象docsだけを変更する。
 - CDNのversionが固定できない、またはfixtureが対象versionを記録できない場合は実装を止める。
 - fixtureのmanifest、package entry、animation、複数page、trim / offsetが本番DistributionManifestの意味と一致しない場合は、実装を止めてfixture契約を修正する。
 - Group 16 packageへPixiJS / Phaserのtargetを混ぜる必要が出た場合は、別の契約判断へ戻す。
@@ -129,5 +133,5 @@ G17-C1 A + G17-C2 A + G17-C3 A
 G17-C1 [A/B/C] + G17-C2 [A/B/C] + G17-C3 [A/B/C]
 ```
 
-回答があるまでは、この文書の契約状態を`human-decision-pending`、Group 17のproduct implementationを`not-started`として扱う。
+2026-08-14に`G17-C1 A + G17-C2 A + G17-C3 A`がacceptedとなったため、この文書の契約状態は`accepted`、Group 17のproduct implementationは`implementing`として扱う。
 

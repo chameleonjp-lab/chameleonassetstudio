@@ -1,0 +1,8 @@
+{
+  "engine": "PixiJS",
+  "engineVersion": "8.12.0",
+  "cdnUrl": "https://cdn.jsdelivr.net/npm/pixi.js@8.12.0/dist/pixi.min.js",
+  "profile": "pixijs-v8",
+  "verified": "fixture-local",
+  "sourceCommit": "ea7f3964cf7f267622c23d386d8c59cacc4d117c"
+}

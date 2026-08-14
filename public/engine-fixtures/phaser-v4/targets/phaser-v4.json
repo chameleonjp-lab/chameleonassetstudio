@@ -1,0 +1,71 @@
+{
+  "format": "chameleon-engine-sidecar",
+  "version": "0.1.0",
+  "profile": "phaser-v4",
+  "status": "verified",
+  "engine": "Phaser",
+  "engineVersion": "4.2.0",
+  "scale": 2,
+  "coordinateSystem": {
+    "origin": "top-left",
+    "xAxis": "right",
+    "yAxis": "down",
+    "unit": "px"
+  },
+  "canvasSize": {
+    "width": 64,
+    "height": 64
+  },
+  "origin": {
+    "x": 32,
+    "y": 60
+  },
+  "anchors": [
+    {
+      "name": "center",
+      "role": "center",
+      "position": {
+        "x": 32,
+        "y": 32
+      }
+    }
+  ],
+  "colliders": [
+    {
+      "name": "body",
+      "purpose": "body",
+      "shape": "rect",
+      "visible": true,
+      "rect": {
+        "x": 8,
+        "y": 10,
+        "width": 40,
+        "height": 44
+      }
+    },
+    {
+      "name": "radius",
+      "purpose": "sensor",
+      "shape": "circle",
+      "visible": true,
+      "circle": {
+        "x": 32,
+        "y": 32,
+        "radius": 22
+      }
+    }
+  ],
+  "animations": [
+    {
+      "name": "cross-page",
+      "frames": ["fixture-a", "fixture-b"],
+      "fps": 4,
+      "loop": true
+    }
+  ],
+  "limitations": [
+    "fixture-local adapterのみを検証対象とする。",
+    "標準atlas完全互換とproject自動生成は保証しない。",
+    "物理iPhone Safariは後続Gateで扱う。"
+  ]
+}

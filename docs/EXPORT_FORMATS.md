@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 書き出し形式書
 
-最終更新日: 2026-08-12
+最終更新日: 2026-08-14
 対象バージョン: アプリ 0.1.0 / Asset 0.2.0 / atlas 0.1.0
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`
 
@@ -232,3 +232,11 @@ manifestはundefined fieldを除外し、object keyを辞書順に並べてhash�
 ### 11.4 後続範囲
 
 distribution用UI、375×667のproduct-path E2E、engine読込検証、物理iPhone Safariは後続Gateで扱う。`.asset.json` / `.casproj`へのscale保存や、Atlas `0.1.0`へのscale field追加は行わない。
+
+
+## 8. Group 17 engine fixture verification
+
+- PixiJS `8.12.0` と Phaser `4.2.0` は専用HTTP fixtureの対象versionとしてのみ `verified` とする。
+- fixtureはdistribution manifestの複数page、trim / offset、scale、origin、anchor、rect / circle collider、固定fps animationをfixture-local adapterで確認する。
+- 既存の生成sample、既存helper、標準atlas完全互換、project自動生成はこの検証に含めない。
+- 物理iPhone SafariはGroup 17の合格条件ではなく、後続Gateで扱う。

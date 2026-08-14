@@ -1,0 +1,33 @@
+{
+  "format": "chameleon-engine-package",
+  "version": "0.1.0",
+  "profile": "phaser-v4",
+  "status": "verified",
+  "engine": "Phaser",
+  "engineVersion": "4.2.0",
+  "source": {
+    "assetJson": "asset.json",
+    "canonical": true
+  },
+  "coordinateSystem": {
+    "origin": "top-left",
+    "xAxis": "right",
+    "yAxis": "down",
+    "unit": "px"
+  },
+  "scale": 2,
+  "files": {
+    "distributionManifest": "manifest.json",
+    "assetJson": "asset.json",
+    "atlasJson": "atlas/atlas.json",
+    "pages": ["atlas/pages/page-000.svg", "atlas/pages/page-001.svg"],
+    "mainPng": "textures/main.png",
+    "mainWebp": null,
+    "target": "targets/phaser-v4.json",
+    "example": "examples/example-phaser.html",
+    "helper": "helpers/phaser-adapter.js",
+    "importNotes": "import-notes/phaser-v4.md",
+    "verification": "verification/record.json",
+    "readme": "README.md"
+  }
+}

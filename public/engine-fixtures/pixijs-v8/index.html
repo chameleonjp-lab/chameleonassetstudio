@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PixiJS 8.12.0 fixture</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: sans-serif;
+        background: #111827;
+        color: #f8fafc;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 16px;
+        box-sizing: border-box;
+      }
+      canvas {
+        display: block;
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #64748b;
+      }
+      #status {
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>PixiJS 8.12.0 fixture</h1>
+      <p id="status">読み込み中…</p>
+      <div id="stage"></div>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@8.12.0/dist/pixi.min.js"></script>
+    <script>
+      (async () => {
+        const status = document.querySelector('#status');
+        const json = async (url) => {
+          const r = await fetch(url);
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        };
+        const base = new URL('./', location.href);
+        const pkg = await json(new URL('package-manifest.json', base));
+        const manifest = await json(new URL(pkg.files.distributionManifest, base));
+        if (pkg.engine !== 'PixiJS' || pkg.engineVersion !== '8.12.0')
+          throw new Error('fixture metadata mismatch');
+        if (!window.PIXI || PIXI.VERSION !== '8.12.0')
+          throw new Error('PixiJS runtime version mismatch');
+        const app = new PIXI.Application();
+        await app.init({ width: 128, height: 128, background: '#111827', antialias: false });
+        document.querySelector('#stage').appendChild(app.canvas);
+        const pageTextures = await Promise.all(
+          manifest.pages.map((p) => PIXI.Assets.load(new URL(p.path, base).href)),
+        );
+        const frames = new Map();
+        for (const f of manifest.frames) {
+          const t = pageTextures[f.page];
+          const rect = new PIXI.Rectangle(
+            f.rect.x + f.contentRect.x,
+            f.rect.y + f.contentRect.y,
+            f.contentRect.width,
+            f.contentRect.height,
+          );
+          frames.set(f.name, { f, texture: new PIXI.Texture({ source: t.source, frame: rect }) });
+        }
+        const sprite = new PIXI.Sprite(frames.get(manifest.animations[0].frames[0]).texture);
+        sprite.position.set(manifest.frames[0].contentOffset.x, manifest.frames[0].contentOffset.y);
+        app.stage.addChild(sprite);
+        const debug = new PIXI.Graphics();
+        debug
+          .moveTo(manifest.origin.x - 8, manifest.origin.y)
+          .lineTo(manifest.origin.x + 8, manifest.origin.y);
+        debug
+          .moveTo(manifest.origin.x, manifest.origin.y - 8)
+          .lineTo(manifest.origin.x, manifest.origin.y + 8);
+        debug.stroke({ width: 1, color: 0xf8fafc });
+        const r = manifest.colliders[0].rect;
+        debug.rect(r.x, r.y, r.width, r.height).stroke({ width: 1, color: 0x22c55e });
+        const c = manifest.colliders[1].circle;
+        debug.circle(c.x, c.y, c.radius).stroke({ width: 1, color: 0x22c55e });
+        app.stage.addChild(debug);
+        let index = 0,
+          elapsed = 0;
+        const frameHistory = [];
+        const show = () => {
+          const name = manifest.animations[0].frames[index],
+            entry = frames.get(name);
+          sprite.texture = entry.texture;
+          sprite.position.set(entry.f.contentOffset.x, entry.f.contentOffset.y);
+          if (frameHistory[frameHistory.length - 1] !== name) frameHistory.push(name);
+        };
+        show();
+        app.ticker.add((t) => {
+          elapsed += t.deltaMS;
+          if (elapsed >= 1000 / manifest.animations[0].fps) {
+            elapsed = 0;
+            index = (index + 1) % manifest.animations[0].frames.length;
+            show();
+          }
+        });
+        window.__g17 = {
+          engine: 'PixiJS',
+          version: PIXI.VERSION,
+          pageCount: manifest.pages.length,
+          manifest,
+          pkg,
+          frameHistory,
+          app,
+          pixelAlpha: () => {
+            try {
+              const p = app.renderer.extract.pixels(app.stage);
+              for (let i = 3; i < p.length; i += 4) if (p[i] > 0) return true;
+            } catch (e) {}
+            return app.canvas.toDataURL('image/png').length > 100;
+          },
+        };
+        status.textContent =
+          'PixiJS 8.12.0 ready / pages=' +
+          manifest.pages.length +
+          ' / frame=' +
+          manifest.animations[0].frames[0];
+      })().catch((e) => {
+        status.textContent = '読み込み失敗: ' + String(e);
+        throw e;
+      });
+    </script>
+  </body>
+</html>

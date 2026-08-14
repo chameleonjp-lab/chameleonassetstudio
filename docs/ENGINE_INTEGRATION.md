@@ -1,6 +1,6 @@
 # Chameleon Asset Studio エンジン連携書
 
-最終更新日: 2026-07-04
+最終更新日: 2026-08-14
 対象バージョン: 0.1.0
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md` / `docs/EXPORT_FORMATS.md`
 
@@ -48,3 +48,10 @@ Phase 16 では Markdown ガイドの生成までとし、エディタスクリ�
 - Godot: `@tool` スクリプトで `SpriteFrames` リソースと `CollisionShape2D` 群を生成する案
 - Unity: `ScriptedImporter` または Editor メニューで Sprite スライスと AnimationClip を生成する案
 - どちらも「生成後にユーザーが調整できる」ことを前提にし、再生成で手動調整を上書きしない設計とする
+
+
+## 5. Group 17の対象version付きfixture
+
+Group 17では、PixiJS `8.12.0` と Phaser `4.2.0`を、アプリ本体のnpm依存関係へ追加せず、HTTP fixture内の固定CDN URLから読み込む。各fixtureは別E2Eとartifactで確認し、manifest、複数page、trim / offset、scale、origin、anchor、rect / circle collider、固定fps animation、console error 0、download 0を記録する。
+
+この検証はfixture-local adapterの範囲に限り、既存の生成sample、既存helper、標準atlas完全互換、project自動生成を保証しない。物理iPhone Safariは後続Gateで扱う。

@@ -1,0 +1,27 @@
+{
+  "format": "chameleon-verification-record",
+  "version": "0.1.0",
+  "profile": "phaser-v4",
+  "status": "verified",
+  "engine": "Phaser",
+  "engineVersion": "4.2.0",
+  "cdnUrl": "https://cdn.jsdelivr.net/npm/phaser@4.2.0/dist/phaser.min.js",
+  "sourceCommit": "ea7f3964cf7f267622c23d386d8c59cacc4d117c",
+  "fixtureHash": "sha256:4458757d419424c45d5246ba4039f15f822570cb9e265de9ea88ac9846b6bfd7",
+  "manifestIntegrityHash": "sha256:8df2fbc5f701fb70b39fea86b16baa1f7353b195c6bb55e3c817e958e18268d4",
+  "manifestFileHash": "sha256:c860e9c94665a4818057bc52546f232f4ecbe6ed611ab9f9a885bcba70f9cc48",
+  "expected": [
+    "http-manifest",
+    "two-pages",
+    "trim-offset",
+    "scale-2",
+    "origin-anchor",
+    "rect-circle-collider",
+    "cross-page-animation",
+    "canvas-rendering",
+    "viewport-1280x720",
+    "viewport-375x667",
+    "console-error-0",
+    "download-0"
+  ]
+}
