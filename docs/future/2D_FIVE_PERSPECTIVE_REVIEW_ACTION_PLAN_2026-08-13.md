@@ -25,7 +25,7 @@
 | Group 16契約 | `accepted`。ユーザーが`G16-C1 A + G16-C2 A + G16-C3 A`を2026-08-13に採用。 |
 | Group 16製品実装 | `implemented / CI-passed / independently-verified / merged`（PR #242 final head `6616ad30fdae7a05f98e0a0146ce69555bab1bfa`、merge `711bcec268d6e732a24c0c787c6054b41e415c27`、CI Run #765）。 |
 | Group 17契約 | `accepted / implemented / CI-passed / independently-verified / merged`。PR #246 final head `9380494f7a662b9211f341d87a15f62d4b82986f`、merge `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`、CI Run #785。 |
-| 次の許可された行動 | 採用済みG18契約のunit、stable template、CI contract artifact、docsを本Draft PRで実装する。target fixtureと既存exportは変更しない。 |
+| 次の許可された行動 | Group 19 docs-only handoffの人間判断（G19-C1〜C3）を待つ。product code、target fixture、CI、dependencyは変更しない。 |
 
 PR #240のmergeはGroup 16監査のGate A、2026-08-13のユーザー明示判断G16-C1 A + G16-C2 A + G16-C3 AはGate Bであり、PR #242で実装・CI・固定head確認・mergeまで完了した。Group 17はPR #243 / #244 / #245のmain反映でGate A、2026-08-14のG17-C1 A + G17-C2 A + G17-C3 AでGate Bを完了し、PR #246で実装・CI・独立確認・mergeまで完了した。Group 18は2026-08-15のG18-C1 A + G18-C2 A + G18-C3 Aを採用し、PR #248 / merge 3ab844dで実装・CI・独立確認・mergeまで完了した。Group 19はdocs/future/2D_5_UNITY_GODOT_PLAN.mdで契約handoffを開始し、G19-C1〜C3の人間判断待ちである。
 
