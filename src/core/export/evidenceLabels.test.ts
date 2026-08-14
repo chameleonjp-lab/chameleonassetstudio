@@ -73,6 +73,34 @@ describe('Group 18 evidence labels', () => {
       'fixture-hash-changed',
     );
 
+    const mismatchCases: Array<{
+      dynamic: DynamicVerificationEvidence;
+      reason: string;
+    }> = [
+      { dynamic: { ...matchingDynamic, sourceCommit: 'changed-source' }, reason: 'source-changed' },
+      {
+        dynamic: { ...matchingDynamic, manifestHash: 'changed-manifest-hash' },
+        reason: 'manifest-hash-changed',
+      },
+      {
+        dynamic: {
+          ...matchingDynamic,
+          scope: { ...matchingDynamic.scope, targetVersion: '9.9.9' },
+        },
+        reason: 'target-version-changed',
+      },
+      {
+        dynamic: {
+          ...matchingDynamic,
+          scope: { ...matchingDynamic.scope, profile: 'other-profile' },
+        },
+        reason: 'profile-changed',
+      },
+    ];
+    for (const { dynamic, reason } of mismatchCases) {
+      expect(verificationInvalidationReasons(stable, dynamic)).toContain(reason);
+    }
+
     const failedCi = { ...matchingDynamic, ciConclusion: 'failure' as const };
     expect(verificationInvalidationReasons(stable, failedCi)).toContain('ci-failure');
 
