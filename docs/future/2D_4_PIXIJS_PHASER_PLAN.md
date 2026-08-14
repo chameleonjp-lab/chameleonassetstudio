@@ -38,10 +38,10 @@ Group 17の完了時に、次の範囲だけを対象version付きで説明で�
 ### 3.1 対象
 
 - PixiJS用HTTP fixtureとPhaser用HTTP fixtureを分離して作る。
-- Group 17専用の完全なfixture dataから、Group 16のdistribution manifest、複数page、sidecar、画像を読み込む。既存Generic Web fixtureの不足項目を推測で補わず、fixture内のmanifest・package entry・animation形状を実際に確認する。
+- Group 17専用の完全なfixture dataから、Group 16のdistribution manifest、package entry、複数page、sidecar、画像を読み込む。`asset.json` / target pathはpackage manifestの存在確認に留め、asset / targetの意味互換はG17のverified範囲に含めない。
 - frame rect、trim後のcontentRect / contentOffset、scale、origin、anchor、rect / circle collider、固定fps animationの順番を確認する。
 - 通常viewportとChromium `375×667`で表示を確認する。
-- fixtureごとに、対象version、fixture hash、manifest hash、browser version、viewport、console error、download件数、読込page数をartifactへ保存する。
+- fixtureごとに、対象version、runtime entry（index.html）hash、manifest hash、browser version、viewport、console error、download件数、読込page数をartifactへ保存する。
 - `docs/EXPORT_FORMATS.md`、`docs/ENGINE_INTEGRATION.md`、`docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`へ、対象versionと制限を反映する。
 
 ### 3.2 対象外
