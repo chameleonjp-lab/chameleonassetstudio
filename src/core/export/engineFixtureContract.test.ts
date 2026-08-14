@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { validateAssetForPersistence } from '../model';
+import { validateAssetForPersistence } from '../schema/validate';
 
 type Point = { x: number; y: number };
 type Rect = { x: number; y: number; width: number; height: number };
@@ -121,9 +121,7 @@ describe('Group 17 engine fixture contract', () => {
       const unsigned = { ...manifest };
       delete (unsigned as { integrity?: DistributionManifest['integrity'] }).integrity;
 
-      const assetResult = validateAssetForPersistence(
-        asset as Parameters<typeof validateAssetForPersistence>[0],
-      );
+      const assetResult = validateAssetForPersistence(asset);
       expect(assetResult.valid).toBe(true);
       expect(pkg.engineVersion).toBe(fixture.version);
       expect(pkg.profile).toBe(fixture.engine);
