@@ -138,7 +138,10 @@ describe('Group 17 engine fixture contract', () => {
       });
       expect(manifest.animations[0].frameIds).toBeUndefined();
       expect(manifest.frames[0].rect.width).not.toBe(manifest.frames[0].contentRect.width);
-      expect(manifest.frames[0].contentOffset).toEqual(manifest.frames[0].contentRect);
+      expect(manifest.frames[0].contentOffset).toEqual({
+        x: manifest.frames[0].contentRect.x,
+        y: manifest.frames[0].contentRect.y,
+      });
       expect(manifest.frames[1].page).toBe(1);
       expect(manifest.origin).toEqual({ x: target.origin.x * 2, y: target.origin.y * 2 });
       expect(manifest.anchors[0]).toMatchObject({
