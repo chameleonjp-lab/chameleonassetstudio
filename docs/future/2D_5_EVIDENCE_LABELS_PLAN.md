@@ -3,9 +3,9 @@
 最終更新日: 2026-08-15
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 正式work package: `2D-5-EVIDENCE + 2D-5-LABELS`
-基準main SHA: `cdc80e1c1cce9af87e7384832b146507b51c2b21`
+基準main SHA: `3ab844d28d155a438dc8f10f8f9b22099a40093a`
 文書種別: docs-only 契約監査・人間判断 handoff
-状態: `accepted / implementing`
+状態: `accepted / implemented / CI-passed / independently-verified / merged`
 
 上位文書: `docs/IMPLEMENTATION_PLAN.md`, `docs/future/2D_COMPLETION_ROADMAP.md`
 関連文書: `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/future/2D_4_ENGINE_FIXTURE_EVIDENCE.md`, `docs/future/2D_FIVE_PERSPECTIVE_REVIEW_ACTION_PLAN_2026-08-13.md`
@@ -16,7 +16,7 @@
 
 | 項目 | 確認結果 | Group 18への意味 |
 |---|---|---|
-| 最新main | `cdc80e1c1cce9af87e7384832b146507b51c2b21`。PR #247のmerge commit。 | Group 18実装PRの基準headを固定する。 |
+| 最新main | `cdc80e1c1cce9af87e7384832b146507b51c2b21`。PR #247のmerge commit。 | Group 18実装PRのmerge後headを固定する。 |
 | open Pull Request | 0件。 | このhandoffが同一目的の唯一のDraft PRになる。 |
 | Group 17 | PR #246（final head `9380494f7a662b9211f341d87a15f62d4b82986f`）をmerge。CI Run #785は全job成功、PixiJS / Phaser artifactを記録。 | fixture-localな `verified` の境界を再利用する。 |
 | Group 18 | `G18-C1 A + G18-C2 A + G18-C3 A`を2026-08-15に採用。 | Gate B完了。本PRで契約unit、テンプレート、CI契約artifact、docs同期を実装する。 |
@@ -111,7 +111,7 @@ Group 19 / 20のtarget fixture、product UI、既存export形式、`asset.json`�
 G18-C1 A + G18-C2 A + G18-C3 A
 ```
 
-契約状態は`accepted`、実装状態は`implementing`である。Group 18の本Draft PRでは証拠ラベル契約とCI契約artifactを実装し、target-specific runtime検証はGroup 19 / 20で別途扱う。完了数は独立確認とmergeまで17/27のままとする。
+契約状態は`accepted`、実装状態は`implementing`である。Group 18はPR #248（final head `e3309d57f030e9190cb4c678e49301e4736332b5`、merge `3ab844d28d155a438dc8f10f8f9b22099a40093a`）で実装・CI・独立確認・main反映まで完了した。CI Run #793は全job成功し、Group 18 contract artifactを取得した。target-specific runtime検証はGroup 19 / 20で別途扱う。完了数は18/27へ更新する。
 ## 9. 実装状態
 
 - stable recordとdynamic CI evidenceの分離契約: `src/core/export/evidenceLabels.ts`
@@ -120,4 +120,4 @@ G18-C1 A + G18-C2 A + G18-C3 A
 - CI contract artifact: `tools/evidence/write-group18-record.mjs`、`npm run evidence:group18`
 - artifact欠落はworkflowの`if-no-files-found: error`で失敗させる。
 
-このartifactの成功はGroup 18契約の生成成功を示すもので、Unity / Godot / RPG Maker MZ、未確認engine、別versionのruntime互換性をverifiedとは扱わない。
+このartifactの成功はGroup 18契約の生成成功を示すもので、Unity / Godot / RPG Maker MZ、未確認engine、別versionのruntime互換性をverifiedとは扱わない。Group 18自体はPR #248のmergeで完了した。
