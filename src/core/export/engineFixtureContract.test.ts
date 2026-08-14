@@ -132,9 +132,7 @@ describe('Group 17 engine fixture contract', () => {
       expect(manifest.scale).toBe(2);
       expect(manifest.pages).toHaveLength(2);
       expect(manifest.integrity).toMatchObject({ algorithm: 'SHA-256' });
-      expect(manifest.integrity.manifestHash).toBe(
-        sha256(JSON.stringify(canonicalize(unsigned))),
-      );
+      expect(manifest.integrity.manifestHash).toBe(sha256(JSON.stringify(canonicalize(unsigned))));
       expect(manifest.animations[0]).toMatchObject({
         fps: 4,
         loop: true,
@@ -158,9 +156,7 @@ describe('Group 17 engine fixture contract', () => {
       expect(manifest.colliders[1].circle).toEqual({ x: 64, y: 64, radius: 44 });
       expect(verification.engineVersion).toBe(fixture.version);
       expect(verification.cdnUrl).toBe(fixture.cdn);
-      expect(verification.manifestIntegrityHash).toBe(
-        'sha256:' + manifest.integrity.manifestHash,
-      );
+      expect(verification.manifestIntegrityHash).toBe('sha256:' + manifest.integrity.manifestHash);
 
       const referenced = new Set<string>([
         'package-manifest.json',

@@ -20,10 +20,7 @@
     "distributionManifest": "manifest.json",
     "assetJson": "asset.json",
     "atlasJson": "atlas/atlas.json",
-    "pages": [
-      "atlas/pages/page-000.svg",
-      "atlas/pages/page-001.svg"
-    ],
+    "pages": ["atlas/pages/page-000.svg", "atlas/pages/page-001.svg"],
     "mainPng": "textures/main.png",
     "mainWebp": null,
     "target": "targets/pixijs-v8.json",

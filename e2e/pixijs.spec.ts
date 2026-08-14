@@ -26,7 +26,10 @@ type G17Runtime = {
 
 type G17Window = Window & { __g17?: G17Runtime };
 
-test('PixiJS 8.12.0 fixtureはHTTP経由で2ページとanimationを確認できる', async ({ page, browser }) => {
+test('PixiJS 8.12.0 fixtureはHTTP経由で2ページとanimationを確認できる', async ({
+  page,
+  browser,
+}) => {
   const consoleErrors: string[] = [];
   const downloads: string[] = [];
   page.on('console', (message) => {
@@ -47,7 +50,10 @@ test('PixiJS 8.12.0 fixtureはHTTP経由で2ページとanimationを確認でき
   try {
     const indexResponse = await page.request.get('/engine-fixtures/pixijs-v8/index.html');
     fixtureHash =
-      'sha256:' + createHash('sha256').update(await indexResponse.text(), 'utf8').digest('hex');
+      'sha256:' +
+      createHash('sha256')
+        .update(await indexResponse.text(), 'utf8')
+        .digest('hex');
 
     for (const viewport of viewports) {
       await page.setViewportSize(viewport);
@@ -79,15 +85,15 @@ test('PixiJS 8.12.0 fixtureはHTTP経由で2ページとanimationを確認でき
       );
 
       for (const entry of manifest.pages) {
-        expect((await page.request.get('/engine-fixtures/pixijs-v8/' + entry.path)).ok()).toBe(true);
+        expect((await page.request.get('/engine-fixtures/pixijs-v8/' + entry.path)).ok()).toBe(
+          true,
+        );
       }
 
       await expect
         .poll(
           async () =>
-            page.evaluate(
-              () => (window as unknown as G17Window).__g17?.frameHistory ?? [],
-            ),
+            page.evaluate(() => (window as unknown as G17Window).__g17?.frameHistory ?? []),
           { timeout: 5000 },
         )
         .toContain('fixture-b');
@@ -97,9 +103,9 @@ test('PixiJS 8.12.0 fixtureはHTTP経由で2ページとanimationを確認でき
         return Boolean(runtime?.pixelAlpha?.());
       });
       expect(rendered).toBe(true);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
-        true,
-      );
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      ).toBe(true);
 
       const runtime = await page.evaluate(() => {
         const value = (window as unknown as G17Window).__g17;

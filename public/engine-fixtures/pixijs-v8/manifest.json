@@ -11,22 +11,13 @@
     "manifest": "manifest.json",
     "assetJson": "asset.json",
     "atlasJson": "atlas/atlas.json",
-    "pages": [
-      "atlas/pages/page-000.svg",
-      "atlas/pages/page-001.svg"
-    ],
+    "pages": ["atlas/pages/page-000.svg", "atlas/pages/page-001.svg"],
     "mainPng": "textures/main.png",
     "mainWebp": null,
     "readme": "README.md",
-    "examples": [
-      "examples/example-pixijs.html"
-    ],
-    "helpers": [
-      "helpers/pixijs-adapter.js"
-    ],
-    "engines": [
-      "engines/pixijs-v8.json"
-    ]
+    "examples": ["examples/example-pixijs.html"],
+    "helpers": ["helpers/pixijs-adapter.js"],
+    "engines": ["engines/pixijs-v8.json"]
   },
   "pages": [
     {
@@ -97,10 +88,7 @@
   "animations": [
     {
       "name": "cross-page",
-      "frames": [
-        "fixture-a",
-        "fixture-b"
-      ],
+      "frames": ["fixture-a", "fixture-b"],
       "fps": 4,
       "loop": true
     }

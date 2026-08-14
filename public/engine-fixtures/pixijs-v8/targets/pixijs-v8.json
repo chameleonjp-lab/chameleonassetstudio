@@ -58,10 +58,7 @@
   "animations": [
     {
       "name": "cross-page",
-      "frames": [
-        "fixture-a",
-        "fixture-b"
-      ],
+      "frames": ["fixture-a", "fixture-b"],
       "fps": 4,
       "loop": true
     }

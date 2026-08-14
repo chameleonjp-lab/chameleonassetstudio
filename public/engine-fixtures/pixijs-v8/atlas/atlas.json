@@ -27,10 +27,7 @@
       "name": "cross-page",
       "fps": 4,
       "loop": true,
-      "frames": [
-        "fixture-a",
-        "fixture-b"
-      ]
+      "frames": ["fixture-a", "fixture-b"]
     }
   ],
   "origin": {
