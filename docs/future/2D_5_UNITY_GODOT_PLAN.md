@@ -75,7 +75,7 @@ A案を採用しても、具体versionが採用記録・fixture・artifact・doc
 
 | 案 | 内容 | 影響 |
 |---|---|---|
-| **A（推奨）** | UnityとGodotを別fixture・別検証・別artifactで実行する。両方でHTTPまたは固定fixtureからの入力、画像読込、frame順、trim / offset、scale、origin / pivot、anchor、rect / circle、animation、import error 0、artifact欠落失敗を確認する。実行できないengineはverifiedにしない。 | engine・version・fixtureごとの範囲を説明できる。片方の失敗が他方を隠さない。 |
+| **A（推奨）** | UnityとGodotを別fixture・別検証・別artifactで実行する。両方で固定fixtureからの入力、画像読込、frame順、trim / offset、scale、origin / pivot、anchor、rect / circle、animation、import error 0、artifact欠落失敗を確認する。実行できないengineはverifiedにしない。 | engine・version・fixtureごとの範囲を説明できる。片方の失敗が他方を隠さない。 |
 | B | import notesと出力ファイルのunit / schema確認だけを行い、対象engine上の取り込みを実行しない。 | 手順の存在は示せるが、実際のimport・座標・animationの失敗を検出できない。 |
 | C | UnityとGodotを同じfixtureまたはGeneric Webの成功で代表させる。 | engine差・座標差・import差を隠すため、verifiedの根拠にならない。 |
 
