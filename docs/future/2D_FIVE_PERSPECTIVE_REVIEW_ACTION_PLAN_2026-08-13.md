@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 五視点レビュー統合アクション計画
 
-最終更新日: 2026-08-13  
+最終更新日: 2026-08-14  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 五視点レビュー統合基準main SHA: `b5401529a552c38147d308d7209ad8483ffd85c4`  
 文書種別: docs-only 横断レビュー統合・後続work package割当  
@@ -18,16 +18,16 @@
 
 | 項目 | 状態 |
 |---|---|
-| 最新main | `711bcec268d6e732a24c0c787c6054b41e415c27`。PR #242のmerge commit。 |
-| open Pull Request | 0件。PR #242 merge後の`main`を基準とする。 |
+| 最新main | `9d33306fd7ad340065dac22548c218a8c4500383`。PR #243のmerge commit。 |
+| open Pull Request | 0件。PR #243 merge後の`main`を基準とする。 |
 | 完了数 | 17/27。今回のdocs-only統合では変更しない。 |
 | Group 16 docs-only監査 | PR #240でmainへ反映済み。 |
 | Group 16契約 | `accepted`。ユーザーが`G16-C1 A + G16-C2 A + G16-C3 A`を2026-08-13に採用。 |
 | Group 16製品実装 | `implemented / CI-passed / independently-verified / merged`（PR #242 final head `6616ad30fdae7a05f98e0a0146ce69555bab1bfa`、merge `711bcec268d6e732a24c0c787c6054b41e415c27`、CI Run #765）。 |
-| Group 17契約 | `human-decision-pending`（`docs/future/2D_4_PIXIJS_PHASER_PLAN.md`）。product implementationは未開始。 |
-| 次の許可された行動 | Group 17の契約候補を人間が採用するまで、docs-only handoffと判断記録を更新する。採用後に単一writerでDraft PRを作る。 |
+| Group 17契約 | Gate A（docs-only handoff PR #243 / merge `9d33306fd7ad340065dac22548c218a8c4500383`）完了。`human-decision-pending`（`docs/future/2D_4_PIXIJS_PHASER_PLAN.md`）。product implementationは未開始。 |
+| 次の許可された行動 | G17-C1〜C3の人間採用を待つ。採用後に単一writerで新しいDraft PRを作り、採用範囲だけを実装する。 |
 
-PR #240のmergeは、監査文書を正本として置いたGate Aの完了である。2026-08-13のユーザー明示判断`G16-C1 A + G16-C2 A + G16-C3 A`でGate Bも完了し、PR #242で実装・CI・固定head確認・mergeまで完了した。Group 17は別work packageとして契約判断を待つ。
+PR #240のmergeはGroup 16監査のGate A、2026-08-13のユーザー明示判断`G16-C1 A + G16-C2 A + G16-C3 A`はGate Bであり、PR #242で実装・CI・固定head確認・mergeまで完了した。Group 17はdocs-only handoff PR #243のmergeでGate Aを完了したが、G17-C1〜C3の採用（Gate B）とproduct implementation開始（Gate C）は未完了である。
 
 ---
 
@@ -225,6 +225,6 @@ Group 16の採用・実装・mergeは完了した。現在はGroup 17の契約�
 G16-C1 A + G16-C2 A + G16-C3 A
 ```
 
-Group 16はこの採用範囲でproduct code、unit、E2E、CI workflowを実装し、final head `6616ad30fdae7a05f98e0a0146ce69555bab1bfa`のCI Run #765と固定head確認を経てPR #242をmergeした。Group 17のproduct codeは採用判断まで変更しない。
+Group 16はこの採用範囲でproduct code、unit、E2E、CI workflowを実装し、final head `6616ad30fdae7a05f98e0a0146ce69555bab1bfa`のCI Run #765と固定head確認を経てPR #242をmergeした。Group 17はPR #243でdocs-only handoffをmainへ反映済みだが、G17-C1〜C3の採用判断までproduct code、fixture、CIを変更しない。
 
-単一writerがこのDraft Pull RequestでGroup 16のcode、tests、docs、CI evidenceを実装する。CI失敗と`BLOCKER` / `MUST`修正は同じbranchと同じPull Requestで行う。Ready化とmergeは人間が判断する。
+G17-C1〜C3の採用後、単一writerが新しいbranchとDraft Pull RequestでGroup 17のfixture、E2E、証拠、docsを実装する。CI失敗と`BLOCKER` / `MUST`修正は同じbranchと同じPull Requestで行う。採用前のproduct code、fixture、CIは変更せず、Ready化とmergeは人間が判断する。
