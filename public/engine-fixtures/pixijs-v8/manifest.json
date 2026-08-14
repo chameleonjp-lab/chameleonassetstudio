@@ -1,0 +1,149 @@
+{
+  "format": "chameleon-distribution",
+  "version": "0.1.0",
+  "profile": "packed",
+  "scale": 2,
+  "source": {
+    "assetJson": "asset.json",
+    "canonical": true
+  },
+  "files": {
+    "manifest": "manifest.json",
+    "assetJson": "asset.json",
+    "atlasJson": "atlas/atlas.json",
+    "pages": [
+      "atlas/pages/page-000.svg",
+      "atlas/pages/page-001.svg"
+    ],
+    "mainPng": "textures/main.png",
+    "mainWebp": null,
+    "readme": "README.md",
+    "examples": [
+      "examples/example-pixijs.html"
+    ],
+    "helpers": [
+      "helpers/pixijs-adapter.js"
+    ],
+    "engines": [
+      "engines/pixijs-v8.json"
+    ]
+  },
+  "pages": [
+    {
+      "path": "atlas/pages/page-000.svg",
+      "width": 256,
+      "height": 256,
+      "rotated": false
+    },
+    {
+      "path": "atlas/pages/page-001.svg",
+      "width": 192,
+      "height": 192,
+      "rotated": false
+    }
+  ],
+  "frames": [
+    {
+      "name": "fixture-a",
+      "page": 0,
+      "rect": {
+        "x": 16,
+        "y": 20,
+        "width": 96,
+        "height": 104
+      },
+      "sourceSize": {
+        "width": 128,
+        "height": 128
+      },
+      "contentRect": {
+        "x": 16,
+        "y": 24,
+        "width": 64,
+        "height": 72
+      },
+      "contentOffset": {
+        "x": 16,
+        "y": 24
+      },
+      "rotated": false
+    },
+    {
+      "name": "fixture-b",
+      "page": 1,
+      "rect": {
+        "x": 10,
+        "y": 14,
+        "width": 72,
+        "height": 80
+      },
+      "sourceSize": {
+        "width": 96,
+        "height": 96
+      },
+      "contentRect": {
+        "x": 12,
+        "y": 18,
+        "width": 48,
+        "height": 56
+      },
+      "contentOffset": {
+        "x": 12,
+        "y": 18
+      },
+      "rotated": false
+    }
+  ],
+  "animations": [
+    {
+      "name": "cross-page",
+      "frames": [
+        "fixture-a",
+        "fixture-b"
+      ],
+      "fps": 4,
+      "loop": true
+    }
+  ],
+  "origin": {
+    "x": 64,
+    "y": 120
+  },
+  "anchors": [
+    {
+      "name": "center",
+      "role": "center",
+      "x": 64,
+      "y": 64
+    }
+  ],
+  "colliders": [
+    {
+      "name": "body",
+      "purpose": "body",
+      "shape": "rect",
+      "visible": true,
+      "rect": {
+        "x": 16,
+        "y": 20,
+        "width": 80,
+        "height": 88
+      }
+    },
+    {
+      "name": "radius",
+      "purpose": "sensor",
+      "shape": "circle",
+      "visible": true,
+      "circle": {
+        "x": 64,
+        "y": 64,
+        "radius": 44
+      }
+    }
+  ],
+  "integrity": {
+    "algorithm": "SHA-256",
+    "manifestHash": "999badd7d4b72e485d5deba607c3ba470a2e36a2e75dc1a3a95d321e9bb37194"
+  }
+}

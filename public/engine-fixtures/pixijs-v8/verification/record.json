@@ -1,0 +1,27 @@
+{
+  "format": "chameleon-verification-record",
+  "version": "0.1.0",
+  "profile": "pixijs-v8",
+  "status": "verified",
+  "engine": "PixiJS",
+  "engineVersion": "8.12.0",
+  "cdnUrl": "https://cdn.jsdelivr.net/npm/pixi.js@8.12.0/dist/pixi.min.js",
+  "sourceCommit": "ea7f3964cf7f267622c23d386d8c59cacc4d117c",
+  "fixtureHash": "sha256:f4aeef282a5387cffe4d9b5d11d9e687c8d01b59688a8d6fdf606ab9702732cd",
+  "manifestIntegrityHash": "sha256:999badd7d4b72e485d5deba607c3ba470a2e36a2e75dc1a3a95d321e9bb37194",
+  "manifestFileHash": "sha256:af331d63a8f5112fe29f2da9a1a06a4fd565de1985c80d10e03e908db30eecb8",
+  "expected": [
+    "http-manifest",
+    "two-pages",
+    "trim-offset",
+    "scale-2",
+    "origin-anchor",
+    "rect-circle-collider",
+    "cross-page-animation",
+    "canvas-rendering",
+    "viewport-1280x720",
+    "viewport-375x667",
+    "console-error-0",
+    "download-0"
+  ]
+}

@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 2D Export Compatibility Matrix
 
-最終更新日: 2026-08-03
+最終更新日: 2026-08-14
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 2D 入出力・対象別書き出し・検証基準
 状態: accepted（設計と確認基準。docs-only）
@@ -168,3 +168,13 @@ Generic Web は対象ツール名ではないため、`generic-web-v1` のよう
 - target 固有の data extension。
 
 既存の export ZIP、`asset.json`、`.casproj`、helper API を変える場合は、`2D_ASSET_DATA_CONTRACT.md` の migration gate に従う。docs-only の今回の変更は、これらを実装しない。
+
+
+## 10. Group 17 verified boundary
+
+| 対象 | 対象version | 現在のラベル | 確認範囲 |
+|---|---:|---|---|
+| PixiJS engine fixture | 8.12.0 | `verified`（fixture-local） | HTTP読込、複数page、trim / offset、scale、origin、anchor、rect / circle、固定fps animation、Chromium通常viewport / 375×667 |
+| Phaser engine fixture | 4.2.0 | `verified`（fixture-local） | HTTP読込、複数page、trim / offset、scale、origin、anchor、rect / circle、固定fps animation、Chromium通常viewport / 375×667 |
+
+このラベルは本work packageの専用fixtureに限る。既存の生成sample、既存helper、他version、標準atlas完全互換、project自動生成、物理iPhone Safariには広げない。

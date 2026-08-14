@@ -123,6 +123,23 @@ jobs:
             test-results/
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload Group 17 PixiJS evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: group17-pixijs-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/group17-pixijs-evidence.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload Group 17 Phaser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: group17-phaser-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/group17-phaser-evidence.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Upload Group 16 Generic Web evidence
         if: always()
         uses: actions/upload-artifact@v4

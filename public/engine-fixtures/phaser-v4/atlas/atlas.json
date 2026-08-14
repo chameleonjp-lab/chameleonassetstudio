@@ -1,0 +1,75 @@
+{
+  "format": "chameleon-atlas",
+  "version": "0.1.0",
+  "texture": "spritesheet.png",
+  "cellSize": {
+    "width": 128,
+    "height": 128
+  },
+  "frames": [
+    {
+      "name": "fixture-a",
+      "x": 0,
+      "y": 0,
+      "width": 128,
+      "height": 128
+    },
+    {
+      "name": "fixture-b",
+      "x": 128,
+      "y": 0,
+      "width": 128,
+      "height": 128
+    }
+  ],
+  "animations": [
+    {
+      "name": "cross-page",
+      "fps": 4,
+      "loop": true,
+      "frames": [
+        "fixture-a",
+        "fixture-b"
+      ]
+    }
+  ],
+  "origin": {
+    "x": 32,
+    "y": 60
+  },
+  "anchors": [
+    {
+      "name": "center",
+      "role": "center",
+      "x": 32,
+      "y": 32
+    }
+  ],
+  "colliders": [
+    {
+      "id": "collider-body",
+      "name": "body",
+      "purpose": "body",
+      "shape": "rect",
+      "visible": true,
+      "rect": {
+        "x": 8,
+        "y": 10,
+        "width": 40,
+        "height": 44
+      }
+    },
+    {
+      "id": "collider-radius",
+      "name": "radius",
+      "purpose": "sensor",
+      "shape": "circle",
+      "visible": true,
+      "circle": {
+        "x": 32,
+        "y": 32,
+        "radius": 22
+      }
+    }
+  ]
+}

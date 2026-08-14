@@ -2,9 +2,9 @@
 
 最終更新日: 2026-08-14  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
-五視点レビュー統合基準main SHA: `b5401529a552c38147d308d7209ad8483ffd85c4`  
+五視点レビュー統合基準main SHA: `ea7f3964cf7f267622c23d386d8c59cacc4d117c`  
 文書種別: docs-only 横断レビュー統合・後続work package割当  
-状態: `review-integrated / G16 merged / G17 contract decision pending / remaining proposals pending`
+状態: `review-integrated / G16 merged / G17 accepted / implementation in progress / remaining proposals pending`
 
 上位文書: `docs/IMPLEMENTATION_PLAN.md`, `docs/future/2D_COMPLETION_ROADMAP.md`  
 現在の契約正本: `docs/future/2D_4_PIXIJS_PHASER_PLAN.md`  
@@ -18,16 +18,16 @@
 
 | 項目 | 状態 |
 |---|---|
-| 最新main | `5a05100f66c8e6e84854028995a3ae31ba1c36a4`。PR #244のmerge commit。 |
-| open Pull Request | 基準main `5a05100f66c8e6e84854028995a3ae31ba1c36a4`時点では0件（PR #245作成前）。 |
+| 最新main | `ea7f3964cf7f267622c23d386d8c59cacc4d117c`。PR #245のmerge commit。 |
+| open Pull Request | 基準main `ea7f3964cf7f267622c23d386d8c59cacc4d117c`時点ではopen PR 0件。 |
 | 完了数 | 17/27。今回のdocs-only統合では変更しない。 |
 | Group 16 docs-only監査 | PR #240でmainへ反映済み。 |
 | Group 16契約 | `accepted`。ユーザーが`G16-C1 A + G16-C2 A + G16-C3 A`を2026-08-13に採用。 |
 | Group 16製品実装 | `implemented / CI-passed / independently-verified / merged`（PR #242 final head `6616ad30fdae7a05f98e0a0146ce69555bab1bfa`、merge `711bcec268d6e732a24c0c787c6054b41e415c27`、CI Run #765）。 |
-| Group 17契約 | Gate A（docs-only handoff PR #243 / merge `9d33306fd7ad340065dac22548c218a8c4500383`、merge後closeout PR #244 / merge `5a05100f66c8e6e84854028995a3ae31ba1c36a4`）完了。`human-decision-pending`（`docs/future/2D_4_PIXIJS_PHASER_PLAN.md`）。product implementationは未開始。 |
+| Group 17契約 | Gate A（PR #243 / #244 / #245のdocs反映）完了。2026-08-14に`G17-C1 A + G17-C2 A + G17-C3 A`をacceptedし、契約状態は`accepted`、product implementationは進行中。正本は`docs/future/2D_4_PIXIJS_PHASER_PLAN.md`。 |
 | 次の許可された行動 | G17-C1〜C3の人間採用を待つ。採用後に単一writerで新しいDraft PRを作り、採用範囲だけを実装する。 |
 
-PR #240のmergeはGroup 16監査のGate A、2026-08-13のユーザー明示判断`G16-C1 A + G16-C2 A + G16-C3 A`はGate Bであり、PR #242で実装・CI・固定head確認・mergeまで完了した。Group 17はdocs-only handoff PR #243とmerge後closeout PR #244のmain反映でGate Aを完了したが、G17-C1〜C3の採用（Gate B）とproduct implementation開始（Gate C）は未完了である。
+PR #240のmergeはGroup 16監査のGate A、2026-08-13のユーザー明示判断`G16-C1 A + G16-C2 A + G16-C3 A`はGate Bであり、PR #242で実装・CI・固定head確認・mergeまで完了した。Group 17はPR #243 / #244 / #245のmain反映でGate Aを完了し、2026-08-14の`G17-C1 A + G17-C2 A + G17-C3 A`でGate Bを完了した。product implementationは進行中である。
 
 ---
 
