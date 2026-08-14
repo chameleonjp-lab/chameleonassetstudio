@@ -1,0 +1,27 @@
+{
+  "format": "chameleon-verification-record",
+  "version": "0.1.0",
+  "profile": "group18-evidence-labels-v1",
+  "label": "candidate",
+  "target": {
+    "name": "example-target",
+    "version": "0.1.0"
+  },
+  "fixtureId": "fixture:example-target:0.1.0",
+  "sourceCommit": "unrecorded",
+  "fixtureHash": "unrecorded",
+  "manifestHash": "unrecorded",
+  "expected": [
+    "target-version",
+    "fixture-scope",
+    "manifest-hash",
+    "runtime-check",
+    "artifact-reference"
+  ],
+  "limitations": [
+    "template-only; this record makes no target compatibility claim"
+  ],
+  "evidenceRefs": [
+    "ci://group18/example"
+  ]
+}

@@ -67,6 +67,16 @@ jobs:
       - run: npm run format:check
       - run: npm run build
       - run: npm run test
+      - name: Write Group 18 evidence contract
+        run: npm run evidence:group18
+      - name: Upload Group 18 evidence contract
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: group18-evidence-contract-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/group18-evidence-contract.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Upload Group 15 core evidence
         if: success()
         uses: actions/upload-artifact@v4
