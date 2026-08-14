@@ -19,7 +19,7 @@
 | 項目 | 状態 |
 |---|---|
 | 最新main | `9d33306fd7ad340065dac22548c218a8c4500383`。PR #243のmerge commit。 |
-| open Pull Request | 0件。PR #243 merge後の`main`を基準とする。 |
+| open Pull Request | 基準main `9d33306fd7ad340065dac22548c218a8c4500383`時点では0件（PR #244作成前）。 |
 | 完了数 | 17/27。今回のdocs-only統合では変更しない。 |
 | Group 16 docs-only監査 | PR #240でmainへ反映済み。 |
 | Group 16契約 | `accepted`。ユーザーが`G16-C1 A + G16-C2 A + G16-C3 A`を2026-08-13に採用。 |
