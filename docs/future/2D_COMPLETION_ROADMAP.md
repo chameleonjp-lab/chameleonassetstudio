@@ -583,11 +583,11 @@ D1〜D4は`implemented / CI-passed / independently-verified / merged`で、指�
 
 | 章・節 | 要件 | 対応 work package | 状態 |
 |---|---|---|---|
-| §2〜§3 | source / edit / derived / distribution / verification の層分離 | `2D-1A-LAYERS`, `2D-1B-LAYERS`, `2D-4-PACKAGE` | PR #52 accepted。`2D-1B-LAYERS`はPR #76、#77、#78でcompleted。distribution / verificationの後続実装は`2D-4-PACKAGE`で扱う。 |
+| §2〜§3 | source / edit / derived / distribution / verification の層分離 | `2D-1A-LAYERS`, `2D-1B-LAYERS`, `2D-4-PACKAGE` | PR #52 accepted。`2D-1B-LAYERS`はPR #76、#77、#78でcompleted。distribution / verificationはGroup 16のPR #242で実装・検証・merge済みである。 |
 | §4〜§5 | Project / Asset / Family / Variant、ID・名前・参照 | `2D-1A-LAYERS`, `2D-2-PROJECT` | Family / Variant契約はaccepted、optional永続契約のSlice AはPR #117、管理UIのSlice Cと複数target batchのSlice DはPR #121、#122で完了。 |
-| §6 | 座標、transform、trim、atlas、flip、scale | `2D-1A-COORD`, `2D-4-SHEET`, `2D-4-SCALE` | PR #52 accepted。export 側は未完了。 |
+| §6 | 座標、transform、trim、atlas、flip、scale | `2D-1A-COORD`, `2D-4-SHEET`, `2D-4-SCALE` | PR #52 accepted。export側のGroup 15 CORE / SHEET / SCALEはPR #233 / #236 / #238で実装・検証・merge済みで、Group 16のpackage / preflight / Generic WebはPR #242で完了した。 |
 | §7〜§9 | animation、collider、target extension、unknown data | `2D-1A-MOTION`, `2D-1A-TARGET`, `2D-3-*`, `2D-4-*` | 未完了。 |
-| §10〜§12 | provenance、AI 境界、validation | `2D-1A-PROVENANCE`, `2D-2-AI-BOUNDARY`, `2D-1A-VALIDATION`, `2D-4-PREFLIGHT` | ADR-0013 / 0014 / 0017はaccepted。AI境界fixtureはPR #125、provenance実装はPR #126で完了した。preflightは未完了。 |
+| §10〜§12 | provenance、AI 境界、validation | `2D-1A-PROVENANCE`, `2D-2-AI-BOUNDARY`, `2D-1A-VALIDATION`, `2D-4-PREFLIGHT` | ADR-0013 / 0014 / 0017はaccepted。AI境界fixtureはPR #125、provenance実装はPR #126で完了した。preflightはGroup 16のPR #242で実装・検証・merge済みである。 |
 | §13 | version、migration、rollback、fixture | `2D-1A-MIGRATION`, `2D-1B-CASPROJ`, `2D-1B-GATE` | ADR-0015、CASPROJ、GATEまでcompleted。次のversion進行時に同じGateを再適用する。 |
 
 ### 7.3 `2D_EXPORT_COMPATIBILITY_MATRIX.md`
