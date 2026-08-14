@@ -131,7 +131,9 @@ export function verificationInvalidationReasons(
   stable: StableVerificationRecord,
   dynamic: DynamicVerificationEvidence,
 ): string[] {
-  const reasons = validateStableVerificationRecord(stable).map((issue) => `invalid-stable:${issue}`);
+  const reasons = validateStableVerificationRecord(stable).map(
+    (issue) => `invalid-stable:${issue}`,
+  );
   if (dynamic.scope.profile !== stable.profile) reasons.push('profile-changed');
   if (dynamic.scope.targetName !== stable.target.name) reasons.push('target-changed');
   if (dynamic.scope.targetVersion !== stable.target.version) reasons.push('target-version-changed');
