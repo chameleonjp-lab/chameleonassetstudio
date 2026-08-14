@@ -10,16 +10,16 @@
 上位文書: `docs/IMPLEMENTATION_PLAN.md`, `docs/future/2D_COMPLETION_ROADMAP.md`
 関連文書: `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/future/2D_4_ENGINE_FIXTURE_EVIDENCE.md`, `docs/future/2D_FIVE_PERSPECTIVE_REVIEW_ACTION_PLAN_2026-08-13.md`
 
-> Group 17（PixiJS / Phaser）の専用fixture実装はPR #246でmainへmerge済みである。Group 18では、対象別検証を増やす前に、何を証拠と呼び、どの範囲を `candidate` / `verified` / `import-notes` / `unsupported` と表示できるかを実装契約へ固定する。2026-08-15に人間が`G18-C1 A + G18-C2 A + G18-C3 A`を採用したため、本Draft PRでは契約unit、テンプレート、CIの契約artifact、docs同期だけを進める。
+> Group 17（PixiJS / Phaser）の専用fixture実装はPR #246でmainへmerge済みである。Group 18では、対象別検証を増やす前に、何を証拠と呼び、どの範囲を candidate / verified / import-notes / unsupported と表示できるかを実装契約へ固定した。2026-08-15に人間がG18-C1 A + G18-C2 A + G18-C3 Aを採用し、PR #248で実装・CI・独立確認・mergeまで完了した。Group 19のUnity / Godot検証は別handoffと別判断で扱う。
 
 ## 1. 現在確認できる事実
 
 | 項目 | 確認結果 | Group 18への意味 |
 |---|---|---|
-| 最新main | `cdc80e1c1cce9af87e7384832b146507b51c2b21`。PR #247のmerge commit。 | Group 18実装PRのmerge後headを固定する。 |
+| 最新main | `fcbf1cc9b7a1a9d0cdd588eaed59de3999bdcabb`。PR #249のmerge commit。 | Group 18 closeout後のGroup 19 handoff基準head。 |
 | open Pull Request | 0件。 | このhandoffが同一目的の唯一のDraft PRになる。 |
 | Group 17 | PR #246（final head `9380494f7a662b9211f341d87a15f62d4b82986f`）をmerge。CI Run #785は全job成功、PixiJS / Phaser artifactを記録。 | fixture-localな `verified` の境界を再利用する。 |
-| Group 18 | `G18-C1 A + G18-C2 A + G18-C3 A`を2026-08-15に採用。 | Gate B完了。本PRで契約unit、テンプレート、CI契約artifact、docs同期を実装する。 |
+| Group 18 | `G18-C1 A + G18-C2 A + G18-C3 A`を2026-08-15に採用し、PR #248で実装・CI・独立確認・mergeまで完了。 | Group 19へ共通証拠契約を引き渡す。 |
 
 ## 2. 今回の目的
 
@@ -111,7 +111,7 @@ Group 19 / 20のtarget fixture、product UI、既存export形式、`asset.json`�
 G18-C1 A + G18-C2 A + G18-C3 A
 ```
 
-契約状態は`accepted`、実装状態は`implementing`である。Group 18はPR #248（final head `e3309d57f030e9190cb4c678e49301e4736332b5`、merge `3ab844d28d155a438dc8f10f8f9b22099a40093a`）で実装・CI・独立確認・main反映まで完了した。CI Run #793は全job成功し、Group 18 contract artifactを取得した。target-specific runtime検証はGroup 19 / 20で別途扱う。完了数は18/27へ更新する。
+契約状態は`accepted`、実装状態は`implemented / CI-passed / independently-verified / merged`である。Group 18はPR #248（final head `e3309d57f030e9190cb4c678e49301e4736332b5`、merge `3ab844d28d155a438dc8f10f8f9b22099a40093a`）で実装・CI・独立確認・main反映まで完了した。CI Run #793は全job成功し、Group 18 contract artifactを取得した。target-specific runtime検証はGroup 19 / 20で別途扱う。完了数は18/27である。
 ## 9. 実装状態
 
 - stable recordとdynamic CI evidenceの分離契約: `src/core/export/evidenceLabels.ts`
