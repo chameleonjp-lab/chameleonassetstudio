@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "profile": "pixijs-v8",
   "status": "verified",
-  "engine": "pixijs-v8",
+  "engine": "PixiJS",
   "engineVersion": "8.12.0",
   "source": {
     "assetJson": "asset.json",
