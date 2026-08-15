@@ -164,8 +164,8 @@ Fable5の利用制限中は、`docs/DEVELOPMENT_MODES.md`のCodex Fallback Mode�
 Codexは未確定仕様の最終判断を担当しない。Fable5が再び利用可能になった場合も通常実装を戻す必要はなく、仕様判断が必要な場面だけ利用候補とする。過去にFable5で確定したADRと契約は引き続き有効である。
 
 
-## Group 19 current state (2026-08-15)
+## Group 19 post-merge state (2026-08-15)
 
-Group 18はPR #248（merge `3ab844d28d155a438dc8f10f8f9b22099a40093a`、CI Run #793）で完了し、PR #249（merge `fcbf1cc9b7a1a9d0cdd588eaed59de3999bdcabb`、CI Run #795）で計画文書のcloseoutをmainへ反映した。次の正式work packageはGroup 19（`2D-5-UNITY + 2D-5-GODOT`）である。
+Group 18はPR #248（merge `3ab844d28d155a438dc8f10f8f9b22099a40093a`、CI Run #793）で完了し、PR #249（merge `fcbf1cc9b7a1a9d0cdd588eaed59de3999bdcabb`、CI Run #795）で計画文書のcloseoutをmainへ反映した。Group 19実装PR #251（merge `e77a721ff3d479bea0f7475f0b0fbc296ce91595`、CI Run #805全job成功）でcandidate fixture、静的closure test、import notesをmainへ反映した。
 
-Group 19は`G19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable） + G19-C2 A + G19-C3 A`を2026-08-15に採用した。状態は`accepted / implementing / verification-unverified`である。最初の実装Draft PRではUnity/Godot別candidate fixture、静的closure test、手動import notesを追加する。Unity licensed runnerとGodot固定binaryが現行CIにないため、runtime成功・engine別artifact・`verified`昇格は未完了であり、完了数は18/27のまま維持する。既存export、schema、保存形式、helper、dependencyは変更しない。Group 20（RPG Maker MZ / helper gate）はGroup 19のruntime Gate完了後に別handoffで扱う。
+Group 19は`G19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable） + G19-C2 A + G19-C3 A`をacceptedとして実装し、状態は`implemented-candidate / CI-passed / independently-verified-static / merged / runtime-verification-unverified`である。Unity/Godotのlicensedまたはchecksum固定runtimeが現行環境にないため、runtime成功・engine別artifact・`verified`昇格は未完了であり、完了数は18/27のまま維持する。次の許可された行動はruntime Gateの実行環境準備と、Unity/Godotを別々に実行した証拠の取得である。Group 20（RPG Maker MZ / helper gate）はGroup 19のruntime Gate完了後に別handoffで扱う。
