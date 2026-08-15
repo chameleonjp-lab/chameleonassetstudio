@@ -10,11 +10,14 @@
   "sourceCommit": "b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a",
   "fixtureHash": "sha256:56d58885ea593a3bae4271553b9ac19a8eb448870f85c42cf40f2efe6da99c15",
   "manifestHash": "sha256:19cb9bbd5951a44dd31385f7b3fbc4906a3e82569d87f663e90843145a759b08",
-  "sourceAssetHash": "sha256:e0def984f7296db10dedbeefc4c39d00b9609720887da8fcad7b79d99ad8d209",
+  "sourceAssetHash": "sha256:3fb6af1ea5115954e9b14ce4c5e5c0e9625cc5afce9e6ea57bdf4acbd8b74740",
   "outputFilesHash": "sha256:3813516936a28ea9dca8656893ca49a54a394d747f3a3315549943c30b7c665b",
   "sidecarHash": "sha256:65da86f45c5b281b6d0f4bfb3291579b6c8028fb806fe221d19853026058705a",
   "expected": {
-    "frames": ["fixture-a", "fixture-b"],
+    "frames": [
+      "fixture-a",
+      "fixture-b"
+    ],
     "animation": {
       "name": "loop",
       "fps": 4,
@@ -39,7 +42,10 @@
       "x": 20,
       "y": 20
     },
-    "colliders": ["rect", "circle"]
+    "colliders": [
+      "rect",
+      "circle"
+    ]
   },
   "runtime": {
     "status": "not-run",
@@ -53,9 +59,11 @@
   "evidenceRefs": [],
   "artifactPolicy": "missing engine artifact fails the runtime gate",
   "sourceAssetPath": "public/engine-fixtures/pixijs-v8/asset.json",
-  "fixtureProvenance": "candidate sheet generated from Chameleon source metadata; product export provenance remains pending runtime execution",
+  "fixtureProvenance": "candidate sheet generated from Group 17 source metadata; sourceAssetPath is a metadata reference only, not the product-export original; product export provenance remains pending runtime execution",
   "labelMapping": {
     "group18Label": "candidate",
     "promotion": "G19 runtime evidence required"
-  }
+  },
+  "sourceAssetRole": "metadata-reference",
+  "fixtureAssetHash": "sha256:e0def984f7296db10dedbeefc4c39d00b9609720887da8fcad7b79d99ad8d209"
 }
