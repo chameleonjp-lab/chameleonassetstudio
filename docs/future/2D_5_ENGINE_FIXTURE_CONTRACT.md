@@ -21,7 +21,7 @@
 - JSON hashは辞書順object・配列順維持のcanonical JSONをUTF-8 SHA-256にする。
 - `manifest.integrity.manifestHash` はintegrity自身を除外する。
 - `integrity/files.json` は相対path順のstatic file hash一覧を持つ。自己参照になるintegrity file、verification record、動的CI artifactは除外する。
-- `verification/record.json` はsource/output/sidecar/fixtureのhashを参照するが、record自身をfixtureHashへ含めない。
+- `verification/record.json` は`sourceAssetPath`（Group 17 source metadata reference at `sourceCommit`）の`sourceAssetHash`、fixture-local生成asset.jsonの`fixtureAssetHash`、output/sidecar/fixtureのhashを分離して参照する。sourceAssetPathはproduct exportの原本を意味せず、record自身をfixtureHashへ含めない。
 
 ## Runtime gate
 
