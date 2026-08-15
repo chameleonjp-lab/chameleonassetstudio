@@ -55,9 +55,13 @@ type Target = { engine: string; engineVersion: string; status: string };
 type RecordFile = {
   label: string;
   target: { engine: string; version: string };
+  sourceCommit: string;
+  sourceAssetPath: string;
+  sourceAssetRole: string;
   fixtureHash: string;
   manifestHash: string;
   sourceAssetHash: string;
+  fixtureAssetHash: string;
   outputFilesHash: string;
   sidecarHash: string;
   runtime: {
@@ -152,6 +156,9 @@ describe('Group 19 engine fixture contract', () => {
         engine: fixture.engine,
         version: fixture.version,
       });
+      expect(record.sourceCommit).toBe('b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a');
+      expect(record.sourceAssetPath).toBe('public/engine-fixtures/pixijs-v8/asset.json');
+      expect(record.sourceAssetRole).toBe('metadata-reference');
       expect(record.runtime).toEqual({
         status: 'not-run',
         importErrors: null,
@@ -182,7 +189,11 @@ describe('Group 19 engine fixture contract', () => {
       );
       const sidecarEntries = integrity.entries.filter((entry) => entry.path === fixture.targetFile);
       expect(sourceEntry).toBeDefined();
-      expect(record.sourceAssetHash).toBe('sha256:' + sourceEntry?.sha256);
+      const sourceAssetFile = path.resolve(process.cwd(), record.sourceAssetPath);
+      await access(sourceAssetFile);
+      const sourceAssetBytes = await readFile(sourceAssetFile);
+      expect(record.sourceAssetHash).toBe('sha256:' + sha256(sourceAssetBytes));
+      expect(record.fixtureAssetHash).toBe('sha256:' + sourceEntry?.sha256);
       expect(record.outputFilesHash).toBe('sha256:' + sha256(JSON.stringify(outputEntries)));
       expect(record.sidecarHash).toBe('sha256:' + sha256(JSON.stringify(sidecarEntries)));
       expect(record.fixtureHash).toBe('sha256:' + sha256(JSON.stringify(integrity.entries)));
