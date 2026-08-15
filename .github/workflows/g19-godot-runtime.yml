@@ -1,0 +1,85 @@
+name: Group 19 Godot runtime
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/g19-godot-runtime.yml'
+      - 'public/engine-fixtures/godot-4-7-1-stable/**'
+      - 'tools/g19/godot-runtime/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  godot-runtime:
+    name: Godot 4.7.1-stable runtime
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download and verify Godot
+        shell: bash
+        env:
+          GODOT_URL: https://github.com/godotengine/godot/releases/download/4.7.1-stable/Godot_v4.7.1-stable_linux.x86_64.zip
+          GODOT_SHA256: c7ff14fd28472c8d4f193043de30278dcf7e5241a1dcf7566b02e27addaa33ba
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --output godot.zip "$GODOT_URL"
+          echo "$GODOT_SHA256  godot.zip" | sha256sum --check
+          unzip -q godot.zip -d godot-bin
+          test -x godot-bin/Godot_v4.7.1-stable_linux.x86_64
+          godot-bin/Godot_v4.7.1-stable_linux.x86_64 --headless --version
+
+      - name: Prepare engine-local fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf tools/g19/godot-runtime/fixture tools/g19/godot-runtime/test-results
+          mkdir -p tools/g19/godot-runtime/fixture tools/g19/godot-runtime/test-results
+          cp -R public/engine-fixtures/godot-4-7-1-stable/. tools/g19/godot-runtime/fixture/
+
+      - name: Import fixture with Godot
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot-bin/Godot_v4.7.1-stable_linux.x86_64 \
+            --headless --audio-driver Dummy \
+            --editor --path tools/g19/godot-runtime --quit \
+            2>&1 | tee test-results-godot-import.log
+
+      - name: Run Godot runtime contract
+        shell: bash
+        env:
+          G19_GODOT_COMMIT: a13da4feb
+        run: |
+          set -euo pipefail
+          godot-bin/Godot_v4.7.1-stable_linux.x86_64 \
+            --headless --audio-driver Dummy \
+            --path tools/g19/godot-runtime --script res://verify.gd \
+            2>&1 | tee test-results-godot-runtime.log
+
+      - name: Validate and collect runtime artifact
+        if: always()
+        shell: bash
+        run: |
+          set -u
+          mkdir -p test-results
+          if [ -s tools/g19/godot-runtime/test-results/g19-godot-runtime.json ]; then
+            cp tools/g19/godot-runtime/test-results/g19-godot-runtime.json test-results/g19-godot-runtime.json
+          else
+            printf '%s\n' '{"status":"missing","engine":"godot","version":"4.7.1-stable","importErrors":null}' > test-results/g19-godot-runtime.json
+          fi
+          if [ -f test-results-godot-import.log ]; then cp test-results-godot-import.log test-results/godot-import.log; fi
+          if [ -f test-results-godot-runtime.log ]; then cp test-results-godot-runtime.log test-results/godot-runtime.log; fi
+          jq -e '.status == "passed" and .importErrors == 0 and .engine == "godot" and .version == "4.7.1-stable"' test-results/g19-godot-runtime.json
+
+      - name: Upload Godot runtime artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: group19-godot-runtime-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/
+          if-no-files-found: error
+          retention-days: 14
