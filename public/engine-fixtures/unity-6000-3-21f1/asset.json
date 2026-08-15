@@ -113,18 +113,10 @@
       "name": "cross-page",
       "fps": 4,
       "loop": true,
-      "frameIds": [
-        "fixture-a",
-        "fixture-b"
-      ]
+      "frameIds": ["fixture-a", "fixture-b"]
     }
   ],
-  "tags": [
-    "group19",
-    "engine-fixture",
-    "unity",
-    "candidate"
-  ],
+  "tags": ["group19", "engine-fixture", "unity", "candidate"],
   "gameAttributes": {},
   "createdAt": "2026-08-15T00:00:00.000Z",
   "updatedAt": "2026-08-15T00:00:00.000Z"
