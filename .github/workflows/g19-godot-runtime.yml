@@ -3,9 +3,9 @@ name: Group 19 Godot runtime
 on:
   pull_request:
     paths:
-      - ".github/workflows/g19-godot-runtime.yml"
-      - "public/engine-fixtures/godot-4-7-1-stable/**"
-      - "tools/g19/godot-runtime/**"
+      - '.github/workflows/g19-godot-runtime.yml'
+      - 'public/engine-fixtures/godot-4-7-1-stable/**'
+      - 'tools/g19/godot-runtime/**'
   workflow_dispatch:
 
 permissions:
