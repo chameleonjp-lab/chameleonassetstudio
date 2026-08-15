@@ -140,8 +140,10 @@ func _run() -> void:
     rect_node.shape = rect_shape
     var circle_node := CollisionShape2D.new()
     circle_node.shape = circle_shape
-    _check(_rect_matches(rect_meta.get("rect", {}), 4, 6, 24, 28), "rectangle collider metadata mismatch")\n    _check(rect_shape.size == Vector2(24, 28), "rectangle collider size mismatch")
-    _check(_vector_matches(circle_meta.get("circle", {}), 20, 20) and is_equal_approx(float(circle_meta.get("circle", {}).get("radius", 0)), 14.0), "circle collider metadata mismatch")\n    _check(circle_shape.radius == 14.0, "circle collider radius mismatch")
+    _check(_rect_matches(rect_meta.get("rect", {}), 4, 6, 24, 28), "rectangle collider metadata mismatch")
+    _check(rect_shape.size == Vector2(24, 28), "rectangle collider size mismatch")
+    _check(_vector_matches(circle_meta.get("circle", {}), 20, 20) and is_equal_approx(float(circle_meta.get("circle", {}).get("radius", 0)), 14.0), "circle collider metadata mismatch")
+    _check(circle_shape.radius == 14.0, "circle collider radius mismatch")
     _check(rect_node.shape == rect_shape and circle_node.shape == circle_shape, "collision shape assignment failed")
 
     var checks := {
