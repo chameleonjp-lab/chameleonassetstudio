@@ -36,6 +36,16 @@ func _find_collider(colliders: Array, shape_name: String) -> Dictionary:
             return collider
     return {}
 
+func _vector_matches(value, expected_x: float, expected_y: float) -> bool:
+    if typeof(value) != TYPE_DICTIONARY:
+        return false
+    return is_equal_approx(float(value.get("x", -999999.0)), expected_x) and is_equal_approx(float(value.get("y", -999999.0)), expected_y)
+
+func _rect_matches(value, expected_x: float, expected_y: float, expected_width: float, expected_height: float) -> bool:
+    if typeof(value) != TYPE_DICTIONARY:
+        return false
+    return _vector_matches(value, expected_x, expected_y) and is_equal_approx(float(value.get("width", -999999.0)), expected_width) and is_equal_approx(float(value.get("height", -999999.0)), expected_height)
+
 func _run() -> void:
     var manifest := _read_json(FIXTURE_ROOT + "/manifest.json")
     var target := _read_json(FIXTURE_ROOT + "/targets/godot-4-7-1-stable.json")
@@ -52,10 +62,10 @@ func _run() -> void:
     if frames.size() >= 2:
         _check(frames[0].get("name") == "fixture-a", "frame 0 order mismatch")
         _check(frames[1].get("name") == "fixture-b", "frame 1 order mismatch")
-        _check(frames[0].get("rect") == {"x": 0, "y": 0, "width": 32, "height": 32}, "frame 0 rect mismatch")
-        _check(frames[1].get("rect") == {"x": 32, "y": 0, "width": 32, "height": 32}, "frame 1 rect mismatch")
-        _check(frames[0].get("contentOffset") == {"x": 8, "y": 8}, "frame 0 trim offset mismatch")
-        _check(frames[1].get("contentOffset") == {"x": 6, "y": 4}, "frame 1 trim offset mismatch")
+        _check(_rect_matches(frames[0].get("rect"), 0, 0, 32, 32), "frame 0 rect mismatch")
+        _check(_rect_matches(frames[1].get("rect"), 32, 0, 32, 32), "frame 1 rect mismatch")
+        _check(_vector_matches(frames[0].get("contentOffset"), 8, 8), "frame 0 trim offset mismatch")
+        _check(_vector_matches(frames[1].get("contentOffset"), 6, 4), "frame 1 trim offset mismatch")
 
     var animations: Array = manifest.get("animations", [])
     _check(animations.size() == 1, "expected exactly one animation")
@@ -105,10 +115,10 @@ func _run() -> void:
 
     var origin: Dictionary = manifest.get("origin", {})
     var anchors: Array = manifest.get("anchors", [])
-    _check(origin == {"x": 20, "y": 36}, "origin mismatch")
+    _check(_vector_matches(origin, 20, 36), "origin mismatch")
     _check(anchors.size() == 1, "anchor count mismatch")
     if anchors.size() > 0:
-        _check(anchors[0].get("x") == 20 and anchors[0].get("y") == 20, "anchor mismatch")
+        _check(_vector_matches(anchors[0], 20, 20), "anchor mismatch")
 
     var sprite := Sprite2D.new()
     sprite.texture = atlas_a
@@ -130,9 +140,34 @@ func _run() -> void:
     rect_node.shape = rect_shape
     var circle_node := CollisionShape2D.new()
     circle_node.shape = circle_shape
-    _check(rect_shape.size == Vector2(24, 28), "rectangle collider size mismatch")
-    _check(circle_shape.radius == 14.0, "circle collider radius mismatch")
+    _check(_rect_matches(rect_meta.get("rect", {}), 4, 6, 24, 28), "rectangle collider metadata mismatch")\n    _check(rect_shape.size == Vector2(24, 28), "rectangle collider size mismatch")
+    _check(_vector_matches(circle_meta.get("circle", {}), 20, 20) and is_equal_approx(float(circle_meta.get("circle", {}).get("radius", 0)), 14.0), "circle collider metadata mismatch")\n    _check(circle_shape.radius == 14.0, "circle collider radius mismatch")
     _check(rect_node.shape == rect_shape and circle_node.shape == circle_shape, "collision shape assignment failed")
+
+    var checks := {
+        "textureLoaded": texture != null,
+        "imageDecoded": image != null,
+        "frameOrder": frames.size() == 2 and frames[0].get("name") == "fixture-a" and frames[1].get("name") == "fixture-b",
+        "animation": sprite_frames.get_frame_count("loop") == 2 and sprite_frames.get_animation_speed("loop") == 4.0 and sprite_frames.get_animation_loop("loop"),
+        "originAnchorScale": sprite.position == Vector2(20, 36) and sprite.scale == Vector2(2, 2),
+        "colliders": rect_shape.size == Vector2(24, 28) and circle_shape.radius == 14.0
+    }
+
+    # Release temporary engine objects before Godot exits so the log reflects the
+    # import/runtime result rather than runner-owned leaked nodes.
+    rect_node.shape = null
+    circle_node.shape = null
+    animated.sprite_frames = null
+    sprite.texture = null
+    sprite_frames.remove_animation("loop")
+    atlas_a.atlas = null
+    atlas_b.atlas = null
+    rect_node.free()
+    circle_node.free()
+    animated.free()
+    sprite.free()
+    texture = null
+    image = null
 
     var artifact := {
         "format": "chameleon-g19-runtime",
@@ -144,14 +179,7 @@ func _run() -> void:
         "sourceCommit": record.get("sourceCommit"),
         "fixtureHash": record.get("fixtureHash"),
         "manifestHash": record.get("manifestHash"),
-        "checks": {
-            "textureLoaded": texture != null,
-            "imageDecoded": image != null,
-            "frameOrder": frames.size() == 2 and frames[0].get("name") == "fixture-a" and frames[1].get("name") == "fixture-b",
-            "animation": sprite_frames.get_frame_count("loop") == 2 and sprite_frames.get_animation_speed("loop") == 4.0 and sprite_frames.get_animation_loop("loop"),
-            "originAnchorScale": sprite.position == Vector2(20, 36) and sprite.scale == Vector2(2, 2),
-            "colliders": rect_shape.size == Vector2(24, 28) and circle_shape.radius == 14.0
-        },
+        "checks": checks,
         "failureMessages": failures,
         "generatedAt": Time.get_datetime_string_from_system(true)
     }
