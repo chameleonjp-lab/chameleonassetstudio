@@ -149,9 +149,14 @@ func _run() -> void:
     var checks := {
         "textureLoaded": texture != null,
         "imageDecoded": image != null,
+        "frameRegions": frames.size() == 2 and _rect_matches(frames[0].get("rect"), 0, 0, 32, 32) and _rect_matches(frames[1].get("rect"), 32, 0, 32, 32),
         "frameOrder": frames.size() == 2 and frames[0].get("name") == "fixture-a" and frames[1].get("name") == "fixture-b",
+        "trimContentOffset": frames.size() == 2 and _vector_matches(frames[0].get("contentOffset"), 8, 8) and _vector_matches(frames[1].get("contentOffset"), 6, 4),
         "animation": sprite_frames.get_frame_count("loop") == 2 and sprite_frames.get_animation_speed("loop") == 4.0 and sprite_frames.get_animation_loop("loop"),
-        "originAnchorScale": sprite.position == Vector2(20, 36) and sprite.scale == Vector2(2, 2),
+        "origin": _vector_matches(origin, 20, 36) and sprite.position == Vector2(20, 36),
+        "anchor": anchors.size() == 1 and _vector_matches(anchors[0], 20, 20),
+        "scale": sprite.scale == Vector2(2, 2),
+        "colliderMetadata": _rect_matches(rect_meta.get("rect", {}), 4, 6, 24, 28) and _vector_matches(circle_meta.get("circle", {}), 20, 20),
         "colliders": rect_shape.size == Vector2(24, 28) and circle_shape.radius == 14.0
     }
 
@@ -178,13 +183,38 @@ func _run() -> void:
         "engineReleaseCommit": OS.get_environment("G19_GODOT_COMMIT"),
         "status": "passed" if failures.is_empty() else "failed",
         "importErrors": failures.size(),
+        "consoleErrors": failures.size(),
+        "fixtureId": record.get("fixtureId"),
         "sourceCommit": record.get("sourceCommit"),
         "fixtureHash": record.get("fixtureHash"),
         "manifestHash": record.get("manifestHash"),
+        "sourceAssetHash": record.get("sourceAssetHash"),
+        "outputFilesHash": record.get("outputFilesHash"),
+        "sidecarHash": record.get("sidecarHash"),
+        "fixtureAssetHash": record.get("fixtureAssetHash"),
+        "sourceAssetPath": record.get("sourceAssetPath"),
+        "fixtureProvenance": record.get("fixtureProvenance"),
+        "materialTypes": ["sprite", "animation", "trim-content-offset", "origin-anchor", "rect-collider", "circle-collider"],
+        "acceptanceIds": [
+            "G19-VERSION-PIN",
+            "G19-FIXTURE-SCOPE",
+            "G19-GODOT-IMPORT",
+            "G19-METADATA",
+            "G19-EVIDENCE",
+            "G19-LABEL-SCOPE",
+            "G19-NO-REGRESSION"
+        ],
+        "execution": {
+            "os": OS.get_name(),
+            "headless": true,
+            "engine": Engine.get_version_info()
+        },
         "checks": checks,
         "failureMessages": failures,
         "generatedAt": Time.get_datetime_string_from_system(true)
     }
+
+
 
     DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(RESULT_DIR))
     var output := FileAccess.open(RESULT_DIR + "/g19-godot-runtime.json", FileAccess.WRITE)
