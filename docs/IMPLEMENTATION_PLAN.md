@@ -20,6 +20,7 @@
 - `docs/future/2D_FIVE_PERSPECTIVE_REVIEW_ACTION_PLAN_2026-08-13.md`（2026-08-13の五視点レビューを既存Groupへ割り当てる横断計画。proposal-only）
 - `docs/future/2D_4_PIXIJS_PHASER_PLAN.md`（Group 17のPixiJS / Phaser契約と人間判断の正本）
 - `docs/future/2D_5_EVIDENCE_LABELS_PLAN.md`（Group 18の証拠形式・対応ラベル契約と人間判断の正本）
+- `docs/future/2D_5_UNITY_GODOT_PLAN.md`（Group 19のUnity / Godot対象version・fixture・証拠契約と人間判断の正本）
 
 2D Pro の完成条件は `docs/future/2D_COMPLETE_PRODUCT_SPEC.md`、データ、対象別出力、端末品質は同ディレクトリの専門文書を正本とする。
 
@@ -161,3 +162,10 @@ Fable5の利用制限中は、`docs/DEVELOPMENT_MODES.md`のCodex Fallback Mode�
 6. ready化と最終mergeはユーザーが判断する。
 
 Codexは未確定仕様の最終判断を担当しない。Fable5が再び利用可能になった場合も通常実装を戻す必要はなく、仕様判断が必要な場面だけ利用候補とする。過去にFable5で確定したADRと契約は引き続き有効である。
+
+
+## Group 19 current state (2026-08-15)
+
+Group 18はPR #248（merge `3ab844d28d155a438dc8f10f8f9b22099a40093a`、CI Run #793）で完了し、PR #249（merge `fcbf1cc9b7a1a9d0cdd588eaed59de3999bdcabb`、CI Run #795）で計画文書のcloseoutをmainへ反映した。次の正式work packageはGroup 19（`2D-5-UNITY + 2D-5-GODOT`）である。
+
+Group 19のdocs-only契約handoffは `docs/future/2D_5_UNITY_GODOT_PLAN.md` に固定し、状態を `proposal / human-decision-pending / implementation-not-started` とする。G19-C1〜C3の人間採用前はproduct code、target fixture、CI、dependencyを変更しない。A案を採用する場合もUnity / Godotの具体version（patchを含む）をfixture・artifact・docsへ記録するまで実装PRを開始しない。Group 20（RPG Maker MZ / helper gate）はGroup 19完了後に別handoffで扱う。
