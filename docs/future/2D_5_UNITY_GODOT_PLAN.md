@@ -142,3 +142,11 @@ G19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable）
 契約状態は`accepted`、実装状態は`implemented-candidate / merged`、検証状態は`CI-passed / independently-verified-static / runtime-verification-unverified`である。PR #251でcandidate fixture、静的closure test、import notesをmainへ反映した。Unity/Godot runtimeとengine別artifactは未完了のため、`verified`へ昇格しない。
 
 次のGateは、UnityとGodotそれぞれで別のruntime実行、import error 0、metadata一致、engine別artifact欠落失敗、固定headの独立確認を満たすことである。現行mainにはruntime実行証拠がないため、Group 20は開始しない。
+
+
+## 9. Post-merge verification record
+
+- PR #251の実装head `4cc69d6473d1e409f6da58f43515eabdb08a0f28`は、CI Run #805でclassify-changes、build-and-test、Chromium E2Eの全job成功を確認し、merge `e77a721ff3d479bea0f7475f0b0fbc296ce91595`でmainへ反映した。
+- merge後mainのCI Run #806は、classify-changesとbuild-and-test成功後、Chromium E2Eの既存 `e2e/collider-overrides.spec.ts` 2件が取り込み確認ダイアログ待ちでタイムアウトした。失敗履歴は残し、失敗jobだけを再実行してE2E成功を確認した。これはGroup 19のruntime証拠ではなく、PR #251変更対象外の既存E2E安定性記録である。
+- 本closeout PRのhead `cfb5680a8ad2e11aa7ff108aed4b62ee2bcd72cc`は、base比ahead 5 / behind 0、Markdown 5件のみである。CI Run #807はclassify-changes成功、docs-only規則によりbuild-and-testとChromium E2Eをskipした。
+- 固定headの読み取り専用独立監査を3担当で行い、状態・依存・変更範囲について `BLOCKER 0 / MUST 0` を確認した。これは静的な文書・契約確認であり、Unity/Godot runtime検証やGitHubの正式review submissionを意味しない。
