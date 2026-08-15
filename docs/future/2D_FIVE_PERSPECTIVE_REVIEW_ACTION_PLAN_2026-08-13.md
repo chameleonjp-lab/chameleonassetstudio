@@ -225,4 +225,4 @@ Group 16とGroup 17の採用・実装・mergeは完了した。Group 18は2026-0
 G18-C1 A + G18-C2 A + G18-C3 A
 ```
 
-Group 18はPR #248（merge `3ab844d28d155a438dc8f10f8f9b22099a40093a`、CI Run #793）でstable/dynamic evidence分離、target version・fixture単位のラベル境界、失効理由、契約artifact欠落検出を実装し、独立確認・main反映まで完了した。完了数は18/27。次はGroup 19のUnity / Godot契約handoffであり、target fixture、product UI、既存export形式、schema、保存形式、helper、dependenciesは採用範囲だけで変更する。
+Group 18はPR #248（merge `3ab844d28d155a438dc8f10f8f9b22099a40093a`、CI Run #793）でstable/dynamic evidence分離、target version・fixture単位のラベル境界、失効理由、契約artifact欠落検出を実装し、独立確認・main反映まで完了した。完了数は18/27。Group 19はUnity / Godotの採用済み契約に基づくtarget-specific実装中であり、target fixtureのruntime Gate完了までproduct UI、既存export形式、schema、保存形式、helper、dependenciesは変更しない。
