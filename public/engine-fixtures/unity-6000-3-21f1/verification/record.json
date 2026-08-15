@@ -8,16 +8,13 @@
   },
   "fixtureId": "g19-unity-6000-3-21f1",
   "sourceCommit": "11dc1283a4d83dda9ce681f149925d15065df535",
-  "fixtureHash": "sha256:832dd6956cb4cc0d29ab6cd526a961de3652ca65a6245821e1988b9d19ca096b",
+  "fixtureHash": "sha256:af84440b90da50d9df644da86f27a03381b0c4d39e50d37dbdf723ec184605a3",
   "manifestHash": "sha256:036029768d96fa4f273422a033bef007f382a460dda06085db2962acd6eed433",
-  "sourceAssetHash": "sha256:33650fbfc89216641cf5444f0b37dba5e5249726430b2ca70d4cb26240229de7",
-  "outputFilesHash": "sha256:02535a8c385b67ea26c0a5a223917a4244beee728a82e0daf1d9c795f574e93e",
-  "sidecarHash": "sha256:005b8a41194184dd15fc1398d0fbcd007c0aa408f68120fd29d76b6eba55f912",
+  "sourceAssetHash": "sha256:3fb9b7faff74bbf4d683d6706e41a466263fac97000e7123020a3a19ab3eda07",
+  "outputFilesHash": "sha256:ed2fd3539ffc4ab877088032657406e6fdea0f8c536eef0e880a8a89059c5274",
+  "sidecarHash": "sha256:a82ec9e0fd68afe4a680bdcd0fb56712802d3bed74abfebd875bc1eee694140f",
   "expected": {
-    "frames": [
-      "fixture-a",
-      "fixture-b"
-    ],
+    "frames": ["fixture-a", "fixture-b"],
     "animation": {
       "name": "loop",
       "fps": 4,
@@ -36,10 +33,7 @@
       "x": 0,
       "y": 0
     },
-    "colliders": [
-      "rect",
-      "circle"
-    ]
+    "colliders": ["rect", "circle"]
   },
   "runtime": {
     "status": "not-run",
