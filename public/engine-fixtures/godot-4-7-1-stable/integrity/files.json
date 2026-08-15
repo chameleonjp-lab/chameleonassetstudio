@@ -1,0 +1,49 @@
+{
+  "algorithm": "SHA-256",
+  "entries": [
+    {
+      "path": "asset.json",
+      "sha256": "94a80c286da77ede777167eaa5b40bc264f1d720f48e5d79c5b9e72f04d66cc8"
+    },
+    {
+      "path": "import-notes/godot-4-7-1-stable.md",
+      "sha256": "8719d768a988bb6f33b2b15d8748329b4d8bf2f499d6b201a92536acbcd66431"
+    },
+    {
+      "path": "manifest.json",
+      "sha256": "e20837fba33af0cf328eb49bcd1137d9078dc76850d420939c642e10061aa2ac"
+    },
+    {
+      "path": "package-manifest.json",
+      "sha256": "94ce28d360068207430257519e158edc2e3f74591a5a57c06e26f587733ba1cb"
+    },
+    {
+      "path": "README.md",
+      "sha256": "596f9bf0ac9f6f4c63b0b13948d425ac9f1e9e61f3c078b7e417f3098f65b5d0"
+    },
+    {
+      "path": "targets/godot-4-7-1-stable.json",
+      "sha256": "7e10df8c7bdcb6ad85d833b09a5986e74669587a9c5b46928bc79a0e89933214"
+    },
+    {
+      "path": "textures/main.png",
+      "sha256": "431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460"
+    }
+  ],
+  "excluded": [
+    "integrity/files.json",
+    "verification/record.json"
+  ],
+  "groups": {
+    "source": [
+      "asset.json"
+    ],
+    "output": [
+      "manifest.json",
+      "textures/main.png"
+    ],
+    "sidecar": [
+      "targets/godot-4-7-1-stable.json"
+    ]
+  }
+}

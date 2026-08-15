@@ -1,0 +1,131 @@
+{
+  "format": "chameleon-asset",
+  "version": "0.2.0",
+  "id": "g19-godot-4-7-1-stable",
+  "assetType": "character",
+  "name": "g19_godot_4_7_1_stable",
+  "displayName": "Group 19 Godot candidate fixture",
+  "canvasSize": {
+    "width": 1,
+    "height": 1
+  },
+  "origin": {
+    "x": 0,
+    "y": 0
+  },
+  "textures": [
+    {
+      "id": "fixture-texture",
+      "kind": "source",
+      "name": "fixture-pages",
+      "mimeType": "image/png",
+      "size": {
+        "width": 1,
+        "height": 1
+      },
+      "path": "textures/main.png"
+    }
+  ],
+  "layers": [
+    {
+      "id": "fixture-layer",
+      "name": "fixture-layer",
+      "layerType": "image",
+      "visible": true,
+      "locked": false,
+      "opacity": 1,
+      "transform": {
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "scale": {
+          "x": 1,
+          "y": 1
+        },
+        "rotation": 0
+      },
+      "textureId": "fixture-texture"
+    }
+  ],
+  "parts": [],
+  "anchors": [
+    {
+      "id": "anchor-center",
+      "name": "center",
+      "role": "center",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "colliders": [
+    {
+      "id": "collider-body",
+      "name": "body",
+      "purpose": "body",
+      "shape": "rect",
+      "visible": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      }
+    },
+    {
+      "id": "collider-radius",
+      "name": "radius",
+      "purpose": "sensor",
+      "shape": "circle",
+      "visible": true,
+      "circle": {
+        "x": 0,
+        "y": 0,
+        "radius": 0.5
+      }
+    }
+  ],
+  "frames": [
+    {
+      "id": "fixture-a",
+      "name": "fixture-a",
+      "layerStates": [
+        {
+          "layerId": "fixture-layer"
+        }
+      ]
+    },
+    {
+      "id": "fixture-b",
+      "name": "fixture-b",
+      "layerStates": [
+        {
+          "layerId": "fixture-layer"
+        }
+      ]
+    }
+  ],
+  "animations": [
+    {
+      "id": "animation-cross-page",
+      "name": "cross-page",
+      "fps": 4,
+      "loop": true,
+      "frameIds": [
+        "fixture-a",
+        "fixture-b"
+      ]
+    }
+  ],
+  "tags": [
+    "group19",
+    "engine-fixture",
+    "godot",
+    "candidate"
+  ],
+  "gameAttributes": {},
+  "createdAt": "2026-08-15T00:00:00.000Z",
+  "updatedAt": "2026-08-15T00:00:00.000Z"
+}

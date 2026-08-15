@@ -1,0 +1,127 @@
+{
+  "format": "chameleon-distribution",
+  "version": "0.1.0",
+  "profile": "g19-godot-candidate",
+  "scale": 1,
+  "source": {
+    "assetJson": "asset.json",
+    "canonical": true
+  },
+  "files": {
+    "mainPng": "textures/main.png",
+    "target": "targets/godot-4-7-1-stable.json",
+    "importNotes": "import-notes/godot-4-7-1-stable.md"
+  },
+  "pages": [
+    {
+      "path": "textures/main.png",
+      "width": 1,
+      "height": 1,
+      "rotated": false
+    }
+  ],
+  "frames": [
+    {
+      "name": "fixture-a",
+      "page": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "sourceSize": {
+        "width": 1,
+        "height": 1
+      },
+      "contentRect": {
+        "x": 0,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "contentOffset": {
+        "x": 0,
+        "y": 0
+      },
+      "rotated": false
+    },
+    {
+      "name": "fixture-b",
+      "page": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "sourceSize": {
+        "width": 1,
+        "height": 1
+      },
+      "contentRect": {
+        "x": 0,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "contentOffset": {
+        "x": 0,
+        "y": 0
+      },
+      "rotated": false
+    }
+  ],
+  "animations": [
+    {
+      "name": "loop",
+      "frames": [
+        "fixture-a",
+        "fixture-b"
+      ],
+      "fps": 4,
+      "loop": true
+    }
+  ],
+  "origin": {
+    "x": 0,
+    "y": 0
+  },
+  "anchors": [
+    {
+      "name": "center",
+      "role": "center",
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "colliders": [
+    {
+      "name": "body",
+      "purpose": "body",
+      "shape": "rect",
+      "visible": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      }
+    },
+    {
+      "name": "radius",
+      "purpose": "sensor",
+      "shape": "circle",
+      "visible": true,
+      "circle": {
+        "x": 0,
+        "y": 0,
+        "radius": 0.5
+      }
+    }
+  ],
+  "integrity": {
+    "algorithm": "SHA-256",
+    "manifestHash": "0fc847f7b80905e507eb507bb8d48f100328fbd1aa8eea2a37daa12d9f315409"
+  }
+}

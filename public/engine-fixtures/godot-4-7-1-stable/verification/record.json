@@ -1,0 +1,55 @@
+{
+  "format": "chameleon-engine-verification",
+  "version": "0.1.0",
+  "label": "candidate",
+  "target": {
+    "engine": "godot",
+    "version": "4.7.1-stable"
+  },
+  "fixtureId": "g19-godot-4-7-1-stable",
+  "sourceCommit": "11dc1283a4d83dda9ce681f149925d15065df535",
+  "fixtureHash": "sha256:f30e44f17bded99778d6c470bec2893c01540f8d65c24901ca3d53e4a5c65912",
+  "manifestHash": "sha256:0fc847f7b80905e507eb507bb8d48f100328fbd1aa8eea2a37daa12d9f315409",
+  "sourceAssetHash": "sha256:94a80c286da77ede777167eaa5b40bc264f1d720f48e5d79c5b9e72f04d66cc8",
+  "outputFilesHash": "sha256:4de597a4dffa4e1ef3994c4d15e9fa95a0e0e246f2eb3fb951bd662528311c7e",
+  "sidecarHash": "sha256:385aa44bce5a8bea8110603342ebaa40b04401cdb8028d0c39e550abdc80bbd0",
+  "expected": {
+    "frames": [
+      "fixture-a",
+      "fixture-b"
+    ],
+    "animation": {
+      "name": "loop",
+      "fps": 4,
+      "loop": true
+    },
+    "trimContentOffset": {
+      "x": 0,
+      "y": 0
+    },
+    "scale": 1,
+    "origin": {
+      "x": 0,
+      "y": 0
+    },
+    "anchor": {
+      "x": 0,
+      "y": 0
+    },
+    "colliders": [
+      "rect",
+      "circle"
+    ]
+  },
+  "runtime": {
+    "status": "not-run",
+    "importErrors": null,
+    "artifact": null
+  },
+  "limitations": [
+    "pinned Godot binary is not available in current CI",
+    "The 1x1 PNG is a static candidate payload; visual multi-frame equivalence remains unverified."
+  ],
+  "evidenceRefs": [],
+  "artifactPolicy": "missing engine artifact fails the runtime gate"
+}

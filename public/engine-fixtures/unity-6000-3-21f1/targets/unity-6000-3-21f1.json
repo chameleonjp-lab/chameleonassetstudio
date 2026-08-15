@@ -1,0 +1,52 @@
+{
+  "format": "chameleon-engine-sidecar",
+  "version": "0.1.0",
+  "engine": "unity",
+  "engineVersion": "6000.3.21f1",
+  "status": "candidate",
+  "pixelsPerUnit": 1,
+  "spriteMode": "multiple",
+  "pivot": {
+    "mode": "custom",
+    "x": 0,
+    "y": 0
+  },
+  "origin": {
+    "x": 0,
+    "y": 0
+  },
+  "anchors": [
+    {
+      "name": "center",
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "colliders": [
+    {
+      "name": "body",
+      "shape": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 1,
+      "height": 1
+    },
+    {
+      "name": "radius",
+      "shape": "circle",
+      "x": 0,
+      "y": 0,
+      "radius": 0.5
+    }
+  ],
+  "animation": {
+    "name": "loop",
+    "frames": [
+      "fixture-a",
+      "fixture-b"
+    ],
+    "fps": 4,
+    "loop": true
+  },
+  "notes": "Fixture-local metadata only; native engine project files are intentionally excluded."
+}

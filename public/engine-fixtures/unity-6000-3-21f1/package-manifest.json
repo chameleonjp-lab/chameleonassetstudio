@@ -1,0 +1,28 @@
+{
+  "format": "chameleon-engine-fixture",
+  "version": "0.1.0",
+  "fixtureId": "g19-unity-6000-3-21f1",
+  "engine": "unity",
+  "engineVersion": "6000.3.21f1",
+  "profile": "g19-unity-candidate",
+  "status": "candidate",
+  "source": {
+    "assetJson": "asset.json",
+    "canonical": true
+  },
+  "files": {
+    "manifest": "manifest.json",
+    "assetJson": "asset.json",
+    "sheet": "textures/main.png",
+    "target": "targets/unity-6000-3-21f1.json",
+    "importNotes": "import-notes/unity-6000-3-21f1.md",
+    "verification": "verification/record.json",
+    "integrity": "integrity/files.json",
+    "readme": "README.md"
+  },
+  "runtime": {
+    "status": "not-run",
+    "reason": "licensed Unity editor is not available in current CI",
+    "artifactPolicy": "missing engine artifact fails the runtime gate"
+  }
+}

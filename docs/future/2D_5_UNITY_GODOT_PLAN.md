@@ -3,9 +3,9 @@
 最終更新日: 2026-08-15  
 対象リポジトリ: chameleonjp-lab/chameleonassetstudio  
 正式work package: 2D-5-UNITY + 2D-5-GODOT  
-基準main SHA: fcbf1cc9b7a1a9d0cdd588eaed59de3999bdcabb  
-文書種別: docs-only 契約監査・人間判断 handoff  
-状態: proposal / human-decision-pending / implementation-not-started
+基準main SHA: 11dc1283a4d83dda9ce681f149925d15065df535  
+文書種別: implementation handoff  
+状態: accepted / implementing / verification-unverified
 
 上位文書: docs/IMPLEMENTATION_PLAN.md, docs/future/2D_COMPLETION_ROADMAP.md  
 共通契約: docs/future/2D_5_EVIDENCE_LABELS_PLAN.md  
@@ -17,8 +17,8 @@
 
 | 項目 | 確認結果 | Group 19への意味 |
 |---|---|---|
-| 最新main | fcbf1cc9b7a1a9d0cdd588eaed59de3999bdcabb。PR #249（Group 18 closeout）のmerge commit。 | このhandoffの基準head。 |
-| open Pull Request | 0件（このhandoff Draft PR作成前の確認）。 | 同一目的のDraft PRを1本だけ作る。 |
+| 最新main | 11dc1283a4d83dda9ce681f149925d15065df535。PR #250（Group 19 handoff）のmerge commit。 | この実装Draft PRの基準head。 |
+| open Pull Request | 基準main確認時点は0件。現在は本Group 19実装Draft PRのみ。 | 同一目的のDraft PRを1本だけ維持する。 |
 | Group 18 | PR #248 final head e3309d57f030e9190cb4c678e49301e4736332b5、merge 3ab844d28d155a438dc8f10f8f9b22099a40093a、CI Run #793成功、contract artifact取得済み。 | candidate / verified / import-notes / unsupportedの共通境界を再利用する。 |
 | Group 18 closeout | PR #249 final head 9af46a710376279917f3c5d5cc86f42c3713a3a4、merge fcbf1cc9b7a1a9d0cdd588eaed59de3999bdcabb、CI Run #795成功（docs-only分類）。 | 完了数は18/27。次の正式work packageはGroup 19。 |
 | 既存互換性表 | Unity 2D / Godot 2Dは現状import-notes扱いで、対象version付きのverified fixtureはない。 | 未確認の対象をverifiedと表示しない。 |
@@ -129,12 +129,16 @@ A案は、Group 18の対象version・fixture単位の証拠規則をUnity/Godot�
 - helper/plugin/addon、native project生成、schema・保存形式・export ZIP変更が必要になった場合は、G19から外し別の契約判断へ戻す。
 - CIでengine本体のimport、期待結果、artifact保存のどれかが失敗した場合は、同じDraft PRで修正し、成功表示を残さない。
 
-## 8. 人間判断
+## 8. 採用記録と実装状態
 
-次の形式で採用する。
+採用日: 2026-08-15
 
 ~~~text
-G19-C1 [A/B/C] + G19-C2 [A/B/C] + G19-C3 [A/B/C]
+G19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable）
++ G19-C2 A
++ G19-C3 A
 ~~~
 
-A案を採用する場合は、可能なら同じ回答または次の短い記録でUnity / Godotの具体version（patchを含む）も固定する。version未固定のまま実装PRを開始しない。Group 20（RPG Maker MZ / helper gate）はGroup 19の共通ラベルと証拠境界を前提に、別handoffと別判断で扱う。
+契約状態は`accepted`、実装状態は`implementing`、検証状態は`verification-unverified`である。今回のDraft PRではUnity/Godot別candidate fixture、静的closure test、手動import notesを追加する。source asset、PNG output、manifest、sidecarをSHA-256で分け、fixtureHashはsorted entryから導出し、verification record自身と動的artifactは自己参照を避けて除外する。現行CIにはUnity/Godot本体がないため、Unityはlicensed editor runner、Godotはchecksum固定binaryを別実装で追加するまで`verified`へ昇格しない。
+
+次のGateは、UnityとGodotそれぞれで別のruntime実行、import error 0、metadata一致、engine別artifact欠落失敗、固定headの独立確認を満たすことである。片方の成功をもう片方へ広げず、物理iPhone Safariの判定はGroup 21A / release Gateに残す。
