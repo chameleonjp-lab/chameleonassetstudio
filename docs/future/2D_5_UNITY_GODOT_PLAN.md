@@ -148,5 +148,5 @@ G19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable）
 
 - PR #251の実装head `4cc69d6473d1e409f6da58f43515eabdb08a0f28`は、CI Run #805でclassify-changes、build-and-test、Chromium E2Eの全job成功を確認し、merge `e77a721ff3d479bea0f7475f0b0fbc296ce91595`でmainへ反映した。
 - merge後mainのCI Run #806は、classify-changesとbuild-and-test成功後、Chromium E2Eの既存 `e2e/collider-overrides.spec.ts` 2件が取り込み確認ダイアログ待ちでタイムアウトした。失敗履歴は残し、失敗jobだけを再実行してE2E成功を確認した。これはGroup 19のruntime証拠ではなく、PR #251変更対象外の既存E2E安定性記録である。
-- 本closeout PRのhead `82ab668f0bf993e215ce646ece5327906d297f93`は、base比ahead 6 / behind 0、Markdown 5件のみである。CI Run #808はclassify-changes成功、docs-only規則によりbuild-and-testとChromium E2Eをskipした。
+- 本closeout PRはMarkdown 5件のみを変更し、docs-only CIではclassify-changesが成功し、build-and-testとChromium E2Eはskipされる。固定head・ahead/behind・CI Runの最新値はPR本文に記録する。
 - 固定headの読み取り専用独立監査を3担当で行い、状態・依存・変更範囲について `BLOCKER 0 / MUST 0` を確認した。これは静的な文書・契約確認であり、Unity/Godot runtime検証やGitHubの正式review submissionを意味しない。
