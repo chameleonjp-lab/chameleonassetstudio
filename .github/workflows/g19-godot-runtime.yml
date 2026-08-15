@@ -61,21 +61,25 @@ jobs:
             2>&1 | tee test-results-godot-runtime.log
 
       - name: Validate and collect runtime artifact
+        if: always()
         shell: bash
         run: |
-          set -euo pipefail
-          test -s tools/g19/godot-runtime/test-results/g19-godot-runtime.json
+          set -u
           mkdir -p test-results
-          cp tools/g19/godot-runtime/test-results/g19-godot-runtime.json test-results/g19-godot-runtime.json
-          cp test-results-godot-import.log test-results/godot-import.log
-          cp test-results-godot-runtime.log test-results/godot-runtime.log
+          if [ -s tools/g19/godot-runtime/test-results/g19-godot-runtime.json ]; then
+            cp tools/g19/godot-runtime/test-results/g19-godot-runtime.json test-results/g19-godot-runtime.json
+          else
+            printf '%s\n' '{"status":"missing","engine":"godot","version":"4.7.1-stable","importErrors":null}' > test-results/g19-godot-runtime.json
+          fi
+          if [ -f test-results-godot-import.log ]; then cp test-results-godot-import.log test-results/godot-import.log; fi
+          if [ -f test-results-godot-runtime.log ]; then cp test-results-godot-runtime.log test-results/godot-runtime.log; fi
           jq -e '.status == "passed" and .importErrors == 0 and .engine == "godot" and .version == "4.7.1-stable"' test-results/g19-godot-runtime.json
 
       - name: Upload Godot runtime artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: group19-godot-runtime-\${{ github.run_id }}-\${{ github.run_attempt }}
+          name: group19-godot-runtime-${{ github.run_id }}-${{ github.run_attempt }}
           path: test-results/
           if-no-files-found: error
           retention-days: 14
