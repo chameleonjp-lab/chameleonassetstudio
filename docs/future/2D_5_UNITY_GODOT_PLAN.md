@@ -1,4 +1,4 @@
-# Chameleon Asset Studio Group 19 契約監査・人間判断 handoff
+# Chameleon Asset Studio Group 19 implementation handoff
 
 最終更新日: 2026-08-15  
 対象リポジトリ: chameleonjp-lab/chameleonassetstudio  
@@ -11,7 +11,7 @@
 共通契約: docs/future/2D_5_EVIDENCE_LABELS_PLAN.md  
 関連文書: docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md, docs/ENGINE_INTEGRATION.md, docs/EXPORT_FORMATS.md, docs/future/2D_4_ENGINE_FIXTURE_EVIDENCE.md
 
-> Group 18（証拠形式・互換性ラベル）はPR #248で実装・CI・独立確認・mergeまで完了した。Group 19ではUnity 2DとGodot 2Dを、対象versionと素材種別を限定したfixtureで確認する。既存export、保存正本、schema、helper APIを先に変更して対象へ合わせることはしない。G19-C1〜C3の採用前は、製品コード、target fixture、CI workflow、dependencyを変更しない。
+> Group 18（証拠形式・互換性ラベル）はPR #248で実装・CI・独立確認・mergeまで完了した。2026-08-15に人間がG19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable）+ G19-C2 A + G19-C3 Aを採用した。Group 19はengine別candidate fixture、静的closure test、手動import notesから実装を開始する。Unityのlicensed runnerとGodotの固定binaryが未提供のため、runtime成功やverified昇格はまだ記録しない。既存export、保存正本、schema、helper APIは変更しない。
 
 ## 1. 現在確認できる事実
 
