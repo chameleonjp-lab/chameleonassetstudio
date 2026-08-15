@@ -168,4 +168,4 @@ Codexは未確定仕様の最終判断を担当しない。Fable5が再び利用
 
 Group 18はPR #248（merge `3ab844d28d155a438dc8f10f8f9b22099a40093a`、CI Run #793）で完了し、PR #249（merge `fcbf1cc9b7a1a9d0cdd588eaed59de3999bdcabb`、CI Run #795）で計画文書のcloseoutをmainへ反映した。次の正式work packageはGroup 19（`2D-5-UNITY + 2D-5-GODOT`）である。
 
-Group 19のdocs-only契約handoffは `docs/future/2D_5_UNITY_GODOT_PLAN.md` に固定し、状態を `proposal / human-decision-pending / implementation-not-started` とする。G19-C1〜C3の人間採用前はproduct code、target fixture、CI、dependencyを変更しない。A案を採用する場合もUnity / Godotの具体version（patchを含む）をfixture・artifact・docsへ記録するまで実装PRを開始しない。Group 20（RPG Maker MZ / helper gate）はGroup 19完了後に別handoffで扱う。
+Group 19は`G19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable） + G19-C2 A + G19-C3 A`を2026-08-15に採用した。状態は`accepted / implementing / verification-unverified`である。最初の実装Draft PRではUnity/Godot別candidate fixture、静的closure test、手動import notesを追加する。Unity licensed runnerとGodot固定binaryが現行CIにないため、runtime成功・engine別artifact・`verified`昇格は未完了であり、完了数は18/27のまま維持する。既存export、schema、保存形式、helper、dependencyは変更しない。Group 20（RPG Maker MZ / helper gate）はGroup 19のruntime Gate完了後に別handoffで扱う。

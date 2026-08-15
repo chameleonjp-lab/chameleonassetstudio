@@ -1,0 +1,49 @@
+{
+  "format": "chameleon-engine-sidecar",
+  "version": "0.1.0",
+  "engine": "godot",
+  "engineVersion": "4.7.1-stable",
+  "status": "candidate",
+  "pixelsPerUnit": 1,
+  "spriteMode": "multiple",
+  "pivot": {
+    "mode": "custom",
+    "x": 10,
+    "y": 18
+  },
+  "origin": {
+    "x": 10,
+    "y": 18
+  },
+  "anchors": [
+    {
+      "name": "center",
+      "x": 10,
+      "y": 10
+    }
+  ],
+  "colliders": [
+    {
+      "name": "body",
+      "shape": "rect",
+      "x": 2,
+      "y": 3,
+      "width": 12,
+      "height": 14
+    },
+    {
+      "name": "radius",
+      "shape": "circle",
+      "x": 10,
+      "y": 10,
+      "radius": 7
+    }
+  ],
+  "animation": {
+    "name": "loop",
+    "frames": ["fixture-a", "fixture-b"],
+    "fps": 4,
+    "loop": true
+  },
+  "notes": "Fixture-local metadata only; native engine project files are intentionally excluded."
+}

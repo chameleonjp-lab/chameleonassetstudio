@@ -1,0 +1,39 @@
+{
+  "algorithm": "SHA-256",
+  "entries": [
+    {
+      "path": "asset.json",
+      "sha256": "4a2a8b83c9052b4d7c7e2b97e127b49e91cd2d4734c402a7ea46a44bb65cd5c0"
+    },
+    {
+      "path": "import-notes/unity-6000-3-21f1.md",
+      "sha256": "6d0dbc362a618f01d45c8288ad4783c879b775cf8ceb8cac6583ee0974debbe2"
+    },
+    {
+      "path": "manifest.json",
+      "sha256": "008feb2cb6e0b4da750f97a65cc6f99b79a6f9f1308c506289b969930a1ba437"
+    },
+    {
+      "path": "package-manifest.json",
+      "sha256": "f8205bfed51117b6c68e69a3c54ae09027df392ff9cb7a3f5f663163042cdb4a"
+    },
+    {
+      "path": "README.md",
+      "sha256": "bbbd37de1a2de2557b9272e7245cf1361b7e87ff2eff1849a4fc77a0a04135b1"
+    },
+    {
+      "path": "targets/unity-6000-3-21f1.json",
+      "sha256": "30b8e0b684a8660083a82f0d31bca3be37d23db9ae004227f596135e73e04a61"
+    },
+    {
+      "path": "textures/main.png",
+      "sha256": "430d2036f8630c6f52310d42a4f49cb8394c1f44cd2b96ebadd8865c911701ba"
+    }
+  ],
+  "excluded": ["integrity/files.json", "verification/record.json"],
+  "groups": {
+    "source": ["asset.json"],
+    "output": ["manifest.json", "textures/main.png"],
+    "sidecar": ["targets/unity-6000-3-21f1.json"]
+  }
+}

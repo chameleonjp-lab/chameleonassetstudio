@@ -1,0 +1,28 @@
+{
+  "format": "chameleon-engine-fixture",
+  "version": "0.1.0",
+  "fixtureId": "g19-godot-4-7-1-stable",
+  "engine": "godot",
+  "engineVersion": "4.7.1-stable",
+  "profile": "g19-godot-candidate",
+  "status": "candidate",
+  "source": {
+    "assetJson": "asset.json",
+    "canonical": true
+  },
+  "files": {
+    "manifest": "manifest.json",
+    "assetJson": "asset.json",
+    "sheet": "textures/main.png",
+    "target": "targets/godot-4-7-1-stable.json",
+    "importNotes": "import-notes/godot-4-7-1-stable.md",
+    "verification": "verification/record.json",
+    "integrity": "integrity/files.json",
+    "readme": "README.md"
+  },
+  "runtime": {
+    "status": "not-run",
+    "reason": "pinned Godot binary is not available in current CI",
+    "artifactPolicy": "missing engine artifact fails the runtime gate"
+  }
+}

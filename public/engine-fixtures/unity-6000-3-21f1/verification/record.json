@@ -1,0 +1,63 @@
+{
+  "format": "chameleon-engine-verification",
+  "version": "0.1.0",
+  "label": "candidate",
+  "target": {
+    "engine": "unity",
+    "version": "6000.3.21f1"
+  },
+  "fixtureId": "g19-unity-6000-3-21f1",
+  "sourceCommit": "b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a",
+  "fixtureHash": "sha256:4dfc5a56c67bc16b847661a148c96ab7e1a11190e123916093129d9a27b40902",
+  "manifestHash": "sha256:d511c7220d77c8bc01a65fa9b829c39875dc0dafbdbc02646787f1b6ee507ccf",
+  "sourceAssetHash": "sha256:3fb6af1ea5115954e9b14ce4c5e5c0e9625cc5afce9e6ea57bdf4acbd8b74740",
+  "outputFilesHash": "sha256:b295918e6c828c5d3e0a94b22bbb23120a57b981c07b2838a7d3120308c91296",
+  "sidecarHash": "sha256:e46442db33320b492c662c384e2c95ab9720ba0ceca3c5765d7c5772169f6013",
+  "expected": {
+    "frames": ["fixture-a", "fixture-b"],
+    "animation": {
+      "name": "loop",
+      "fps": 4,
+      "loop": true
+    },
+    "trimContentOffset": [
+      {
+        "x": 8,
+        "y": 8
+      },
+      {
+        "x": 6,
+        "y": 4
+      }
+    ],
+    "scale": 2,
+    "origin": {
+      "x": 20,
+      "y": 36
+    },
+    "anchor": {
+      "x": 20,
+      "y": 20
+    },
+    "colliders": ["rect", "circle"]
+  },
+  "runtime": {
+    "status": "not-run",
+    "importErrors": null,
+    "artifact": null
+  },
+  "limitations": [
+    "Runtime import and visual frame equivalence are not executed in the current CI; label remains candidate.",
+    "Product export provenance must be replaced or confirmed by a licensed engine run before verified promotion."
+  ],
+  "evidenceRefs": [],
+  "artifactPolicy": "missing engine artifact fails the runtime gate",
+  "sourceAssetPath": "public/engine-fixtures/pixijs-v8/asset.json",
+  "fixtureProvenance": "candidate sheet generated from Group 17 source metadata; sourceAssetPath is a metadata reference only, not the product-export original; product export provenance remains pending runtime execution",
+  "labelMapping": {
+    "group18Label": "candidate",
+    "promotion": "G19 runtime evidence required"
+  },
+  "sourceAssetRole": "metadata-reference",
+  "fixtureAssetHash": "sha256:4a2a8b83c9052b4d7c7e2b97e127b49e91cd2d4734c402a7ea46a44bb65cd5c0"
+}

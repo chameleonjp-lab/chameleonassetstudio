@@ -1,0 +1,124 @@
+{
+  "format": "chameleon-distribution",
+  "version": "0.1.0",
+  "profile": "g19-unity-candidate",
+  "scale": 2,
+  "source": {
+    "assetJson": "asset.json",
+    "canonical": true
+  },
+  "files": {
+    "mainPng": "textures/main.png",
+    "target": "targets/unity-6000-3-21f1.json",
+    "importNotes": "import-notes/unity-6000-3-21f1.md"
+  },
+  "pages": [
+    {
+      "path": "textures/main.png",
+      "width": 64,
+      "height": 32,
+      "rotated": false
+    }
+  ],
+  "frames": [
+    {
+      "name": "fixture-a",
+      "page": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 32,
+        "height": 32
+      },
+      "sourceSize": {
+        "width": 40,
+        "height": 40
+      },
+      "contentRect": {
+        "x": 8,
+        "y": 8,
+        "width": 16,
+        "height": 16
+      },
+      "contentOffset": {
+        "x": 8,
+        "y": 8
+      },
+      "rotated": false
+    },
+    {
+      "name": "fixture-b",
+      "page": 0,
+      "rect": {
+        "x": 32,
+        "y": 0,
+        "width": 32,
+        "height": 32
+      },
+      "sourceSize": {
+        "width": 40,
+        "height": 40
+      },
+      "contentRect": {
+        "x": 6,
+        "y": 4,
+        "width": 20,
+        "height": 24
+      },
+      "contentOffset": {
+        "x": 6,
+        "y": 4
+      },
+      "rotated": false
+    }
+  ],
+  "animations": [
+    {
+      "name": "loop",
+      "frames": ["fixture-a", "fixture-b"],
+      "fps": 4,
+      "loop": true
+    }
+  ],
+  "origin": {
+    "x": 20,
+    "y": 36
+  },
+  "anchors": [
+    {
+      "name": "center",
+      "role": "center",
+      "x": 20,
+      "y": 20
+    }
+  ],
+  "colliders": [
+    {
+      "name": "body",
+      "purpose": "body",
+      "shape": "rect",
+      "visible": true,
+      "rect": {
+        "x": 4,
+        "y": 6,
+        "width": 24,
+        "height": 28
+      }
+    },
+    {
+      "name": "radius",
+      "purpose": "sensor",
+      "shape": "circle",
+      "visible": true,
+      "circle": {
+        "x": 20,
+        "y": 20,
+        "radius": 14
+      }
+    }
+  ],
+  "integrity": {
+    "algorithm": "SHA-256",
+    "manifestHash": "d511c7220d77c8bc01a65fa9b829c39875dc0dafbdbc02646787f1b6ee507ccf"
+  }
+}

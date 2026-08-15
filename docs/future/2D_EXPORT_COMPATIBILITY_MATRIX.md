@@ -124,8 +124,8 @@ Generic Web は対象ツール名ではないため、`generic-web-v1` のよう
 | Canvas 2D | sample HTML と helper。 | `candidate`（外部実行確認前）。 | 実ゲーム全般での互換性、`verified`、可変時間・event。 |
 | PixiJS v8 | 専用fixture（8.12.0）と既存sample / helper。 | `verified`（8.12.0 fixture-local） | PixiJS標準atlas JSONの完全互換、他version、project自動生成、可変時間・event。 |
 | Phaser 4 | 専用fixture（4.2.0）と既存sample / helper。 | `verified`（4.2.0 fixture-local） | Phaser標準atlas / Aseprite JSONの完全互換、他version、project自動生成、可変時間・event。 |
-| Unity | ZIP 内の取り込みガイド。 | `import-notes` | 手動・自動を問わない verified preset。 |
-| Godot 4 | ZIP 内の取り込みガイド。 | `import-notes` | 手動・自動を問わない verified preset。 |
+| Unity | 6000.3.21f1向けengine-local candidate fixture、PNG/sheet、sidecar、import notes。 | `candidate` / `import-notes` | licensed Unity runnerでのimport error 0、pivot、animation、rect/circle、artifact。 |
+| Godot 4 | 4.7.1-stable向けengine-local candidate fixture、PNG/sheet、sidecar、import notes。 | `candidate` / `import-notes` | pinned Godot runnerでのimport error 0、frame順、offset/scale、animation、rect/circle、artifact。 |
 | RPG Maker / Tiled / Construct / Blender | 将来方針のみ。 | `unsupported` | 出力・取り込み・検証済み対応。 |
 | Spine / Rive / Live2D | 関係説明のみ。 | `unsupported` | 形式変換や互換。 |
 
@@ -136,7 +136,7 @@ Generic Web は対象ツール名ではないため、`generic-web-v1` のよう
 - [Aseprite: Sprite Sheet](https://www.aseprite.org/docs/sprite-sheet/) — frame / tag を PNG + JSON へ出す基準。
 - [TexturePacker](https://www.codeandweb.com/texturepacker) — trim、padding、重複除去、複数 sheet の検討材料。
 - [Tiled: Introduction](https://doc.mapeditor.org/en/stable/manual/introduction/) — tileset、layer、object、collision、property の範囲。
-- [Unity: Sprite texture type](https://docs.unity3d.com/6000.4/Documentation/Manual/texture-type-sprite.html) — slice、pivot、physics shape が画像だけではない根拠。
+- [Unity: Sprite texture type](https://docs.unity3d.com/6000.3/Documentation/Manual/texture-type-sprite.html) — slice、pivot、physics shape が画像だけではない根拠。
 - [Godot: 2D sprite animation](https://docs.godotengine.org/en/stable/tutorials/2d/2d_sprite_animation.html) — sheet から frame を扱う基準。
 - [RPG Maker MZ: character image](https://rpgmakerofficial.com/product/MZ_help-en/01_11_01.html) — 型別の配置・命名を分ける根拠。
 - [RPG Maker MV: Asset Standards](https://rpgmakerofficial.com/product/MV_Help/page/01_11_01.html) — MZ と別 preset・別検証が必要な根拠。
@@ -178,3 +178,7 @@ Generic Web は対象ツール名ではないため、`generic-web-v1` のよう
 | Phaser engine fixture | 4.2.0 | `verified`（fixture-local） | HTTP読込、複数page、trim / offset、scale、origin、anchor、rect / circle、固定fps animation、Chromium通常viewport / 375×667 |
 
 このラベルは本work packageの専用fixtureに限る。既存の生成sample、既存helper、他version、標準atlas完全互換、project自動生成、物理iPhone Safariには広げない。
+
+### 6.3 Group 19採用後の境界
+
+G19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable）+ G19-C2 A + G19-C3 Aを採用した。engine別candidate fixtureと静的closure testは実装対象だが、licensed Unity editorまたはchecksum固定Godot binaryを実行できるまで両対象は`verified`へ昇格しない。UnityとGodotの成功・失敗・artifactは別記録にし、Group 17のPixiJS/Phaser fixtureを流用しない。
