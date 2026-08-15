@@ -6,12 +6,12 @@
   "name": "g19_unity_6000_3_21f1",
   "displayName": "Group 19 Unity candidate fixture",
   "canvasSize": {
-    "width": 1,
-    "height": 1
+    "width": 20,
+    "height": 20
   },
   "origin": {
-    "x": 0,
-    "y": 0
+    "x": 10,
+    "y": 18
   },
   "textures": [
     {
@@ -20,8 +20,8 @@
       "name": "fixture-pages",
       "mimeType": "image/png",
       "size": {
-        "width": 1,
-        "height": 1
+        "width": 64,
+        "height": 32
       },
       "path": "textures/main.png"
     }
@@ -55,8 +55,8 @@
       "name": "center",
       "role": "center",
       "position": {
-        "x": 0,
-        "y": 0
+        "x": 10,
+        "y": 10
       }
     }
   ],
@@ -68,10 +68,10 @@
       "shape": "rect",
       "visible": true,
       "rect": {
-        "x": 0,
-        "y": 0,
-        "width": 1,
-        "height": 1
+        "x": 2,
+        "y": 3,
+        "width": 12,
+        "height": 14
       }
     },
     {
@@ -81,9 +81,9 @@
       "shape": "circle",
       "visible": true,
       "circle": {
-        "x": 0,
-        "y": 0,
-        "radius": 0.5
+        "x": 10,
+        "y": 10,
+        "radius": 7
       }
     }
   ],

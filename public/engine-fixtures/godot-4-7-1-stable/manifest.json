@@ -2,7 +2,7 @@
   "format": "chameleon-distribution",
   "version": "0.1.0",
   "profile": "g19-godot-candidate",
-  "scale": 1,
+  "scale": 2,
   "source": {
     "assetJson": "asset.json",
     "canonical": true
@@ -15,8 +15,8 @@
   "pages": [
     {
       "path": "textures/main.png",
-      "width": 1,
-      "height": 1,
+      "width": 64,
+      "height": 32,
       "rotated": false
     }
   ],
@@ -27,22 +27,22 @@
       "rect": {
         "x": 0,
         "y": 0,
-        "width": 1,
-        "height": 1
+        "width": 32,
+        "height": 32
       },
       "sourceSize": {
-        "width": 1,
-        "height": 1
+        "width": 40,
+        "height": 40
       },
       "contentRect": {
-        "x": 0,
-        "y": 0,
-        "width": 1,
-        "height": 1
+        "x": 8,
+        "y": 8,
+        "width": 16,
+        "height": 16
       },
       "contentOffset": {
-        "x": 0,
-        "y": 0
+        "x": 8,
+        "y": 8
       },
       "rotated": false
     },
@@ -50,24 +50,24 @@
       "name": "fixture-b",
       "page": 0,
       "rect": {
-        "x": 0,
+        "x": 32,
         "y": 0,
-        "width": 1,
-        "height": 1
+        "width": 32,
+        "height": 32
       },
       "sourceSize": {
-        "width": 1,
-        "height": 1
+        "width": 40,
+        "height": 40
       },
       "contentRect": {
-        "x": 0,
-        "y": 0,
-        "width": 1,
-        "height": 1
+        "x": 6,
+        "y": 4,
+        "width": 20,
+        "height": 24
       },
       "contentOffset": {
-        "x": 0,
-        "y": 0
+        "x": 6,
+        "y": 4
       },
       "rotated": false
     }
@@ -81,15 +81,15 @@
     }
   ],
   "origin": {
-    "x": 0,
-    "y": 0
+    "x": 20,
+    "y": 36
   },
   "anchors": [
     {
       "name": "center",
       "role": "center",
-      "x": 0,
-      "y": 0
+      "x": 20,
+      "y": 20
     }
   ],
   "colliders": [
@@ -99,10 +99,10 @@
       "shape": "rect",
       "visible": true,
       "rect": {
-        "x": 0,
-        "y": 0,
-        "width": 1,
-        "height": 1
+        "x": 4,
+        "y": 6,
+        "width": 24,
+        "height": 28
       }
     },
     {
@@ -111,14 +111,14 @@
       "shape": "circle",
       "visible": true,
       "circle": {
-        "x": 0,
-        "y": 0,
-        "radius": 0.5
+        "x": 20,
+        "y": 20,
+        "radius": 14
       }
     }
   ],
   "integrity": {
     "algorithm": "SHA-256",
-    "manifestHash": "0fc847f7b80905e507eb507bb8d48f100328fbd1aa8eea2a37daa12d9f315409"
+    "manifestHash": "19cb9bbd5951a44dd31385f7b3fbc4906a3e82569d87f663e90843145a759b08"
   }
 }

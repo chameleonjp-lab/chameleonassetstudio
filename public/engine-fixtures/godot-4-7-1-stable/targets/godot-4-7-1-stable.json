@@ -8,35 +8,35 @@
   "spriteMode": "multiple",
   "pivot": {
     "mode": "custom",
-    "x": 0,
-    "y": 0
+    "x": 10,
+    "y": 18
   },
   "origin": {
-    "x": 0,
-    "y": 0
+    "x": 10,
+    "y": 18
   },
   "anchors": [
     {
       "name": "center",
-      "x": 0,
-      "y": 0
+      "x": 10,
+      "y": 10
     }
   ],
   "colliders": [
     {
       "name": "body",
       "shape": "rect",
-      "x": 0,
-      "y": 0,
-      "width": 1,
-      "height": 1
+      "x": 2,
+      "y": 3,
+      "width": 12,
+      "height": 14
     },
     {
       "name": "radius",
       "shape": "circle",
-      "x": 0,
-      "y": 0,
-      "radius": 0.5
+      "x": 10,
+      "y": 10,
+      "radius": 7
     }
   ],
   "animation": {

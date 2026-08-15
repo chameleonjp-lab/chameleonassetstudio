@@ -25,6 +25,8 @@
 
 ## Runtime gate
 
+このDraftのcandidate PNGはsource metadataから生成したfixture-local payloadであり、product export provenanceはruntime Gateで置き換えまたは確認する。fixture-local verification recordはGroup 18のcandidate / verified / import-notesラベルへmappingする。
+
 Runtime完了には、engine/version、import error 0、frame順、trim/content offset、scale、origin/pivot、anchor、rect/circle collider、animation、console/import log、engine別artifactが必要である。artifact欠落は失敗とする。現行CIにはUnity licensed editorもGodot binaryもないため、このDraft PRではruntime未実行・verified未昇格である。
 
 ## Non-goals

@@ -3,15 +3,15 @@
   "entries": [
     {
       "path": "asset.json",
-      "sha256": "907d030f9c31bdf4d75c8de77e7fd2f4c65050b2e5470ec7c9a128dadd58fd6d"
+      "sha256": "e0def984f7296db10dedbeefc4c39d00b9609720887da8fcad7b79d99ad8d209"
     },
     {
       "path": "import-notes/godot-4-7-1-stable.md",
-      "sha256": "8719d768a988bb6f33b2b15d8748329b4d8bf2f499d6b201a92536acbcd66431"
+      "sha256": "bfa736834f0fee7f91f472e301c7b71bf6eda71a095f5811e75d82184d062f31"
     },
     {
       "path": "manifest.json",
-      "sha256": "c334b4f58665654e550bfc09e11fd333b72f592a99cfd1fe19f99eaf7f9e6c35"
+      "sha256": "8e2a582d46212fa52432f111565a4db30aa2d8a16d5fb7a338bfa366a84b3894"
     },
     {
       "path": "package-manifest.json",
@@ -19,15 +19,15 @@
     },
     {
       "path": "README.md",
-      "sha256": "596f9bf0ac9f6f4c63b0b13948d425ac9f1e9e61f3c078b7e417f3098f65b5d0"
+      "sha256": "abdb3f2e0a7aee7c5a47e309aee91b220633ce305bb85400b7f86c01a70275ef"
     },
     {
       "path": "targets/godot-4-7-1-stable.json",
-      "sha256": "fc9e3bc4d963f52275fd8ab176ce9c58835493fc3a6a85264f26755991c6def6"
+      "sha256": "8f92305cff304485b9e1db6cc03e56d5bf7cbbc40217e9cc3735721b46ea6957"
     },
     {
       "path": "textures/main.png",
-      "sha256": "431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460"
+      "sha256": "430d2036f8630c6f52310d42a4f49cb8394c1f44cd2b96ebadd8865c911701ba"
     }
   ],
   "excluded": ["integrity/files.json", "verification/record.json"],

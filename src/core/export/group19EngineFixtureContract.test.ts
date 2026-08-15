@@ -23,6 +23,8 @@ type DistributionManifest = {
   pages: Array<{ path: string }>;
   frames: Array<{
     name: string;
+    rect: Record<string, number>;
+    contentRect: Record<string, number>;
     contentOffset: Record<string, number>;
   }>;
   animations: Array<{
@@ -48,17 +50,23 @@ type Integrity = {
   };
 };
 
+type Target = { engine: string; engineVersion: string; status: string };
+
 type RecordFile = {
   label: string;
   target: { engine: string; version: string };
   fixtureHash: string;
   manifestHash: string;
+  sourceAssetHash: string;
+  outputFilesHash: string;
+  sidecarHash: string;
   runtime: {
     status: string;
     importErrors: null;
     artifact: null;
   };
   evidenceRefs: string[];
+  labelMapping: { group18Label: string; promotion: string };
 };
 
 const fixtures: Fixture[] = [
@@ -103,6 +111,7 @@ describe('Group 19 engine fixture contract', () => {
       const root = path.resolve(process.cwd(), fixture.root);
       const pkg = await readJson<PackageManifest>(path.join(root, 'package-manifest.json'));
       const manifest = await readJson<DistributionManifest>(path.join(root, 'manifest.json'));
+      const target = await readJson<Target>(path.join(root, fixture.targetFile));
       const integrity = await readJson<Integrity>(path.join(root, 'integrity/files.json'));
       const record = await readJson<RecordFile>(path.join(root, 'verification/record.json'));
       const asset = await readJson<Record<string, unknown>>(path.join(root, 'asset.json'));
@@ -112,6 +121,11 @@ describe('Group 19 engine fixture contract', () => {
       expect(pkg.engine).toBe(fixture.engine);
       expect(pkg.engineVersion).toBe(fixture.version);
       expect(pkg.status).toBe('candidate');
+      expect(target).toMatchObject({
+        engine: fixture.engine,
+        engineVersion: fixture.version,
+        status: 'candidate',
+      });
       expect(JSON.stringify(pkg)).not.toContain('latest');
       expect(manifest.profile).toBe('g19-' + fixture.engine + '-candidate');
       expect(manifest.pages).toHaveLength(1);
@@ -122,7 +136,11 @@ describe('Group 19 engine fixture contract', () => {
         fps: 4,
         loop: true,
       });
-      expect(manifest.frames[0].contentOffset).toEqual({ x: 0, y: 0 });
+      expect(manifest.frames[0].rect).toMatchObject({ width: 32, height: 32 });
+      expect(manifest.frames[0].contentRect).toMatchObject({ x: 8, y: 8, width: 16, height: 16 });
+      expect(manifest.frames[0].contentOffset).toEqual({ x: 8, y: 8 });
+      expect(manifest.frames[1].contentOffset).toEqual({ x: 6, y: 4 });
+      expect(manifest).toMatchObject({ origin: { x: 20, y: 36 }, anchors: [{ x: 20, y: 20 }] });
       expect(manifest.integrity.algorithm).toBe('SHA-256');
 
       const unsigned = { ...manifest };
@@ -142,6 +160,10 @@ describe('Group 19 engine fixture contract', () => {
       expect(record.evidenceRefs).toEqual([]);
       expect(record.fixtureHash).toMatch(/^sha256:[0-9a-f]{64}$/);
       expect(record.manifestHash).toBe('sha256:' + manifest.integrity.manifestHash);
+      expect(record.labelMapping).toEqual({
+        group18Label: 'candidate',
+        promotion: 'G19 runtime evidence required',
+      });
 
       expect(integrity.algorithm).toBe('SHA-256');
       expect(integrity.excluded).toEqual(['integrity/files.json', 'verification/record.json']);
@@ -151,6 +173,29 @@ describe('Group 19 engine fixture contract', () => {
 
       const sortedPaths = integrity.entries.map((entry) => entry.path);
       expect(sortedPaths).toEqual([...sortedPaths].sort((a, b) => a.localeCompare(b)));
+
+      const entryFor = (entryPath: string) =>
+        integrity.entries.find((entry) => entry.path === entryPath);
+      const sourceEntry = entryFor('asset.json');
+      const outputEntries = integrity.entries.filter((entry) =>
+        ['manifest.json', 'textures/main.png'].includes(entry.path),
+      );
+      const sidecarEntries = integrity.entries.filter((entry) => entry.path === fixture.targetFile);
+      expect(sourceEntry).toBeDefined();
+      expect(record.sourceAssetHash).toBe('sha256:' + sourceEntry?.sha256);
+      expect(record.outputFilesHash).toBe('sha256:' + sha256(JSON.stringify(outputEntries)));
+      expect(record.sidecarHash).toBe('sha256:' + sha256(JSON.stringify(sidecarEntries)));
+      expect(record.fixtureHash).toBe('sha256:' + sha256(JSON.stringify(integrity.entries)));
+
+      const referenced = new Set<string>([
+        'package-manifest.json',
+        ...Object.values(pkg.files),
+        ...manifest.pages.map((page) => page.path),
+        fixture.targetFile,
+      ]);
+      for (const entry of referenced) {
+        await access(path.join(root, entry));
+      }
 
       for (const entry of integrity.entries) {
         const file = path.join(root, entry.path);

@@ -3,15 +3,15 @@
   "entries": [
     {
       "path": "asset.json",
-      "sha256": "3fb9b7faff74bbf4d683d6706e41a466263fac97000e7123020a3a19ab3eda07"
+      "sha256": "4a2a8b83c9052b4d7c7e2b97e127b49e91cd2d4734c402a7ea46a44bb65cd5c0"
     },
     {
       "path": "import-notes/unity-6000-3-21f1.md",
-      "sha256": "e67129dcb1d984fe529b46a213e6996dd528a18b2c43a59ad212798081bf3b90"
+      "sha256": "6d0dbc362a618f01d45c8288ad4783c879b775cf8ceb8cac6583ee0974debbe2"
     },
     {
       "path": "manifest.json",
-      "sha256": "9a8c0b06486d92770c3a13d6e998bbb5381c5ce1e21cdc303e284382a93bc064"
+      "sha256": "008feb2cb6e0b4da750f97a65cc6f99b79a6f9f1308c506289b969930a1ba437"
     },
     {
       "path": "package-manifest.json",
@@ -19,15 +19,15 @@
     },
     {
       "path": "README.md",
-      "sha256": "bd4abe184c0ae0b1ab32866843aa09f0d2c86eb01351d22e1be51f6c6c1b6b08"
+      "sha256": "bbbd37de1a2de2557b9272e7245cf1361b7e87ff2eff1849a4fc77a0a04135b1"
     },
     {
       "path": "targets/unity-6000-3-21f1.json",
-      "sha256": "50cb37c701ce4601ee4d2571fa62e901b4cb5b5d9cfb18aab991bd1d77577b9e"
+      "sha256": "30b8e0b684a8660083a82f0d31bca3be37d23db9ae004227f596135e73e04a61"
     },
     {
       "path": "textures/main.png",
-      "sha256": "431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460"
+      "sha256": "430d2036f8630c6f52310d42a4f49cb8394c1f44cd2b96ebadd8865c911701ba"
     }
   ],
   "excluded": ["integrity/files.json", "verification/record.json"],
