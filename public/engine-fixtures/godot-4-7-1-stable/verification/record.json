@@ -8,16 +8,13 @@
   },
   "fixtureId": "g19-godot-4-7-1-stable",
   "sourceCommit": "11dc1283a4d83dda9ce681f149925d15065df535",
-  "fixtureHash": "sha256:f30e44f17bded99778d6c470bec2893c01540f8d65c24901ca3d53e4a5c65912",
+  "fixtureHash": "sha256:705eb366c0110cb5b66a0c81fd983adb8b84320eb13e2c03e70795b457643ecb",
   "manifestHash": "sha256:0fc847f7b80905e507eb507bb8d48f100328fbd1aa8eea2a37daa12d9f315409",
-  "sourceAssetHash": "sha256:94a80c286da77ede777167eaa5b40bc264f1d720f48e5d79c5b9e72f04d66cc8",
-  "outputFilesHash": "sha256:4de597a4dffa4e1ef3994c4d15e9fa95a0e0e246f2eb3fb951bd662528311c7e",
-  "sidecarHash": "sha256:385aa44bce5a8bea8110603342ebaa40b04401cdb8028d0c39e550abdc80bbd0",
+  "sourceAssetHash": "sha256:907d030f9c31bdf4d75c8de77e7fd2f4c65050b2e5470ec7c9a128dadd58fd6d",
+  "outputFilesHash": "sha256:be49e50640867f0a28527649a66812198eff58e862e2729f82a8844932901ecf",
+  "sidecarHash": "sha256:24527b813b653d05fda833d643d7b1a72354f1aff29b40af6c83d6e5b52b32bb",
   "expected": {
-    "frames": [
-      "fixture-a",
-      "fixture-b"
-    ],
+    "frames": ["fixture-a", "fixture-b"],
     "animation": {
       "name": "loop",
       "fps": 4,
@@ -36,10 +33,7 @@
       "x": 0,
       "y": 0
     },
-    "colliders": [
-      "rect",
-      "circle"
-    ]
+    "colliders": ["rect", "circle"]
   },
   "runtime": {
     "status": "not-run",
