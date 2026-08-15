@@ -14,10 +14,7 @@
   "outputFilesHash": "sha256:b295918e6c828c5d3e0a94b22bbb23120a57b981c07b2838a7d3120308c91296",
   "sidecarHash": "sha256:e46442db33320b492c662c384e2c95ab9720ba0ceca3c5765d7c5772169f6013",
   "expected": {
-    "frames": [
-      "fixture-a",
-      "fixture-b"
-    ],
+    "frames": ["fixture-a", "fixture-b"],
     "animation": {
       "name": "loop",
       "fps": 4,
@@ -42,10 +39,7 @@
       "x": 20,
       "y": 20
     },
-    "colliders": [
-      "rect",
-      "circle"
-    ]
+    "colliders": ["rect", "circle"]
   },
   "runtime": {
     "status": "not-run",
