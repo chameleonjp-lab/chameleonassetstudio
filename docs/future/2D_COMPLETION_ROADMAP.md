@@ -561,7 +561,7 @@ D1〜D4は`implemented / CI-passed / independently-verified / merged`で、指�
 | 代表project、初回成功ループ、利用者向け説明、最終整合監査 | Group 22 |
 | 最終証拠と2D Pro Gate判断 | Group 23 |
 
-五視点レビューのGroup 19〜23への割当はproposal-onlyのままとする。Group 16の`G16-C1`〜`G16-C3`は2026-08-13のユーザー判断によりacceptedとなり、PR #242で実装・検証・mergeまで完了した。Group 17は2026-08-14に`G17-C1 A + G17-C2 A + G17-C3 A`をacceptedとし、PR #246（merge `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`）で実装・CI・独立確認・mergeまで完了した。Group 18は2026-08-15に`G18-C1 A + G18-C2 A + G18-C3 A`をacceptedし、PR #248（merge `3ab844d28d155a438dc8f10f8f9b22099a40093a`）で実装・CI・独立確認・mergeまで完了した。27工程の分母、Group 16〜23の順序は変更せず、完了数を18/27とする。
+五視点レビューをGroup 19〜23へ割り当てる提案部分はproposal-onlyのままとする。これはレビュー割当の状態であり、Group 19のaccepted契約・merged candidate実装状態とは別である。Group 16の`G16-C1`〜`G16-C3`は2026-08-13のユーザー判断によりacceptedとなり、PR #242で実装・検証・mergeまで完了した。Group 17は2026-08-14に`G17-C1 A + G17-C2 A + G17-C3 A`をacceptedとし、PR #246（merge `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`）で実装・CI・独立確認・mergeまで完了した。Group 18は2026-08-15に`G18-C1 A + G18-C2 A + G18-C3 A`をacceptedし、PR #248（merge `3ab844d28d155a438dc8f10f8f9b22099a40093a`）で実装・CI・独立確認・mergeまで完了した。27工程の分母、Group 16〜23の順序は変更せず、完了数を18/27とする。
 
 
 ## 7. 上位 4 仕様とのトレーサビリティ
