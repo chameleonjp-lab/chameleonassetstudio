@@ -3,7 +3,7 @@
   "entries": [
     {
       "path": "asset.json",
-      "sha256": "33650fbfc89216641cf5444f0b37dba5e5249726430b2ca70d4cb26240229de7"
+      "sha256": "3fb9b7faff74bbf4d683d6706e41a466263fac97000e7123020a3a19ab3eda07"
     },
     {
       "path": "import-notes/unity-6000-3-21f1.md",
@@ -11,7 +11,7 @@
     },
     {
       "path": "manifest.json",
-      "sha256": "1a20adab31cb1f8308f7afeb63fe4b99e390c43cf367b4b85999fb556c67f691"
+      "sha256": "9a8c0b06486d92770c3a13d6e998bbb5381c5ce1e21cdc303e284382a93bc064"
     },
     {
       "path": "package-manifest.json",
@@ -23,27 +23,17 @@
     },
     {
       "path": "targets/unity-6000-3-21f1.json",
-      "sha256": "8da684d09fb1ae67f4be5c3c54e9fb8c42449dcd785705f513a281926f75b66b"
+      "sha256": "50cb37c701ce4601ee4d2571fa62e901b4cb5b5d9cfb18aab991bd1d77577b9e"
     },
     {
       "path": "textures/main.png",
       "sha256": "431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460"
     }
   ],
-  "excluded": [
-    "integrity/files.json",
-    "verification/record.json"
-  ],
+  "excluded": ["integrity/files.json", "verification/record.json"],
   "groups": {
-    "source": [
-      "asset.json"
-    ],
-    "output": [
-      "manifest.json",
-      "textures/main.png"
-    ],
-    "sidecar": [
-      "targets/unity-6000-3-21f1.json"
-    ]
+    "source": ["asset.json"],
+    "output": ["manifest.json", "textures/main.png"],
+    "sidecar": ["targets/unity-6000-3-21f1.json"]
   }
 }
