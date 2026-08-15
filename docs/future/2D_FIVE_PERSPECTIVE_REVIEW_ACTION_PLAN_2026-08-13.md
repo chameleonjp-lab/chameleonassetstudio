@@ -10,7 +10,7 @@
 現在の契約正本: `docs/future/2D_5_EVIDENCE_LABELS_PLAN.md`  
 関連文書: `docs/future/2D_COMPLETE_PRODUCT_SPEC.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/future/2D_DEVICE_RELIABILITY_SPEC.md`, `docs/TEST_PLAN.md`, `docs/future/2D_4_PACKAGE_PREFLIGHT_GENERIC_WEB_PLAN.md`
 
-> この文書は、2026-08-13に行った五視点レビューを既存の2D完成ロードマップへ割り当てる。Group 19はG19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable） + G19-C2 A + G19-C3 Aを採用し、PR #251（merge `e77a721ff3d479bea0f7475f0b0fbc296ce91595`、CI Run #805全job成功）でcandidate fixture、静的closure test、import notesをmainへ反映した。runtime Gateは未完了のためverifiedへ昇格せず、Group 20〜23の提案はproposal-onlyで扱う。
+> この文書は、2026-08-13に行った五視点レビューを既存の2D完成ロードマップへ割り当てる。Group 19はG19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable） + G19-C2 A + G19-C3 Aを採用し、PR #251（merge `e77a721ff3d479bea0f7475f0b0fbc296ce91595`、CI Run #805全job成功）でcandidate fixture、静的closure test、import notesをmainへ反映した。runtime Gateは未完了のためverifiedへ昇格せず、五視点レビューのGroup 20〜23への割当提案はproposal-onlyで扱う。これはGroup 19のaccepted契約・merged candidate実装状態とは別である。
 
 ---
 
