@@ -50,7 +50,7 @@ Group 19の完了時に、次の狭い範囲だけを対象version付きで説�
 
 ### 3.2 対象外
 
-- G19-C1〜C3の採用前にproduct code、target fixture、CI、dependencyを変更すること。
+- G19採用後の変更はengine-local fixture、静的contract test、import notes、docsに限定し、product export、schema、保存形式、helper、dependencyは変更しない。
 - asset.json、.casproj、schema、migration、IndexedDB、History、既存Atlas 0.1.0、legacy ZIP、Group 16 package入口を変更すること。
 - Unity package、.meta、Prefab、Animator Controller、Godot plugin、.tscn、Resourceを製品出力として無検証生成すること。
 - Chameleon独自atlasをUnity / Godot標準atlasと同一視すること。
@@ -69,7 +69,7 @@ Group 19の完了時に、次の狭い範囲だけを対象version付きで説�
 | B | Unity 6系、Godot 4系のようにmajor/minorだけを固定し、patchは可変とする。 | 環境ごとに挙動が変わり、同じartifactを再現しにくい。 |
 | C | versionを固定せず、既存のimport notesと画像の目視確認だけを行う。 | 対象version付きverifiedを成立させられず、Group 19の目的を満たさない。 |
 
-A案を採用しても、具体versionが採用記録・fixture・artifact・docsへ記載されるまで実装Gateは開かない。versionの追加や変更は既存証拠をcandidateへ戻す。
+採用記録でUnity 6000.3.21f1 / Godot 4.7.1-stableを固定した。versionの追加や変更は既存証拠をcandidateへ戻し、runtime Gateを再実施する。
 
 ### G19-C2: engine別の受入証拠
 
@@ -121,7 +121,7 @@ A案は、Group 18の対象version・fixture単位の証拠規則をUnity/Godot�
 
 ## 7. 停止条件
 
-- G19-C1〜C3採用前は、product code、fixture、CI、dependencyを変更しない。
+- G19採用後の変更はengine-local fixture、静的contract test、import notes、docsに限定し、product export、schema、保存形式、helper、dependencyは変更しない。
 - A案の具体versionが固定されていない、対象engineを再現できない、または実行環境のversionが証拠へ記録できない場合は停止する。
 - Unity / Godotを同じfixture・同じartifactで済ませようとした場合は、engine別に分離するまで停止する。
 - Chameleon独自atlasを対象engine標準形式と同一視する必要が出た場合は、理由付き未対応または別ADRへ戻す。
