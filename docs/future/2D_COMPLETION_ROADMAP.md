@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 2D Completion Roadmap
 
-最終更新日: 2026-08-15
+最終更新日: 2026-08-17
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 2D 完成までの実装順と品質 gate
 状態: accepted（今後の優先順。docs-only）
@@ -682,3 +682,10 @@ D1〜D4は`implemented / CI-passed / independently-verified / merged`で、指�
 ## Group 17 current state (2026-08-14)
 
 `G17-C1 A + G17-C2 A + G17-C3 A`をacceptedとし、PR #246（final head `9380494f7a662b9211f341d87a15f62d4b82986f`）のCI Run #785、engine別artifact、固定head確認を経て、merge `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`で独立検証・main反映まで完了した。Group 18（`2D-5-EVIDENCE + 2D-5-LABELS`）は採用済み・実装済み・CI合格・独立確認済み・merge済みである。
+
+
+## Group 19 current state (2026-08-17)
+
+Group 19は、G19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable） + G19-C2 A + G19-C3 Aをacceptedした状態を維持する。Godot 4.7.1-stableは既存のfixture runtime artifactで成功しているが、Unity runtimeは未検証である。
+
+PR #256で追加されたUnity artifact欠落guardはmainに反映済みで、旧game-ci/unity-request-activation-file@v2を使うActivation workflowはPR #257（merge fb8272aaf21545dd8031bcb6fc761de6f2d379ab）で削除した。main CI [Run #837](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/31962261321)は成功している。Unity runtimeの認証情報と正規の実行環境が用意されるまで、UnityとGroup 19全体をverifiedへ昇格せず、進捗は18/27、Group 20は未開始のままとする。
