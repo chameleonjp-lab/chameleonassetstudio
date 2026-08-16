@@ -1,9 +1,9 @@
 # Chameleon Asset Studio Group 19 implementation handoff
 
-最終更新日: 2026-08-16  
+最終更新日: 2026-08-17  
 対象リポジトリ: chameleonjp-lab/chameleonassetstudio  
 正式work package: 2D-5-UNITY + 2D-5-GODOT  
-基準main SHA: e68cc79c485b87b11989ceec4e416f90f2350e05  
+基準main SHA: fb8272aaf21545dd8031bcb6fc761de6f2d379ab  
 文書種別: implementation handoff  
 状態: accepted / implemented-candidate / CI-passed / independently-verified-static / merged / runtime-partial / runtime-verification-unverified
 
@@ -11,20 +11,20 @@
 共通契約: docs/future/2D_5_EVIDENCE_LABELS_PLAN.md  
 関連文書: docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md, docs/ENGINE_INTEGRATION.md, docs/EXPORT_FORMATS.md, docs/future/2D_4_ENGINE_FIXTURE_EVIDENCE.md
 
-> Group 18（証拠形式・互換性ラベル）はPR #248で実装・CI・独立確認・mergeまで完了した。2026-08-15に人間がG19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable）+ G19-C2 A + G19-C3 Aを採用し、PR #251（merge `e77a721ff3d479bea0f7475f0b0fbc296ce91595`）でcandidate fixture、静的closure test、import notesをmainへ反映した。続くPR #253（merge `e68cc79c485b87b11989ceec4e416f90f2350e05`）でGodot 4.7.1-stableのfixture runtime artifactを取得し、11受入確認を成功として記録した。Unityはmanual workflowとrunnerを用意したが、licensed実行とartifactは未完了である。したがってGodot単体の成功をGroup 19全体の`verified`へ広げず、既存export、保存正本、schema、helper APIは変更しない。
+> Group 18（証拠形式・互換性ラベル）はPR #248で実装・CI・独立確認・mergeまで完了した。2026-08-15に人間がG19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable）+ G19-C2 A + G19-C3 Aを採用し、PR #251（merge e77a721ff3d479bea0f7475f0b0fbc296ce91595）でcandidate fixture、静的closure test、import notesをmainへ反映した。続くPR #253（merge e68cc79c485b87b11989ceec4e416f90f2350e05）でGodot 4.7.1-stableのfixture runtime artifactを取得し、11受入確認を成功として記録した。PR #256（merge 27228411277419c7e0cf9402a175ed9814b50cbc）ではUnity runtime artifactの欠落を失敗にするguardを追加したが、同PRに含めた古いactivation workflowは実行時にサポート終了が判明したため、PR #257（merge fb8272aaf21545dd8031bcb6fc761de6f2d379ab）で削除した。Unityのlicensed実行とartifactは未完了である。したがってGodot単体の成功をGroup 19全体のverifiedへ広げず、既存export、保存正本、schema、helper APIは変更しない。
 
 ## 1. 現在確認できる事実
 
 | 項目 | 確認結果 | Group 19への意味 |
 |---|---|---|
-| 最新main | e68cc79c485b87b11989ceec4e416f90f2350e05。PR #253（Godot runtime runner + Unity manual gate）のmerge commit。 | このruntime evidence closeoutの基準head。 |
-| open Pull Request | 基準main確認時点（PR #254作成前）は0件。PR #253はmerge済みで、PR #254をruntime evidence closeoutとして1本維持する。 | 同一目的のcloseout PRを1本だけ維持する。 |
+| 最新main | fb8272aaf21545dd8031bcb6fc761de6f2d379ab。PR #257（obsolete Unity activation workflow削除）のmerge commit。 | このruntime evidence closeout後の基準head。 |
+| open Pull Request | 基準main確認時点（PR #258作成前）は0件。PR #257はmerge済み。 | docs-onlyの状態同期PRを1本だけ維持する。 |
 | Group 18 | PR #248 final head e3309d57f030e9190cb4c678e49301e4736332b5、merge 3ab844d28d155a438dc8f10f8f9b22099a40093a、CI Run #793成功、contract artifact取得済み。 | candidate / verified / import-notes / unsupportedの共通境界を再利用する。 |
 | Group 18 closeout | PR #249 final head 9af46a710376279917f3c5d5cc86f42c3713a3a4、merge fcbf1cc9b7a1a9d0cdd588eaed59de3999bdcabb、CI Run #795成功（docs-only分類）。 | 完了数は18/27。Group 19 runtime Gateを継続する。 |
 | 既存互換性表 | Godot 4.7.1-stableはfixture runtime artifactの11確認が成功したが、Unity artifact未取得のためGroup 19全体のラベルはcandidate / import-notesのまま。Unity 6000.3.21f1はruntime未実行。 | Godot単体の成功をUnityやGroup 19全体へ拡大しない。 |
-| 既存engine docs | Godot / Unityのengine-local runner・import notesをPR #253で追加。Godot artifactは取得済み、Unityはmanual workflow未実行。 | 実行証拠をengine別に記録し、未確認はcandidateへ留める。 |
+| 既存engine docs | Godot / Unityのengine-local runner・import notesはmainに存在する。Godot artifactは取得済み、Unity manual run #1 / #2は認証確認で停止した。 | 実行証拠をengine別に記録し、未確認はcandidateへ留める。 |
 | 既存出力 | Chameleon独自のPNG / sheet / atlas / sidecarを出力する。Unity標準.meta、Prefab、Godot.tscn、Resourceそのものではない。 | 標準形式完全互換やnative project生成を推測しない。 |
-| Group 19 runtime evidence | Godot workflow Run #9（Actions run `31913489237`、artifact `9254301539`）はstatus `passed`、importErrors 0、consoleErrors 0、11受入確認すべて成功。Unityのartifactはまだない。 | engine・version・fixture別の範囲を維持し、Group 20はUnity Gateまで開始しない。 |
+| Group 19 runtime evidence | Godot workflow Run #9（Actions run 31913489237、artifact 9254301539）はstatus passed、importErrors 0、consoleErrors 0、11受入確認すべて成功。Unity runtime Run #1（31958359698）/ #2（31958367110）はUNITY_EMAIL等の認証確認で停止し、Unity artifactはない。Activation Run #1（31960189265）はサポート終了Actionで停止し、PR #257でworkflowを削除した。 | engine・version・fixture別の範囲を維持し、Group 20はUnity Gateまで開始しない。 |
 
 ## 2. 今回の目的
 
@@ -152,3 +152,12 @@ G19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable）
 - Unity 6000.3.21f1はmanual workflowとrunnerをmainへ反映済みだが、licensed editorの実行とartifactは未完了である。Unity実行時にartifact取得・内容確認を満たすまで、UnityとGroup 19全体を`candidate / import-notes`から昇格しない。
 - 本closeout PRはMarkdownのみを変更し、docs-only CIではclassify-changesが成功し、build-and-testとChromium E2Eはskipされる。固定head・ahead/behind・CI Runの最新値はPR本文に記録する。
 - 固定head、変更3件、CI Run #828の結果を読み取り専用で確認した。これは静的な文書・契約確認であり、Unity runtime検証やGitHubの正式review submissionを意味しない。
+
+
+## 10. Post-merge state (2026-08-17)
+
+- mainは fb8272aaf21545dd8031bcb6fc761de6f2d379ab（PR #257 merge）で、main CI [Run #837](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/31962261321) は全job成功した。
+- Unity runtimeの手動実行 [Run #1](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/31958359698) と [Run #2](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/31958367110) は、ライセンス情報の確認ステップで停止した。Unity editorの実行結果とruntime artifactは生成されていない。
+- 旧Activation workflowの [Run #1](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/31960189265) は、game-ci/unity-request-activation-file@v2 のサポート終了エラーで停止した。PR #257でこのworkflowを削除し、現在は [GameCI現行Activation手順](https://game.ci/docs/github/activation/)に従う前提へ戻した。
+- したがって状態は runtime-partial / runtime-verification-unverified、進捗は18/27のままである。Godotの成功をUnityやGroup 19全体へ拡張しない。
+- 次のGateは、Personal版ならPC/Mac/Linux上のUnity Hubで作成した.ulf、Professional版ならシリアル方式など、正規のUnity認証経路を用意した後に、mainのGroup 19 Unity runtimeを再実行することである。Group 20はUnity Gate完了まで開始しない。
