@@ -18,7 +18,7 @@
 | 項目 | 確認結果 | Group 19への意味 |
 |---|---|---|
 | 最新main | e68cc79c485b87b11989ceec4e416f90f2350e05。PR #253（Godot runtime runner + Unity manual gate）のmerge commit。 | このruntime evidence closeoutの基準head。 |
-| open Pull Request | 基準main確認時点は0件。PR #251はmerge済みで、次のcloseout Draft PRで状態を同期する。 | 同一目的のcloseout PRを1本だけ維持する。 |
+| open Pull Request | 基準main確認時点（PR #254作成前）は0件。PR #253はmerge済みで、PR #254をruntime evidence closeoutとして1本維持する。 | 同一目的のcloseout PRを1本だけ維持する。 |
 | Group 18 | PR #248 final head e3309d57f030e9190cb4c678e49301e4736332b5、merge 3ab844d28d155a438dc8f10f8f9b22099a40093a、CI Run #793成功、contract artifact取得済み。 | candidate / verified / import-notes / unsupportedの共通境界を再利用する。 |
 | Group 18 closeout | PR #249 final head 9af46a710376279917f3c5d5cc86f42c3713a3a4、merge fcbf1cc9b7a1a9d0cdd588eaed59de3999bdcabb、CI Run #795成功（docs-only分類）。 | 完了数は18/27。Group 19 runtime Gateを継続する。 |
 | 既存互換性表 | Godot 4.7.1-stableはfixture runtime artifactの11確認が成功したが、Unity artifact未取得のためGroup 19全体のラベルはcandidate / import-notesのまま。Unity 6000.3.21f1はruntime未実行。 | Godot単体の成功をUnityやGroup 19全体へ拡大しない。 |
