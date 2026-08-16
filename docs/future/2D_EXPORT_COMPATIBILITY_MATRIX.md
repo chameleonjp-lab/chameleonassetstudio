@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 2D Export Compatibility Matrix
 
-最終更新日: 2026-08-14
+最終更新日: 2026-08-16
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 2D 入出力・対象別書き出し・検証基準
 状態: accepted（設計と確認基準。docs-only）
@@ -124,8 +124,8 @@ Generic Web は対象ツール名ではないため、`generic-web-v1` のよう
 | Canvas 2D | sample HTML と helper。 | `candidate`（外部実行確認前）。 | 実ゲーム全般での互換性、`verified`、可変時間・event。 |
 | PixiJS v8 | 専用fixture（8.12.0）と既存sample / helper。 | `verified`（8.12.0 fixture-local） | PixiJS標準atlas JSONの完全互換、他version、project自動生成、可変時間・event。 |
 | Phaser 4 | 専用fixture（4.2.0）と既存sample / helper。 | `verified`（4.2.0 fixture-local） | Phaser標準atlas / Aseprite JSONの完全互換、他version、project自動生成、可変時間・event。 |
-| Unity | 6000.3.21f1向けengine-local candidate fixture、PNG/sheet、sidecar、import notes。 | `candidate` / `import-notes` | licensed Unity runnerでのimport error 0、pivot、animation、rect/circle、artifact。 |
-| Godot 4 | 4.7.1-stable向けengine-local candidate fixture、PNG/sheet、sidecar、import notes。 | `candidate` / `import-notes` | pinned Godot runnerでのimport error 0、frame順、offset/scale、animation、rect/circle、artifact。 |
+| Unity | 6000.3.21f1向けengine-local candidate fixture、PNG/sheet、sidecar、import notes、manual runner。 | `candidate` / `import-notes` | licensed Unity runnerでのimport error 0、pivot、animation、rect/circle、artifact。 |
+| Godot 4 | 4.7.1-stable向けengine-local candidate fixture、PNG/sheet、sidecar、import notes、runtime runner。 | `candidate` / `import-notes`（fixture runtime artifactは成功。ただしGroup 19全体は未検証） | Unity counterpart、別version / OS、native project、Group 19全体の`verified`。 |
 | RPG Maker / Tiled / Construct / Blender | 将来方針のみ。 | `unsupported` | 出力・取り込み・検証済み対応。 |
 | Spine / Rive / Live2D | 関係説明のみ。 | `unsupported` | 形式変換や互換。 |
 
@@ -182,3 +182,9 @@ Generic Web は対象ツール名ではないため、`generic-web-v1` のよう
 ### 6.3 Group 19採用後の境界
 
 G19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable）+ G19-C2 A + G19-C3 Aを採用した。engine別candidate fixtureと静的closure testは実装対象だが、licensed Unity editorまたはchecksum固定Godot binaryを実行できるまで両対象は`verified`へ昇格しない。UnityとGodotの成功・失敗・artifactは別記録にし、Group 17のPixiJS/Phaser fixtureを流用しない。
+
+#### 6.3.1 Godot runtime evidence（fixture-local）
+
+Godot 4.7.1-stableのworkflow Run #9（[Actions run 31913489237](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/31913489237)）はsuccessし、artifact [9254301539](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/31913489237/artifacts/9254301539)でimportErrors 0、consoleErrors 0、11受入確認（textureLoaded、imageDecoded、frameRegions、frameOrder、trimContentOffset、animation、origin、anchor、scale、colliderMetadata、colliders）が成功した。これはGodotの対象version・fixture・Linux/headless環境に限る。
+
+Unity 6000.3.21f1はmanual workflowとrunnerを用意済みだが、licensed実行とartifactが未完了である。したがってUnity、およびUnity未確認を含むGroup 19全体は`candidate / import-notes`のままとし、Godot単体の成功を`verified`へ拡張しない。
