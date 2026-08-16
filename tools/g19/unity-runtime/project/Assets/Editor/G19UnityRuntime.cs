@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.U2D.Sprites;
 using UnityEngine;
 
 public static class G19UnityRuntime
@@ -376,20 +377,59 @@ public static class G19UnityRuntime
                 importer.textureCompression = TextureImporterCompression.Uncompressed;
                 importer.filterMode = FilterMode.Point;
 
-                SpriteMetaData[] metadata = frames.Select(frame => new SpriteMetaData
+                SpriteDataProviderFactories factory = new SpriteDataProviderFactories();
+                factory.Init();
+                ISpriteEditorDataProvider dataProvider =
+                    factory.GetSpriteEditorDataProviderFromObject(importer);
+                Check(dataProvider != null, "Unity Sprite Editor data provider is unavailable");
+                if (dataProvider != null)
                 {
-                    name = frame.name,
-                    rect = new Rect(frame.rect.x, frame.rect.y, frame.rect.width, frame.rect.height),
-                    alignment = (int)SpriteAlignment.Custom,
-                    pivot = new Vector2(
-                        target.pivot.x / frame.rect.width,
-                        target.pivot.y / frame.rect.height),
-                    border = Vector4.zero
-                }).ToArray();
-                importer.spritesheet = metadata;
-                importer.SaveAndReimport();
+                    dataProvider.InitSpriteEditorDataProvider();
+                    SpriteRect[] spriteRects = frames.Select(frame => new SpriteRect
+                    {
+                        name = frame.name,
+                        spriteID = GUID.Generate(),
+                        rect = new Rect(
+                            frame.rect.x,
+                            frame.rect.y,
+                            frame.rect.width,
+                            frame.rect.height),
+                        alignment = SpriteAlignment.Custom,
+                        pivot = new Vector2(
+                            target.pivot.x / frame.rect.width,
+                            target.pivot.y / frame.rect.height)
+                    }).ToArray();
+                    dataProvider.SetSpriteRects(spriteRects);
 
-                Dictionary<string, SpriteMetaData> applied = importer.spritesheet.ToDictionary(item => item.name);
+                    ISpriteNameFileIdDataProvider nameFileIdProvider =
+                        dataProvider.GetDataProvider<ISpriteNameFileIdDataProvider>();
+                    Check(nameFileIdProvider != null,
+                        "Unity Sprite name/file ID data provider is unavailable");
+                    if (nameFileIdProvider != null)
+                    {
+                        nameFileIdProvider.SetNameFileIdPairs(
+                            spriteRects.Select(spriteRect => new SpriteNameFileIdPair(
+                                spriteRect.name,
+                                spriteRect.spriteID)).ToArray());
+                    }
+
+                    dataProvider.Apply();
+                    importer.SaveAndReimport();
+                }
+
+                SpriteDataProviderFactories appliedFactory = new SpriteDataProviderFactories();
+                appliedFactory.Init();
+                ISpriteEditorDataProvider appliedDataProvider =
+                    appliedFactory.GetSpriteEditorDataProviderFromObject(importer);
+                Check(appliedDataProvider != null,
+                    "Unity Sprite Editor data provider could not be reopened");
+                Dictionary<string, SpriteRect> applied = new Dictionary<string, SpriteRect>();
+                if (appliedDataProvider != null)
+                {
+                    appliedDataProvider.InitSpriteEditorDataProvider();
+                    applied = appliedDataProvider.GetSpriteRects()
+                        .ToDictionary(item => item.name);
+                }
                 checks.pivot = applied.ContainsKey("fixture-a")
                     && applied.ContainsKey("fixture-b")
                     && Approx(applied["fixture-a"].pivot.x, target.pivot.x / 32f)
