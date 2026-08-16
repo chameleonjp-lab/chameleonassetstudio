@@ -181,7 +181,7 @@ Generic Web は対象ツール名ではないため、`generic-web-v1` のよう
 
 ### 6.3 Group 19採用後の境界
 
-G19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable）+ G19-C2 A + G19-C3 Aを採用した。engine別candidate fixtureと静的closure testは実装対象だが、licensed Unity editorまたはchecksum固定Godot binaryを実行できるまで両対象は`verified`へ昇格しない。UnityとGodotの成功・失敗・artifactは別記録にし、Group 17のPixiJS/Phaser fixtureを流用しない。
+G19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable）+ G19-C2 A + G19-C3 Aを採用した。engine別candidate fixtureと静的closure testは実装対象であり、両対象を`verified`へ昇格するには、Unityのlicensed editorとGodotのchecksum固定binaryをそれぞれ実行して別artifactを得る必要がある。UnityとGodotの成功・失敗・artifactは別記録にし、Group 17のPixiJS/Phaser fixtureを流用しない。
 
 #### 6.3.1 Godot runtime evidence（fixture-local）
 
