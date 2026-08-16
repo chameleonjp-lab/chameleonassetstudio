@@ -59,6 +59,7 @@ jobs:
         shell: bash
         run: |
           set -u
+          mkdir -p test-results
           if [ -s tools/g19/unity-runtime/project/TestResults/g19-unity-runtime.json ]; then
             cp tools/g19/unity-runtime/project/TestResults/g19-unity-runtime.json test-results/g19-unity-runtime.json
           else
