@@ -6,9 +6,10 @@ or plugin.
 
 The manual workflow copies
 `public/engine-fixtures/unity-6000-3-21f1` into the project, imports the PNG
-with Unity 6000.3.21f1, creates the two Sprite slices, builds an in-memory
-animation clip, and checks the pivot, trim/content metadata, scale, origin,
-anchor, and rectangle/circle colliders. It writes
+with Unity 6000.3.21f1, and uses Unity's Sprite Editor Data Provider API from
+the `com.unity.2d.sprite` core package to create the two Sprite slices. It
+then builds an in-memory animation clip and checks the pivot, trim/content
+metadata, scale, origin, anchor, and rectangle/circle colliders. It writes
 `TestResults/g19-unity-runtime.json` and fails when the artifact is missing or
 a check fails.
 
