@@ -1,6 +1,6 @@
 # Chameleon Asset Studio エンジン連携書
 
-最終更新日: 2026-08-14
+最終更新日: 2026-08-16
 対象バージョン: 0.1.0
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md` / `docs/EXPORT_FORMATS.md`
 
@@ -55,3 +55,14 @@ Phase 16 では Markdown ガイドの生成までとし、エディタスクリ�
 Group 17では、PixiJS `8.12.0` と Phaser `4.2.0`を、アプリ本体のnpm依存関係へ追加せず、HTTP fixture内の固定CDN URLから読み込む。各fixtureは別E2Eとartifactで確認し、manifest、複数page、trim / offset、scale、origin、anchor、rect / circle collider、固定fps animation、console error 0、download 0を記録する。
 
 この検証はfixture-local adapterの範囲に限り、既存の生成sample、既存helper、標準atlas完全互換、project自動生成を保証しない。物理iPhone Safariは後続Gateで扱う。
+
+---
+
+## 6. Group 19 engine-local runtime evidence
+
+PR #253で、製品のexport・正本・helper APIを変更しないengine-localなGodot / Unity fixture runnerを追加した。これは製品向けhelperやnative project生成ではなく、固定version・固定fixtureの取り込み意味を確認するための検証経路である。
+
+- Godot 4.7.1-stable: workflow Run #9（[Actions run 31913489237](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/31913489237)）のartifact [9254301539](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/31913489237/artifacts/9254301539)で、importErrors 0、consoleErrors 0、11受入確認が成功した。対象はLinux/headlessのfixture-local証拠であり、別version・別OS・native projectへは拡張しない。
+- Unity 6000.3.21f1: manual workflowとrunnerは用意済みだが、licensed editorの実行とartifact取得は未完了である。Unityの実行証拠が得られるまで、UnityとGroup 19全体を`verified`と表示しない。
+
+既存のimport guideは引き続き手動取り込みの利用者向け説明であり、上記runtime evidenceはその保証範囲を自動的に広げない。
