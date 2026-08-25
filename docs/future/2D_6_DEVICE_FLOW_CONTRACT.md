@@ -90,3 +90,9 @@ Group 21Aをruntime verifiedへ昇格するには、次のすべてが必要で�
 | 保存失敗・オフライン | Group 21Bで確認 |
 
 本契約の状態は、CI成功後も `implemented-candidate / independently-verified-static / runtime-verification-unverified` とする。実機の証拠なしに `verified`へ変更しない。
+
+## 7. CI記録（2026-08-26）
+
+PR #261のCI Run #847（Actions ID `32880786002`）は、`classify-changes`、`build-and-test`、`e2e`の全jobがsuccessとなった。E2Eは200件が成功した。
+
+この記録はLinux上のChromiumによる自動検査であり、物理iPhone / iPad Safari、Apple Pencil、Files連携、ソフトウェアキーボード、実メモリ、PC実機の成功を意味しない。
