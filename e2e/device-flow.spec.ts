@@ -143,9 +143,7 @@ test('スマホ入力とキャンバス操作の適用範囲を分離する', as
   expect(undersizedInputs).toEqual([]);
 });
 
-test('iPad幅でキャンバス、プロパティ、タイムライン、書き出しを同時に使える', async ({
-  page,
-}) => {
+test('iPad幅でキャンバス、プロパティ、タイムライン、書き出しを同時に使える', async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
   await setupProjectWithImage(page, 'Group21A iPad導線');
 
