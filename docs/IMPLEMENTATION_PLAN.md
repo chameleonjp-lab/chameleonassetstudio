@@ -192,4 +192,4 @@ PR #259のmain反映後、fixture契約をdocs-onlyで追加する。PCが使用
 
 ## Group 21A start (2026-08-26)
 
-Group 20の次として、Group 21A（`2D-6-DEVICE-FLOW` + `2D-6-INPUT`）の自動検査を開始する。`e2e/device-flow.spec.ts`でスマホ320×568 / 375×667、iPad768×1024の作成・取り込み・編集画面・プロパティ・タイムライン・書き出し・ホーム復帰・再読み込み後の再開を確認し、`docs/future/2D_6_DEVICE_FLOW_CONTRACT.md`を正本とする。CI・実機確認前のため、Group 21Aは未完了、進捗は18/27のままとする。
+Group 20の次として、Group 21A（`2D-6-DEVICE-FLOW` + `2D-6-INPUT`）の自動検査を開始する。`e2e/device-flow.spec.ts`でスマホ320×568 / 375×667、iPad768×1024の作成・取り込み・編集画面・プロパティ・タイムライン・書き出し・ホーム復帰・再読み込み後の再開を確認し、`docs/future/2D_6_DEVICE_FLOW_CONTRACT.md`を正本とする。CI Run #847（Actions ID `32880786002`）でclassify、build-and-test、E2E全job成功、E2E 200件成功を確認した。物理端末確認前のため、Group 21Aは`implemented-candidate / CI-passed / independently-verified-static / awaiting-merge / runtime-verification-unverified`、進捗は18/27のままとする。
