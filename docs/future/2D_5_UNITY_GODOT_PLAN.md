@@ -1,9 +1,9 @@
 # Chameleon Asset Studio Group 19 implementation handoff
 
-最終更新日: 2026-08-17  
+最終更新日: 2026-08-26  
 対象リポジトリ: chameleonjp-lab/chameleonassetstudio  
 正式work package: 2D-5-UNITY + 2D-5-GODOT  
-基準main SHA: fb8272aaf21545dd8031bcb6fc761de6f2d379ab  
+基準main SHA: 27c4cc25f0997cced943e31673d313b3b4b5c8ac  
 文書種別: implementation handoff  
 状態: accepted / implemented-candidate / CI-passed / independently-verified-static / merged / runtime-partial / runtime-verification-unverified
 
@@ -18,13 +18,13 @@
 | 項目 | 確認結果 | Group 19への意味 |
 |---|---|---|
 | 最新main | fb8272aaf21545dd8031bcb6fc761de6f2d379ab。PR #257（obsolete Unity activation workflow削除）のmerge commit。 | このruntime evidence closeout後の基準head。 |
-| open Pull Request | 基準main確認時点（PR #258作成前）は0件。PR #257はmerge済み。 | docs-onlyの状態同期PRを1本だけ維持する。 |
+| open Pull Request | 基準main確認時点（Group 20 handoff PR作成前）は0件。PR #258はmerge済み。 | docs-onlyの状態同期PRを1本だけ維持する。 |
 | Group 18 | PR #248 final head e3309d57f030e9190cb4c678e49301e4736332b5、merge 3ab844d28d155a438dc8f10f8f9b22099a40093a、CI Run #793成功、contract artifact取得済み。 | candidate / verified / import-notes / unsupportedの共通境界を再利用する。 |
 | Group 18 closeout | PR #249 final head 9af46a710376279917f3c5d5cc86f42c3713a3a4、merge fcbf1cc9b7a1a9d0cdd588eaed59de3999bdcabb、CI Run #795成功（docs-only分類）。 | 完了数は18/27。Group 19 runtime Gateを継続する。 |
 | 既存互換性表 | Godot 4.7.1-stableはfixture runtime artifactの11確認が成功したが、Unity artifact未取得のためGroup 19全体のラベルはcandidate / import-notesのまま。Unity 6000.3.21f1はruntime未実行。 | Godot単体の成功をUnityやGroup 19全体へ拡大しない。 |
 | 既存engine docs | Godot / Unityのengine-local runner・import notesはmainに存在する。Godot artifactは取得済み、Unity manual run #1 / #2は認証確認で停止した。 | 実行証拠をengine別に記録し、未確認はcandidateへ留める。 |
 | 既存出力 | Chameleon独自のPNG / sheet / atlas / sidecarを出力する。Unity標準.meta、Prefab、Godot.tscn、Resourceそのものではない。 | 標準形式完全互換やnative project生成を推測しない。 |
-| Group 19 runtime evidence | Godot workflow Run #9（Actions run 31913489237、artifact 9254301539）はstatus passed、importErrors 0、consoleErrors 0、11受入確認すべて成功。Unity runtime Run #1（31958359698）/ #2（31958367110）はUNITY_EMAIL等の認証確認で停止し、Unity artifactはない。Activation Run #1（31960189265）はサポート終了Actionで停止し、PR #257でworkflowを削除した。 | engine・version・fixture別の範囲を維持し、Group 20はUnity Gateまで開始しない。 |
+| Group 19 runtime evidence | Godot workflow Run #9（Actions run 31913489237、artifact 9254301539）はstatus passed、importErrors 0、consoleErrors 0、11受入確認すべて成功。Unity runtime Run #1（31958359698）/ #2（31958367110）はUNITY_EMAIL等の認証確認で停止し、Unity artifactはない。Activation Run #1（31960189265）はサポート終了Actionで停止し、PR #257でworkflowを削除した。 | engine・version・fixture別の範囲を維持する。PCが使用できないという人間判断によりUnity runtimeはスキップし、Group 20はdocs-only handoffを開始可能とする。 |
 
 ## 2. 今回の目的
 
@@ -141,7 +141,7 @@ G19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable）
 
 契約状態は`accepted`、実装状態は`implemented-candidate / merged`、検証状態は`CI-passed / independently-verified-static / runtime-partial / runtime-verification-unverified`である。PR #251でcandidate fixture、静的closure test、import notesをmainへ反映し、PR #253でGodot 4.7.1-stableのfixture-only runtime artifactを追加した。Godot artifactは11受入確認、importErrors 0、consoleErrors 0で成功したが、Unity artifact未取得のため対象別ラベルとGroup 19全体は`candidate / import-notes`に留め、`verified`へ昇格しない。
 
-次のGateは、Unity 6000.3.21f1のmanual workflowを実行して、Godotと分離されたruntime artifact、import error 0、metadata一致、artifact欠落失敗、固定headの独立確認を満たすことである。Unityのlicensed実行証拠がない現行mainでは、Group 20は開始しない。
+Unity 6000.3.21f1のruntime Gateは、PC等の実行環境が利用可能になった場合に再開する。現在はユーザー判断によりスキップし、Group 19をruntime-partial / runtime-verification-unverifiedのまま保持する。Group 20（RPG Maker MZ / helper gate）はdocs-only handoffを開始し、runtime実行・artifact取得・verified昇格は保留する。
 
 
 ## 9. Post-merge verification record
@@ -160,4 +160,12 @@ G19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable）
 - Unity runtimeの手動実行 [Run #1](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/31958359698) と [Run #2](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/31958367110) は、ライセンス情報の確認ステップで停止した。Unity editorの実行結果とruntime artifactは生成されていない。
 - 旧Activation workflowの [Run #1](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/31960189265) は、game-ci/unity-request-activation-file@v2 のサポート終了エラーで停止した。PR #257でこのworkflowを削除し、現在は [GameCI現行Activation手順](https://game.ci/docs/github/activation/)に従う前提へ戻した。
 - したがって状態は runtime-partial / runtime-verification-unverified、進捗は18/27のままである。Godotの成功をUnityやGroup 19全体へ拡張しない。
-- 次のGateは、Personal版ならPC/Mac/Linux上のUnity Hubで作成した.ulf、Professional版ならシリアル方式など、正規のUnity認証経路を用意した後に、mainのGroup 19 Unity runtimeを再実行することである。Group 20はUnity Gate完了まで開始しない。
+- Unity runtimeの再開条件は、PC等の正規の実行環境と認証経路が利用可能になることである。PCが使用できない間は実行しない。Group 19の検証状態は維持したまま、Group 20のdocs-only準備を進める。
+
+## 11. User-directed Unity skip and Group 20 handoff (2026-08-26)
+
+- ユーザーはPCを使用できないため、Unity 6000.3.21f1 runtimeをスキップする判断を明示した。これは成功・失敗のruntime証拠ではなく、Unity artifact未取得、Group 19全体の`verified`未昇格、進捗18/27を維持する環境判断である。
+- Godot 4.7.1-stableのfixture-local成功は維持するが、UnityやGroup 19全体へ拡張しない。
+- この明示的なスキップを例外として、Group 20のPC不要なdocs-only handoffを開始する。正本は [`2D_5_RPGMZ_HELPER_PLAN.md`](2D_5_RPGMZ_HELPER_PLAN.md)であり、RPG Maker MZの正確なversion、素材種別別fixture、runtime evidence、helper / addon / pluginの採否をproposalとして整理する。
+- 推奨案は `G20-C1 A + G20-C2 A + G20-C3 A`だが、accepted記録ではない。対象versionと案の採用が確定し、実行環境が用意されるまで、RPG Maker MZを`verified`へ昇格しない。
+- product export、schema、保存形式、既存helper API、dependenciesは変更しない。
