@@ -2459,10 +2459,14 @@
   }
 
   .editor-timeline input:not([type='checkbox']),
-  .editor-timeline select,
+  .editor-timeline select {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  /* ズーム欄はキャンバス上に重なるため高さを増やさず、iOSの自動拡大だけ防ぐ。 */
   .canvas-zoombar select,
   .canvas-zoombar input[type='number'] {
-    min-height: 44px;
     font-size: 16px;
   }
 
