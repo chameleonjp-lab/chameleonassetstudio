@@ -2863,3 +2863,12 @@
     padding: 0.65rem;
   }
 }
+
+
+.editor-save-retry {
+  min-height: 44px;
+  width: fit-content;
+  padding: 0.45rem 0.8rem;
+  font: inherit;
+  font-weight: 700;
+}
