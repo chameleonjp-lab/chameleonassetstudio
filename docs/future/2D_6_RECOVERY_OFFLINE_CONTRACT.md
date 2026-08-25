@@ -2,7 +2,7 @@
 
 最終更新日: 2026-08-26  
 対象: `2D-6-RECOVERY` + `2D-6-OFFLINE`  
-状態: implemented-candidate / CI-pending / runtime-verification-unverified
+状態: implemented-candidate / CI-passed / runtime-verification-unverified
 
 ## 1. 目的
 
@@ -48,3 +48,16 @@ Group 21Aで画面導線と入力境界を検査した。Group 21Bでは、保�
 ## 6. 未完了の次工程
 
 Group 21Cで、性能、アクセシビリティ、安全性を別PRとして扱う。オフライン用のアプリキャッシュ、更新時の差分案内、実機Safariの確認は、Group 21Bの自動検査を合格させた後に必要性を判断する。
+
+
+## 7. CI記録
+
+CI Run #852（Actions ID `32887615937`）で次を確認した。
+
+- classify-changes: success
+- build-and-test: success（lint / format / build / unit testを含む）
+- e2e: success
+- Chromium E2E: 202件成功（既存200件 + Group 21B 2件）
+- H3計測、Pages公開、Pages閉鎖後のアプリ利用確認: success
+
+このCIはChromium上の自動検査であり、iPhone / iPad Safariの実機オフライン確認ではない。
