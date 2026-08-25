@@ -11,6 +11,7 @@ export interface AutosaveSnapshot {
   state: SaveState;
   hasTimer: boolean;
   hasPendingTask: boolean;
+  hasFailedTask: boolean;
   isRunning: boolean;
   lastError: string | null;
 }
@@ -30,6 +31,7 @@ export class AutosaveQueue {
   private pendingTask: SaveTask | null = null;
   private currentRun: Promise<void> | null = null;
   private lastError: unknown = null;
+  private failedTask: SaveTask | null = null;
   private state: SaveState = { status: 'idle' };
   private readonly listeners = new Set<(state: SaveState) => void>();
 
@@ -64,6 +66,7 @@ export class AutosaveQueue {
       state: { ...this.state },
       hasTimer: this.timer !== null,
       hasPendingTask: this.pendingTask !== null,
+      hasFailedTask: this.failedTask !== null,
       isRunning: this.currentRun !== null,
       lastError:
         this.lastError === null
@@ -72,6 +75,30 @@ export class AutosaveQueue {
             ? this.lastError.message
             : String(this.lastError),
     };
+  }
+
+  /** 保存失敗した最後のタスクを、明示的な操作で再実行できるかを返す。 */
+  canRetry(): boolean {
+    return (
+      this.failedTask !== null &&
+      this.currentRun === null &&
+      this.pendingTask === null &&
+      this.timer === null
+    );
+  }
+
+  /** 保存失敗後に同じ保存を一度だけ再予約する。新しい編集があればそちらを優先する。 */
+  retryLastFailure(): boolean {
+    if (!this.canRetry()) {
+      return false;
+    }
+    const task = this.failedTask;
+    if (!task) {
+      return false;
+    }
+    this.failedTask = null;
+    this.schedule(task);
+    return true;
   }
 
   subscribe(listener: (state: SaveState) => void): () => void {
@@ -84,6 +111,7 @@ export class AutosaveQueue {
   schedule(task: SaveTask): void {
     AutosaveQueue.activeQueues.add(this);
     this.lastError = null;
+    this.failedTask = null;
     this.pendingTask = task;
     if (this.timer) {
       clearTimeout(this.timer);
@@ -139,9 +167,11 @@ export class AutosaveQueue {
       try {
         await task();
         this.lastError = null;
+        this.failedTask = null;
         this.setState({ status: 'saved', lastSavedAt: new Date().toISOString() });
       } catch (error) {
         this.lastError = error;
+        this.failedTask = task;
         this.setState({
           status: 'error',
           errorMessage: error instanceof Error ? error.message : String(error),

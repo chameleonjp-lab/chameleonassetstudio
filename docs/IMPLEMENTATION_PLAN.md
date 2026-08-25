@@ -21,7 +21,7 @@
 - `docs/future/2D_4_PIXIJS_PHASER_PLAN.md`（Group 17のPixiJS / Phaser契約と人間判断の正本）
 - `docs/future/2D_5_EVIDENCE_LABELS_PLAN.md`（Group 18の証拠形式・対応ラベル契約と人間判断の正本）
 - `docs/future/2D_5_UNITY_GODOT_PLAN.md`（Group 19のUnity / Godot対象version・fixture・証拠契約と人間判断の正本）
-- `docs/future/2D_6_DEVICE_FLOW_CONTRACT.md`（Group 21Aの端末導線・入力契約と自動検査の正本）
+- `docs/future/2D_6_DEVICE_FLOW_CONTRACT.md`, `2D_6_RECOVERY_OFFLINE_CONTRACT.md`（Group 21Aの端末導線・入力契約と自動検査の正本）
 
 2D Pro の完成条件は `docs/future/2D_COMPLETE_PRODUCT_SPEC.md`、データ、対象別出力、端末品質は同ディレクトリの専門文書を正本とする。
 
@@ -193,3 +193,12 @@ PR #259のmain反映後、fixture契約をdocs-onlyで追加する。PCが使用
 ## Group 21A start (2026-08-26)
 
 Group 20の次として、Group 21A（`2D-6-DEVICE-FLOW` + `2D-6-INPUT`）の自動検査を開始する。`e2e/device-flow.spec.ts`でスマホ320×568 / 375×667、iPad768×1024の作成・取り込み・編集画面・プロパティ・タイムライン・書き出し・ホーム復帰・再読み込み後の再開を確認し、`docs/future/2D_6_DEVICE_FLOW_CONTRACT.md`を正本とする。CI Run #847（Actions ID `32880786002`）でclassify、build-and-test、E2E全job成功、E2E 200件成功を確認した。物理端末確認前のため、Group 21Aは`implemented-candidate / CI-passed / independently-verified-static / awaiting-merge / runtime-verification-unverified`、進捗は18/27のままとする。
+
+
+## Group 21B start (2026-08-26)
+
+Group 21Aのマージ後、Group 21B（`2D-6-RECOVERY` + `2D-6-OFFLINE`）を開始する。正本は[`2D_6_RECOVERY_OFFLINE_CONTRACT.md`](future/2D_6_RECOVERY_OFFLINE_CONTRACT.md)とする。
+
+今回の実装は、保存失敗後の「保存を再試行」、Editorを隠す・離れる直前の保留保存開始、保存失敗時のホーム遷移停止、オンライン状態の表示、オフライン中の端末内保存・PNG書き出し、ページ離脱後の再読み込み回帰である。既存のIndexedDB、`.casproj`、export ZIP、JSON Schema、保存形式、依存関係は変更しない。
+
+CI Run #852（Actions ID `32887615937`）でclassify、build-and-test、e2e、H3計測、Pages公開・閉鎖後確認を含め全job成功し、Chromium E2E 202件が成功した。iPhone / iPad Safariの実機オフライン、Filesアプリ、ソフトウェアキーボード、アプリ本体のオフラインキャッシュ、更新時の差分案内、実メモリ、PC実機は未確認とする。Group 21Bの進捗は18/27のまま維持する。

@@ -100,6 +100,26 @@ describe('AutosaveQueue', () => {
     expect(queue.getState().status).toBe('saved');
   });
 
+  it('保存失敗した同じタスクを明示的に再試行できる', async () => {
+    const queue = new AutosaveQueue({ delayMs: 1 });
+    let attempts = 0;
+    queue.schedule(async () => {
+      attempts += 1;
+      if (attempts === 1) {
+        throw new Error('一時的な保存失敗');
+      }
+    });
+
+    await expect(queue.flush()).rejects.toThrow('一時的な保存失敗');
+    expect(queue.canRetry()).toBe(true);
+    expect(queue.getSnapshot().hasFailedTask).toBe(true);
+    expect(queue.retryLastFailure()).toBe(true);
+    await expect(queue.flush()).resolves.toBeUndefined();
+    expect(attempts).toBe(2);
+    expect(queue.getState().status).toBe('saved');
+    expect(queue.canRetry()).toBe(false);
+  });
+
   it('flushAllは複数queueの失敗を呼び出し元へ返す', async () => {
     const success = new AutosaveQueue({ delayMs: 60_000 });
     const failure = new AutosaveQueue({ delayMs: 60_000 });

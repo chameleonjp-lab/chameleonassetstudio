@@ -677,6 +677,26 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     };
   }, [projectId]);
 
+  // 画面を隠す・離れる前に保留中のローカル保存を開始する。完了保証はブラウザ依存のため、保存状態も表示する。
+  useEffect(() => {
+    const flushBeforeLeaving = () => {
+      void autosave.flush().catch(() => {
+        // 保存失敗はAutosaveQueueの状態と再試行ボタンへ残す。
+      });
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        flushBeforeLeaving();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', flushBeforeLeaving);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', flushBeforeLeaving);
+    };
+  }, [autosave]);
+
   const persistentMutationBlocked =
     historyState.isBusy ||
     mutationBusy ||
@@ -1035,6 +1055,12 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     },
     [autosave, projectId],
   );
+
+  const retryAutosave = useCallback(() => {
+    if (autosave.retryLastFailure()) {
+      setEditorError(null);
+    }
+  }, [autosave]);
 
   const handleHistoryUndo = useCallback(async () => {
     const allowFramePreview =
@@ -3409,8 +3435,14 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   };
 
   const handleBack = async () => {
-    await autosave.flush();
-    onBackToHome();
+    try {
+      await autosave.flush();
+      onBackToHome();
+    } catch (error) {
+      setEditorError(
+        `保存できないためホームへ戻れません: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   };
 
   if (loadError) {
@@ -3463,6 +3495,11 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         <p className="import-error" role="alert">
           {editorError}
         </p>
+      )}
+      {saveState.status === 'error' && autosave.canRetry() && (
+        <button type="button" className="editor-save-retry" onClick={retryAutosave}>
+          保存を再試行
+        </button>
       )}
     </>
   );
@@ -3555,7 +3592,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         </div>
       </header>
 
-      {(importing || imageProcessing || editorError) && (
+      {(importing || imageProcessing || editorError || saveState.status === 'error') && (
         <div className="editor-global-status" aria-live="polite">
           {statusMessages}
         </div>
