@@ -36,7 +36,11 @@ export function ConnectionStatus() {
 
   if (!online) {
     return (
-      <aside className="connection-status connection-status--offline" role="status" aria-label="通信状態">
+      <aside
+        className="connection-status connection-status--offline"
+        role="status"
+        aria-label="通信状態"
+      >
         <strong>オフラインです</strong>
         <p>
           今開いている画面では、端末内保存と書き出しを続けられます。再読み込みやページ移動は、保存完了を確認してから行ってください。
@@ -50,7 +54,11 @@ export function ConnectionStatus() {
   }
 
   return (
-    <aside className="connection-status connection-status--online" role="status" aria-label="通信状態">
+    <aside
+      className="connection-status connection-status--online"
+      role="status"
+      aria-label="通信状態"
+    >
       <strong>オンラインに戻りました</strong>
       <p>保存状態を確認してから作業を続けてください。</p>
     </aside>
