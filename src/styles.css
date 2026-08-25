@@ -43,3 +43,30 @@ select {
     font-size: 16px;
   }
 }
+
+.connection-status {
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid #8886;
+  overflow-wrap: anywhere;
+}
+
+.connection-status strong,
+.connection-status p {
+  display: block;
+  margin: 0;
+}
+
+.connection-status p {
+  margin-top: 0.2rem;
+  font-size: 0.88rem;
+}
+
+.connection-status--offline {
+  border-color: #c06f00;
+  background: #c06f0018;
+}
+
+.connection-status--online {
+  border-color: #2a9d8f;
+  background: #2a9d8f12;
+}
