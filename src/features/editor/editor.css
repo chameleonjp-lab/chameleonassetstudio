@@ -2464,6 +2464,12 @@
     font-size: 16px;
   }
 
+  /* ズーム欄はキャンバス上に重なるため高さを増やさず、iOSの自動拡大だけ防ぐ。 */
+  .canvas-zoombar select,
+  .canvas-zoombar input[type='number'] {
+    font-size: 16px;
+  }
+
   .gamedata-panel input:not([type='checkbox']):not([type='color']),
   .gamedata-panel select {
     width: 100%;
