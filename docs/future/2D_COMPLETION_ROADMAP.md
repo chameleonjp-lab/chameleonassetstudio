@@ -5,7 +5,7 @@
 文書種別: 2D 完成までの実装順と品質 gate
 状態: accepted（今後の優先順。docs-only）
 上位文書: `2D_COMPLETE_PRODUCT_SPEC.md`
-関連文書: `2D_ASSET_DATA_CONTRACT.md`, `2D_EXPORT_COMPATIBILITY_MATRIX.md`, `2D_DEVICE_RELIABILITY_SPEC.md`, `2D_1B_RECOVERY_REPORT.md`, `2D_1B_STORAGE_CROSS_REVIEW_PLAN.md`, `docs/future/POST_PHASE17_IMPLEMENTATION_PLAN.md`, `docs/future/THREE_D_ASSET_PREPARATION_REQUIREMENTS.md`, `docs/future/2D_FIVE_PERSPECTIVE_REVIEW_ACTION_PLAN_2026-08-13.md`, `2D_5_RPGMZ_HELPER_PLAN.md`, `2D_5_RPGMZ_FIXTURE_CONTRACT.md`, `2D_6_DEVICE_FLOW_CONTRACT.md`
+関連文書: `2D_ASSET_DATA_CONTRACT.md`, `2D_EXPORT_COMPATIBILITY_MATRIX.md`, `2D_DEVICE_RELIABILITY_SPEC.md`, `2D_1B_RECOVERY_REPORT.md`, `2D_1B_STORAGE_CROSS_REVIEW_PLAN.md`, `docs/future/POST_PHASE17_IMPLEMENTATION_PLAN.md`, `docs/future/THREE_D_ASSET_PREPARATION_REQUIREMENTS.md`, `docs/future/2D_FIVE_PERSPECTIVE_REVIEW_ACTION_PLAN_2026-08-13.md`, `2D_5_RPGMZ_HELPER_PLAN.md`, `2D_5_RPGMZ_FIXTURE_CONTRACT.md`, `2D_6_DEVICE_FLOW_CONTRACT.md`, `2D_6_RECOVERY_OFFLINE_CONTRACT.md`
 
 ---
 
@@ -533,7 +533,7 @@ PR 運用 Gate:
 | 19 | `2D-5-UNITY` + `2D-5-GODOT` | Unity 2D と Godot 2D を対象バージョン・素材種別ごとに fixture で検証する。 | Codex + Opus 4.8 必須 review + 必要に応じて人間実機確認 | 18 | Unity runtimeはユーザー判断で保留。Group 20 docs-only handoffは開始可能 | 18後 | `accepted: G19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable） + G19-C2 A + G19-C3 A / implemented-candidate / CI-passed / independently-verified-static / merged / runtime-verification-unverified`。PR #251（merge `e77a721ff3d479bea0f7475f0b0fbc296ce91595`）、CI Run #805全job成功。candidate fixture、静的closure test、import notesはmainへ反映済みだが、Unity/Godot runtimeとengine別artifactは未完了のため進捗は18/27。正本は `docs/future/2D_5_UNITY_GODOT_PLAN.md`。
 | 20 | `2D-5-RPGMZ` + `2D-5-HELPER-GATE` | RPG Maker MZ 1.10.0を対象versionとして、素材種別ごとのfixture検証とhelper / addon / plugin採否を判断する。 | Fable5または人間判断 + Codex + Opus 4.8 review | 18、19の共通ラベル | helper判断はADR後のみ | 19後 | `accepted: G20-C1 A（RPG Maker MZ 1.10.0） + G20-C2 A + G20-C3 A / implemented-candidate / CI-passed / independently-verified-static / merged / runtime-verification-unverified`。PR #259でhandoffをmainへ反映し、docs-only accepted記録とfixture contractを後続PRで反映する。runtime未実行のため進捗は18/27のまま。正本は `docs/future/2D_5_RPGMZ_HELPER_PLAN.md`。 |
 | 21A | `2D-6-DEVICE-FLOW` + `2D-6-INPUT` | PC / iPad / スマホの全工程到達と、touch、pan、pinch、Apple Pencil、mouse、keyboard、数値入力、software keyboard、safe area、orientation、hover非依存、誤操作・入力競合を確認する。 | Codex + 人間実機確認 + Opus 4.8 audit | 8A以降で継続、完了は20後 | 2D-2〜2D-5と継続並行可 | 継続並行 | PR #261（`e2e/device-flow.spec.ts`、`2D_6_DEVICE_FLOW_CONTRACT.md`、スマホ用入力CSS）を実装し、CI Run #847（Actions ID `32880786002`）でclassify、build-and-test、E2E全job成功、E2E 200件成功を確認した。状態は`implemented-candidate / CI-passed / independently-verified-static / awaiting-merge / runtime-verification-unverified`。物理端末確認前のため、Group 21Aは未完了。 |
-| 21B | `2D-6-RECOVERY` + `2D-6-OFFLINE` | 保存失敗、削除復元、`.casproj`移動、オフライン、更新、復旧導線を確認する。 | Codex + 人間実機確認 + Opus 4.8 audit | 7、関連機能 | 2D-2〜2D-5と継続並行可 | 継続並行 | 未着手。 |
+| 21B | `2D-6-RECOVERY` + `2D-6-OFFLINE` | 保存失敗、削除復元、`.casproj`移動、オフライン、更新、復旧導線を確認する。 | Codex + 人間実機確認 + Opus 4.8 audit | 7、関連機能 | 2D-2〜2D-5と継続並行可 | 継続並行 | PR #262で保存再試行、離脱前flush、オフライン表示、再読み込み回帰を実装。CI成功後も実機未確認のため`runtime-verification-unverified`。 |
 | 21C | `2D-6-PERFORMANCE` + `2D-6-A11Y` + `2D-6-SECURITY` | 性能budget、worker、メモリ、accessibility、キーボード、読み上げ、色以外の識別、安全性を確認する。 | Codex + 人間実機確認 + Opus 4.8 audit | 関連機能 | 2D-2〜2D-5と継続並行可 | 継続並行 | `docs/future/PERFORMANCE_BUDGET.md`で性能baselineのみ作成。2026-08-02にGroup 12 B2の数値budget、warning、hard cap、採用上限product-path実測をこのwork packageへ延期した。PC / iPad / スマホ実機Gate、`2D-6-PERFORMANCE`全体、`2D-6-A11Y`、`2D-6-SECURITY`は未完了。 |
 | 22 | `2D-6-REFERENCE` + `2D-6-DOCS` + `2D-6-GATE-AUDIT` | 代表project、最終証拠、README / user guide / release checklist / docs整合、最終品質auditを通す。 | Codex docs / evidence + 人間実機確認 + Opus 4.8 audit | 21A〜21C、18〜20 | 最終auditのため並行不可 | 21C後 | 未着手。正式IDは `2D-6-GATE-AUDIT`。 |
 | 23 | `2D Pro Gate` | 全必須package、判断必須ADR、証拠、CI、実機、target fixture、Opus 4.8、PR #53 / #55再監査、人間承認を確認し、3D開始可否を判断する。 | Fable5が証拠整理、Opus 4.8最終review、人間が最終承認 | 22 | Gate中は新規実装しない | 22後 | 未完了。人間承認前は3D開始禁止。 |
@@ -714,3 +714,12 @@ Group 20のマージ後、次の並行工程であるGroup 21A（`2D-6-DEVICE-FL
 PR #261のCI Run #847（Actions ID `32880786002`）はclassify、build-and-test、E2Eの全jobが成功し、E2E 200件が成功した。スマホのズーム欄は文字を16pxにしつつキャンバス上のクリック領域を維持する修正も含む。
 
 物理iPhone / iPad Safari、Apple Pencil、Files連携、ソフトウェアキーボード、実メモリ、PC実機は未確認である。Group 21Aは`implemented-candidate / CI-passed / independently-verified-static / awaiting-merge / runtime-verification-unverified`とし、進捗は18/27のままとする。
+
+
+## Group 21B start (2026-08-26)
+
+Group 21Aのマージ後、保存・復旧・オフラインを扱うGroup 21B（`2D-6-RECOVERY` + `2D-6-OFFLINE`）を開始した。正本は[`2D_6_RECOVERY_OFFLINE_CONTRACT.md`](2D_6_RECOVERY_OFFLINE_CONTRACT.md)に置く。
+
+PR #262では、保存失敗後の明示的な再試行、Editorの`visibilitychange` / `pagehide`時の保留保存開始、離脱時に保存失敗した場合のホーム遷移停止、オンライン状態の表示を実装する。Chromium E2Eでは、読み込み済み画面をオフラインにした状態での端末内保存とPNG書き出し、ページ離脱時の保留保存、再読み込み後の再開を検査する。既存のごみ箱復元、`.casproj`移動、壊れた入力の隔離回帰も同じCIで継続する。
+
+アプリ本体のオフラインキャッシュ、更新時の差分案内、iPhone / iPad Safari、Filesアプリ、ソフトウェアキーボード、実メモリ、PC実機は未確認である。Group 21Bの実装候補状態は`implemented-candidate / CI-pending / runtime-verification-unverified`とし、進捗は18/27のままとする。
