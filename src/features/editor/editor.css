@@ -2459,7 +2459,9 @@
   }
 
   .editor-timeline input:not([type='checkbox']),
-  .editor-timeline select {
+  .editor-timeline select,
+  .canvas-zoombar select,
+  .canvas-zoombar input[type='number'] {
     min-height: 44px;
     font-size: 16px;
   }
