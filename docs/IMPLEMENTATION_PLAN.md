@@ -21,6 +21,7 @@
 - `docs/future/2D_4_PIXIJS_PHASER_PLAN.md`（Group 17のPixiJS / Phaser契約と人間判断の正本）
 - `docs/future/2D_5_EVIDENCE_LABELS_PLAN.md`（Group 18の証拠形式・対応ラベル契約と人間判断の正本）
 - `docs/future/2D_5_UNITY_GODOT_PLAN.md`（Group 19のUnity / Godot対象version・fixture・証拠契約と人間判断の正本）
+- `docs/future/2D_6_DEVICE_FLOW_CONTRACT.md`（Group 21Aの端末導線・入力契約と自動検査の正本）
 
 2D Pro の完成条件は `docs/future/2D_COMPLETE_PRODUCT_SPEC.md`、データ、対象別出力、端末品質は同ディレクトリの専門文書を正本とする。
 
@@ -188,3 +189,7 @@ PCが使用できないため、Group 19 Unity runtimeはユーザー指示で�
 G20-C1 A（RPG Maker MZ 1.10.0） + G20-C2 A + G20-C3 Aをacceptedとする。対象versionは、公式告知で2026-02-02に配信されたv1.10.0を採用した。characters / faces / tilesets / side-view battlersを型別fixtureへ分離し、既存PNG / sheet / sidecarと手動import notesを正本とする。plugin / addon / native project生成は追加しない。
 
 PR #259のmain反映後、fixture契約をdocs-onlyで追加する。PCが使用できないため、RPG Maker MZ runtime、artifact、error 0、実行画面は未確認である。状態は`accepted / implemented-candidate / CI-passed / independently-verified-static / merged / runtime-verification-unverified`、ラベルは`candidate / import-notes`とし、runtime evidence取得まで`verified`へ昇格しない。
+
+## Group 21A start (2026-08-26)
+
+Group 20の次として、Group 21A（`2D-6-DEVICE-FLOW` + `2D-6-INPUT`）の自動検査を開始する。`e2e/device-flow.spec.ts`でスマホ320×568 / 375×667、iPad768×1024の作成・取り込み・編集画面・プロパティ・タイムライン・書き出し・ホーム復帰・再読み込み後の再開を確認し、`docs/future/2D_6_DEVICE_FLOW_CONTRACT.md`を正本とする。CI・実機確認前のため、Group 21Aは未完了、進捗は18/27のままとする。
