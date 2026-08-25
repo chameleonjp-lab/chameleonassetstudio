@@ -5,7 +5,7 @@
 文書種別: 2D 完成までの実装順と品質 gate
 状態: accepted（今後の優先順。docs-only）
 上位文書: `2D_COMPLETE_PRODUCT_SPEC.md`
-関連文書: `2D_ASSET_DATA_CONTRACT.md`, `2D_EXPORT_COMPATIBILITY_MATRIX.md`, `2D_DEVICE_RELIABILITY_SPEC.md`, `2D_1B_RECOVERY_REPORT.md`, `2D_1B_STORAGE_CROSS_REVIEW_PLAN.md`, `docs/future/POST_PHASE17_IMPLEMENTATION_PLAN.md`, `docs/future/THREE_D_ASSET_PREPARATION_REQUIREMENTS.md`, `docs/future/2D_FIVE_PERSPECTIVE_REVIEW_ACTION_PLAN_2026-08-13.md`, `2D_5_RPGMZ_HELPER_PLAN.md`
+関連文書: `2D_ASSET_DATA_CONTRACT.md`, `2D_EXPORT_COMPATIBILITY_MATRIX.md`, `2D_DEVICE_RELIABILITY_SPEC.md`, `2D_1B_RECOVERY_REPORT.md`, `2D_1B_STORAGE_CROSS_REVIEW_PLAN.md`, `docs/future/POST_PHASE17_IMPLEMENTATION_PLAN.md`, `docs/future/THREE_D_ASSET_PREPARATION_REQUIREMENTS.md`, `docs/future/2D_FIVE_PERSPECTIVE_REVIEW_ACTION_PLAN_2026-08-13.md`, `2D_5_RPGMZ_HELPER_PLAN.md`, `2D_5_RPGMZ_FIXTURE_CONTRACT.md`
 
 ---
 
@@ -531,7 +531,7 @@ PR 運用 Gate:
 | 17 | `2D-4-PIXIJS` + `2D-4-PHASER` + `2D-4-DOCS` | PixiJS / Phaser fixtureと実行確認、export手順、import notes、既知制限、検証記録を docs に反映する。 | Codex + Opus 4.8 必須 review | 16 | 2D-5手順準備と並行可 | 16後 | `accepted: G17-C1 A + G17-C2 A + G17-C3 A / implemented / CI-passed / independently-verified / merged`。PR #243 / #244 / #245でGate A、PR #246 final head `9380494f7a662b9211f341d87a15f62d4b82986f`、merge `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`、CI Run #785全job成功、engine別artifactを記録した。正本は `docs/future/2D_4_PIXIJS_PHASER_PLAN.md`。 |
 | 18 | `2D-5-EVIDENCE` + `2D-5-LABELS` | verified / candidate / import-notes / unsupported の証拠形式と対応ラベルを固定する。 | Codex docs + Opus 4.8 review | 17 | target実装準備のみ可 | 17後 | `accepted: G18-C1 A + G18-C2 A + G18-C3 A / implemented / CI-passed / independently-verified / merged`。PR #248（merge `3ab844d28d155a438dc8f10f8f9b22099a40093a`）、CI Run #793、contract artifact、固定head確認を完了した。進捗は18/27。次はGroup 19 / 20。正本は `docs/future/2D_5_EVIDENCE_LABELS_PLAN.md`。 |
 | 19 | `2D-5-UNITY` + `2D-5-GODOT` | Unity 2D と Godot 2D を対象バージョン・素材種別ごとに fixture で検証する。 | Codex + Opus 4.8 必須 review + 必要に応じて人間実機確認 | 18 | Unity runtimeはユーザー判断で保留。Group 20 docs-only handoffは開始可能 | 18後 | `accepted: G19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable） + G19-C2 A + G19-C3 A / implemented-candidate / CI-passed / independently-verified-static / merged / runtime-verification-unverified`。PR #251（merge `e77a721ff3d479bea0f7475f0b0fbc296ce91595`）、CI Run #805全job成功。candidate fixture、静的closure test、import notesはmainへ反映済みだが、Unity/Godot runtimeとengine別artifactは未完了のため進捗は18/27。正本は `docs/future/2D_5_UNITY_GODOT_PLAN.md`。
-| 20 | `2D-5-RPGMZ` + `2D-5-HELPER-GATE` | RPG Maker MZ を対象バージョン・素材種別ごとに検証し、helper / addon / plugin採否を判断する。 | Fable5または人間判断 + Codex + Opus 4.8 review | 18、19の共通ラベル | helper判断はADR後のみ | 19後 | docs-only handoff開始。runtime未実行・人間判断待ち。正本は `docs/future/2D_5_RPGMZ_HELPER_PLAN.md`。 |
+| 20 | `2D-5-RPGMZ` + `2D-5-HELPER-GATE` | RPG Maker MZ 1.10.0を対象versionとして、素材種別ごとのfixture検証とhelper / addon / plugin採否を判断する。 | Fable5または人間判断 + Codex + Opus 4.8 review | 18、19の共通ラベル | helper判断はADR後のみ | 19後 | `accepted: G20-C1 A（RPG Maker MZ 1.10.0） + G20-C2 A + G20-C3 A / implemented-candidate / CI-passed / independently-verified-static / merged / runtime-verification-unverified`。PR #259でhandoffをmainへ反映し、docs-only accepted記録とfixture contractを後続PRで反映する。runtime未実行のため進捗は18/27のまま。正本は `docs/future/2D_5_RPGMZ_HELPER_PLAN.md`。 |
 | 21A | `2D-6-DEVICE-FLOW` + `2D-6-INPUT` | PC / iPad / スマホの全工程到達と、touch、pan、pinch、Apple Pencil、mouse、keyboard、数値入力、software keyboard、safe area、orientation、hover非依存、誤操作・入力競合を確認する。 | Codex + 人間実機確認 + Opus 4.8 audit | 8A以降で継続、完了は20後 | 2D-2〜2D-5と継続並行可 | 継続並行 | 未着手。 |
 | 21B | `2D-6-RECOVERY` + `2D-6-OFFLINE` | 保存失敗、削除復元、`.casproj`移動、オフライン、更新、復旧導線を確認する。 | Codex + 人間実機確認 + Opus 4.8 audit | 7、関連機能 | 2D-2〜2D-5と継続並行可 | 継続並行 | 未着手。 |
 | 21C | `2D-6-PERFORMANCE` + `2D-6-A11Y` + `2D-6-SECURITY` | 性能budget、worker、メモリ、accessibility、キーボード、読み上げ、色以外の識別、安全性を確認する。 | Codex + 人間実機確認 + Opus 4.8 audit | 関連機能 | 2D-2〜2D-5と継続並行可 | 継続並行 | `docs/future/PERFORMANCE_BUDGET.md`で性能baselineのみ作成。2026-08-02にGroup 12 B2の数値budget、warning、hard cap、採用上限product-path実測をこのwork packageへ延期した。PC / iPad / スマホ実機Gate、`2D-6-PERFORMANCE`全体、`2D-6-A11Y`、`2D-6-SECURITY`は未完了。 |
@@ -694,6 +694,12 @@ PR #256で追加されたUnity artifact欠落guardはmainに反映済みで、�
 
 ユーザーはPCを使用できないため、Unity 6000.3.21f1のruntime実行をスキップする判断を明示した。この判断はUnity runtimeの成功を意味せず、Group 19の状態を`runtime-partial / runtime-verification-unverified`、進捗を18/27のまま維持する。
 
-この明示的な環境判断を例外として、Group 20（`2D-5-RPGMZ` + `2D-5-HELPER-GATE`）のdocs-only handoffを開始する。RPG Maker MZの正確な対象version、素材種別別fixture、runtime artifact、helper / addon / pluginの採否は未確定であり、正本を [`2D_5_RPGMZ_HELPER_PLAN.md`](2D_5_RPGMZ_HELPER_PLAN.md) に置く。
+この明示的な環境判断を例外として、Group 20（`2D-5-RPGMZ` + `2D-5-HELPER-GATE`）のdocs-only handoffを開始した。ユーザーは `G20-C1 A + G20-C2 A + G20-C3 A` を採用し、公式告知に基づき対象versionをRPG Maker MZ 1.10.0へ固定する。正本は [`2D_5_RPGMZ_HELPER_PLAN.md`](2D_5_RPGMZ_HELPER_PLAN.md)、型別fixture契約は [`2D_5_RPGMZ_FIXTURE_CONTRACT.md`](2D_5_RPGMZ_FIXTURE_CONTRACT.md)に置く。
 
-推奨案は `G20-C1 A + G20-C2 A + G20-C3 A` である。ただし、これは人間判断前のproposalであり、対象versionと各C案が確定するまではGroup 20をaccepted / verifiedへ昇格しない。PCが利用できない間はRPG Maker MZのruntime実行、artifact生成、対象version付きverified表示を行わない。既存export、schema、保存正本、helper API、dependenciesは変更しない。
+契約・static contractはaccepted / implemented-candidateとして扱うが、PCが利用できないためruntime実行、artifact生成、対象version付きverified表示は行わない。Group 20のruntime未検証により、進捗は18/27のままとする。既存export、schema、保存正本、helper API、dependencies、pluginは変更しない。
+
+## Group 20 accepted decision (2026-08-26)
+
+ユーザーは `G20-C1 A + G20-C2 A + G20-C3 A` を採用した。G20-C1の対象versionは、公式告知で2026-02-02に配信されたRPG Maker MZ 1.10.0に固定する。G20-C2はcharacters / faces / tilesets / side-view battlersを型別fixtureとして分離し、G20-C3は既存PNG / sheet / sidecarと手動import notesを正本とし、plugin / addon / native project生成を追加しない。
+
+PR #259でdocs-only handoffをmainへ反映し、後続のaccepted contract PRで型別fixture契約を追加する。runtimeは未実行であり、Group 20の状態は`accepted / implemented-candidate / independently-verified-static / merged / runtime-verification-unverified`、ラベルは`candidate / import-notes`とする。1.10.0の実行環境とartifactが得られるまで、`verified`には昇格しない。

@@ -3,26 +3,26 @@
 最終更新日: 2026-08-26  
 対象リポジトリ: chameleonjp-lab/chameleonassetstudio  
 正式work package: 2D-5-RPGMZ + 2D-5-HELPER-GATE  
-基準main SHA: 27c4cc25f0997cced943e31673d313b3b4b5c8ac  
-文書種別: implementation handoff / decision proposal  
-状態: proposal / docs-only / runtime-pending / human-decision-pending
+基準main SHA: ea76ba1305787f322053f10101e0367a136ee802  
+文書種別: implementation handoff / accepted decision record  
+状態: accepted / implemented-candidate / CI-passed / independently-verified-static / merged / runtime-verification-unverified
 
 上位文書: docs/IMPLEMENTATION_PLAN.md, docs/future/2D_COMPLETION_ROADMAP.md  
 関連文書: docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md, docs/ENGINE_INTEGRATION.md, docs/EXPORT_FORMATS.md, docs/future/2D_5_EVIDENCE_LABELS_PLAN.md  
 前段: docs/future/2D_5_UNITY_GODOT_PLAN.md
 
-> このhandoffはGroup 19のUnity runtimeを成功扱いに変更しない。PCが使用できないという人間判断により、Unity runtime実行はスキップし、Group 19をruntime-partial / runtime-verification-unverifiedのまま保持したうえで、PC不要のGroup 20 docs-only準備を開始する。
+> ユーザーは `G20-C1 A + G20-C2 A + G20-C3 A` を採用した。PCが使用できないため、Group 20は対象version・型別fixture・手動取り込み手順を先に固定し、RPG Maker MZ runtimeは未実行のまま保持する。Unity runtimeのスキップとGroup 19の未検証状態も変更しない。
 
 ## 1. 今回の開始条件と境界
 
 ### 1.1 確認済み事実
 
-- mainはPR #258のmerge commit `27c4cc25f0997cced943e31673d313b3b4b5c8ac`。
+- mainはPR #259のmerge commit `ea76ba1305787f322053f10101e0367a136ee802`。
 - Godot 4.7.1-stableのfixture-local runtime artifactは成功済みである。
 - Unity 6000.3.21f1はlicensed editorの実行結果とruntime artifactが未取得である。
 - Unity runtimeは、PCが使用できないという人間判断により、当面スキップする。
 - Group 19の進捗は18/27のままとし、UnityまたはGroup 19全体を`verified`へ昇格しない。
-- Group 20は、ユーザーの明示的なスキップ判断を例外として、docs-onlyのhandoffと選択肢整理を開始する。RPG Maker MZの実行確認、artifact取得、`verified`昇格はPC等の実行環境が用意されるまで行わない。
+- Group 20は、ユーザーが `G20-C1 A + G20-C2 A + G20-C3 A` を採用した。RPG Maker MZの実行確認、artifact取得、`verified`昇格はPC等の実行環境が用意されるまで行わない。
 
 ### 1.2 今回変更してはいけないもの
 
@@ -49,7 +49,7 @@
 | B | RPG Maker MZ 1.xなどmajorだけを固定し、patchは可変とする。 | 環境差を隠すため、`verified`の根拠が弱い。 |
 | C | versionを固定せず、公式仕様とPNGの配置説明だけを作る。 | docs-onlyの候補資料にはなるが、runtime `verified`にはならない。 |
 
-現時点では具体versionを推測しない。Steam / standalone、OS、更新状態を含む実行環境が利用可能になった時点で、Aの固定値を人間判断として記録する。
+G20-C1 Aの対象versionは、公式告知で2026-02-02に配信された `RPG Maker MZ v1.10.0` として固定する。これは実行環境で確認した結果ではなく、公式に公開された現行versionを先に固定した値である。runtime実行時には、エディタ表示、OS、Steam / standalone、core scriptsの状態を記録し、1.10.0と一致しない場合は自動的に`candidate / import-notes`へ戻す。根拠: [RPG Maker MZ v1.10.0 official notice](https://guild.rpgmakerofficial.com/t/topic/1136)。
 
 ## 4. G20-C2: engine別受入証拠
 
@@ -71,18 +71,31 @@ PCが利用できない間は、Cを実行済み扱いにせず、docs-onlyでA�
 
 plugin / addonを使う必要が出た場合は、対象version、権利・ライセンス、入力・出力、保守責任、失敗時の手動代替をADRで先に固定する。人間判断なしに製品へ追加しない。
 
-## 6. 推奨案と未決定事項
+## 6. 採用記録
 
-現時点の推奨は次の組み合わせである。
+採用日: 2026-08-26
 
 ~~~text
-G20-C1 A + G20-C2 A + G20-C3 A
+G20-C1 A（RPG Maker MZ 1.10.0）
++ G20-C2 A
++ G20-C3 A
 ~~~
 
-ただし、これは「推奨」であり、accepted記録ではない。次の2点を人間判断として確定するまで、Group 20はproposal / runtime-pendingに留める。
+### 6.1 採用した内容
 
-1. RPG Maker MZの正確な対象version（patchを含む）。
-2. `G20-C1 A + G20-C2 A + G20-C3 A`を採用するか、各Cの別案を採用するか。
+- G20-C1 A: RPG Maker MZ 1.10.0を対象versionとして固定し、characters / faces / tilesets / side-view battlersを型別fixtureに分ける。
+- G20-C2 A: 型別fixture、配置先、ファイル名、並び、寸法、表示結果、error、hash、runtime artifactを別々に記録する。PCが使えない間はstatic contractとimport notesまでを実装し、runtime evidenceは未取得のままにする。
+- G20-C3 A: 既存PNG / sheet / sidecarと手動import notesを正本とし、製品helper、addon、plugin、native project生成は追加しない。必要性が実証された場合だけ、別ADRと人間判断へ戻す。
+
+### 6.2 現在の状態
+
+- 契約: `accepted`
+- docs / static contract: `implemented-candidate / CI-passed / independently-verified-static`
+- RPG Maker MZ runtime: `not-run`
+- ラベル: `candidate / import-notes`
+- `verified`昇格条件: 1.10.0の実行環境、型別fixtureの取り込み、error 0、証拠artifact、固定head確認
+
+RPG Maker MZのruntime未実行は失敗ではなく、PCが使えないという明示的な環境制約による保留である。ただし、未実行を成功扱いにはしない。
 
 ## 7. 受入ID
 
@@ -107,8 +120,8 @@ G20-C1 A + G20-C2 A + G20-C3 A
 
 ## 9. 次の許可された作業
 
-1. このhandoffをdocs-only PRとしてmainへ提案する。
-2. ユーザーが対象versionとG20-C1〜C3を確定した後、PC等の実行環境が利用可能な場合だけfixtureとruntime evidenceを実装する。
+1. G20-C1〜C3のaccepted記録と、RPG Maker MZ 1.10.0の対象version pinを維持する。
+2. PC等の実行環境が利用可能になった場合だけ、型別fixtureのruntime取り込みとartifact取得を行う。
 3. runtime未実行のまま、Group 19のUnity状態とGroup 20のMZ状態を`verified`へ昇格しない。
 
-RPG Maker / Tiled / Construct / Blenderの現行compatibility matrixラベルは、実行証拠がないため引き続き`unsupported`または`candidate / import-notes`の既存境界に従う。
+RPG Maker MZ 1.10.0は、契約とimport notesを固定したため`candidate / import-notes`とする。runtime証拠がない状態で`verified`へ昇格しない。MV / Tiled / Construct / Blenderは既存の`unsupported`境界を維持する。

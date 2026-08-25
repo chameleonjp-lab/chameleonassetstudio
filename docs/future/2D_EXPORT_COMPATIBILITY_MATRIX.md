@@ -1,11 +1,11 @@
 # Chameleon Asset Studio 2D Export Compatibility Matrix
 
-最終更新日: 2026-08-16
+最終更新日: 2026-08-26
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 2D 入出力・対象別書き出し・検証基準
 状態: accepted（設計と確認基準。docs-only）
 上位文書: `2D_COMPLETE_PRODUCT_SPEC.md`
-関連文書: `2D_ASSET_DATA_CONTRACT.md`, `docs/EXPORT_FORMATS.md`, `docs/ENGINE_INTEGRATION.md`, `docs/future/ASSET_CREATION_AND_EXPORT_STRATEGY.md`, `docs/future/2D_5_EVIDENCE_LABELS_PLAN.md`
+関連文書: `2D_ASSET_DATA_CONTRACT.md`, `docs/EXPORT_FORMATS.md`, `docs/ENGINE_INTEGRATION.md`, `docs/future/ASSET_CREATION_AND_EXPORT_STRATEGY.md`, `docs/future/2D_5_EVIDENCE_LABELS_PLAN.md`, `docs/future/2D_5_RPGMZ_HELPER_PLAN.md`, `docs/future/2D_5_RPGMZ_FIXTURE_CONTRACT.md`
 
 ---
 
@@ -109,7 +109,7 @@ Generic Web は対象ツール名ではないため、`generic-web-v1` のよう
 | P0 | Phaser | sprite sheet / atlas、animation / metadata、loader snippet、必要な Tiled JSON。 | 対象 Phaser 版で読み込み、frame / animation / tile 制約が一致する。 | Scene 全体の自動生成。 |
 | P1 | Unity 2D | PNG / sheet、slice / pivot / collider 用 sidecar、import notes。 | 対象 Unity 版で sprite slice、pivot、animation、必要な collider を手動または固定の helper で再現できる。 | `.meta`、Prefab、Animator Controller の無検証生成。 |
 | P1 | Godot 2D | PNG / sheet、animation / collider sidecar、import notes。 | 対象 Godot 版で SpriteFrames / AnimatedSprite2D、必要な判定を再現できる。 | `.tscn`、Resource の無検証生成。 |
-| P1 | RPG Maker MZ | 歩行キャラ、face、icon、tileset、side-view battler など型別 PNG と説明。 | 対象素材種別ごとに、寸法、並び、ファイル名、配置先を確認する。 | バージョン未指定の「RPG Maker 対応」、プロジェクト改変。 |
+| P1 | RPG Maker MZ 1.10.0 | 歩行キャラ、face、icon、tileset、side-view battler など型別 PNG と説明。 | MZ 1.10.0で素材種別ごとに、寸法、並び、ファイル名、配置先を確認する。 | バージョン未指定の「RPG Maker 対応」、プロジェクト改変、plugin / addon。 |
 | P2 | RPG Maker MV | MZ と別 preset で扱う。 | MV の対象素材種別で独立して確認する。 | MZ と同じ規則だという仮定。 |
 | P2 | Tiled | tileset PNG、タイル属性、必要なら対象版固定の JSON / TSX。 | tile size、collision / property、読み込みが一致する。 | 全 autotile / terrain 形式の一括保証。 |
 | P2 | Construct 3 / GameMaker / GDevelop | 連番 PNG、sprite strip、順番 manifest、import notes。 | 対象ごとに最小プロジェクトへ取り込める。 | 各プロジェクトの内部ファイル編集。 |
@@ -126,7 +126,7 @@ Generic Web は対象ツール名ではないため、`generic-web-v1` のよう
 | Phaser 4 | 専用fixture（4.2.0）と既存sample / helper。 | `verified`（4.2.0 fixture-local） | Phaser標準atlas / Aseprite JSONの完全互換、他version、project自動生成、可変時間・event。 |
 | Unity | 6000.3.21f1向けengine-local candidate fixture、PNG/sheet、sidecar、import notes、manual runner。 | `candidate` / `import-notes` | licensed Unity runnerでのimport error 0、pivot、animation、rect/circle、artifact。 |
 | Godot 4 | 4.7.1-stable向けengine-local candidate fixture、PNG/sheet、sidecar、import notes、runtime runner。 | `candidate` / `import-notes`（fixture runtime artifactは成功。ただしGroup 19全体は未検証） | Unity counterpart、別version / OS、native project、Group 19全体の`verified`。 |
-| RPG Maker / Tiled / Construct / Blender | 将来方針のみ。 | `unsupported` | 出力・取り込み・検証済み対応。 |
+| RPG Maker MZ | 1.10.0向け型別fixture契約、PNG、import notes。 | `candidate` / `import-notes` | MZ 1.10.0上のruntime取り込み、error 0、artifact、verified昇格。 |\n| Tiled / Construct / Blender | 将来方針のみ。 | `unsupported` | 出力・取り込み・検証済み対応。 |
 | Spine / Rive / Live2D | 関係説明のみ。 | `unsupported` | 形式変換や互換。 |
 
 ## 7. 形式・対象ごとの調査の根拠
@@ -138,7 +138,7 @@ Generic Web は対象ツール名ではないため、`generic-web-v1` のよう
 - [Tiled: Introduction](https://doc.mapeditor.org/en/stable/manual/introduction/) — tileset、layer、object、collision、property の範囲。
 - [Unity: Sprite texture type](https://docs.unity3d.com/6000.3/Documentation/Manual/texture-type-sprite.html) — slice、pivot、physics shape が画像だけではない根拠。
 - [Godot: 2D sprite animation](https://docs.godotengine.org/en/stable/tutorials/2d/2d_sprite_animation.html) — sheet から frame を扱う基準。
-- [RPG Maker MZ: character image](https://rpgmakerofficial.com/product/MZ_help-en/01_11_01.html) — 型別の配置・命名を分ける根拠。
+- [RPG Maker MZ: character image](https://rpgmakerofficial.com/product/MZ_help-en/01_11_01.html) — 型別の配置・命名を分ける根拠。\n- [RPG Maker MZ v1.10.0 official notice](https://guild.rpgmakerofficial.com/t/topic/1136) — 対象versionを1.10.0へ固定する根拠。
 - [RPG Maker MV: Asset Standards](https://rpgmakerofficial.com/product/MV_Help/page/01_11_01.html) — MZ と別 preset・別検証が必要な根拠。
 - [PixiJS: Spritesheet](https://pixijs.download/v8.12.0/docs/assets.Spritesheet.html) — texture、frame、source size、animation を持つ JSON の検討材料。
 - [Phaser: Loader](https://docs.phaser.io/phaser/concepts/loader) — image、atlas、spritesheet、JSON、Tiled JSON の読み込み範囲。
@@ -188,3 +188,11 @@ G19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable）+ G19-C2 A + G19-C3 Aを採�
 Godot 4.7.1-stableのworkflow Run #9（[Actions run 31913489237](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/31913489237)）はsuccessし、artifact [9254301539](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/31913489237/artifacts/9254301539)でimportErrors 0、consoleErrors 0、11受入確認（textureLoaded、imageDecoded、frameRegions、frameOrder、trimContentOffset、animation、origin、anchor、scale、colliderMetadata、colliders）が成功した。これはGodotの対象version・fixture・Linux/headless環境に限る。
 
 Unity 6000.3.21f1はmanual workflowとrunnerを用意済みだが、licensed実行とartifactが未完了である。したがってUnity、およびUnity未確認を含むGroup 19全体は`candidate / import-notes`のままとし、Godot単体の成功を`verified`へ拡張しない。
+
+## 11. Group 20 adopted boundary (2026-08-26)
+
+Group 20は `G20-C1 A（RPG Maker MZ 1.10.0） + G20-C2 A + G20-C3 A` を採用した。RPG Maker MZの状態は、型別fixture契約とimport notesを固定した `candidate / import-notes` である。
+
+PCが使用できないため、MZ 1.10.0のruntime取り込み、error 0、artifact、実行画面は未確認である。公式仕様とversion告知は対象version・fixture設計の根拠であり、runtime `verified`の代わりにはならない。
+
+G20-C3 Aにより、既存PNG / sheet / sidecarと手動import notesを正本とし、plugin、addon、native project、database JSON自動生成、製品helper APIは追加しない。手動取り込みで再現できない意味が実証された場合だけ、別ADRで再検討する。
