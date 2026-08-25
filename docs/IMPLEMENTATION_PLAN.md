@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 最終完成までの実装計画書
 
-最終更新日: 2026-08-17
+最終更新日: 2026-08-26
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`
 
@@ -168,11 +168,17 @@ Codexは未確定仕様の最終判断を担当しない。Fable5が再び利用
 
 Group 18はPR #248（merge `3ab844d28d155a438dc8f10f8f9b22099a40093a`、CI Run #793）で完了し、PR #249（merge `fcbf1cc9b7a1a9d0cdd588eaed59de3999bdcabb`、CI Run #795）で計画文書のcloseoutをmainへ反映した。Group 19実装PR #251（merge `e77a721ff3d479bea0f7475f0b0fbc296ce91595`、CI Run #805全job成功）でcandidate fixture、静的closure test、import notesをmainへ反映した。
 
-Group 19は`G19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable） + G19-C2 A + G19-C3 A`をacceptedとして実装し、状態は`implemented-candidate / CI-passed / independently-verified-static / merged / runtime-verification-unverified`である。Unity/Godotのlicensedまたはchecksum固定runtimeが現行環境にないため、runtime成功・engine別artifact・`verified`昇格は未完了であり、完了数は18/27のまま維持する。次の許可された行動はruntime Gateの実行環境準備と、Unity/Godotを別々に実行した証拠の取得である。Group 20（RPG Maker MZ / helper gate）はGroup 19のruntime Gate完了後に別handoffで扱う。
+Group 19は`G19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable） + G19-C2 A + G19-C3 A`をacceptedとして実装し、状態は`implemented-candidate / CI-passed / independently-verified-static / merged / runtime-verification-unverified`である。Unity/Godotのlicensedまたはchecksum固定runtimeが現行環境にないため、runtime成功・engine別artifact・`verified`昇格は未完了であり、完了数は18/27のまま維持する。PCが使用できないという人間判断によりUnity runtimeはスキップし、Group 20（RPG Maker MZ / helper gate）はdocs-only handoffを開始する。Group 20のruntime実行・artifact取得・verified昇格は、正確なMZ versionと実行環境が確定するまで保留する。正本は`docs/future/2D_5_RPGMZ_HELPER_PLAN.md`。
 
 
 ## Group 19 post-merge update (2026-08-17)
 
 Group 19の契約とcandidate実装は維持し、runtime検証の未完了状態も維持する。PR #257（merge fb8272aaf21545dd8031bcb6fc761de6f2d379ab）でサポート終了したUnity activation workflowを削除し、main CI [Run #837](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/31962261321)の全job成功を確認した。
 
-Godot 4.7.1-stableの既存Run #9は成功済みである。一方、Unity runtimeの手動Run #1 / #2は認証確認で停止し、Unity editorの実行結果・runtime artifactは未取得である。Unity 6000.3.21f1とGroup 19全体をverifiedへ昇格せず、進捗は18/27のままとする。Group 20（RPG Maker MZ / helper gate）はGroup 19のUnity runtime Gate完了後に開始する。
+Godot 4.7.1-stableの既存Run #9は成功済みである。一方、Unity runtimeの手動Run #1 / #2は認証確認で停止し、Unity editorの実行結果・runtime artifactは未取得である。PCが使用できないという人間判断によりUnity runtimeはスキップするが、Unity 6000.3.21f1とGroup 19全体をverifiedへ昇格せず、進捗は18/27のままとする。Group 20はdocs-only handoffを開始し、runtime実行・artifact取得・verified昇格は保留する。
+
+## Group 20 start decision (2026-08-26)
+
+PCが使用できないため、Group 19 Unity runtimeはユーザー指示でスキップする。これは検証成功ではなく、Group 19を`runtime-partial / runtime-verification-unverified`、進捗18/27のまま保持するための明示的な環境判断である。
+
+この例外により、PCを必要としないGroup 20（`2D-5-RPGMZ` + `2D-5-HELPER-GATE`）のdocs-only handoffを開始する。RPG Maker MZの対象version・素材種別別fixture・runtime evidence・helper / addon / plugin採否は未確定であり、`docs/future/2D_5_RPGMZ_HELPER_PLAN.md`で推奨案 `G20-C1 A + G20-C2 A + G20-C3 A`をproposalとして整理した。対象versionと案の採用は人間判断待ちで、製品コード・export・schema・保存形式・dependenciesは変更しない。
