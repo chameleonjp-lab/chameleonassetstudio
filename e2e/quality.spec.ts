@@ -45,21 +45,18 @@ test.describe('Group 21C quality contracts', () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/');
 
-    await page.keyboard.press('Tab');
-    const focusStyle = await page.evaluate(() => {
-      const element = document.activeElement;
-      if (!element) {
-        return { tag: '', outlineWidth: 0 };
-      }
-      return {
-        tag: element.tagName,
-        outlineWidth: Number.parseFloat(getComputedStyle(element).outlineWidth) || 0,
-      };
-    });
+    const qualitySummary = page.locator('.quality-status summary');
+    await expect(qualitySummary).toBeVisible();
+    await qualitySummary.focus();
+    await expect(qualitySummary).toBeFocused();
+    const focusStyle = await qualitySummary.evaluate((element) => ({
+      tag: element.tagName,
+      outlineWidth: Number.parseFloat(getComputedStyle(element).outlineWidth) || 0,
+    }));
     expect(focusStyle.tag).toBe('SUMMARY');
     expect(focusStyle.outlineWidth).toBeGreaterThan(0);
 
-    await page.keyboard.press('Enter');
+    await qualitySummary.press('Enter');
     const quality = page.getByRole('region', { name: '品質情報' });
     await expect(quality).toBeVisible();
     await expect(quality.getByRole('status')).toContainText('未計測');
