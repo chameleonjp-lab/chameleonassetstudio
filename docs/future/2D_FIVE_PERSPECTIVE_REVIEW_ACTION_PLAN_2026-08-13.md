@@ -212,8 +212,11 @@ Group 12から延期したB2の性能budget、warning、hard cap、採用上限p
 - Game Checkとfixtureはread-onlyで、保存データ、History、exportを変えない。
 - 問題表示は理由、対象path、修正場所、再実行方法を示し、秘密値を示さない。
 - Chromium `375×667`を、物理iPhone Safariの代わりにしない。
+
 - Generic Webの成功を、他engineや未確認versionの成功にしない。
 - code、tests、docs、CI、独立確認、実機、人間判断の状態が一致する。
+
+Group 22のcandidate台帳と静的監査は [`2D_6_REFERENCE_DOCS_GATE_PLAN.md`](2D_6_REFERENCE_DOCS_GATE_PLAN.md) および [`2D_6_REFERENCE_PROJECT_EVIDENCE.json`](2D_6_REFERENCE_PROJECT_EVIDENCE.json) に固定する。既存E2Eの個別成功、Chromium CI、Generic Web fixtureは支援証拠であり、代表IDの一体成功・初回利用者レビュー・物理端末確認を意味しない。PCが利用できない間は、Group 22を`runtime-verification-unverified`のまま保持する。
 
 ---
 

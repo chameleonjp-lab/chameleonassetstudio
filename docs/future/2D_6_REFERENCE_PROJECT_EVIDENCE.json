@@ -1,0 +1,107 @@
+{
+  "format": "chameleon-reference-project-evidence",
+  "version": "0.1.0",
+  "referenceId": "2d-pro-reference-001",
+  "status": "candidate",
+  "scope": {
+    "projectPurpose": "Group 22 representative first-success loop",
+    "requiredData": [
+      "frame",
+      "animation",
+      "origin",
+      "anchor",
+      "rect-or-circle-collider",
+      "scale",
+      "multiple-page-output"
+    ],
+    "outputFixture": "public/generic-web-fixture",
+    "roundTripFormat": ".casproj"
+  },
+  "flow": [
+    {
+      "id": "create-or-import",
+      "status": "existing-test-coverage",
+      "testFiles": ["e2e/casproj.spec.ts", "e2e/import.spec.ts"]
+    },
+    {
+      "id": "frame-and-animation",
+      "status": "existing-test-coverage",
+      "testFiles": ["e2e/animation.spec.ts"]
+    },
+    {
+      "id": "game-data",
+      "status": "existing-test-coverage",
+      "testFiles": ["e2e/gamedata.spec.ts"]
+    },
+    {
+      "id": "game-check",
+      "status": "existing-test-coverage",
+      "testFiles": ["e2e/game-check-mode.spec.ts"]
+    },
+    {
+      "id": "preflight-fix-and-retry",
+      "status": "partial-coverage",
+      "testFiles": ["e2e/game-check-mode.spec.ts", "e2e/export.spec.ts"],
+      "missing": "representative-project issue -> fix -> retry evidence"
+    },
+    {
+      "id": "generic-web-http",
+      "status": "existing-test-coverage",
+      "testFiles": ["e2e/generic-web.spec.ts"],
+      "fixturePaths": ["public/generic-web-fixture"]
+    },
+    {
+      "id": "casproj-reopen-and-regenerate",
+      "status": "existing-test-coverage",
+      "testFiles": ["e2e/casproj.spec.ts"],
+      "missing": "single representative ID across the complete loop"
+    },
+    {
+      "id": "first-time-review",
+      "status": "not-run",
+      "missing": "participant count and pass criteria are not executed in this environment"
+    }
+  ],
+  "documentation": {
+    "status": "static-audit",
+    "requiredPaths": [
+      "README.md",
+      "docs/USER_GUIDE.md",
+      "docs/RELEASE_CHECKLIST.md",
+      "docs/TEST_PLAN.md",
+      "docs/EXPORT_FORMATS.md",
+      "docs/ENGINE_INTEGRATION.md",
+      "docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md",
+      "docs/future/README.md",
+      "docs/future/2D_COMPLETION_ROADMAP.md",
+      "docs/IMPLEMENTATION_PLAN.md",
+      "public/guide/index.html",
+      "public/guide/features/index.html"
+    ]
+  },
+  "manualGate": {
+    "status": "not-run",
+    "requiredEnvironments": [
+      "PC Chrome / Edge / Firefox",
+      "iPhone Safari",
+      "iPad Safari",
+      "Android Chrome"
+    ],
+    "reason": "PC is unavailable; physical device and first-time review evidence must be collected by a human"
+  },
+  "promotion": {
+    "next": "2D Pro Gate human approval",
+    "blockedUntil": [
+      "representative issue-fix-retry loop",
+      "same-reference-ID .casproj roundtrip evidence",
+      "first-time review record",
+      "physical-device evidence",
+      "Group 19 and Group 20 runtime decisions"
+    ]
+  },
+  "limitations": [
+    "existing test coverage is supporting evidence, not a claim that one representative project completed the full loop",
+    "Chromium CI is not physical Safari or PC evidence",
+    "candidate status does not grant verified compatibility to any engine or target version"
+  ]
+}

@@ -21,6 +21,8 @@ Phase 17 完了後の将来計画は [docs/future/](docs/future/README.md) に�
 
 将来方針として、Chameleon Asset Studio を画像取り込み専用の変換ツールには限定しません。空キャンバス、テンプレート、図形、パーツ、既存素材の修正から作成し、Unity / Godot / RPG Maker / Blender などには、まず直接連携ではなく持ち込み可能なファイルと import notes を出す方針です。完成形、保存・座標の契約、対象別の検証条件、端末品質は、[2D 完成形仕様](docs/future/2D_COMPLETE_PRODUCT_SPEC.md)、[データ契約](docs/future/2D_ASSET_DATA_CONTRACT.md)、[互換性表](docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md)、[端末・信頼性仕様](docs/future/2D_DEVICE_RELIABILITY_SPEC.md) を参照してください。
 
+Group 22 の代表プロジェクト証拠と文書整合監査は、[`2D_6_REFERENCE_DOCS_GATE_PLAN.md`](docs/future/2D_6_REFERENCE_DOCS_GATE_PLAN.md) と [`2D_6_REFERENCE_PROJECT_EVIDENCE.json`](docs/future/2D_6_REFERENCE_PROJECT_EVIDENCE.json) に記録しています。これは `candidate` の監査台帳であり、PC・実機・初回利用者レビュー未実施のため `verified` や 2D Pro Gate 完了を意味しません。
+
 ## このプロジェクトの目的
 
 このツールは、一般的な画像編集ソフトや総合ゲームエンジンではありません。

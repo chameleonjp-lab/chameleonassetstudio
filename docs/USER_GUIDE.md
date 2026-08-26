@@ -1,11 +1,21 @@
 # Chameleon Asset Studio ユーザーガイド
 
-最終更新日: 2026-07-23
+最終更新日: 2026-08-26
 対象バージョン: 0.1.0
 
 このガイドは、Chameleon Asset Studio でゲーム用 2D アセットを作って書き出すまでの使い方を説明します。仕様の正本は `docs/REQUIREMENTS_SPECIFICATION.md`、データ形式は `docs/DATA_FORMAT.md` を参照してください。
 
 初めて使う場合は、先に[図で分かる初心者向けガイド](https://chameleonjp-lab.github.io/chameleonassetstudio/guide/)を開くと、最初の1作品を作る流れを短く確認できます。各ボタンで「何ができるか・どう操作するか・何が変わるか」を調べる場合は、[機能別・操作図鑑](https://chameleonjp-lab.github.io/chameleonassetstudio/guide/features/)を使ってください。この文書は、対応形式や安全条件を含む詳しい説明として残します。
+
+### Group 22での現在地と次の操作
+
+- **目的**: 画像をゲーム用データへ整え、確認・書き出し・あとからの再編集までつなげます。
+- **現在地**: まず画像を取り込み、Frame / Animation、原点、アンカー、矩形または円の当たり判定を設定します。
+- **次の操作**: 「ゲーム確認」で見え方と動きを確認し、問題があれば表示された理由の対象場所を直してから、書き出しへ進みます。
+- **成功の目印**: 保存済み表示を確認し、必要なら `.casproj` を保管します。別のブラウザ状態で読み込み、同じ意味の出力を再生成できることが再編集の目標です。
+- **既知の制限**: Generic Web / PixiJS / Phaser / Unity / Godot / RPG Maker MZの互換性は、対象version・fixture・実行証拠がそろった範囲だけを示します。Chromium CIや説明だけで物理端末・engine runtimeの成功を保証しません。
+
+代表プロジェクトの監査範囲と未実施の実機・初回レビューは [`docs/future/2D_6_REFERENCE_DOCS_GATE_PLAN.md`](future/2D_6_REFERENCE_DOCS_GATE_PLAN.md) に記録しています。
 
 ---
 
