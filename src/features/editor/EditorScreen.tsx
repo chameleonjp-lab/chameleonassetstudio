@@ -3553,7 +3553,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           className="editor-help-link"
           href={`${import.meta.env.BASE_URL}guide/features/`}
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
         >
           ？ 操作ガイド
         </a>
@@ -3677,7 +3677,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 <a
                   href={`${import.meta.env.BASE_URL}guide/features/#tool-${activeToolGuide.tool}`}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                 >
                   図で詳しく見る
                 </a>
@@ -3772,7 +3772,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             <a
               href={`${import.meta.env.BASE_URL}guide/features/#properties`}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
             >
               ？ プロパティの機能を図で見る
             </a>
