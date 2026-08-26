@@ -534,7 +534,7 @@ PR 運用 Gate:
 | 20 | `2D-5-RPGMZ` + `2D-5-HELPER-GATE` | RPG Maker MZ 1.10.0を対象versionとして、素材種別ごとのfixture検証とhelper / addon / plugin採否を判断する。 | Fable5または人間判断 + Codex + Opus 4.8 review | 18、19の共通ラベル | helper判断はADR後のみ | 19後 | `accepted: G20-C1 A（RPG Maker MZ 1.10.0） + G20-C2 A + G20-C3 A / implemented-candidate / CI-passed / independently-verified-static / merged / runtime-verification-unverified`。PR #259でhandoffをmainへ反映し、docs-only accepted記録とfixture contractを後続PRで反映する。runtime未実行のため進捗は18/27のまま。正本は `docs/future/2D_5_RPGMZ_HELPER_PLAN.md`。 |
 | 21A | `2D-6-DEVICE-FLOW` + `2D-6-INPUT` | PC / iPad / スマホの全工程到達と、touch、pan、pinch、Apple Pencil、mouse、keyboard、数値入力、software keyboard、safe area、orientation、hover非依存、誤操作・入力競合を確認する。 | Codex + 人間実機確認 + Opus 4.8 audit | 8A以降で継続、完了は20後 | 2D-2〜2D-5と継続並行可 | 継続並行 | PR #261（`e2e/device-flow.spec.ts`、`2D_6_DEVICE_FLOW_CONTRACT.md`、スマホ用入力CSS）を実装し、CI Run #847（Actions ID `32880786002`）でclassify、build-and-test、E2E全job成功、E2E 200件成功を確認した。状態は`implemented-candidate / CI-passed / independently-verified-static / awaiting-merge / runtime-verification-unverified`。物理端末確認前のため、Group 21Aは未完了。 |
 | 21B | `2D-6-RECOVERY` + `2D-6-OFFLINE` | 保存失敗、削除復元、`.casproj`移動、オフライン、更新、復旧導線を確認する。 | Codex + 人間実機確認 + Opus 4.8 audit | 7、関連機能 | 2D-2〜2D-5と継続並行可 | 継続並行 | PR #262で保存再試行、離脱前flush、オフライン表示、再読み込み回帰を実装。CI Run #852（Actions ID `32887615937`）は全job成功、Chromium E2E 202件成功。実機未確認のため`runtime-verification-unverified`。 |
-| 21C | `2D-6-PERFORMANCE` + `2D-6-A11Y` + `2D-6-SECURITY` | 性能budget、worker、メモリ、accessibility、キーボード、読み上げ、色以外の識別、安全性を確認する。 | Codex + 人間実機確認 + Opus 4.8 audit | 関連機能 | 2D-2〜2D-5と継続並行可 | 継続並行 | `docs/future/PERFORMANCE_BUDGET.md`で性能baselineのみ作成。2026-08-02にGroup 12 B2の数値budget、warning、hard cap、採用上限product-path実測をこのwork packageへ延期した。PC / iPad / スマホ実機Gate、`2D-6-PERFORMANCE`全体、`2D-6-A11Y`、`2D-6-SECURITY`は未完了。 |
+| 21C | `2D-6-PERFORMANCE` + `2D-6-A11Y` + `2D-6-SECURITY` | 性能budget、worker、メモリ、accessibility、キーボード、読み上げ、色以外の識別、安全性を確認する。 | Codex + 人間実機確認 + Opus 4.8 audit | 関連機能 | 2D-2〜2D-5と継続並行可 | 継続並行 | Group 21Cで、未計測境界を明示する性能情報、focus-visible / reduced-motion、accessible name検査、入力のHTML非解釈、新規タブリンクのnoopener / noreferrerを実装した。CI Run #866は全job成功。実機未確認のため`implemented-candidate / CI-passed / runtime-verification-unverified`、進捗は18/27のまま維持する。正本は `2D_6_QUALITY_CONTRACT.md`。 |
 | 22 | `2D-6-REFERENCE` + `2D-6-DOCS` + `2D-6-GATE-AUDIT` | 代表project、最終証拠、README / user guide / release checklist / docs整合、最終品質auditを通す。 | Codex docs / evidence + 人間実機確認 + Opus 4.8 audit | 21A〜21C、18〜20 | 最終auditのため並行不可 | 21C後 | 未着手。正式IDは `2D-6-GATE-AUDIT`。 |
 | 23 | `2D Pro Gate` | 全必須package、判断必須ADR、証拠、CI、実機、target fixture、Opus 4.8、PR #53 / #55再監査、人間承認を確認し、3D開始可否を判断する。 | Fable5が証拠整理、Opus 4.8最終review、人間が最終承認 | 22 | Gate中は新規実装しない | 22後 | 未完了。人間承認前は3D開始禁止。 |
 
@@ -723,3 +723,12 @@ Group 21Aのマージ後、保存・復旧・オフラインを扱うGroup 21B�
 PR #262では、保存失敗後の明示的な再試行、Editorの`visibilitychange` / `pagehide`時の保留保存開始、離脱時に保存失敗した場合のホーム遷移停止、オンライン状態の表示を実装する。Chromium E2Eでは、読み込み済み画面をオフラインにした状態での端末内保存とPNG書き出し、ページ離脱時の保留保存、再読み込み後の再開を検査する。既存のごみ箱復元、`.casproj`移動、壊れた入力の隔離回帰も同じCIで継続する。CI Run #852（Actions ID `32887615937`）はclassify、build-and-test、e2e、H3計測、Pages公開・閉鎖後確認を含め全job成功し、Chromium E2E 202件が成功した。
 
 アプリ本体のオフラインキャッシュ、更新時の差分案内、iPhone / iPad Safari、Filesアプリ、ソフトウェアキーボード、実メモリ、PC実機は未確認である。Group 21Bの実装候補状態は`implemented-candidate / CI-pending / runtime-verification-unverified`とし、進捗は18/27のままとする。
+
+
+## Group 21C start (2026-08-26)
+
+Group 21Bのマージ後、Group 21C（`2D-6-PERFORMANCE` + `2D-6-A11Y` + `2D-6-SECURITY`）を開始する。正本は[`2D_6_QUALITY_CONTRACT.md`](2D_6_QUALITY_CONTRACT.md)とする。
+
+今回の候補実装は、ブラウザAPIの性能能力表示、API非対応・非公開を未計測とする境界、キーボードfocus-visible、prefers-reduced-motion、新規タブのnoopener / noreferrer、利用者入力のHTML非解釈、およびこれらのChromium自動検査である。既存のIndexedDB、`.casproj`、export ZIP、JSON Schema、保存形式、依存関係、外部送信は変更しない。
+
+PC、iPhone / iPad Safari、VoiceOver、実メモリ、GPU、Files、オフラインcacheは未確認である。Actions Run #866（Actions ID `32935188646`）ではclassify、build-and-test、Chromium E2E 204件、H3計測、Pages公開・閉鎖後確認を含む全jobが成功した。Group 21Cは`implemented-candidate / CI-passed / runtime-verification-unverified`、進捗は18/27のまま維持する。

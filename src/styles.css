@@ -70,3 +70,63 @@ select {
   border-color: #2a9d8f;
   background: #2a9d8f12;
 }
+
+/* キーボード操作中の現在位置を、色だけに頼らず明確に示す（Group 21C）。 */
+:focus-visible {
+  outline: 3px solid #005fcc;
+  outline-offset: 3px;
+}
+
+/* 動きを減らす設定を尊重し、スクロール・アニメーション・遷移を抑える（Group 21C）。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.quality-status {
+  border-bottom: 1px solid #8886;
+  padding: 0.55rem 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.quality-status details {
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+.quality-status summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.quality-status-note {
+  margin: 0.55rem 0;
+  font-size: 0.88rem;
+}
+
+.quality-status-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.45rem 1rem;
+  margin: 0;
+}
+
+.quality-status-metrics div {
+  min-width: 0;
+}
+
+.quality-status-metrics dt {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.quality-status-metrics dd {
+  margin: 0.12rem 0 0;
+  font-variant-numeric: tabular-nums;
+}

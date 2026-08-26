@@ -202,3 +202,12 @@ Group 21Aのマージ後、Group 21B（`2D-6-RECOVERY` + `2D-6-OFFLINE`）を開
 今回の実装は、保存失敗後の「保存を再試行」、Editorを隠す・離れる直前の保留保存開始、保存失敗時のホーム遷移停止、オンライン状態の表示、オフライン中の端末内保存・PNG書き出し、ページ離脱後の再読み込み回帰である。既存のIndexedDB、`.casproj`、export ZIP、JSON Schema、保存形式、依存関係は変更しない。
 
 CI Run #852（Actions ID `32887615937`）でclassify、build-and-test、e2e、H3計測、Pages公開・閉鎖後確認を含め全job成功し、Chromium E2E 202件が成功した。iPhone / iPad Safariの実機オフライン、Filesアプリ、ソフトウェアキーボード、アプリ本体のオフラインキャッシュ、更新時の差分案内、実メモリ、PC実機は未確認とする。Group 21Bの進捗は18/27のまま維持する。
+
+
+## Group 21C start (2026-08-26)
+
+Group 21Bのマージ後、Group 21C（`2D-6-PERFORMANCE` + `2D-6-A11Y` + `2D-6-SECURITY`）を開始する。正本は[`2D_6_QUALITY_CONTRACT.md`](future/2D_6_QUALITY_CONTRACT.md)とする。
+
+ブラウザAPIの能力表示、未計測境界、focus-visible、prefers-reduced-motion、accessible name検査、利用者入力のHTML非解釈、新規タブリンクのnoopener / noreferrerを実装し、unit / Chromium E2Eで検証する。性能の数値budget、worker再設計、import / export cancel、Safari / iPhone / iPad / PC実機の合格判定は先取りしない。既存のIndexedDB、.casproj、export ZIP、JSON Schema、保存形式、依存関係、外部送信は変更しない。
+
+状態は `implemented-candidate / CI-passed / runtime-verification-unverified`、進捗は18/27のままとする。Actions Run #866（Actions ID `32935188646`）ではclassify、build-and-test、Chromium E2E 204件、H3計測、Pages公開・閉鎖後確認を含む全jobが成功した。PC、iPhone / iPad Safari、VoiceOver、実メモリ、GPUの実機確認前であるため、runtime検証済みとは扱わない。

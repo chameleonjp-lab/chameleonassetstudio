@@ -48,14 +48,6 @@ async function createBlankAsset(page: Page): Promise<void> {
   await expect(page.getByLabel('アセットキャンバス')).toBeVisible({ timeout: 10_000 });
 }
 
-async function canvasCenter(page: Page): Promise<{ x: number; y: number }> {
-  const box = await page.getByLabel('アセットキャンバス').boundingBox();
-  if (!box) {
-    throw new Error('Canvasの座標を取得できません。');
-  }
-  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-}
-
 async function readRepairState(page: Page): Promise<RepairState> {
   return page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -141,10 +133,18 @@ async function readRepairState(page: Page): Promise<RepairState> {
 
 test('paddingとsmooth resizeを保存し、位置補正・Undo・Redo・reloadを維持する', async ({ page }) => {
   await createBlankAsset(page);
-  const center = await canvasCenter(page);
 
-  await page.getByRole('button', { name: '塗りつぶし', exact: true }).click();
-  await page.mouse.click(center.x, center.y);
+  const fillButton = page.getByRole('button', { name: '塗りつぶし', exact: true });
+  await fillButton.click();
+  await expect(fillButton).toHaveAttribute('aria-pressed', 'true');
+  const canvas = page.getByLabel('アセットキャンバス');
+  await expect(canvas).toHaveAttribute('data-raster-input-ready', 'true');
+  await canvas.scrollIntoViewIfNeeded();
+  const box = await canvas.boundingBox();
+  if (!box) {
+    throw new Error('Canvasの座標を取得できません。');
+  }
+  await canvas.click({ position: { x: box.width / 2, y: box.height / 2 } });
   await expect.poll(async () => (await readRepairState(page)).alphaBounds).not.toBeNull();
 
   const before = await readRepairState(page);
