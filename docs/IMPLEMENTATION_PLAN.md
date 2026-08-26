@@ -210,4 +210,4 @@ Group 21Bのマージ後、Group 21C（`2D-6-PERFORMANCE` + `2D-6-A11Y` + `2D-6-
 
 ブラウザAPIの能力表示、未計測境界、focus-visible、prefers-reduced-motion、accessible name検査、利用者入力のHTML非解釈、新規タブリンクのnoopener / noreferrerを実装し、unit / Chromium E2Eで検証する。性能の数値budget、worker再設計、import / export cancel、Safari / iPhone / iPad / PC実機の合格判定は先取りしない。既存のIndexedDB、.casproj、export ZIP、JSON Schema、保存形式、依存関係、外部送信は変更しない。
 
-初期状態は `implemented-candidate / CI-pending / runtime-verification-unverified`、進捗は18/27のままとする。
+初期状態は `implemented-candidate / CI-partial / runtime-verification-unverified`、進捗は18/27のままとする。Actions Run #862（Actions ID `32926987599`）ではclassifyとbuild-and-testが成功し、Chromium E2Eは204件中202件が成功した。Group 21Cの新規品質検査は成功したが、変更対象外の既存描画E2E 2件が失敗したため、H3 / Pagesは未実行であり、CI全体成功とは扱わない。
