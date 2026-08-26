@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   formatBytes,
   formatMilliseconds,
+  observeLongTasks,
   readRuntimePerformanceSnapshot,
 } from './performanceBudget';
 
@@ -39,6 +40,21 @@ describe('readRuntimePerformanceSnapshot', () => {
     expect(snapshot.jsHeapUsedBytes).toBeNull();
     expect(snapshot.jsHeapLimitBytes).toBeNull();
     expect(snapshot.deviceMemoryGb).toBeNull();
+  });
+  it('Observerの生成や監視が失敗した環境を未対応として扱う', () => {
+    class UnsupportedObserver {
+      constructor() {
+        throw new Error('longtask is not supported');
+      }
+    }
+    vi.stubGlobal('PerformanceObserver', UnsupportedObserver);
+
+    const onUpdate = vi.fn();
+    const observation = observeLongTasks(onUpdate);
+
+    expect(observation.availability).toBe('unsupported');
+    expect(() => observation.disconnect()).not.toThrow();
+    expect(onUpdate).not.toHaveBeenCalled();
   });
 });
 
