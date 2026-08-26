@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { decodeImageSource, type DecodedImageSource } from '../../core/images/decodeImageSource';
 import { blobKeyFor } from '../../core/images/importImage';
 import type { ImageOperation } from '../../core/images/imageOperation';
@@ -269,6 +275,8 @@ export function CanvasEditor({
   const selectionMoveStartTextureRef = useRef<Vec2 | null>(null);
   const pasteDragStartTextureRef = useRef<Vec2 | null>(null);
   const pasteDragBaseRef = useRef<Vec2 | null>(null);
+  // pointermove直後のpointerupでも、Reactの再描画を待たず最新の貼り付け位置を使う。
+  const pastePositionRef = useRef<Vec2 | null>(null);
   const pointersRef = useRef<Map<number, Vec2>>(new Map());
   const fittedAssetRef = useRef<string | null>(null);
   const bitmapsRef = useRef<Map<string, DecodedImageSource>>(new Map());
@@ -361,8 +369,8 @@ export function CanvasEditor({
     [],
   );
 
-  // アセットを開いたら fit 表示にする
-  useEffect(() => {
+  // アセットを開いた最初の描画前にfitを反映し、表示直後の入力が古いviewへ届かないようにする。
+  useLayoutEffect(() => {
     if (viewport.width > 0 && viewport.height > 0 && fittedAssetRef.current !== asset.id) {
       fittedAssetRef.current = asset.id;
       setView(fitView(viewport, asset.canvasSize));
@@ -375,10 +383,12 @@ export function CanvasEditor({
     let cancelled = false;
     let createdBitmap: ImageBitmap | null = null;
     if (!pastePreview) {
+      pastePositionRef.current = null;
       setPastePosition(null);
       setPasteBitmap(null);
       return;
     }
+    pastePositionRef.current = pastePreview.origin;
     setPastePosition(pastePreview.origin);
     const imageData = new ImageData(
       new Uint8ClampedArray(pastePreview.clipboard.data),
@@ -960,9 +970,12 @@ export function CanvasEditor({
       }
 
       // paste previewがarmされている間は、ドラッグで貼り付け位置を調整する
-      if (pastePreview && pastePosition) {
+      if (pastePreview) {
+        const currentPastePosition = pastePositionRef.current ?? pastePreview.origin;
+        pastePositionRef.current = currentPastePosition;
+        setPastePosition(currentPastePosition);
         pasteDragStartTextureRef.current = texturePoint;
-        pasteDragBaseRef.current = pastePosition;
+        pasteDragBaseRef.current = currentPastePosition;
         dragRef.current = {
           mode: 'paste-move',
           pointerId: event.pointerId,
@@ -1130,6 +1143,7 @@ export function CanvasEditor({
           x: pasteDragBaseRef.current.x + (texturePoint.x - pasteDragStartTextureRef.current.x),
           y: pasteDragBaseRef.current.y + (texturePoint.y - pasteDragStartTextureRef.current.y),
         };
+        pastePositionRef.current = next;
         setPastePosition(next);
         onPastePreviewMove(next);
       }
@@ -1354,7 +1368,7 @@ export function CanvasEditor({
     }
 
     if (drag.mode === 'paste-move' && drag.layerId) {
-      const position = pastePosition;
+      const position = pastePositionRef.current ?? pastePosition;
       pasteDragStartTextureRef.current = null;
       pasteDragBaseRef.current = null;
       dragRef.current = null;
