@@ -19,7 +19,7 @@ export function App() {
           <QualityStatus />
           <HomeScreen onOpenProject={(projectId) => setView({ name: 'editor', projectId })} />
         </>
-      )
+      )}
     </>
   );
 }
