@@ -1,6 +1,6 @@
 # Chameleon Asset Studio テスト計画書
 
-最終更新日: 2026-08-13
+最終更新日: 2026-08-26
 対象バージョン: アプリ 0.1.0 / Asset 0.2.0 / Project・export-presets・atlas 0.1.0
 詳細な対象一覧の正本: `docs/implementation/TEST_AND_RELEASE.md`
 
@@ -214,3 +214,12 @@ distribution UI、375×667 product-pathの追加証拠、engine読込、物理iP
 - [ ] 連続編集（画像操作を繰り返す）でメモリが増え続けないことの確認
 - [ ] レイヤー数が多い（20+）場合の描画フレームレート確認
 - [ ] `2D-6-PERFORMANCE`で採用候補を決めた後、rig bake、React反映、autosave、Undo / Redo、reload、`asset.json` / `.casproj` / ZIPをPC Chromium・iPad Safari・iPhone Safariで各3回測定
+
+## 3.13 Group 22 代表プロジェクト・文書整合監査
+
+正本は [`docs/future/2D_6_REFERENCE_DOCS_GATE_PLAN.md`](future/2D_6_REFERENCE_DOCS_GATE_PLAN.md) と [`docs/future/2D_6_REFERENCE_PROJECT_EVIDENCE.json`](future/2D_6_REFERENCE_PROJECT_EVIDENCE.json) とする。`tools/group22/referenceGate.test.ts` は、代表ID、必須データ、既存E2E・Generic Web fixture・ガイド・release入口の存在、`candidate / not-run` 境界、3D停止条件を検査する。
+
+- 既存の `e2e/casproj.spec.ts`、`animation.spec.ts`、`gamedata.spec.ts`、`game-check-mode.spec.ts`、`generic-web.spec.ts` は支援証拠として参照する。
+- 既存testの個別成功を、同一代表projectの作成 → Game Check → preflight修正 → HTTP fixture → `.casproj`再読込の一体成功へ読み替えない。
+- 初回利用者レビュー、PC / iPhone / iPad / Androidの実機、Group 19 / 20 runtimeは未実施のまま `verified` へ昇格させない。
+- `npm run evidence:group22` はstable manifestとCI run情報を分離した動的証拠を生成する。artifact欠落はCIで失敗させる。

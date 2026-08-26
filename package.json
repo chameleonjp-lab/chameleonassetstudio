@@ -22,7 +22,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "evidence:group18": "node tools/evidence/write-group18-record.mjs"
+    "evidence:group18": "node tools/evidence/write-group18-record.mjs",
+    "evidence:group22": "node tools/evidence/write-group22-record.mjs"
   },
   "dependencies": {
     "ajv": "^8.17.1",

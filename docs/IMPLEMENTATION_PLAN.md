@@ -211,3 +211,13 @@ Group 21Bのマージ後、Group 21C（`2D-6-PERFORMANCE` + `2D-6-A11Y` + `2D-6-
 ブラウザAPIの能力表示、未計測境界、focus-visible、prefers-reduced-motion、accessible name検査、利用者入力のHTML非解釈、新規タブリンクのnoopener / noreferrerを実装し、unit / Chromium E2Eで検証する。性能の数値budget、worker再設計、import / export cancel、Safari / iPhone / iPad / PC実機の合格判定は先取りしない。既存のIndexedDB、.casproj、export ZIP、JSON Schema、保存形式、依存関係、外部送信は変更しない。
 
 状態は `implemented-candidate / CI-passed / runtime-verification-unverified`、進捗は18/27のままとする。Actions Run #866（Actions ID `32935188646`）ではclassify、build-and-test、Chromium E2E 204件、H3計測、Pages公開・閉鎖後確認を含む全jobが成功した。PC、iPhone / iPad Safari、VoiceOver、実メモリ、GPUの実機確認前であるため、runtime検証済みとは扱わない。
+
+## Group 22 start (2026-08-26)
+
+Group 21Cのマージ後、Group 22（`2D-6-REFERENCE` + `2D-6-DOCS` + `2D-6-GATE-AUDIT`）を開始する。正本は [`2D_6_REFERENCE_DOCS_GATE_PLAN.md`](future/2D_6_REFERENCE_DOCS_GATE_PLAN.md)、機械可読な台帳は [`2D_6_REFERENCE_PROJECT_EVIDENCE.json`](future/2D_6_REFERENCE_PROJECT_EVIDENCE.json) とする。
+
+今回の範囲は、代表IDにFrame、Animation、origin、anchor、rect / circle collider、scale、複数page、`.casproj`再読込を対応付け、README / ユーザーガイド / テスト計画 / release checklist / future docsの入口を静的監査することである。既存の製品コード、保存形式、export、schema、依存関係は変更しない。
+
+既存E2Eは個別機能の支援証拠として記録し、同じ代表projectのpreflight問題 → 修正 → 再試行、初回利用者レビュー、物理端末確認を実行済みとは扱わない。PCが使用できないため、これらは `not-run` のまま保持する。Group 19 / 20 runtime未検証状態、進捗18/27、2D Pro Gate前の3D停止条件も維持する。
+
+状態は `implemented-candidate / CI-pending / runtime-verification-unverified` とする。`verified`への昇格と完了数の更新には、代表IDに結び付いた一体E2E、初回レビュー記録、必要な実機・runtime artifact、固定head review、人間確認が必要である。

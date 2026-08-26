@@ -1,0 +1,107 @@
+# Group 22: 代表プロジェクト・文書整合・最終監査
+
+最終更新日: 2026-08-26  
+対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
+正式work package: `2D-6-REFERENCE` + `2D-6-DOCS` + `2D-6-GATE-AUDIT`  
+基準main SHA: `35cfab1e191bf3ac4534649bb6c3397577252369`  
+文書種別: Group 22 implementation handoff / evidence gate  
+状態: `implemented-candidate / CI-pending / runtime-verification-unverified`
+
+上位文書: [`2D_COMPLETION_ROADMAP.md`](2D_COMPLETION_ROADMAP.md)、[`2D_FIVE_PERSPECTIVE_REVIEW_ACTION_PLAN_2026-08-13.md`](2D_FIVE_PERSPECTIVE_REVIEW_ACTION_PLAN_2026-08-13.md)  
+関連文書: [`2D_6_DEVICE_FLOW_CONTRACT.md`](2D_6_DEVICE_FLOW_CONTRACT.md)、[`2D_6_RECOVERY_OFFLINE_CONTRACT.md`](2D_6_RECOVERY_OFFLINE_CONTRACT.md)、[`2D_6_QUALITY_CONTRACT.md`](2D_6_QUALITY_CONTRACT.md)、[`2D_5_EVIDENCE_LABELS_PLAN.md`](2D_5_EVIDENCE_LABELS_PLAN.md)
+
+> Group 22は、既存機能を新しく見せるための実装ではなく、2D Pro Gateへ進める前に「何を、どの証拠で、どこまで確認したか」を固定する監査工程である。PCを利用できないため、物理端末・対象engineのruntime成功を作らず、未実施を`candidate / not-run`として記録する。
+
+## 1. 目的と境界
+
+### 1.1 目的
+
+- 取り込みから再編集までの代表プロジェクトを一意のIDで追跡する。
+- Frame、Animation、origin、anchor、rect / circle collider、scale、複数pageを、既存の機械的な証拠へ対応付ける。
+- Game Check、preflight、Generic Web HTTP fixture、`.casproj`別session再読込・同じ意味の再出力を、成功・部分確認・未実施に分ける。
+- README、ユーザーガイド、release checklist、future docs、テスト計画の入口を相互に検査する。
+- `verified`を作らず、次の人間確認で昇格できる停止条件を残す。
+
+### 1.2 今回変更しないもの
+
+- 製品コード、既存の保存正本、`asset.json`、`.casproj`、schema、migration、export ZIP、既存Atlas、依存関係。
+- Generic Web、PixiJS、Phaser、Unity、Godot、RPG Maker MZのruntime結果や互換性ラベル。
+- 物理iPhone / iPad / Android / PCブラウザの結果を推測すること。
+- 実行していない初回レビュー、preflightの修正→再試行、対象engineのruntimeを成功扱いにすること。
+
+## 2. 代表プロジェクトの定義
+
+機械可読な正本は [`2D_6_REFERENCE_PROJECT_EVIDENCE.json`](2D_6_REFERENCE_PROJECT_EVIDENCE.json) とする。
+
+| 項目 | 固定値 / 必須条件 |
+|---|---|
+| reference ID | `2d-pro-reference-001` |
+| 最低限のゲーム情報 | Frame、Animation、origin、anchor、rectまたはcircle collider |
+| 変換・出力情報 | Layer / Frameのscale、trim offset、複数pageのGeneric Web fixture |
+| 再編集 | `.casproj`を別sessionで開き、同じ意味の出力を再生成する |
+| 正本の状態 | `candidate`。runtime・実機・初回レビューの成功を含まない |
+
+代表projectの初回成功ループは、次の順番で説明する。
+
+1. 画像を作成または取り込む。
+2. ゲーム用情報と動きを付ける。
+3. Game Checkで見え方と動きを確認する。
+4. preflightの問題を理由・対象path・修正場所・再実行方法とともに理解する。
+5. Generic Web packageをHTTPで読み、scale・trim・複数page・ゲーム用情報を確認する。
+6. `.casproj`を再読込し、同じ意味の出力を再生成する。
+
+## 3. 証拠の対応付け
+
+| ループ | 現行証拠 | Group 22での扱い |
+|---|---|---|
+| 作成 / 取り込み | `e2e/casproj.spec.ts`、`e2e/import.spec.ts` | 既存E2Eの支援証拠。代表IDとの一体実行は未完了。 |
+| Frame / Animation | `e2e/animation.spec.ts` | 既存E2Eの支援証拠。FrameとAnimationを同一台帳へ記録する。 |
+| origin / anchor / collider | `e2e/gamedata.spec.ts` | rect / circle と保存・reloadを含む支援証拠。 |
+| Game Check | `e2e/game-check-mode.spec.ts` | read-only表示、再生、問題表示の支援証拠。保存変更がないことを別Gateで維持する。 |
+| preflight | `e2e/game-check-mode.spec.ts`、`e2e/export.spec.ts` | 異常検出・拒否は確認済み。代表projectの「修正→再試行」一連は未実施として残す。 |
+| Generic Web HTTP | `e2e/generic-web.spec.ts`、`public/generic-web-fixture/` | scale、trim offset、複数page、origin / anchor / collider / animationをHTTPで確認する支援証拠。 |
+| `.casproj` roundtrip | `e2e/casproj.spec.ts` | 削除後の再読込・再exportを確認する支援証拠。代表IDとの一体実行は未完了。 |
+| 利用者向け入口 | `e2e/beginner-guide.spec.ts`、`README.md`、`public/guide/` | リンク、title、mobile overflow、現在地と次の操作の入口を監査する。 |
+
+### 3.1 証拠レベル
+
+- `existing-test-coverage`: 既存testが該当機能を確認している。代表projectを最後まで一体実行したことを意味しない。
+- `static-audit`: manifest、文書、参照path、ラベル境界を自動検査する。
+- `candidate`: 手順・範囲は固定したが、runtimeまたはartifactがない。
+- `not-run`: PC・物理端末・初回利用者レビューなど、現在の環境で実施していない。
+- `verified`は、同じsource / fixture / manifest hash、対象version、受入項目、CI artifact、必要な実機記録が揃うまで使用しない。
+
+## 4. 初回レビューと実機Gate
+
+初回レビューは、対象者数・合格基準・記録形式を先に確定してから実行する。今回のmanifestでは次を未実施とする。
+
+- 初回利用者の人数、所要時間、つまずき、成功率の記録。
+- PC Chrome / Edge / Firefox、iPhone Safari、iPad Safari、Android Chromeでの全工程。
+- 物理端末でのFiles、safe-area、software keyboard、download、メモリの確認。
+- Unity / Godot / RPG Maker MZのruntime。既存のcandidate / import-notesを`verified`へ昇格しない。
+
+PCが利用できない間にこの工程を実行することは停止条件である。ChromiumのCI結果を物理端末結果へ読み替えない。
+
+## 5. 自動監査
+
+`tools/group22/referenceGate.test.ts` は次を検査する。
+
+- manifestの必須項目、状態値、必須データ、flowの重複・欠落。
+- 証拠として列挙したtest、fixture、guide、release docsの存在。
+- README、future index、implementation plan、roadmap、user guide、release checklist間の入口リンク。
+- `verified`と記録しながら未実施理由を隠す状態がないこと。
+- 2D Pro Gate前に3D開始を示す記載がないこと。
+
+CIでは [`write-group22-record.mjs`](../../tools/evidence/write-group22-record.mjs) がstable manifestと動的run情報を分離した証拠を生成する。動的recordの成功はGroup 22全体やruntime compatibilityの成功を意味しない。
+
+## 6. 完了条件と次の停止条件
+
+Group 22をcompletedへ昇格するには、少なくとも次を同一の代表IDに結び付ける。
+
+1. 作成 / 取り込み、ゲーム用情報、Game Check、preflight修正→再試行、Generic Web HTTP確認、`.casproj`再読込→同じ意味の再出力。
+2. 最終状態、download数、reload後の結果、失敗時の正本維持を自動証拠で確認する。
+3. 初回レビューの母数と合格基準、利用者向け説明、既知制限を記録する。
+4. 必須端末、対象engine、CI artifact、固定head reviewを、成功と未実施に分けて記録する。
+5. README、ユーザーガイド、出力形式、互換性表、release checklistの内容が一致する。
+
+今回のPRは1〜5のうち静的な台帳と入口監査を実装する候補PRであり、runtime未検証・初回レビュー未実施のため、完了数を増やさない。次はPCまたは実機環境が利用可能になった時点で、代表IDの一体実行と人間レビューを行う。

@@ -1,6 +1,6 @@
 # Chameleon Asset Studio リリースチェックリスト
 
-最終更新日: 2026-08-02
+最終更新日: 2026-08-26
 対象: v1.0.0 判定
 上位文書: `docs/implementation/TEST_AND_RELEASE.md` / `docs/implementation/PHASES_14_17.md`（Phase 17）
 
@@ -35,6 +35,19 @@
 - [x] Run #450でGIF / APNGのcodec前寸法検査、最大16frame、全frame pixel、uniform fps / duration、preflight由来loop、APNG canonical sourceを確認した
 - [x] Run #450で`ImageDecoder`不在時の先頭frame + 8fps + loss、17frame / unsupported拒否、取消 / Undo / Redo / reload、375 x 667 viewportを確認した
 - [x] PR #144の最終headでmalformedかつactiveなSVGのsignature quarantine、CI全成功、固定head独立reviewの`BLOCKER 0 / MUST 0`を確認し、merge `616d225`としてmainへ反映した
+
+### 1.2 Group 22 representative project / docs gate（candidate）
+
+Group 22の正本は [`docs/future/2D_6_REFERENCE_DOCS_GATE_PLAN.md`](future/2D_6_REFERENCE_DOCS_GATE_PLAN.md) と [`docs/future/2D_6_REFERENCE_PROJECT_EVIDENCE.json`](future/2D_6_REFERENCE_PROJECT_EVIDENCE.json) である。既存の作成、Frame / Animation、ゲーム情報、Game Check、Generic Web HTTP、`.casproj` roundtrip E2Eを代表IDへ対応付け、文書入口を静的監査する。ただし、既存testの支援証拠を「一つの代表projectで全工程を完走した証拠」とは扱わない。
+
+- [x] `candidate`台帳にFrame、Animation、origin、anchor、rect / circle collider、scale、複数page、`.casproj`再読込の必須範囲を記録した
+- [x] README、future index、implementation plan、roadmap、user guide、test plan、release checklist、public guideの入口を静的監査対象へ固定した
+- [ ] 代表projectのpreflight問題 → 修正 → 再試行を同一IDで実行し、最終状態と再試行結果を記録する
+- [ ] 初回利用者レビューの母数・合格基準・つまずき・成功率を記録する
+- [ ] PC / iPhone Safari / iPad Safari / Android Chromeの物理端末で全工程を確認する
+- [ ] Group 19 Unity / Godot、Group 20 RPG Maker MZのruntime未検証状態を解消する（PC利用可能後）
+
+PCが利用できない間は、未実施項目を完了・`verified`へ昇格しない。Chromium CIは物理端末の代替証拠ではない。
 
 ## 2. 文書（完了）
 
