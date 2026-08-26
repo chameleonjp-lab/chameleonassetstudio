@@ -71,7 +71,6 @@ select {
   background: #2a9d8f12;
 }
 
-
 /* キーボード操作中の現在位置を、色だけに頼らず明確に示す（Group 21C）。 */
 :focus-visible {
   outline: 3px solid #005fcc;
