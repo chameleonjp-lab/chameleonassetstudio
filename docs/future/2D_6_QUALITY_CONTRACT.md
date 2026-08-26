@@ -8,7 +8,7 @@
 
 Group 21C は、既存の保存・書き出し形式を変更せず、利用者が品質上の境界を確認できるようにする。
 
-現時点の状態は、implemented-candidate / CI-partial / runtime-verification-unverified である。PC、iPhone、iPad の実機確認ができないため、実機性能や Safari の合格を意味しない。進捗は 18/27 のまま維持する。Actions Run #862（Actions ID `32926987599`）では build-and-test（lint / format / build / unit）が成功し、Chromium E2E は204件中202件が成功した。Group 21Cの新規品質検査は成功したが、変更対象外の既存描画E2E 2件が失敗したため、CI全体成功とは扱わない。
+現時点の状態は、implemented-candidate / CI-passed / runtime-verification-unverified である。PC、iPhone、iPad の実機確認ができないため、実機性能や Safari の合格を意味しない。進捗は 18/27 のまま維持する。Actions Run #866（Actions ID `32935188646`）では build-and-test（lint / format / build / unit）、Chromium E2E 204件、H3計測、Pages経路検証を含む全jobが成功した。
 
 この契約は、PERFORMANCE_BUDGET.md の baseline を置き換えない。未決定の数値 budget、warning、hard cap を新設せず、取得不能な値を 0 や成功値として扱わない。
 
