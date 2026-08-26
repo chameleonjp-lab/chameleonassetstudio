@@ -20,8 +20,13 @@ export function QualityStatus() {
   const [snapshot, setSnapshot] = useState<RuntimePerformanceSnapshot>(
     readRuntimePerformanceSnapshot,
   );
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
+    if (!detailsOpen) {
+      return;
+    }
+
     const observation = observeLongTasks((update) => {
       setSnapshot((current) => ({
         ...current,
@@ -31,11 +36,11 @@ export function QualityStatus() {
     });
     setSnapshot((current) => ({ ...current, longTaskSupport: observation.availability }));
     return observation.disconnect;
-  }, []);
+  }, [detailsOpen]);
 
   return (
     <section className="quality-status" aria-label="品質情報">
-      <details>
+      <details onToggle={(event) => setDetailsOpen(event.currentTarget.open)}>
         <summary>品質情報</summary>
         <p className="quality-status-note" role="status">
           この画面で取得できない指標は未計測として表示します。表示値はブラウザAPIの参考値で、合格判定ではありません。
