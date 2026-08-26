@@ -306,7 +306,7 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
           className="home-guide-link"
           href={`${import.meta.env.BASE_URL}guide/`}
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           aria-label="初心者向けの図で分かる使い方を開く"
         >
           <span className="home-guide-mark" aria-hidden="true">
