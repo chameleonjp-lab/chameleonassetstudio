@@ -12,12 +12,14 @@ export function App() {
   return (
     <>
       <ConnectionStatus />
-      <QualityStatus />
       {view.name === 'editor' ? (
         <EditorScreen projectId={view.projectId} onBackToHome={() => setView({ name: 'home' })} />
       ) : (
-        <HomeScreen onOpenProject={(projectId) => setView({ name: 'editor', projectId })} />
-      )}
+        <>
+          <QualityStatus />
+          <HomeScreen onOpenProject={(projectId) => setView({ name: 'editor', projectId })} />
+        </>
+      )
     </>
   );
 }
