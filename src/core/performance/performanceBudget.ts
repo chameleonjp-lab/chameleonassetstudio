@@ -54,9 +54,7 @@ export function readRuntimePerformanceSnapshot(): RuntimePerformanceSnapshot {
   };
 }
 
-export function observeLongTasks(
-  onUpdate: (update: LongTaskUpdate) => void,
-): LongTaskObservation {
+export function observeLongTasks(onUpdate: (update: LongTaskUpdate) => void): LongTaskObservation {
   if (typeof PerformanceObserver !== 'function') {
     return { availability: 'unsupported', disconnect: () => undefined };
   }
@@ -72,7 +70,10 @@ export function observeLongTasks(
       onUpdate({ longTaskCount, longTaskDurationMs });
     });
     observer.observe({ entryTypes: ['longtask'] });
-    return { availability: 'available', disconnect: () => observer.disconnect() };
+    return {
+      availability: 'available',
+      disconnect: () => observer.disconnect(),
+    };
   } catch {
     return { availability: 'unsupported', disconnect: () => undefined };
   }
