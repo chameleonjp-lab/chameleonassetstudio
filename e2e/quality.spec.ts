@@ -2,7 +2,9 @@ import { expect, test } from '@playwright/test';
 
 async function expectVisibleControlsToHaveNames(page: import('@playwright/test').Page) {
   const unnamed = await page
-    .locator('button:visible, a:visible, input:visible, select:visible, textarea:visible, summary:visible')
+    .locator(
+      'button:visible, a:visible, input:visible, select:visible, textarea:visible, summary:visible',
+    )
     .evaluateAll((elements) =>
       elements
         .map((element) => {
@@ -82,7 +84,12 @@ test.describe('Group 21C quality contracts', () => {
     await page.goto('/');
     await page.getByLabel('プロジェクト名').fill('<img src=x onerror=alert(1)>');
     await page.getByRole('button', { name: '作成', exact: true }).click();
-    await expect(page.getByRole('heading', { name: '<img src=x onerror=alert(1)>', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('heading', {
+        name: '<img src=x onerror=alert(1)>',
+        exact: true,
+      }),
+    ).toBeVisible();
 
     expect(await page.locator('img[src="x"]').count()).toBe(0);
 
