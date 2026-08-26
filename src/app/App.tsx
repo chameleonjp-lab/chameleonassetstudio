@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ConnectionStatus } from './ConnectionStatus';
+import { QualityStatus } from './QualityStatus';
 import { EditorScreen } from '../features/editor/EditorScreen';
 import { HomeScreen } from '../features/home/HomeScreen';
 
@@ -11,6 +12,7 @@ export function App() {
   return (
     <>
       <ConnectionStatus />
+      <QualityStatus />
       {view.name === 'editor' ? (
         <EditorScreen projectId={view.projectId} onBackToHome={() => setView({ name: 'home' })} />
       ) : (
