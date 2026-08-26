@@ -285,6 +285,14 @@ export function CanvasEditor({
   const selectedLayer: Layer | null =
     asset.layers.find((layer) => layer.id === selectedLayerId) ?? null;
   const selectedTextureSize = selectedLayer ? textureSizeFor(asset, selectedLayer.textureId) : null;
+  const rasterInputReady = Boolean(
+    viewport.width > 0 &&
+    viewport.height > 0 &&
+    fittedAssetRef.current === asset.id &&
+    selectedLayer?.textureId &&
+    selectedTextureSize &&
+    bitmaps.has(selectedLayer.textureId),
+  );
 
   // ビューポートサイズの追従
   useEffect(() => {
@@ -1471,6 +1479,11 @@ export function CanvasEditor({
         className="canvas-editor-canvas"
         aria-label="アセットキャンバス"
         aria-readonly={readOnly}
+        aria-busy={!rasterInputReady}
+        data-raster-input-ready={rasterInputReady ? 'true' : 'false'}
+        data-paste-preview-ready={
+          pastePreview ? (pasteBitmap && pastePosition ? 'true' : 'false') : 'inactive'
+        }
         data-onion-skin-previous={onionSkinPreviousAsset ? 'true' : 'false'}
         data-onion-skin-next={onionSkinNextAsset ? 'true' : 'false'}
         data-onion-skin-opacity={String(ONION_SKIN_OPACITY)}

@@ -85,11 +85,33 @@ async function readStoredAlphaCount(page: Page): Promise<{
 }
 
 async function canvasCenter(page: Page) {
-  const box = await page.getByLabel('アセットキャンバス').boundingBox();
+  const canvas = page.getByLabel('アセットキャンバス');
+  await canvas.scrollIntoViewIfNeeded();
+  const box = await canvas.boundingBox();
   if (!box) {
     throw new Error('Canvasの座標を取得できません。');
   }
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+async function activateRasterTool(page: Page, name: string) {
+  const button = page.getByRole('button', { name, exact: true });
+  await button.click();
+  await expect(button).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('アセットキャンバス')).toHaveAttribute(
+    'data-raster-input-ready',
+    'true',
+  );
+}
+
+async function clickCanvasCenter(page: Page) {
+  const canvas = page.getByLabel('アセットキャンバス');
+  await canvas.scrollIntoViewIfNeeded();
+  const box = await canvas.boundingBox();
+  if (!box) {
+    throw new Error('Canvasの座標を取得できません。');
+  }
+  await canvas.click({ position: { x: box.width / 2, y: box.height / 2 } });
 }
 
 async function waitForPartialAlpha(page: Page) {
@@ -108,7 +130,7 @@ test('brush・fill・矩形・楕円を保存し、各操作をUndoできる', a
   const initial = await readStoredAlphaCount(page);
   expect(initial).toEqual({ alphaCount: 0, width: 32, height: 32 });
 
-  await page.getByRole('button', { name: 'ブラシ', exact: true }).click();
+  await activateRasterTool(page, 'ブラシ');
   await page.getByLabel('描画色').fill('#ff0000');
   await page.getByLabel('ブラシサイズ').fill('3');
   const center = await canvasCenter(page);
@@ -120,23 +142,25 @@ test('brush・fill・矩形・楕円を保存し、各操作をUndoできる', a
   await waitForPartialAlpha(page);
   await undoToTransparent(page);
 
-  await page.getByRole('button', { name: '塗りつぶし', exact: true }).click();
-  await page.mouse.click(center.x, center.y);
+  await activateRasterTool(page, '塗りつぶし');
+  await clickCanvasCenter(page);
   await expect.poll(async () => (await readStoredAlphaCount(page)).alphaCount).toBe(32 * 32);
   await undoToTransparent(page);
 
-  await page.getByRole('button', { name: '矩形', exact: true }).click();
-  await page.mouse.move(center.x - 20, center.y - 15);
+  await activateRasterTool(page, '矩形');
+  const rectCenter = await canvasCenter(page);
+  await page.mouse.move(rectCenter.x - 20, rectCenter.y - 15);
   await page.mouse.down();
-  await page.mouse.move(center.x + 20, center.y + 15, { steps: 4 });
+  await page.mouse.move(rectCenter.x + 20, rectCenter.y + 15, { steps: 4 });
   await page.mouse.up();
   await waitForPartialAlpha(page);
   await undoToTransparent(page);
 
-  await page.getByRole('button', { name: '楕円', exact: true }).click();
-  await page.mouse.move(center.x - 20, center.y - 20);
+  await activateRasterTool(page, '楕円');
+  const ellipseCenter = await canvasCenter(page);
+  await page.mouse.move(ellipseCenter.x - 20, ellipseCenter.y - 20);
   await page.mouse.down();
-  await page.mouse.move(center.x + 20, center.y + 20, { steps: 4 });
+  await page.mouse.move(ellipseCenter.x + 20, ellipseCenter.y + 20, { steps: 4 });
   await page.mouse.up();
   await waitForPartialAlpha(page);
   await undoToTransparent(page);
@@ -149,7 +173,7 @@ test('選択範囲をcopyし貼り付け位置をずらすと保存PNGに反映�
   // 中心の左上側に矩形を描き、部分的に不透明にする
   const rectStart = { x: center.x - 20, y: center.y - 20 };
   const rectEnd = { x: center.x - 6, y: center.y - 6 };
-  await page.getByRole('button', { name: '矩形', exact: true }).click();
+  await activateRasterTool(page, '矩形');
   await page.mouse.move(rectStart.x, rectStart.y);
   await page.mouse.down();
   await page.mouse.move(rectEnd.x, rectEnd.y, { steps: 4 });
@@ -158,7 +182,7 @@ test('選択範囲をcopyし貼り付け位置をずらすと保存PNGに反映�
   const afterRect = (await readStoredAlphaCount(page)).alphaCount;
 
   // 同じ範囲を「範囲」ツールで囲み、選択範囲としてコピーする
-  await page.getByRole('button', { name: '範囲', exact: true }).click();
+  await activateRasterTool(page, '範囲');
   await page.mouse.move(rectStart.x, rectStart.y);
   await page.mouse.down();
   await page.mouse.move(rectEnd.x, rectEnd.y, { steps: 4 });
@@ -172,11 +196,16 @@ test('選択範囲をcopyし貼り付け位置をずらすと保存PNGに反映�
   await expect(pasteButton).toBeEnabled();
   await pasteButton.click();
   await expect(page.getByRole('button', { name: '貼り付けを確定', exact: true })).toBeVisible();
+  await expect(page.getByLabel('アセットキャンバス')).toHaveAttribute(
+    'data-paste-preview-ready',
+    'true',
+  );
 
   // 貼り付けpreviewを中心の右下側へドラッグし、pointer upで確定する
-  await page.mouse.move(center.x, center.y);
+  const pasteCenter = await canvasCenter(page);
+  await page.mouse.move(pasteCenter.x, pasteCenter.y);
   await page.mouse.down();
-  await page.mouse.move(center.x + 30, center.y + 30, { steps: 4 });
+  await page.mouse.move(pasteCenter.x + 30, pasteCenter.y + 30, { steps: 4 });
   await page.mouse.up();
 
   await expect
@@ -189,14 +218,14 @@ test('選択範囲をcopyし貼り付け位置をずらすと保存PNGに反映�
 
 test('選択範囲の消去が保存PNGに反映され、Undoで戻る', async ({ page }) => {
   await createBlankAsset(page);
-  const center = await canvasCenter(page);
 
   // 全面を塗りつぶしてから、一部だけを選択して消去する
-  await page.getByRole('button', { name: '塗りつぶし', exact: true }).click();
-  await page.mouse.click(center.x, center.y);
+  await activateRasterTool(page, '塗りつぶし');
+  await clickCanvasCenter(page);
   await expect.poll(async () => (await readStoredAlphaCount(page)).alphaCount).toBe(32 * 32);
 
-  await page.getByRole('button', { name: '範囲', exact: true }).click();
+  await activateRasterTool(page, '範囲');
+  const center = await canvasCenter(page);
   await page.mouse.move(center.x - 20, center.y - 20);
   await page.mouse.down();
   await page.mouse.move(center.x - 4, center.y - 4, { steps: 4 });
@@ -219,13 +248,12 @@ test('raster textの確定でピクセル化の説明を表示し、確定内容
 }) => {
   await createBlankAsset(page);
 
-  await page.getByRole('button', { name: '文字', exact: true }).click();
+  await activateRasterTool(page, '文字');
   await expect(
     page.getByText('確定するとテキストはピクセルになり、再編集できません。'),
   ).toBeVisible();
 
-  const center = await canvasCenter(page);
-  await page.mouse.click(center.x, center.y);
+  await clickCanvasCenter(page);
 
   await page.getByLabel('テキスト文字列').fill('A');
   await page.getByLabel('文字サイズ').fill('10');
@@ -245,7 +273,7 @@ test('タッチ操作でのブラシ描画が保存PNGに反映される', async
   const page = await context.newPage();
   try {
     await createBlankAsset(page);
-    await page.getByRole('button', { name: 'ブラシ', exact: true }).click();
+    await activateRasterTool(page, 'ブラシ');
     await page.getByLabel('描画色').fill('#00aa00');
     await page.getByLabel('ブラシサイズ').fill('4');
     const center = await canvasCenter(page);
@@ -303,6 +331,10 @@ test('iPhone SE級viewport（375x667）でアセット作成から描画・保�
       .getByRole('button', { name: 'ブラシ', exact: true })
       .click();
     await expect(page.locator('#active-tool-help')).toContainText('現在：ブラシ');
+    await expect(page.getByLabel('アセットキャンバス')).toHaveAttribute(
+      'data-raster-input-ready',
+      'true',
+    );
 
     const center = await canvasCenter(page);
     await page.mouse.move(center.x - 10, center.y);
