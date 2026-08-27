@@ -3,7 +3,8 @@
 最終更新日: 2026-08-27  
 対象リポジトリ: chameleonjp-lab/chameleonassetstudio  
 正式work package: Group 23 / 2D Pro Gate  
-基準main SHA: eaba79d235d1bf55ca85c972a6426de69db9f2dd  
+監査開始時の基準main SHA: eaba79d235d1bf55ca85c972a6426de69db9f2dd  
+PR #266マージ後main SHA: 22d55f28fca00d70d82fe184ef10165773ef1140  
 文書種別: docs-only audit / decision record  
 状態: gate-pending / runtime-verification-unverified
 
@@ -28,14 +29,16 @@ Group 22のmerge後に、2D Pro Gateの判定に必要な証拠、未確認項�
 
 | 項目 | 確認結果 |
 |---|---|
-| 最新main | eaba79d235d1bf55ca85c972a6426de69db9f2dd。PR #265のmerge commit。 |
-| 作業開始時のopen PR | 0件。Group 23用branchはこのDraft PRで作成した。 |
+| 最新main | 22d55f28fca00d70d82fe184ef10165773ef1140。PR #266のmerge commit。 |
+| 現在のopen PR | 0件。PR #266はmainへmerge済み。 |
+| Group 23監査開始時のopen PR | 0件。Group 23用branchはPR #266で作成した。 |
 | 完了数 | 18/27。Group 19〜22はruntimeまたは実機未確認を含むため、完了数を増やさない。 |
 | Group 22 | implemented-candidate / CI-passed / merged / runtime-verification-unverified |
+| Group 23監査PR | PR #266でmainへmerge済み。監査記録は反映したが、2D Pro Gate自体は未完了。 |
 | 代表project台帳 | referenceId 2d-pro-reference-001、status candidate |
 | Group 22 PR CI | PR #264 head 4d513fa7a105336f00a51fa2c0ede9ee5d339f17に対するRun #869がsuccess。artifact 9601053891を取得済み。 |
-| main push CI | Run #873がsuccess。docs-only変更のためclassifyのみ実行し、build-and-test / E2Eはskip。 |
-| Pages | Run #117がsuccess。同じmain SHAでbuild / deployがsuccess。 |
+| PR #266マージ後main CI | Run #876がsuccess。docs-only変更のためclassifyのみ実行し、build-and-test / E2Eはskip。 |
+| PR #266マージ後Pages | Run #118がsuccess。同じmain SHAでbuild / deployがsuccess。 |
 | 独立review | PR #264のGitHub review投稿とreview threadは0件。Group 22をindependently-verifiedへ昇格しない。 |
 
 ## 4. 2D Pro Gate判定表
@@ -81,8 +84,8 @@ Group 22のmerge後に、2D Pro Gateの判定に必要な証拠、未確認項�
 
 ### NOTE
 
-- Run #869はPR #264のheadに対する完全CIであり、Run #873はmerge後mainのdocs-only push CIである。両者は別の目的である。
-- Pages Run #117はmainの公開確認であり、2D Pro Gateの実機確認ではない。
+- Run #869はPR #264のheadに対する完全CIであり、Run #873はPR #265マージ後・PR #266前のmain docs-only push CI、Run #876はPR #266マージ後のmain docs-only push CIである。両者は別の目的である。
+- Pages Run #118はPR #266マージ後mainの公開確認であり、2D Pro Gateの実機確認ではない。
 - PixiJS / Phaserのverifiedは対象versionのfixture-local範囲に限る。
 - Godotのfixture-local成功は、UnityやGroup 19全体のverifiedを意味しない。
 
@@ -96,7 +99,10 @@ Group 22のmerge後に、2D Pro Gateの判定に必要な証拠、未確認項�
 
 この表のA / Bは候補であり、まだ採用していない。
 
-## 7. このDraft PRの判定
+## 7. PR #266マージ後のGroup 23判定
+
+PR #266でこの監査記録はmainへ反映済みだが、2D Pro Gateの承認記録ではない。
+
 
 - 判定: 2D Pro Gate未通過
 - Group 22: candidateのまま
