@@ -1,6 +1,6 @@
 # Future Planning Index
 
-最終更新日: 2026-08-26
+最終更新日: 2026-08-27
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 将来計画インデックス
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
@@ -37,6 +37,7 @@ Chameleon Asset Studio は、画像取り込み専用の変換ツールに限定
 | `2D_COMPLETION_ROADMAP.md` | 2D Pro Gate までの実装順、PR 分割、品質 gate、3D 再開条件 |
 | `2D_6_REFERENCE_DOCS_GATE_PLAN.md` | Group 22 の代表プロジェクト、初回成功ループ、文書整合、最終監査の実装handoff |
 | `2D_6_REFERENCE_PROJECT_EVIDENCE.json` | Group 22 の代表ID、既存test対応、未実施Gate、昇格条件を持つ機械可読なcandidate台帳 |
+| `2D_PRO_GATE_AUDIT.md` | Group 23の2D Pro Gate判定材料、未確認項目、人間判断、3D停止条件を整理する監査・判断記録 |
 | `2D_1A_BASELINE_REPORT.md` | 現行 version、型、schema、保存、`.casproj`、export、migration、fixture/test coverage の baseline |
 | `PERFORMANCE_BUDGET.md` | `2D-6-PERFORMANCE` の現状性能、測定環境、未測定範囲、再測定手順の baseline（work package 全体は未完了） |
 | `FABLELESS_DEVELOPMENT_GUIDE.md` | `claude-fable-5` を使わない前提の実装・レビュー運用ルール |
