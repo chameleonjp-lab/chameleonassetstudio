@@ -1,11 +1,11 @@
 # Group 22: 代表プロジェクト・文書整合・最終監査
 
-最終更新日: 2026-08-26  
+最終更新日: 2026-08-27  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 正式work package: `2D-6-REFERENCE` + `2D-6-DOCS` + `2D-6-GATE-AUDIT`  
 基準main SHA: `35cfab1e191bf3ac4534649bb6c3397577252369`  
 文書種別: Group 22 implementation handoff / evidence gate  
-状態: `implemented-candidate / CI-pending / runtime-verification-unverified`
+状態: `implemented-candidate / CI-passed / merged / runtime-verification-unverified`
 
 上位文書: [`2D_COMPLETION_ROADMAP.md`](2D_COMPLETION_ROADMAP.md)、[`2D_FIVE_PERSPECTIVE_REVIEW_ACTION_PLAN_2026-08-13.md`](2D_FIVE_PERSPECTIVE_REVIEW_ACTION_PLAN_2026-08-13.md)  
 関連文書: [`2D_6_DEVICE_FLOW_CONTRACT.md`](2D_6_DEVICE_FLOW_CONTRACT.md)、[`2D_6_RECOVERY_OFFLINE_CONTRACT.md`](2D_6_RECOVERY_OFFLINE_CONTRACT.md)、[`2D_6_QUALITY_CONTRACT.md`](2D_6_QUALITY_CONTRACT.md)、[`2D_5_EVIDENCE_LABELS_PLAN.md`](2D_5_EVIDENCE_LABELS_PLAN.md)
@@ -105,3 +105,12 @@ Group 22をcompletedへ昇格するには、少なくとも次を同一の代表
 5. README、ユーザーガイド、出力形式、互換性表、release checklistの内容が一致する。
 
 今回のPRは1〜5のうち静的な台帳と入口監査を実装する候補PRであり、runtime未検証・初回レビュー未実施のため、完了数を増やさない。次はPCまたは実機環境が利用可能になった時点で、代表IDの一体実行と人間レビューを行う。
+
+
+## 7. Post-merge closeout（2026-08-27）
+
+PR #264（head `4d513fa7a105336f00a51fa2c0ede9ee5d339f17`）はmerge commit `15e252d8339361cd153ac784cba5752189ceeabd`としてmainへ反映された。対応するCI Run #869（Actions ID `32953397489`）は、classify、build-and-test、E2E、H3計測、Pages公開・閉鎖後確認を含む全jobが成功した。Group 22の動的証拠artifactは `9601053891`（`sha256:d8d203289543a13157160bdc6461ea0744e1d591024fe0b32786dc3113465339`）である。
+
+この記録が示すのは、Group 22の静的台帳・文書入口監査がCIを通過してmainへ入ったことだけである。stable manifestは `candidate` のままとし、代表projectの一体実行、preflightの修正→再試行、初回利用者レビュー、物理端末、Group 19 / 20 runtimeを成功扱いにしない。PR #264にはGitHub上の独立review投稿が記録されていないため、`independently-verified`へは昇格させない。
+
+次はGroup 23（2D Pro Gate）である。人間がGateを承認するまで、新しい製品実装と3D実装を開始しない。進捗は18/27のままとする。

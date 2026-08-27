@@ -1,6 +1,6 @@
 # Chameleon Asset Studio リリースチェックリスト
 
-最終更新日: 2026-08-26
+最終更新日: 2026-08-27
 対象: v1.0.0 判定
 上位文書: `docs/implementation/TEST_AND_RELEASE.md` / `docs/implementation/PHASES_14_17.md`（Phase 17）
 
@@ -42,12 +42,15 @@ Group 22の正本は [`docs/future/2D_6_REFERENCE_DOCS_GATE_PLAN.md`](future/2D_
 
 - [x] `candidate`台帳にFrame、Animation、origin、anchor、rect / circle collider、scale、複数page、`.casproj`再読込の必須範囲を記録した
 - [x] README、future index、implementation plan、roadmap、user guide、test plan、release checklist、public guideの入口を静的監査対象へ固定した
+- [x] PR #264（head `4d513fa7a105336f00a51fa2c0ede9ee5d339f17`、merge `15e252d8339361cd153ac784cba5752189ceeabd`）でGroup 22の静的台帳・文書入口監査をmainへ反映し、CI Run #869（Actions ID `32953397489`）の全job成功とartifact `9601053891`（`sha256:d8d203289543a13157160bdc6461ea0744e1d591024fe0b32786dc3113465339`）を記録した
 - [ ] 代表projectのpreflight問題 → 修正 → 再試行を同一IDで実行し、最終状態と再試行結果を記録する
 - [ ] 初回利用者レビューの母数・合格基準・つまずき・成功率を記録する
 - [ ] PC / iPhone Safari / iPad Safari / Android Chromeの物理端末で全工程を確認する
 - [ ] Group 19 Unity / Godot、Group 20 RPG Maker MZのruntime未検証状態を解消する（PC利用可能後）
 
 PCが利用できない間は、未実施項目を完了・`verified`へ昇格しない。Chromium CIは物理端末の代替証拠ではない。
+
+静的監査のmergeとCI成功後も、Group 22はcandidateのままとする。代表projectの一体実行、初回利用者レビュー、物理端末、Group 19 / 20 runtimeが未実施のため、2D Pro Gate完了や互換性verifiedへは昇格しない。
 
 ## 2. 文書（完了）
 
