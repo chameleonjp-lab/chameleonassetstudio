@@ -1,16 +1,16 @@
 # Chameleon Asset Studio 五視点レビュー統合アクション計画
 
-最終更新日: 2026-08-15  
+最終更新日: 2026-08-27  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
-五視点レビュー統合基準main SHA: `e77a721ff3d479bea0f7475f0b0fbc296ce91595`
+五視点レビュー統合基準main SHA: `15e252d8339361cd153ac784cba5752189ceeabd`
 文書種別: docs-only 横断レビュー統合・後続work package割当  
-状態: `review-integrated / G16 merged / G17 merged / G18 merged / G19 candidate-implementation-merged / runtime-unverified / remaining proposals pending`
+状態: `review-integrated / G16-G18 merged / G19 candidate-implementation-merged / G20 candidate-docs-merged / G21A-C candidate-implementation-merged / G22 static-audit-merged / runtime-unverified / Group23 gate-pending`
 
 上位文書: `docs/IMPLEMENTATION_PLAN.md`, `docs/future/2D_COMPLETION_ROADMAP.md`  
 現在の契約正本: `docs/future/2D_5_EVIDENCE_LABELS_PLAN.md`  
 関連文書: `docs/future/2D_COMPLETE_PRODUCT_SPEC.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/future/2D_DEVICE_RELIABILITY_SPEC.md`, `docs/TEST_PLAN.md`, `docs/future/2D_4_PACKAGE_PREFLIGHT_GENERIC_WEB_PLAN.md`
 
-> この文書は、2026-08-13に行った五視点レビューを既存の2D完成ロードマップへ割り当てる。Group 19はG19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable） + G19-C2 A + G19-C3 Aを採用し、PR #251（merge `e77a721ff3d479bea0f7475f0b0fbc296ce91595`、CI Run #805全job成功）でcandidate fixture、静的closure test、import notesをmainへ反映した。runtime Gateは未完了のためverifiedへ昇格せず、五視点レビューのGroup 20〜23への割当提案はproposal-onlyで扱う。これはGroup 19のaccepted契約・merged candidate実装状態とは別である。
+> この文書は、2026-08-13に行った五視点レビューを既存の2D完成ロードマップへ割り当てる。Group 19はG19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable） + G19-C2 A + G19-C3 Aを採用し、PR #251（merge `e77a721ff3d479bea0f7475f0b0fbc296ce91595`、CI Run #805全job成功）でcandidate fixture、静的closure test、import notesをmainへ反映した。Group 20はacceptedなdocs-only handoffをmainへ反映し、Group 22はPR #264で静的台帳・文書入口監査をmainへ反映した。Group 19 / 20のruntime Gate、代表projectの一体実行、初回利用者レビュー、物理端末は未完了のためverifiedへ昇格しない。次はGroup 23の2D Pro Gateであり、人間承認まで新規実装を開始しない。
 
 ---
 
@@ -18,14 +18,14 @@
 
 | 項目 | 状態 |
 |---|---|
-| 最新main | `e77a721ff3d479bea0f7475f0b0fbc296ce91595`。PR #251のmerge commit。 | このpost-merge closeoutの基準main。 |
-| open Pull Request | 基準main確認時点は0件。PR #251はmerge済みで、closeout Draft PRで状態を同期する。 | 同一目的のcloseout PRを1本だけ維持する。 |
+| 最新main | `15e252d8339361cd153ac784cba5752189ceeabd`。PR #264のmerge commit。 |
+| open Pull Request | 基準main確認時点は0件。PR #264はmerge済み。今回のcloseout PRで状態を同期する。 |
 | 完了数 | 18/27。Group 18 closeout済み。Group 19 runtime未完了のため完了数は変更しない。 |
 | Group 16 docs-only監査 | PR #240でmainへ反映済み。 |
 | Group 16契約 | `accepted`。ユーザーが`G16-C1 A + G16-C2 A + G16-C3 A`を2026-08-13に採用。 |
 | Group 16製品実装 | `implemented / CI-passed / independently-verified / merged`（PR #242 final head `6616ad30fdae7a05f98e0a0146ce69555bab1bfa`、merge `711bcec268d6e732a24c0c787c6054b41e415c27`、CI Run #765）。 |
 | Group 17契約 | `accepted / implemented / CI-passed / independently-verified / merged`。PR #246 final head `9380494f7a662b9211f341d87a15f62d4b82986f`、merge `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`、CI Run #785。 |
-| 次の許可された行動 | Unity/Godotのruntime実行環境を準備し、別engine・別artifact・import error 0の証拠を取得する。現行環境で実行できない間はcandidateを維持し、Group 20へ進まない。 |
+| 次の許可された行動 | Group 23（2D Pro Gate）の証拠・未解決判断を確認し、人間承認まで新規製品実装と3Dを開始しない。代表projectの一体実行、初回レビュー、物理端末、Group 19 / 20 runtimeは未実施のまま保持する。 |
 
 PR #240のmergeはGroup 16監査のGate A、2026-08-13のユーザー明示判断G16-C1 A + G16-C2 A + G16-C3 AはGate Bであり、PR #242で実装・CI・固定head確認・mergeまで完了した。Group 17はPR #243 / #244 / #245のmain反映でGate A、2026-08-14のG17-C1 A + G17-C2 A + G17-C3 AでGate Bを完了し、PR #246で実装・CI・独立確認・mergeまで完了した。Group 18は2026-08-15のG18-C1 A + G18-C2 A + G18-C3 Aを採用し、PR #248 / merge 3ab844dで実装・CI・独立確認・mergeまで完了した。Group 19はdocs/future/2D_5_UNITY_GODOT_PLAN.mdの採用済み契約に基づき、PR #251（merge `e77a721ff3d479bea0f7475f0b0fbc296ce91595`）でengine別candidate実装をmainへ反映した。runtime Gateは未完了である。
 
@@ -229,3 +229,10 @@ G18-C1 A + G18-C2 A + G18-C3 A
 ```
 
 Group 18はPR #248（merge `3ab844d28d155a438dc8f10f8f9b22099a40093a`、CI Run #793）でstable/dynamic evidence分離、target version・fixture単位のラベル境界、失効理由、契約artifact欠落検出を実装し、独立確認・main反映まで完了した。完了数は18/27。Group 19はUnity / Godotの採用済み契約に基づくcandidate実装をmainへ反映済みだが、target fixtureのruntime Gateは未完了である。runtime Gate完了までproduct UI、既存export形式、schema、保存形式、helper、dependenciesは変更しない。
+
+
+## Group 22 post-merge update (2026-08-27)
+
+PR #264（head `4d513fa7a105336f00a51fa2c0ede9ee5d339f17`、merge `15e252d8339361cd153ac784cba5752189ceeabd`）でGroup 22の静的台帳・文書入口監査をmainへ反映した。CI Run #869（Actions ID `32953397489`）は全job成功し、Group 22 artifact `9601053891`（`sha256:d8d203289543a13157160bdc6461ea0744e1d591024fe0b32786dc3113465339`）を生成した。
+
+この結果はstatic auditのmergeとCI成功を示す。代表projectの一体成功、初回利用者レビュー、物理端末、Group 19 / 20 runtimeは未実施であり、Group 22のcandidate状態と18/27を維持する。次はGroup 23の2D Pro Gateで、人間承認まで新規実装と3D開始を行わない。PR #264にはGitHub上の独立review投稿が記録されていないため、独立review済みとは扱わない。

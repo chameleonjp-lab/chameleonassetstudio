@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 最終完成までの実装計画書
 
-最終更新日: 2026-08-26
+最終更新日: 2026-08-27
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`
 
@@ -220,4 +220,13 @@ Group 21Cのマージ後、Group 22（`2D-6-REFERENCE` + `2D-6-DOCS` + `2D-6-GAT
 
 既存E2Eは個別機能の支援証拠として記録し、同じ代表projectのpreflight問題 → 修正 → 再試行、初回利用者レビュー、物理端末確認を実行済みとは扱わない。PCが使用できないため、これらは `not-run` のまま保持する。Group 19 / 20 runtime未検証状態、進捗18/27、2D Pro Gate前の3D停止条件も維持する。
 
-状態は `implemented-candidate / CI-pending / runtime-verification-unverified` とする。`verified`への昇格と完了数の更新には、代表IDに結び付いた一体E2E、初回レビュー記録、必要な実機・runtime artifact、固定head review、人間確認が必要である。
+状態は `implemented-candidate / CI-passed / merged / runtime-verification-unverified` とする。`verified`への昇格と完了数の更新には、代表IDに結び付いた一体E2E、初回レビュー記録、必要な実機・runtime artifact、固定head review、人間確認が必要である。
+
+
+## Group 22 post-merge closeout (2026-08-27)
+
+PR #264（head `4d513fa7a105336f00a51fa2c0ede9ee5d339f17`）は人間の判断でmainへマージされ、merge commitは `15e252d8339361cd153ac784cba5752189ceeabd` となった。PR headに対応するCI Run #869（Actions ID `32953397489`）は、classify、build-and-test、E2E、H3計測、Pages経路確認を含む全jobが成功した。Group 22の動的証拠artifactは `9601053891`（`sha256:d8d203289543a13157160bdc6461ea0744e1d591024fe0b32786dc3113465339`）である。
+
+これはGroup 22の静的台帳・文書入口監査のmergeとCI成功を記録するものであり、代表projectの一体実行、初回利用者レビュー、物理端末、Group 19 / 20 runtimeの成功を意味しない。PR #264にはGitHub上の独立review投稿が記録されていないため、本closeoutでは `independently-verified` へ昇格させない。
+
+次の正式工程はGroup 23（2D Pro Gate）である。人間のGate承認までは、新しい製品実装と3D実装を開始しない。進捗は18/27のままとする。
