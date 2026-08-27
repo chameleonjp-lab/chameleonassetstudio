@@ -22,6 +22,7 @@
 - `docs/future/2D_5_EVIDENCE_LABELS_PLAN.md`（Group 18の証拠形式・対応ラベル契約と人間判断の正本）
 - `docs/future/2D_5_UNITY_GODOT_PLAN.md`（Group 19のUnity / Godot対象version・fixture・証拠契約と人間判断の正本）
 - `docs/future/2D_6_DEVICE_FLOW_CONTRACT.md`, `2D_6_RECOVERY_OFFLINE_CONTRACT.md`（Group 21Aの端末導線・入力契約と自動検査の正本）
+- `docs/future/2D_PRO_GATE_AUDIT.md`（Group 23の2D Pro Gate監査・判断記録）
 
 2D Pro の完成条件は `docs/future/2D_COMPLETE_PRODUCT_SPEC.md`、データ、対象別出力、端末品質は同ディレクトリの専門文書を正本とする。
 

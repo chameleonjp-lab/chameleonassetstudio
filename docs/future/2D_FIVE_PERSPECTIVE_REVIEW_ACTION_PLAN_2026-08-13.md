@@ -2,13 +2,13 @@
 
 最終更新日: 2026-08-27  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
-五視点レビュー統合基準main SHA: `15e252d8339361cd153ac784cba5752189ceeabd`
+五視点レビュー統合基準main SHA: `eaba79d235d1bf55ca85c972a6426de69db9f2dd`
 文書種別: docs-only 横断レビュー統合・後続work package割当  
 状態: `review-integrated / G16-G18 merged / G19 candidate-implementation-merged / G20 candidate-docs-merged / G21A-C candidate-implementation-merged / G22 static-audit-merged / runtime-unverified / Group23 gate-pending`
 
 上位文書: `docs/IMPLEMENTATION_PLAN.md`, `docs/future/2D_COMPLETION_ROADMAP.md`  
 現在の契約正本: `docs/future/2D_5_EVIDENCE_LABELS_PLAN.md`  
-関連文書: `docs/future/2D_COMPLETE_PRODUCT_SPEC.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/future/2D_DEVICE_RELIABILITY_SPEC.md`, `docs/TEST_PLAN.md`, `docs/future/2D_4_PACKAGE_PREFLIGHT_GENERIC_WEB_PLAN.md`
+関連文書: `docs/future/2D_COMPLETE_PRODUCT_SPEC.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/future/2D_DEVICE_RELIABILITY_SPEC.md`, `docs/TEST_PLAN.md`, `docs/future/2D_4_PACKAGE_PREFLIGHT_GENERIC_WEB_PLAN.md`, `docs/future/2D_PRO_GATE_AUDIT.md`
 
 > この文書は、2026-08-13に行った五視点レビューを既存の2D完成ロードマップへ割り当てる。Group 19はG19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable） + G19-C2 A + G19-C3 Aを採用し、PR #251（merge `e77a721ff3d479bea0f7475f0b0fbc296ce91595`、CI Run #805全job成功）でcandidate fixture、静的closure test、import notesをmainへ反映した。Group 20はacceptedなdocs-only handoffをmainへ反映し、Group 22はPR #264で静的台帳・文書入口監査をmainへ反映した。Group 19 / 20のruntime Gate、代表projectの一体実行、初回利用者レビュー、物理端末は未完了のためverifiedへ昇格しない。次はGroup 23の2D Pro Gateであり、人間承認まで新規実装を開始しない。
 
@@ -18,8 +18,10 @@
 
 | 項目 | 状態 |
 |---|---|
-| 最新main | `15e252d8339361cd153ac784cba5752189ceeabd`。PR #264のmerge commit。 |
-| open Pull Request | 基準main確認時点は0件。PR #264はmerge済み。今回のcloseout PRで状態を同期する。 |
+| 最新main | `eaba79d235d1bf55ca85c972a6426de69db9f2dd`。PR #265のmerge commit。 |
+| open Pull Request | 現在0件。PR #264 / #265はmerge済み。 |
+| 最新main CI | [Run #873](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33041521418) がsuccess。docs-only変更のためclassifyのみ実行し、build-and-test / E2Eはskip。 |
+| Pages公開 | [Run #117](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33041521406) がsuccess。build / deployとも同じmain SHAを使用。 |
 | 完了数 | 18/27。Group 18 closeout済み。Group 19 runtime未完了のため完了数は変更しない。 |
 | Group 16 docs-only監査 | PR #240でmainへ反映済み。 |
 | Group 16契約 | `accepted`。ユーザーが`G16-C1 A + G16-C2 A + G16-C3 A`を2026-08-13に採用。 |
