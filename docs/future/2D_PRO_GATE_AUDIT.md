@@ -29,7 +29,7 @@ Group 22のmerge後に、2D Pro Gateの判定に必要な証拠、未確認項�
 | 項目 | 確認結果 |
 |---|---|
 | 最新main | eaba79d235d1bf55ca85c972a6426de69db9f2dd。PR #265のmerge commit。 |
-| open PR | 0件。Group 23用branchはこのDraft PRで初めて作成する。 |
+| 作業開始時のopen PR | 0件。Group 23用branchはこのDraft PRで作成した。 |
 | 完了数 | 18/27。Group 19〜22はruntimeまたは実機未確認を含むため、完了数を増やさない。 |
 | Group 22 | implemented-candidate / CI-passed / merged / runtime-verification-unverified |
 | 代表project台帳 | referenceId 2d-pro-reference-001、status candidate |
