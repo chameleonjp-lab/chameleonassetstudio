@@ -1,0 +1,47 @@
+{
+  "format": "chameleon-atlas",
+  "version": "0.1.0",
+  "pages": [
+    { "path": "pages/page-000.svg", "width": 64, "height": 64, "rotated": false },
+    { "path": "pages/page-001.svg", "width": 32, "height": 32, "rotated": false }
+  ],
+  "frames": [
+    {
+      "name": "fixture",
+      "page": 0,
+      "rect": { "x": 0, "y": 0, "width": 32, "height": 32 },
+      "sourceSize": { "width": 32, "height": 32 },
+      "contentRect": { "x": 4, "y": 4, "width": 24, "height": 24 },
+      "contentOffset": { "x": 4, "y": 4 },
+      "rotated": false
+    },
+    {
+      "name": "second",
+      "page": 1,
+      "rect": { "x": 0, "y": 0, "width": 16, "height": 16 },
+      "sourceSize": { "width": 16, "height": 16 },
+      "contentRect": { "x": 2, "y": 2, "width": 12, "height": 12 },
+      "contentOffset": { "x": 2, "y": 2 },
+      "rotated": false
+    }
+  ],
+  "animations": [{ "name": "loop", "fps": 4, "loop": true, "frames": ["fixture", "second"] }],
+  "origin": { "x": 16, "y": 32 },
+  "anchors": [{ "name": "center", "role": "pivot", "x": 16, "y": 16 }],
+  "colliders": [
+    {
+      "name": "hitbox",
+      "purpose": "body",
+      "shape": "rect",
+      "visible": true,
+      "rect": { "x": 4, "y": 4, "width": 24, "height": 24 }
+    },
+    {
+      "name": "radius",
+      "purpose": "sensor",
+      "shape": "circle",
+      "visible": true,
+      "circle": { "x": 16, "y": 16, "radius": 12 }
+    }
+  ]
+}

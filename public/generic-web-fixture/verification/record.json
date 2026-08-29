@@ -1,0 +1,24 @@
+{
+  "format": "chameleon-verification-record",
+  "version": "0.1.0",
+  "profile": "generic-web-v1",
+  "status": "candidate",
+  "expected": [
+    "http-manifest",
+    "package-closure",
+    "two-pages",
+    "trim-offset",
+    "scale-2",
+    "origin-anchor",
+    "rect-circle-collider",
+    "cross-page-animation",
+    "canvas-rendering",
+    "viewport-375x667",
+    "console-error-0",
+    "download-0"
+  ],
+  "limitations": [
+    "Chromium CI and this fixture are supporting evidence only.",
+    "Physical Safari and engine-specific runtime compatibility are not verified."
+  ]
+}

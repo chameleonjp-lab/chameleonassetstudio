@@ -83,12 +83,17 @@ describe('Group 22 reference project evidence gate', () => {
         expect(existsSync(resolve(repositoryRoot, path)), `${flow.id}: ${path}`).toBe(true);
       }
     }
-    expect(evidence.flow.find((flow) => flow.id === 'preflight-fix-and-retry')?.status).toBe(
-      'partial-coverage',
-    );
-    expect(evidence.flow.find((flow) => flow.id === 'preflight-fix-and-retry')?.missing).toMatch(
-      /issue -> fix -> retry/,
-    );
+    const preflightFlow = evidence.flow.find((flow) => flow.id === 'preflight-fix-and-retry');
+    expect(preflightFlow?.status).toBe('automated-reference-flow');
+    expect(preflightFlow?.testFiles).toContain('e2e/reference-project-gate.spec.ts');
+    expect(preflightFlow?.missing).toMatch(/fixed-head CI artifact/);
+    const genericWebFlow = evidence.flow.find((flow) => flow.id === 'generic-web-http');
+    expect(genericWebFlow?.status).toBe('automated-http-and-closure');
+    expect(genericWebFlow?.testFiles).toContain('tools/group23/genericWebPackageClosure.test.ts');
+    const casprojFlow = evidence.flow.find((flow) => flow.id === 'casproj-reopen-and-regenerate');
+    expect(casprojFlow?.status).toBe('automated-reference-flow');
+    expect(casprojFlow?.testFiles).toContain('e2e/reference-project-gate.spec.ts');
+    expect(casprojFlow?.missing).toMatch(/fixed-head CI artifact/);
     expect(evidence.flow.find((flow) => flow.id === 'first-time-review')?.status).toBe('not-run');
   });
 
@@ -117,6 +122,7 @@ describe('Group 22 reference project evidence gate', () => {
     expect(roadmap).toContain('3D を開始しない');
     expect(evidence.promotion.blockedUntil).toEqual(
       expect.arrayContaining([
+        'fixed-head CI artifact for the representative flow',
         'physical-device evidence',
         'Group 19 and Group 20 runtime decisions',
       ]),
