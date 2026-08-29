@@ -2,7 +2,7 @@
 
 最終更新日: 2026-08-29  
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
-五視点レビュー統合基準main SHA: `2122a67c895c78c07ed7f7ad7978df10dec551ed`
+五視点レビュー統合基準main SHA: `9a743a8cdd4b174089fe4580db3d94f0fea2054e`
 文書種別: docs-only 横断レビュー統合・後続work package割当  
 状態: `review-integrated / G16-G18 merged / G19 candidate-implementation-merged / G20 candidate-docs-merged / G21A-C candidate-implementation-merged / G22 static-audit-merged / runtime-unverified / Group23 gate-pending`
 
@@ -10,7 +10,7 @@
 現在の契約正本: `docs/future/2D_5_EVIDENCE_LABELS_PLAN.md`  
 関連文書: `docs/future/2D_COMPLETE_PRODUCT_SPEC.md`, `docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md`, `docs/future/2D_DEVICE_RELIABILITY_SPEC.md`, `docs/TEST_PLAN.md`, `docs/future/2D_4_PACKAGE_PREFLIGHT_GENERIC_WEB_PLAN.md`, `docs/future/2D_PRO_GATE_AUDIT.md`
 
-> この文書は、2026-08-13に行った五視点レビューを既存の2D完成ロードマップへ割り当てる。Group 19はG19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable） + G19-C2 A + G19-C3 Aを採用し、PR #251（merge `e77a721ff3d479bea0f7475f0b0fbc296ce91595`、CI Run #805全job成功）でcandidate fixture、静的closure test、import notesをmainへ反映した。Group 20はacceptedなdocs-only handoffをmainへ反映し、Group 22はPR #264で静的台帳・文書入口監査をmainへ反映した。Group 23の監査記録はPR #266でmainへ反映し、マージ後状態はPR #267、PR #268で同期したが、2D Pro Gateは未完了である。Group 19 / 20のruntime Gate、代表projectの一体実行、初回利用者レビュー、物理端末は未完了のためverifiedへ昇格しない。次はGroup 23の2D Pro Gateであり、人間承認まで新規実装を開始しない。
+> この文書は、2026-08-13に行った五視点レビューを既存の2D完成ロードマップへ割り当てる。Group 19はG19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable） + G19-C2 A + G19-C3 Aを採用し、PR #251（merge `e77a721ff3d479bea0f7475f0b0fbc296ce91595`、CI Run #805全job成功）でcandidate fixture、静的closure test、import notesをmainへ反映した。Group 20はacceptedなdocs-only handoffをmainへ反映し、Group 22はPR #264で静的台帳・文書入口監査をmainへ反映した。Group 23の監査記録はPR #266でmainへ反映し、マージ後状態はPR #267、PR #268、PR #269で同期したが、2D Pro Gateは未完了である。Group 19 / 20のruntime Gate、代表projectの一体実行、初回利用者レビュー、物理端末は未完了のためverifiedへ昇格しない。次はGroup 23の2D Pro Gateであり、人間承認まで新規実装を開始しない。
 
 ---
 
@@ -18,10 +18,10 @@
 
 | 項目 | 状態 |
 |---|---|
-| 最新main | `2122a67c895c78c07ed7f7ad7978df10dec551ed`。PR #268のmerge commit。 |
-| open Pull Request | 現在0件。PR #264 / #265 / #266 / #267 / #268はmerge済み。 |
-| 最新main CI | [Run #880](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33240041104) がsuccess。docs-only変更のためclassifyのみ実行し、build-and-test / E2Eはskip。 |
-| Pages公開 | [Run #120](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33240041107) がsuccess。build / deployとも同じmain SHAを使用。 |
+| 最新main | `9a743a8cdd4b174089fe4580db3d94f0fea2054e`。PR #269のmerge commit。 |
+| open Pull Request | 現在0件。PR #264 / #265 / #266 / #267 / #268 / #269はmerge済み。 |
+| 最新main CI | [Run #882](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33240723208) がsuccess。docs-only変更のためclassifyのみ実行し、build-and-test / E2Eはskip。 |
+| Pages公開 | [Run #121](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33240723218) がsuccess。build / deployとも同じmain SHAを使用。 |
 | 完了数 | 18/27。Group 18 closeout済み。Group 19 runtime未完了のため完了数は変更しない。 |
 | Group 16 docs-only監査 | PR #240でmainへ反映済み。 |
 | Group 16契約 | `accepted`。ユーザーが`G16-C1 A + G16-C2 A + G16-C3 A`を2026-08-13に採用。 |
@@ -257,3 +257,10 @@ PR #267はPR #266マージ後の文書状態を同期するdocs-only closeoutで
 PR #268（closeout head `fe73a3439bfc9fff4a2fc3d703d4463d1e1dc2e7`）はmainへマージされ、merge commitは `2122a67c895c78c07ed7f7ad7978df10dec551ed` となった。CI Run #880（Actions ID `33240041104`）はsuccess、Pages Run #120（Actions ID `33240041107`）もbuild / deployともsuccessである。
 
 PR #268はPR #267マージ後の文書状態を同期するdocs-only closeoutであり、2D Pro Gateの承認ではない。代表projectの一体実行、初回利用者レビュー、物理端末、Group 19 / 20 runtime、人間承認は未完了のため、candidate / runtime-verification-unverified、進捗18/27、3D停止を維持する。
+
+
+## Group 23 post-merge closeout after PR #269 (2026-08-29)
+
+PR #269（closeout head `afe2e40f3b024dccdb2d92f1f27764f2a5c1832a`）はmainへマージされ、merge commitは `9a743a8cdd4b174089fe4580db3d94f0fea2054e` となった。CI Run #882（Actions ID `33240723208`）はsuccess、Pages Run #121（Actions ID `33240723218`）もbuild / deployともsuccessである。
+
+PR #269はPR #268マージ後の文書状態を同期するdocs-only closeoutであり、2D Pro Gateの承認ではない。代表projectの一体実行、初回利用者レビュー、物理端末、Group 19 / 20 runtime、人間承認は未完了のため、candidate / runtime-verification-unverified、進捗18/27、3D停止を維持する。
