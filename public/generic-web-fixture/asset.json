@@ -15,6 +15,14 @@
       "mimeType": "image/svg+xml",
       "size": { "width": 64, "height": 64 },
       "path": "atlas/pages/page-000.svg"
+    },
+    {
+      "id": "generic-web-page-001",
+      "kind": "source",
+      "name": "page-001",
+      "mimeType": "image/svg+xml",
+      "size": { "width": 32, "height": 32 },
+      "path": "atlas/pages/page-001.svg"
     }
   ],
   "layers": [
@@ -31,6 +39,20 @@
         "rotation": 0
       },
       "textureId": "generic-web-page-000"
+    },
+    {
+      "id": "generic-web-layer-second",
+      "name": "second",
+      "layerType": "image",
+      "visible": true,
+      "locked": false,
+      "opacity": 1,
+      "transform": {
+        "position": { "x": 0, "y": 0 },
+        "scale": { "x": 1, "y": 1 },
+        "rotation": 0
+      },
+      "textureId": "generic-web-page-001"
     }
   ],
   "parts": [],
@@ -69,7 +91,7 @@
     {
       "id": "generic-web-frame-second",
       "name": "second",
-      "layerStates": [{ "layerId": "generic-web-layer" }]
+      "layerStates": [{ "layerId": "generic-web-layer-second" }]
     }
   ],
   "animations": [

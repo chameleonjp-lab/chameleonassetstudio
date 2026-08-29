@@ -32,18 +32,55 @@ test('Generic Web fixtureはHTTP経由でpackageとCanvasを確認できる', as
       scale: number;
       pages: Array<{ path: string }>;
       frames: Array<{
+        page: number;
+        rect: { width: number; height: number };
+        sourceSize: { width: number; height: number };
         contentOffset: { x: number; y: number };
         contentRect: { width: number; height: number };
+      }>;
+      origin: { x: number; y: number };
+      anchors: Array<{ name: string; role: string; x: number; y: number }>;
+      colliders: Array<{
+        id: string;
+        name: string;
+        shape: string;
+        rect?: { x: number; y: number; width: number; height: number };
+        circle?: { x: number; y: number; radius: number };
       }>;
     };
     manifestHash = createHash('sha256').update(manifestText).digest('hex');
     pageCount = manifest.pages.length;
     expect(pageCount).toBeGreaterThanOrEqual(2);
     expect(manifest.scale).toBe(2);
+    expect(manifest.pages).toEqual([
+      { path: 'atlas/pages/page-000.svg', width: 128, height: 128, rotated: false },
+      { path: 'atlas/pages/page-001.svg', width: 64, height: 64, rotated: false },
+    ]);
     expect(manifest.frames[0]).toMatchObject({
-      contentOffset: { x: 4, y: 4 },
-      contentRect: { width: 24, height: 24 },
+      page: 0,
+      rect: { width: 64, height: 64 },
+      sourceSize: { width: 64, height: 64 },
+      contentOffset: { x: 8, y: 8 },
+      contentRect: { width: 48, height: 48 },
     });
+    expect(manifest.origin).toEqual({ x: 32, y: 64 });
+    expect(manifest.anchors).toEqual([{ name: 'center', role: 'center', x: 32, y: 32 }]);
+    expect(manifest.colliders).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'generic-web-hitbox',
+          name: 'hitbox',
+          shape: 'rect',
+          rect: { x: 8, y: 8, width: 48, height: 48 },
+        }),
+        expect.objectContaining({
+          id: 'generic-web-radius',
+          name: 'radius',
+          shape: 'circle',
+          circle: { x: 32, y: 32, radius: 24 },
+        }),
+      ]),
+    );
     const pageResponses = await Promise.all(
       manifest.pages.map((entry) => page.request.get(`/generic-web-fixture/${entry.path}`)),
     );

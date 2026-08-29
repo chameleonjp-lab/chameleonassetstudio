@@ -2,7 +2,13 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import type { AtlasJson, DistributionManifest } from '../../src/core/export/atlas';
+import {
+  roundDistributionPixel,
+  scaleDistributionPoint,
+  scaleDistributionRect,
+  type AtlasJson,
+  type DistributionManifest,
+} from '../../src/core/export/atlas';
 import type {
   GenericWebPackageManifest,
   GenericWebSidecar,
@@ -91,6 +97,22 @@ function colliderGeometry(collider: ColliderGeometry): ColliderGeometry {
   };
 }
 
+function scaledCollider(
+  collider: Asset['colliders'][number],
+  scale: 1 | 2 | 3,
+): Asset['colliders'][number] {
+  return collider.shape === 'rect'
+    ? { ...collider, rect: scaleDistributionRect(collider.rect, scale) }
+    : {
+        ...collider,
+        circle: {
+          ...collider.circle,
+          ...scaleDistributionPoint(collider.circle, scale),
+          radius: Math.max(0, roundDistributionPixel(collider.circle.radius, scale)),
+        },
+      };
+}
+
 describe('Generic Web package closure', () => {
   it('matches the production package, distribution, atlas, sidecar, and canonical asset contracts', () => {
     const packageManifest = readJson<GenericWebPackageManifest>('package-manifest.json');
@@ -149,24 +171,24 @@ describe('Generic Web package closure', () => {
       engines: [],
     });
     expect(distribution.pages).toEqual([
-      { path: 'atlas/pages/page-000.svg', width: 64, height: 64, rotated: false },
-      { path: 'atlas/pages/page-001.svg', width: 32, height: 32, rotated: false },
+      { path: 'atlas/pages/page-000.svg', width: 128, height: 128, rotated: false },
+      { path: 'atlas/pages/page-001.svg', width: 64, height: 64, rotated: false },
     ]);
     expect(distribution.frames.map((frame) => frame.name)).toEqual(['fixture', 'second']);
     expect(distribution.frames[0]).toMatchObject({
       page: 0,
-      rect: { x: 0, y: 0, width: 32, height: 32 },
-      sourceSize: { width: 32, height: 32 },
-      contentRect: { x: 4, y: 4, width: 24, height: 24 },
-      contentOffset: { x: 4, y: 4 },
+      rect: { x: 0, y: 0, width: 64, height: 64 },
+      sourceSize: { width: 64, height: 64 },
+      contentRect: { x: 8, y: 8, width: 48, height: 48 },
+      contentOffset: { x: 8, y: 8 },
       rotated: false,
     });
     expect(distribution.frames[1]).toMatchObject({
       page: 1,
-      rect: { x: 0, y: 0, width: 16, height: 16 },
-      sourceSize: { width: 16, height: 16 },
-      contentRect: { x: 2, y: 2, width: 12, height: 12 },
-      contentOffset: { x: 2, y: 2 },
+      rect: { x: 0, y: 0, width: 32, height: 32 },
+      sourceSize: { width: 32, height: 32 },
+      contentRect: { x: 4, y: 4, width: 24, height: 24 },
+      contentOffset: { x: 4, y: 4 },
       rotated: false,
     });
     expect(distribution.animations).toEqual([
@@ -188,6 +210,12 @@ describe('Generic Web package closure', () => {
     );
     expect(atlas.animations).toEqual(distribution.animations);
 
+    expect(asset.textures.map((texture) => texture.path)).toEqual(packageManifest.files.pages);
+    expect(asset.frames?.map((frame) => frame.layerStates[0]?.layerId)).toEqual([
+      'generic-web-layer',
+      'generic-web-layer-second',
+    ]);
+
     expect(target).toMatchObject({
       format: 'chameleon-generic-web-sidecar',
       version: '0.1.0',
@@ -198,15 +226,29 @@ describe('Generic Web package closure', () => {
     });
 
     const expectedAnchors = assetAnchorCoordinates(asset);
-    expect(distributionAnchorCoordinates(distribution.anchors)).toEqual(expectedAnchors);
+    const expectedScaledAnchors = expectedAnchors.map(({ name, role, x, y }) => ({
+      name,
+      role,
+      ...scaleDistributionPoint({ x, y }, packageManifest.scale),
+    }));
+    expect(distributionAnchorCoordinates(distribution.anchors)).toEqual(expectedScaledAnchors);
     expect(atlasAnchorCoordinates(atlas.anchors)).toEqual(expectedAnchors);
     expect(sidecarAnchorCoordinates(target.anchors)).toEqual(expectedAnchors);
-    expect(distribution.origin).toEqual(asset.origin);
+    expect(distribution.origin).toEqual(
+      scaleDistributionPoint(asset.origin, packageManifest.scale),
+    );
     expect(atlas.origin).toEqual(asset.origin);
     expect(target.origin).toEqual(asset.origin);
 
     const expectedColliders = asset.colliders.map(colliderGeometry);
-    expect(distribution.colliders.map(colliderGeometry)).toEqual(expectedColliders);
+    const expectedScaledColliders = asset.colliders.map((collider) =>
+      colliderGeometry(scaledCollider(collider, packageManifest.scale)),
+    );
+    expect(distribution.colliders).toEqual(
+      asset.colliders.map((collider) => scaledCollider(collider, packageManifest.scale)),
+    );
+    expect(atlas.colliders).toEqual(asset.colliders);
+    expect(distribution.colliders.map(colliderGeometry)).toEqual(expectedScaledColliders);
     expect(atlas.colliders.map(colliderGeometry)).toEqual(expectedColliders);
     expect(target.colliders.map(colliderGeometry)).toEqual(expectedColliders);
 
@@ -223,6 +265,10 @@ describe('Generic Web package closure', () => {
       version: '0.1.0',
       profile: 'generic-web-v1',
       status: 'candidate',
+      sourceCommit: 'unrecorded',
+      fixtureHash: 'fixture:generic-web-v1',
+      manifestHash: 'unrecorded',
+      artifactRef: 'ci://group16/generic-web',
     });
     expect(verification.expected).toEqual(
       expect.arrayContaining(['http-manifest', 'package-closure', 'canvas-rendering']),
