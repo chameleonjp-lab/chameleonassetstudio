@@ -11,7 +11,7 @@
     "assetJson": "asset.json",
     "atlasJson": "atlas/atlas.json",
     "pages": ["atlas/pages/page-000.svg", "atlas/pages/page-001.svg"],
-    "mainPng": null,
+    "mainPng": "textures/main.png",
     "mainWebp": null,
     "target": "targets/generic-web.json",
     "example": "examples/example-generic-web.html",

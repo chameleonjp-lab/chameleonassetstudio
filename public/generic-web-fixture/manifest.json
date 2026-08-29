@@ -3,6 +3,19 @@
   "version": "0.1.0",
   "profile": "fixed-grid",
   "scale": 2,
+  "source": { "assetJson": "asset.json", "canonical": true },
+  "files": {
+    "manifest": "manifest.json",
+    "assetJson": "asset.json",
+    "atlasJson": "atlas/atlas.json",
+    "pages": ["atlas/pages/page-000.svg", "atlas/pages/page-001.svg"],
+    "mainPng": "textures/main.png",
+    "mainWebp": null,
+    "readme": "README.md",
+    "examples": ["examples/example-generic-web.html"],
+    "helpers": ["helpers/chameleon-generic-web.js"],
+    "engines": []
+  },
   "pages": [
     { "path": "atlas/pages/page-000.svg", "width": 64, "height": 64, "rotated": false },
     { "path": "atlas/pages/page-001.svg", "width": 32, "height": 32, "rotated": false }
@@ -27,8 +40,23 @@
       "rotated": false
     }
   ],
-  "animations": [{ "name": "loop", "frameIds": ["fixture", "second"], "events": [] }],
+  "animations": [{ "name": "loop", "frames": ["fixture", "second"], "fps": 4, "loop": true }],
   "origin": { "x": 16, "y": 32 },
-  "anchors": [],
-  "colliders": []
+  "anchors": [{ "name": "center", "role": "center", "x": 16, "y": 16 }],
+  "colliders": [
+    {
+      "name": "hitbox",
+      "purpose": "body",
+      "shape": "rect",
+      "visible": true,
+      "rect": { "x": 4, "y": 4, "width": 24, "height": 24 }
+    },
+    {
+      "name": "radius",
+      "purpose": "sensor",
+      "shape": "circle",
+      "visible": true,
+      "circle": { "x": 16, "y": 16, "radius": 12 }
+    }
+  ]
 }

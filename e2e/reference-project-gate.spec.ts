@@ -369,6 +369,9 @@ test('2D Pro代表projectを問題修正・再試行・Game Check・.casproj再�
   await expect(page.getByRole('button', { name: '「' + PROJECT_NAME + '」を開く' })).toHaveCount(0);
 
   const fixedArchive = await buildReferenceArchive(true);
+  const fixedInput = readReferenceArchive(fixedArchive);
+  assertRepresentativeData(fixedInput);
+  const fixedInputSnapshot = representativeSnapshot(fixedInput);
   await importReferenceArchive(page, fixedArchive, '2d-pro-reference-001-fixed.casproj');
   await verifyGameCheck(page);
 
@@ -378,6 +381,7 @@ test('2D Pro代表projectを問題修正・再試行・Game Check・.casproj再�
   expect(firstArchive.entryPaths).toContain('project.json');
   expect(firstArchive.entryPaths.some((path) => path.endsWith('/' + IMAGE_PATH))).toBe(true);
   const firstSnapshot = representativeSnapshot(firstArchive);
+  expect(firstSnapshot).toEqual(fixedInputSnapshot);
 
   await deleteProject(page);
   await importReferenceArchive(page, firstExport, '2d-pro-reference-001-roundtrip.casproj');
