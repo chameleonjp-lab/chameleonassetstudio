@@ -6,6 +6,7 @@
 監査開始時の基準main SHA: eaba79d235d1bf55ca85c972a6426de69db9f2dd  
 PR #266マージ後main SHA: 22d55f28fca00d70d82fe184ef10165773ef1140  
 PR #267マージ後main SHA: 9519ce63b29f8fcb14c62c65459d463e743eede6  
+PR #268マージ後main SHA: 2122a67c895c78c07ed7f7ad7978df10dec551ed  
 文書種別: docs-only audit / decision record  
 状態: gate-pending / runtime-verification-unverified
 
@@ -30,16 +31,16 @@ Group 22のmerge後に、2D Pro Gateの判定に必要な証拠、未確認項�
 
 | 項目 | 確認結果 |
 |---|---|
-| 最新main | 9519ce63b29f8fcb14c62c65459d463e743eede6。PR #267のmerge commit。 |
-| 現在のopen PR | 0件。PR #267はmainへmerge済み。 |
+| 最新main | 2122a67c895c78c07ed7f7ad7978df10dec551ed。PR #268のmerge commit。 |
+| 現在のopen PR | 0件。PR #268はmainへmerge済み。 |
 | Group 23監査開始時のopen PR | 0件。Group 23用branchはPR #266で作成した。 |
 | 完了数 | 18/27。Group 19〜22はruntimeまたは実機未確認を含むため、完了数を増やさない。 |
 | Group 22 | implemented-candidate / CI-passed / merged / runtime-verification-unverified |
-| Group 23監査PR | PR #266で監査記録、PR #267でマージ後状態をmainへ反映済み。2D Pro Gate自体は未完了。 |
+| Group 23監査PR | PR #266で監査記録、PR #267でPR #266マージ後状態、PR #268でPR #267マージ後状態をmainへ反映済み。2D Pro Gate自体は未完了。 |
 | 代表project台帳 | referenceId 2d-pro-reference-001、status candidate |
 | Group 22 PR CI | PR #264 head 4d513fa7a105336f00a51fa2c0ede9ee5d339f17に対するRun #869がsuccess。artifact 9601053891を取得済み。 |
-| PR #267マージ後main CI | Run #878がsuccess。docs-only変更のためclassifyのみ実行し、build-and-test / E2Eはskip。 |
-| PR #267マージ後Pages | Run #119がsuccess。同じmain SHAでbuild / deployがsuccess。 |
+| PR #268マージ後main CI | Run #880がsuccess。docs-only変更のためclassifyのみ実行し、build-and-test / E2Eはskip。 |
+| PR #268マージ後Pages | Run #120がsuccess。同じmain SHAでbuild / deployがsuccess。 |
 | 独立review | PR #264のGitHub review投稿とreview threadは0件。Group 22をindependently-verifiedへ昇格しない。 |
 
 ## 4. 2D Pro Gate判定表
@@ -85,8 +86,8 @@ Group 22のmerge後に、2D Pro Gateの判定に必要な証拠、未確認項�
 
 ### NOTE
 
-- Run #869はPR #264のheadに対する完全CIであり、Run #873はPR #265マージ後・PR #266前のmain docs-only push CI、Run #876はPR #266マージ後・PR #267前のmain docs-only push CI、Run #878はPR #267マージ後のmain docs-only push CIである。両者は別の目的である。
-- Pages Run #118はPR #266マージ後・PR #267前mainの公開確認、Pages Run #119はPR #267マージ後mainの公開確認であり、いずれも2D Pro Gateの実機確認ではない。
+- Run #869はPR #264のheadに対する完全CIであり、Run #873はPR #265マージ後・PR #266前、Run #876はPR #266マージ後・PR #267前、Run #878はPR #267マージ後・PR #268前、Run #880はPR #268マージ後のmain docs-only push CIである。PR headのCIとmerge後mainのCIは別の目的である。
+- Pages Run #118はPR #266マージ後・PR #267前、Pages Run #119はPR #267マージ後・PR #268前、Pages Run #120はPR #268マージ後mainの公開確認であり、いずれも2D Pro Gateの実機確認ではない。
 - PixiJS / Phaserのverifiedは対象versionのfixture-local範囲に限る。
 - Godotのfixture-local成功は、UnityやGroup 19全体のverifiedを意味しない。
 
@@ -100,9 +101,9 @@ Group 22のmerge後に、2D Pro Gateの判定に必要な証拠、未確認項�
 
 この表のA / Bは候補であり、まだ採用していない。
 
-## 7. PR #267マージ後のGroup 23判定
+## 7. PR #268マージ後のGroup 23判定
 
-PR #267でこの監査記録のマージ後状態はmainへ反映済みだが、2D Pro Gateの承認記録ではない。
+PR #268でこの監査記録のマージ後状態はmainへ反映済みだが、2D Pro Gateの承認記録ではない。
 
 
 - 判定: 2D Pro Gate未通過
