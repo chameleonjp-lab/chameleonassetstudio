@@ -1,8 +1,14 @@
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
+  assertKnownAtlasTextureSize,
+  parseKnownAtlasJson,
+} from '../../src/core/images/importAtlasBundle';
+import {
+  canonicalJson,
   roundDistributionPixel,
   scaleDistributionPoint,
   scaleDistributionRect,
@@ -39,6 +45,26 @@ const fixtureRoot = resolve(repositoryRoot, 'public/generic-web-fixture');
 
 function readJson<T>(relativePath: string): T {
   return JSON.parse(readFileSync(resolve(fixtureRoot, relativePath), 'utf8')) as T;
+}
+
+function readBytes(relativePath: string): Buffer {
+  return readFileSync(resolve(fixtureRoot, relativePath));
+}
+
+function readPngSize(relativePath: string): { width: number; height: number } {
+  const bytes = readBytes(relativePath);
+  expect(bytes.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  return {
+    width: bytes.readUInt32BE(16),
+    height: bytes.readUInt32BE(20),
+  };
+}
+
+function readSvgSize(relativePath: string): { width: number; height: number } {
+  const source = readFileSync(resolve(fixtureRoot, relativePath), 'utf8');
+  const match = source.match(/<svg[^>]*\bwidth="(\d+)"[^>]*\bheight="(\d+)"/);
+  expect(match, relativePath).not.toBeNull();
+  return { width: Number(match?.[1]), height: Number(match?.[2]) };
 }
 
 function packageReferences(manifest: GenericWebPackageManifest): string[] {
@@ -158,6 +184,16 @@ describe('Generic Web package closure', () => {
       scale: 2,
       source: packageManifest.source,
     });
+    expect(distribution.integrity).toMatchObject({
+      algorithm: 'SHA-256',
+      manifestHash: '60f09033ff45f7d3da794c3a8b52678cf6dff7ffcfd3277fd64c88423da13ae7',
+    });
+    const unsignedDistribution = { ...distribution };
+    delete unsignedDistribution.integrity;
+    const manifestHash = createHash('sha256')
+      .update(canonicalJson(unsignedDistribution), 'utf8')
+      .digest('hex');
+    expect(distribution.integrity?.manifestHash).toBe(manifestHash);
     expect(distribution.files).toEqual({
       manifest: packageManifest.files.distributionManifest,
       assetJson: packageManifest.files.assetJson,
@@ -174,6 +210,10 @@ describe('Generic Web package closure', () => {
       { path: 'atlas/pages/page-000.svg', width: 128, height: 128, rotated: false },
       { path: 'atlas/pages/page-001.svg', width: 64, height: 64, rotated: false },
     ]);
+    expect(distribution.pages.map(({ path }) => readSvgSize(path))).toEqual(
+      distribution.pages.map(({ width, height }) => ({ width, height })),
+    );
+    expect(readPngSize(packageManifest.files.mainPng)).toEqual({ width: 64, height: 64 });
     expect(distribution.frames.map((frame) => frame.name)).toEqual(['fixture', 'second']);
     expect(distribution.frames[0]).toMatchObject({
       page: 0,
@@ -198,19 +238,31 @@ describe('Generic Web package closure', () => {
     expect(atlas).toMatchObject({
       format: 'chameleon-atlas',
       version: '0.1.0',
-      texture: '../textures/main.png',
+      texture: 'spritesheet.png',
       cellSize: { width: 32, height: 32 },
     });
     expect(atlas.frames).toEqual([
       { name: 'fixture', x: 0, y: 0, width: 32, height: 32 },
-      { name: 'second', x: 32, y: 0, width: 16, height: 16 },
+      { name: 'second', x: 32, y: 0, width: 32, height: 32 },
     ]);
-    expect(resolve(fixtureRoot, 'atlas', atlas.texture)).toBe(
-      resolve(fixtureRoot, packageManifest.files.mainPng),
-    );
+    const atlasTexturePath = resolve(fixtureRoot, 'atlas', atlas.texture);
+    assertSafeReference(atlas.texture);
+    expect(existsSync(atlasTexturePath)).toBe(true);
+    expect(statSync(atlasTexturePath).isFile()).toBe(true);
+    expect(statSync(atlasTexturePath).size).toBeGreaterThan(0);
+    expect(parseKnownAtlasJson(readBytes('atlas/atlas.json'))).toEqual(atlas);
+    expect(() =>
+      assertKnownAtlasTextureSize(atlas, readPngSize('atlas/spritesheet.png')),
+    ).not.toThrow();
     expect(atlas.animations).toEqual(distribution.animations);
 
     expect(asset.textures.map((texture) => texture.path)).toEqual(packageManifest.files.pages);
+    expect(distribution.pages.map(({ width, height }) => ({ width, height }))).toEqual(
+      asset.textures.map(({ size }) => ({
+        width: size.width * packageManifest.scale,
+        height: size.height * packageManifest.scale,
+      })),
+    );
     expect(asset.frames?.map((frame) => frame.layerStates[0]?.layerId)).toEqual([
       'generic-web-layer',
       'generic-web-layer-second',
@@ -265,10 +317,10 @@ describe('Generic Web package closure', () => {
       version: '0.1.0',
       profile: 'generic-web-v1',
       status: 'candidate',
-      sourceCommit: 'unrecorded',
+      sourceCommit: 'ffeff881c1ee166fbcde4cadbd9380ffd9ce52b9',
       fixtureHash: 'fixture:generic-web-v1',
-      manifestHash: 'unrecorded',
-      artifactRef: 'ci://group16/generic-web',
+      manifestHash,
+      artifactRef: 'ci://group23/generic-web',
     });
     expect(verification.expected).toEqual(
       expect.arrayContaining(['http-manifest', 'package-closure', 'canvas-rendering']),

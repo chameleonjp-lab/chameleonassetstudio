@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "profile": "generic-web-v1",
   "status": "candidate",
-  "sourceCommit": "unrecorded",
+  "sourceCommit": "ffeff881c1ee166fbcde4cadbd9380ffd9ce52b9",
   "fixtureHash": "fixture:generic-web-v1",
-  "manifestHash": "unrecorded",
-  "artifactRef": "ci://group16/generic-web",
+  "manifestHash": "60f09033ff45f7d3da794c3a8b52678cf6dff7ffcfd3277fd64c88423da13ae7",
+  "artifactRef": "ci://group23/generic-web",
   "expected": [
     "http-manifest",
     "package-closure",

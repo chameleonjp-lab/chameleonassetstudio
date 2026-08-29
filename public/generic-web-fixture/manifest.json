@@ -60,5 +60,9 @@
       "visible": true,
       "circle": { "x": 32, "y": 32, "radius": 24 }
     }
-  ]
+  ],
+  "integrity": {
+    "algorithm": "SHA-256",
+    "manifestHash": "60f09033ff45f7d3da794c3a8b52678cf6dff7ffcfd3277fd64c88423da13ae7"
+  }
 }
