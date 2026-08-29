@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 最終完成までの実装計画書
 
-最終更新日: 2026-08-27
+最終更新日: 2026-08-29
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`
 
