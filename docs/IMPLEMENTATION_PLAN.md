@@ -230,4 +230,4 @@ PR #264（head `4d513fa7a105336f00a51fa2c0ede9ee5d339f17`）は人間の判断�
 
 これはGroup 22の静的台帳・文書入口監査のmergeとCI成功を記録するものであり、代表projectの一体実行、初回利用者レビュー、物理端末、Group 19 / 20 runtimeの成功を意味しない。PR #264にはGitHub上の独立review投稿が記録されていないため、本closeoutでは `independently-verified` へ昇格させない。
 
-Group 23（2D Pro Gate）の監査記録はPR #266でmainへ反映済み。PR #266のmerge後mainは22d55f28fca00d70d82fe184ef10165773ef1140で、CI Run #876とPages Run #118はsuccessである。ただし2D Pro Gate自体は未完了である。人間のGate承認までは、新しい製品実装と3D実装を開始しない。進捗は18/27のままとする。
+Group 23（2D Pro Gate）の監査記録はPR #266でmainへ反映し、マージ後状態はPR #267で同期した。PR #267のmerge後mainは9519ce63b29f8fcb14c62c65459d463e743eede6で、CI Run #878とPages Run #119はsuccessである。ただし2D Pro Gate自体は未完了である。人間のGate承認までは、新しい製品実装と3D実装を開始しない。進捗は18/27のままとする。
