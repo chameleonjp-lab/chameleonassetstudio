@@ -40,21 +40,28 @@
     },
     {
       "id": "preflight-fix-and-retry",
-      "status": "partial-coverage",
-      "testFiles": ["e2e/game-check-mode.spec.ts", "e2e/export.spec.ts"],
-      "missing": "representative-project issue -> fix -> retry evidence"
+      "status": "automated-reference-flow",
+      "testFiles": [
+        "e2e/game-check-mode.spec.ts",
+        "e2e/export.spec.ts",
+        "e2e/reference-project-gate.spec.ts"
+      ],
+      "missing": "fixed-head CI artifact, first-time review, and physical/runtime evidence"
     },
     {
       "id": "generic-web-http",
-      "status": "existing-test-coverage",
-      "testFiles": ["e2e/generic-web.spec.ts"],
+      "status": "automated-http-and-closure",
+      "testFiles": [
+        "e2e/generic-web.spec.ts",
+        "tools/group23/genericWebPackageClosure.test.ts"
+      ],
       "fixturePaths": ["public/generic-web-fixture"]
     },
     {
       "id": "casproj-reopen-and-regenerate",
-      "status": "existing-test-coverage",
-      "testFiles": ["e2e/casproj.spec.ts"],
-      "missing": "single representative ID across the complete loop"
+      "status": "automated-reference-flow",
+      "testFiles": ["e2e/casproj.spec.ts", "e2e/reference-project-gate.spec.ts"],
+      "missing": "fixed-head CI artifact, first-time review, and physical/runtime evidence"
     },
     {
       "id": "first-time-review",
@@ -92,8 +99,7 @@
   "promotion": {
     "next": "2D Pro Gate human approval",
     "blockedUntil": [
-      "representative issue-fix-retry loop",
-      "same-reference-ID .casproj roundtrip evidence",
+      "fixed-head CI artifact for the representative flow",
       "first-time review record",
       "physical-device evidence",
       "Group 19 and Group 20 runtime decisions"
@@ -101,6 +107,7 @@
   },
   "limitations": [
     "existing test coverage is supporting evidence, not a claim that one representative project completed the full loop",
+    "automated reference flow and package closure are supporting evidence only until the fixed-head artifact is reviewed",
     "Chromium CI is not physical Safari or PC evidence",
     "candidate status does not grant verified compatibility to any engine or target version"
   ]

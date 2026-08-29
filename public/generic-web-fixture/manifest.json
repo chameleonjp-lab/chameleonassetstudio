@@ -3,32 +3,66 @@
   "version": "0.1.0",
   "profile": "fixed-grid",
   "scale": 2,
+  "source": { "assetJson": "asset.json", "canonical": true },
+  "files": {
+    "manifest": "manifest.json",
+    "assetJson": "asset.json",
+    "atlasJson": "atlas/atlas.json",
+    "pages": ["atlas/pages/page-000.svg", "atlas/pages/page-001.svg"],
+    "mainPng": "textures/main.png",
+    "mainWebp": null,
+    "readme": "README.md",
+    "examples": ["examples/example-generic-web.html"],
+    "helpers": ["helpers/chameleon-generic-web.js"],
+    "engines": []
+  },
   "pages": [
-    { "path": "atlas/pages/page-000.svg", "width": 64, "height": 64, "rotated": false },
-    { "path": "atlas/pages/page-001.svg", "width": 32, "height": 32, "rotated": false }
+    { "path": "atlas/pages/page-000.svg", "width": 128, "height": 128, "rotated": false },
+    { "path": "atlas/pages/page-001.svg", "width": 64, "height": 64, "rotated": false }
   ],
   "frames": [
     {
       "name": "fixture",
       "page": 0,
-      "rect": { "x": 0, "y": 0, "width": 32, "height": 32 },
-      "sourceSize": { "width": 32, "height": 32 },
-      "contentRect": { "x": 4, "y": 4, "width": 24, "height": 24 },
-      "contentOffset": { "x": 4, "y": 4 },
+      "rect": { "x": 0, "y": 0, "width": 64, "height": 64 },
+      "sourceSize": { "width": 64, "height": 64 },
+      "contentRect": { "x": 8, "y": 8, "width": 48, "height": 48 },
+      "contentOffset": { "x": 8, "y": 8 },
       "rotated": false
     },
     {
       "name": "second",
       "page": 1,
-      "rect": { "x": 0, "y": 0, "width": 16, "height": 16 },
-      "sourceSize": { "width": 16, "height": 16 },
-      "contentRect": { "x": 2, "y": 2, "width": 12, "height": 12 },
-      "contentOffset": { "x": 2, "y": 2 },
+      "rect": { "x": 0, "y": 0, "width": 32, "height": 32 },
+      "sourceSize": { "width": 32, "height": 32 },
+      "contentRect": { "x": 4, "y": 4, "width": 24, "height": 24 },
+      "contentOffset": { "x": 4, "y": 4 },
       "rotated": false
     }
   ],
-  "animations": [{ "name": "loop", "frameIds": ["fixture", "second"], "events": [] }],
-  "origin": { "x": 16, "y": 32 },
-  "anchors": [],
-  "colliders": []
+  "animations": [{ "name": "loop", "frames": ["fixture", "second"], "fps": 4, "loop": true }],
+  "origin": { "x": 32, "y": 64 },
+  "anchors": [{ "name": "center", "role": "center", "x": 32, "y": 32 }],
+  "colliders": [
+    {
+      "id": "generic-web-hitbox",
+      "name": "hitbox",
+      "purpose": "body",
+      "shape": "rect",
+      "visible": true,
+      "rect": { "x": 8, "y": 8, "width": 48, "height": 48 }
+    },
+    {
+      "id": "generic-web-radius",
+      "name": "radius",
+      "purpose": "sensor",
+      "shape": "circle",
+      "visible": true,
+      "circle": { "x": 32, "y": 32, "radius": 24 }
+    }
+  ],
+  "integrity": {
+    "algorithm": "SHA-256",
+    "manifestHash": "60f09033ff45f7d3da794c3a8b52678cf6dff7ffcfd3277fd64c88423da13ae7"
+  }
 }

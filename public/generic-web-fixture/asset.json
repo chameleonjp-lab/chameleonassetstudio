@@ -1,0 +1,110 @@
+{
+  "format": "chameleon-asset",
+  "version": "0.2.0",
+  "id": "generic-web-fixture",
+  "assetType": "item",
+  "name": "generic_web_fixture",
+  "displayName": "Generic Web fixture",
+  "canvasSize": { "width": 32, "height": 32 },
+  "origin": { "x": 16, "y": 32 },
+  "textures": [
+    {
+      "id": "generic-web-page-000",
+      "kind": "source",
+      "name": "page-000",
+      "mimeType": "image/svg+xml",
+      "size": { "width": 64, "height": 64 },
+      "path": "atlas/pages/page-000.svg"
+    },
+    {
+      "id": "generic-web-page-001",
+      "kind": "source",
+      "name": "page-001",
+      "mimeType": "image/svg+xml",
+      "size": { "width": 32, "height": 32 },
+      "path": "atlas/pages/page-001.svg"
+    }
+  ],
+  "layers": [
+    {
+      "id": "generic-web-layer",
+      "name": "fixture",
+      "layerType": "image",
+      "visible": true,
+      "locked": false,
+      "opacity": 1,
+      "transform": {
+        "position": { "x": 0, "y": 0 },
+        "scale": { "x": 1, "y": 1 },
+        "rotation": 0
+      },
+      "textureId": "generic-web-page-000"
+    },
+    {
+      "id": "generic-web-layer-second",
+      "name": "second",
+      "layerType": "image",
+      "visible": true,
+      "locked": false,
+      "opacity": 1,
+      "transform": {
+        "position": { "x": 0, "y": 0 },
+        "scale": { "x": 1, "y": 1 },
+        "rotation": 0
+      },
+      "textureId": "generic-web-page-001"
+    }
+  ],
+  "parts": [],
+  "anchors": [
+    {
+      "id": "generic-web-center",
+      "name": "center",
+      "role": "center",
+      "position": { "x": 16, "y": 16 }
+    }
+  ],
+  "colliders": [
+    {
+      "id": "generic-web-hitbox",
+      "name": "hitbox",
+      "purpose": "body",
+      "shape": "rect",
+      "visible": true,
+      "rect": { "x": 4, "y": 4, "width": 24, "height": 24 }
+    },
+    {
+      "id": "generic-web-radius",
+      "name": "radius",
+      "purpose": "sensor",
+      "shape": "circle",
+      "visible": true,
+      "circle": { "x": 16, "y": 16, "radius": 12 }
+    }
+  ],
+  "frames": [
+    {
+      "id": "generic-web-frame-fixture",
+      "name": "fixture",
+      "layerStates": [{ "layerId": "generic-web-layer" }]
+    },
+    {
+      "id": "generic-web-frame-second",
+      "name": "second",
+      "layerStates": [{ "layerId": "generic-web-layer-second" }]
+    }
+  ],
+  "animations": [
+    {
+      "id": "generic-web-animation-loop",
+      "name": "loop",
+      "fps": 4,
+      "loop": true,
+      "frameIds": ["generic-web-frame-fixture", "generic-web-frame-second"]
+    }
+  ],
+  "tags": ["generic-web", "fixture"],
+  "gameAttributes": {},
+  "createdAt": "2026-08-29T00:00:00.000Z",
+  "updatedAt": "2026-08-29T00:00:00.000Z"
+}

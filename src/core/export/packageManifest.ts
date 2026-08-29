@@ -10,6 +10,7 @@ export interface PackageManifestFiles {
   distributionManifest: 'manifest.json';
   assetJson: 'asset.json';
   atlasJson: 'atlas/atlas.json';
+  atlasTexture: 'atlas/spritesheet.png';
   pages: string[];
   mainPng: 'textures/main.png';
   mainWebp: 'textures/main.webp' | null;
@@ -94,6 +95,7 @@ export function buildPackageManifest(
       distributionManifest: 'manifest.json',
       assetJson: 'asset.json',
       atlasJson: 'atlas/atlas.json',
+      atlasTexture: 'atlas/spritesheet.png',
       pages: distributionManifest.pages.map((page) => page.path),
       mainPng: 'textures/main.png',
       mainWebp: distributionManifest.files.mainWebp ? 'textures/main.webp' : null,
@@ -287,6 +289,7 @@ function referencedPackagePaths(
     manifest.files.distributionManifest,
     manifest.files.assetJson,
     manifest.files.atlasJson,
+    manifest.files.atlasTexture,
     ...manifest.files.pages,
     manifest.files.mainPng,
     ...(manifest.files.mainWebp ? [manifest.files.mainWebp] : []),

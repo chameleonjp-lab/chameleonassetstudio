@@ -1,0 +1,28 @@
+{
+  "format": "chameleon-verification-record",
+  "version": "0.1.0",
+  "profile": "generic-web-v1",
+  "status": "candidate",
+  "sourceCommit": "ffeff881c1ee166fbcde4cadbd9380ffd9ce52b9",
+  "fixtureHash": "fixture:generic-web-v1",
+  "manifestHash": "60f09033ff45f7d3da794c3a8b52678cf6dff7ffcfd3277fd64c88423da13ae7",
+  "artifactRef": "ci://group23/generic-web",
+  "expected": [
+    "http-manifest",
+    "package-closure",
+    "two-pages",
+    "trim-offset",
+    "scale-2",
+    "origin-anchor",
+    "rect-circle-collider",
+    "cross-page-animation",
+    "canvas-rendering",
+    "viewport-375x667",
+    "console-error-0",
+    "download-0"
+  ],
+  "limitations": [
+    "Chromium CI and this fixture are supporting evidence only.",
+    "Physical Safari and engine-specific runtime compatibility are not verified."
+  ]
+}
