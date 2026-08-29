@@ -52,6 +52,7 @@ describe('Generic Web package manifest', () => {
         distributionManifest: 'manifest.json',
         target: 'targets/generic-web.json',
         verification: 'verification/record.json',
+        atlasTexture: 'atlas/spritesheet.png',
       },
     });
     expect(sidecar).toMatchObject({
@@ -79,6 +80,28 @@ describe('Generic Web package manifest', () => {
 
     expect(() => assertPackageClosure(entries, manifest, distributionManifest)).toThrow(
       /参照先がありません/,
+    );
+  });
+
+  it('Atlasが参照するspritesheetをpackage closureへ含める', () => {
+    const manifest = buildPackageManifest(distributionManifest);
+    const paths = [
+      'package-manifest.json',
+      ...Object.values(manifest.files).flatMap((value) =>
+        value === null ? [] : Array.isArray(value) ? value : [value],
+      ),
+      ...distributionManifest.files.examples,
+      ...distributionManifest.files.helpers,
+      ...distributionManifest.files.engines,
+    ];
+    const entries = Object.fromEntries(
+      [...new Set(paths)]
+        .filter((path) => path !== 'atlas/spritesheet.png')
+        .map((path) => [path, new Uint8Array([123, 125])]),
+    );
+
+    expect(() => assertPackageClosure(entries, manifest, distributionManifest)).toThrow(
+      'atlas/spritesheet.png',
     );
   });
 });

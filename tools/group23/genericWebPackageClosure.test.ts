@@ -7,6 +7,7 @@ import {
   assertKnownAtlasTextureSize,
   parseKnownAtlasJson,
 } from '../../src/core/images/importAtlasBundle';
+import { assertPackageClosure } from '../../src/core/export/packageManifest';
 import {
   canonicalJson,
   roundDistributionPixel,
@@ -68,9 +69,12 @@ function readSvgSize(relativePath: string): { width: number; height: number } {
 }
 
 function packageReferences(manifest: GenericWebPackageManifest): string[] {
-  return Object.values(manifest.files).flatMap((value) =>
-    value === null ? [] : Array.isArray(value) ? value : [value],
-  );
+  return [
+    'package-manifest.json',
+    ...Object.values(manifest.files).flatMap((value) =>
+      value === null ? [] : Array.isArray(value) ? value : [value],
+    ),
+  ];
 }
 
 function assertSafeReference(relativePath: string): void {
@@ -152,6 +156,7 @@ describe('Generic Web package closure', () => {
         distributionManifest: 'manifest.json',
         assetJson: 'asset.json',
         atlasJson: 'atlas/atlas.json',
+        atlasTexture: 'atlas/spritesheet.png',
         mainPng: 'textures/main.png',
         mainWebp: null,
         target: 'targets/generic-web.json',
@@ -174,6 +179,18 @@ describe('Generic Web package closure', () => {
     const atlas = readJson<AtlasJson>(String(packageManifest.files.atlasJson));
     const target = readJson<GenericWebSidecar>(String(packageManifest.files.target));
     const verification = readJson<VerificationRecord>(String(packageManifest.files.verification));
+
+    const closureEntries = Object.fromEntries(
+      [
+        ...new Set([
+          ...packageReferences(packageManifest),
+          ...distribution.files.examples,
+          ...distribution.files.helpers,
+          ...distribution.files.engines,
+        ]),
+      ].map((path) => [path, new Uint8Array(readBytes(path))]),
+    ) as Record<string, Uint8Array>;
+    expect(() => assertPackageClosure(closureEntries, packageManifest, distribution)).not.toThrow();
 
     expect(validateAssetForPersistence(asset).valid).toBe(true);
     expect(asset).toMatchObject({ format: 'chameleon-asset', version: '0.2.0' });
