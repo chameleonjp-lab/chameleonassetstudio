@@ -1,9 +1,9 @@
 # Group 22: 代表プロジェクト・文書整合・最終監査
 
-最終更新日: 2026-08-27  
+最終更新日: 2026-08-31
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 正式work package: `2D-6-REFERENCE` + `2D-6-DOCS` + `2D-6-GATE-AUDIT`  
-基準main SHA: `15e252d8339361cd153ac784cba5752189ceeabd`  
+基準main SHA: `17d62c49792202ef411124df03e3809ded5f2d8c`
 文書種別: Group 22 implementation handoff / evidence gate  
 状態: `implemented-candidate / CI-passed / merged / runtime-verification-unverified`
 
@@ -54,14 +54,20 @@
 
 | ループ | 現行証拠 | Group 22での扱い |
 |---|---|---|
-| 作成 / 取り込み | `e2e/casproj.spec.ts`、`e2e/import.spec.ts` | 既存E2Eの支援証拠。代表IDとの一体実行は未完了。 |
+| 作成 / 取り込み | `e2e/casproj.spec.ts`、`e2e/import.spec.ts`、`e2e/reference-project-gate.spec.ts` | PR #272で代表IDの自動一体フローを確認。 |
 | Frame / Animation | `e2e/animation.spec.ts` | 既存E2Eの支援証拠。FrameとAnimationを同一台帳へ記録する。 |
 | origin / anchor / collider | `e2e/gamedata.spec.ts` | rect / circle と保存・reloadを含む支援証拠。 |
 | Game Check | `e2e/game-check-mode.spec.ts` | read-only表示、再生、問題表示の支援証拠。保存変更がないことを別Gateで維持する。 |
-| preflight | `e2e/game-check-mode.spec.ts`、`e2e/export.spec.ts` | 異常検出・拒否は確認済み。代表projectの「修正→再試行」一連は未実施として残す。 |
-| Generic Web HTTP | `e2e/generic-web.spec.ts`、`public/generic-web-fixture/` | scale、trim offset、複数page、origin / anchor / collider / animationをHTTPで確認する支援証拠。 |
-| `.casproj` roundtrip | `e2e/casproj.spec.ts` | 削除後の再読込・再exportを確認する支援証拠。代表IDとの一体実行は未完了。 |
+| preflight | `e2e/game-check-mode.spec.ts`、`e2e/export.spec.ts`、`e2e/reference-project-gate.spec.ts` | 意図的な欠落検出と正常入力への再試行を自動確認。アプリ内修正とartifact内容レビューは未確認。 |
+| Generic Web HTTP | `e2e/generic-web.spec.ts`、`tools/group23/genericWebPackageClosure.test.ts`、`public/generic-web-fixture/` | PR #272でHTTP・package closure・Canvas 2D相当のfixtureを自動確認。外部実行のverifiedにはしない。 |
+| `.casproj` roundtrip | `e2e/casproj.spec.ts`、`e2e/reference-project-gate.spec.ts` | PR #272で同じreference IDの再読込・再出力の意味一致を自動確認。artifact内容レビューは未確認。 |
 | 利用者向け入口 | `e2e/beginner-guide.spec.ts`、`README.md`、`public/guide/` | リンク、title、mobile overflow、現在地と次の操作の入口を監査する。 |
+
+### PR #272で追加された自動証拠
+
+PR #272（head `6270e59abbb999d00d7c434ff66c76db5836b0fc`、merge `17d62c49792202ef411124df03e3809ded5f2d8c`）で、reference ID `2d-pro-reference-001`の意図的な画像欠落検出、修正済み入力の再試行、Game Check、初回出力、削除後の`.casproj`再読込、2回目出力の意味一致を自動確認した。Run #892（Actions ID `33248089842`、attempt 2）は全job成功、E2E 205件、H3 1件、Pages open / closed各1件である。
+
+これはテストが用意した不備入力から正常入力へ再試行する自動証拠であり、アプリ内で利用者がpreflight結果を修正する操作、artifact内容の人間レビュー、初回利用者レビュー、物理端末、対象engine runtimeを成功扱いにしない。
 
 ### 3.1 証拠レベル
 
@@ -104,7 +110,7 @@ Group 22をcompletedへ昇格するには、少なくとも次を同一の代表
 4. 必須端末、対象engine、CI artifact、固定head reviewを、成功と未実施に分けて記録する。
 5. README、ユーザーガイド、出力形式、互換性表、release checklistの内容が一致する。
 
-PR #264は1〜5のうち静的な台帳と入口監査をmainへ反映した。runtime未検証・初回レビュー未実施のため、完了数は増やさない。未完了条件は、PCまたは実機環境が利用可能になった時点で、代表IDの一体実行と人間レビューを行って記録することである。
+PR #264は1〜5のうち静的な台帳と入口監査をmainへ反映し、PR #272は代表IDの自動一体フローとGeneric Web package closureを追加した。runtime未検証・初回レビュー未実施・artifact内容レビュー未実施のため、完了数は増やさない。未完了条件は、PCまたは実機環境が利用可能になった時点で、代表IDの一体実行と人間レビューを行って記録することである。
 
 
 ## 7. Post-merge closeout（2026-08-27）
@@ -114,3 +120,12 @@ PR #264（head `4d513fa7a105336f00a51fa2c0ede9ee5d339f17`）はmerge commit `15e
 この記録が示すのは、Group 22の静的台帳・文書入口監査がCIを通過してmainへ入ったことだけである。stable manifestは `candidate` のままとし、代表projectの一体実行、preflightの修正→再試行、初回利用者レビュー、物理端末、Group 19 / 20 runtimeを成功扱いにしない。PR #264にはGitHub上の独立review投稿が記録されていないため、`independently-verified`へは昇格させない。
 
 次はGroup 23（2D Pro Gate）である。人間がGateを承認するまで、新しい製品実装と3D実装を開始しない。進捗は18/27のままとする。
+
+
+## 8. PR #272証拠同期（2026-08-31）
+
+PR #272の自動証拠とmain反映を記録する。固定headは `6270e59abbb999d00d7c434ff66c76db5836b0fc`、merge commitは `17d62c49792202ef411124df03e3809ded5f2d8c`、Run #892（Actions ID `33248089842`、attempt 2）はsuccessである。artifactは [Generic Web](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33248089842/artifacts/9713610304) と [Playwright](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33248089842/artifacts/9713609727) に分かれる。
+
+代表IDの自動一体フロー、package closure、Game Check、`.casproj` roundtripを確認済みとして台帳を更新する。ただしstable manifestは `candidate`、artifact内容レビュー・初回利用者レビュー・物理端末・Group 19 / 20 runtimeは `not-run` のままとする。preflightの修正はアプリ内利用者操作の証拠ではない。
+
+次はartifact内容の人間レビュー、アプリ内preflight修正→再試行の確認、初回利用者レビュー、物理端末・対象runtimeの記録である。2D Pro Gate承認まで新しい製品実装と3D実装を開始しない。進捗は18/27のままとする。

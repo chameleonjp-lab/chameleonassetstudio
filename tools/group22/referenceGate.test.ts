@@ -22,6 +22,23 @@ interface ReferenceEvidence {
     roundTripFormat: string;
   };
   flow: ReferenceFlow[];
+  automatedEvidence: {
+    sourcePullRequest: number;
+    sourceHead: string;
+    mergeCommit: string;
+    workflow: {
+      runNumber: number;
+      actionsId: string;
+      attempt: number;
+      status: string;
+      e2ePassed: number;
+      h3Passed: number;
+      pages: { open: number; closed: number };
+    };
+    artifacts: { genericWeb: string; playwright: string };
+    fixedHeadReadOnlyReview: { status: string; count: number; scope: string };
+    artifactContentReview: { status: string; reason: string };
+  };
   documentation: { status: string; requiredPaths: string[] };
   manualGate: { status: string; requiredEnvironments: string[]; reason: string };
   promotion: { next: string; blockedUntil: string[] };
@@ -60,6 +77,28 @@ describe('Group 22 reference project evidence gate', () => {
     expect(evidence.manualGate.reason).toMatch(/PC is unavailable/);
     expect(evidence.promotion.next).toBe('2D Pro Gate human approval');
     expect(evidence.limitations.join('\n')).toMatch(/supporting evidence/);
+    expect(evidence.automatedEvidence).toMatchObject({
+      sourcePullRequest: 272,
+      sourceHead: '6270e59abbb999d00d7c434ff66c76db5836b0fc',
+      mergeCommit: '17d62c49792202ef411124df03e3809ded5f2d8c',
+      workflow: {
+        runNumber: 892,
+        actionsId: '33248089842',
+        attempt: 2,
+        status: 'success',
+        e2ePassed: 205,
+        h3Passed: 1,
+        pages: { open: 1, closed: 1 },
+      },
+      fixedHeadReadOnlyReview: { status: 'passed', count: 3 },
+      artifactContentReview: { status: 'not-run' },
+    });
+    expect(evidence.automatedEvidence.artifacts.genericWeb).toMatch(
+      /actions\/runs\/33248089842\/artifacts\/9713610304$/,
+    );
+    expect(evidence.automatedEvidence.artifacts.playwright).toMatch(
+      /actions\/runs\/33248089842\/artifacts\/9713609727$/,
+    );
   });
 
   it('references existing tests and fixtures without silently dropping a flow step', () => {
@@ -86,14 +125,14 @@ describe('Group 22 reference project evidence gate', () => {
     const preflightFlow = evidence.flow.find((flow) => flow.id === 'preflight-fix-and-retry');
     expect(preflightFlow?.status).toBe('automated-reference-flow');
     expect(preflightFlow?.testFiles).toContain('e2e/reference-project-gate.spec.ts');
-    expect(preflightFlow?.missing).toMatch(/fixed-head CI artifact/);
+    expect(preflightFlow?.missing).toMatch(/fixed-head CI artifact content review/);
     const genericWebFlow = evidence.flow.find((flow) => flow.id === 'generic-web-http');
     expect(genericWebFlow?.status).toBe('automated-http-and-closure');
     expect(genericWebFlow?.testFiles).toContain('tools/group23/genericWebPackageClosure.test.ts');
     const casprojFlow = evidence.flow.find((flow) => flow.id === 'casproj-reopen-and-regenerate');
     expect(casprojFlow?.status).toBe('automated-reference-flow');
     expect(casprojFlow?.testFiles).toContain('e2e/reference-project-gate.spec.ts');
-    expect(casprojFlow?.missing).toMatch(/fixed-head CI artifact/);
+    expect(casprojFlow?.missing).toMatch(/fixed-head CI artifact content review/);
     expect(evidence.flow.find((flow) => flow.id === 'first-time-review')?.status).toBe('not-run');
   });
 
@@ -122,7 +161,7 @@ describe('Group 22 reference project evidence gate', () => {
     expect(roadmap).toContain('3D を開始しない');
     expect(evidence.promotion.blockedUntil).toEqual(
       expect.arrayContaining([
-        'fixed-head CI artifact for the representative flow',
+        'fixed-head CI artifact content review for the representative flow',
         'physical-device evidence',
         'Group 19 and Group 20 runtime decisions',
       ]),

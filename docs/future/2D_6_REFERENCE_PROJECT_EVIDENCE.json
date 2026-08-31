@@ -46,7 +46,7 @@
         "e2e/export.spec.ts",
         "e2e/reference-project-gate.spec.ts"
       ],
-      "missing": "fixed-head CI artifact, first-time review, and physical/runtime evidence"
+      "missing": "fixed-head CI artifact content review, first-time review, and physical/runtime evidence"
     },
     {
       "id": "generic-web-http",
@@ -61,7 +61,7 @@
       "id": "casproj-reopen-and-regenerate",
       "status": "automated-reference-flow",
       "testFiles": ["e2e/casproj.spec.ts", "e2e/reference-project-gate.spec.ts"],
-      "missing": "fixed-head CI artifact, first-time review, and physical/runtime evidence"
+      "missing": "fixed-head CI artifact content review, first-time review, and physical/runtime evidence"
     },
     {
       "id": "first-time-review",
@@ -69,6 +69,33 @@
       "missing": "participant count and pass criteria are not executed in this environment"
     }
   ],
+  "automatedEvidence": {
+    "sourcePullRequest": 272,
+    "sourceHead": "6270e59abbb999d00d7c434ff66c76db5836b0fc",
+    "mergeCommit": "17d62c49792202ef411124df03e3809ded5f2d8c",
+    "workflow": {
+      "runNumber": 892,
+      "actionsId": "33248089842",
+      "attempt": 2,
+      "status": "success",
+      "e2ePassed": 205,
+      "h3Passed": 1,
+      "pages": { "open": 1, "closed": 1 }
+    },
+    "artifacts": {
+      "genericWeb": "https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33248089842/artifacts/9713610304",
+      "playwright": "https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33248089842/artifacts/9713609727"
+    },
+    "fixedHeadReadOnlyReview": {
+      "status": "passed",
+      "count": 3,
+      "scope": "contract, CI/E2E, and scope/Gate"
+    },
+    "artifactContentReview": {
+      "status": "not-run",
+      "reason": "CI artifact presence is recorded, but its contents have not been reviewed as a human Gate decision"
+    }
+  },
   "documentation": {
     "status": "static-audit",
     "requiredPaths": [
@@ -99,7 +126,7 @@
   "promotion": {
     "next": "2D Pro Gate human approval",
     "blockedUntil": [
-      "fixed-head CI artifact for the representative flow",
+      "fixed-head CI artifact content review for the representative flow",
       "first-time review record",
       "physical-device evidence",
       "Group 19 and Group 20 runtime decisions"
@@ -108,6 +135,7 @@
   "limitations": [
     "existing test coverage is supporting evidence, not a claim that one representative project completed the full loop",
     "automated reference flow and package closure are supporting evidence only until the fixed-head artifact is reviewed",
+    "the PR #272 artifact is recorded and the artifact-content Gate review remains not-run",
     "Chromium CI is not physical Safari or PC evidence",
     "candidate status does not grant verified compatibility to any engine or target version"
   ]

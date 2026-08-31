@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 最終完成までの実装計画書
 
-最終更新日: 2026-08-29
+最終更新日: 2026-08-31
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`
 
@@ -27,6 +27,12 @@
 2D Pro の完成条件は `docs/future/2D_COMPLETE_PRODUCT_SPEC.md`、データ、対象別出力、端末品質は同ディレクトリの専門文書を正本とする。
 
 ---
+
+## 最新状態（2026-08-31）
+
+PR #272（`test: add representative project evidence flow`）はhead `6270e59abbb999d00d7c434ff66c76db5836b0fc`からmerge commit `17d62c49792202ef411124df03e3809ded5f2d8c`としてmainへ反映済みである。Run #892（Actions ID `33248089842`、attempt 2）は全job成功し、代表ID `2d-pro-reference-001`の意図的な不備検出 → 修正入力の再試行 → Game Check → `.casproj`再読込・再出力、Generic Web package closureを自動証拠へ追加した。E2Eは205件、H3は1件、Pagesはopen / closed各1件である。
+
+これは自動証拠の追加であり、artifact内容の人間レビュー、アプリ内でのpreflight修正、初回利用者レビュー、PC / iPhone / iPad / Android実機、Group 19 / 20 runtime、2D Pro Gate承認を意味しない。Group 22 / 23は`candidate / gate-pending / runtime-verification-unverified`、進捗18/27を維持し、人間承認まで新規製品実装と3Dを開始しない。詳細は `docs/future/2D_PRO_GATE_AUDIT.md` を最新の判断記録とする。
 
 ## 2. 基本方針
 

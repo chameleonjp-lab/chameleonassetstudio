@@ -1,8 +1,8 @@
 # Chameleon Asset Studio 五視点レビュー統合アクション計画
 
-最終更新日: 2026-08-29  
+最終更新日: 2026-08-31
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
-五視点レビュー統合基準main SHA: `6a025cebbd31fe5ac1f83afd24fd4e8c72ee2236`
+五視点レビュー統合基準main SHA: `17d62c49792202ef411124df03e3809ded5f2d8c`
 文書種別: docs-only 横断レビュー統合・後続work package割当  
 状態: `review-integrated / G16-G18 merged / G19 candidate-implementation-merged / G20 candidate-docs-merged / G21A-C candidate-implementation-merged / G22 static-audit-merged / runtime-unverified / Group23 gate-pending`
 
@@ -12,21 +12,24 @@
 
 > この文書は、2026-08-13に行った五視点レビューを既存の2D完成ロードマップへ割り当てる。Group 19はG19-C1 A（Unity 6000.3.21f1 / Godot 4.7.1-stable） + G19-C2 A + G19-C3 Aを採用し、PR #251（merge `e77a721ff3d479bea0f7475f0b0fbc296ce91595`、CI Run #805全job成功）でcandidate fixture、静的closure test、import notesをmainへ反映した。Group 20はacceptedなdocs-only handoffをmainへ反映し、Group 22はPR #264で静的台帳・文書入口監査をmainへ反映した。Group 23の監査記録はPR #266でmainへ反映し、マージ後状態はPR #267、PR #268、PR #269、PR #270で同期したが、2D Pro Gateは未完了である。Group 19 / 20のruntime Gate、代表projectの一体実行、初回利用者レビュー、物理端末は未完了のためverifiedへ昇格しない。次はGroup 23の2D Pro Gateであり、人間承認まで新規実装を開始しない。
 
+PR #272で代表IDの自動一体フロー、Generic Web package closure、固定head CI証拠が追加された。これは自動証拠の拡充であり、artifact内容の人間レビュー、アプリ内preflight修正、初回利用者レビュー、実機・対象runtime、2D Pro Gate承認を意味しない。
+
 ---
 
 ## 1. GitHubで確認した現在状態
 
 | 項目 | 状態 |
 |---|---|
-| 最新main | `6a025cebbd31fe5ac1f83afd24fd4e8c72ee2236`。PR #270のmerge commit。 |
-| open Pull Request | 現在0件。PR #264 / #265 / #266 / #267 / #268 / #269 / #270はmerge済み。 |
-| 最新main CI | [Run #884](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33242630244) がsuccess。docs-only変更のためclassifyのみ実行し、build-and-test / E2Eはskip。 |
-| Pages公開 | [Run #122](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33242630245) がsuccess。build / deployとも同じmain SHAを使用。 |
+| 最新main | `17d62c49792202ef411124df03e3809ded5f2d8c`。PR #272のmerge commit。 |
+| open Pull Request | 現在0件。PR #264 / #265 / #266 / #267 / #268 / #269 / #270 / #272はmerge済み。 |
+| 最新main CI | [Run #893](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33253797190) がsuccess。同じmain SHA `17d62c49792202ef411124df03e3809ded5f2d8c`で確認した。 |
+| Pages公開 | [Run #124](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33253797167) がsuccess。build / deployとも同じmain SHAを使用。 |
 | 完了数 | 18/27。Group 18 closeout済み。Group 19 runtime未完了のため完了数は変更しない。 |
 | Group 16 docs-only監査 | PR #240でmainへ反映済み。 |
 | Group 16契約 | `accepted`。ユーザーが`G16-C1 A + G16-C2 A + G16-C3 A`を2026-08-13に採用。 |
 | Group 16製品実装 | `implemented / CI-passed / independently-verified / merged`（PR #242 final head `6616ad30fdae7a05f98e0a0146ce69555bab1bfa`、merge `711bcec268d6e732a24c0c787c6054b41e415c27`、CI Run #765）。 |
 | Group 17契約 | `accepted / implemented / CI-passed / independently-verified / merged`。PR #246 final head `9380494f7a662b9211f341d87a15f62d4b82986f`、merge `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`、CI Run #785。 |
+| PR #272自動証拠 | head `6270e59abbb999d00d7c434ff66c76db5836b0fc`、merge `17d62c49792202ef411124df03e3809ded5f2d8c`。Run #892（Actions ID `33248089842`、attempt 2）は全job成功、E2E 205件、H3 1件、Pages open / closed各1件。 |
 | 次の許可された行動 | Group 23（2D Pro Gate）の残存証拠・未解決判断を確認し、人間承認まで新規製品実装と3Dを開始しない。代表projectの一体実行、初回レビュー、物理端末、Group 19 / 20 runtimeは未実施のまま保持する。 |
 
 PR #240のmergeはGroup 16監査のGate A、2026-08-13のユーザー明示判断G16-C1 A + G16-C2 A + G16-C3 AはGate Bであり、PR #242で実装・CI・固定head確認・mergeまで完了した。Group 17はPR #243 / #244 / #245のmain反映でGate A、2026-08-14のG17-C1 A + G17-C2 A + G17-C3 AでGate Bを完了し、PR #246で実装・CI・独立確認・mergeまで完了した。Group 18は2026-08-15のG18-C1 A + G18-C2 A + G18-C3 Aを採用し、PR #248 / merge 3ab844dで実装・CI・独立確認・mergeまで完了した。Group 19はdocs/future/2D_5_UNITY_GODOT_PLAN.mdの採用済み契約に基づき、PR #251（merge `e77a721ff3d479bea0f7475f0b0fbc296ce91595`）でengine別candidate実装をmainへ反映した。runtime Gateは未完了である。
