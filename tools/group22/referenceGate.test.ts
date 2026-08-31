@@ -154,7 +154,7 @@ describe('Group 22 reference project evidence gate', () => {
         pullRequest: 274,
         head: '9a857574ba5eeffc6d87f242236d9127c3459f9a',
         workflow: {
-          runNumber: 897,
+          runNumber: 898,
           actionsId: '33349026436',
           status: 'success',
           jobs: {
@@ -173,7 +173,7 @@ describe('Group 22 reference project evidence gate', () => {
         pullRequestMergeRef: 'e70eae246fe822ecb1016fd574f78e92eaea2606',
         e2eSkipReason:
           'The changed-file classification for the docs and Group 22 Gate test skipped E2E; representative-flow E2E evidence is recorded separately under PR #272 Run #892.',
-        recordedScope: 'PR #274 final-head CI for the handoff correction content.',
+        recordedScope: 'PR #274 handoff correction content verified at this PR head; later bookkeeping-only commits require their own CI record.',
       },
     });
     expect(evidence.automatedEvidence.artifacts.genericWeb).toMatch(
