@@ -35,7 +35,7 @@ Group 22のmerge後に、2D Pro Gateの判定に必要な証拠、未確認項�
 | 項目 | 確認結果 |
 |---|---|
 | 最新main | 17d62c49792202ef411124df03e3809ded5f2d8c。PR #272のmerge commit。 |
-| 現在のopen PR | main基準時点では0件。現在の後続Draft PRは#273。PR #272はmainへmerge済み。 |
+| 現在のopen PR | main基準時点では0件。現在の後続Draft PRは#274。PR #273はmainへmerge済み。 |
 | Group 23監査開始時のopen PR | 0件。Group 23用branchはPR #266で作成した。 |
 | 完了数 | 18/27。Group 19〜22はruntimeまたは実機未確認を含むため、完了数を増やさない。 |
 | Group 22 | implemented-candidate / CI-passed / merged / runtime-verification-unverified |
@@ -47,7 +47,8 @@ Group 22のmerge後に、2D Pro Gateの判定に必要な証拠、未確認項�
 | PR #272固定head CI | [Run #892](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33248089842)（Actions ID `33248089842`、attempt 2）がsuccess。E2E 205件、H3 1件、Pages open / closed各1件。 |
 | PR #272 artifacts | [Generic Web](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33248089842/artifacts/9713610304)、[Playwright](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33248089842/artifacts/9713609727)。Generic Web artifactの実体名は`group16-generic-web-evidence-33248089842-2`で、Group 22専用artifactとは表現しない。 |
 | 固定head read-only review | PR #272の3方向（contract / CI・E2E / scope・Gate）はPASS。PR #273のhandoff変更は最終headで3方向確認を再実施する。artifact内容のGateレビューはnot-run。 |
-| PR #273 handoff CI | Draft PR #273 head `2e3c5eed97cb7298c1032f091e783a46f71c0b98`に対する[Run #895](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33347654457)（Actions ID `33347654457`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskip。Group 22 artifact [9742541791](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33347654457/artifacts/9742541791)を取得した。 |
+| PR #274 handoff CI | Draft PR #274 head `49769a14490e2300e66a238251d9aa7da5ad52cc`に対する[Run #897](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33348582105)（Actions ID `33348582105`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskip。Group 22 artifact [9742835911](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33348582105/artifacts/9742835911)を取得した。 |
+| PR #273 handoff CI | `2e3c5eed97cb7298c1032f091e783a46f71c0b98`に対する[Run #895](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33347654457)（Actions ID `33347654457`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskip。Group 22 artifact [9742541791](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33347654457/artifacts/9742541791)を取得した。 |
 | 独立review | PR #264のGitHub review投稿とreview threadは0件。PR #273の内部read-only reviewはGitHub review投稿とは別物として記録する。Group 22をindependently-verifiedへ昇格しない。 |
 
 ## 4. 2D Pro Gate判定表
@@ -97,6 +98,7 @@ Group 22のmerge後に、2D Pro Gateの判定に必要な証拠、未確認項�
 - Run #869はPR #264のheadに対する完全CIであり、Run #873はPR #265マージ後・PR #266前、Run #876はPR #266マージ後・PR #267前、Run #878はPR #267マージ後・PR #268前、Run #880はPR #268マージ後・PR #269前、Run #881はPR #269のhead、Run #882はPR #269マージ後・PR #270前、Run #883はPR #270のhead、Run #884はPR #270マージ後のmain docs-only push CIである。PR headのCIとmerge後mainのCIは別の目的である。
 - Run #892（Actions ID `33248089842`、attempt 2）はPR #272 head `6270e59abbb999d00d7c434ff66c76db5836b0fc`に対する全job成功である。mainのRun #893（Actions ID `33253797190`）とPages Run #124（Actions ID `33253797167`）も同じmerge commit `17d62c49792202ef411124df03e3809ded5f2d8c`でsuccess。
 - Run #895（Actions ID `33347654457`）はDraft PR #273のhead `2e3c5eed97cb7298c1032f091e783a46f71c0b98`に対するhandoff検証で、classify / build-and-testはsuccess、unit 87 files / 916 testsはsuccess、E2Eは変更分類によりskip。これはPR #272の代表flow E2Eとは別の証拠である。
+- Run #897（Actions ID `33348582105`）はDraft PR #274のhead `49769a14490e2300e66a238251d9aa7da5ad52cc`に対する最終handoff CIで、classify / build-and-testはsuccess、unit 87 files / 916 testsはsuccess、E2Eは変更分類によりskip。artifact `9742835911`を取得した。
 - Pages Run #118はPR #266マージ後・PR #267前、Pages Run #119はPR #267マージ後・PR #268前、Pages Run #120はPR #268マージ後・PR #269前、Pages Run #121はPR #269マージ後・PR #270前、Pages Run #122はPR #270マージ後mainの公開確認であり、いずれも2D Pro Gateの実機確認ではない。
 - PixiJS / Phaserのverifiedは対象versionのfixture-local範囲に限る。
 - Godotのfixture-local成功は、UnityやGroup 19全体のverifiedを意味しない。
@@ -143,3 +145,10 @@ PR #272は、head `6270e59abbb999d00d7c434ff66c76db5836b0fc`からmerge commit `
 Draft PR #273は、PR #272で追加された代表project自動証拠をGroup 23の正本文書へ同期し、`tools/group22/referenceGate.test.ts`で証拠契約を検査するdocs＋Gate test変更である。製品コード、schema、保存形式、export、依存関係、3Dは変更しない。
 
 固定head `2e3c5eed97cb7298c1032f091e783a46f71c0b98`のRun #895（Actions ID `33347654457`）はclassify / build-and-testがsuccess、unit 87 files / 916 testsがsuccess、E2Eは変更分類によりskipだった。Group 22 artifact [9742541791](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33347654457/artifacts/9742541791)を記録した。PR #273の最終3方向read-only reviewはこのhandoff修正後に確定し、GitHub上のreview投稿ではなく内部監査記録として扱う。artifact内容の人間Gateレビュー、初回利用者レビュー、物理端末、Group 19 / 20 runtime、人間承認は未完了である。
+
+
+## 11. Draft PR #274のhandoff補正（2026-08-31）
+
+Draft PR #274は、PR #273のマージ後にPR #273自身のhandoff CI記録を最新headへ結び付け、Group 22 artifactの実体名を明記するdocs＋Gate test変更である。head `49769a14490e2300e66a238251d9aa7da5ad52cc`のRun #897（Actions ID `33348582105`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskipだった。Group 22 artifact [9742835911](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33348582105/artifacts/9742835911)（`group22-reference-project-evidence-33348582105-1`）を取得した。
+
+PR #274の3方向read-only reviewはこの最終headで確定する。これはGitHub上のreview投稿ではなく内部監査記録である。artifact内容の人間Gateレビュー、初回利用者レビュー、物理端末、Group 19 / 20 runtime、人間承認は未完了であり、`candidate / gate-pending / runtime-verification-unverified`、進捗18/27、3D停止を維持する。

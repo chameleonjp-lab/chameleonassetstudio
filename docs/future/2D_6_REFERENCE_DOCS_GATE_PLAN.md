@@ -140,3 +140,10 @@ PR #273では、PR #272の自動証拠、Run #892、artifactの役割、未確�
 PR #273の固定head `2e3c5eed97cb7298c1032f091e783a46f71c0b98`に対するRun #895（Actions ID `33347654457`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskipだった。これは文書・Gate testの検証であり、代表projectのE2Eを新たに実行したものではない。代表flow E2EはPR #272 Run #892として別に記録する。
 
 次の停止条件は、PR #273の最終head 3方向read-only review、PR #272 artifact内容の人間レビュー、アプリ内preflight修正→再試行、初回利用者レビュー、物理端末、対象engine runtime、2D Pro Gate人間承認である。`candidate / not-run`、`gate-pending / runtime-verification-unverified`、進捗18/27、3D停止を維持する。
+
+
+## 10. Draft PR #274 handoff補正（2026-08-31）
+
+Draft PR #274は、PR #273のマージ後にhandoff証拠を最新headへ更新し、Group 22 artifactの役割・実体名・CI境界を正本文書へ同期するdocs＋Gate test変更である。head `49769a14490e2300e66a238251d9aa7da5ad52cc`のRun #897（Actions ID `33348582105`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskipだった。Group 22 artifact [9742835911](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33348582105/artifacts/9742835911)（`group22-reference-project-evidence-33348582105-1`）を取得した。
+
+PR #274の3方向read-only review、PR #272 artifact内容の人間Gateレビュー、アプリ内preflight修正→再試行、初回利用者レビュー、物理端末、対象engine runtime、2D Pro Gate人間承認は未完了である。`candidate / not-run`、`gate-pending / runtime-verification-unverified`、進捗18/27、3D停止を維持する。

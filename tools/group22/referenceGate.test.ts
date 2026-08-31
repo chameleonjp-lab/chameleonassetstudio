@@ -44,6 +44,20 @@ interface ReferenceEvidence {
     };
     artifactNotes: { genericWeb: string; playwright: string };
     artifactContentReview: { status: string; reason: string };
+    previousHandoffVerification: {
+      pullRequest: number;
+      head: string;
+      workflow: {
+        runNumber: number;
+        actionsId: string;
+        status: string;
+        jobs: { classifyChanges: string; buildAndTest: string; e2e: string };
+        unit: { filesPassed: number; testsPassed: number };
+      };
+      artifact: string;
+      e2eSkipReason: string;
+      recordedScope: string;
+    };
     handoffVerification: {
       pullRequest: number;
       head: string;
@@ -55,6 +69,7 @@ interface ReferenceEvidence {
         unit: { filesPassed: number; testsPassed: number };
       };
       artifact: string;
+      artifactName: string;
       e2eSkipReason: string;
       recordedScope: string;
     };
@@ -116,7 +131,7 @@ describe('Group 22 reference project evidence gate', () => {
         publicGitHubReview: 'not-posted',
       },
       artifactContentReview: { status: 'not-run' },
-      handoffVerification: {
+      previousHandoffVerification: {
         pullRequest: 273,
         head: '2e3c5eed97cb7298c1032f091e783a46f71c0b98',
         workflow: {
@@ -131,6 +146,27 @@ describe('Group 22 reference project evidence gate', () => {
           unit: { filesPassed: 87, testsPassed: 916 },
         },
       },
+      handoffVerification: {
+        pullRequest: 274,
+        head: '49769a14490e2300e66a238251d9aa7da5ad52cc',
+        workflow: {
+          runNumber: 897,
+          actionsId: '33348582105',
+          status: 'success',
+          jobs: {
+            classifyChanges: 'success',
+            buildAndTest: 'success',
+            e2e: 'skipped',
+          },
+          unit: { filesPassed: 87, testsPassed: 916 },
+        },
+        artifact:
+          'https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33348582105/artifacts/9742835911',
+        artifactName: 'group22-reference-project-evidence-33348582105-1',
+        e2eSkipReason:
+          'The changed-file classification for the docs and Group 22 Gate test skipped E2E; representative-flow E2E evidence is recorded separately under PR #272 Run #892.',
+        recordedScope: 'PR #274 final-head CI for the handoff correction content.',
+      },
     });
     expect(evidence.automatedEvidence.artifacts.genericWeb).toMatch(
       /actions\/runs\/33248089842\/artifacts\/9713610304$/,
@@ -142,9 +178,14 @@ describe('Group 22 reference project evidence gate', () => {
       /not a Group 22-only artifact/,
     );
     expect(evidence.automatedEvidence.handoffVerification.artifact).toMatch(
-      /actions\/runs\/33347654457\/artifacts\/9742541791$/,
+      /actions\/runs\/33348582105\/artifacts\/9742835911$/,
     );
     expect(evidence.automatedEvidence.handoffVerification.e2eSkipReason).toMatch(/skipped E2E/);
+    expect(evidence.automatedEvidence.previousHandoffVerification.pullRequest).toBe(273);
+    expect(evidence.automatedEvidence.previousHandoffVerification.workflow.runNumber).toBe(895);
+    expect(evidence.automatedEvidence.handoffVerification.artifactName).toBe(
+      'group22-reference-project-evidence-33348582105-1',
+    );
   });
 
   it('references existing tests and fixtures without silently dropping a flow step', () => {

@@ -21,22 +21,31 @@
     {
       "id": "create-or-import",
       "status": "existing-test-coverage",
-      "testFiles": ["e2e/casproj.spec.ts", "e2e/import.spec.ts"]
+      "testFiles": [
+        "e2e/casproj.spec.ts",
+        "e2e/import.spec.ts"
+      ]
     },
     {
       "id": "frame-and-animation",
       "status": "existing-test-coverage",
-      "testFiles": ["e2e/animation.spec.ts"]
+      "testFiles": [
+        "e2e/animation.spec.ts"
+      ]
     },
     {
       "id": "game-data",
       "status": "existing-test-coverage",
-      "testFiles": ["e2e/gamedata.spec.ts"]
+      "testFiles": [
+        "e2e/gamedata.spec.ts"
+      ]
     },
     {
       "id": "game-check",
       "status": "existing-test-coverage",
-      "testFiles": ["e2e/game-check-mode.spec.ts"]
+      "testFiles": [
+        "e2e/game-check-mode.spec.ts"
+      ]
     },
     {
       "id": "preflight-fix-and-retry",
@@ -55,12 +64,17 @@
         "e2e/generic-web.spec.ts",
         "tools/group23/genericWebPackageClosure.test.ts"
       ],
-      "fixturePaths": ["public/generic-web-fixture"]
+      "fixturePaths": [
+        "public/generic-web-fixture"
+      ]
     },
     {
       "id": "casproj-reopen-and-regenerate",
       "status": "automated-reference-flow",
-      "testFiles": ["e2e/casproj.spec.ts", "e2e/reference-project-gate.spec.ts"],
+      "testFiles": [
+        "e2e/casproj.spec.ts",
+        "e2e/reference-project-gate.spec.ts"
+      ],
       "missing": "fixed-head CI artifact content review, first-time review, and physical/runtime evidence"
     },
     {
@@ -80,7 +94,10 @@
       "status": "success",
       "e2ePassed": 205,
       "h3Passed": 1,
-      "pages": { "open": 1, "closed": 1 }
+      "pages": {
+        "open": 1,
+        "closed": 1
+      }
     },
     "artifacts": {
       "genericWeb": "https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33248089842/artifacts/9713610304",
@@ -101,6 +118,28 @@
       "reason": "CI artifact presence is recorded, but its contents have not been reviewed as a human Gate decision"
     },
     "handoffVerification": {
+      "pullRequest": 274,
+      "head": "49769a14490e2300e66a238251d9aa7da5ad52cc",
+      "workflow": {
+        "runNumber": 897,
+        "actionsId": "33348582105",
+        "status": "success",
+        "jobs": {
+          "classifyChanges": "success",
+          "buildAndTest": "success",
+          "e2e": "skipped"
+        },
+        "unit": {
+          "filesPassed": 87,
+          "testsPassed": 916
+        }
+      },
+      "artifact": "https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33348582105/artifacts/9742835911",
+      "artifactName": "group22-reference-project-evidence-33348582105-1",
+      "e2eSkipReason": "The changed-file classification for the docs and Group 22 Gate test skipped E2E; representative-flow E2E evidence is recorded separately under PR #272 Run #892.",
+      "recordedScope": "PR #274 final-head CI for the handoff correction content."
+    },
+    "previousHandoffVerification": {
       "pullRequest": 273,
       "head": "2e3c5eed97cb7298c1032f091e783a46f71c0b98",
       "workflow": {
@@ -112,7 +151,10 @@
           "buildAndTest": "success",
           "e2e": "skipped"
         },
-        "unit": { "filesPassed": 87, "testsPassed": 916 }
+        "unit": {
+          "filesPassed": 87,
+          "testsPassed": 916
+        }
       },
       "artifact": "https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33347654457/artifacts/9742541791",
       "e2eSkipReason": "The changed-file classification for the docs and Group 22 Gate test skipped E2E; representative-flow E2E evidence is recorded separately under PR #272 Run #892.",
