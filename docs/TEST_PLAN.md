@@ -1,6 +1,6 @@
 # Chameleon Asset Studio テスト計画書
 
-最終更新日: 2026-08-27
+最終更新日: 2026-08-31
 対象バージョン: アプリ 0.1.0 / Asset 0.2.0 / Project・export-presets・atlas 0.1.0
 詳細な対象一覧の正本: `docs/implementation/TEST_AND_RELEASE.md`
 
@@ -220,9 +220,13 @@ distribution UI、375×667 product-pathの追加証拠、engine読込、物理iP
 正本は [`docs/future/2D_6_REFERENCE_DOCS_GATE_PLAN.md`](future/2D_6_REFERENCE_DOCS_GATE_PLAN.md) と [`docs/future/2D_6_REFERENCE_PROJECT_EVIDENCE.json`](future/2D_6_REFERENCE_PROJECT_EVIDENCE.json) とする。`tools/group22/referenceGate.test.ts` は、代表ID、必須データ、既存E2E・Generic Web fixture・ガイド・release入口の存在、`candidate / not-run` 境界、3D停止条件を検査する。
 
 - [x] PR #264のhead `4d513fa7a105336f00a51fa2c0ede9ee5d339f17`に対するCI Run #869（Actions ID `32953397489`）で、build-and-test、E2E、H3計測、Pages経路確認を含む全job成功とGroup 22 artifact `9601053891`（`sha256:d8d203289543a13157160bdc6461ea0744e1d591024fe0b32786dc3113465339`）を確認した。
+- [x] PR #272のhead `6270e59abbb999d00d7c434ff66c76db5836b0fc`に対するRun #892（Actions ID `33248089842`、attempt 2）で、全job成功、E2E 205件、H3 1件、Pages open / closed各1件と、Generic Web / Playwright artifact（`9713610304` / `9713609727`）を確認した。
 - CI成功は、代表projectの一体実行、初回利用者レビュー、物理端末、Group 19 / 20 runtimeの代替証拠として扱わない。
 
 - 既存の `e2e/casproj.spec.ts`、`animation.spec.ts`、`gamedata.spec.ts`、`game-check-mode.spec.ts`、`generic-web.spec.ts` は支援証拠として参照する。
+- [x] `e2e/reference-project-gate.spec.ts`で、同じreference IDについて意図的な画像欠落の検出、修正済み入力の再試行、Game Check、初回出力、削除後の`.casproj`再読込、2回目出力の意味一致を自動確認した。
 - 既存testの個別成功を、同一代表projectの作成 → Game Check → preflight修正 → HTTP fixture → `.casproj`再読込の一体成功へ読み替えない。
+- [ ] CI artifactの内容を人間がGate証拠としてレビューする
+- [ ] アプリ内でpreflight結果を修正し、同じprojectを再試行する利用者操作を確認する
 - 初回利用者レビュー、PC / iPhone / iPad / Androidの実機、Group 19 / 20 runtimeは未実施のまま `verified` へ昇格させない。
 - `npm run evidence:group22` はstable manifestとCI run情報を分離した動的証拠を生成する。artifact欠落はCIで失敗させる。
