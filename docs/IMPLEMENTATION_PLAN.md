@@ -34,6 +34,8 @@ PR #272（`test: add representative project evidence flow`）はhead `6270e59abb
 
 これは自動証拠の追加であり、artifact内容の人間レビュー、アプリ内でのpreflight修正、初回利用者レビュー、PC / iPhone / iPad / Android実機、Group 19 / 20 runtime、2D Pro Gate承認を意味しない。Group 22 / 23は`candidate / gate-pending / runtime-verification-unverified`、進捗18/27を維持し、人間承認まで新規製品実装と3Dを開始しない。詳細は `docs/future/2D_PRO_GATE_AUDIT.md` を最新の判断記録とする。
 
+後続のDraft PR #273は、この自動証拠とGate handoffの正本文書を同期するdocs＋Gate test変更である。PR #273の固定head `2e3c5eed97cb7298c1032f091e783a46f71c0b98`に対するRun #895（Actions ID `33347654457`）は、classifyとbuild-and-testがsuccess、unit 87 files / 916 testsがsuccess、E2Eは変更分類によりskipである。これはPR #273の文書・Gate testの検証であり、PR #272の代表flow E2Eや2D Pro Gate承認の代替ではない。
+
 ## 2. 基本方針
 
 - まずデータ形式を決める。

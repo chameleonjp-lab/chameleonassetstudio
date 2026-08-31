@@ -36,8 +36,28 @@ interface ReferenceEvidence {
       pages: { open: number; closed: number };
     };
     artifacts: { genericWeb: string; playwright: string };
-    fixedHeadReadOnlyReview: { status: string; count: number; scope: string };
+    fixedHeadReadOnlyReview: {
+      status: string;
+      count: number;
+      scope: string;
+      publicGitHubReview: string;
+    };
+    artifactNotes: { genericWeb: string; playwright: string };
     artifactContentReview: { status: string; reason: string };
+    handoffVerification: {
+      pullRequest: number;
+      head: string;
+      workflow: {
+        runNumber: number;
+        actionsId: string;
+        status: string;
+        jobs: { classifyChanges: string; buildAndTest: string; e2e: string };
+        unit: { filesPassed: number; testsPassed: number };
+      };
+      artifact: string;
+      e2eSkipReason: string;
+      recordedScope: string;
+    };
   };
   documentation: { status: string; requiredPaths: string[] };
   manualGate: { status: string; requiredEnvironments: string[]; reason: string };
@@ -90,8 +110,27 @@ describe('Group 22 reference project evidence gate', () => {
         h3Passed: 1,
         pages: { open: 1, closed: 1 },
       },
-      fixedHeadReadOnlyReview: { status: 'passed', count: 3 },
+      fixedHeadReadOnlyReview: {
+        status: 'pending',
+        count: 0,
+        publicGitHubReview: 'not-posted',
+      },
       artifactContentReview: { status: 'not-run' },
+      handoffVerification: {
+        pullRequest: 273,
+        head: '2e3c5eed97cb7298c1032f091e783a46f71c0b98',
+        workflow: {
+          runNumber: 895,
+          actionsId: '33347654457',
+          status: 'success',
+          jobs: {
+            classifyChanges: 'success',
+            buildAndTest: 'success',
+            e2e: 'skipped',
+          },
+          unit: { filesPassed: 87, testsPassed: 916 },
+        },
+      },
     });
     expect(evidence.automatedEvidence.artifacts.genericWeb).toMatch(
       /actions\/runs\/33248089842\/artifacts\/9713610304$/,
@@ -99,6 +138,13 @@ describe('Group 22 reference project evidence gate', () => {
     expect(evidence.automatedEvidence.artifacts.playwright).toMatch(
       /actions\/runs\/33248089842\/artifacts\/9713609727$/,
     );
+    expect(evidence.automatedEvidence.artifactNotes.genericWeb).toMatch(
+      /not a Group 22-only artifact/,
+    );
+    expect(evidence.automatedEvidence.handoffVerification.artifact).toMatch(
+      /actions\/runs\/33347654457\/artifacts\/9742541791$/,
+    );
+    expect(evidence.automatedEvidence.handoffVerification.e2eSkipReason).toMatch(/skipped E2E/);
   });
 
   it('references existing tests and fixtures without silently dropping a flow step', () => {
