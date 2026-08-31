@@ -21,22 +21,31 @@
     {
       "id": "create-or-import",
       "status": "existing-test-coverage",
-      "testFiles": ["e2e/casproj.spec.ts", "e2e/import.spec.ts"]
+      "testFiles": [
+        "e2e/casproj.spec.ts",
+        "e2e/import.spec.ts"
+      ]
     },
     {
       "id": "frame-and-animation",
       "status": "existing-test-coverage",
-      "testFiles": ["e2e/animation.spec.ts"]
+      "testFiles": [
+        "e2e/animation.spec.ts"
+      ]
     },
     {
       "id": "game-data",
       "status": "existing-test-coverage",
-      "testFiles": ["e2e/gamedata.spec.ts"]
+      "testFiles": [
+        "e2e/gamedata.spec.ts"
+      ]
     },
     {
       "id": "game-check",
       "status": "existing-test-coverage",
-      "testFiles": ["e2e/game-check-mode.spec.ts"]
+      "testFiles": [
+        "e2e/game-check-mode.spec.ts"
+      ]
     },
     {
       "id": "preflight-fix-and-retry",
@@ -55,12 +64,17 @@
         "e2e/generic-web.spec.ts",
         "tools/group23/genericWebPackageClosure.test.ts"
       ],
-      "fixturePaths": ["public/generic-web-fixture"]
+      "fixturePaths": [
+        "public/generic-web-fixture"
+      ]
     },
     {
       "id": "casproj-reopen-and-regenerate",
       "status": "automated-reference-flow",
-      "testFiles": ["e2e/casproj.spec.ts", "e2e/reference-project-gate.spec.ts"],
+      "testFiles": [
+        "e2e/casproj.spec.ts",
+        "e2e/reference-project-gate.spec.ts"
+      ],
       "missing": "fixed-head CI artifact content review, first-time review, and physical/runtime evidence"
     },
     {
@@ -80,7 +94,10 @@
       "status": "success",
       "e2ePassed": 205,
       "h3Passed": 1,
-      "pages": { "open": 1, "closed": 1 }
+      "pages": {
+        "open": 1,
+        "closed": 1
+      }
     },
     "artifacts": {
       "genericWeb": "https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33248089842/artifacts/9713610304",
@@ -89,11 +106,118 @@
     "fixedHeadReadOnlyReview": {
       "status": "passed",
       "count": 3,
-      "scope": "contract, CI/E2E, and scope/Gate"
+      "scope": "contract, CI/E2E, and scope/Gate",
+      "publicGitHubReview": "not-posted",
+      "reviewedHead": "b961c2086c92b18a0df6e24688bf7ae48d428567",
+      "reviewedAt": "2026-08-31",
+      "reviews": [
+        {
+          "role": "contract/evidence",
+          "result": "passed",
+          "blocker": 0,
+          "must": 0,
+          "should": 0,
+          "note": "Run #898 content and Run #901 bookkeeping are explicitly separated; no stale assertion remains."
+        },
+        {
+          "role": "CI/reproducibility",
+          "result": "passed",
+          "blocker": 0,
+          "must": 0,
+          "should": 0,
+          "note": "Run #901 succeeded with 87 test files / 916 tests and the expected E2E skip."
+        },
+        {
+          "role": "scope/Gate",
+          "result": "passed",
+          "blocker": 0,
+          "must": 0,
+          "should": 0,
+          "note": "Nine docs/evidence/test files only; candidate boundaries and human Gate limits remain intact."
+        }
+      ],
+      "recordedInHead": "this bookkeeping commit; the subsequent PR #274 CI run validates the recording commit separately."
+    },
+    "artifactNotes": {
+      "genericWeb": "Artifact 9713610304 is named group16-generic-web-evidence-33248089842-2; it is the Generic Web/package-closure evidence from Run #892, not a Group 22-only artifact.",
+      "playwright": "Artifact 9713609727 is the Playwright report for the representative-flow E2E evidence from Run #892."
     },
     "artifactContentReview": {
       "status": "not-run",
       "reason": "CI artifact presence is recorded, but its contents have not been reviewed as a human Gate decision"
+    },
+    "handoffVerification": {
+      "pullRequest": 274,
+      "head": "9a857574ba5eeffc6d87f242236d9127c3459f9a",
+      "workflow": {
+        "runNumber": 898,
+        "actionsId": "33349026436",
+        "status": "success",
+        "jobs": {
+          "classifyChanges": "success",
+          "buildAndTest": "success",
+          "e2e": "skipped"
+        },
+        "unit": {
+          "filesPassed": 87,
+          "testsPassed": 916
+        }
+      },
+      "artifact": "https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33349026436/artifacts/9742974357",
+      "artifactName": "group22-reference-project-evidence-33349026436-1",
+      "e2eSkipReason": "The changed-file classification for the docs and Group 22 Gate test skipped E2E; representative-flow E2E evidence is recorded separately under PR #272 Run #892.",
+      "recordedScope": "PR #274 handoff correction content verified at this PR head; later bookkeeping-only commits require their own CI record.",
+      "workflowHead": "9a857574ba5eeffc6d87f242236d9127c3459f9a",
+      "pullRequestMergeRef": "e70eae246fe822ecb1016fd574f78e92eaea2606",
+      "artifactDigest": "sha256:194780f0d622a1102caa0f276d79f0a38d228820e3ab023916ed67c336ea3396",
+      "artifactSizeBytes": 2536
+    },
+    "previousHandoffVerification": {
+      "pullRequest": 273,
+      "head": "2e3c5eed97cb7298c1032f091e783a46f71c0b98",
+      "workflow": {
+        "runNumber": 895,
+        "actionsId": "33347654457",
+        "status": "success",
+        "jobs": {
+          "classifyChanges": "success",
+          "buildAndTest": "success",
+          "e2e": "skipped"
+        },
+        "unit": {
+          "filesPassed": 87,
+          "testsPassed": 916
+        }
+      },
+      "artifact": "https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33347654457/artifacts/9742541791",
+      "e2eSkipReason": "The changed-file classification for the docs and Group 22 Gate test skipped E2E; representative-flow E2E evidence is recorded separately under PR #272 Run #892.",
+      "recordedScope": "PR #273 pre-ledger-correction final-head CI; any later commit requires its own head-specific CI record."
+    },
+    "latestBookkeepingVerification": {
+      "pullRequest": 274,
+      "head": "b961c2086c92b18a0df6e24688bf7ae48d428567",
+      "workflow": {
+        "runNumber": 901,
+        "actionsId": "33349818980",
+        "status": "success",
+        "jobs": {
+          "classifyChanges": "success",
+          "buildAndTest": "success",
+          "e2e": "skipped"
+        },
+        "unit": {
+          "filesPassed": 87,
+          "testsPassed": 916
+        }
+      },
+      "artifact": "https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33349818980/artifacts/9743224756",
+      "artifactName": "group22-reference-project-evidence-33349818980-1",
+      "artifactDigest": "sha256:36d18def0c221a4d981508f09fd379ce2a5e916c269162d893758380caf20eb2",
+      "artifactSizeBytes": 2686,
+      "workflowHead": "b961c2086c92b18a0df6e24688bf7ae48d428567",
+      "pullRequestMergeRef": "3954be5272649d9009905c3d62c8ee5b04eebcb0",
+      "e2eSkipReason": "The changed-file classification for the docs and Group 22 Gate test skipped E2E; representative-flow E2E evidence is recorded separately under PR #272 Run #892.",
+      "recordedScope": "PR #274 post-handoff test assertion/format bookkeeping at the reviewed head; the following ledger-recording commit is validated by its own CI."
     }
   },
   "documentation": {

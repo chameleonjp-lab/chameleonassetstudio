@@ -35,7 +35,7 @@ Group 22のmerge後に、2D Pro Gateの判定に必要な証拠、未確認項�
 | 項目 | 確認結果 |
 |---|---|
 | 最新main | 17d62c49792202ef411124df03e3809ded5f2d8c。PR #272のmerge commit。 |
-| 現在のopen PR | 0件。PR #272はmainへmerge済み。 |
+| 現在のopen PR | main基準時点では0件。現在の後続Draft PRは#274。PR #273はmainへmerge済み。 |
 | Group 23監査開始時のopen PR | 0件。Group 23用branchはPR #266で作成した。 |
 | 完了数 | 18/27。Group 19〜22はruntimeまたは実機未確認を含むため、完了数を増やさない。 |
 | Group 22 | implemented-candidate / CI-passed / merged / runtime-verification-unverified |
@@ -45,9 +45,11 @@ Group 22のmerge後に、2D Pro Gateの判定に必要な証拠、未確認項�
 | PR #270マージ後main CI | Run #884がsuccess。docs-only変更のためclassifyのみ実行し、build-and-test / E2Eはskip。 |
 | PR #270マージ後Pages | Run #122がsuccess。同じmain SHAでbuild / deployがsuccess。 |
 | PR #272固定head CI | [Run #892](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33248089842)（Actions ID `33248089842`、attempt 2）がsuccess。E2E 205件、H3 1件、Pages open / closed各1件。 |
-| PR #272 artifacts | [Generic Web](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33248089842/artifacts/9713610304)、[Playwright](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33248089842/artifacts/9713609727)。 |
-| 固定head read-only review | 3方向（contract / CI・E2E / scope・Gate）はPASS。artifact内容のGateレビューはnot-run。 |
-| 独立review | PR #264のGitHub review投稿とreview threadは0件。Group 22をindependently-verifiedへ昇格しない。 |
+| PR #272 artifacts | [Generic Web](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33248089842/artifacts/9713610304)、[Playwright](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33248089842/artifacts/9713609727)。Generic Web artifactの実体名は`group16-generic-web-evidence-33248089842-2`で、Group 22専用artifactとは表現しない。 |
+| 固定head read-only review | PR #272とPR #274の3方向（contract / CI・E2E / scope・Gate）はPASS。PR #274はRun #898の内容補正とRun #901のbookkeeping補正を分離して確認した。artifact内容のGateレビューはnot-run。 |
+| PR #274 handoff CI | Draft PR #274のhandoff-content head `9a857574ba5eeffc6d87f242236d9127c3459f9a`に対する[Run #898](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33349026436)（Actions ID `33349026436`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskip。続くbookkeeping head `b961c2086c92b18a0df6e24688bf7ae48d428567`の[Run #901](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33349818980)（Actions ID `33349818980`）もclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskip。Group 22 artifact [9743224756](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33349818980/artifacts/9743224756)を取得した。 |
+| PR #273 handoff CI | `2e3c5eed97cb7298c1032f091e783a46f71c0b98`に対する[Run #895](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33347654457)（Actions ID `33347654457`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskip。Group 22 artifact [9742541791](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33347654457/artifacts/9742541791)を取得した。 |
+| 独立review | PR #264のGitHub review投稿とreview threadは0件。PR #273の内部read-only reviewはGitHub review投稿とは別物として記録する。Group 22をindependently-verifiedへ昇格しない。 |
 
 ## 4. 2D Pro Gate判定表
 
@@ -62,7 +64,7 @@ Group 22のmerge後に、2D Pro Gateの判定に必要な証拠、未確認項�
 | G23-07 | Unity 6000.3.21f1 / Godot 4.7.1-stable runtime | partial | 2D_5_UNITY_GODOT_PLAN.md | Godot fixture成功だけでGroup 19をverifiedにしない。 |
 | G23-08 | RPG Maker MZ 1.10.0 runtime | not-run | 2D_5_RPGMZ_HELPER_PLAN.md | candidate / import-notesを維持する。 |
 | G23-09 | Canvas 2D外部実行確認 | 自動fixture確認 / 外部実行未確認 | PR #272 / 2D_EXPORT_COMPATIBILITY_MATRIX.md | Generic Web fixtureのHTTP・Canvas確認は自動化したが、外部実行のverifiedにはしない。 |
-| G23-10 | Group 22固定headの独立review | 部分確認（read-only） | PR #272の固定head 3方向read-only review、PR #264のreviews / review threads | 3方向監査はPASSだが、artifact内容レビューとGitHub review投稿は未完了。 |
+| G23-10 | Group 22固定headの独立review | 3方向read-only PASS（内部監査） | PR #272とPR #274の固定head 3方向read-only review、PR #264のreviews / review threads | PR #274 current head `b961c208...`でcontract / CI・E2E / scope・Gateの3担当がPASS。GitHub review投稿はしていない。artifact内容の人間Gateレビュー、初回レビュー、実機・runtime確認は未完了。 |
 | G23-11 | 3D停止条件 | 確認済み | 2D_COMPLETION_ROADMAPの2D Pro Gate章 | 人間承認まで3Dを開始しない。 |
 
 ## 5. 監査結果
@@ -95,6 +97,9 @@ Group 22のmerge後に、2D Pro Gateの判定に必要な証拠、未確認項�
 
 - Run #869はPR #264のheadに対する完全CIであり、Run #873はPR #265マージ後・PR #266前、Run #876はPR #266マージ後・PR #267前、Run #878はPR #267マージ後・PR #268前、Run #880はPR #268マージ後・PR #269前、Run #881はPR #269のhead、Run #882はPR #269マージ後・PR #270前、Run #883はPR #270のhead、Run #884はPR #270マージ後のmain docs-only push CIである。PR headのCIとmerge後mainのCIは別の目的である。
 - Run #892（Actions ID `33248089842`、attempt 2）はPR #272 head `6270e59abbb999d00d7c434ff66c76db5836b0fc`に対する全job成功である。mainのRun #893（Actions ID `33253797190`）とPages Run #124（Actions ID `33253797167`）も同じmerge commit `17d62c49792202ef411124df03e3809ded5f2d8c`でsuccess。
+- Run #895（Actions ID `33347654457`）はDraft PR #273のhead `2e3c5eed97cb7298c1032f091e783a46f71c0b98`に対するhandoff検証で、classify / build-and-testはsuccess、unit 87 files / 916 testsはsuccess、E2Eは変更分類によりskip。これはPR #272の代表flow E2Eとは別の証拠である。
+- Run #898（Actions ID `33349026436`）はDraft PR #274のhead `9a857574ba5eeffc6d87f242236d9127c3459f9a`に対する最終handoff CIで、classify / build-and-testはsuccess、unit 87 files / 916 testsはsuccess、E2Eは変更分類によりskip。artifact `9742974357`を取得した。
+- Run #901（Actions ID `33349818980`）はDraft PR #274のbookkeeping head `b961c2086c92b18a0df6e24688bf7ae48d428567`に対するCIで、classify / build-and-testはsuccess、unit 87 files / 916 testsはsuccess、E2Eは変更分類によりskip。artifact `9743224756`を取得した。Run #898はhandoff content、Run #901は後続assertion/format bookkeepingとして分離する。
 - Pages Run #118はPR #266マージ後・PR #267前、Pages Run #119はPR #267マージ後・PR #268前、Pages Run #120はPR #268マージ後・PR #269前、Pages Run #121はPR #269マージ後・PR #270前、Pages Run #122はPR #270マージ後mainの公開確認であり、いずれも2D Pro Gateの実機確認ではない。
 - PixiJS / Phaserのverifiedは対象versionのfixture-local範囲に限る。
 - Godotのfixture-local成功は、UnityやGroup 19全体のverifiedを意味しない。
@@ -134,3 +139,17 @@ PR #272は、head `6270e59abbb999d00d7c434ff66c76db5836b0fc`からmerge commit `
 この証拠により、G23-02、G23-03、G23-04、G23-09は自動確認の範囲を更新する。ただしpreflightの「修正」はテスト側で用意した正常入力への再試行であり、アプリ内修正の証拠ではない。artifact内容レビュー、初回利用者レビュー、物理端末、Group 19 / 20 runtime、Group 23の人間承認は未完了である。
 
 判定は2D Pro Gate未通過、Group 22はcandidate、状態はgate-pending / runtime-verification-unverified、進捗は18/27のままとする。人間承認まで新規製品実装と3Dを開始しない。
+
+
+## 10. Draft PR #273のhandoff記録（2026-08-31）
+
+Draft PR #273は、PR #272で追加された代表project自動証拠をGroup 23の正本文書へ同期し、`tools/group22/referenceGate.test.ts`で証拠契約を検査するdocs＋Gate test変更である。製品コード、schema、保存形式、export、依存関係、3Dは変更しない。
+
+固定head `2e3c5eed97cb7298c1032f091e783a46f71c0b98`のRun #895（Actions ID `33347654457`）はclassify / build-and-testがsuccess、unit 87 files / 916 testsがsuccess、E2Eは変更分類によりskipだった。Group 22 artifact [9742541791](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33347654457/artifacts/9742541791)を記録した。PR #273の最終3方向read-only reviewはこのhandoff修正後に確定し、GitHub上のreview投稿ではなく内部監査記録として扱う。artifact内容の人間Gateレビュー、初回利用者レビュー、物理端末、Group 19 / 20 runtime、人間承認は未完了である。
+
+
+## 11. Draft PR #274のhandoff補正（2026-08-31）
+
+Draft PR #274は、PR #273のマージ後にhandoff証拠を最新化するdocs＋Gate test変更である。handoff-content head `9a857574ba5eeffc6d87f242236d9127c3459f9a`のRun #898（Actions ID `33349026436`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskipだった。Group 22 artifact [9742974357](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33349026436/artifacts/9742974357)（`group22-reference-project-evidence-33349026436-1`）を取得した。Run #898のworkflow headは `9a857574ba5eeffc6d87f242236d9127c3459f9a`、PR merge-refは `e70eae246fe822ecb1016fd574f78e92eaea2606`であり、証拠台帳はhandoff contentの主記録として固定する。その後のbookkeeping head `b961c2086c92b18a0df6e24688bf7ae48d428567`はRun #901（Actions ID `33349818980`、artifact `9743224756`）でclassify / build-and-test success、unit 87 files / 916 tests success、E2E skipを確認した。
+
+PR #274の3方向read-only reviewはcurrent head `b961c2086c92b18a0df6e24688bf7ae48d428567`でPASS（contract / evidence 0/0/0、CI / reproducibility 0/0/0、scope / Gate 0/0/0）となった。これはGitHub上のreview投稿ではなく内部監査記録である。artifact内容の人間Gateレビュー、初回利用者レビュー、物理端末、Group 19 / 20 runtime、人間承認は未完了であり、`candidate / gate-pending / runtime-verification-unverified`、進捗18/27、3D停止を維持する。

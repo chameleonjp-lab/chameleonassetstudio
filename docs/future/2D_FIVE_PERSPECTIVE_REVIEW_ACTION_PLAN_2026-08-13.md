@@ -14,6 +14,8 @@
 
 PR #272で代表IDの自動一体フロー、Generic Web package closure、固定head CI証拠が追加された。これは自動証拠の拡充であり、artifact内容の人間レビュー、アプリ内preflight修正、初回利用者レビュー、実機・対象runtime、2D Pro Gate承認を意味しない。
 
+Draft PR #273は、その証拠・Gate handoffをdocs＋Gate testへ集約する後続変更である。固定head `2e3c5eed97cb7298c1032f091e783a46f71c0b98`のRun #895（Actions ID `33347654457`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskipである。PR #272の代表flow E2E、artifact内容レビュー、GitHub上のreview投稿、人間Gate承認とは分離して扱う。
+
 ---
 
 ## 1. GitHubで確認した現在状態
@@ -21,7 +23,7 @@ PR #272で代表IDの自動一体フロー、Generic Web package closure、固�
 | 項目 | 状態 |
 |---|---|
 | 最新main | `17d62c49792202ef411124df03e3809ded5f2d8c`。PR #272のmerge commit。 |
-| open Pull Request | 現在0件。PR #264 / #265 / #266 / #267 / #268 / #269 / #270 / #272はmerge済み。 |
+| open Pull Request | main基準時点では0件。現在はDraft PR #274がopen。PR #273はmerge済み。PR #264 / #265 / #266 / #267 / #268 / #269 / #270 / #272もmerge済み。 |
 | 最新main CI | [Run #893](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33253797190) がsuccess。同じmain SHA `17d62c49792202ef411124df03e3809ded5f2d8c`で確認した。 |
 | Pages公開 | [Run #124](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33253797167) がsuccess。build / deployとも同じmain SHAを使用。 |
 | 完了数 | 18/27。Group 18 closeout済み。Group 19 runtime未完了のため完了数は変更しない。 |
@@ -30,6 +32,8 @@ PR #272で代表IDの自動一体フロー、Generic Web package closure、固�
 | Group 16製品実装 | `implemented / CI-passed / independently-verified / merged`（PR #242 final head `6616ad30fdae7a05f98e0a0146ce69555bab1bfa`、merge `711bcec268d6e732a24c0c787c6054b41e415c27`、CI Run #765）。 |
 | Group 17契約 | `accepted / implemented / CI-passed / independently-verified / merged`。PR #246 final head `9380494f7a662b9211f341d87a15f62d4b82986f`、merge `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`、CI Run #785。 |
 | PR #272自動証拠 | head `6270e59abbb999d00d7c434ff66c76db5836b0fc`、merge `17d62c49792202ef411124df03e3809ded5f2d8c`。Run #892（Actions ID `33248089842`、attempt 2）は全job成功、E2E 205件、H3 1件、Pages open / closed各1件。 |
+| PR #274 handoff CI | Handoff-content head `9a857574ba5eeffc6d87f242236d9127c3459f9a`のRun #898（Actions ID `33349026436`）はsuccess（unit 87 files / 916 tests、E2E skip）。続くbookkeeping head `b961c2086c92b18a0df6e24688bf7ae48d428567`のRun #901（Actions ID `33349818980`）もsuccess（artifact `9743224756`）。3方向read-only reviewはPASS。 |
+| PR #273 handoff CI | Draft PR #273 head `2e3c5eed97cb7298c1032f091e783a46f71c0b98`。Run #895（Actions ID `33347654457`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskip。Group 22 artifact `9742541791`を取得した。 |
 | 次の許可された行動 | Group 23（2D Pro Gate）の残存証拠・未解決判断を確認し、人間承認まで新規製品実装と3Dを開始しない。代表projectの一体実行、初回レビュー、物理端末、Group 19 / 20 runtimeは未実施のまま保持する。 |
 
 PR #240のmergeはGroup 16監査のGate A、2026-08-13のユーザー明示判断G16-C1 A + G16-C2 A + G16-C3 AはGate Bであり、PR #242で実装・CI・固定head確認・mergeまで完了した。Group 17はPR #243 / #244 / #245のmain反映でGate A、2026-08-14のG17-C1 A + G17-C2 A + G17-C3 AでGate Bを完了し、PR #246で実装・CI・独立確認・mergeまで完了した。Group 18は2026-08-15のG18-C1 A + G18-C2 A + G18-C3 Aを採用し、PR #248 / merge 3ab844dで実装・CI・独立確認・mergeまで完了した。Group 19はdocs/future/2D_5_UNITY_GODOT_PLAN.mdの採用済み契約に基づき、PR #251（merge `e77a721ff3d479bea0f7475f0b0fbc296ce91595`）でengine別candidate実装をmainへ反映した。runtime Gateは未完了である。
@@ -274,3 +278,5 @@ PR #269はPR #268マージ後の文書状態を同期するdocs-only closeoutで
 PR #270（closeout head `f6e3f07fa756e53b0bda2e50686de82b1a033a4a`）はmainへマージされ、merge commitは `6a025cebbd31fe5ac1f83afd24fd4e8c72ee2236` となった。CI Run #884（Actions ID `33242630244`）はsuccess、Pages Run #122（Actions ID `33242630245`）もbuild / deployともsuccessである。
 
 PR #270はPR #269マージ後の文書状態を同期するdocs-only closeoutであり、2D Pro Gateの承認ではない。代表projectの一体実行、初回利用者レビュー、物理端末、Group 19 / 20 runtime、人間承認は未完了のため、candidate / runtime-verification-unverified、進捗18/27、3D停止を維持する。
+
+Draft PR #274は、そのhandoff補正をdocs＋Gate testへ反映する後続PRである。handoff-content head `9a857574ba5eeffc6d87f242236d9127c3459f9a`のRun #898（Actions ID `33349026436`）はsuccess（unit 87 files / 916 tests、E2E skip）。bookkeeping head `b961c2086c92b18a0df6e24688bf7ae48d428567`のRun #901（Actions ID `33349818980`）もsuccessで、3方向read-only reviewはPASSとなった。

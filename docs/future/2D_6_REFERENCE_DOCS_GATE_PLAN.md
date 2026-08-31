@@ -69,6 +69,8 @@ PR #272（head `6270e59abbb999d00d7c434ff66c76db5836b0fc`、merge `17d62c4979220
 
 これはテストが用意した不備入力から正常入力へ再試行する自動証拠であり、アプリ内で利用者がpreflight結果を修正する操作、artifact内容の人間レビュー、初回利用者レビュー、物理端末、対象engine runtimeを成功扱いにしない。
 
+Draft PR #273は、この証拠とGate handoffを正本文書へ同期するdocs＋Gate test変更である。固定head `2e3c5eed97cb7298c1032f091e783a46f71c0b98`のRun #895（Actions ID `33347654457`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskipだった。Group 22 artifact [9742541791](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33347654457/artifacts/9742541791)を取得した。これはPR #273の文書・Gate test検証であり、PR #272の代表flow E2Eとは別である。
+
 ### 3.1 証拠レベル
 
 - `existing-test-coverage`: 既存testが該当機能を確認している。代表projectを最後まで一体実行したことを意味しない。
@@ -129,3 +131,19 @@ PR #272の自動証拠とmain反映を記録する。固定headは `6270e59abbb9
 代表IDの自動一体フロー、package closure、Game Check、`.casproj` roundtripを確認済みとして台帳を更新する。ただしstable manifestは `candidate`、artifact内容レビュー・初回利用者レビュー・物理端末・Group 19 / 20 runtimeは `not-run` のままとする。preflightの修正はアプリ内利用者操作の証拠ではない。
 
 次はartifact内容の人間レビュー、アプリ内preflight修正→再試行の確認、初回利用者レビュー、物理端末・対象runtimeの記録である。2D Pro Gate承認まで新しい製品実装と3D実装を開始しない。進捗は18/27のままとする。
+
+
+## 9. Draft PR #273 handoff（2026-08-31）
+
+PR #273では、PR #272の自動証拠、Run #892、artifactの役割、未確認範囲をGroup 23の正本文書へ同期し、Group 22 Gate testにhandoff CIを追加した。差分はdocs、`2D_6_REFERENCE_PROJECT_EVIDENCE.json`、`tools/group22/referenceGate.test.ts`の9ファイルで、製品実装・schema・保存・export・依存関係・3Dは変更しない。
+
+PR #273の固定head `2e3c5eed97cb7298c1032f091e783a46f71c0b98`に対するRun #895（Actions ID `33347654457`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskipだった。これは文書・Gate testの検証であり、代表projectのE2Eを新たに実行したものではない。代表flow E2EはPR #272 Run #892として別に記録する。
+
+次の停止条件は、PR #273の最終head 3方向read-only review、PR #272 artifact内容の人間レビュー、アプリ内preflight修正→再試行、初回利用者レビュー、物理端末、対象engine runtime、2D Pro Gate人間承認である。`candidate / not-run`、`gate-pending / runtime-verification-unverified`、進捗18/27、3D停止を維持する。
+
+
+## 10. Draft PR #274 handoff補正（2026-08-31）
+
+Draft PR #274は、PR #273のマージ後にhandoff証拠を最新化し、Group 22 artifactの役割・実体名・CI境界を正本文書へ同期するdocs＋Gate test変更である。handoff-content head `9a857574ba5eeffc6d87f242236d9127c3459f9a`のRun #898（Actions ID `33349026436`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskipだった。Group 22 artifact [9742974357](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33349026436/artifacts/9742974357)（`group22-reference-project-evidence-33349026436-1`）を取得した。Run #898はhandoff contentの主記録である。その後のbookkeeping head `b961c2086c92b18a0df6e24688bf7ae48d428567`もRun #901（Actions ID `33349818980`、artifact `9743224756`）でclassify / build-and-test success、unit 87 files / 916 tests success、E2E skipを確認した。
+
+PR #274の3方向read-only reviewはcurrent head `b961c2086c92b18a0df6e24688bf7ae48d428567`でPASS（内部監査、GitHub review投稿なし）となった。PR #272 artifact内容の人間Gateレビュー、アプリ内preflight修正→再試行、初回利用者レビュー、物理端末、対象engine runtime、2D Pro Gate人間承認は未完了である。`candidate / not-run`、`gate-pending / runtime-verification-unverified`、進捗18/27、3D停止を維持する。
