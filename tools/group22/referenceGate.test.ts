@@ -173,8 +173,7 @@ describe('Group 22 reference project evidence gate', () => {
             blocker: 0,
             must: 0,
             should: 0,
-            note:
-              'Run #898 content and Run #901 bookkeeping are explicitly separated; no stale assertion remains.',
+            note: 'Run #898 content and Run #901 bookkeeping are explicitly separated; no stale assertion remains.',
           },
           {
             role: 'CI/reproducibility',
@@ -190,8 +189,7 @@ describe('Group 22 reference project evidence gate', () => {
             blocker: 0,
             must: 0,
             should: 0,
-            note:
-              'Nine docs/evidence/test files only; candidate boundaries and human Gate limits remain intact.',
+            note: 'Nine docs/evidence/test files only; candidate boundaries and human Gate limits remain intact.',
           },
         ],
         recordedInHead:
