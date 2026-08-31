@@ -241,4 +241,4 @@ PR #264（head `4d513fa7a105336f00a51fa2c0ede9ee5d339f17`）は人間の判断�
 Group 23（2D Pro Gate）の監査記録はPR #266でmainへ反映し、マージ後状態はPR #267、PR #268、PR #269、PR #270で同期した。PR #270のmerge後mainは6a025cebbd31fe5ac1f83afd24fd4e8c72ee2236で、CI Run #884とPages Run #122はsuccessである。ただし2D Pro Gate自体は未完了である。人間のGate承認までは、新しい製品実装と3D実装を開始しない。進捗は18/27のままとする.
 
 
-現在の後続Draft PR #274は、PR #273のマージ後に証拠台帳のCI記録を最新化するdocs＋Gate test変更である。head `9a857574ba5eeffc6d87f242236d9127c3459f9a`に対するRun #898（Actions ID `33349026436`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskipである。Group 22 artifact `9742974357`を取得した。
+現在の後続Draft PR #274は、PR #273のマージ後に証拠台帳のCI記録を最新化するdocs＋Gate test変更である。handoff-content head `9a857574ba5eeffc6d87f242236d9127c3459f9a`に対するRun #898（Actions ID `33349026436`）はsuccess（unit 87 files / 916 tests、E2E skip）、Group 22 artifact `9742974357`を取得した。続くbookkeeping head `b961c2086c92b18a0df6e24688bf7ae48d428567`のRun #901（Actions ID `33349818980`）もsuccessで、3方向read-only reviewはPASSとなった。

@@ -41,6 +41,17 @@ interface ReferenceEvidence {
       count: number;
       scope: string;
       publicGitHubReview: string;
+      reviewedHead: string;
+      reviewedAt: string;
+      reviews: {
+        role: string;
+        result: string;
+        blocker: number;
+        must: number;
+        should: number;
+        note: string;
+      }[];
+      recordedInHead: string;
     };
     artifactNotes: { genericWeb: string; playwright: string };
     artifactContentReview: { status: string; reason: string };
@@ -59,6 +70,25 @@ interface ReferenceEvidence {
       recordedScope: string;
     };
     handoffVerification: {
+      pullRequest: number;
+      head: string;
+      workflow: {
+        runNumber: number;
+        actionsId: string;
+        status: string;
+        jobs: { classifyChanges: string; buildAndTest: string; e2e: string };
+        unit: { filesPassed: number; testsPassed: number };
+      };
+      artifact: string;
+      artifactName: string;
+      artifactDigest: string;
+      artifactSizeBytes: number;
+      workflowHead: string;
+      pullRequestMergeRef: string;
+      e2eSkipReason: string;
+      recordedScope: string;
+    };
+    latestBookkeepingVerification: {
       pullRequest: number;
       head: string;
       workflow: {
@@ -130,9 +160,42 @@ describe('Group 22 reference project evidence gate', () => {
         pages: { open: 1, closed: 1 },
       },
       fixedHeadReadOnlyReview: {
-        status: 'pending',
-        count: 0,
+        status: 'passed',
+        count: 3,
+        scope: 'contract, CI/E2E, and scope/Gate',
         publicGitHubReview: 'not-posted',
+        reviewedHead: 'b961c2086c92b18a0df6e24688bf7ae48d428567',
+        reviewedAt: '2026-08-31',
+        reviews: [
+          {
+            role: 'contract/evidence',
+            result: 'passed',
+            blocker: 0,
+            must: 0,
+            should: 0,
+            note:
+              'Run #898 content and Run #901 bookkeeping are explicitly separated; no stale assertion remains.',
+          },
+          {
+            role: 'CI/reproducibility',
+            result: 'passed',
+            blocker: 0,
+            must: 0,
+            should: 0,
+            note: 'Run #901 succeeded with 87 test files / 916 tests and the expected E2E skip.',
+          },
+          {
+            role: 'scope/Gate',
+            result: 'passed',
+            blocker: 0,
+            must: 0,
+            should: 0,
+            note:
+              'Nine docs/evidence/test files only; candidate boundaries and human Gate limits remain intact.',
+          },
+        ],
+        recordedInHead:
+          'this bookkeeping commit; the subsequent PR #274 CI run validates the recording commit separately.',
       },
       artifactContentReview: { status: 'not-run' },
       previousHandoffVerification: {
@@ -176,6 +239,32 @@ describe('Group 22 reference project evidence gate', () => {
         recordedScope:
           'PR #274 handoff correction content verified at this PR head; later bookkeeping-only commits require their own CI record.',
       },
+      latestBookkeepingVerification: {
+        pullRequest: 274,
+        head: 'b961c2086c92b18a0df6e24688bf7ae48d428567',
+        workflow: {
+          runNumber: 901,
+          actionsId: '33349818980',
+          status: 'success',
+          jobs: {
+            classifyChanges: 'success',
+            buildAndTest: 'success',
+            e2e: 'skipped',
+          },
+          unit: { filesPassed: 87, testsPassed: 916 },
+        },
+        artifact:
+          'https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33349818980/artifacts/9743224756',
+        artifactName: 'group22-reference-project-evidence-33349818980-1',
+        artifactDigest: 'sha256:36d18def0c221a4d981508f09fd379ce2a5e916c269162d893758380caf20eb2',
+        artifactSizeBytes: 2686,
+        workflowHead: 'b961c2086c92b18a0df6e24688bf7ae48d428567',
+        pullRequestMergeRef: '3954be5272649d9009905c3d62c8ee5b04eebcb0',
+        e2eSkipReason:
+          'The changed-file classification for the docs and Group 22 Gate test skipped E2E; representative-flow E2E evidence is recorded separately under PR #272 Run #892.',
+        recordedScope:
+          'PR #274 post-handoff test assertion/format bookkeeping at the reviewed head; the following ledger-recording commit is validated by its own CI.',
+      },
     });
     expect(evidence.automatedEvidence.artifacts.genericWeb).toMatch(
       /actions\/runs\/33248089842\/artifacts\/9713610304$/,
@@ -204,6 +293,34 @@ describe('Group 22 reference project evidence gate', () => {
     expect(evidence.automatedEvidence.handoffVerification.artifactDigest).toBe(
       'sha256:194780f0d622a1102caa0f276d79f0a38d228820e3ab023916ed67c336ea3396',
     );
+    expect(evidence.automatedEvidence.fixedHeadReadOnlyReview).toMatchObject({
+      status: 'passed',
+      count: 3,
+      reviewedHead: 'b961c2086c92b18a0df6e24688bf7ae48d428567',
+      reviewedAt: '2026-08-31',
+      publicGitHubReview: 'not-posted',
+    });
+    expect(evidence.automatedEvidence.fixedHeadReadOnlyReview.reviews).toHaveLength(3);
+    expect(evidence.automatedEvidence.latestBookkeepingVerification).toMatchObject({
+      pullRequest: 274,
+      head: 'b961c2086c92b18a0df6e24688bf7ae48d428567',
+      workflow: {
+        runNumber: 901,
+        actionsId: '33349818980',
+        status: 'success',
+        jobs: {
+          classifyChanges: 'success',
+          buildAndTest: 'success',
+          e2e: 'skipped',
+        },
+        unit: { filesPassed: 87, testsPassed: 916 },
+      },
+      artifactName: 'group22-reference-project-evidence-33349818980-1',
+      artifactDigest: 'sha256:36d18def0c221a4d981508f09fd379ce2a5e916c269162d893758380caf20eb2',
+      artifactSizeBytes: 2686,
+      workflowHead: 'b961c2086c92b18a0df6e24688bf7ae48d428567',
+      pullRequestMergeRef: '3954be5272649d9009905c3d62c8ee5b04eebcb0',
+    });
   });
 
   it('references existing tests and fixtures without silently dropping a flow step', () => {
