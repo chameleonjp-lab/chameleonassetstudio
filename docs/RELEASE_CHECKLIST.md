@@ -117,4 +117,4 @@ P1 Slice CのGroup 12物理Safari Gateは、2026-08-02の人間判断により�
 2. `package.json` の version を `1.0.0` に上げ、README の実装状況を更新する
 3. `npm run build` の成果物（`dist/`）で最終動作確認する
 4. git タグ `v1.0.0` を作成し、リリースノート（主な機能・既知の制限）を添える
-- [x] Draft PR #274のhead `49769a14490e2300e66a238251d9aa7da5ad52cc`に対するRun #897（Actions ID `33348582105`）で、classify / build-and-test、unit 87 files / 916 tests、Group 22 artifact `9742835911`を確認した。E2Eは変更分類によりskipのため、代表flow E2Eの完了とは扱わない
+- [x] Draft PR #274のhead `9a857574ba5eeffc6d87f242236d9127c3459f9a`に対するRun #898（Actions ID `33349026436`）で、classify / build-and-test、unit 87 files / 916 tests、Group 22 artifact `9742974357`を確認した。E2Eは変更分類によりskipのため、代表flow E2Eの完了とは扱わない

@@ -70,6 +70,10 @@ interface ReferenceEvidence {
       };
       artifact: string;
       artifactName: string;
+      artifactDigest: string;
+      artifactSizeBytes: number;
+      workflowHead: string;
+      pullRequestMergeRef: string;
       e2eSkipReason: string;
       recordedScope: string;
     };
@@ -148,10 +152,10 @@ describe('Group 22 reference project evidence gate', () => {
       },
       handoffVerification: {
         pullRequest: 274,
-        head: '49769a14490e2300e66a238251d9aa7da5ad52cc',
+        head: '9a857574ba5eeffc6d87f242236d9127c3459f9a',
         workflow: {
           runNumber: 897,
-          actionsId: '33348582105',
+          actionsId: '33349026436',
           status: 'success',
           jobs: {
             classifyChanges: 'success',
@@ -161,8 +165,12 @@ describe('Group 22 reference project evidence gate', () => {
           unit: { filesPassed: 87, testsPassed: 916 },
         },
         artifact:
-          'https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33348582105/artifacts/9742835911',
-        artifactName: 'group22-reference-project-evidence-33348582105-1',
+          'https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33349026436/artifacts/9742974357',
+        artifactName: 'group22-reference-project-evidence-33349026436-1',
+        artifactDigest: 'sha256:194780f0d622a1102caa0f276d79f0a38d228820e3ab023916ed67c336ea3396',
+        artifactSizeBytes: 2536,
+        workflowHead: '9a857574ba5eeffc6d87f242236d9127c3459f9a',
+        pullRequestMergeRef: 'e70eae246fe822ecb1016fd574f78e92eaea2606',
         e2eSkipReason:
           'The changed-file classification for the docs and Group 22 Gate test skipped E2E; representative-flow E2E evidence is recorded separately under PR #272 Run #892.',
         recordedScope: 'PR #274 final-head CI for the handoff correction content.',
@@ -178,13 +186,22 @@ describe('Group 22 reference project evidence gate', () => {
       /not a Group 22-only artifact/,
     );
     expect(evidence.automatedEvidence.handoffVerification.artifact).toMatch(
-      /actions\/runs\/33348582105\/artifacts\/9742835911$/,
+      /actions\/runs\/33349026436\/artifacts\/9742974357$/,
     );
     expect(evidence.automatedEvidence.handoffVerification.e2eSkipReason).toMatch(/skipped E2E/);
     expect(evidence.automatedEvidence.previousHandoffVerification.pullRequest).toBe(273);
     expect(evidence.automatedEvidence.previousHandoffVerification.workflow.runNumber).toBe(895);
     expect(evidence.automatedEvidence.handoffVerification.artifactName).toBe(
-      'group22-reference-project-evidence-33348582105-1',
+      'group22-reference-project-evidence-33349026436-1',
+    );
+    expect(evidence.automatedEvidence.handoffVerification.workflowHead).toBe(
+      '9a857574ba5eeffc6d87f242236d9127c3459f9a',
+    );
+    expect(evidence.automatedEvidence.handoffVerification.pullRequestMergeRef).toBe(
+      'e70eae246fe822ecb1016fd574f78e92eaea2606',
+    );
+    expect(evidence.automatedEvidence.handoffVerification.artifactDigest).toBe(
+      'sha256:194780f0d622a1102caa0f276d79f0a38d228820e3ab023916ed67c336ea3396',
     );
   });
 

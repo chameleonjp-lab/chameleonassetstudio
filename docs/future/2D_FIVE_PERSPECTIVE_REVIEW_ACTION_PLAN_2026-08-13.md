@@ -32,7 +32,7 @@ Draft PR #273は、その証拠・Gate handoffをdocs＋Gate testへ集約する
 | Group 16製品実装 | `implemented / CI-passed / independently-verified / merged`（PR #242 final head `6616ad30fdae7a05f98e0a0146ce69555bab1bfa`、merge `711bcec268d6e732a24c0c787c6054b41e415c27`、CI Run #765）。 |
 | Group 17契約 | `accepted / implemented / CI-passed / independently-verified / merged`。PR #246 final head `9380494f7a662b9211f341d87a15f62d4b82986f`、merge `b79327857b2d9f9bfbc9a4c0a4a4566d1000a69a`、CI Run #785。 |
 | PR #272自動証拠 | head `6270e59abbb999d00d7c434ff66c76db5836b0fc`、merge `17d62c49792202ef411124df03e3809ded5f2d8c`。Run #892（Actions ID `33248089842`、attempt 2）は全job成功、E2E 205件、H3 1件、Pages open / closed各1件。 |
-| PR #274 handoff CI | Draft PR #274 head `49769a14490e2300e66a238251d9aa7da5ad52cc`。Run #897（Actions ID `33348582105`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskip。artifact `9742835911`を取得した。 |
+| PR #274 handoff CI | Draft PR #274 head `9a857574ba5eeffc6d87f242236d9127c3459f9a`。Run #898（Actions ID `33349026436`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskip。artifact `9742974357`を取得した。 |
 | PR #273 handoff CI | Draft PR #273 head `2e3c5eed97cb7298c1032f091e783a46f71c0b98`。Run #895（Actions ID `33347654457`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskip。Group 22 artifact `9742541791`を取得した。 |
 | 次の許可された行動 | Group 23（2D Pro Gate）の残存証拠・未解決判断を確認し、人間承認まで新規製品実装と3Dを開始しない。代表projectの一体実行、初回レビュー、物理端末、Group 19 / 20 runtimeは未実施のまま保持する。 |
 
@@ -279,4 +279,4 @@ PR #270（closeout head `f6e3f07fa756e53b0bda2e50686de82b1a033a4a`）はmainへ�
 
 PR #270はPR #269マージ後の文書状態を同期するdocs-only closeoutであり、2D Pro Gateの承認ではない。代表projectの一体実行、初回利用者レビュー、物理端末、Group 19 / 20 runtime、人間承認は未完了のため、candidate / runtime-verification-unverified、進捗18/27、3D停止を維持する。
 
-Draft PR #274は、そのhandoff補正をdocs＋Gate testへ反映する後続PRである。head `49769a14490e2300e66a238251d9aa7da5ad52cc`のRun #897（Actions ID `33348582105`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskipである。
+Draft PR #274は、そのhandoff補正をdocs＋Gate testへ反映する後続PRである。head `9a857574ba5eeffc6d87f242236d9127c3459f9a`のRun #898（Actions ID `33349026436`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskipである。

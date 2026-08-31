@@ -119,10 +119,10 @@
     },
     "handoffVerification": {
       "pullRequest": 274,
-      "head": "49769a14490e2300e66a238251d9aa7da5ad52cc",
+      "head": "9a857574ba5eeffc6d87f242236d9127c3459f9a",
       "workflow": {
-        "runNumber": 897,
-        "actionsId": "33348582105",
+        "runNumber": 898,
+        "actionsId": "33349026436",
         "status": "success",
         "jobs": {
           "classifyChanges": "success",
@@ -134,10 +134,14 @@
           "testsPassed": 916
         }
       },
-      "artifact": "https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33348582105/artifacts/9742835911",
-      "artifactName": "group22-reference-project-evidence-33348582105-1",
+      "artifact": "https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33349026436/artifacts/9742974357",
+      "artifactName": "group22-reference-project-evidence-33349026436-1",
       "e2eSkipReason": "The changed-file classification for the docs and Group 22 Gate test skipped E2E; representative-flow E2E evidence is recorded separately under PR #272 Run #892.",
-      "recordedScope": "PR #274 final-head CI for the handoff correction content."
+      "recordedScope": "PR #274 handoff correction content verified at this PR head; later bookkeeping-only commits require their own CI record.",
+      "workflowHead": "9a857574ba5eeffc6d87f242236d9127c3459f9a",
+      "pullRequestMergeRef": "e70eae246fe822ecb1016fd574f78e92eaea2606",
+      "artifactDigest": "sha256:194780f0d622a1102caa0f276d79f0a38d228820e3ab023916ed67c336ea3396",
+      "artifactSizeBytes": 2536
     },
     "previousHandoffVerification": {
       "pullRequest": 273,

@@ -231,4 +231,4 @@ distribution UI、375×667 product-pathの追加証拠、engine読込、物理iP
 - [ ] アプリ内でpreflight結果を修正し、同じprojectを再試行する利用者操作を確認する
 - 初回利用者レビュー、PC / iPhone / iPad / Androidの実機、Group 19 / 20 runtimeは未実施のまま `verified` へ昇格させない。
 - `npm run evidence:group22` はstable manifestとCI run情報を分離した動的証拠を生成する。artifact欠落はCIで失敗させる。
-- [x] Draft PR #274のhead `49769a14490e2300e66a238251d9aa7da5ad52cc`に対するRun #897（Actions ID `33348582105`）で、classify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskip、Group 22 artifact `9742835911`を確認した。
+- [x] Draft PR #274のhead `9a857574ba5eeffc6d87f242236d9127c3459f9a`に対するRun #898（Actions ID `33349026436`）で、classify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskip、Group 22 artifact `9742974357`を確認した。
