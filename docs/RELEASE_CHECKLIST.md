@@ -44,6 +44,7 @@ Group 22の正本は [`docs/future/2D_6_REFERENCE_DOCS_GATE_PLAN.md`](future/2D_
 - [x] README、future index、implementation plan、roadmap、user guide、test plan、release checklist、public guideの入口を静的監査対象へ固定した
 - [x] PR #264（head `4d513fa7a105336f00a51fa2c0ede9ee5d339f17`、merge `15e252d8339361cd153ac784cba5752189ceeabd`）でGroup 22の静的台帳・文書入口監査をmainへ反映し、CI Run #869（Actions ID `32953397489`）の全job成功とartifact `9601053891`（`sha256:d8d203289543a13157160bdc6461ea0744e1d591024fe0b32786dc3113465339`）を記録した
 - [x] PR #272（head `6270e59abbb999d00d7c434ff66c76db5836b0fc`、merge `17d62c49792202ef411124df03e3809ded5f2d8c`）で代表IDの自動一体フローとGeneric Web package closureを追加し、Run #892（Actions ID `33248089842`、attempt 2）の全job成功、E2E 205件、artifact `9713610304` / `9713609727`を記録した
+- [x] Draft PR #273の固定head `2e3c5eed97cb7298c1032f091e783a46f71c0b98`に対するRun #895（Actions ID `33347654457`）で、classify / build-and-test、unit 87 files / 916 tests、Group 22 artifact `9742541791`を確認した。E2Eは変更分類によりskipのため、代表flow E2Eの完了とは扱わない
 - [ ] 代表projectのpreflight問題 → 修正 → 再試行を同一IDで実行し、最終状態と再試行結果を記録する
 - [ ] PR #272のCI artifact内容を人間がレビューし、Gate証拠として記録する
 - [ ] アプリ内でのpreflight修正操作、初回利用者レビューを記録する

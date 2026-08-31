@@ -87,13 +87,36 @@
       "playwright": "https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33248089842/artifacts/9713609727"
     },
     "fixedHeadReadOnlyReview": {
-      "status": "passed",
-      "count": 3,
-      "scope": "contract, CI/E2E, and scope/Gate"
+      "status": "pending",
+      "count": 0,
+      "scope": "contract, CI/E2E, and scope/Gate",
+      "publicGitHubReview": "not-posted"
+    },
+    "artifactNotes": {
+      "genericWeb": "Artifact 9713610304 is named group16-generic-web-evidence-33248089842-2; it is the Generic Web/package-closure evidence from Run #892, not a Group 22-only artifact.",
+      "playwright": "Artifact 9713609727 is the Playwright report for the representative-flow E2E evidence from Run #892."
     },
     "artifactContentReview": {
       "status": "not-run",
       "reason": "CI artifact presence is recorded, but its contents have not been reviewed as a human Gate decision"
+    },
+    "handoffVerification": {
+      "pullRequest": 273,
+      "head": "2e3c5eed97cb7298c1032f091e783a46f71c0b98",
+      "workflow": {
+        "runNumber": 895,
+        "actionsId": "33347654457",
+        "status": "success",
+        "jobs": {
+          "classifyChanges": "success",
+          "buildAndTest": "success",
+          "e2e": "skipped"
+        },
+        "unit": { "filesPassed": 87, "testsPassed": 916 }
+      },
+      "artifact": "https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33347654457/artifacts/9742541791",
+      "e2eSkipReason": "The changed-file classification for the docs and Group 22 Gate test skipped E2E; representative-flow E2E evidence is recorded separately under PR #272 Run #892.",
+      "recordedScope": "PR #273 pre-ledger-correction final-head CI; any later commit requires its own head-specific CI record."
     }
   },
   "documentation": {

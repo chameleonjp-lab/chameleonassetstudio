@@ -221,6 +221,7 @@ distribution UI、375×667 product-pathの追加証拠、engine読込、物理iP
 
 - [x] PR #264のhead `4d513fa7a105336f00a51fa2c0ede9ee5d339f17`に対するCI Run #869（Actions ID `32953397489`）で、build-and-test、E2E、H3計測、Pages経路確認を含む全job成功とGroup 22 artifact `9601053891`（`sha256:d8d203289543a13157160bdc6461ea0744e1d591024fe0b32786dc3113465339`）を確認した。
 - [x] PR #272のhead `6270e59abbb999d00d7c434ff66c76db5836b0fc`に対するRun #892（Actions ID `33248089842`、attempt 2）で、全job成功、E2E 205件、H3 1件、Pages open / closed各1件と、Generic Web / Playwright artifact（`9713610304` / `9713609727`）を確認した。
+- [x] Draft PR #273の固定head `2e3c5eed97cb7298c1032f091e783a46f71c0b98`に対するRun #895（Actions ID `33347654457`）で、classify / build-and-test success、unit 87 files / 916 tests successを確認した。E2Eは変更分類によりskipであり、PR #272 Run #892の代表flow E2Eとは別の証拠である。Group 22 artifact `9742541791`も取得した。
 - CI成功は、代表projectの一体実行、初回利用者レビュー、物理端末、Group 19 / 20 runtimeの代替証拠として扱わない。
 
 - 既存の `e2e/casproj.spec.ts`、`animation.spec.ts`、`gamedata.spec.ts`、`game-check-mode.spec.ts`、`generic-web.spec.ts` は支援証拠として参照する。
