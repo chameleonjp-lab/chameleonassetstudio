@@ -28,7 +28,13 @@
 
 ---
 
-## 最新状態（2026-08-31）
+## 最新状態（2026-09-08）
+
+PR #274までmainへマージ済み（基準SHA `ab5f56dacef987ff3119a803e645f72e02da9af2`）。次の残作業として、`2D-6-REFERENCE`の既存ZIP preflight修復テストを追加する。代表projectを画面内で修復し、Undo / Redo、実ZIP出力、`.casproj`を別browser contextで開いた後の再出力までを一体で検証する。製品コード・形式は変更しない。検証範囲と残課題は[`Group 22計画 §11`](future/2D_6_REFERENCE_DOCS_GATE_PLAN.md#11-既存zipのアプリ内修復再試行2026-09-08)を参照する。
+
+Generic Web配布APIは存在するが製品UIからは呼ばれていない。このテストをGeneric Webの画面内完走証拠とはしない。新しいUIの実装は別の採用判断が必要である。実機・初回レビュー・対象engine runtime・人間Gateは未完了で、進捗18/27と3D停止を維持する。今回のCI・固定headレビューは対象Draft PR本文へ記録し、CI番号の更新だけを目的とする後続commit / PRは作らない。
+
+### 前回までの証拠（2026-08-31）
 
 PR #272（`test: add representative project evidence flow`）はhead `6270e59abbb999d00d7c434ff66c76db5836b0fc`からmerge commit `17d62c49792202ef411124df03e3809ded5f2d8c`としてmainへ反映済みである。Run #892（Actions ID `33248089842`、attempt 2）は全job成功し、代表ID `2d-pro-reference-001`の意図的な不備検出 → 修正入力の再試行 → Game Check → `.casproj`再読込・再出力、Generic Web package closureを自動証拠へ追加した。E2Eは205件、H3は1件、Pagesはopen / closed各1件である。
 

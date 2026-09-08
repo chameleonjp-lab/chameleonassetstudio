@@ -2,6 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { unzipSync } from 'fflate';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Asset } from '../model';
+import { updateFrameDuration } from '../model/assetOps';
 import characterAsset from '../samples/asset.character.json';
 import {
   exportAssetJson,
@@ -447,4 +448,43 @@ describe('exportAsset texture kind boundary', () => {
     await expect(exportDistributionZip(asset)).rejects.toThrow(/個別表示時間/);
     expect(loadBlobMock).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['legacy', exportZip],
+    ['distribution', exportDistributionZip],
+  ] as const)(
+    '%s ZIPは表示時間の明示修復後に再試行でき、正本を変更しない',
+    async (_kind, exportFn) => {
+      const original = assetReferencing('edit');
+      const blocked = updateFrameDuration(original, original.frames![0].id, 180);
+      const before = structuredClone(blocked);
+
+      await expect(exportFn(blocked)).rejects.toThrow(/個別表示時間/);
+      expect(loadBlobMock).not.toHaveBeenCalled();
+      expect(blocked).toEqual(before);
+
+      const repaired = updateFrameDuration(blocked, blocked.frames![0].id, undefined);
+      const repairedBeforeExport = structuredClone(repaired);
+      const blob = await exportFn(repaired);
+      const entries = unzipSync(new Uint8Array(await blob.arrayBuffer()));
+      const exportedAsset = JSON.parse(new TextDecoder().decode(entries['asset.json']));
+      expect(exportedAsset).toEqual(repaired);
+      expect(exportedAsset.frames[0]).not.toHaveProperty('durationMs');
+      expect(entries['atlas/atlas.json']).toBeInstanceOf(Uint8Array);
+      expect(entries['atlas/spritesheet.png']).toBeInstanceOf(Uint8Array);
+      expect(repaired).toEqual(repairedBeforeExport);
+      expect(blocked).toEqual(before);
+      expect(loadBlobMock).toHaveBeenCalled();
+      for (const writeApi of [
+        saveProject,
+        saveAsset,
+        saveBlob,
+        saveProjectBundle,
+        saveAssetRevision,
+        deleteBlob,
+      ]) {
+        expect(writeApi).not.toHaveBeenCalled();
+      }
+    },
+  );
 });
