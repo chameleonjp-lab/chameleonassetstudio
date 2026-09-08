@@ -1,6 +1,6 @@
 # Group 22: 代表プロジェクト・文書整合・最終監査
 
-最終更新日: 2026-08-31
+最終更新日: 2026-09-08
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 正式work package: `2D-6-REFERENCE` + `2D-6-DOCS` + `2D-6-GATE-AUDIT`  
 基準main SHA: `17d62c49792202ef411124df03e3809ded5f2d8c`
@@ -58,7 +58,7 @@
 | Frame / Animation | `e2e/animation.spec.ts` | 既存E2Eの支援証拠。FrameとAnimationを同一台帳へ記録する。 |
 | origin / anchor / collider | `e2e/gamedata.spec.ts` | rect / circle と保存・reloadを含む支援証拠。 |
 | Game Check | `e2e/game-check-mode.spec.ts` | read-only表示、再生、問題表示の支援証拠。保存変更がないことを別Gateで維持する。 |
-| preflight | `e2e/game-check-mode.spec.ts`、`e2e/export.spec.ts`、`e2e/reference-project-gate.spec.ts` | 意図的な欠落検出と正常入力への再試行を自動確認。アプリ内修正とartifact内容レビューは未確認。 |
+| preflight | `e2e/game-check-mode.spec.ts`、`e2e/export.spec.ts`、`e2e/reference-project-gate.spec.ts` | PR #272の入力差し替え証拠に加え、§11で既存ZIPのアプリ内修復テストを追加。Generic Web製品UI・人間のartifact内容レビューは未確認。 |
 | Generic Web HTTP | `e2e/generic-web.spec.ts`、`tools/group23/genericWebPackageClosure.test.ts`、`public/generic-web-fixture/` | PR #272でHTTP・package closure・Canvas 2D相当のfixtureを自動確認。外部実行のverifiedにはしない。 |
 | `.casproj` roundtrip | `e2e/casproj.spec.ts`、`e2e/reference-project-gate.spec.ts` | PR #272で同じreference IDの再読込・再出力の意味一致を自動確認。artifact内容レビューは未確認。 |
 | 利用者向け入口 | `e2e/beginner-guide.spec.ts`、`README.md`、`public/guide/` | リンク、title、mobile overflow、現在地と次の操作の入口を監査する。 |
@@ -147,3 +147,20 @@ PR #273の固定head `2e3c5eed97cb7298c1032f091e783a46f71c0b98`に対するRun #
 Draft PR #274は、PR #273のマージ後にhandoff証拠を最新化し、Group 22 artifactの役割・実体名・CI境界を正本文書へ同期するdocs＋Gate test変更である。handoff-content head `9a857574ba5eeffc6d87f242236d9127c3459f9a`のRun #898（Actions ID `33349026436`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskipだった。Group 22 artifact [9742974357](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33349026436/artifacts/9742974357)（`group22-reference-project-evidence-33349026436-1`）を取得した。Run #898はhandoff contentの主記録である。その後のbookkeeping head `b961c2086c92b18a0df6e24688bf7ae48d428567`もRun #901（Actions ID `33349818980`、artifact `9743224756`）でclassify / build-and-test success、unit 87 files / 916 tests success、E2E skipを確認した。
 
 PR #274の3方向read-only reviewはcurrent head `b961c2086c92b18a0df6e24688bf7ae48d428567`でPASS（内部監査、GitHub review投稿なし）となった。PR #272 artifact内容の人間Gateレビュー、アプリ内preflight修正→再試行、初回利用者レビュー、物理端末、対象engine runtime、2D Pro Gate人間承認は未完了である。`candidate / not-run`、`gate-pending / runtime-verification-unverified`、進捗18/27、3D停止を維持する。
+
+## 11. 既存ZIPのアプリ内修復・再試行（2026-09-08）
+
+目的はG23-03の自動検証不足を、既存製品の操作だけで埋めることである。`e2e/reference-project-gate.spec.ts`へ次の一体テストを追加する。PR #272の画像欠落→正常入力への再試行テストは削除しない。
+
+1. reference ID `2d-pro-reference-001`を一度取り込み、375×667のEditorで`idle_0`の表示時間を180msへ変更する。
+2. 固定fps ZIPが失う情報と対象Frame名を表示し、ZIPボタンが無効でdownloadが0件、保存済み正本が変わらないことを確認する。
+3. 同じ画面の表示時間入力を空に戻し、fps既定へ修復する。正常archive再投入やIndexedDBへの書き込みで修復しない。
+4. 修復で対象外データ・ID・参照関係を維持し、Undoで拒否へ戻り、Redoで出力可能になることを確認する。
+5. 実ZIPをダウンロードしてcanonical `asset.json`を比較し、Game Checkと`.casproj`保存で正本・元画像bytesを維持する。
+6. 別browser contextへ`.casproj`を取り込み、再出力ZIPのゲーム情報・Atlas・PNG・sheetと、再生成`.casproj`の意味が一致することを確認する。再取り込みで再採番するProject / Asset IDと時刻は意味比較から除外する。
+
+`src/core/export/exportAsset.test.ts`ではlegacy / distribution両APIの拒否→`updateFrameDuration`による明示修復→成功を追加し、拒否前のBlob読込ゼロ、入力不変、全保存API未呼出を確認する。unitのCanvas mockを実画像・runtime証拠と混同しない。
+
+E2Eの実行証拠はPlaywright添付`group23-in-app-preflight-retry.json`へ残す。CI・対象head・検査結果・3方向read-only reviewは対象Draft PR本文へ記録する。過去のRun #892 / #898 / #901とstatic manifestは履歴のまま保持し、新しいテストの実行結果へ読み替えない。CI記録をcommitするためにCIが再発生する循環を避ける。
+
+残課題: `ExportPanel`のZIPボタンは`exportZip()`を呼ぶ。`exportDistributionZip()`へ到達する製品UIはなく、Generic Web、scale / trim / 複数pageの画面内完走は未実装・未確認である。入口の新設は今回のtest-only scope外とし、採用判断へ戻す。artifactの人間レビュー、初回利用者レビュー、物理端末、対象engine runtime、2D Pro Gate承認も未完了。`candidate / gate-pending / runtime-verification-unverified`、進捗18/27、3D停止は変更しない。

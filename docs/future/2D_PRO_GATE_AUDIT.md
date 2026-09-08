@@ -1,6 +1,6 @@
 # Group 23: 2D Pro Gate 監査・判断記録
 
-最終更新日: 2026-08-31
+最終更新日: 2026-09-08
 対象リポジトリ: chameleonjp-lab/chameleonassetstudio  
 正式work package: Group 23 / 2D Pro Gate  
 監査開始時の基準main SHA: eaba79d235d1bf55ca85c972a6426de69db9f2dd  
@@ -57,7 +57,7 @@ Group 22のmerge後に、2D Pro Gateの判定に必要な証拠、未確認項�
 |---|---|---|---|---|
 | G23-01 | 必須work package、ADR、docsの対応 | 部分確認 | IMPLEMENTATION_PLAN、2D_COMPLETION_ROADMAP | すべてのruntime・実機条件が揃うまでは完了としない。 |
 | G23-02 | 代表projectの作成または取り込みから再出力までの一体実行 | 自動確認（artifact内容レビュー待ち） | PR #272 / 2D_6_REFERENCE_PROJECT_EVIDENCE.json | 代表IDの自動フローは追加済み。artifact内容・人間確認は未完了。 |
-| G23-03 | preflight問題の修正から再試行まで | 自動確認（アプリ内修正・artifact内容レビュー待ち） | PR #272 / 2D_6_REFERENCE_DOCS_GATE_PLAN.md | テスト側の正常入力への再試行は確認済みだが、アプリ内での修正操作は未確認。 |
+| G23-03 | preflight問題の修正から再試行まで | 既存ZIPのアプリ内修復テスト追加（結果は対象Draft PRのCIを参照） | 2D_6_REFERENCE_DOCS_GATE_PLAN.md §11 / e2e/reference-project-gate.spec.ts | legacy ZIPの表示時間修復を追加。Generic Web製品UIの入口、人間のartifact内容レビューは未完了。 |
 | G23-04 | 同じreference IDでの.casproj再読込と同じ意味の再出力 | 自動確認（artifact内容レビュー待ち） | PR #272 / 2D_6_REFERENCE_PROJECT_EVIDENCE.json | 同じIDのroundtripは自動確認済み。artifact内容・人間確認は未完了。 |
 | G23-05 | 初回利用者レビュー | not-run | 2D_6_REFERENCE_PROJECT_EVIDENCE.json | 人間レビュー記録が必要。 |
 | G23-06 | PC、iPhone Safari、iPad Safari、Android Chromeの全工程 | not-run | 2D_6_DEVICE_FLOW_CONTRACT.md、RELEASE_CHECKLIST.md | Chromium CIを実機確認へ読み替えない。 |
@@ -153,3 +153,14 @@ Draft PR #273は、PR #272で追加された代表project自動証拠をGroup 23
 Draft PR #274は、PR #273のマージ後にhandoff証拠を最新化するdocs＋Gate test変更である。handoff-content head `9a857574ba5eeffc6d87f242236d9127c3459f9a`のRun #898（Actions ID `33349026436`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskipだった。Group 22 artifact [9742974357](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/33349026436/artifacts/9742974357)（`group22-reference-project-evidence-33349026436-1`）を取得した。Run #898のworkflow headは `9a857574ba5eeffc6d87f242236d9127c3459f9a`、PR merge-refは `e70eae246fe822ecb1016fd574f78e92eaea2606`であり、証拠台帳はhandoff contentの主記録として固定する。その後のbookkeeping head `b961c2086c92b18a0df6e24688bf7ae48d428567`はRun #901（Actions ID `33349818980`、artifact `9743224756`）でclassify / build-and-test success、unit 87 files / 916 tests success、E2E skipを確認した。
 
 PR #274の3方向read-only reviewはcurrent head `b961c2086c92b18a0df6e24688bf7ae48d428567`でPASS（contract / evidence 0/0/0、CI / reproducibility 0/0/0、scope / Gate 0/0/0）となった。これはGitHub上のreview投稿ではなく内部監査記録である。artifact内容の人間Gateレビュー、初回利用者レビュー、物理端末、Group 19 / 20 runtime、人間承認は未完了であり、`candidate / gate-pending / runtime-verification-unverified`、進捗18/27、3D停止を維持する。
+
+## 12. 残実装の切り分けと修復テスト（2026-09-08）
+
+基準mainはPR #274 mergeの`ab5f56dacef987ff3119a803e645f72e02da9af2`。着手時open PRは0件、main CI Run #904とPages Run #126はsuccessだった。上記PR #272〜#274のSHA・CI表は過去の証拠であり、今回のhead検証ではない。
+
+- 今回実装する自動検証: 既存ZIPの表示時間preflight拒否→Editor入力で修復→Undo / Redo→実ZIP→Game Check→`.casproj`別context再読込・再出力。詳細は[`Group 22計画 §11`](2D_6_REFERENCE_DOCS_GATE_PLAN.md#11-既存zipのアプリ内修復再試行2026-09-08)。
+- 具体的な未実装: Generic Web配布APIの製品UI入口。現行`ExportPanel`はlegacy ZIPだけを呼ぶため、既存fixtureや今回の修復テストをGeneric Web製品UI完走の代替にしない。新規製品実装は現行Gateの停止対象であり、実装へ移す採用判断が必要。
+- 人間・環境待ち: artifact内容レビュー、初回利用者レビュー、必須実機、対象engine runtime、2D Pro Gate承認。CIだけでは解消しない。
+- 実行結果: 対象Draft PR本文に固定headのCIと独立レビューをまとめる。結果転記だけの後続PRは作らない。過去manifestのCIを今回のテスト結果へ置き換えない。
+
+新規製品コード、保存・出力形式、依存関係は変更しない。`candidate / gate-pending / runtime-verification-unverified`、進捗18/27、3D停止を維持する。

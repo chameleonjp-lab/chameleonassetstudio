@@ -10,6 +10,8 @@ const ASSET_DISPLAY_NAME = '2D Pro代表Asset';
 const FIXED_AT = '2026-08-29T00:00:00.000Z';
 const IMAGE_PATH = 'textures/main.png';
 
+test.use({ trace: 'retain-on-failure' });
+
 interface Vec2 {
   x: number;
   y: number;
@@ -348,6 +350,210 @@ async function writeEvidence(testInfo: TestInfo, evidence: unknown): Promise<voi
   await mkdir('test-results', { recursive: true });
   await writeFile('test-results/group23-reference-project-flow.json', body);
 }
+
+/** Read-only observation: repairs must go through the visible Editor controls. */
+async function readStoredReference(
+  page: Page,
+): Promise<{ project: ReferenceProject; asset: ReferenceAsset }> {
+  return page.evaluate(async (referenceId) => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('chameleon-asset-studio');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      const tx = db.transaction(['projects', 'assets'], 'readonly');
+      const read = <T>(request: IDBRequest<T>) =>
+        new Promise<T>((resolve, reject) => {
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+      const [projects, assets] = await Promise.all([
+        read(tx.objectStore('projects').getAll()) as Promise<ReferenceProject[]>,
+        read(tx.objectStore('assets').getAll()) as Promise<
+          Array<{ projectId: string; data: ReferenceAsset }>
+        >,
+      ]);
+      const record = assets.find(({ data }) => data.gameAttributes.referenceId === referenceId);
+      const project = projects.find(({ id }) => id === record?.projectId);
+      if (!record || !project) throw new Error('代表projectの保存済み正本がありません。');
+      return { project, asset: record.data };
+    } finally {
+      db.close();
+    }
+  }, REFERENCE_ID);
+}
+
+async function changeReferenceDuration(page: Page, value: string): Promise<void> {
+  await page
+    .getByRole('navigation', { name: '画面切り替え' })
+    .getByRole('button', { name: 'タイムライン', exact: true })
+    .click();
+  const input = page.getByLabel('フレーム「idle_0」の表示時間（ミリ秒）');
+  await input.fill(value);
+  await input.blur();
+  await expect
+    .poll(async () => (await readStoredReference(page)).asset.frames[0].durationMs)
+    .toBe(value === '' ? undefined : Number(value));
+  await expect(page.locator('.editor-save-status')).toContainText('保存済み');
+}
+
+async function openReferenceExport(page: Page): Promise<void> {
+  await page
+    .getByRole('navigation', { name: '画面切り替え' })
+    .getByRole('button', { name: '書き出し', exact: true })
+    .click();
+}
+
+async function downloadReferenceZip(page: Page): Promise<Buffer> {
+  await openReferenceExport(page);
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'ZIP をダウンロード', exact: true }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe(REFERENCE_ID + '-export.zip');
+  const path = await download.path();
+  if (!path) throw new Error('代表ZIPのdownload pathを取得できません。');
+  await expect(page.locator('.export-complete')).toContainText(download.suggestedFilename());
+  return readFile(path);
+}
+
+function zipSemanticSnapshot(bytes: Uint8Array): unknown {
+  const entries = unzipSync(bytes);
+  const asset = JSON.parse(strFromU8(entries['asset.json'])) as ReferenceAsset;
+  // Re-import regenerates Project/Asset IDs and timestamps, not game-data semantics.
+  const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...semanticAsset } = asset;
+  void [_id, _createdAt, _updatedAt];
+  return {
+    asset: semanticAsset,
+    atlas: JSON.parse(strFromU8(entries['atlas/atlas.json'])),
+    pngSha256: sha256(entries['textures/main.png']),
+    sheetSha256: sha256(entries['atlas/spritesheet.png']),
+    paths: Object.keys(entries).sort(),
+  };
+}
+
+test('代表projectのZIP拒否を画面内で修復しUndo・Redo・別session再出力まで確認する', async ({
+  page,
+  browser,
+}, testInfo) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto('/');
+  const input = await buildReferenceArchive(true);
+  await importReferenceArchive(page, input, '2d-pro-reference-001.casproj');
+  const original = await readStoredReference(page);
+  let downloads = 0;
+  page.on('download', () => downloads++);
+
+  await changeReferenceDuration(page, '180');
+  const blocked = await readStoredReference(page);
+  await openReferenceExport(page);
+  const zipButton = page.getByRole('button', { name: 'ZIP をダウンロード', exact: true });
+  const warning = page.locator('.export-panel').getByRole('alert');
+  await expect(zipButton).toBeDisabled();
+  await expect(warning).toContainText('個別表示時間');
+  await expect(warning).toContainText('idle_0');
+  await expect(warning).toContainText('時間またはイベントが失われる');
+  expect(await readStoredReference(page)).toEqual(blocked);
+  expect(downloads).toBe(0);
+
+  // Explicit UI repair, not a replacement archive or a direct IndexedDB write.
+  await changeReferenceDuration(page, '');
+  const repaired = await readStoredReference(page);
+  const { updatedAt: _originalAt, ...originalAsset } = original.asset;
+  const { updatedAt: _repairedAt, ...repairedAsset } = repaired.asset;
+  void [_originalAt, _repairedAt];
+  expect(repairedAsset).toEqual(originalAsset);
+  expect(repaired.project.id).toBe(original.project.id);
+  expect(repaired.project.assets).toEqual(original.project.assets);
+  await openReferenceExport(page);
+  await expect(zipButton).toBeEnabled();
+  await expect(warning).toHaveCount(0);
+
+  await page.getByRole('button', { name: '元に戻す', exact: true }).click();
+  // Project.updatedAt is monotonic even when the Asset history moves backward.
+  await expect
+    .poll(() => readStoredReference(page))
+    .toEqual({
+      project: { ...blocked.project, updatedAt: repaired.project.updatedAt },
+      asset: blocked.asset,
+    });
+  await expect(zipButton).toBeDisabled();
+  await expect(warning).toContainText('個別表示時間');
+  await page.getByRole('button', { name: 'やり直す', exact: true }).click();
+  await expect.poll(() => readStoredReference(page)).toEqual(repaired);
+  await expect(zipButton).toBeEnabled();
+  expect(downloads).toBe(0);
+
+  const firstZip = await downloadReferenceZip(page);
+  expect(downloads).toBe(1);
+  const firstEntries = unzipSync(firstZip);
+  expect(JSON.parse(strFromU8(firstEntries['asset.json']))).toEqual(repaired.asset);
+  expect(await readStoredReference(page)).toEqual(repaired);
+  await page
+    .getByRole('navigation', { name: '画面切り替え' })
+    .getByRole('button', { name: '編集', exact: true })
+    .click();
+  await verifyGameCheck(page);
+  expect(await readStoredReference(page)).toEqual(repaired);
+  const backup = await downloadCasproj(page);
+  expect(downloads).toBe(2);
+  const inputEntries = unzipSync(input);
+  const backupEntries = unzipSync(backup);
+  const backupImage = Object.keys(backupEntries).find((path) => path.endsWith('/' + IMAGE_PATH));
+  expect(backupImage).toBeDefined();
+  expect(backupEntries[backupImage!]).toEqual(
+    inputEntries['assets/' + ASSET_ID + '/' + IMAGE_PATH],
+  );
+
+  // A fresh context proves that no previous IndexedDB/session state is reused.
+  const restoredContext = await browser.newContext({ viewport: { width: 375, height: 667 } });
+  try {
+    const restoredPage = await restoredContext.newPage();
+    await restoredPage.goto(new URL('/', page.url()).href);
+    await expect(restoredPage.getByText('保存済みのプロジェクトはありません。')).toBeVisible();
+    await importReferenceArchive(restoredPage, backup, '2d-pro-reference-001-repaired.casproj');
+    const restored = await readStoredReference(restoredPage);
+    expect(restored.project.id).not.toBe(repaired.project.id);
+    expect(restored.asset.id).not.toBe(repaired.asset.id);
+    expect(restored.asset.gameAttributes.referenceId).toBe(REFERENCE_ID);
+    expect(restored.asset.frames[0]).not.toHaveProperty('durationMs');
+    const secondZip = await downloadReferenceZip(restoredPage);
+    expect(zipSemanticSnapshot(secondZip)).toEqual(zipSemanticSnapshot(firstZip));
+    const secondBackup = await downloadCasproj(restoredPage);
+    expect(representativeSnapshot(readReferenceArchive(secondBackup))).toEqual(
+      representativeSnapshot(readReferenceArchive(backup)),
+    );
+    expect(await readStoredReference(restoredPage)).toEqual(restored);
+
+    await testInfo.attach('group23-in-app-preflight-retry.json', {
+      body: Buffer.from(
+        JSON.stringify(
+          {
+            referenceId: REFERENCE_ID,
+            status: 'automated-legacy-zip-ui-repair',
+            issue: 'idle_0 durationMs=180 cannot be represented by fixed-fps ZIP',
+            repair: 'Editor duration input cleared to fps default; Undo/Redo checked',
+            canonicalPreservedOnBlockAndExport: true,
+            downloadsBeforeRepair: 0,
+            zipDownloadsAfterRepair: 1,
+            casprojDownloadsAfterRepair: 1,
+            freshContextSemanticOutputEqual: true,
+            firstZipSha256: sha256(firstZip),
+            secondZipSha256: sha256(secondZip),
+            genericWebProductUi: 'not-implemented; this tests legacy ZIP only',
+            manualGate: 'not-run; no physical device, first-time user or engine runtime claim',
+          },
+          null,
+          2,
+        ) + '\n',
+      ),
+      contentType: 'application/json',
+    });
+  } finally {
+    await restoredContext.close();
+  }
+});
 
 test('2D Pro代表projectを問題修正・再試行・Game Check・.casproj再生成まで同じIDで確認する', async ({
   page,
