@@ -34,7 +34,7 @@ PR #276（2D Pro Gate承認記録・3D-0調査開始）とPR #277（3D-GATE-02�
 
 2D Pro Gateは、`ADR-2026-09-27-037`と[承認記録](future/3d/reports/3D_GATE_BASELINE.md)により人間承認済みである。許可された範囲は`3D-0`調査であり、PR #277の[ライブラリ評価](future/3d/reports/3D_LIB_EVALUATION.md)は`partial-runtime-evidence / not adopted`を記録した。Linux headless Chromiumの部分実測は完了したが、PC Chrome実機・iPhone Safari・iPad Safari、初回表示時間の分離、import完了後のfps、React / TypeScript統合、mount / unmount、実機のmemory・GPU残留・context loss、外部harnessの永続保存は未完了である。
 
-Three.jsのrenderer採用、`3D-DEC-LIB-01`の確定、dependency追加、3D製品画面、保存形式・schema・IndexedDB・`.casproj`・export ZIPの変更はまだ承認・実装していない。open PRはない。次の許可された行動は、3D-0の残る証拠収集または必要な文書同期であり、人間判断なしに製品実装へ進まない。
+Three.jsのrenderer採用、`3D-DEC-LIB-01`の確定、dependency追加、3D製品画面、保存形式・schema・IndexedDB・`.casproj`・export ZIPの変更はまだ承認・実装していない。上記main確認時点（PR #278作成前）はopen PRなしであった。次の許可された行動は、3D-0の残る証拠収集または必要な文書同期であり、人間判断なしに製品実装へ進まない。
 
 ## 履歴（2026-09-08、以下は当時の状態）
 
