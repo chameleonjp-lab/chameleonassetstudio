@@ -1,6 +1,6 @@
 # Decision Log
 
-最終更新日: 2026-08-03
+最終更新日: 2026-09-27 JST
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 重要方針の変更経緯・決定記録
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
@@ -1483,3 +1483,18 @@ PR #216はmerge `f54526210f0d563cff408b0e66c4234b90c4324f`としてmainへ反映
 - Group 14の契約監査とone-sheet handoff作成を開始できる。
 - one-sheet handoffは、完成させる利用者体験、変更可能なデータ、変更禁止データ、受入条件、Unit / E2E / fixture、保存・書き出し影響、対象外を固定する。
 - Group 14の製品実装は、one-sheet handoffを人間またはFableが承認した後に、別branch・別Draft PR・単一writerで開始する。
+
+## ADR-2026-09-27-037: 2D Pro Gate人間承認と3D-0調査開始
+
+### 状態
+
+- accepted（人間の受け入れ判断。製品dependency・3D実装の一括承認ではない）
+- 記録時main: `4d1ed9dfed9fcfda82cebc9d2286722f53771bda`（PR #275マージ後）
+- 正本: [承認と基準CI](3d/reports/3D_GATE_BASELINE.md)、[3D-0評価](3d/reports/3D_LIB_EVALUATION.md)
+
+### 決定
+
+- ユーザーがartifact内容、初回利用者、PC／iPhone／iPad／Android実機、Unity／RPG Maker MZ runtime、2D Pro Gate人間承認について「問題なしです。後続対応開始」と明示した。以前の人間承認待ちを解消し、既存ロードマップ§9の`3D-0`調査を開始する。
+- ADR-2026-07-10-007の「人間承認前は3Dを開始しない」という前提条件は今回満たされた。元の決定や過去の試験結果を削除・改変しない。
+- 確認対象SHA・version・ログ・人数は未提示。人間の受け入れと独立した実行証拠を区別し、過去manifest、18/27の証拠集計、互換性ラベルを一律昇格させない。今回列挙されていないGodotは成功扱いにしない。
+- 本体dependency、新規3D画面、保存形式、四段階draft全体、Generic Web UIやGroup 23個別代替案の採用は含まない。調査は一次情報、隔離したbundle計測、非干渉設計までとし、描画実測・選定判断を次へ渡す。

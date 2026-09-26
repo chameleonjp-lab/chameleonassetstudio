@@ -21,7 +21,9 @@ Phase 17 完了後の将来計画は [docs/future/](docs/future/README.md) に�
 
 将来方針として、Chameleon Asset Studio を画像取り込み専用の変換ツールには限定しません。空キャンバス、テンプレート、図形、パーツ、既存素材の修正から作成し、Unity / Godot / RPG Maker / Blender などには、まず直接連携ではなく持ち込み可能なファイルと import notes を出す方針です。完成形、保存・座標の契約、対象別の検証条件、端末品質は、[2D 完成形仕様](docs/future/2D_COMPLETE_PRODUCT_SPEC.md)、[データ契約](docs/future/2D_ASSET_DATA_CONTRACT.md)、[互換性表](docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md)、[端末・信頼性仕様](docs/future/2D_DEVICE_RELIABILITY_SPEC.md) を参照してください。
 
-Group 22 の代表プロジェクト証拠と文書整合監査は、[`2D_6_REFERENCE_DOCS_GATE_PLAN.md`](docs/future/2D_6_REFERENCE_DOCS_GATE_PLAN.md) と [`2D_6_REFERENCE_PROJECT_EVIDENCE.json`](docs/future/2D_6_REFERENCE_PROJECT_EVIDENCE.json) に記録しています。これは `candidate` の監査台帳であり、PC・実機・初回利用者レビュー未実施のため `verified` や 2D Pro Gate 完了を意味しません。
+2026-09-27 JSTに、artifact内容・初回利用者・PC／iPhone／iPad／Android実機・Unity／RPG Maker MZ runtimeの「問題なし」と2D Pro Gateの人間承認を受けました。[承認記録と基準CI](docs/future/3d/reports/3D_GATE_BASELINE.md)に従い、次は[3D-0ライブラリ調査](docs/future/3d/reports/3D_LIB_EVALUATION.md)です。新規dependency・3D製品実装の採用は別判断です。
+
+Group 22 の代表プロジェクト証拠と文書整合監査は、[`2D_6_REFERENCE_DOCS_GATE_PLAN.md`](docs/future/2D_6_REFERENCE_DOCS_GATE_PLAN.md) と [`2D_6_REFERENCE_PROJECT_EVIDENCE.json`](docs/future/2D_6_REFERENCE_PROJECT_EVIDENCE.json) に記録しています。`candidate / not-run`は当時の証拠を保存した履歴であり、今回の人間承認とは分けて扱います。詳細な実行ログ未提示のため互換性`verified`への昇格は行いません。
 
 ## このプロジェクトの目的
 

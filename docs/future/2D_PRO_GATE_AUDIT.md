@@ -1,6 +1,6 @@
 # Group 23: 2D Pro Gate 監査・判断記録
 
-最終更新日: 2026-09-08
+最終更新日: 2026-09-27 JST
 対象リポジトリ: chameleonjp-lab/chameleonassetstudio  
 正式work package: Group 23 / 2D Pro Gate  
 監査開始時の基準main SHA: eaba79d235d1bf55ca85c972a6426de69db9f2dd  
@@ -11,12 +11,12 @@ PR #269マージ後main SHA: 9a743a8cdd4b174089fe4580db3d94f0fea2054e
 PR #270マージ後main SHA: 6a025cebbd31fe5ac1f83afd24fd4e8c72ee2236  
 PR #272マージ後main SHA: 17d62c49792202ef411124df03e3809ded5f2d8c
 文書種別: docs-only audit / decision record  
-状態: gate-pending / runtime-verification-unverified
+現在の状態: human-approved / user-reported acceptance（互換性ラベルは未昇格）
 
 上位文書: docs/IMPLEMENTATION_PLAN.md、docs/future/2D_COMPLETION_ROADMAP.md  
 関連文書: docs/future/2D_6_REFERENCE_DOCS_GATE_PLAN.md、docs/future/2D_6_REFERENCE_PROJECT_EVIDENCE.json、docs/future/2D_EXPORT_COMPATIBILITY_MATRIX.md
 
-> この文書は、2D Pro Gateを通過したことを示さない。既存の証拠と未確認項目を同じ表へ集め、人間が判断すべき点を明確にするための記録である。
+> **現在判断（2026-09-27 JST）:** ユーザーが5項目の問題なしと2D Pro Gate承認を明示した。[承認記録](3d/reports/3D_GATE_BASELINE.md)を優先し、`3D-0`調査を開始する。以下の1章以降は2026-09-08までの監査履歴であり、当時の`gate-pending / runtime-verification-unverified`を現在の人間承認待ちとして再適用しない。実行ログ・versionの追加がないため、当時の証拠や互換性`verified`は書き換えない。
 
 ## 1. 今回の目的
 
