@@ -1,8 +1,11 @@
 # 3D-0 ライブラリ評価（一次調査・静的bundle）
 
-調査日: 2026-09-27 JST（2026-09-26 UTC）  
-状態: **investigation-in-progress / not adopted**  
-開始根拠: [2D Pro Gate人間承認](3D_GATE_BASELINE.md)  
+調査日: 2026-09-27 JST（2026-09-26 UTC）
+
+状態: **investigation-in-progress / not adopted**
+
+開始根拠: [2D Pro Gate人間承認](3D_GATE_BASELINE.md)
+
 対象: 既存ロードマップ `3D-0`。四段階draftの `3D-GATE-02` 完了ではない。
 
 ## 1. 結論と採用状況

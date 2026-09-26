@@ -1,7 +1,9 @@
 # 2D Pro Gate 人間承認と 3D-0 調査基準
 
-記録日: 2026-09-27 JST（2026-09-26 UTC）  
-状態: **human-approved / user-reported acceptance**  
+記録日: 2026-09-27 JST（2026-09-26 UTC）
+
+状態: **human-approved / user-reported acceptance**
+
 対象: Group 23 → 既存ロードマップの `3D-0` 調査開始
 
 ## 1. 今回の人間判断
