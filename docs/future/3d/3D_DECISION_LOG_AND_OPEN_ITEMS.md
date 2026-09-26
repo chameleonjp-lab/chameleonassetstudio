@@ -1,11 +1,13 @@
 # 3D Decision Log and Open Items（3D の決定・推奨・未解決項目）
 
 状態: **draft / human review required**
-最終更新日: 2026-07-20（第2改訂: リグ/モーション関連の決定・open 項目と、**7 章 整合リスク台帳（3D-RISK-01〜12）**を追加）
+最終更新日: 2026-09-27 JST（第2改訂の履歴を保持し、PR #276/#277後の3D-0状態を同期）
 調査基準commit: `7018984ba9e6867c6fab12fb313308218a35c22b`（初版）/ `3dd4dd4`（第2改訂）
 上位文書: `README.md`（本ディレクトリ）。全体の決定記録の正本は `../DECISION_LOG.md`（accepted になった項目はそちらへ登録する）
 
 > この文書の「推奨」は計画者（今回の調査・設計）の推奨であり、**人間承認までは決定ではない**。
+
+> PR #277で追加されたruntime値は部分証拠であり、`3D-DEC-LIB-01`の採用決定や`3D-GATE-02`完了を意味しない。
 
 ---
 
@@ -23,7 +25,7 @@
 
 | ID | 判断対象 | 推奨案 | 主な代替案 | 利点 / 欠点の要点 | 判断者 | 期限 Gate | 決まらない場合の安全既定 |
 |---|---|---|---|---|---|---|---|
-| 3D-DEC-LIB-01 | 描画ライブラリ | Three.js（実測で確定） | Babylon.js | Three: bundle を絞りやすい・実績 / addon 管理が手動。Babylon: 一体型で機能豊富 / bundle 大きめ（実測要） | 人間（GATE-02 の実測後） | 3D-GATE-04 の前 | 決まるまで Stage1 に着手しない（既定なし。これだけは実測必須） |
+| 3D-DEC-LIB-01 | 描画ライブラリ | Three.js（Linux headless Chromiumの部分実測では第一候補。未採用） | Babylon.js | Three: bundleを絞りやすい・実績 / addon管理が手動。Babylon: 一体型で機能豊富 / bundle大きめ。PC Chrome実機・iPhone/iPad Safari・React / TypeScriptは未確認 | 人間（GATE-02の必要証拠完了後） | 3D-GATE-04の前 | 決まるまでStage1に着手しない（既定なし） |
 | 3D-DEC-FORMAT-01 | プロジェクト形式 | `.cas3dproj` 新設（案B） | 既存拡張(A) / 共通container(C) / sidecarのみ(D) | 契約 12 章の比較表 | 人間 | 3D-GATE-03 | 案 B（2D 無変更で最も安全） |
 | 3D-DEC-STORAGE-01 | 保存 DB | 別 DB `chameleon-asset-studio-3d` | 既存 DB v3 拡張 | 契約 11 章 | 人間 | 3D-GATE-03 | 別 DB（2D 無変更） |
 | 3D-DEC-EXTGEN-01 | 外部生成の接続範囲 | 第四段階は adapter 仕様 + 手動持ち込み完成まで。実接続は個別承認 | ローカル接続まで実装 / API 接続まで実装 | 実接続は外部仕様・規約依存が大きい | 人間 | 3D-STAGE4 開始時 | 仕様 + 手動のみ（実接続なし） |
@@ -34,7 +36,7 @@
 
 | 項目 | 実測する Gate / WP | 中身 |
 |---|---|---|
-| 描画ライブラリの bundle・Safari・context loss・dispose | 3D-GATE-02 | 性能仕様 4 章の「実測が必要な項目」 |
+| 描画ライブラリのbundle・Safari・context loss・dispose | 3D-GATE-02 | Linux headless Chromiumの部分実測は`3D_LIB_EVALUATION.md`に記録済み。PC Chrome実機・iPhone/iPad Safari・初回表示時間の分離・import後fps・React / TypeScript統合・実機memory/GPUは未実施 |
 | 2D bundle 基準値・対象端末 | 3D-GATE-05 | 性能仕様 1・3 章 |
 | 読み込み上限・警告しきい値の確定 | 3D-STAGE2-06 | 入出力仕様 3〜4 章の全「暫定」値 |
 | Safari の大容量 IndexedDB Blob 挙動 | 3D-GATE-05〜STAGE1-03 | 分割格納の要否（3D-OPEN-03） |
