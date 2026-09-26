@@ -130,7 +130,7 @@ Babylon fps:      [57.070, 57.103, 58.031, 57.014, 57.103]
 | GLB表示・camera・dispose | Linux headless Chromiumで5回実測。両候補の表示とdispose経路を確認 | PC Chrome実機・iPhone Safari・iPad Safariで同一条件を実測。GPU残留は別測定 |
 | 初回表示時間、fps、memory | GLB import時間と、import時間を含む参考fpsをLinux headless Chromiumで5回実測。初回表示とレンダリング単体fpsは未分離。memoryは非標準値として記録 | import完了後にfps計測を開始し、初回表示時間を別測定する。端末・OS・browser版・反復数・測定方法を固定して実機結果を記録 |
 | PC／iPhone／iPad／Android | Linux Chromiumのみ。実機はnot-run | OS・browser版・deviceを記録。今回の2D承認を3D実機証拠へ転用しない |
-| context loss復帰・screenshot・取消 | Chromiumでloss/restoreと前後screenshotを5回確認。取消はnot-run | Safari実機を含め、失敗・再読込・離脱・取消を確認 |
+| context loss復帰・screenshot・取消 | Chromiumでloss/restoreとcenter pixelを5/5確認。前後screenshotは代表1回のみ。取消はnot-run | Safari実機を含め、失敗・再読込・離脱・取消を確認 |
 | React / TypeScript組込 | plain JavaScriptの外部viewerのみ。not-run | 型検査、mount / unmount反復、2D初回bundle非混入 |
 | 選定 `3D-DEC-LIB-01` | proposed、未決定 | 比較結果とライセンス配布条件を見て人間または上位判断で採用 |
 
