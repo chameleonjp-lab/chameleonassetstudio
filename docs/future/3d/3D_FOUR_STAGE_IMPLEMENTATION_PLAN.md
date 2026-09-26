@@ -68,17 +68,17 @@
 
 - （1〜3）ID / 名称 / 所属: `3D-GATE-01` / Gate 承認確認と基準固定 / 開始前 Gate
 - （4）利用者価値: 2D の品質を壊さずに 3D を始められる状態を確定する。
-- （5〜6）現状と根拠: 2D Pro Gate は未承認（`../2D_COMPLETION_ROADMAP.md` 8 章）。3D 開始条件は ADR-2026-07-10-007。
+- （5〜6）現状と根拠: 2D Pro Gate は人間承認済み（`reports/3D_GATE_BASELINE.md`、ADR-2026-09-27-037）。記録時の基準SHAは歴史証拠として保持する。四段階計画全体、renderer、dependency、保存形式は未承認。
 - （7〜9）目的 / 範囲 / 非範囲: 2D Pro Gate の承認記録を確認し、3D 開始の基準 commit を決め、その commit で 2D unit + E2E 全件を実行して成功記録を残す。コード変更は行わない。
 - （10〜13）前提 / 依存 / 後続 / 並行: 前提 = 2D Pro Gate 人間承認。依存 WP = なし。後続 = すべての GATE / STAGE WP。並行 = なし（最初に単独実行）。
-- （14〜16）決定 / 推奨 / 代替: 決定 = 3D 開始承認そのもの（人間）。推奨 = 基準 commit は承認時点の main 先端。代替 = 特定タグを切る（推奨: `3d-baseline` タグを作成）。
+- （14〜16）決定 / 推奨 / 代替: 決定 = 3D-0調査開始の人間承認（ADR-2026-09-27-037）。推奨 = 基準commitは承認時点のmain先端。代替 = 特定タグを切る（タグは作成しない）。
 - （17〜19）変更ファイル: なし（記録文書 `docs/future/3d/reports/3D_GATE_BASELINE.md` を新規作成のみ）。
 - （20〜30）データ / UI / エラー: 影響なし。
 - （35）実装手順: 1. 承認記録の確認 → 2. commit 固定とタグ → 3. `npm run lint / build / test / e2e` 実行 → 4. 結果を baseline 報告として記録。
 - （36〜40）テスト / 証拠: 既存テスト全件の成功ログ。baseline 報告文書。
 - （41〜42）受け入れ / 完了条件: 前提 = 2D Pro Gate 承認済み。操作 = 基準 commit で全テスト実行。期待結果 = 全件成功し、commit SHA・実行日・結果が報告に記録されている。
 - （43〜44）rollback / 文書更新: 対象なし / baseline 報告の新規作成。
-- （48）人間確認: **必須**（3D 開始承認そのもの）。
+- （48）人間確認: **完了**（ADR-2026-09-27-037で3D-0調査のみ承認）。
 - （49〜52）複雑度 S / 不確実性 低 / 危険 低 / 対処: E2E が不安定な場合は原因を 2D 側の課題として先に解消する（3D を開始しない）。
 - （53）依頼要約: 「2D Pro Gate 承認を確認し、基準 commit を固定して 2D 全テストの成功証拠を `docs/future/3d/reports/3D_GATE_BASELINE.md` に記録してください。コードは変更しないでください。」
 
@@ -86,12 +86,13 @@
 
 - （1〜3）: `3D-GATE-02` / 描画ライブラリ実測比較 / 開始前 Gate
 - （4）価値: 3D 表示の土台を、根拠のある実測で選ぶ（旧 `3D-0` の中心作業）。
-- （5〜6）現状と根拠: 事前整理は `3D_PERFORMANCE_DEVICE_SECURITY_LICENSE_SPEC.md` 4 章（ライセンスのみ一次確認済み。bundle・Safari 挙動は未実測）。
+- （5〜6）現状と根拠: 事前整理は `3D_PERFORMANCE_DEVICE_SECURITY_LICENSE_SPEC.md` 4 章。PR #277の `3D_LIB_EVALUATION.md` に静的bundleとLinux headless Chromiumの部分runtime実測を記録した。PC Chrome実機・iPhone/iPad Safari・初回表示時間の分離・React / TypeScript統合は未実施。
 - （7〜9）目的 / 範囲 / 非範囲: 同一 fixture・同一シナリオ（GLB 読み込み→表示→カメラ→dispose）で、gzip 後 bundle・初回表示時間・fps・メモリ・context loss 復帰・screenshot 取得・TypeScript/React との親和性を実測し、評価記録を作る。実験は**リポジトリ外の使い捨て作業場**（別ディレクトリの試作プロジェクト）で行い、本体リポジトリへ試作コードや dependency を入れない。
+- 現在状態: Linux headless Chromiumの部分runtime実測を記録済み。ただし `3D-GATE-02` は未完了であり、renderer採用・dependency追加・製品実装へは進まない。
 - （10〜13）依存: `3D-GATE-01`。後続: `3D-GATE-04`。並行: `3D-GATE-03` / `-05` / `-06`。
 - （14〜16）決定 / 推奨 / 代替: 決定 = `3D-DEC-LIB-01`（人間承認）。事前推奨 = Three.js。代替 = Babylon.js（実測が優位なら変更）。
 - （17〜19）変更ファイル: 本体リポジトリは評価記録 `docs/future/3d/reports/3D_LIB_EVALUATION.md` のみ。
-- （35）手順: 1. 評価シナリオと fixture 確定 → 2. 両ライブラリで最小 viewer 試作（外部作業場） → 3. 実測（PC Chrome / iPhone Safari / iPad Safari） → 4. 表形式の評価記録 → 5. 人間承認。
+- （35）手順: 1. 評価シナリオとfixture確定 → 2. 両ライブラリで最小viewer試作（外部作業場） → 3. Linux headless Chromiumで部分実測 → 4. PC Chrome実機・iPhone Safari・iPad Safari・React / TypeScriptで残りを実測 → 5. 表形式の評価記録 → 6. 人間承認。
 - （41〜42）受け入れ: 前提 = GATE-01 完了。操作 = 両候補の同一シナリオ実測。期待結果 = 全比較項目が数値または再現手順つき所見で埋まり、推奨と理由が書かれ、人間が承認した。
 - （48）人間確認: **必須**（ライブラリ確定）。
 - （49〜52）: 複雑度 M / 不確実性 中（Safari 実測に依存）/ 危険 低 / 対処: 実測で両者に決定的差が無い場合は bundle の小ささと保守性で Three.js を選ぶ（評価記録に明記）。
