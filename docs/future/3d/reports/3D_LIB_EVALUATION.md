@@ -2,6 +2,8 @@
 
 調査日: 2026-09-27 JST（2026-09-26 UTC）
 
+比較対象本体main SHA: `ba1bf5dcd468dae7d906bb07561925e30a74616a`
+
 状態: **investigation-in-progress / partial-runtime-evidence / not adopted**
 
 開始根拠: [2D Pro Gate人間承認](3D_GATE_BASELINE.md)
@@ -73,7 +75,7 @@ WebIO失敗は`@gltf-transform/core/dist/index.js`内のNodeIO用dynamic import�
 | 実行環境 | Linux managed runtime、Node `v24.19.0`、Playwright `1.53.0`、Chromium `138.0.7204.15` |
 | viewer条件 | canvas 360×240 CSS px、viewport 390×300 CSS px、DPR 1、WebGL、同一色背景、同一距離の固定camera |
 | 反復 | 新しいPlaywright pageを各候補5回。通信はlocalhost。実機の冷起動・通信時間は測っていない |
-| シナリオ | GLB読込 → 表示 → camera固定 → 1秒fps計測 → screenshot → `WEBGL_lose_context`でloss/restore → screenshot → viewer dispose |
+| シナリオ | GLB読込 → 表示 → camera固定 → render loop開始からimport完了後1000msまでのfps算出（import時間を含む） → screenshot → `WEBGL_lose_context`でloss/restore → screenshot → viewer dispose |
 
 ### bundleとruntime結果
 
@@ -83,12 +85,12 @@ WebIO失敗は`@gltf-transform/core/dist/index.js`内のNodeIO用dynamic import�
 | 同一viewer gzip bytes | 161,772 | 796,764 | gzip level 9 |
 | bundle SHA-256 | `ccae8cbc7af8c5bbf41bfa28a9b26ddf3de8b69e1e469a54e07c6a0050c85926` | `a1e394c8fe2256275dea2be1259df4f25f508440d1e865ef4c70ff70e1a4fc6f` | 同じfixture生成・viewer条件 |
 | GLB import時間の中央値 | 3.9 ms | 16.2 ms | 5回のimport完了まで。ページ移動時間は含めない |
-| 1秒fpsの中央値 | 58.747 | 57.103 | headless Chromium上の観測値。実機性能へ転用しない |
+| fps中央値（render loop開始〜import完了後1000msまで） | 58.747 | 57.103 | import時間を含む参考値。headless Chromium上の観測値で、レンダリング単体や実機性能へ転用しない |
 | `performance.memory`観測 | 10,000,000 bytes | 15,200,000 bytes | Chromium非標準値。メモリ優位の断定には使わない |
 | context loss / restoreイベント | 5/5 | 5/5 | 両候補でイベントを確認 |
 | 復旧後center pixel | `[213,214,215,255]` | `[227,227,227,255]` | 背景色ではなく三角形のpixelを確認 |
-| 復旧前後screenshot SHA-256 | `14592e65e8905501e79693d60e4707144765007869109ebf76d0f84d9b789fe1` | `1b15f828a5a79b409a31a17f01009dc334aa915d79a5ec0bd5144add0d4c63c1` | 各候補で前後hashが一致 |
-| dispose呼出し | 5/5 | 5/5 | harnessのdispose経路が完了。GPU残留量の直接測定ではない |
+| 代表実行の復旧前後screenshot SHA-256 | `14592e65e8905501e79693d60e4707144765007869109ebf76d0f84d9b789fe1` | `1b15f828a5a79b409a31a17f01009dc334aa915d79a5ec0bd5144add0d4c63c1` | 各候補のindex=1のみ保存。代表実行では前後hashが一致。5回分の画像保存ではない |
+| dispose呼出し | 5/5 | 5/5 | harnessのdispose経路が完了。RAF / event listener停止・GPU残留量の直接測定ではない |
 
 raw結果の配列は次のとおりである。
 
@@ -99,11 +101,12 @@ Babylon loadMs:   [16.2, 15.5, 16.4, 17.1, 15.5]
 Babylon fps:      [57.070, 57.103, 58.031, 57.014, 57.103]
 ```
 
-この結果から、今回のLinux headless Chromium条件ではThree.jsのbundleとGLB import時間が小さかった。一方、fps差はこの小さなfixtureと1秒計測だけでは採用理由にできない。Babylon.jsも同条件で表示し、context loss後の復旧画面を確認できた。
+この結果から、今回のLinux headless Chromium条件ではThree.jsのbundleとGLB import時間が小さかった。fpsはrender loop開始からimport完了後1000msまでの区間で算出しており、import時間を含むため、レンダリング単体の比較や採用理由には使わない。次回はimport完了後にfps計測を開始する。Babylon.jsも同条件で表示し、context loss後の復旧画面を確認できた。
 
 ### 未実施・観測できない範囲
 
 - PC Chrome実機、iPhone Safari実機、iPad Safari実機、Android実機。
+- 初回表示時間（GLB import完了から実際に描画された時点まで）は未分離。今回の`loadMs`はGLB import完了までの時間である。
 - Safariの実メモリ、GPU resource残留、実機context lossの挙動。
 - React / TypeScriptへ組み込んだ型検査、mount / unmount反復。今回の外部viewerはplain JavaScriptで作った。
 - 大きいGLB、texture、animation、圧縮拡張、外部URL、取消操作。
@@ -125,7 +128,7 @@ Babylon fps:      [57.070, 57.103, 58.031, 57.014, 57.103]
 |---|---|---|
 | 静的import容量・版・一次LICENSE | 測定・確認済み。WebIO失敗も記録 | 同一viewerの配布物全体で再計測、LICENSE / NOTICE含む |
 | GLB表示・camera・dispose | Linux headless Chromiumで5回実測。両候補の表示とdispose経路を確認 | PC Chrome実機・iPhone Safari・iPad Safariで同一条件を実測。GPU残留は別測定 |
-| 初回表示時間、fps、memory | Linux headless Chromiumで5回実測。memoryは非標準値として記録 | 端末・OS・browser版・反復数・測定方法を固定し、実機結果を記録 |
+| 初回表示時間、fps、memory | GLB import時間と、import時間を含む参考fpsをLinux headless Chromiumで5回実測。初回表示とレンダリング単体fpsは未分離。memoryは非標準値として記録 | import完了後にfps計測を開始し、初回表示時間を別測定する。端末・OS・browser版・反復数・測定方法を固定して実機結果を記録 |
 | PC／iPhone／iPad／Android | Linux Chromiumのみ。実機はnot-run | OS・browser版・deviceを記録。今回の2D承認を3D実機証拠へ転用しない |
 | context loss復帰・screenshot・取消 | Chromiumでloss/restoreと前後screenshotを5回確認。取消はnot-run | Safari実機を含め、失敗・再読込・離脱・取消を確認 |
 | React / TypeScript組込 | plain JavaScriptの外部viewerのみ。not-run | 型検査、mount / unmount反復、2D初回bundle非混入 |
@@ -212,4 +215,6 @@ node run-browser.mjs
 ```
 
 外部作業場の固定条件・raw結果・画像のhashを上記3.1に記録した。外部viewerはplain JavaScriptであり、これはReact / TypeScript統合の証拠ではない。比較viewerの作成中に、法線を持たないfixtureではBabylon.jsの初期表示が空になることを検出したため、法線と明示材質を付けた自作GLBへ修正してから最終測定した。初期表示が空の結果は採用していない。
+
+外部viewerのソース、GLB実体、raw JSON、screenshotは本体repoへ永続保存していない。したがって、このPRに記録したhashとコマンドだけでは同一harnessを完全再構成できず、今回のruntime値は監査可能な**部分証拠**として扱う。次回は外部アーカイブの保存先と保持期間を先に固定する。
 
