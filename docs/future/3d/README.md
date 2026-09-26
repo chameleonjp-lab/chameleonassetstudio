@@ -5,11 +5,12 @@
 改訂履歴: 初版 2026-07-19（11 文書・基準 `7018984`）→ 第1改訂 2026-07-20（連携 / VRM / VR / ボーン検査 / テクスチャ編集 / 画像→3D を追加し 12 文書・基準 `96d63c5`）→ **第2改訂 2026-07-20（骨格作成・自動ウェイト・モーション付与の動線を追加。整合リスク台帳 3D-RISK-01〜12 を新設・基準 `3dd4dd4`）**。いずれも調査日の Git 状態: clean
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 
-> **重要: この計画一式の存在は、3D 実装開始の承認ではない。**
-> 既存決定（ADR-2026-07-10-007）のとおり、`../2D_COMPLETION_ROADMAP.md` の **2D Pro Gate を人間が承認するまで**、3D の実装・描画ライブラリ評価・dependency 追加・試作コード追加を開始しない。本ディレクトリは「承認後に迷わず進めるための計画」だけを提供する。
+> **重要: この計画一式の存在は、3D 製品実装の一括承認ではない。**
+> 既存決定（ADR-2026-07-10-007）では、2D Pro Gate承認前の3D実装・描画ライブラリ評価・dependency追加・試作コード追加を禁止していた。2026-09-27 JSTに2D Pro Gateは人間承認済みとなり、現在は[3D-0調査](reports/3D_LIB_EVALUATION.md)の範囲だけを進められる。
 >
-> - 2026-09-27 JSTに[2D Pro Gateの人間承認](reports/3D_GATE_BASELINE.md)を受けた。現在は既存ロードマップの[3D-0調査](reports/3D_LIB_EVALUATION.md)を進められる。
-> - 四段階計画全体は引き続きdraft。人間承認が必要なdependency・renderer選定・保存形式・各実装Gateまで一括承認されたわけではない。
+> - [2D Pro Gateの人間承認](reports/3D_GATE_BASELINE.md)は記録済み。PR #276で承認範囲を固定した。
+> - PR #277で`3D-GATE-02`のLinux headless Chromium部分実測を記録した。PC Chrome実機、iPhone/iPad Safari、React / TypeScript、初回表示時間の分離などは未実施である。
+> - 四段階計画全体、renderer選定、dependency・保存形式の承認は未完了である。
 
 ---
 
@@ -56,12 +57,12 @@ Chameleon Asset Studio の 3D 機能は、**3D モデルを「作る」道具で
 
 ## 3. 現在の Gate と、人間が次に判断すること
 
-- 現在の状態: **2D Pro Gate 未承認 = 3D は一切着手不可**（計画のみ存在）。
+- 現在の状態: **2D Pro Gateは人間承認済み。3D-0 / 3D-GATE-02は部分実測済み・未完了。** Linux headless Chromiumの評価記録はあるが、3D製品実装はまだ開始しない。
 - 人間が次に判断すること（順序どおり）:
   1. この計画一式のレビューと受理（draft → reviewed）。
-  2. （2D 完成後）2D Pro Gate の承認 = `3D-GATE-01`。
-  3. 描画ライブラリ（3D を画面に表示するための土台プログラム。Three.js か Babylon.js の 2 候補）の確定（`3D-DEC-LIB-01`。実測後）。
-  4. プロジェクト形式（3D の保存ファイルの入れ物）・保存 DB（ブラウザ内の保存場所）の方式承認（`3D-DEC-FORMAT-01` / `3D-DEC-STORAGE-01`。ADR = 重要な設計判断の記録）。
+  2. `3D-GATE-02`の残る証拠（PC Chrome実機、iPhone/iPad Safari、初回表示時間、import後fps、React / TypeScript統合など）を確認する。
+  3. 描画ライブラリ（3Dを画面に表示するための土台プログラム。Three.jsかBabylon.js）の確定（`3D-DEC-LIB-01`。人間承認が必要）。
+  4. プロジェクト形式（3Dの保存ファイルの入れ物）・保存DB（ブラウザ内の保存場所）の方式承認（`3D-DEC-FORMAT-01` / `3D-DEC-STORAGE-01`。ADR = 重要な設計判断の記録）。
   5. dependency（外部のプログラム部品）追加の承認（`3D-GATE-04`）。
   6. 性能計測の対象端末（速度を測る実機）の確定（`3D-GATE-05`）。
 
