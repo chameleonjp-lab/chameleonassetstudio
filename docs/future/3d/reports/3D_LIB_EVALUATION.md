@@ -88,7 +88,7 @@ WebIO失敗は`@gltf-transform/core/dist/index.js`内のNodeIO用dynamic import�
 | fps中央値（render loop開始〜import完了後1000msまで） | 58.747 | 57.103 | import時間を含む参考値。headless Chromium上の観測値で、レンダリング単体や実機性能へ転用しない |
 | `performance.memory`観測 | 10,000,000 bytes | 15,200,000 bytes | Chromium非標準値。メモリ優位の断定には使わない |
 | context loss / restoreイベント | 5/5 | 5/5 | 両候補でイベントを確認 |
-| 復旧後center pixel | `[213,214,215,255]` | `[227,227,227,255]` | 背景色ではなく三角形のpixelを確認 |
+| 復旧後center pixel | `[213,214,215,255]` | `[227,227,227,255]` | 各候補5回すべてで同じ値。背景色ではなく三角形のpixelを確認 |
 | 代表実行の復旧前後screenshot SHA-256 | `14592e65e8905501e79693d60e4707144765007869109ebf76d0f84d9b789fe1` | `1b15f828a5a79b409a31a17f01009dc334aa915d79a5ec0bd5144add0d4c63c1` | 各候補のindex=1のみ保存。代表実行では前後hashが一致。5回分の画像保存ではない |
 | dispose呼出し | 5/5 | 5/5 | harnessのdispose経路が完了。RAF / event listener停止・GPU残留量の直接測定ではない |
 
