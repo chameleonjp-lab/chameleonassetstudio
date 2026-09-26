@@ -1,6 +1,6 @@
 # Chameleon Asset Studio ユーザーガイド
 
-最終更新日: 2026-08-26
+最終更新日: 2026-09-27 JST
 対象バージョン: 0.1.0
 
 このガイドは、Chameleon Asset Studio でゲーム用 2D アセットを作って書き出すまでの使い方を説明します。仕様の正本は `docs/REQUIREMENTS_SPECIFICATION.md`、データ形式は `docs/DATA_FORMAT.md` を参照してください。
@@ -15,7 +15,7 @@
 - **成功の目印**: 保存済み表示を確認し、必要なら `.casproj` を保管します。別のブラウザ状態で読み込み、同じ意味の出力を再生成できることが再編集の目標です。
 - **既知の制限**: Generic Web / PixiJS / Phaser / Unity / Godot / RPG Maker MZの互換性は、対象version・fixture・実行証拠がそろった範囲だけを示します。Chromium CIや説明だけで物理端末・engine runtimeの成功を保証しません。
 
-代表プロジェクトの監査範囲と未実施の実機・初回レビューは [`docs/future/2D_6_REFERENCE_DOCS_GATE_PLAN.md`](future/2D_6_REFERENCE_DOCS_GATE_PLAN.md) に記録しています。
+代表プロジェクトの監査履歴は [`docs/future/2D_6_REFERENCE_DOCS_GATE_PLAN.md`](future/2D_6_REFERENCE_DOCS_GATE_PLAN.md) に記録しています。2026-09-27 JSTに実機・初回レビュー等の問題なしと2D Pro Gateの人間承認を受けました。[承認記録](future/3d/reports/3D_GATE_BASELINE.md)と過去の詳細証拠は区別し、対象versionごとの互換性を一律保証するものではありません。
 
 ---
 

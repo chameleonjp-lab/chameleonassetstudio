@@ -1,6 +1,6 @@
 # Group 22: 代表プロジェクト・文書整合・最終監査
 
-最終更新日: 2026-09-08
+最終更新日: 2026-09-27 JST
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 正式work package: `2D-6-REFERENCE` + `2D-6-DOCS` + `2D-6-GATE-AUDIT`  
 基準main SHA: `17d62c49792202ef411124df03e3809ded5f2d8c`
@@ -11,6 +11,8 @@
 関連文書: [`2D_6_DEVICE_FLOW_CONTRACT.md`](2D_6_DEVICE_FLOW_CONTRACT.md)、[`2D_6_RECOVERY_OFFLINE_CONTRACT.md`](2D_6_RECOVERY_OFFLINE_CONTRACT.md)、[`2D_6_QUALITY_CONTRACT.md`](2D_6_QUALITY_CONTRACT.md)、[`2D_5_EVIDENCE_LABELS_PLAN.md`](2D_5_EVIDENCE_LABELS_PLAN.md)
 
 > Group 22は、既存機能を新しく見せるための実装ではなく、2D Pro Gateへ進める前に「何を、どの証拠で、どこまで確認したか」を固定する監査工程である。PCを利用できないため、物理端末・対象engineのruntime成功を作らず、未実施を`candidate / not-run`として記録する。
+
+> **現在判断（2026-09-27 JST）:** [ユーザーの5項目確認・2D Pro Gate承認](3d/reports/3D_GATE_BASELINE.md)を受け、`3D-0`調査へ進む。上記と以下のPC利用不可・未実施・candidateは当時の監査履歴であり、承認待ちを再要求する根拠にはしない。詳細ログ未提示のため、既存manifest・artifact・CI証拠はそのまま保存する。
 
 ## 1. 目的と境界
 

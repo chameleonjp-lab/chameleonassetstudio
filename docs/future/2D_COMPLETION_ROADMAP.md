@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 2D Completion Roadmap
 
-最終更新日: 2026-08-31
+最終更新日: 2026-09-27 JST
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 2D 完成までの実装順と品質 gate
 状態: accepted（今後の優先順。docs-only）
@@ -15,6 +15,10 @@
 > **最新同期（2026-08-31）:** PR #272（head `6270e59abbb999d00d7c434ff66c76db5836b0fc`、merge `17d62c49792202ef411124df03e3809ded5f2d8c`）で、代表ID `2d-pro-reference-001`の自動一体フロー、Generic Web package closure、固定head CI証拠を追加した。Run #892（Actions ID `33248089842`、attempt 2）は全job成功、E2E 205件、H3 1件、Pages open / closed各1件である。artifact内容の人間レビュー、初回利用者レビュー、実機・対象runtime、Gate承認は未実施であり、`candidate / gate-pending / runtime-verification-unverified`、18/27、3D停止を維持する。詳細は `docs/future/2D_PRO_GATE_AUDIT.md` を参照する。
 
 > **後続handoff（2026-08-31）:** Draft PR #273はdocs＋Group 22 Gate testの9ファイルを一つに集約した。固定head `2e3c5eed97cb7298c1032f091e783a46f71c0b98`のRun #895（Actions ID `33347654457`）はclassify / build-and-test success、unit 87 files / 916 tests success、E2Eは変更分類によりskipである。PR #272の代表flow証拠と、PR #273自身の文書検証を分けて扱う。
+
+## 現在判断（2026-09-27 JST）
+
+[人間承認と基準CI](3d/reports/3D_GATE_BASELINE.md)により2D Pro Gateは承認済み。上記の「最新同期」「後続handoff」と本文中の未承認・3D停止・18/27は当時の証拠状態を記録した履歴として読む。今回の着手判断には最新の人間承認を優先し、§9の`3D-0`を再開する。[ライブラリ評価](3d/reports/3D_LIB_EVALUATION.md)は調査中であり、製品dependency、3D画面、四段階計画の一括採用は行わない。過去の`candidate / not-run`や互換性`verified`の条件は変更しない。
 
 ## 1. 目的
 

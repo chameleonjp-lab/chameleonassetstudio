@@ -1,6 +1,6 @@
 # Future Planning Index
 
-最終更新日: 2026-08-27
+最終更新日: 2026-09-27 JST
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 将来計画インデックス
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`, `docs/IMPLEMENTATION_PLAN.md`
@@ -18,6 +18,8 @@
 Chameleon Asset Studio は、画像取り込み専用の変換ツールに限定しない。空キャンバス、テンプレート、図形、パーツ、既存素材の修正、検品、書き出しまでを扱うゲーム用アセット制作ツールとして伸ばす。Unity / Godot / RPG Maker / Blender などには、まず直接連携ではなく、持ち込み可能なファイルと import notes を出す。
 
 2026-07-10 から、将来の2D完成条件は `2D_COMPLETE_PRODUCT_SPEC.md` を正本とする。データ、互換性、端末・信頼性、着手順は新設した専門文書がそれぞれ担当し、詳しい優先順位は同文書の「10.1 優先順位」に従う。**2D Pro Gate を人間が承認するまで、旧 Phase 22〜28 の 3D 実装・library 評価・dependency 追加を開始しない。** 3D の旧文書は削除せず、2D 完成後に `3D-0` から再開するための記録として残す。
+
+2026-09-27 JSTの[人間承認記録](3d/reports/3D_GATE_BASELINE.md)により2D Pro Gateの承認待ちは解消した。次は既存ロードマップの[3D-0ライブラリ調査](3d/reports/3D_LIB_EVALUATION.md)。以前の証拠manifestは履歴として保持し、製品dependency・3D実装・四段階draft全体の採用は別判断とする。
 
 特に、`claude-fable-5` が使えない、または利用量を節約しなければならない状況でも、誤った実装を避けて進められるようにする。
 

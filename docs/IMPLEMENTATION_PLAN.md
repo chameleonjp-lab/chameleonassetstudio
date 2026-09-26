@@ -1,6 +1,6 @@
 # Chameleon Asset Studio 最終完成までの実装計画書
 
-最終更新日: 2026-08-31
+最終更新日: 2026-09-27 JST
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`  
 上位文書: `docs/REQUIREMENTS_SPECIFICATION.md`
 
@@ -28,7 +28,13 @@
 
 ---
 
-## 最新状態（2026-09-08）
+## 最新状態（2026-09-27 JST）
+
+PR #275までmainへマージ済み。基準SHAは`4d1ed9dfed9fcfda82cebc9d2286722f53771bda`、CI #906とPages #127は同じSHAでsuccess。ユーザーがartifact内容、初回利用者、PC／iPhone／iPad／Android実機、Unity／RPG Maker MZ runtimeの問題なしと2D Pro Gate承認を明示したため、人間承認待ちは解消した。[承認記録](future/3d/reports/3D_GATE_BASELINE.md)を現在判断の正本とする。
+
+次は既存ロードマップの`3D-0`。[ライブラリ評価](future/3d/reports/3D_LIB_EVALUATION.md)で版・利用条件・静的bundle・2D非干渉境界を調べる。本体dependency・新UI・schemaは変更しない。証拠台帳の18/27と`not-run`は過去の詳細証拠の集計であり、現在の人間承認待ちを意味しない。Generic Web UI未接続や互換性`verified`未昇格を完成扱いにしない。
+
+## 履歴（2026-09-08、以下は当時の状態）
 
 PR #274までmainへマージ済み（基準SHA `ab5f56dacef987ff3119a803e645f72e02da9af2`）。次の残作業として、`2D-6-REFERENCE`の既存ZIP preflight修復テストを追加する。代表projectを画面内で修復し、Undo / Redo、実ZIP出力、`.casproj`を別browser contextで開いた後の再出力までを一体で検証する。製品コード・形式は変更しない。検証範囲と残課題は[`Group 22計画 §11`](future/2D_6_REFERENCE_DOCS_GATE_PLAN.md#11-既存zipのアプリ内修復再試行2026-09-08)を参照する。
 

@@ -1,10 +1,10 @@
 # Chameleon Asset Studio リリースチェックリスト
 
-最終更新日: 2026-08-31
+最終更新日: 2026-09-27 JST
 対象: v1.0.0 判定
 上位文書: `docs/implementation/TEST_AND_RELEASE.md` / `docs/implementation/PHASES_14_17.md`（Phase 17）
 
-**現状: Phase 0〜17 の実装・自動テスト・文書は完了。** 実機ブラウザ確認は自動化環境では実施できないため「手動確認推奨」として残す（下記 3 章）。大画像のメモリ計測は今回のリリース完了条件に含めない（将来課題、下記 4 章）。
+**現状: Phase 0〜17 の実装・自動テスト・文書は完了。** 2026-09-27 JSTに、ユーザーから実機等5項目の問題なしと2D Pro Gate承認を受けた。[承認記録](future/3d/reports/3D_GATE_BASELINE.md)を現在判断の正本とする。以下のGroup 22や実機チェック欄は過去の詳細証拠台帳であり、現在の人間承認待ちではない。個別browser・version・ログは提示されていないため、一律チェック済みにはしない。大画像のメモリ計測は今回のリリース完了条件に含めない（将来課題、下記 4 章）。
 
 ---
 
@@ -36,7 +36,7 @@
 - [x] Run #450で`ImageDecoder`不在時の先頭frame + 8fps + loss、17frame / unsupported拒否、取消 / Undo / Redo / reload、375 x 667 viewportを確認した
 - [x] PR #144の最終headでmalformedかつactiveなSVGのsignature quarantine、CI全成功、固定head独立reviewの`BLOCKER 0 / MUST 0`を確認し、merge `616d225`としてmainへ反映した
 
-### 1.2 Group 22 representative project / docs gate（candidate）
+### 1.2 Group 22 representative project / docs gate（candidate、以下は承認前の詳細証拠履歴）
 
 Group 22の正本は [`docs/future/2D_6_REFERENCE_DOCS_GATE_PLAN.md`](future/2D_6_REFERENCE_DOCS_GATE_PLAN.md) と [`docs/future/2D_6_REFERENCE_PROJECT_EVIDENCE.json`](future/2D_6_REFERENCE_PROJECT_EVIDENCE.json) である。既存の作成、Frame / Animation、ゲーム情報、Game Check、Generic Web HTTP、`.casproj` roundtrip E2Eを代表IDへ対応付け、文書入口を静的監査する。ただし、既存testの支援証拠を「一つの代表projectで全工程を完走した証拠」とは扱わない。
 

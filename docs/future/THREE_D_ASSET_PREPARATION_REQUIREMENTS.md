@@ -1,6 +1,6 @@
 # 3D Asset Preparation Mode Requirements
 
-最終更新日: 2026-07-10
+最終更新日: 2026-09-27 JST
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 将来の 3D Asset Preparation Mode 要件
 3D再開条件の正本: `2D_COMPLETION_ROADMAP.md` の 2D Pro Gate
@@ -9,6 +9,8 @@
 ---
 
 > **状態（2026-07-10）:** 本文書は 3D の将来要件を残す旧計画である。`2D_COMPLETION_ROADMAP.md` の 2D Pro Gate を人間が承認するまで、本文書を根拠に 3D の library 評価、dependency 追加、実装を開始してはいけない。承認後に `3D-0` から見直す。
+
+> **現在判断（2026-09-27 JST）:** [2D Pro Gateの人間承認](3d/reports/3D_GATE_BASELINE.md)を受け、[3D-0ライブラリ調査](3d/reports/3D_LIB_EVALUATION.md)を開始する。以下の要件は再評価対象であり、調査開始をdependency・保存形式・新UIの採用と解釈しない。
 
 ## 1. 目的
 
