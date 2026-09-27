@@ -30,9 +30,11 @@
 
 ## 最新状態（2026-09-27 JST）
 
-PR #275までmainへマージ済み。基準SHAは`4d1ed9dfed9fcfda82cebc9d2286722f53771bda`、CI #906とPages #127は同じSHAでsuccess。ユーザーがartifact内容、初回利用者、PC／iPhone／iPad／Android実機、Unity／RPG Maker MZ runtimeの問題なしと2D Pro Gate承認を明示したため、人間承認待ちは解消した。[承認記録](future/3d/reports/3D_GATE_BASELINE.md)を現在判断の正本とする。
+PR #276（2D Pro Gate承認記録・3D-0調査開始）とPR #277（3D-GATE-02の部分runtime実測記録）はmainへマージ済みである。現在のmain SHAは`053ce771baafece520f3003d8edc6e320d53fdea`。main CIは[Run #914](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/36265244137)がsuccess、Pagesは[Run #129](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/36265244128)がsuccessである。CI #914はdocs-only分類のため`classify-changes`のみsuccess、`build-and-test`と`e2e`はskippedであり、3D実機や製品画面の検証結果ではない。
 
-次は既存ロードマップの`3D-0`。[ライブラリ評価](future/3d/reports/3D_LIB_EVALUATION.md)で版・利用条件・静的bundle・2D非干渉境界を調べる。本体dependency・新UI・schemaは変更しない。証拠台帳の18/27と`not-run`は過去の詳細証拠の集計であり、現在の人間承認待ちを意味しない。Generic Web UI未接続や互換性`verified`未昇格を完成扱いにしない。
+2D Pro Gateは、`ADR-2026-09-27-037`と[承認記録](future/3d/reports/3D_GATE_BASELINE.md)により人間承認済みである。許可された範囲は`3D-0`調査であり、PR #277の[ライブラリ評価](future/3d/reports/3D_LIB_EVALUATION.md)は`partial-runtime-evidence / not adopted`を記録した。Linux headless Chromiumの部分実測は完了したが、PC Chrome実機・iPhone Safari・iPad Safari、初回表示時間の分離、import完了後のfps、React / TypeScript統合、mount / unmount、実機のmemory・GPU残留・context loss、外部harnessの永続保存は未完了である。
+
+Three.jsのrenderer採用、`3D-DEC-LIB-01`の確定、dependency追加、3D製品画面、保存形式・schema・IndexedDB・`.casproj`・export ZIPの変更はまだ承認・実装していない。上記main確認時点（PR #278作成前）はopen PRなしであった。次の許可された行動は、3D-0の残る証拠収集または必要な文書同期であり、人間判断なしに製品実装へ進まない。
 
 ## 履歴（2026-09-08、以下は当時の状態）
 

@@ -77,4 +77,12 @@
 
 [3D四段階計画](../3D_FOUR_STAGE_IMPLEMENTATION_PLAN.md)は引き続き **draft / human review required**。記録場所や比較方法は参考にするが、今回の2D承認を四段階計画全体・新規dependency・保存形式の一括承認とは解釈しない。`3D-GATE-02` の実機比較完了や `3D-0` 全体完了も宣言しない。
 
-次の実作業は、同一GLBによる表示・操作・dispose・context loss復帰の比較と、実機性能の収集。renderer採用、dependency追加、保存形式はその結果と別の判断記録を経てから本体実装へ進める。2D Pro Gateの再承認は不要である。
+PR #277で、同一fixture・同一シナリオによる等価viewerのLinux headless Chromium部分実測を評価記録へ追加した。残る実作業は、PC Chrome実機・iPhone Safari・iPad Safariでの比較、初回表示時間の分離、import完了後のfps、React / TypeScript統合、mount / unmount、実機memory・GPU残留・context loss、外部harnessの保存先と保持期間の決定である。renderer採用、dependency追加、保存形式はその結果と別の人間判断を経てから本体実装へ進める。2D Pro Gateの再承認は不要である。
+
+## 5. PR #276/#277マージ後のcloseout
+
+- 現在のmain: `053ce771baafece520f3003d8edc6e320d53fdea`。PR #276のmerge commitは`ba1bf5dcd468dae7d906bb07561925e30a74616a`、PR #277のmerge commitは現在のmainである。
+- main CI: [Run #914](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/36265244137)はsuccess。`classify-changes`はsuccess、`build-and-test`と`e2e`はdocs-only分類でskipped。
+- Pages: [Run #129](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/36265244128)はbuild・route確認・deployがsuccess。
+- PR #277は`docs/future/3d/reports/3D_LIB_EVALUATION.md`だけを変更し、Linux headless Chromiumの部分runtime実測を記録した。これは`3D-GATE-02`完了、renderer採用、dependency承認を意味しない。
+- 旧main SHA`4d1ed9dfed9fcfda82cebc9d2286722f53771bda`、CI #906、Pages #127は、このbaseline作成時の履歴証拠として上書きしない。
