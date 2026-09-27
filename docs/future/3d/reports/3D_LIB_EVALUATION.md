@@ -218,3 +218,72 @@ node run-browser.mjs
 
 外部viewerのソース、GLB実体、raw JSON、screenshotは本体repoへ永続保存していない。したがって、このPRに記録したhashとコマンドだけでは同一harnessを完全再構成できず、今回のruntime値は監査可能な**部分証拠**として扱う。次回は外部アーカイブの保存先と保持期間を先に固定する。
 
+## 8. iPhone / iPad Safari実測プロトコル（結果未記録）
+
+この節は、3D-GATE-02の残るiPhone / iPad Safari実測を同じ条件で再現し、実測結果を後から評価記録へ結び付けるための手順である。ここに手順を追加しても、rendererの採用、dependencyの追加、製品3D画面の実装、3D-GATE-02の完了を意味しない。
+
+現状態: **blocked / not_run**。ユーザーのSafariから開ける固定HTTPS URL、viewerの固定版、fixtureとraw結果・画像を保持する永続アーカイブが未確定である。この状態では、実機の数値や合格判定を記録しない。
+
+### 8.1 実測を開始できる条件
+
+次の条件をすべて満たすまで、実測結果は `blocked` のまま保持する。
+
+1. Three.js / Babylon.jsを同じfixtureで切り替えられる固定HTTPS URLがある。
+2. viewerのsource commitまたはcontent hash、候補の版、fixtureの取得元とSHA-256が固定されている。
+3. viewer上で、少なくとも候補名・版・fixture識別子・import完了・初回表示・import後fpsを確認または取得できる。手動ストップウォッチだけの数値は受入値にしない。
+4. 端末別のraw JSON / log、代表スクリーンショットまたは動画、fixtureの取得可能な保存先を永続アーカイブへ保存できる。
+5. アーカイブのURLまたはIDと保持期間を、後続の評価記録から参照できる。
+
+外部viewerがprivate repo内だけにあり、Pages等の公開経路を持たない場合は、iPhone / iPadから開ける実測URLがないため `blocked` とする。URL・アーカイブ・保持期間を推測で補わない。
+
+### 8.2 固定する入力と環境
+
+| 項目 | 固定・記録する内容 |
+|---|---|
+| fixture | 自作GLBの生GLBバイト列（三角形1枚、法線・明示材質あり）、980 bytes、SHA-256 `4e0782a61f8ef61530515a0b9e7906172ef7b048d2102b92aed9653381185d49` |
+| 候補 | Three.js `0.186.0`、Babylon.js `@babylonjs/core / @babylonjs/loaders 9.28.0`、`babylonjs-gltf2interface 9.28.0` |
+| viewer | source commitまたはcontent hash、viewer build hash、固定HTTPS URL |
+| 端末 | 正確な機種名、iOS / iPadOS版、Safari版、画面向き、実測日時 |
+| 表示条件 | canvas CSS 360×240、固定camera・背景・fixture、実際のdevicePixelRatioとviewportを記録 |
+| 反復 | 各候補5回。候補切替・reload・新規タブの手順を固定し、失敗回を捨てない |
+| 状態 | Low Power Mode、発熱、ネットワーク状態など性能に影響し得る条件を記録。条件を揃えられない場合は制約として残す |
+
+`babylonjs-gltf2interface` はBabylon.js候補の解決された関連依存であり、別のrenderer候補として数えない。
+
+Linux headless Chromiumの `DPR 1` は既存の比較条件であり、iPhone / iPadの実際のDPRへ換算して実機性能と呼ばない。端末の表示結果をLinuxの値へ補正しない。
+
+### 8.3 1回の測定手順
+
+1. 端末・OS・Safari版・表示条件・viewer hash・fixture SHA-256を記録する。
+2. 固定URLを開き、候補名・版・fixture識別子が記録対象と一致することを確認する。一致を確認できない場合は、その候補を `blocked` とする。
+3. 候補ごとに同じ操作を5回繰り返す。各回でGLB読込を開始し、import完了、scene追加ではなくモデルを含む最初のframe、import後の1秒間のrender loopを別々に記録する。viewerの計測イベントと代表スクリーンショットで、実際の表示を確認する。
+4. `importMs` は、ページと候補bundleの準備完了後に始めたfixture取得からimport完了までとし、ページ移動と候補bundleの初期読み込みは含めない。fixture取得を含むかどうかを既存Linuxの `loadMs` と揃えられない場合は、数値を直接比較しない。`firstDisplayMs` はimport完了から、sceneへ追加しただけでなくモデルを含む最初のframeを描画するまで、`postImportFps` はそのframeの後に開始した1秒間の値とする。import時間をfps区間へ含めない。
+5. 通常表示の確認後、viewerが提供する同じ操作でcontext loss / restore、reload、画面離脱、失敗復旧、取消を各候補について確認する。操作入口がない項目は成功にせず `not_run` または `not_applicable` と理由を記録する。
+6. 各候補のraw結果を保存し、少なくとも通常表示と復旧後の代表スクリーンショットまたは動画へ、候補名・版・fixture識別子が写る状態にする。
+
+Safariで `performance.memory` が取得できない場合は、値を0や推定値で埋めない。計測手段がまだない項目は `blocked`、実行できるviewerが用意された後に未実行の項目は `not_run`、本当に対象外の項目だけ `not_applicable` とし、理由を残す。
+
+### 8.4 証拠記録の最小項目
+
+外部ハーネスのEVIDENCE契約に合わせ、候補・端末・実測ごとに次を保存する。
+
+`id / requirement / subject_ref / environment / method / status / artifact / limitations`
+
+- `subject_ref` はviewerのcommitまたはcontent hashとfixture SHA-256を含める。現在の本体main SHAへ単純置換しない。
+- `artifact` はraw JSON / log、fixture取得先、スクリーンショットまたは動画の実在する所在を指す。保存しただけの画像を観察済みとしない。
+- `status` は `pass / fail / not_run / blocked / not_applicable` のいずれかとし、未実行・環境不足を成功件数へ含めない。
+- `limitations` にはSafariで測れないmemory / GPU、再現できないcontext loss、反復条件の差などを明記する。
+
+実測開始前の本記録は、次のように扱う。
+
+| 確認項目 | 現在の状態 | 理由 |
+|---|---|---|
+| iPhone / iPad Safariの固定URL | `blocked` | 公開実測viewer未確定 |
+| fixture・viewerの永続アーカイブ | `blocked` | 外部viewer、GLB、raw JSON、画像・動画の永続アーカイブURLまたはIDと保持期間が未確定 |
+| import / 初回表示 / import後fps | `blocked` | 固定viewer URLと実機で取得可能な計測手段が未確定 |
+| Safari memory / GPU残留 / 実機context loss | `blocked` | Safari実機の計測手段・証拠が未確定 |
+| renderer採用・3D-GATE-02完了 | `not_applicable` | 実測記録ではなく、人間判断を含む別Gateである |
+
+CI #921とPages #131は、文書変更の分類・公開経路の成功を示すものであり、3D実機検証の成功を示さない。iPhone / iPad Safari、GLB import、初回表示、import後fps、Safari memory / GPU、context loss、React / TypeScript lifecycleは、この評価記録の実測結果が追加されるまで未検証である。
+
+実測結果を追記する場合も、外部viewerの公開・fixture保存・アーカイブ作成は別work packageとして扱う。結果が揃うまで本書の状態は **investigation-in-progress / partial-runtime-evidence / not adopted** を維持する。
