@@ -28,13 +28,13 @@
 
 ---
 
-## 最新状態（2026-09-27 JST）
+## 直近確認状態（2026-09-27 JST / PR #278マージ後・PR #279作成前）
 
-PR #276（2D Pro Gate承認記録・3D-0調査開始）とPR #277（3D-GATE-02の部分runtime実測記録）はmainへマージ済みである。現在のmain SHAは`053ce771baafece520f3003d8edc6e320d53fdea`。main CIは[Run #914](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/36265244137)がsuccess、Pagesは[Run #129](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/36265244128)がsuccessである。CI #914はdocs-only分類のため`classify-changes`のみsuccess、`build-and-test`と`e2e`はskippedであり、3D実機や製品画面の検証結果ではない。
+PR #276（2D Pro Gate承認記録・3D-0調査開始）、PR #277（3D-GATE-02の部分runtime実測記録）、PR #278（PR #276/#277マージ後の3D-0 / 3D-GATE-02 closeout文書同期）はmainへマージ済みである。現在のmain SHAは`bbbaa4374808abd82a8d2af178d34ab399347c5b`。main CIは[Run #917](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/36281841101)がsuccessで、`classify-changes`はsuccess、`build-and-test`と`e2e`はdocs-only分類でskippedである。Pagesは[Run #130](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/36281841086)がsuccessで、build・deployがsuccessである。これらは文書分類と公開経路の確認であり、3D実機や製品画面の検証結果ではない。
 
 2D Pro Gateは、`ADR-2026-09-27-037`と[承認記録](future/3d/reports/3D_GATE_BASELINE.md)により人間承認済みである。許可された範囲は`3D-0`調査であり、PR #277の[ライブラリ評価](future/3d/reports/3D_LIB_EVALUATION.md)は`partial-runtime-evidence / not adopted`を記録した。Linux headless Chromiumの部分実測は完了したが、PC Chrome実機・iPhone Safari・iPad Safari、初回表示時間の分離、import完了後のfps、React / TypeScript統合、mount / unmount、実機のmemory・GPU残留・context loss、外部harnessの永続保存は未完了である。
 
-Three.jsのrenderer採用、`3D-DEC-LIB-01`の確定、dependency追加、3D製品画面、保存形式・schema・IndexedDB・`.casproj`・export ZIPの変更はまだ承認・実装していない。上記main確認時点（PR #278作成前）はopen PRなしであった。次の許可された行動は、3D-0の残る証拠収集または必要な文書同期であり、人間判断なしに製品実装へ進まない。
+Three.jsのrenderer採用、`3D-DEC-LIB-01`の確定、dependency追加、3D製品画面、保存形式・schema・IndexedDB・`.casproj`・export ZIPの変更はまだ承認・実装していない。PR #279作成前の確認時点ではopen PRはなかった。次の許可された行動は、3D-0の残る証拠収集または必要な文書同期であり、人間判断なしに製品実装へ進まない。
 
 ## 履歴（2026-09-08、以下は当時の状態）
 
