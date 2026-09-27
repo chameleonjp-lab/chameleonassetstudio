@@ -240,7 +240,7 @@ node run-browser.mjs
 
 | 項目 | 固定・記録する内容 |
 |---|---|
-| fixture | 自作GLB（三角形1枚、法線・明示材質あり）、980 bytes、SHA-256 `4e0782a61f8ef61530515a0b9e7906172ef7b048d2102b92aed9653381185d49` |
+| fixture | 自作GLBの生GLBバイト列（三角形1枚、法線・明示材質あり）、980 bytes、SHA-256 `4e0782a61f8ef61530515a0b9e7906172ef7b048d2102b92aed9653381185d49` |
 | 候補 | Three.js `0.186.0`、Babylon.js `@babylonjs/core / @babylonjs/loaders 9.28.0`、`babylonjs-gltf2interface 9.28.0` |
 | viewer | source commitまたはcontent hash、viewer build hash、固定HTTPS URL |
 | 端末 | 正確な機種名、iOS / iPadOS版、Safari版、画面向き、実測日時 |
@@ -256,8 +256,8 @@ Linux headless Chromiumの `DPR 1` は既存の比較条件であり、iPhone / 
 
 1. 端末・OS・Safari版・表示条件・viewer hash・fixture SHA-256を記録する。
 2. 固定URLを開き、候補名・版・fixture識別子が記録対象と一致することを確認する。一致を確認できない場合は、その候補を `blocked` とする。
-3. 候補ごとに同じ操作を5回繰り返す。各回でGLB読込を開始し、import完了、初回にモデルが描画された時点、import後の1秒間のrender loopを別々に記録する。
-4. `importMs` はfixture取得開始からimport完了までとし、ページ移動と候補bundleの初期読み込みは含めない。`firstDisplayMs` はimport完了から最初にモデルを含むframeを描画するまで、`postImportFps` はそのframeの後に開始した1秒間の値とする。import時間をfps区間へ含めない。
+3. 候補ごとに同じ操作を5回繰り返す。各回でGLB読込を開始し、import完了、scene追加ではなくモデルを含む最初のframe、import後の1秒間のrender loopを別々に記録する。viewerの計測イベントと代表スクリーンショットで、実際の表示を確認する。
+4. `importMs` は、ページと候補bundleの準備完了後に始めたfixture取得からimport完了までとし、ページ移動と候補bundleの初期読み込みは含めない。fixture取得を含むかどうかを既存Linuxの `loadMs` と揃えられない場合は、数値を直接比較しない。`firstDisplayMs` はimport完了から、sceneへ追加しただけでなくモデルを含む最初のframeを描画するまで、`postImportFps` はそのframeの後に開始した1秒間の値とする。import時間をfps区間へ含めない。
 5. 通常表示の確認後、viewerが提供する同じ操作でcontext loss / restore、reload、画面離脱、失敗復旧、取消を各候補について確認する。操作入口がない項目は成功にせず `not_run` または `not_applicable` と理由を記録する。
 6. 各候補のraw結果を保存し、少なくとも通常表示と復旧後の代表スクリーンショットまたは動画へ、候補名・版・fixture識別子が写る状態にする。
 
@@ -280,7 +280,7 @@ Safariで `performance.memory` が取得できない場合は、値を0や推定
 |---|---|---|
 | iPhone / iPad Safariの固定URL | `blocked` | 公開実測viewer未確定 |
 | fixture・viewerの永続アーカイブ | `blocked` | 外部viewer、GLB、raw JSON、画像・動画の永続アーカイブURLまたはIDと保持期間が未確定 |
-| import / 初回表示 / import後fps | `not_run` | 実機で取得可能なviewerと実測結果がない |
+| import / 初回表示 / import後fps | `blocked` | 固定viewer URLと実機で取得可能な計測手段が未確定 |
 | Safari memory / GPU残留 / 実機context loss | `blocked` | Safari実機の計測手段・証拠が未確定 |
 | renderer採用・3D-GATE-02完了 | `not_applicable` | 実測記録ではなく、人間判断を含む別Gateである |
 
