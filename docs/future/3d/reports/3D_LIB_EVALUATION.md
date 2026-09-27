@@ -248,6 +248,8 @@ node run-browser.mjs
 | 反復 | 各候補5回。候補切替・reload・新規タブの手順を固定し、失敗回を捨てない |
 | 状態 | Low Power Mode、発熱、ネットワーク状態など性能に影響し得る条件を記録。条件を揃えられない場合は制約として残す |
 
+`babylonjs-gltf2interface` はBabylon.js候補の解決された関連依存であり、別のrenderer候補として数えない。
+
 Linux headless Chromiumの `DPR 1` は既存の比較条件であり、iPhone / iPadの実際のDPRへ換算して実機性能と呼ばない。端末の表示結果をLinuxの値へ補正しない。
 
 ### 8.3 1回の測定手順
@@ -255,11 +257,11 @@ Linux headless Chromiumの `DPR 1` は既存の比較条件であり、iPhone / 
 1. 端末・OS・Safari版・表示条件・viewer hash・fixture SHA-256を記録する。
 2. 固定URLを開き、候補名・版・fixture識別子が記録対象と一致することを確認する。一致を確認できない場合は、その候補を `blocked` とする。
 3. 候補ごとに同じ操作を5回繰り返す。各回でGLB読込を開始し、import完了、初回にモデルが描画された時点、import後の1秒間のrender loopを別々に記録する。
-4. `importMs` はimport開始からimport完了まで、`firstDisplayMs` はimport完了から最初のモデル描画まで、`postImportFps` は最初のモデル描画後に開始した1秒間の値とする。import時間をfps区間へ含めない。
+4. `importMs` はfixture取得開始からimport完了までとし、ページ移動と候補bundleの初期読み込みは含めない。`firstDisplayMs` はimport完了から最初にモデルを含むframeを描画するまで、`postImportFps` はそのframeの後に開始した1秒間の値とする。import時間をfps区間へ含めない。
 5. 通常表示の確認後、viewerが提供する同じ操作でcontext loss / restore、reload、画面離脱、失敗復旧、取消を各候補について確認する。操作入口がない項目は成功にせず `not_run` または `not_applicable` と理由を記録する。
 6. 各候補のraw結果を保存し、少なくとも通常表示と復旧後の代表スクリーンショットまたは動画へ、候補名・版・fixture識別子が写る状態にする。
 
-Safariで `performance.memory` が取得できない場合は、値を0や推定値で埋めない。Safariの実メモリ、GPU残留、実機context lossを測れていない場合は、それぞれ `not_run` / `blocked` / `not_applicable` のいずれかと理由を残す。
+Safariで `performance.memory` が取得できない場合は、値を0や推定値で埋めない。計測手段がまだない項目は `blocked`、実行できるviewerが用意された後に未実行の項目は `not_run`、本当に対象外の項目だけ `not_applicable` とし、理由を残す。
 
 ### 8.4 証拠記録の最小項目
 
@@ -277,9 +279,9 @@ Safariで `performance.memory` が取得できない場合は、値を0や推定
 | 確認項目 | 現在の状態 | 理由 |
 |---|---|---|
 | iPhone / iPad Safariの固定URL | `blocked` | 公開実測viewer未確定 |
-| fixture・viewerの永続アーカイブ | `blocked` | 外部viewer、GLB、raw JSON、画像が本体repoへ保存されていない |
+| fixture・viewerの永続アーカイブ | `blocked` | 外部viewer、GLB、raw JSON、画像・動画の永続アーカイブURLまたはIDと保持期間が未確定 |
 | import / 初回表示 / import後fps | `not_run` | 実機で取得可能なviewerと実測結果がない |
-| Safari memory / GPU残留 / 実機context loss | `not_run` | Safari実機の計測手段・証拠がない |
+| Safari memory / GPU残留 / 実機context loss | `blocked` | Safari実機の計測手段・証拠が未確定 |
 | renderer採用・3D-GATE-02完了 | `not_applicable` | 実測記録ではなく、人間判断を含む別Gateである |
 
 CI #921とPages #131は、文書変更の分類・公開経路の成功を示すものであり、3D実機検証の成功を示さない。iPhone / iPad Safari、GLB import、初回表示、import後fps、Safari memory / GPU、context loss、React / TypeScript lifecycleは、この評価記録の実測結果が追加されるまで未検証である。
