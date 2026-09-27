@@ -87,10 +87,10 @@ PR #277で、同一fixture・同一シナリオによる等価viewerのLinux hea
 - PR #277は`docs/future/3d/reports/3D_LIB_EVALUATION.md`だけを変更し、Linux headless Chromiumの部分runtime実測を記録した。これは`3D-GATE-02`完了、renderer採用、dependency承認を意味しない。
 - 旧main SHA`4d1ed9dfed9fcfda82cebc9d2286722f53771bda`、CI #906、Pages #127は、このbaseline作成時の履歴証拠として上書きしない。
 
-## 6. PR #278マージ後のcloseout（現在確認）
+## 6. PR #278マージ後の確認記録（PR #279作成前）
 
 - PR #278（`docs: sync 3D post-merge state`）はmainへマージ済みで、merge commitは`bbbaa4374808abd82a8d2af178d34ab399347c5b`である。PR #278はこのbaselineの旧PR #276/#277記録を上書きせず、3D-0 / 3D-GATE-02の現在状態を同期した。
 - PR #278マージ後のmain CIは[Run #917](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/36281841101)がsuccessである。docs-only分類のため、`classify-changes`はsuccess、`build-and-test`と`e2e`はskippedである。これは3D実機や製品画面の検証成功を意味しない。
 - Pagesは[Run #130](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/36281841086)がsuccessで、build・route確認・deployがsuccessである。これもiPhone/iPad Safariの3D実機証拠ではない。
-- この確認時点のopen PRはない。PR #278の変更は5つのMarkdownに限定され、製品コード、dependency、schema、migration、IndexedDB、`.casproj`、export ZIPは変更していない。
+- PR #279作成前の確認時点ではopen PRがなかった。PR #278の変更は5つのMarkdownに限定され、製品コード、dependency、schema、migration、IndexedDB、`.casproj`、export ZIPは変更していない。
 - `3D-GATE-02`は引き続き未完了である。PC Chrome実機（PCなしのためnot-run）、iPhone/iPad Safari、import時間と初回表示時間の分離、import完了後fps、React / TypeScript、mount / unmount、実機memory・GPU残留・context loss、外部harnessの永続保存が残っている。Three.jsは第一候補だが未採用であり、renderer採用・dependency追加・製品3D実装・保存形式の変更には進まない。
