@@ -302,6 +302,7 @@ test('Undo完了後もAsset・Blob・Projectが整合し、通常編集を再開
   await expect(projectNameInput).toHaveValue('履歴競合E2E');
 
   await projectNameInput.fill('Undo後は編集できる');
+  await projectNameInput.press('Enter');
   await expect(page.getByRole('heading', { name: 'Undo後は編集できる' })).toBeVisible();
   await expect
     .poll(async () => await readProjectName(page), { timeout: 10_000 })
