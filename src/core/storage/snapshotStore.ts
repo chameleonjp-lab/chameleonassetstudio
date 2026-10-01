@@ -1,9 +1,10 @@
-import { generateId, type Asset, type TextureRef } from '../model';
+import { generateId, type Asset, type TextureRef, type Project } from '../model';
 import { validateAssetForPersistence } from '../schema/validate';
 import { migrateAndValidateAssetDocument } from './assetDocument';
 import {
   INDEX_BY_ASSET,
   STORE_ASSETS,
+  STORE_PROJECTS,
   STORE_BLOBS,
   STORE_SNAPSHOTS,
   StorageError,
@@ -27,6 +28,11 @@ interface StoredBlobRecord {
   updatedAt: string;
 }
 
+interface SnapshotBlob {
+  key: string;
+  mimeType: string;
+  bytes: ArrayBuffer;
+}
 interface AssetSnapshotRecord {
   id: string;
   projectId: string;
@@ -34,11 +40,9 @@ interface AssetSnapshotRecord {
   createdAt: string;
   label: string;
   asset: Asset;
-  blob: {
-    key: string;
-    mimeType: string;
-    bytes: ArrayBuffer;
-  };
+  blob: SnapshotBlob;
+  /** 旧1画像の復旧点には不在。新規は残りの編集画像も一緒に保持する。 */
+  additionalBlobs?: SnapshotBlob[];
 }
 
 export interface SaveSnapshotInput {
@@ -179,6 +183,19 @@ export async function prepareAssetSnapshot(
     );
   }
   const bytes = await input.blob.arrayBuffer();
+  const additionalBlobs = await runTransaction([STORE_BLOBS], 'readonly', async (tx) => {
+    const result: SnapshotBlob[] = [];
+    for (const texture of input.asset.textures.filter((texture) => texture.kind === 'edit')) {
+      const key = blobKeyForTexture(input.assetId, texture);
+      if (key === input.blobKey) continue;
+      const stored = await loadStoredBlobInTx(tx, key);
+      if (!stored || stored.projectId !== input.projectId || stored.mimeType !== texture.mimeType) {
+        throw new StorageError(`復旧点の編集画像が不足しています: ${key}`);
+      }
+      result.push({ key, mimeType: stored.mimeType, bytes: stored.bytes });
+    }
+    return result;
+  });
   const record: AssetSnapshotRecord = {
     id: generateId('snapshot'),
     projectId: input.projectId,
@@ -186,6 +203,7 @@ export async function prepareAssetSnapshot(
     createdAt: new Date().toISOString(),
     label: input.label,
     asset: input.asset,
+    ...(additionalBlobs.length ? { additionalBlobs } : {}),
     blob: {
       key: input.blobKey,
       mimeType: input.blob.type,
@@ -206,47 +224,53 @@ export async function savePreparedAssetSnapshotInTx(
   input: PreparedAssetSnapshotInput,
 ): Promise<void> {
   const { record } = input;
-  const snapshotEditTexture = assertValidSnapshotAsset(
-    record.asset,
-    record.assetId,
-    record.blob.key,
-  );
+  const snapshotBlobs = [record.blob, ...(record.additionalBlobs ?? [])];
+  if (new Set(snapshotBlobs.map((blob) => blob.key)).size !== snapshotBlobs.length) {
+    throw new StorageError('復旧点の編集画像キーが重複しています');
+  }
+  for (const snapshotBlob of snapshotBlobs) {
+    const snapshotEditTexture = assertValidSnapshotAsset(
+      record.asset,
+      record.assetId,
+      snapshotBlob.key,
+    );
 
-  const storedAsset = await loadStoredAssetInTx(tx, record.assetId);
-  assertStoredAssetOwnership(storedAsset, record.projectId, record.assetId);
-  const migratedStored = migrateAndValidateAssetDocument(storedAsset.data, '復旧対象asset');
-  if (migratedStored.appliedMigrations.length > 0) {
-    await requestToPromise(
-      tx.objectStore(STORE_ASSETS).put({ ...storedAsset, data: migratedStored.asset }),
-    );
-  }
-  assertSourceTexturesUnchanged(migratedStored.asset, record.asset);
+    const storedAsset = await loadStoredAssetInTx(tx, record.assetId);
+    assertStoredAssetOwnership(storedAsset, record.projectId, record.assetId);
+    const migratedStored = migrateAndValidateAssetDocument(storedAsset.data, '復旧対象asset');
+    if (migratedStored.appliedMigrations.length > 0) {
+      await requestToPromise(
+        tx.objectStore(STORE_ASSETS).put({ ...storedAsset, data: migratedStored.asset }),
+      );
+    }
+    assertSourceTexturesUnchanged(migratedStored.asset, record.asset);
 
-  const currentEditTexture = findEditTexture(migratedStored.asset, record.blob.key);
-  if (!currentEditTexture || currentEditTexture.id !== snapshotEditTexture.id) {
-    throw new StorageError(
-      `復旧点の edit TextureRef が保存中アセットと一致しません: ${record.blob.key}`,
-    );
-  }
-  const storedBlob = await loadStoredBlobInTx(tx, record.blob.key);
-  if (!storedBlob || storedBlob.projectId !== record.projectId) {
-    throw new StorageError(`復旧点対象の edit Blob が見つかりません: ${record.blob.key}`);
-  }
-  if (
-    record.blob.mimeType !== snapshotEditTexture.mimeType ||
-    storedBlob.mimeType !== currentEditTexture.mimeType
-  ) {
-    throw new StorageError(
-      `復旧点の edit Blob MIME type がTextureRefと一致しません: ${record.blob.key}`,
-    );
-  }
-  if (
-    !sameBytes(storedBlob.bytes, record.blob.bytes) ||
-    storedBlob.mimeType !== record.blob.mimeType
-  ) {
-    throw new StorageError(
-      `復旧点へ渡された edit Blob が現在の保存済みBlobと一致しません: ${record.blob.key}`,
-    );
+    const currentEditTexture = findEditTexture(migratedStored.asset, snapshotBlob.key);
+    if (!currentEditTexture || currentEditTexture.id !== snapshotEditTexture.id) {
+      throw new StorageError(
+        `復旧点の edit TextureRef が保存中アセットと一致しません: ${snapshotBlob.key}`,
+      );
+    }
+    const storedBlob = await loadStoredBlobInTx(tx, snapshotBlob.key);
+    if (!storedBlob || storedBlob.projectId !== record.projectId) {
+      throw new StorageError(`復旧点対象の edit Blob が見つかりません: ${snapshotBlob.key}`);
+    }
+    if (
+      snapshotBlob.mimeType !== snapshotEditTexture.mimeType ||
+      storedBlob.mimeType !== currentEditTexture.mimeType
+    ) {
+      throw new StorageError(
+        `復旧点の edit Blob MIME type がTextureRefと一致しません: ${snapshotBlob.key}`,
+      );
+    }
+    if (
+      !sameBytes(storedBlob.bytes, snapshotBlob.bytes) ||
+      storedBlob.mimeType !== snapshotBlob.mimeType
+    ) {
+      throw new StorageError(
+        `復旧点へ渡された edit Blob が現在の保存済みBlobと一致しません: ${snapshotBlob.key}`,
+      );
+    }
   }
 
   await requestToPromise(tx.objectStore(STORE_SNAPSHOTS).put(record));
@@ -312,6 +336,7 @@ export interface RestoredSnapshot {
   blob: Blob;
   beforeAsset: Asset;
   beforeBlob: Blob;
+  images: Array<{ key: string; blob: Blob; beforeBlob: Blob }>;
 }
 
 export async function restoreSnapshot(id: string): Promise<RestoredSnapshot> {
@@ -324,35 +349,43 @@ export async function restoreSnapshot(id: string): Promise<RestoredSnapshot> {
     }
 
     const migratedSnapshot = migrateAndValidateAssetDocument(record.asset, '復旧点のasset');
-    const snapshotEditTexture = assertValidSnapshotAsset(
-      migratedSnapshot.asset,
-      record.assetId,
-      record.blob.key,
-    );
     const storedAsset = await loadStoredAssetInTx(tx, record.assetId);
     assertStoredAssetOwnership(storedAsset, record.projectId, record.assetId);
     const migratedStored = migrateAndValidateAssetDocument(storedAsset.data, '復旧対象asset');
     assertSourceTexturesUnchanged(migratedStored.asset, migratedSnapshot.asset);
 
-    const currentEditTexture = findEditTexture(migratedStored.asset, record.blob.key);
-    if (!currentEditTexture || currentEditTexture.id !== snapshotEditTexture.id) {
-      throw new StorageError(
-        `復旧点の edit TextureRef が現在のアセットと一致しません: ${record.blob.key}`,
+    const images: RestoredSnapshot['images'] = [];
+    for (const snapshotBlob of [record.blob, ...(record.additionalBlobs ?? [])]) {
+      const snapshotEditTexture = assertValidSnapshotAsset(
+        migratedSnapshot.asset,
+        record.assetId,
+        snapshotBlob.key,
       );
-    }
-    const currentBlob = await loadStoredBlobInTx(tx, record.blob.key);
-    if (!currentBlob || currentBlob.projectId !== record.projectId) {
-      throw new StorageError(`復元前の edit Blob が見つかりません: ${record.blob.key}`);
-    }
-    if (
-      record.blob.mimeType !== snapshotEditTexture.mimeType ||
-      currentBlob.mimeType !== currentEditTexture.mimeType
-    ) {
-      throw new StorageError(
-        `復旧点の edit Blob MIME type がTextureRefと一致しません: ${record.blob.key}`,
-      );
-    }
+      const currentEditTexture = findEditTexture(migratedStored.asset, snapshotBlob.key);
+      if (!currentEditTexture || currentEditTexture.id !== snapshotEditTexture.id) {
+        throw new StorageError(
+          `復旧点の edit TextureRef が現在のアセットと一致しません: ${snapshotBlob.key}`,
+        );
+      }
+      const currentBlob = await loadStoredBlobInTx(tx, snapshotBlob.key);
+      if (!currentBlob || currentBlob.projectId !== record.projectId) {
+        throw new StorageError(`復元前の edit Blob が見つかりません: ${snapshotBlob.key}`);
+      }
+      if (
+        snapshotBlob.mimeType !== snapshotEditTexture.mimeType ||
+        currentBlob.mimeType !== currentEditTexture.mimeType
+      ) {
+        throw new StorageError(
+          `復旧点の edit Blob MIME type がTextureRefと一致しません: ${snapshotBlob.key}`,
+        );
+      }
 
+      images.push({
+        key: snapshotBlob.key,
+        blob: new Blob([snapshotBlob.bytes], { type: snapshotBlob.mimeType }),
+        beforeBlob: new Blob([currentBlob.bytes], { type: currentBlob.mimeType }),
+      });
+    }
     if (migratedSnapshot.appliedMigrations.length > 0) {
       await requestToPromise(
         tx.objectStore(STORE_SNAPSHOTS).put({ ...record, asset: migratedSnapshot.asset }),
@@ -370,7 +403,8 @@ export async function restoreSnapshot(id: string): Promise<RestoredSnapshot> {
       blobKey: record.blob.key,
       blob: new Blob([record.blob.bytes], { type: record.blob.mimeType }),
       beforeAsset: migratedStored.asset,
-      beforeBlob: new Blob([currentBlob.bytes], { type: currentBlob.mimeType }),
+      beforeBlob: images[0].beforeBlob,
+      images,
     };
   });
 }
@@ -383,32 +417,37 @@ export interface ApplySnapshotRestoreInput {
   beforeBlob: Blob;
   asset: Asset;
   blob: Blob;
+  images?: RestoredSnapshot['images'];
 }
 
 export async function applySnapshotRestore(input: ApplySnapshotRestoreInput): Promise<void> {
-  const beforeEditTexture = assertValidSnapshotAsset(
-    input.beforeAsset,
-    input.assetId,
-    input.blobKey,
-  );
-  const nextEditTexture = assertValidSnapshotAsset(input.asset, input.assetId, input.blobKey);
-  if (beforeEditTexture.id !== nextEditTexture.id) {
-    throw new StorageError(`復旧前後の edit TextureRef が一致しません: ${input.blobKey}`);
+  const images = input.images ?? [
+    { key: input.blobKey, blob: input.blob, beforeBlob: input.beforeBlob },
+  ];
+  if (!images.length || new Set(images.map((image) => image.key)).size !== images.length) {
+    throw new StorageError('復旧対象の編集画像キーが空または重複しています');
   }
   assertSourceTexturesUnchanged(input.beforeAsset, input.asset);
-  if (
-    input.beforeBlob.type !== beforeEditTexture.mimeType ||
-    input.blob.type !== nextEditTexture.mimeType
-  ) {
-    throw new StorageError(
-      `復旧前後の edit Blob MIME type がTextureRefと一致しません: ${input.blobKey}`,
-    );
-  }
-
-  const beforeBytes = await input.beforeBlob.arrayBuffer();
-  const nextBytes = await input.blob.arrayBuffer();
-
-  await runTransaction([STORE_ASSETS, STORE_BLOBS], 'readwrite', async (tx) => {
+  const prepared = await Promise.all(
+    images.map(async (image) => {
+      const before = assertValidSnapshotAsset(input.beforeAsset, input.assetId, image.key);
+      const next = assertValidSnapshotAsset(input.asset, input.assetId, image.key);
+      if (before.id !== next.id)
+        throw new StorageError(`復旧前後の edit TextureRef が一致しません: ${image.key}`);
+      if (image.beforeBlob.type !== before.mimeType || image.blob.type !== next.mimeType) {
+        throw new StorageError(
+          `復旧前後の edit Blob MIME type がTextureRefと一致しません: ${image.key}`,
+        );
+      }
+      return {
+        ...image,
+        beforeBytes: await image.beforeBlob.arrayBuffer(),
+        nextBytes: await image.blob.arrayBuffer(),
+        texture: next,
+      };
+    }),
+  );
+  await runTransaction([STORE_PROJECTS, STORE_ASSETS, STORE_BLOBS], 'readwrite', async (tx) => {
     const storedAsset = await loadStoredAssetInTx(tx, input.assetId);
     assertStoredAssetOwnership(storedAsset, input.projectId, input.assetId);
     const migratedStored = migrateAndValidateAssetDocument(storedAsset.data, '復旧対象asset');
@@ -416,41 +455,63 @@ export async function applySnapshotRestore(input: ApplySnapshotRestoreInput): Pr
       throw new StorageError('復旧点を読み出した後にアセットが変更されたため、復元を中止しました');
     }
     assertSourceTexturesUnchanged(migratedStored.asset, input.asset);
-
-    const currentEditTexture = findEditTexture(migratedStored.asset, input.blobKey);
-    if (!currentEditTexture || currentEditTexture.id !== nextEditTexture.id) {
-      throw new StorageError(
-        `復旧対象の edit TextureRef が現在のアセットと一致しません: ${input.blobKey}`,
-      );
+    for (const image of prepared) {
+      const currentTexture = findEditTexture(migratedStored.asset, image.key);
+      if (!currentTexture || currentTexture.id !== image.texture.id)
+        throw new StorageError(
+          `復旧対象の edit TextureRef が現在のアセットと一致しません: ${image.key}`,
+        );
+      const storedBlob = await loadStoredBlobInTx(tx, image.key);
+      if (!storedBlob || storedBlob.projectId !== input.projectId)
+        throw new StorageError(`復元前の edit Blob が見つかりません: ${image.key}`);
+      if (storedBlob.mimeType !== currentTexture.mimeType)
+        throw new StorageError(
+          `復元前の edit Blob MIME type がTextureRefと一致しません: ${image.key}`,
+        );
+      if (!sameBytes(storedBlob.bytes, image.beforeBytes))
+        throw new StorageError(
+          '復旧点を読み出した後に編集画像が変更されたため、復元を中止しました',
+        );
     }
-
-    const storedBlob = await loadStoredBlobInTx(tx, input.blobKey);
-    if (!storedBlob || storedBlob.projectId !== input.projectId) {
-      throw new StorageError(`復元前の edit Blob が見つかりません: ${input.blobKey}`);
-    }
-    if (storedBlob.mimeType !== currentEditTexture.mimeType) {
-      throw new StorageError(
-        `復元前の edit Blob MIME type がTextureRefと一致しません: ${input.blobKey}`,
-      );
-    }
-    if (!sameBytes(storedBlob.bytes, beforeBytes)) {
-      throw new StorageError('復旧点を読み出した後に編集画像が変更されたため、復元を中止しました');
-    }
-
     const nextAssetRecord: StoredAssetRecord = {
       id: input.assetId,
       projectId: input.projectId,
       data: input.asset,
     };
-    const nextBlobRecord: StoredBlobRecord = {
-      key: input.blobKey,
-      projectId: input.projectId,
-      mimeType: input.blob.type,
-      bytes: nextBytes,
-      updatedAt: new Date().toISOString(),
-    };
     await requestToPromise(tx.objectStore(STORE_ASSETS).put(nextAssetRecord));
-    await requestToPromise(tx.objectStore(STORE_BLOBS).put(nextBlobRecord));
+    const projectStore = tx.objectStore(STORE_PROJECTS);
+    const project = await requestToPromise(
+      projectStore.get(input.projectId) as IDBRequest<Project | undefined>,
+    );
+    if (!project || !project.assets.some((entry) => entry.id === input.assetId)) {
+      throw new StorageError('復旧対象のプロジェクト参照が見つかりません');
+    }
+    await requestToPromise(
+      projectStore.put({
+        ...project,
+        assets: project.assets.map((entry) =>
+          entry.id === input.assetId
+            ? {
+                ...entry,
+                name: input.asset.name,
+                displayName: input.asset.displayName,
+                assetType: input.asset.assetType,
+              }
+            : entry,
+        ),
+        updatedAt: new Date().toISOString(),
+      }),
+    );
+    for (const image of prepared) {
+      const nextBlobRecord: StoredBlobRecord = {
+        key: image.key,
+        projectId: input.projectId,
+        mimeType: image.blob.type,
+        bytes: image.nextBytes,
+        updatedAt: new Date().toISOString(),
+      };
+      await requestToPromise(tx.objectStore(STORE_BLOBS).put(nextBlobRecord));
+    }
   });
 }
 

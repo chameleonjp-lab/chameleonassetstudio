@@ -30,6 +30,7 @@ test('プロジェクト名の変更が自動保存される', async ({ page }) 
     .getByRole('complementary', { name: 'プロパティ' })
     .getByLabel('プロジェクト名');
   await nameInput.fill('自動保存テスト（改名）');
+  await nameInput.press('Enter');
   await expect(page.getByRole('status')).toHaveText('保存済み', { timeout: 10_000 });
 
   await page.getByRole('button', { name: '← ホーム' }).click();

@@ -1,3 +1,4 @@
+import { CommittedInput } from './CommittedInput';
 import {
   useCallback,
   useEffect,
@@ -8,6 +9,11 @@ import {
   type ChangeEvent,
   type DragEvent,
 } from 'react';
+import {
+  captureStructureState,
+  applyStructureState,
+  type StructureState,
+} from '../../core/storage/structureHistory';
 import { History } from '../../core/history/history';
 import {
   blobKeyFor,
@@ -111,6 +117,7 @@ import {
   saveAssetBatchRevision,
   saveAssetRevision,
   saveProject,
+  renameProject,
   saveProjectBundle,
   saveQuarantineEntry,
   saveSnapshot,
@@ -194,6 +201,8 @@ function useSaveState(queue: AutosaveQueue): SaveState {
 
 function saveStatusText(state: SaveState): string {
   switch (state.status) {
+    case 'pending':
+      return '未保存の変更があります';
     case 'saving':
       return '保存中…';
     case 'saved':
@@ -1026,7 +1035,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       }
       setAssets((prev) => prev.map((asset) => (asset.id === snapshot.id ? snapshot : asset)));
       setProject((current) => syncProjectAssetSummary(current, snapshot));
-      autosave.schedule(() => saveAsset(projectId, snapshot));
+      autosave.schedule(() => saveAsset(projectId, snapshot), `asset:${snapshot.id}`);
       return true;
     },
     [autosave, framePreviewActive, projectId],
@@ -1607,7 +1616,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             // textures を新しい配列にしてビットマップ再読込を促す
             await saveAssetRevisionAndApply(
               { ...before, textures: [...before.textures] },
-              { putBlobs: [{ key, blob: beforeBlob }] },
+              {
+                putBlobs: [{ key, blob: beforeBlob }],
+              },
             );
           },
           redo: async () => {
@@ -1755,8 +1766,6 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     try {
       const restored = await prepareSnapshotRestore(snapshotId);
       restoreToken = restored.restoreToken;
-      const key = restored.blobKey;
-      const beforeBlob = restored.beforeBlob;
       // textures を新しい配列にしてビットマップ再読込を促す（他の画像編集 Undo/Redo と同じ手当て）
       const before: Asset = {
         ...restored.beforeAsset,
@@ -1768,6 +1777,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         apply: async () => {
           await commitSnapshotRestore(restored.restoreToken);
           setAssets((previous) => previous.map((asset) => (asset.id === next.id ? next : asset)));
+          setProject((current) => syncProjectAssetSummary(current, next));
         },
         history,
         entry: {
@@ -1775,13 +1785,15 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           undo: async () => {
             await saveAssetRevisionAndApply(
               { ...before, textures: [...before.textures] },
-              { putBlobs: [{ key, blob: beforeBlob }] },
+              {
+                putBlobs: restored.images.map(({ key, beforeBlob }) => ({ key, blob: beforeBlob })),
+              },
             );
           },
           redo: async () => {
             await saveAssetRevisionAndApply(
               { ...next, textures: [...next.textures] },
-              { putBlobs: [{ key, blob: restored.blob }] },
+              { putBlobs: restored.images.map(({ key, blob }) => ({ key, blob })) },
             );
           },
         },
@@ -2016,6 +2028,39 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setTextDraft(null);
   };
 
+  const recordStructureChange = async (
+    before: StructureState,
+    label: string,
+    afterSelection: string | null,
+  ) => {
+    const after = await captureStructureState(projectId, before.assetIds);
+    const beforeSelection = selectedAssetId;
+    const apply = async (
+      expected: StructureState,
+      next: StructureState,
+      selection: string | null,
+    ) => {
+      await autosave.flush();
+      await applyStructureState(expected, next);
+      const loaded = await loadProject(projectId);
+      setProject(loaded.project);
+      setAssets(await listProjectAssets(projectId));
+      setSelectedAssetId(selection);
+      setSelectedLayerId(null);
+      setCheckedLayerIds([]);
+      setVariantPreview(null);
+    };
+    if (
+      !history.push({
+        label,
+        undo: () => apply(after, before, beforeSelection),
+        redo: () => apply(before, after, afterSelection),
+      })
+    ) {
+      throw new Error('構造変更の履歴を登録できませんでした。');
+    }
+  };
+
   const handleCreateFamily = async (name: string, baseAssetId: string) => {
     if (!project || !assets.some((asset) => asset.id === baseAssetId)) {
       return;
@@ -2042,10 +2087,11 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         families: [...(project.families ?? []), family],
         updatedAt: now,
       };
-      await saveProject(nextProject);
+      const beforeStructure = await captureStructureState(projectId);
+      await saveProject(nextProject, project);
       setProject(nextProject);
       setSelectedAssetId(baseAssetId);
-      history.clear();
+      await recordStructureChange(beforeStructure, '素材グループを作成', baseAssetId);
     } catch (error) {
       setEditorError(
         `Familyを作成できませんでした: ${error instanceof Error ? error.message : String(error)}`,
@@ -2082,10 +2128,11 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         ),
         updatedAt: now,
       };
-      await saveProject(nextProject);
+      const beforeStructure = await captureStructureState(projectId);
+      await saveProject(nextProject, project);
       setProject(nextProject);
       setSelectedAssetId(assetId);
-      history.clear();
+      await recordStructureChange(beforeStructure, '関連素材を登録', assetId);
     } catch (error) {
       setEditorError(
         `manual variantを登録できませんでした: ${error instanceof Error ? error.message : String(error)}`,
@@ -2141,6 +2188,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         ),
         updatedAt: now.toISOString(),
       };
+      const beforeStructure = await captureStructureState(projectId, [draft.asset.id]);
       await saveProjectBundle(
         nextProject,
         [draft.asset],
@@ -2148,12 +2196,14 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           key: blobKeyFor(draft.asset.id, texture.path),
           blob: variantBlobs.get(texture.path)!,
         })),
+        undefined,
+        project,
       );
       setProject(nextProject);
       setAssets((current) => [...current, draft.asset]);
       setSelectedAssetId(draft.asset.id);
       setSelectedLayerId(null);
-      history.clear();
+      await recordStructureChange(beforeStructure, '関連する反転素材を作成', draft.asset.id);
     } catch (error) {
       setEditorError(
         `linked左右反転を作成できませんでした: ${error instanceof Error ? error.message : String(error)}`,
@@ -2234,6 +2284,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         ),
         updatedAt: now.toISOString(),
       };
+      const beforeStructure = await captureStructureState(projectId, [draft.asset.id]);
       await saveProjectBundle(
         nextProject,
         [draft.asset],
@@ -2241,12 +2292,14 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           key: blobKeyFor(draft.asset.id, texture.path),
           blob: variantBlobs.get(texture.path)!,
         })),
+        undefined,
+        project,
       );
       setProject(nextProject);
       setAssets((current) => [...current, draft.asset]);
       setSelectedAssetId(draft.asset.id);
       setSelectedLayerId(null);
-      history.clear();
+      await recordStructureChange(beforeStructure, '関連する色違い素材を作成', draft.asset.id);
     } catch (error) {
       setEditorError(
         `linked paletteを作成できませんでした: ${error instanceof Error ? error.message : String(error)}`,
@@ -2297,10 +2350,11 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         ),
         updatedAt: new Date().toISOString(),
       };
-      await saveProject(nextProject);
+      const beforeStructure = await captureStructureState(projectId);
+      await saveProject(nextProject, project);
       setProject(nextProject);
       setVariantPreview(null);
-      history.clear();
+      await recordStructureChange(beforeStructure, '関連素材をグループから外す', selectedAssetId);
     } catch (error) {
       setEditorError(
         `Familyから外せませんでした: ${error instanceof Error ? error.message : String(error)}`,
@@ -2330,10 +2384,11 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         families: (project.families ?? []).filter((candidate) => candidate.id !== familyId),
         updatedAt: new Date().toISOString(),
       };
-      await saveProject(nextProject);
+      const beforeStructure = await captureStructureState(projectId);
+      await saveProject(nextProject, project);
       setProject(nextProject);
       setVariantPreview(null);
-      history.clear();
+      await recordStructureChange(beforeStructure, '素材グループを解除', selectedAssetId);
     } catch (error) {
       setEditorError(
         `Familyを解除できませんでした: ${error instanceof Error ? error.message : String(error)}`,
@@ -2649,7 +2704,12 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           : {}),
         updatedAt: new Date().toISOString(),
       };
-      await deleteAssetBundle({ project: nextProject, assetId: asset.id });
+      const beforeStructure = await captureStructureState(projectId, [asset.id]);
+      await deleteAssetBundle({
+        project: nextProject,
+        assetId: asset.id,
+        expectedProject: project,
+      });
       const remaining = assets.filter((candidate) => candidate.id !== asset.id);
       setProject(nextProject);
       setAssets(remaining);
@@ -2657,7 +2717,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       setSelectedLayerId(null);
       setCheckedLayerIds([]);
       setVariantPreview(null);
-      history.clear();
+      await recordStructureChange(beforeStructure, '素材を削除', remaining[0]?.id ?? null);
     } catch (error) {
       setEditorError(
         `アセットを削除できませんでした: ${error instanceof Error ? error.message : String(error)}`,
@@ -2675,7 +2735,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     }
     if (
       !window.confirm(
-        `variantアセット「${asset.displayName}」をFamily参照・画像Blobごと削除します。この操作は元に戻せません。`,
+        `variantアセット「${asset.displayName}」をFamily参照・画像Blobごと削除します。元に戻す操作で復元できます。`,
       )
     ) {
       return;
@@ -3035,12 +3095,14 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       };
       // project + 新アセット + 複製した Blob を単一トランザクションで保存する（2D-1B-STORAGE §A）。
       // 途中で失敗しても、複製が中途半端な状態で残らない。
-      await saveProjectBundle(nextProject, [flipped], blobs);
+      const beforeStructure = await captureStructureState(projectId, [flipped.id]);
+      await saveProjectBundle(nextProject, [flipped], blobs, undefined, project);
       setProject(nextProject);
       setAssets((prev) => [...prev, flipped]);
       setSelectedAssetId(flipped.id);
       setSelectedLayerId(null);
       setCheckedLayerIds([]);
+      await recordStructureChange(beforeStructure, '反転素材を作成', flipped.id);
     } catch (error) {
       setEditorError(
         `独立左右反転コピーを作成できませんでした: ${
@@ -3087,13 +3149,14 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         ],
         updatedAt: new Date().toISOString(),
       };
-      await saveProjectBundle(nextProject, [copy], blobs);
+      const beforeStructure = await captureStructureState(projectId, [copy.id]);
+      await saveProjectBundle(nextProject, [copy], blobs, undefined, project);
       setProject(nextProject);
       setAssets((prev) => [...prev, copy]);
       setSelectedAssetId(copy.id);
       setSelectedLayerId(null);
       setCheckedLayerIds([]);
-      history.clear();
+      await recordStructureChange(beforeStructure, '素材を複製', copy.id);
     } catch (error) {
       setEditorError(
         `アセットを複製できませんでした: ${error instanceof Error ? error.message : String(error)}`,
@@ -3106,7 +3169,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
   /**
    * 画像を取り込まず、型とサイズだけで新しい空キャンバスのアセットを作る（2D-2-CREATE-01）。
-   * プロジェクト級の操作のため Undo 履歴には積まない（docs/USER_GUIDE.md に明記）。
+   * Project・画像をまとめてセッション内のUndo履歴へ記録する。
    */
   const handleCreateBlankAsset = async () => {
     if (!project) {
@@ -3118,6 +3181,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setEditorError(null);
     setCreatingAsset(true);
     try {
+      await autosave.flush();
       const trimmedName = newAssetName.trim() || '新規アセット';
       const { asset, blobs } = await createBlankAssetBundle({
         name: trimmedName,
@@ -3144,12 +3208,13 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         updatedAt: new Date().toISOString(),
       };
       // project + 新アセット + 透明画像 Blob を単一トランザクションで保存する（2D-1B-STORAGE §A）。
-      await saveProjectBundle(nextProject, [asset], blobs);
+      const beforeStructure = await captureStructureState(projectId, [asset.id]);
+      await saveProjectBundle(nextProject, [asset], blobs, undefined, project);
       setProject(nextProject);
       setAssets((prev) => [...prev, asset]);
       setSelectedAssetId(asset.id);
       setSelectedLayerId(null);
-      history.clear();
+      await recordStructureChange(beforeStructure, '空白素材を作成', asset.id);
     } catch (error) {
       setEditorError(error instanceof Error ? error.message : String(error));
     } finally {
@@ -3161,7 +3226,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   /**
    * 選択中のアセットを削除する（2D-2-CREATE-01）。画像 Blob・復旧点も
    * deleteAsset（2D-1B-STORAGE）でまとめて消し、project 側の参照も外す。
-   * 確認ダイアログで防護するため、Undo 履歴には積まない。
+   * 画像と復旧点をセッション内履歴に保持し、Undoでまとめて復元する。
    *
    * 削除の前に必ず autosave.flush() で保留中の自動保存（数値編集などの 800ms
    * デバウンス保存）を完了させる。flush しないと、削除直後にデバウンス済みの
@@ -3177,7 +3242,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       return;
     }
     const ok = window.confirm(
-      `アセット「${selectedAsset.displayName}」を削除します。この操作は元に戻せません。よろしいですか？`,
+      `アセット「${selectedAsset.displayName}」を削除します。元に戻す操作で復元できます。よろしいですか？`,
     );
     if (!ok) {
       return;
@@ -3204,15 +3269,25 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
   const handleRename = (name: string) => {
     if (!project) {
-      return;
+      return false;
     }
     if (!canStartEditorPersistentMutation()) {
-      return;
+      return false;
     }
     const next: Project = { ...project, name, updatedAt: new Date().toISOString() };
     setProject(next);
-    history.clear();
-    autosave.schedule(() => saveProject(next));
+    history.push({
+      label: 'プロジェクト名を変更',
+      undo: () => {
+        setProject((current) => (current ? { ...current, name: project.name } : current));
+        autosave.schedule(() => renameProject(project.id, project.name), `project:${project.id}`);
+      },
+      redo: () => {
+        setProject((current) => (current ? { ...current, name } : current));
+        autosave.schedule(() => renameProject(project.id, name), `project:${project.id}`);
+      },
+    });
+    autosave.schedule(() => renameProject(next.id, name), `project:${next.id}`);
   };
 
   /** 数値入力によるレイヤー変形の更新（フォーカス中は履歴に積まず、blur で確定する）。 */
@@ -3779,12 +3854,13 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           </div>
           <label className="editor-field">
             プロジェクト名
-            <input
+            <CommittedInput
               type="text"
               value={project?.name ?? ''}
               aria-label="プロジェクト名"
               disabled={!project || persistentMutationBlocked}
-              onChange={(event) => handleRename(event.target.value)}
+              normalize={(value) => value.trim() || project?.name || 'プロジェクト'}
+              onCommit={handleRename}
             />
           </label>
 

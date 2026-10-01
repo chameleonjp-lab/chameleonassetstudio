@@ -1,3 +1,4 @@
+import { loadProjectExportPresets } from './exportSettings';
 import 'fake-indexeddb/auto';
 import { strToU8, zipSync, type Zippable } from 'fflate';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -431,16 +432,19 @@ describe('2D-1B-CASPROJ staged import', () => {
     expect(new Uint8Array(await restaged.blobs[1].blob.arrayBuffer())).toEqual(gifBytes);
   });
 
-  it('canonical storeに保存できないexport presetsは検証後にwarningを返す', async () => {
+  it('export presetsを検証して別コピーへ原子的に保存し、旧バックアップも読める', async () => {
     const staged = await stageCasprojImport(
       makeCasproj({ presets: exportPresets }),
       deterministicIds(),
     );
 
-    expect(staged.warnings).toEqual([
-      expect.stringContaining('settings/export-presets.jsonは検証しました'),
-    ]);
-    expect(await listProjects()).toEqual([]);
+    expect(staged.warnings).toEqual([]);
+    expect(staged.exportPresets).toEqual(exportPresets);
+    await commitStagedCasprojImport(staged);
+    expect(await loadProjectExportPresets(staged.project.id)).toEqual(exportPresets);
+    const withoutSettings = await stageCasprojImport(makeCasproj(), deterministicIds());
+    expect(withoutSettings.exportPresets).toBeUndefined();
+    expect(await listProjects()).toHaveLength(1);
   });
 
   it('Project参照の重複・asset欠落・summary不一致を拒否する', async () => {

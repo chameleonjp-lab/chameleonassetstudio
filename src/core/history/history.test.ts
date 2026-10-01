@@ -157,7 +157,86 @@ describe('History', () => {
       errorMessage: 'metadata save failed',
     });
     expect(history.getState()).toMatchObject({ canUndo: false, canRedo: false, isBusy: false });
+    expect(queue.retryLastFailure()).toBe(true);
+    await queue.flush();
   });
+
+  it.each([true, false])(
+    '失敗の巻き戻しと再試行は画面と保存内容を一致させる: ownFailure=%s',
+    async (ownFailure) => {
+      const history = new History();
+      const queue = new AutosaveQueue({ delayMs: 60_000 });
+      let ui = 'new';
+      let stored = 'old';
+      let failing = true;
+      history.push({
+        label: 'rename',
+        undo: () => {
+          ui = 'old';
+          queue.schedule(async () => {
+            stored = 'old';
+          }, 'project');
+        },
+        redo: () => {},
+      });
+      queue.schedule(async () => {
+        if (ownFailure && failing) throw new Error('save failed');
+        stored = 'new';
+      }, 'project');
+      if (!ownFailure)
+        queue.schedule(async () => {
+          if (failing) throw new Error('save failed');
+        }, 'asset');
+      await history.waitForPending();
+      expect(ui).toBe('old');
+      expect(stored).toBe('old');
+      expect(history.getState().canUndo).toBe(false);
+      await expect(AutosaveQueue.flushAll()).rejects.toThrow('save failed');
+      failing = false;
+      expect(queue.retryLastFailure()).toBe(true);
+      await queue.flush();
+      expect(ui).toBe(stored);
+      expect(stored).toBe('old');
+    },
+  );
+
+  it.each(['undo', 'redo'] as const)(
+    '%sの保存失敗後も画面・正本・履歴位置を揃え、安全に再試行できる',
+    async (direction) => {
+      const history = new History();
+      const queue = new AutosaveQueue({ delayMs: 60_000 });
+      let ui = 'new';
+      let stored = 'new';
+      let fail = false;
+      const apply = (value: string) => {
+        ui = value;
+        queue.schedule(async () => {
+          if (fail) throw new Error('save failed');
+          stored = value;
+        }, 'project');
+      };
+      await pushAndWait(history, {
+        label: 'rename',
+        undo: () => apply('old'),
+        redo: () => apply('new'),
+      });
+      if (direction === 'redo') await history.undo();
+      const previous = ui;
+      fail = true;
+      await expect(history[direction]()).rejects.toThrow('save failed');
+      expect(ui).toBe(previous);
+      expect(stored).toBe(previous);
+      expect(history.getState()[direction === 'undo' ? 'canUndo' : 'canRedo']).toBe(true);
+      fail = false;
+      expect(queue.retryLastFailure()).toBe(true);
+      await queue.flush();
+      expect(ui).toBe(stored);
+      expect(await history[direction]()).toBe(true);
+      expect(ui).toBe(direction === 'undo' ? 'old' : 'new');
+      expect(ui).toBe(stored);
+      expect(history.getState()[direction === 'undo' ? 'canRedo' : 'canUndo']).toBe(true);
+    },
+  );
 
   it('非同期Undoは完了前にstackを移動しない', async () => {
     const history = new History();

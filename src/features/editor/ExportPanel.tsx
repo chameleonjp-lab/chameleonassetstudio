@@ -13,14 +13,9 @@ import {
   exportImage,
   exportZip,
 } from '../../core/export/exportAsset';
-import { blobKeyFor } from '../../core/images/importImage';
 import type { Asset, Project } from '../../core/model';
-import {
-  exportCasproj,
-  loadBlob,
-  type CasprojBundle,
-  type CasprojFileEntry,
-} from '../../core/storage';
+import { exportCasproj, AutosaveQueue } from '../../core/storage';
+import { loadProjectBackup } from '../../core/storage/projectBackup';
 
 interface ExportPanelProps {
   asset: Asset;
@@ -70,24 +65,8 @@ const EXPORT_OPTIONS: Array<{
   },
 ];
 
-/** プロジェクトとその全アセットが参照する画像 Blob から `.casproj` バンドルを組み立てる。 */
-async function buildCasprojBundle(project: Project, assets: Asset[]): Promise<CasprojBundle> {
-  const files: CasprojFileEntry[] = [];
-  for (const asset of assets) {
-    for (const texture of asset.textures) {
-      const blob = await loadBlob(blobKeyFor(asset.id, texture.path));
-      if (!blob) {
-        continue;
-      }
-      const bytes = new Uint8Array(await blob.arrayBuffer());
-      files.push({ path: `assets/${asset.id}/${texture.path}`, bytes });
-    }
-  }
-  return { project, assets, files };
-}
-
 /** アセットの書き出しパネル（Phase 10 / 13）。PNG / WebP / asset.json / ZIP / .casproj をダウンロードする。 */
-export function ExportPanel({ asset, project, projectAssets }: ExportPanelProps) {
+export function ExportPanel({ asset, project }: ExportPanelProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completedFileName, setCompletedFileName] = useState<string | null>(null);
@@ -106,6 +85,7 @@ export function ExportPanel({ asset, project, projectAssets }: ExportPanelProps)
     setCompletedFileName(null);
     setBusy(true);
     try {
+      await AutosaveQueue.flushAll();
       let fileName = '';
       switch (kind) {
         case 'png': {
@@ -133,7 +113,7 @@ export function ExportPanel({ asset, project, projectAssets }: ExportPanelProps)
           break;
         }
         case 'casproj': {
-          const bundle = await buildCasprojBundle(project, projectAssets);
+          const bundle = await loadProjectBackup(project.id);
           const blob = await exportCasproj(bundle);
           fileName = `${project.name}.casproj`;
           downloadBlob(blob, fileName);

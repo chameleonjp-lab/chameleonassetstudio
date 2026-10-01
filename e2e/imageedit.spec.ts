@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { confirmImageImport } from './importTestHelpers';
+import { canvasWorldPoint } from './canvasTestHelpers';
 
 /** 単色 PNG を生成する。transparentRightHalf 指定時は右半分を透明にする。 */
 async function makePngBuffer(
@@ -134,8 +135,7 @@ async function readProjectName(page: Page): Promise<string> {
 }
 
 async function canvasCenter(canvas: Locator): Promise<{ x: number; y: number }> {
-  const box = (await canvas.boundingBox())!;
-  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  return canvasWorldPoint(canvas);
 }
 
 test('背景透過をクリックで適用でき、Undo で戻せる', async ({ page }) => {
@@ -163,10 +163,10 @@ test('トリミングをドラッグで適用できる', async ({ page }) => {
   await page.getByRole('button', { name: 'トリミング' }).click();
 
   const center = await canvasCenter(canvas);
-  // 画像は中央に 64x64 で表示されている。左上 1/4 をドラッグで囲む
-  await page.mouse.move(center.x - 32, center.y - 32);
+  // 実際の表示変換で求めた画像中央から右下1/4を囲む（上端のズームバーを避ける）
+  await page.mouse.move(center.x, center.y);
   await page.mouse.down();
-  await page.mouse.move(center.x, center.y, { steps: 4 });
+  await page.mouse.move(center.x + 32, center.y + 32, { steps: 4 });
   await page.mouse.up();
 
   await expect
@@ -189,9 +189,9 @@ test('画像編集後に再読み込みしても Asset の画像サイズと edi
   await page.getByRole('button', { name: '100%', exact: true }).click();
   await page.getByRole('button', { name: 'トリミング' }).click();
   const center = await canvasCenter(canvas);
-  await page.mouse.move(center.x - 32, center.y - 32);
+  await page.mouse.move(center.x, center.y);
   await page.mouse.down();
-  await page.mouse.move(center.x, center.y, { steps: 4 });
+  await page.mouse.move(center.x + 32, center.y + 32, { steps: 4 });
   await page.mouse.up();
 
   await expect
@@ -281,9 +281,9 @@ test('Undo完了後もAsset・Blob・Projectが整合し、通常編集を再開
   await page.getByRole('button', { name: 'トリミング' }).click();
 
   const center = await canvasCenter(canvas);
-  await page.mouse.move(center.x - 32, center.y - 32);
+  await page.mouse.move(center.x, center.y);
   await page.mouse.down();
-  await page.mouse.move(center.x, center.y, { steps: 4 });
+  await page.mouse.move(center.x + 32, center.y + 32, { steps: 4 });
   await page.mouse.up();
 
   await expect
