@@ -3817,6 +3817,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                     type="file"
                     accept={NEW_ASSET_IMPORT_ACCEPT}
                     multiple
+                    disabled={!project || persistentMutationBlocked}
                     onChange={handleFileInput}
                     className="visually-hidden-input"
                   />
@@ -5093,6 +5094,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               type="file"
               accept={NEW_ASSET_IMPORT_ACCEPT}
               multiple
+              disabled={!project || persistentMutationBlocked}
               onChange={handleFileInput}
               className="visually-hidden-input"
             />
