@@ -44,6 +44,7 @@ export async function commitSnapshotRestore(restoreToken: string): Promise<void>
     beforeBlob: pending.beforeBlob,
     asset: pending.asset,
     blob: pending.blob,
+    images: pending.images,
   });
 }
 

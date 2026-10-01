@@ -315,6 +315,7 @@ test('2 target保存の途中失敗は全件rollbackしHistoryを追加しない
   await createBlankAsset(properties, 'rollback-one');
   await createBlankAsset(properties, 'rollback-two');
   const before = await readAssetStates(page);
+  const beforeHistory = await page.locator('.editor').getAttribute('data-history-snapshot');
 
   const panel = batchPanel(page);
   await panel.getByLabel('一括操作').selectOption('canvas-resize');
@@ -351,7 +352,7 @@ test('2 target保存の途中失敗は全件rollbackしHistoryを追加しない
   });
 
   expect(await readAssetStates(page)).toEqual(before);
-  await expect(page.getByRole('button', { name: '元に戻す' })).toBeDisabled();
+  await expect(page.locator('.editor')).toHaveAttribute('data-history-snapshot', beforeHistory!);
 });
 
 test.describe('iPhone SE級touchのbatch準備', () => {

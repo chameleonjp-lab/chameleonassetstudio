@@ -322,7 +322,9 @@ async function exerciseEntireHistory(page: Page, sourceId: string): Promise<void
   await expect(redo).toBeDisabled();
 }
 
-test('rig付き独立左右反転copyを保存・再読込し、既存Undo / Redoを完全維持する', async ({ page }) => {
+test('rig付き独立左右反転copyを保存・再読込し、copyと既存編集をUndo / Redoする', async ({
+  page,
+}) => {
   const projectName = 'rig反転コピーテスト';
   await setupProjectWithImage(page, projectName);
   await seedRigAsset(page);
@@ -366,10 +368,24 @@ test('rig付き独立左右反転copyを保存・再読込し、既存Undo / Red
   expect(flipped.colliders[0].id).not.toBe(original.colliders[0].id);
   expect(flipped.textures).toEqual(original.textures);
 
-  // copy後も既存stackのlabelと実動作を維持する。
+  // A new structural edit becomes undoable and replaces the abandoned redo branch.
+  await expect(undo).toHaveAttribute('title', '反転素材を作成');
+  await expect(redo).toBeDisabled();
+  await undo.click();
+  await expect.poll(async () => (await readAllAssets(page)).length).toBe(1);
   await expect(undo).toHaveAttribute('title', '左右反転');
-  await expect(redo).toHaveAttribute('title', '左右反転');
-  await exerciseEntireHistory(page, original.id);
+  await undo.click();
+  await expect.poll(() => sourceLayerScaleX(page, original.id)).toBe(1.5);
+  await undo.click();
+  await expect.poll(() => sourceLayerScaleX(page, original.id)).toBe(-1.5);
+  await expect(undo).toBeDisabled();
+  await redo.click();
+  await expect.poll(() => sourceLayerScaleX(page, original.id)).toBe(1.5);
+  await redo.click();
+  await expect.poll(() => sourceLayerScaleX(page, original.id)).toBe(-1.5);
+  await redo.click();
+  await expect.poll(async () => (await readAllAssets(page)).length).toBe(2);
+  await expect(redo).toBeDisabled();
 
   await expect(page.locator('.asset-list li')).toHaveCount(2);
   await expect(page.locator('.asset-list button[aria-pressed="true"]')).toContainText('(左右反転)');

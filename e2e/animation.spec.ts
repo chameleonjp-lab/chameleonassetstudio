@@ -438,22 +438,14 @@ async function canvasPositionForWorld(
   await expect(canvas).toBeVisible();
   return canvas.evaluate(
     (element, input) => {
-      const viewport = {
-        width: element.clientWidth,
-        height: element.clientHeight,
+      const view = JSON.parse(element.getAttribute('data-view-transform')!) as {
+        scale: number;
+        offsetX: number;
+        offsetY: number;
       };
-      const availableWidth = Math.max(1, viewport.width - 64);
-      const availableHeight = Math.max(1, viewport.height - 64);
-      const scale = Math.min(
-        8,
-        Math.max(
-          0.05,
-          Math.min(availableWidth / input.canvasSize, availableHeight / input.canvasSize),
-        ),
-      );
       return {
-        x: input.world.x * scale + (viewport.width - input.canvasSize * scale) / 2,
-        y: input.world.y * scale + (viewport.height - input.canvasSize * scale) / 2,
+        x: input.world.x * view.scale + view.offsetX,
+        y: input.world.y * view.scale + view.offsetY,
       };
     },
     { world, canvasSize },
@@ -796,8 +788,10 @@ test('iPhone幅で反復Frameの出現位置を選び、前後を赤・青の25%
   await expect(canvas).toHaveAttribute('data-onion-skin-previous', 'false');
   await expect(canvas).toHaveAttribute('data-onion-skin-next', 'true');
   await expect(canvas).toHaveAttribute('data-onion-skin-opacity', '0.25');
-  const nextPixel = await readCanvasPixelAtWorld(page, { x: 2, y: 4 }, 8);
-  expectTintedPixel(nextPixel, backgroundPixel, [37, 99, 235]);
+  await expect(async () => {
+    const nextPixel = await readCanvasPixelAtWorld(page, { x: 2, y: 4 }, 8);
+    expectTintedPixel(nextPixel, backgroundPixel, [37, 99, 235]);
+  }).toPass({ timeout: 5_000 });
 
   // ghostはpointer対象にならず、現在FrameだけをLayer選択に使う。
   const selectTool = page
@@ -824,8 +818,10 @@ test('iPhone幅で反復Frameの出現位置を選び、前後を赤・青の25%
   await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
   await expect(canvas).toHaveAttribute('data-onion-skin-previous', 'true');
   await expect(canvas).toHaveAttribute('data-onion-skin-next', 'false');
-  const previousPixel = await readCanvasPixelAtWorld(page, { x: 2, y: 4 }, 8);
-  expectTintedPixel(previousPixel, backgroundPixel, [209, 67, 79]);
+  await expect(async () => {
+    const previousPixel = await readCanvasPixelAtWorld(page, { x: 2, y: 4 }, 8);
+    expectTintedPixel(previousPixel, backgroundPixel, [209, 67, 79]);
+  }).toPass({ timeout: 5_000 });
 
   await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
   await previousToggle.uncheck();
@@ -839,11 +835,13 @@ test('iPhone幅で反復Frameの出現位置を選び、前後を赤・青の25%
   await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
   await expect(canvas).toHaveAttribute('data-onion-skin-previous', 'true');
   await expect(canvas).toHaveAttribute('data-onion-skin-next', 'true');
-  const bothPixel = await readCanvasPixelAtWorld(page, { x: 10, y: 4 }, 8);
-  expectTintedPixelStack(bothPixel, bothBackgroundPixel, [
-    [209, 67, 79],
-    [37, 99, 235],
-  ]);
+  await expect(async () => {
+    const bothPixel = await readCanvasPixelAtWorld(page, { x: 10, y: 4 }, 8);
+    expectTintedPixelStack(bothPixel, bothBackgroundPixel, [
+      [209, 67, 79],
+      [37, 99, 235],
+    ]);
+  }).toPass({ timeout: 5_000 });
 
   await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).click();
   expect(

@@ -3,6 +3,7 @@ import {
   remapAssetFamilies,
   validateProjectFamilies,
   type Asset,
+  type ExportPresetFile,
   type Project,
   type ProjectAssetEntry,
 } from '../model';
@@ -64,6 +65,7 @@ export interface StagedCasprojImport {
   blobs: ProjectBundleBlobInput[];
   warnings: string[];
   appliedMigrations: string[];
+  exportPresets?: ExportPresetFile;
 }
 
 type IdFactory = (prefix: string) => string;
@@ -226,11 +228,6 @@ export async function stageCasprojImport(
     warnings,
   );
   await validateCanonicalImages(result.bundle.assets, canonicalFiles, imageDecoder);
-  if (result.bundle.exportPresets) {
-    warnings.push(
-      'settings/export-presets.jsonは検証しましたが、現在のProject正本には保存されません。元の.casprojファイルを保持してください。',
-    );
-  }
 
   const projectId = idFactory('project');
   const assetIdMap = new Map<string, string>();
@@ -282,10 +279,17 @@ export async function stageCasprojImport(
     }
   }
 
-  return { project, assets, blobs, warnings, appliedMigrations: result.appliedMigrations };
+  return {
+    project,
+    assets,
+    blobs,
+    warnings,
+    appliedMigrations: result.appliedMigrations,
+    exportPresets: result.bundle.exportPresets,
+  };
 }
 
 /** 段階検査済みcopyを、既存のbundle保存transactionで確定する。 */
 export async function commitStagedCasprojImport(staged: StagedCasprojImport): Promise<void> {
-  await saveProjectBundle(staged.project, staged.assets, staged.blobs);
+  await saveProjectBundle(staged.project, staged.assets, staged.blobs, staged.exportPresets);
 }

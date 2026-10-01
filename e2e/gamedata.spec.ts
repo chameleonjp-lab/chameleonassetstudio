@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { confirmImageImport } from './importTestHelpers';
+import { canvasWorldPoint } from './canvasTestHelpers';
 
 async function makePngBuffer(page: Page): Promise<Buffer> {
   const dataUrl = await page.evaluate(() => {
@@ -98,9 +99,9 @@ test('アンカーを追加・移動・削除でき、用途を設定できる',
     .getByRole('navigation', { name: 'ツール' })
     .getByRole('button', { name: 'アンカー' })
     .click();
-  const box = (await canvas.boundingBox())!;
-  const clickX = box.x + box.width / 2;
-  const clickY = box.y + box.height / 2;
+  const point = await canvasWorldPoint(canvas);
+  const clickX = point.x;
+  const clickY = point.y;
   await page.mouse.click(clickX, clickY);
 
   const anchorList = page.getByRole('list', { name: 'アンカー一覧' });

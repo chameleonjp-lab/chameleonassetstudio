@@ -1,4 +1,5 @@
-import type { Asset, Project, ProjectAssetEntry, TextureRef } from '../model';
+import { prepareExportSettings, loadProjectExportPresets } from './exportSettings';
+import type { Asset, Project, ProjectAssetEntry, TextureRef, ExportPresetFile } from '../model';
 import { generateId, migrateProject, validateProjectFamilies } from '../model';
 import { validateAssetForPersistence, validateProject } from '../schema/validate';
 import { migrateAndValidateAssetDocument } from './assetDocument';
@@ -184,15 +185,43 @@ async function syncProjectAssetEntryInTx(
   return nextProject;
 }
 
-export async function saveProject(project: Project): Promise<void> {
+function assertProjectUnchanged(current: Project | undefined, expected: Project): void {
+  if (!current) throw new StorageError('保存対象のプロジェクトが見つかりません');
+  const currentContent = { ...current, updatedAt: undefined };
+  const expectedContent = { ...expected, updatedAt: undefined };
+  if (JSON.stringify(currentContent) !== JSON.stringify(expectedContent)) {
+    throw new StorageError('別の操作でプロジェクトが変更されたため、保存を中止しました');
+  }
+}
+
+export async function saveProject(project: Project, expected?: Project): Promise<void> {
   const result = validateProject(project);
   if (!result.valid) {
     throw new StorageError(formatValidationErrors('project', result.errors));
   }
   assertProjectFamiliesValid(project);
-  await runTransaction([STORE_PROJECTS], 'readwrite', (tx) =>
-    requestToPromise(tx.objectStore(STORE_PROJECTS).put(project)),
-  );
+  await runTransaction([STORE_PROJECTS], 'readwrite', async (tx) => {
+    const store = tx.objectStore(STORE_PROJECTS);
+    if (expected) assertProjectUnchanged(await requestToPromise(store.get(expected.id)), expected);
+    await requestToPromise(store.put(project));
+  });
+}
+
+/** 名前だけを最新のProjectへ適用し、同時に保存された素材要約やFamilyを保持する。 */
+export async function renameProject(id: string, name: string): Promise<void> {
+  await runTransaction([STORE_PROJECTS], 'readwrite', async (tx) => {
+    const store = tx.objectStore(STORE_PROJECTS);
+    const project = await requestToPromise(store.get(id) as IDBRequest<Project | undefined>);
+    if (!project) {
+      throw new StorageError(`プロジェクトが見つかりません: ${id}`);
+    }
+    const next = { ...project, name, updatedAt: new Date().toISOString() };
+    const result = validateProject(next);
+    if (!result.valid) {
+      throw new StorageError(formatValidationErrors('project', result.errors));
+    }
+    await requestToPromise(store.put(next));
+  });
 }
 
 export interface ProjectBundleBlobInput {
@@ -344,6 +373,8 @@ export async function saveProjectBundle(
   project: Project,
   assets: Asset[],
   blobs: ProjectBundleBlobInput[],
+  exportPresets?: ExportPresetFile,
+  expectedProject?: Project,
 ): Promise<void> {
   const projectResult = validateProject(project);
   if (!projectResult.valid) {
@@ -358,12 +389,20 @@ export async function saveProjectBundle(
   }
   assertDistinctBlobOperations(blobs, []);
   assertBundleReferences(project, assets, blobs);
+  const settingsRecord = exportPresets
+    ? prepareExportSettings(project.id, exportPresets)
+    : undefined;
 
   const blobRecords = await prepareBlobRecords(
     blobs.map(({ key, blob }) => ({ key, projectId: project.id, blob })),
   );
 
   await runTransaction([STORE_PROJECTS, STORE_ASSETS, STORE_BLOBS], 'readwrite', async (tx) => {
+    if (expectedProject)
+      assertProjectUnchanged(
+        await requestToPromise(tx.objectStore(STORE_PROJECTS).get(project.id)),
+        expectedProject,
+      );
     const assetStore = tx.objectStore(STORE_ASSETS);
     const blobStore = tx.objectStore(STORE_BLOBS);
 
@@ -408,6 +447,7 @@ export async function saveProjectBundle(
     }
 
     await requestToPromise(tx.objectStore(STORE_PROJECTS).put(project));
+    if (settingsRecord) await requestToPromise(blobStore.put(settingsRecord));
     for (const asset of assets) {
       const record: StoredAssetRecord = { id: asset.id, projectId: project.id, data: asset };
       await requestToPromise(assetStore.put(record));
@@ -1390,7 +1430,12 @@ export async function recoverProjectWithoutInvalidFamilies(
     createdAt: iso,
     updatedAt: iso,
   };
-  await saveProjectBundle(project, copiedAssets, blobs);
+  await saveProjectBundle(
+    project,
+    copiedAssets,
+    blobs,
+    await loadProjectExportPresets(sourceProjectId),
+  );
   return {
     projectId: project.id,
     projectName,
@@ -1637,11 +1682,13 @@ export async function deleteAsset(id: string): Promise<void> {
 
 export interface DeleteAssetBundleInput {
   project: Project;
+  expectedProject?: Project;
   assetId: string;
 }
 
 export interface DeleteAssetsBundleInput {
   project: Project;
+  expectedProject?: Project;
   assetIds: string[];
 }
 
@@ -1649,6 +1696,7 @@ export interface DeleteAssetsBundleInput {
 export async function deleteAssetsBundle({
   project,
   assetIds,
+  expectedProject,
 }: DeleteAssetsBundleInput): Promise<void> {
   const projectResult = validateProject(project);
   if (!projectResult.valid) {
@@ -1686,6 +1734,12 @@ export async function deleteAssetsBundle({
     [STORE_PROJECTS, STORE_ASSETS, STORE_BLOBS, STORE_SNAPSHOTS],
     'readwrite',
     async (tx) => {
+      if (expectedProject) {
+        assertProjectUnchanged(
+          await requestToPromise(tx.objectStore(STORE_PROJECTS).get(project.id)),
+          expectedProject,
+        );
+      }
       const assetRecords: StoredAssetRecord[] = [];
       for (const assetId of assetIds) {
         const assetRecord = await requestToPromise(
@@ -1721,8 +1775,9 @@ export async function deleteAssetsBundle({
 export async function deleteAssetBundle({
   project,
   assetId,
+  expectedProject,
 }: DeleteAssetBundleInput): Promise<void> {
-  await deleteAssetsBundle({ project, assetIds: [assetId] });
+  await deleteAssetsBundle({ project, assetIds: [assetId], expectedProject });
 }
 
 export async function saveBlob(projectId: string, key: string, blob: Blob): Promise<void> {

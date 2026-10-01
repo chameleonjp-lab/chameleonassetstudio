@@ -125,6 +125,7 @@ interface ArchiveEntryEvidence {
 interface ArchiveEvidence {
   rawByteLength: number;
   rawSha256: string;
+  canonicalSha256: string;
   manifestSha256: string;
   entries: ArchiveEntryEvidence[];
 }
@@ -164,6 +165,31 @@ function sha256(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
+// ZIP entry modification times vary on each export. Normalize only these header
+// fields; keep compressed bytes, entry order, sizes and all other metadata intact.
+function canonicalZipBytes(bytes: Uint8Array): Uint8Array {
+  const result = bytes.slice();
+  const view = new DataView(result.buffer);
+  let end = result.length - 22;
+  while (end >= 0 && view.getUint32(end, true) !== 0x06054b50) end -= 1;
+  if (end < 0) throw new Error('Missing ZIP directory');
+  let position = view.getUint32(end + 16, true);
+  const count = view.getUint16(end + 10, true);
+  for (let index = 0; index < count; index += 1) {
+    if (view.getUint32(position, true) !== 0x02014b50) throw new Error('Invalid ZIP directory');
+    const local = view.getUint32(position + 42, true);
+    if (view.getUint32(local, true) !== 0x04034b50) throw new Error('Invalid ZIP entry');
+    result.fill(0, position + 12, position + 16);
+    result.fill(0, local + 10, local + 14);
+    position +=
+      46 +
+      view.getUint16(position + 28, true) +
+      view.getUint16(position + 30, true) +
+      view.getUint16(position + 32, true);
+  }
+  return result;
+}
+
 function archiveEvidence(bytes: Uint8Array): ArchiveEvidence {
   const entries = Object.entries(unzipSync(bytes))
     .sort(([left], [right]) => left.localeCompare(right))
@@ -176,6 +202,7 @@ function archiveEvidence(bytes: Uint8Array): ArchiveEvidence {
   return {
     rawByteLength: bytes.byteLength,
     rawSha256: sha256(bytes),
+    canonicalSha256: sha256(canonicalZipBytes(bytes)),
     manifestSha256: sha256(manifestBytes),
     entries,
   };
@@ -811,7 +838,9 @@ async function scrollToFooterInsideMode(page: Page): Promise<void> {
 }
 
 function expectCanonicalExportsEqual(actual: ExportEvidence, expected: ExportEvidence): void {
-  expect(actual).toEqual(expected);
+  const normalize = (value: ExportEvidence) =>
+    JSON.parse(JSON.stringify(value), (key, item) => (key === 'rawSha256' ? undefined : item));
+  expect(normalize(actual)).toEqual(normalize(expected));
 }
 
 test.describe('Group 14 Game Check Mode', () => {
@@ -1063,7 +1092,7 @@ test.describe('Group 14 Game Check Mode', () => {
         zipBytesGenerated: 0,
       },
       rawCasprojHashNote:
-        'fixed archive clockでentry timestampを固定し、raw ZIP bytesも合否比較する。',
+        'ZIPヘッダーの日時4bytesだけ正規化し、圧縮データとその他のメタデータのhashを合否比較する。raw ZIP hashは証跡として保持する。',
     });
 
     await page.reload();

@@ -92,14 +92,13 @@ export class History {
         }
         this.redoStack = [];
       } catch {
-        // 保存失敗時は、同期的に反映済みのReact stateだけを保存前へ戻す。
-        // rollbackが予約した重複autosaveは、IndexedDBが既に保存前状態のため破棄する。
+        // 対象別保存では一部だけ成功し得るため、巻き戻しも正本へ保存する。
+        // 再試行は巻き戻し後の内容を使い、失敗理由は利用者へ残す。
         try {
           await entry.undo();
+          await AutosaveQueue.flushRollback();
         } catch {
           // 元の保存失敗はAutosaveQueueのerror stateで利用者へ表示される。
-        } finally {
-          AutosaveQueue.cancelAllPending();
         }
       } finally {
         this.pendingPush = null;
@@ -119,14 +118,24 @@ export class History {
       return false;
     }
     this.setBusy(true);
+    let applied = false;
     try {
       await entry.undo();
+      applied = true;
       await AutosaveQueue.flushAll();
       this.undoStack.pop();
       this.redoStack.push(entry);
       this.notify();
       return true;
     } catch (error) {
+      if (applied) {
+        try {
+          await entry.redo();
+          await AutosaveQueue.flushRollback();
+        } catch {
+          // 失敗理由と巻き戻し内容は保存キューに残し、履歴位置を変えない。
+        }
+      }
       this.notify();
       throw error;
     } finally {
@@ -143,14 +152,24 @@ export class History {
       return false;
     }
     this.setBusy(true);
+    let applied = false;
     try {
       await entry.redo();
+      applied = true;
       await AutosaveQueue.flushAll();
       this.redoStack.pop();
       this.undoStack.push(entry);
       this.notify();
       return true;
     } catch (error) {
+      if (applied) {
+        try {
+          await entry.undo();
+          await AutosaveQueue.flushRollback();
+        } catch {
+          // 失敗理由と巻き戻し内容は保存キューに残し、履歴位置を変えない。
+        }
+      }
       this.notify();
       throw error;
     } finally {

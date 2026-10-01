@@ -58,7 +58,8 @@ test('読み込み後のオフラインでも端末内保存とPNG書き出し�
   await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
 
   await page.getByLabel('プロジェクト名').fill('Group21B オフライン保存済み');
-  await expect(page.getByText('保存済み')).toBeVisible();
+  await page.getByLabel('プロジェクト名').press('Enter');
+  await expect(page.getByText('保存済み', { exact: true })).toBeVisible();
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
@@ -76,6 +77,7 @@ test('ページ離脱時に保留中の名前変更を保存し、再読み込�
   await setupProjectWithImage(page, originalName);
 
   await page.getByLabel('プロジェクト名').fill(savedName);
+  await page.getByLabel('プロジェクト名').press('Tab');
   await page.evaluate(() => {
     window.dispatchEvent(new Event('pagehide'));
   });

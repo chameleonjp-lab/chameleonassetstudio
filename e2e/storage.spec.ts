@@ -37,8 +37,8 @@ async function setupProjectWithImage(page: Page, name: string): Promise<void> {
   await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
 }
 
-async function readStoredEditState(page: Page): Promise<StoredEditState> {
-  return page.evaluate(async () => {
+async function readStoredEditState(page: Page, assetId?: string): Promise<StoredEditState> {
+  return page.evaluate(async (selectedAssetId) => {
     const requestResult = <T>(request: IDBRequest<T>) =>
       new Promise<T>((resolve, reject) => {
         request.onsuccess = () => resolve(request.result);
@@ -62,7 +62,11 @@ async function readStoredEditState(page: Page): Promise<StoredEditState> {
           }>;
         };
       }>;
-      const asset = assetRecords[0]?.data;
+      const asset = (
+        selectedAssetId
+          ? assetRecords.find((record) => record.id === selectedAssetId)
+          : assetRecords[0]
+      )?.data;
       const texture = asset?.textures.find((entry) => entry.kind === 'edit');
       if (!asset || !texture) {
         throw new Error('保存済み edit TextureRef が見つかりません');
@@ -91,7 +95,7 @@ async function readStoredEditState(page: Page): Promise<StoredEditState> {
     } finally {
       db.close();
     }
-  });
+  }, assetId);
 }
 
 test.describe('ごみ箱（2D-1B-STORAGE §B）', () => {
@@ -200,4 +204,51 @@ test.describe('壊れた import の隔離（2D-1B-STORAGE §E）', () => {
     await quarantineSection.getByRole('button', { name: '「broken.casproj」を削除' }).click();
     await expect(quarantineSection).toHaveCount(0);
   });
+});
+
+test('R02: 作成・複製・削除と名前変更を取り消し、全画像を再読込後も保持する', async ({ page }) => {
+  await setupProjectWithImage(page, 'R02 history');
+  page.on('dialog', (dialog) => void dialog.accept());
+  const properties = page.getByRole('complementary', { name: 'プロパティ' });
+  await properties.getByLabel('プロジェクト名', { exact: true }).fill('R02 renamed');
+  await properties.getByLabel('プロジェクト名', { exact: true }).press('Enter');
+  await expect(page.getByRole('heading', { name: 'R02 renamed' })).toBeVisible();
+  const undo = page.getByRole('button', { name: '元に戻す', exact: true });
+  const redo = page.getByRole('button', { name: 'やり直す', exact: true });
+  await expect(undo).toBeEnabled();
+  await undo.click();
+  await expect(page.getByRole('heading', { name: 'R02 history' })).toBeVisible();
+  await redo.click();
+  await expect(page.getByRole('heading', { name: 'R02 renamed' })).toBeVisible();
+  await expect(
+    properties.getByRole('button', { name: '独立コピーを作成', exact: true }),
+  ).toBeEnabled();
+  const original = await readStoredEditState(page);
+  await properties.getByRole('button', { name: '独立コピーを作成', exact: true }).click();
+  await expect(properties.locator('.asset-list button')).toHaveCount(2);
+  await expect(undo).toBeEnabled();
+  await undo.click();
+  await expect(properties.locator('.asset-list button')).toHaveCount(1);
+  await expect(redo).toBeEnabled();
+  await redo.click();
+  await expect(properties.locator('.asset-list button')).toHaveCount(2);
+  await properties.getByRole('button', { name: 'アセットを削除', exact: true }).click();
+  await expect(properties.locator('.asset-list button')).toHaveCount(1);
+  await expect(undo).toBeEnabled();
+  await undo.click();
+  await expect(properties.locator('.asset-list button')).toHaveCount(2);
+  expect((await readStoredEditState(page, original.assetId)).bytes).toEqual(original.bytes);
+  await properties.getByLabel('新規アセット名').fill('blank history');
+  await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
+  await expect(properties.locator('.asset-list button')).toHaveCount(3);
+  await expect(undo).toBeEnabled();
+  await undo.click();
+  await expect(properties.locator('.asset-list button')).toHaveCount(2);
+  await expect(redo).toBeEnabled();
+  await redo.click();
+  await expect(properties.locator('.asset-list button')).toHaveCount(3);
+  await page.reload();
+  await page.getByRole('button', { name: '「R02 renamed」を開く' }).click();
+  await expect(properties.locator('.asset-list button')).toHaveCount(3);
+  expect((await readStoredEditState(page, original.assetId)).bytes).toEqual(original.bytes);
 });

@@ -6,6 +6,8 @@ import { AutosaveQueue, type SaveState } from './autosave';
 import { resetDbForTests } from './db';
 import {
   loadAsset,
+  loadProject,
+  renameProject,
   loadBlob,
   saveAsset,
   saveAssetRevision,
@@ -51,7 +53,7 @@ describe('AutosaveQueue', () => {
     });
     await queue.flush();
     expect(saved).toBe(1);
-    expect(states.map((state) => state.status)).toEqual(['saving', 'saved']);
+    expect(states.map((state) => state.status)).toEqual(['pending', 'saving', 'saved']);
     expect(queue.getState().status).toBe('saved');
   });
 
@@ -132,6 +134,87 @@ describe('AutosaveQueue', () => {
     });
     await expect(AutosaveQueue.flushAll()).rejects.toThrow('global autosave failed');
     expect(successRan).toBe(true);
+  });
+
+  it.each([true, false])(
+    '名前と複数素材の連続保存を両順序で保持する: nameFirst=%s',
+    async (nameFirst) => {
+      const queue = new AutosaveQueue({ delayMs: 60_000 });
+      const first = structuredClone(characterAsset) as unknown as Asset;
+      const second = { ...first, id: 'asset_second' };
+      const project = {
+        ...createEmptyProject('before'),
+        assets: [first, second].map((asset) => ({
+          id: asset.id,
+          name: asset.name,
+          displayName: asset.displayName,
+          assetType: asset.assetType,
+        })),
+      };
+      await saveProject(project);
+      await saveAsset(project.id, first);
+      await saveAsset(project.id, second);
+      const name = () => queue.schedule(() => renameProject(project.id, 'after'), 'project');
+      if (nameFirst) name();
+      for (const asset of [first, second]) {
+        queue.schedule(() => saveAsset(project.id, { ...asset, displayName: 'latest' }), asset.id);
+      }
+      if (!nameFirst) name();
+      await queue.flush();
+      const stored = await loadProject(project.id);
+      expect(stored.project.name).toBe('after');
+      expect(stored.project.assets.map((asset) => asset.displayName)).toEqual(['latest', 'latest']);
+      expect((await loadAsset(first.id)).asset.displayName).toBe('latest');
+      expect((await loadAsset(second.id)).asset.displayName).toBe('latest');
+    },
+  );
+
+  it('別対象の成功や新規予約は失敗を隠さず、失敗対象だけ再試行する', async () => {
+    const queue = new AutosaveQueue({ delayMs: 60_000 });
+    let attempts = 0;
+    let otherSaves = 0;
+    queue.schedule(async () => {
+      if (++attempts === 1) throw new Error('name failed');
+    }, 'project');
+    queue.schedule(async () => {
+      otherSaves++;
+    }, 'asset');
+    await expect(queue.flush()).rejects.toThrow('name failed');
+    expect(otherSaves).toBe(1);
+    queue.schedule(async () => {
+      otherSaves++;
+    }, 'asset');
+    expect(queue.getState().status).toBe('error');
+    await expect(queue.flush()).rejects.toThrow('name failed');
+    expect(queue.retryLastFailure()).toBe(true);
+    await queue.flush();
+    expect(attempts).toBe(2);
+    expect(otherSaves).toBe(2);
+    expect(queue.getState().status).toBe('saved');
+  });
+
+  it('同じ対象の最新変更へまとめても保存中の別対象を失わない', async () => {
+    const queue = new AutosaveQueue({ delayMs: 60_000 });
+    const runs: string[] = [];
+    queue.schedule(async () => {
+      runs.push('project');
+      queue.schedule(async () => {
+        runs.push('asset old');
+      }, 'asset');
+      queue.schedule(async () => {
+        runs.push('asset new');
+      }, 'asset');
+      queue.schedule(async () => {
+        runs.push('other asset');
+      }, 'other');
+    }, 'project');
+    await queue.flush();
+    expect(runs).toEqual(['project', 'asset new', 'other asset']);
+    expect(queue.getSnapshot()).toMatchObject({
+      hasTimer: false,
+      hasPendingTask: false,
+      isRunning: false,
+    });
   });
 
   it('原子的保存前のflush後は古いautosaveが改訂を上書きしない', async () => {

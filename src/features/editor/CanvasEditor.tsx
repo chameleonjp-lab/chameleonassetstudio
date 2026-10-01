@@ -1484,6 +1484,7 @@ export function CanvasEditor({
         data-paste-preview-ready={
           pastePreview ? (pasteBitmap && pastePosition ? 'true' : 'false') : 'inactive'
         }
+        data-view-transform={JSON.stringify(view)}
         data-onion-skin-previous={onionSkinPreviousAsset ? 'true' : 'false'}
         data-onion-skin-next={onionSkinNextAsset ? 'true' : 'false'}
         data-onion-skin-opacity={String(ONION_SKIN_OPACITY)}

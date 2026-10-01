@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { confirmImageImport } from './importTestHelpers';
+import { canvasWorldPoint } from './canvasTestHelpers';
 
 async function makePngBuffer(page: Page): Promise<Buffer> {
   const dataUrl = await page.evaluate(() => {
@@ -30,8 +31,8 @@ async function setupProjectWithImage(page: Page, name: string): Promise<Locator>
 }
 
 async function clickCanvasCenter(page: Page, canvas: Locator): Promise<void> {
-  const box = (await canvas.boundingBox())!;
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  const point = await canvasWorldPoint(canvas);
+  await page.mouse.click(point.x, point.y);
 }
 
 test('ズーム倍率を切り替えられ、倍率が表示される', async ({ page }) => {

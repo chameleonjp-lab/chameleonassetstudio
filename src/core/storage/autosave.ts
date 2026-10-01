@@ -1,4 +1,4 @@
-export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+export type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 
 export interface SaveState {
   status: SaveStatus;
@@ -20,7 +20,7 @@ export type SaveTask = () => Promise<void>;
 
 /**
  * 自動保存キュー。
- * 連続する操作は最後のタスクにまとめ（デバウンス）、保存は常に直列で走らせる。
+ * 同じ保存対象の操作だけをデバウンスし、異なる対象の保存は直列で走らせる。
  * flush / flushAll は保存失敗を呼び出し元へ伝え、後続の破壊的操作を止める。
  */
 export class AutosaveQueue {
@@ -28,10 +28,10 @@ export class AutosaveQueue {
 
   private readonly delayMs: number;
   private timer: ReturnType<typeof setTimeout> | null = null;
-  private pendingTask: SaveTask | null = null;
+  private readonly pendingTasks = new Map<string, SaveTask>();
   private currentRun: Promise<void> | null = null;
   private lastError: unknown = null;
-  private failedTask: SaveTask | null = null;
+  private readonly failures = new Map<string, { task: SaveTask; error: unknown }>();
   private state: SaveState = { status: 'idle' };
   private readonly listeners = new Set<(state: SaveState) => void>();
 
@@ -42,13 +42,24 @@ export class AutosaveQueue {
   static async flushAll(): Promise<void> {
     while (AutosaveQueue.activeQueues.size > 0) {
       const queues = [...AutosaveQueue.activeQueues];
-      await Promise.all(queues.map((queue) => queue.flush()));
+      const results = await Promise.allSettled(queues.map((queue) => queue.flush()));
+      const failure = results.find((result) => result.status === 'rejected');
+      if (failure?.status === 'rejected') throw failure.reason;
     }
   }
 
+  /** 履歴の巻き戻しを永続化し、元の失敗理由と安全な再試行内容を保持する。 */
+  static async flushRollback(): Promise<void> {
+    const results = await Promise.allSettled(
+      [...AutosaveQueue.activeQueues].map((queue) => queue.flush(true)),
+    );
+    const failure = results.find((result) => result.status === 'rejected');
+    if (failure?.status === 'rejected') throw failure.reason;
+  }
+
   /**
-   * 保存失敗後にUIを保存前状態へ戻した場合、rollbackが予約した重複autosaveだけを破棄する。
-   * 実行中taskは中断せず、待機中taskとtimerのみを取り除く。
+   * 待機中taskとtimerのみを破棄する。実行中taskと失敗の記録は維持する。
+   * 履歴の巻き戻しはflushRollbackを使い、保存済みの変更も正本へ戻す。
    */
   static cancelAllPending(): void {
     for (const queue of AutosaveQueue.activeQueues) {
@@ -65,8 +76,8 @@ export class AutosaveQueue {
     return {
       state: { ...this.state },
       hasTimer: this.timer !== null,
-      hasPendingTask: this.pendingTask !== null,
-      hasFailedTask: this.failedTask !== null,
+      hasPendingTask: this.pendingTasks.size > 0,
+      hasFailedTask: this.failures.size > 0,
       isRunning: this.currentRun !== null,
       lastError:
         this.lastError === null
@@ -77,12 +88,12 @@ export class AutosaveQueue {
     };
   }
 
-  /** 保存失敗した最後のタスクを、明示的な操作で再実行できるかを返す。 */
+  /** 失敗した保存対象を、明示的な操作で再試行できるかを返す。 */
   canRetry(): boolean {
     return (
-      this.failedTask !== null &&
+      this.failures.size > 0 &&
       this.currentRun === null &&
-      this.pendingTask === null &&
+      this.pendingTasks.size === 0 &&
       this.timer === null
     );
   }
@@ -92,12 +103,9 @@ export class AutosaveQueue {
     if (!this.canRetry()) {
       return false;
     }
-    const task = this.failedTask;
-    if (!task) {
-      return false;
+    for (const [key, { task }] of [...this.failures]) {
+      this.schedule(task, key);
     }
-    this.failedTask = null;
-    this.schedule(task);
     return true;
   }
 
@@ -108,29 +116,37 @@ export class AutosaveQueue {
     };
   }
 
-  schedule(task: SaveTask): void {
+  schedule(task: SaveTask, key = 'default'): void {
     AutosaveQueue.activeQueues.add(this);
-    this.lastError = null;
-    this.failedTask = null;
-    this.pendingTask = task;
+    this.pendingTasks.set(key, task);
+    this.setState(
+      this.lastError !== null
+        ? { status: 'error', errorMessage: this.errorText(this.lastError) }
+        : { status: this.currentRun ? 'saving' : 'pending' },
+    );
     if (this.timer) {
       clearTimeout(this.timer);
     }
     this.timer = setTimeout(() => {
       this.timer = null;
       void this.startRun().catch(() => {
-        // 失敗はstateとlastErrorへ保持し、次のflush / flushAllで呼び出し元へ返す。
+        // 失敗はstateに保持し、flushで呼び出し元へ返す。
       });
     }, this.delayMs);
   }
 
-  async flush(): Promise<void> {
+  async flush(preserveFailures = false): Promise<void> {
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
     }
-    while (this.currentRun || this.pendingTask) {
-      await (this.currentRun ?? this.startRun());
+    while (this.currentRun || this.pendingTasks.size > 0) {
+      // 全対象を排出してから失敗を返す。別対象の失敗で保留変更を捨てない。
+      await (this.currentRun ?? this.startRun(preserveFailures)).catch(() => {});
+      if (this.timer) {
+        clearTimeout(this.timer);
+        this.timer = null;
+      }
     }
     if (this.lastError !== null) {
       throw this.lastError;
@@ -143,54 +159,65 @@ export class AutosaveQueue {
       clearTimeout(this.timer);
       this.timer = null;
     }
-    this.pendingTask = null;
-    if (!this.currentRun) {
+    this.pendingTasks.clear();
+    if (!this.currentRun && this.failures.size === 0) {
       AutosaveQueue.activeQueues.delete(this);
     }
   }
 
-  private startRun(): Promise<void> {
+  private startRun(preserveFailures = false): Promise<void> {
     if (this.currentRun) {
       return this.currentRun;
     }
-    const task = this.pendingTask;
-    if (!task) {
+    if (this.pendingTasks.size === 0) {
       if (this.lastError === null) {
         AutosaveQueue.activeQueues.delete(this);
       }
       return this.lastError === null ? Promise.resolve() : Promise.reject(this.lastError);
     }
-    this.pendingTask = null;
-
-    const run = (async () => {
+    const tasks = [...this.pendingTasks];
+    this.pendingTasks.clear();
+    // microtaskで開始し、同期throwや即時scheduleより前にcurrentRunを設定する。
+    const run = Promise.resolve().then(async () => {
       this.setState({ status: 'saving' });
-      try {
-        await task();
-        this.lastError = null;
-        this.failedTask = null;
-        this.setState({ status: 'saved', lastSavedAt: new Date().toISOString() });
-      } catch (error) {
-        this.lastError = error;
-        this.failedTask = task;
-        this.setState({
-          status: 'error',
-          errorMessage: error instanceof Error ? error.message : String(error),
-        });
-        throw error;
+      for (const [key, task] of tasks) {
+        try {
+          await task();
+          const failure = this.failures.get(key);
+          if (preserveFailures && failure) {
+            this.failures.set(key, { task, error: failure.error });
+          } else {
+            this.failures.delete(key);
+          }
+        } catch (error) {
+          this.failures.set(key, { task, error });
+        }
       }
-    })();
+      this.lastError = this.failures.values().next().value?.error ?? null;
+      if (this.lastError !== null) {
+        this.setState({ status: 'error', errorMessage: this.errorText(this.lastError) });
+        throw this.lastError;
+      }
+      this.setState(
+        this.pendingTasks.size > 0
+          ? { status: 'pending' }
+          : { status: 'saved', lastSavedAt: new Date().toISOString() },
+      );
+    });
 
     this.currentRun = run.finally(() => {
       this.currentRun = null;
-      if (this.pendingTask && !this.timer) {
-        void this.startRun().catch(() => {
-          // 次のflushで失敗を伝える。
-        });
-      } else if (!this.pendingTask && this.lastError === null) {
+      if (this.pendingTasks.size > 0 && !this.timer) {
+        void this.startRun().catch(() => {});
+      } else if (this.pendingTasks.size === 0 && this.lastError === null) {
         AutosaveQueue.activeQueues.delete(this);
       }
     });
     return this.currentRun;
+  }
+
+  private errorText(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
   }
 
   private setState(state: SaveState): void {

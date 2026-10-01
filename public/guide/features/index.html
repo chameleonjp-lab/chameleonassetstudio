@@ -1647,7 +1647,7 @@
                     ><span class="feature-title">独立コピー・左右反転コピー・削除</span
                     ><span class="badges"
                       ><span class="badge data">別アセット</span
-                      ><span class="badge danger">Undo不可</span></span
+                      ><span class="badge undo">Undo対応</span></span
                     ></span
                   >
                 </summary>
@@ -1661,12 +1661,14 @@
                   <div class="feature-row">
                     <dt>削除</dt>
                     <dd>
-                      選択中アセットと関連画像・復旧点を直接削除します。プロジェクト用のごみ箱には入りません。
+                      選択中アセットを一覧から削除します。この編集セッション内では「元に戻す」で画像・復旧点も復元できます。再読み込み後は戻せません。
                     </dd>
                   </div>
                   <div class="feature-row">
                     <dt>戻し方</dt>
-                    <dd>これらは「元に戻す」の対象外です。削除前に.casprojを保存してください。</dd>
+                    <dd>
+                      コピー・通常の削除は、この編集セッション内で「元に戻す」「やり直す」が使えます。
+                    </dd>
                   </div>
                 </dl>
               </details>
@@ -1681,7 +1683,7 @@
                     ><span class="feature-title">新規アセットを作成</span
                     ><span class="badges"
                       ><span class="badge data">新しい素材</span
-                      ><span class="badge danger">Undo不可</span></span
+                      ><span class="badge undo">Undo対応</span></span
                     ></span
                   >
                 </summary>
@@ -1696,9 +1698,7 @@
                   </div>
                   <div class="feature-row">
                     <dt>戻し方</dt>
-                    <dd>
-                      作成はUndo対象外です。不要ならアセット削除になりますが、その削除もUndoできません。
-                    </dd>
+                    <dd>作成はこの編集セッション内で「元に戻す」「やり直す」が使えます。</dd>
                   </div>
                 </dl>
               </details>
@@ -1987,7 +1987,7 @@
                     ><span class="feature-title">Family / Variant</span
                     ><span class="badges"
                       ><span class="badge data">素材の派生関係</span
-                      ><span class="badge danger">多くはUndo不可</span></span
+                      ><span class="badge danger">Undo対応</span></span
                     ></span
                   >
                 </summary>
@@ -2008,7 +2008,7 @@
                   <div class="feature-row">
                     <dt>Undo</dt>
                     <dd>
-                      明示更新は戻せます。Family作成、登録、解除、Familyから外す、多くの派生版作成・削除はUndo対象外です。
+                      Family作成・登録・解除、派生版の作成・通常削除、明示更新は、この編集セッション内で戻せます。
                     </dd>
                   </div>
                   <div class="feature-row">

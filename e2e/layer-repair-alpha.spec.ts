@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { canvasWorldPoint } from './canvasTestHelpers';
 
 interface StoredAssetRecord {
   data: {
@@ -45,14 +46,13 @@ async function createBlankAsset(page: Page): Promise<void> {
   await properties.getByLabel('新規アセットのサイズ').selectOption('32');
   await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
   await expect(page.getByLabel('アセットキャンバス')).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: 'main', exact: true }).click();
 }
 
 async function canvasCenter(page: Page): Promise<{ x: number; y: number }> {
-  const box = await page.getByLabel('アセットキャンバス').boundingBox();
-  if (!box) {
-    throw new Error('Canvasの座標を取得できません。');
-  }
-  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const canvas = page.getByLabel('アセットキャンバス');
+  await expect(canvas).toHaveAttribute('data-raster-input-ready', 'true');
+  return canvasWorldPoint(canvas, 16, 16);
 }
 
 async function readRepairState(page: Page): Promise<RepairState> {

@@ -8,6 +8,7 @@ import {
   resetDbForTests,
   runTransaction,
   STORE_ASSETS,
+  STORE_BLOBS,
   STORE_SNAPSHOTS,
 } from './db';
 import {
@@ -121,6 +122,63 @@ async function seedCoordinatorFlow() {
 }
 
 describe('snapshot復元の保存層調整', () => {
+  it('複数画像を一緒に復元し、二枚目の競合時は一枚目も戻さない', async () => {
+    const base = structuredClone(characterAsset) as unknown as Asset;
+    const edit = editTexture(base);
+    const asset: Asset = {
+      ...base,
+      id: 'multi_edit',
+      textures: [...base.textures, { ...edit, id: 'second_edit', path: 'textures/second.png' }],
+    };
+    const project = {
+      ...createEmptyProject('multi'),
+      assets: [
+        {
+          id: asset.id,
+          name: asset.name,
+          displayName: asset.displayName,
+          assetType: asset.assetType,
+        },
+      ],
+    };
+    const blobs = asset.textures.map((texture, index) => ({
+      key: `${asset.id}/${texture.path}`,
+      blob: new Blob([new Uint8Array([index + 1])], { type: texture.mimeType }),
+    }));
+    await saveProjectBundle(project, [asset], blobs);
+    const edits = asset.textures.filter((texture) => texture.kind === 'edit');
+    const first = blobs.find((blob) => blob.key === `${asset.id}/${edits[0].path}`)!;
+    await saveSnapshot({
+      projectId: project.id,
+      assetId: asset.id,
+      asset,
+      blobKey: first.key,
+      blob: first.blob,
+      label: 'multi',
+    });
+    const [{ id }] = await listSnapshots(asset.id);
+    const changed = edits.map((texture) => ({
+      key: `${asset.id}/${texture.path}`,
+      blob: new Blob([new Uint8Array([9])], { type: texture.mimeType }),
+    }));
+    await saveAssetRevisionBase({ projectId: project.id, asset, putBlobs: changed });
+    const prepared = await prepareSnapshotRestore(id);
+    expect(prepared.images).toHaveLength(2);
+    await commitSnapshotRestore(prepared.restoreToken);
+    for (const image of prepared.images)
+      expect(await readBytes(image.key)).toEqual(new Uint8Array(await image.blob.arrayBuffer()));
+    await saveAssetRevisionBase({ projectId: project.id, asset, putBlobs: changed });
+    const raced = await prepareSnapshotRestore(id);
+    await runTransaction([STORE_BLOBS], 'readwrite', async (tx) => {
+      const store = tx.objectStore(STORE_BLOBS);
+      const current = await requestToPromise(store.get(changed[1].key));
+      await requestToPromise(store.put({ ...current, bytes: new Uint8Array([8]).buffer }));
+    });
+    await expect(commitSnapshotRestore(raced.restoreToken)).rejects.toThrow('編集画像が変更');
+    expect(await readBytes(changed[0].key)).toEqual(new Uint8Array([9]));
+    expect(await readBytes(changed[1].key)).toEqual(new Uint8Array([8]));
+  });
+
   it('復元準備前に保留中autosaveをflushし、最新の正本をUndo用として取得する', async () => {
     const fixture = await seedCoordinatorFlow();
     const queue = new AutosaveQueue({ delayMs: 60_000 });

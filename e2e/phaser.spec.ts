@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
+import { useVerifiedEngineCache } from './engineTestHelpers';
 
 type FixtureManifest = {
   profile: string;
@@ -30,6 +31,7 @@ test('Phaser 4.2.0 fixtureはHTTP経由で2ページとanimationを確認でき�
   page,
   browser,
 }) => {
+  await useVerifiedEngineCache(page, 'phaser');
   const consoleErrors: string[] = [];
   const downloads: string[] = [];
   page.on('console', (message) => {
