@@ -6,7 +6,15 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'coverage', 'playwright-report', 'test-results', 'node_modules'],
+    ignores: [
+      'dist',
+      'coverage',
+      'playwright-report',
+      'playwright-report-webkit',
+      'test-results',
+      'test-results-webkit',
+      'node_modules',
+    ],
   },
   {
     files: ['**/*.{ts,tsx}'],

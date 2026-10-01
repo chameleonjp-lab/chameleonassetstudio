@@ -28,6 +28,18 @@ export default defineConfig({
           : {}),
       },
     },
+    {
+      name: 'webkit-critical',
+      testMatch: [
+        'app.spec.ts',
+        'import.spec.ts',
+        'storage.spec.ts',
+        'export.spec.ts',
+        'casproj.spec.ts',
+        'device-flow.spec.ts',
+      ],
+      use: { ...devices['Desktop Safari'] },
+    },
   ],
   webServer: {
     command: 'npm run dev -- --port 5173 --strictPort',

@@ -7,3 +7,6 @@ test-results
 *.local
 .DS_Store
 *.tsbuildinfo
+
+playwright-report-webkit
+test-results-webkit
