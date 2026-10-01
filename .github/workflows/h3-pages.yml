@@ -20,7 +20,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      publish: ${{ steps.scope.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Classify publication inputs
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.before }}
+        run: node tools/ci/classify-changes.mjs
+
   build:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.publish == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read

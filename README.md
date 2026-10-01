@@ -1,5 +1,7 @@
 # Chameleon Asset Studio
 
+現在の実装入口: [2D完成までの6工程](docs/RELEASE_COMPLETION_PLAN_2026-10-02.md)。開発・検査は [R01実行手順](docs/R01_DEVELOPMENT_WORKFLOW.md) を参照。
+
 Chameleon Asset Studio は、ブラウザゲームで使う 2D アセットを作成・編集・ゲーム用データ化するための Web ツールです。
 
 公開中の開発版は、[Chameleon Asset Studio](https://chameleonjp-lab.github.io/chameleonassetstudio/)から利用できる。mainが更新されると、GitHub Actionsが最新版を自動公開する。
