@@ -537,6 +537,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const [newAssetTemplateId, setNewAssetTemplateId] = useState<AssetCreationTemplateId>(
     defaultAssetCreationTemplateId('character'),
   );
+  const [propertySection, setPropertySection] = useState('all');
+  const [newAssetStarterArtwork, setNewAssetStarterArtwork] = useState(false);
   const [newAssetCreateBodyPart, setNewAssetCreateBodyPart] = useState(false);
   const [creatingAsset, setCreatingAsset] = useState(false);
   const [duplicatingAsset, setDuplicatingAsset] = useState(false);
@@ -3189,6 +3191,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         assetType: newAssetType,
         size: { width: Number(newAssetWidth), height: Number(newAssetHeight) },
         templateId: newAssetTemplateId,
+        starterArtwork: newAssetStarterArtwork,
         createCharacterBodyPart:
           newAssetType === 'character' &&
           newAssetTemplateId === 'character-basic' &&
@@ -3838,11 +3841,48 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
           <div className="editor-properties-guide">
             <p>目的の場所へ移動できます。詳しい説明は別タブで開きます。</p>
             <nav aria-label="プロパティ内メニュー">
-              <a href="#property-asset">アセット</a>
-              <a href="#property-layers">レイヤー</a>
-              <a href="#property-image">画像編集</a>
-              <a href="#property-game-data">ゲーム情報</a>
-              <a href="#property-parts">パーツ・リグ</a>
+              <button
+                type="button"
+                aria-pressed={propertySection === 'all'}
+                onClick={() => setPropertySection('all')}
+              >
+                すべて表示
+              </button>
+              <a
+                href="#property-asset"
+                aria-current={propertySection === 'asset' ? 'page' : undefined}
+                onClick={() => setPropertySection('asset')}
+              >
+                アセット
+              </a>
+              <a
+                href="#property-layers"
+                aria-current={propertySection === 'layers' ? 'page' : undefined}
+                onClick={() => setPropertySection('layers')}
+              >
+                レイヤー
+              </a>
+              <a
+                href="#property-image"
+                aria-current={propertySection === 'image' ? 'page' : undefined}
+                onClick={() => setPropertySection('image')}
+              >
+                画像編集
+              </a>
+              <a
+                href="#property-game-data"
+                aria-current={propertySection === 'game-data' ? 'page' : undefined}
+                onClick={() => setPropertySection('game-data')}
+              >
+                ゲーム情報
+              </a>
+              <a
+                href="#property-parts"
+                aria-current={propertySection === 'parts' ? 'page' : undefined}
+                onClick={() => setPropertySection('parts')}
+              >
+                パーツ・リグ
+              </a>
             </nav>
             <a
               href={`${import.meta.env.BASE_URL}guide/features/#properties`}
@@ -3864,1128 +3904,1161 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             />
           </label>
 
-          <h3 id="property-asset" className="editor-subheading">
-            アセット
-          </h3>
-          {selectedAsset ? (
-            <>
-              <AssetTypePanel asset={selectedAsset} onCommit={commitPanelChange} />
-              <div className="asset-actions">
-                <button
-                  type="button"
-                  disabled={duplicatingAsset || persistentMutationBlocked}
-                  onClick={() => void handleDuplicateAsset()}
-                >
-                  独立コピーを作成
-                </button>
-                <button
-                  type="button"
-                  className="asset-flip-copy-button"
-                  disabled={importing || persistentMutationBlocked}
-                  onClick={() => void handleFlipCopyAsset()}
-                >
-                  独立左右反転コピーを作成
-                </button>
-                <button
-                  type="button"
-                  className="asset-delete-button"
-                  disabled={
-                    deletingAsset || mutationBusy || selectedFamilyMembership?.role === 'base'
-                  }
-                  onClick={() => void handleDeleteAsset()}
-                >
-                  アセットを削除
-                </button>
-              </div>
-              <p className="editor-note">
-                独立コピーはstandaloneです。Familyには登録されず、自動refreshも行いません。
-              </p>
-              {selectedFamilyMembership?.role === 'base' && (
-                <p className="variant-warning">
-                  baseを削除するには、先にFamilyを解除してください。
+          <section
+            aria-label="素材の作成と管理"
+            hidden={propertySection !== 'all' && propertySection !== 'asset'}
+          >
+            <h3 id="property-asset" className="editor-subheading">
+              アセット
+            </h3>
+            {selectedAsset ? (
+              <>
+                <AssetTypePanel asset={selectedAsset} onCommit={commitPanelChange} />
+                <div className="asset-actions">
+                  <button
+                    type="button"
+                    disabled={duplicatingAsset || persistentMutationBlocked}
+                    onClick={() => void handleDuplicateAsset()}
+                  >
+                    独立コピーを作成
+                  </button>
+                  <button
+                    type="button"
+                    className="asset-flip-copy-button"
+                    disabled={importing || persistentMutationBlocked}
+                    onClick={() => void handleFlipCopyAsset()}
+                  >
+                    独立左右反転コピーを作成
+                  </button>
+                  <button
+                    type="button"
+                    className="asset-delete-button"
+                    disabled={
+                      deletingAsset || mutationBusy || selectedFamilyMembership?.role === 'base'
+                    }
+                    onClick={() => void handleDeleteAsset()}
+                  >
+                    アセットを削除
+                  </button>
+                </div>
+                <p className="editor-note">
+                  元の素材とは別に編集できます。元の素材を変更しても、このコピーは変わりません。
                 </p>
-              )}
-            </>
-          ) : (
-            <p className="editor-note">アセットを選ぶと種別を設定できます。</p>
-          )}
-
-          <fieldset className="editor-fieldset asset-create-fieldset">
-            <legend>新規アセットを作成</legend>
-            <p className="editor-note">
-              サイズとtemplateを確認してから作成します。templateは作成結果だけを保存し、template
-              ID自体は保存しません。
-            </p>
-            <label className="editor-field">
-              新規アセット名
-              <input
-                type="text"
-                value={newAssetName}
-                onChange={(event) => setNewAssetName(event.target.value)}
-              />
-            </label>
-            <label className="editor-field">
-              新規アセットの種別
-              <select
-                value={newAssetType}
-                onChange={(event) => handleNewAssetTypeChange(event.target.value as AssetType)}
-              >
-                {ASSET_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {ASSET_TYPE_LABELS[type]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="editor-field">
-              新規アセットのサイズ
-              <select
-                value={newAssetSizePreset}
-                onChange={(event) =>
-                  handleNewAssetPresetChange(event.target.value as BlankCanvasPresetId)
-                }
-              >
-                {BLANK_CANVAS_PRESETS.map((preset) => (
-                  <option key={preset.id} value={preset.id}>
-                    {preset.label}
-                  </option>
-                ))}
-                <option value="custom">自由入力</option>
-              </select>
-            </label>
-            <div className="gamedata-inline-fields">
-              <label className="editor-field">
-                新規アセットの幅
-                <input
-                  type="number"
-                  min={1}
-                  max={4096}
-                  inputMode="numeric"
-                  value={newAssetWidth}
-                  onChange={(event) => handleNewAssetDimensionChange('width', event.target.value)}
-                />
-              </label>
-              <label className="editor-field">
-                新規アセットの高さ
-                <input
-                  type="number"
-                  min={1}
-                  max={4096}
-                  inputMode="numeric"
-                  value={newAssetHeight}
-                  onChange={(event) => handleNewAssetDimensionChange('height', event.target.value)}
-                />
-              </label>
-            </div>
-            <p className="editor-note">
-              幅・高さは1〜4096の整数です。値は自動調整せず、範囲外なら画像生成前に拒否します。
-            </p>
-            <label className="editor-field">
-              新規アセットのテンプレート
-              <select
-                value={newAssetTemplateId}
-                onChange={(event) => {
-                  setNewAssetTemplateId(event.target.value as AssetCreationTemplateId);
-                  setNewAssetCreateBodyPart(false);
-                }}
-              >
-                {newAssetTemplates.map((template) => (
-                  <option key={template.id} value={template.id}>
-                    {template.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="editor-note">
-              {newAssetTemplates.find((template) => template.id === newAssetTemplateId)
-                ?.description ?? ''}
-            </p>
-            {newAssetType === 'character' && newAssetTemplateId === 'character-basic' && (
-              <label className="editor-field editor-field-checkbox">
-                <input
-                  type="checkbox"
-                  aria-label="character body Partを作成"
-                  checked={newAssetCreateBodyPart}
-                  onChange={(event) => setNewAssetCreateBodyPart(event.target.checked)}
-                />
-                main layerを参照するbody Partも作成する
-              </label>
+                {selectedFamilyMembership?.role === 'base' && (
+                  <p className="variant-warning">
+                    元の素材を削除するには、先に素材の関連付けを解除してください。
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="editor-note">アセットを選ぶと種別を設定できます。</p>
             )}
-            <button
-              type="button"
-              aria-label="新規アセットを作成"
-              disabled={creatingAsset || !project || persistentMutationBlocked}
-              onClick={() => void handleCreateBlankAsset()}
-            >
-              新規アセットを作成
-            </button>
-          </fieldset>
 
-          {project && (
-            <ImportFrameSetPanel
-              accept={RASTER_IMPORT_ACCEPT}
-              busy={persistentMutationBlocked || importing || creatingAsset || deletingAsset}
-              onPrepareSequence={handlePrepareSequenceImport}
-              onPrepareSheet={handlePrepareSpriteSheetImport}
-              onPrepareTileset={handlePrepareTileSetImport}
-              onPrepareAtlas={handlePrepareAtlasImport}
-            />
-          )}
-
-          {project && (
-            <VariantPanel
-              project={project}
-              assets={assets}
-              selectedAsset={selectedAsset}
-              busy={persistentMutationBlocked || importing || creatingAsset || deletingAsset}
-              inspections={variantInspections}
-              preview={
-                variantPreview
-                  ? { assetId: variantPreview.assetId, artifact: variantPreview.artifact }
-                  : null
-              }
-              onSelectAsset={(assetId) => {
-                setSelectedAssetId(assetId);
-                setSelectedLayerId(null);
-                setCheckedLayerIds([]);
-              }}
-              onCreateFamily={(name, baseAssetId) => void handleCreateFamily(name, baseAssetId)}
-              onAddManualVariant={(familyId, assetId) =>
-                void handleAddManualVariant(familyId, assetId)
-              }
-              onCreateMirrorVariant={(familyId) => void handleCreateMirrorVariant(familyId)}
-              onCreatePaletteVariant={(options) => void handleCreatePaletteVariant(options)}
-              onDetachVariant={(familyId, assetId) => void handleDetachVariant(familyId, assetId)}
-              onRemoveFamily={(familyId) => void handleRemoveFamily(familyId)}
-              onPreviewRefresh={(familyId, assetId) =>
-                void handlePreviewVariantRefresh(familyId, assetId)
-              }
-              onRefreshVariant={(familyId, assetId, artifact) =>
-                void handleRefreshVariant(familyId, assetId, artifact)
-              }
-              onDeleteVariantAsset={(familyId, assetId) =>
-                void handleDeleteVariantAsset(familyId, assetId)
-              }
-            />
-          )}
-
-          {project && (
-            <AssetBatchPanel
-              project={project}
-              assets={assets}
-              selectedAsset={selectedAsset}
-              busy={persistentMutationBlocked || importing || creatingAsset || deletingAsset}
-              onPrepare={handlePrepareAssetBatch}
-              onExecute={handleExecuteAssetBatch}
-              onOpenBackup={() => setMobileView('export')}
-            />
-          )}
-
-          {selectedAsset && snapshots.length > 0 && (
-            <>
-              <h3 className="editor-subheading">復旧点</h3>
+            <fieldset className="editor-fieldset asset-create-fieldset">
+              <legend>新規アセットを作成</legend>
               <p className="editor-note">
-                破壊的な画像編集（トリミング・消しゴム・色調整など）の前の状態です。アセットあたり最大
-                3 件保持します。
+                サイズと見本を選んで作成します。作成後は自由に描き直せます。
               </p>
-              <ul className="snapshot-list">
-                {snapshots.map((snapshot) => (
-                  <li key={snapshot.id} className="snapshot-list-item">
-                    <div className="snapshot-item-main">
-                      <span className="snapshot-item-label">{snapshot.label}</span>
-                      <span className="snapshot-item-meta">
-                        {new Date(snapshot.createdAt).toLocaleString('ja-JP')}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => void handleRestoreSnapshot(snapshot.id)}
-                      aria-label={`復旧点「${snapshot.label}（${new Date(
-                        snapshot.createdAt,
-                      ).toLocaleString('ja-JP')}）」から復元`}
-                    >
-                      復元
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-
-          <h3 id="property-canvas" className="editor-subheading">
-            Asset canvasサイズ
-          </h3>
-          {selectedAsset ? (
-            <CanvasResizePanel asset={selectedAsset} onCommit={commitPanelChange} />
-          ) : (
-            <p className="editor-note">アセットを選ぶとcanvasサイズを変更できます。</p>
-          )}
-
-          <h3 id="property-layers" className="editor-subheading">
-            レイヤー
-          </h3>
-          {selectedAsset ? (
-            <LayerPanel
-              asset={selectedAsset}
-              selectedLayerId={selectedLayerId}
-              checkedLayerIds={checkedLayerIds}
-              importAccept={RASTER_IMPORT_ACCEPT}
-              onSelectLayer={setSelectedLayerId}
-              onToggleChecked={handleToggleChecked}
-              onCommit={commitPanelChange}
-              onAddImageLayer={(event) => void handleAddImageLayer(event)}
-              onAddGuideLayer={handleAddGuideLayer}
-            />
-          ) : (
-            <p className="editor-note">アセットを選ぶとレイヤーを操作できます。</p>
-          )}
-
-          <h3 className="editor-subheading">整列・等間隔配置</h3>
-          {selectedAsset ? (
-            <AlignPanel
-              asset={selectedAsset}
-              checkedLayerIds={checkedLayerIds}
-              selectedLayerId={selectedLayerId}
-              onCommit={commitPanelChange}
-            />
-          ) : (
-            <p className="editor-note">アセットを選ぶと複数レイヤーの整列ができます。</p>
-          )}
-
-          <h3 className="editor-subheading">選択中レイヤー</h3>
-          {selectedLayer ? (
-            <div className="layer-fields">
               <label className="editor-field">
-                レイヤー名
+                新規アセット名
                 <input
                   type="text"
-                  value={selectedLayer.name}
-                  onFocus={beginLayerEdit}
-                  onBlur={commitLayerEdit}
-                  onChange={(event) => {
-                    if (selectedAsset) {
-                      applyAssetSnapshot(
-                        renameLayer(selectedAsset, selectedLayer.id, event.target.value),
-                      );
+                  value={newAssetName}
+                  onChange={(event) => setNewAssetName(event.target.value)}
+                />
+              </label>
+              <label className="editor-field">
+                新規アセットの種別
+                <select
+                  value={newAssetType}
+                  onChange={(event) => handleNewAssetTypeChange(event.target.value as AssetType)}
+                >
+                  {ASSET_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {ASSET_TYPE_LABELS[type]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="editor-field">
+                新規アセットのサイズ
+                <select
+                  value={newAssetSizePreset}
+                  onChange={(event) =>
+                    handleNewAssetPresetChange(event.target.value as BlankCanvasPresetId)
+                  }
+                >
+                  {BLANK_CANVAS_PRESETS.map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.label}
+                    </option>
+                  ))}
+                  <option value="custom">自由入力</option>
+                </select>
+              </label>
+              <div className="gamedata-inline-fields">
+                <label className="editor-field">
+                  新規アセットの幅
+                  <input
+                    type="number"
+                    min={1}
+                    max={4096}
+                    inputMode="numeric"
+                    value={newAssetWidth}
+                    onChange={(event) => handleNewAssetDimensionChange('width', event.target.value)}
+                  />
+                </label>
+                <label className="editor-field">
+                  新規アセットの高さ
+                  <input
+                    type="number"
+                    min={1}
+                    max={4096}
+                    inputMode="numeric"
+                    value={newAssetHeight}
+                    onChange={(event) =>
+                      handleNewAssetDimensionChange('height', event.target.value)
                     }
+                  />
+                </label>
+              </div>
+              <p className="editor-note">
+                幅・高さは1〜4096の整数です。値は自動調整せず、範囲外なら画像生成前に拒否します。
+              </p>
+              <label className="editor-field">
+                新規アセットのテンプレート
+                <select
+                  value={newAssetTemplateId}
+                  onChange={(event) => {
+                    setNewAssetTemplateId(event.target.value as AssetCreationTemplateId);
+                    setNewAssetCreateBodyPart(false);
                   }}
-                />
+                >
+                  {newAssetTemplates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.label}
+                    </option>
+                  ))}
+                </select>
               </label>
-              <label className="editor-field">
-                X
-                <input
-                  type="number"
-                  value={roundValue(selectedLayer.transform.position.x)}
-                  onFocus={beginLayerEdit}
-                  onBlur={commitLayerEdit}
-                  onChange={(event) => handleLayerTransformChange('x', event.target.value)}
-                />
-              </label>
-              <label className="editor-field">
-                Y
-                <input
-                  type="number"
-                  value={roundValue(selectedLayer.transform.position.y)}
-                  onFocus={beginLayerEdit}
-                  onBlur={commitLayerEdit}
-                  onChange={(event) => handleLayerTransformChange('y', event.target.value)}
-                />
-              </label>
-              <label className="editor-field">
-                拡大率（%）
-                <input
-                  type="number"
-                  min={1}
-                  value={roundValue(Math.abs(selectedLayer.transform.scale.x) * 100)}
-                  onFocus={beginLayerEdit}
-                  onBlur={commitLayerEdit}
-                  onChange={(event) => handleLayerTransformChange('scale', event.target.value)}
-                />
-              </label>
-              <label className="editor-field">
-                回転（度）
-                <input
-                  type="number"
-                  value={roundValue(selectedLayer.transform.rotation)}
-                  onFocus={beginLayerEdit}
-                  onBlur={commitLayerEdit}
-                  onChange={(event) => handleLayerTransformChange('rotation', event.target.value)}
-                />
-              </label>
-              {selectedAsset?.assetType === 'background' && (
-                <BackgroundLayerFields
-                  asset={selectedAsset}
-                  layer={selectedLayer}
-                  onCommit={commitPanelChange}
-                />
+              <p className="editor-note">
+                {newAssetTemplates.find((template) => template.id === newAssetTemplateId)
+                  ?.description ?? ''}
+              </p>
+              {['character', 'item', 'tile', 'effect'].includes(newAssetType) && (
+                <label className="editor-field editor-field-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={newAssetStarterArtwork}
+                    onChange={(event) => setNewAssetStarterArtwork(event.target.checked)}
+                  />
+                  見本の絵を入れて始める
+                </label>
               )}
-            </div>
-          ) : (
-            <p className="editor-note">キャンバス上のレイヤーをクリックすると選択できます。</p>
-          )}
+              {newAssetType === 'character' && newAssetTemplateId === 'character-basic' && (
+                <label className="editor-field editor-field-checkbox">
+                  <input
+                    type="checkbox"
+                    aria-label="character body Partを作成"
+                    checked={newAssetCreateBodyPart}
+                    onChange={(event) => setNewAssetCreateBodyPart(event.target.checked)}
+                  />
+                  main layerを参照するbody Partも作成する
+                </label>
+              )}
+              <button
+                type="button"
+                aria-label="新規アセットを作成"
+                disabled={creatingAsset || !project || persistentMutationBlocked}
+                onClick={() => void handleCreateBlankAsset()}
+              >
+                新規アセットを作成
+              </button>
+            </fieldset>
 
-          {selectedLayer && (
-            <>
-              <h3 id="property-image" className="editor-subheading">
-                画像編集
-              </h3>
-              <div className="image-edit-fields">
+            {project && (
+              <ImportFrameSetPanel
+                accept={RASTER_IMPORT_ACCEPT}
+                busy={persistentMutationBlocked || importing || creatingAsset || deletingAsset}
+                onPrepareSequence={handlePrepareSequenceImport}
+                onPrepareSheet={handlePrepareSpriteSheetImport}
+                onPrepareTileset={handlePrepareTileSetImport}
+                onPrepareAtlas={handlePrepareAtlasImport}
+              />
+            )}
+
+            {project && (
+              <VariantPanel
+                project={project}
+                assets={assets}
+                selectedAsset={selectedAsset}
+                busy={persistentMutationBlocked || importing || creatingAsset || deletingAsset}
+                inspections={variantInspections}
+                preview={
+                  variantPreview
+                    ? { assetId: variantPreview.assetId, artifact: variantPreview.artifact }
+                    : null
+                }
+                onSelectAsset={(assetId) => {
+                  setSelectedAssetId(assetId);
+                  setSelectedLayerId(null);
+                  setCheckedLayerIds([]);
+                }}
+                onCreateFamily={(name, baseAssetId) => void handleCreateFamily(name, baseAssetId)}
+                onAddManualVariant={(familyId, assetId) =>
+                  void handleAddManualVariant(familyId, assetId)
+                }
+                onCreateMirrorVariant={(familyId) => void handleCreateMirrorVariant(familyId)}
+                onCreatePaletteVariant={(options) => void handleCreatePaletteVariant(options)}
+                onDetachVariant={(familyId, assetId) => void handleDetachVariant(familyId, assetId)}
+                onRemoveFamily={(familyId) => void handleRemoveFamily(familyId)}
+                onPreviewRefresh={(familyId, assetId) =>
+                  void handlePreviewVariantRefresh(familyId, assetId)
+                }
+                onRefreshVariant={(familyId, assetId, artifact) =>
+                  void handleRefreshVariant(familyId, assetId, artifact)
+                }
+                onDeleteVariantAsset={(familyId, assetId) =>
+                  void handleDeleteVariantAsset(familyId, assetId)
+                }
+              />
+            )}
+
+            {project && (
+              <AssetBatchPanel
+                project={project}
+                assets={assets}
+                selectedAsset={selectedAsset}
+                busy={persistentMutationBlocked || importing || creatingAsset || deletingAsset}
+                onPrepare={handlePrepareAssetBatch}
+                onExecute={handleExecuteAssetBatch}
+                onOpenBackup={() => setMobileView('export')}
+              />
+            )}
+
+            {selectedAsset && snapshots.length > 0 && (
+              <>
+                <h3 className="editor-subheading">復旧点</h3>
                 <p className="editor-note">
-                  ブラシ・矩形・楕円はキャンバス上でドラッグ、塗りつぶしと背景透過は対象をタップします。描画は選択中の編集用画像へ確定され、Undoで戻せます。
+                  破壊的な画像編集（トリミング・消しゴム・色調整など）の前の状態です。アセットあたり最大
+                  3 件保持します。
                 </p>
-                <fieldset className="editor-fieldset">
-                  <legend>ラスター描画</legend>
-                  <label className="editor-field">
-                    描画色
-                    <input
-                      type="color"
-                      aria-label="描画色"
-                      value={rasterColor}
-                      onChange={(event) => setRasterColor(event.target.value)}
-                    />
-                  </label>
-                  <label className="editor-field">
-                    ブラシサイズ（px）
-                    <input
-                      type="number"
-                      aria-label="ブラシサイズ"
-                      min={1}
-                      max={128}
-                      value={brushSize}
-                      onChange={(event) =>
-                        setBrushSize(Math.min(128, Math.max(1, Number(event.target.value) || 1)))
-                      }
-                    />
-                  </label>
-                  <label className="editor-field">
-                    塗りつぶし許容量（0-100）
-                    <input
-                      type="number"
-                      aria-label="塗りつぶし許容量"
-                      min={0}
-                      max={100}
-                      value={fillTolerance}
-                      onChange={(event) =>
-                        setFillTolerance(
-                          Math.min(100, Math.max(0, Number(event.target.value) || 0)),
-                        )
-                      }
-                    />
-                  </label>
-                </fieldset>
+                <ul className="snapshot-list">
+                  {snapshots.map((snapshot) => (
+                    <li key={snapshot.id} className="snapshot-list-item">
+                      <div className="snapshot-item-main">
+                        <span className="snapshot-item-label">{snapshot.label}</span>
+                        <span className="snapshot-item-meta">
+                          {new Date(snapshot.createdAt).toLocaleString('ja-JP')}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleRestoreSnapshot(snapshot.id)}
+                        aria-label={`復旧点「${snapshot.label}（${new Date(
+                          snapshot.createdAt,
+                        ).toLocaleString('ja-JP')}）」から復元`}
+                      >
+                        復元
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </section>
+          <section
+            aria-label="レイヤーの編集"
+            hidden={propertySection !== 'all' && propertySection !== 'layers'}
+          >
+            <h3 id="property-canvas" className="editor-subheading">
+              Asset canvasサイズ
+            </h3>
+            {selectedAsset ? (
+              <CanvasResizePanel asset={selectedAsset} onCommit={commitPanelChange} />
+            ) : (
+              <p className="editor-note">アセットを選ぶとcanvasサイズを変更できます。</p>
+            )}
 
-                <fieldset className="editor-fieldset">
-                  <legend>選択範囲</legend>
-                  <p className="editor-note">
-                    「範囲」ツールでキャンバスをドラッグすると矩形選択を作れます。選択中は他のラスターツールが選択範囲をmaskとして使います。Escで解除できます。
-                  </p>
-                  {selection && (
-                    <p className="editor-note">
-                      選択範囲: {Math.round(selection.rect.width)} x{' '}
-                      {Math.round(selection.rect.height)}px
-                    </p>
-                  )}
-                  <div className="editor-button-row">
-                    <button
-                      type="button"
-                      disabled={!selection || !!imageProcessing || persistentMutationBlocked}
-                      onClick={() => void handleSelectionCopy()}
-                    >
-                      コピー
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!selection || !!imageProcessing || persistentMutationBlocked}
-                      onClick={handleSelectionClear}
-                    >
-                      消去
-                    </button>
-                    <button
-                      type="button"
-                      disabled={
-                        !selectionClipboard || !!imageProcessing || persistentMutationBlocked
+            <h3 id="property-layers" className="editor-subheading">
+              レイヤー
+            </h3>
+            {selectedAsset ? (
+              <LayerPanel
+                asset={selectedAsset}
+                selectedLayerId={selectedLayerId}
+                checkedLayerIds={checkedLayerIds}
+                importAccept={RASTER_IMPORT_ACCEPT}
+                onSelectLayer={setSelectedLayerId}
+                onToggleChecked={handleToggleChecked}
+                onCommit={commitPanelChange}
+                onAddImageLayer={(event) => void handleAddImageLayer(event)}
+                onAddGuideLayer={handleAddGuideLayer}
+              />
+            ) : (
+              <p className="editor-note">アセットを選ぶとレイヤーを操作できます。</p>
+            )}
+
+            <h3 className="editor-subheading">整列・等間隔配置</h3>
+            {selectedAsset ? (
+              <AlignPanel
+                asset={selectedAsset}
+                checkedLayerIds={checkedLayerIds}
+                selectedLayerId={selectedLayerId}
+                onCommit={commitPanelChange}
+              />
+            ) : (
+              <p className="editor-note">アセットを選ぶと複数レイヤーの整列ができます。</p>
+            )}
+
+            <h3 className="editor-subheading">選択中レイヤー</h3>
+            {selectedLayer ? (
+              <div className="layer-fields">
+                <label className="editor-field">
+                  レイヤー名
+                  <input
+                    type="text"
+                    value={selectedLayer.name}
+                    onFocus={beginLayerEdit}
+                    onBlur={commitLayerEdit}
+                    onChange={(event) => {
+                      if (selectedAsset) {
+                        applyAssetSnapshot(
+                          renameLayer(selectedAsset, selectedLayer.id, event.target.value),
+                        );
                       }
-                      onClick={handleArmPaste}
-                    >
-                      貼り付け
-                    </button>
-                  </div>
-                  {pastePreview && (
+                    }}
+                  />
+                </label>
+                <label className="editor-field">
+                  X
+                  <input
+                    type="number"
+                    value={roundValue(selectedLayer.transform.position.x)}
+                    onFocus={beginLayerEdit}
+                    onBlur={commitLayerEdit}
+                    onChange={(event) => handleLayerTransformChange('x', event.target.value)}
+                  />
+                </label>
+                <label className="editor-field">
+                  Y
+                  <input
+                    type="number"
+                    value={roundValue(selectedLayer.transform.position.y)}
+                    onFocus={beginLayerEdit}
+                    onBlur={commitLayerEdit}
+                    onChange={(event) => handleLayerTransformChange('y', event.target.value)}
+                  />
+                </label>
+                <label className="editor-field">
+                  拡大率（%）
+                  <input
+                    type="number"
+                    min={1}
+                    value={roundValue(Math.abs(selectedLayer.transform.scale.x) * 100)}
+                    onFocus={beginLayerEdit}
+                    onBlur={commitLayerEdit}
+                    onChange={(event) => handleLayerTransformChange('scale', event.target.value)}
+                  />
+                </label>
+                <label className="editor-field">
+                  回転（度）
+                  <input
+                    type="number"
+                    value={roundValue(selectedLayer.transform.rotation)}
+                    onFocus={beginLayerEdit}
+                    onBlur={commitLayerEdit}
+                    onChange={(event) => handleLayerTransformChange('rotation', event.target.value)}
+                  />
+                </label>
+                {selectedAsset?.assetType === 'background' && (
+                  <BackgroundLayerFields
+                    asset={selectedAsset}
+                    layer={selectedLayer}
+                    onCommit={commitPanelChange}
+                  />
+                )}
+              </div>
+            ) : (
+              <p className="editor-note">キャンバス上のレイヤーをクリックすると選択できます。</p>
+            )}
+          </section>
+          <section
+            aria-label="画像の修正"
+            hidden={propertySection !== 'all' && propertySection !== 'image'}
+          >
+            {selectedLayer && (
+              <>
+                <h3 id="property-image" className="editor-subheading">
+                  画像編集
+                </h3>
+                <div className="image-edit-fields">
+                  <p className="editor-note">
+                    ブラシ・矩形・楕円はキャンバス上でドラッグ、塗りつぶしと背景透過は対象をタップします。描画は選択中の編集用画像へ確定され、Undoで戻せます。
+                  </p>
+                  <fieldset className="editor-fieldset">
+                    <legend>ラスター描画</legend>
+                    <label className="editor-field">
+                      描画色
+                      <input
+                        type="color"
+                        aria-label="描画色"
+                        value={rasterColor}
+                        onChange={(event) => setRasterColor(event.target.value)}
+                      />
+                    </label>
+                    <label className="editor-field">
+                      ブラシサイズ（px）
+                      <input
+                        type="number"
+                        aria-label="ブラシサイズ"
+                        min={1}
+                        max={128}
+                        value={brushSize}
+                        onChange={(event) =>
+                          setBrushSize(Math.min(128, Math.max(1, Number(event.target.value) || 1)))
+                        }
+                      />
+                    </label>
+                    <label className="editor-field">
+                      塗りつぶし許容量（0-100）
+                      <input
+                        type="number"
+                        aria-label="塗りつぶし許容量"
+                        min={0}
+                        max={100}
+                        value={fillTolerance}
+                        onChange={(event) =>
+                          setFillTolerance(
+                            Math.min(100, Math.max(0, Number(event.target.value) || 0)),
+                          )
+                        }
+                      />
+                    </label>
+                  </fieldset>
+
+                  <fieldset className="editor-fieldset">
+                    <legend>選択範囲</legend>
+                    <p className="editor-note">
+                      「範囲」ツールでキャンバスをドラッグすると矩形選択を作れます。選択中は他のラスターツールが選択範囲をmaskとして使います。Escで解除できます。
+                    </p>
+                    {selection && (
+                      <p className="editor-note">
+                        選択範囲: {Math.round(selection.rect.width)} x{' '}
+                        {Math.round(selection.rect.height)}px
+                      </p>
+                    )}
                     <div className="editor-button-row">
                       <button
                         type="button"
-                        disabled={!!imageProcessing || persistentMutationBlocked}
-                        onClick={() =>
-                          void handlePasteCommit(pastePreviewPosition ?? pastePreview.origin)
-                        }
+                        disabled={!selection || !!imageProcessing || persistentMutationBlocked}
+                        onClick={() => void handleSelectionCopy()}
                       >
-                        貼り付けを確定
+                        コピー
                       </button>
-                      <button type="button" onClick={handleCancelPaste}>
-                        貼り付けをキャンセル
+                      <button
+                        type="button"
+                        disabled={!selection || !!imageProcessing || persistentMutationBlocked}
+                        onClick={handleSelectionClear}
+                      >
+                        消去
                       </button>
-                    </div>
-                  )}
-                </fieldset>
-
-                <fieldset className="editor-fieldset">
-                  <legend>文字</legend>
-                  <p className="editor-note">
-                    「文字」ツールでキャンバスをクリックするとアンカー位置を決められます。
-                  </p>
-                  <p role="note" className="editor-note editor-text-warning">
-                    確定するとテキストはピクセルになり、再編集できません。
-                  </p>
-                  <label className="editor-field">
-                    テキスト文字列
-                    <input
-                      type="text"
-                      aria-label="テキスト文字列"
-                      value={textDraft?.text ?? ''}
-                      onChange={(event) => {
-                        const nextText = event.target.value;
-                        setTextDraft((prev) =>
-                          prev
-                            ? { ...prev, text: nextText }
-                            : {
-                                anchor: { x: 0, y: 0 },
-                                text: nextText,
-                                fontFamily: textFontFamily,
-                                size: textSize,
-                              },
-                        );
-                      }}
-                    />
-                  </label>
-                  <label className="editor-field">
-                    フォント
-                    <select
-                      aria-label="フォント"
-                      value={textDraft?.fontFamily ?? textFontFamily}
-                      onChange={(event) => {
-                        const nextFont = event.target.value as typeof textFontFamily;
-                        setTextFontFamily(nextFont);
-                        setTextDraft((prev) => (prev ? { ...prev, fontFamily: nextFont } : prev));
-                      }}
-                    >
-                      <option value="sans-serif">サンセリフ体</option>
-                      <option value="serif">セリフ体</option>
-                      <option value="monospace">等幅</option>
-                    </select>
-                  </label>
-                  <label className="editor-field">
-                    文字サイズ（px）
-                    <input
-                      type="number"
-                      aria-label="文字サイズ"
-                      min={1}
-                      max={
-                        selectedTextureSize
-                          ? Math.max(selectedTextureSize.width, selectedTextureSize.height)
-                          : 256
-                      }
-                      value={textDraft?.size ?? textSize}
-                      onChange={(event) => {
-                        const max = selectedTextureSize
-                          ? Math.max(selectedTextureSize.width, selectedTextureSize.height)
-                          : 256;
-                        const nextSize = Math.min(
-                          max,
-                          Math.max(1, Math.round(Number(event.target.value) || 1)),
-                        );
-                        setTextSize(nextSize);
-                        setTextDraft((prev) => (prev ? { ...prev, size: nextSize } : prev));
-                      }}
-                    />
-                  </label>
-                  <div className="editor-button-row">
-                    <button
-                      type="button"
-                      disabled={
-                        !textDraft ||
-                        !textDraft.text.trim() ||
-                        !!imageProcessing ||
-                        persistentMutationBlocked
-                      }
-                      onClick={() => void handleTextCommit()}
-                    >
-                      テキストを確定
-                    </button>
-                    <button type="button" disabled={!textDraft} onClick={handleTextCancel}>
-                      テキストをリセット
-                    </button>
-                  </div>
-                </fieldset>
-
-                <fieldset className="editor-fieldset">
-                  <legend>透明縁・トリミング</legend>
-                  <p className="editor-note">
-                    alpha
-                    boundsを読み取り専用で検査します。結果は保存せず、トリミング時も選択layerの画像だけを変更します。Asset
-                    canvas、原点、アンカー、当たり判定は変更しません。
-                  </p>
-                  <label className="editor-field">
-                    alphaしきい値（0-255）
-                    <input
-                      type="number"
-                      aria-label="alphaしきい値"
-                      min={0}
-                      max={255}
-                      step={1}
-                      value={alphaThreshold}
-                      onChange={(event) => {
-                        const next = Math.min(
-                          255,
-                          Math.max(0, Math.round(Number(event.target.value) || 0)),
-                        );
-                        setAlphaThreshold(next);
-                        setAlphaInspection(null);
-                      }}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    disabled={!!imageProcessing || persistentMutationBlocked}
-                    onClick={() => void handleAlphaInspect()}
-                  >
-                    透明縁を検査
-                  </button>
-                  {activeAlphaInspection && (
-                    <div aria-label="透明縁検査結果" className="editor-repair-result">
-                      {activeAlphaInspection.isEmpty ||
-                      !activeAlphaInspection.bounds ||
-                      !activeAlphaInspection.margins ? (
-                        <p role="alert" className="editor-note">
-                          しきい値を超える表示pixelがありません。トリミングできません。
-                        </p>
-                      ) : (
-                        <>
-                          <p className="editor-note">
-                            表示範囲: x {activeAlphaInspection.bounds.x}, y{' '}
-                            {activeAlphaInspection.bounds.y}, {activeAlphaInspection.bounds.width} x{' '}
-                            {activeAlphaInspection.bounds.height}px
-                          </p>
-                          <p className="editor-note">
-                            透明余白: 上 {activeAlphaInspection.margins.top}px / 右{' '}
-                            {activeAlphaInspection.margins.right}px / 下{' '}
-                            {activeAlphaInspection.margins.bottom}px / 左{' '}
-                            {activeAlphaInspection.margins.left}px
-                          </p>
-                          <p role="status" className="editor-note">
-                            {activeAlphaInspection.hasTransparentMargin
-                              ? '透明縁があります。選択画像だけをトリミングできます。'
-                              : '透明縁はありません。現在の画像サイズが表示範囲と一致しています。'}
-                          </p>
-                          {Object.values(activeAlphaInspection.touchesEdge).some(Boolean) && (
-                            <p role="alert" className="editor-note">
-                              表示pixelが画像端に接しています。接している辺にはトリミング後も余白がありません。
-                            </p>
-                          )}
-                        </>
-                      )}
                       <button
                         type="button"
                         disabled={
-                          !activeAlphaInspection.bounds ||
-                          !activeAlphaInspection.hasTransparentMargin ||
+                          !selectionClipboard || !!imageProcessing || persistentMutationBlocked
+                        }
+                        onClick={handleArmPaste}
+                      >
+                        貼り付け
+                      </button>
+                    </div>
+                    {pastePreview && (
+                      <div className="editor-button-row">
+                        <button
+                          type="button"
+                          disabled={!!imageProcessing || persistentMutationBlocked}
+                          onClick={() =>
+                            void handlePasteCommit(pastePreviewPosition ?? pastePreview.origin)
+                          }
+                        >
+                          貼り付けを確定
+                        </button>
+                        <button type="button" onClick={handleCancelPaste}>
+                          貼り付けをキャンセル
+                        </button>
+                      </div>
+                    )}
+                  </fieldset>
+
+                  <fieldset className="editor-fieldset">
+                    <legend>文字</legend>
+                    <p className="editor-note">
+                      「文字」ツールでキャンバスをクリックするとアンカー位置を決められます。
+                    </p>
+                    <p role="note" className="editor-note editor-text-warning">
+                      確定するとテキストはピクセルになり、再編集できません。
+                    </p>
+                    <label className="editor-field">
+                      テキスト文字列
+                      <input
+                        type="text"
+                        aria-label="テキスト文字列"
+                        value={textDraft?.text ?? ''}
+                        onChange={(event) => {
+                          const nextText = event.target.value;
+                          setTextDraft((prev) =>
+                            prev
+                              ? { ...prev, text: nextText }
+                              : {
+                                  anchor: { x: 0, y: 0 },
+                                  text: nextText,
+                                  fontFamily: textFontFamily,
+                                  size: textSize,
+                                },
+                          );
+                        }}
+                      />
+                    </label>
+                    <label className="editor-field">
+                      フォント
+                      <select
+                        aria-label="フォント"
+                        value={textDraft?.fontFamily ?? textFontFamily}
+                        onChange={(event) => {
+                          const nextFont = event.target.value as typeof textFontFamily;
+                          setTextFontFamily(nextFont);
+                          setTextDraft((prev) => (prev ? { ...prev, fontFamily: nextFont } : prev));
+                        }}
+                      >
+                        <option value="sans-serif">サンセリフ体</option>
+                        <option value="serif">セリフ体</option>
+                        <option value="monospace">等幅</option>
+                      </select>
+                    </label>
+                    <label className="editor-field">
+                      文字サイズ（px）
+                      <input
+                        type="number"
+                        aria-label="文字サイズ"
+                        min={1}
+                        max={
+                          selectedTextureSize
+                            ? Math.max(selectedTextureSize.width, selectedTextureSize.height)
+                            : 256
+                        }
+                        value={textDraft?.size ?? textSize}
+                        onChange={(event) => {
+                          const max = selectedTextureSize
+                            ? Math.max(selectedTextureSize.width, selectedTextureSize.height)
+                            : 256;
+                          const nextSize = Math.min(
+                            max,
+                            Math.max(1, Math.round(Number(event.target.value) || 1)),
+                          );
+                          setTextSize(nextSize);
+                          setTextDraft((prev) => (prev ? { ...prev, size: nextSize } : prev));
+                        }}
+                      />
+                    </label>
+                    <div className="editor-button-row">
+                      <button
+                        type="button"
+                        disabled={
+                          !textDraft ||
+                          !textDraft.text.trim() ||
                           !!imageProcessing ||
                           persistentMutationBlocked
                         }
-                        onClick={() => void handleAlphaTrim()}
+                        onClick={() => void handleTextCommit()}
                       >
-                        透明縁をトリミング
+                        テキストを確定
+                      </button>
+                      <button type="button" disabled={!textDraft} onClick={handleTextCancel}>
+                        テキストをリセット
                       </button>
                     </div>
-                  )}
-                </fieldset>
+                  </fieldset>
 
-                <fieldset className="editor-fieldset">
-                  <legend>透明padding</legend>
-                  <p className="editor-note">
-                    選択画像の周囲へ透明pixelを追加します。元の内容がworld上で動かないようLayer位置を補正し、Asset
-                    canvasとゲーム情報は変更しません。
-                  </p>
-                  {(['top', 'right', 'bottom', 'left'] as const).map((side) => (
-                    <label className="editor-field" key={side}>
-                      padding {side}（px）
+                  <fieldset className="editor-fieldset">
+                    <legend>透明縁・トリミング</legend>
+                    <p className="editor-note">
+                      alpha
+                      boundsを読み取り専用で検査します。結果は保存せず、トリミング時も選択layerの画像だけを変更します。Asset
+                      canvas、原点、アンカー、当たり判定は変更しません。
+                    </p>
+                    <label className="editor-field">
+                      alphaしきい値（0-255）
                       <input
                         type="number"
-                        aria-label={`padding ${side}`}
+                        aria-label="alphaしきい値"
                         min={0}
+                        max={255}
+                        step={1}
+                        value={alphaThreshold}
+                        onChange={(event) => {
+                          const next = Math.min(
+                            255,
+                            Math.max(0, Math.round(Number(event.target.value) || 0)),
+                          );
+                          setAlphaThreshold(next);
+                          setAlphaInspection(null);
+                        }}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={!!imageProcessing || persistentMutationBlocked}
+                      onClick={() => void handleAlphaInspect()}
+                    >
+                      透明縁を検査
+                    </button>
+                    {activeAlphaInspection && (
+                      <div aria-label="透明縁検査結果" className="editor-repair-result">
+                        {activeAlphaInspection.isEmpty ||
+                        !activeAlphaInspection.bounds ||
+                        !activeAlphaInspection.margins ? (
+                          <p role="alert" className="editor-note">
+                            しきい値を超える表示pixelがありません。トリミングできません。
+                          </p>
+                        ) : (
+                          <>
+                            <p className="editor-note">
+                              表示範囲: x {activeAlphaInspection.bounds.x}, y{' '}
+                              {activeAlphaInspection.bounds.y}, {activeAlphaInspection.bounds.width}{' '}
+                              x {activeAlphaInspection.bounds.height}px
+                            </p>
+                            <p className="editor-note">
+                              透明余白: 上 {activeAlphaInspection.margins.top}px / 右{' '}
+                              {activeAlphaInspection.margins.right}px / 下{' '}
+                              {activeAlphaInspection.margins.bottom}px / 左{' '}
+                              {activeAlphaInspection.margins.left}px
+                            </p>
+                            <p role="status" className="editor-note">
+                              {activeAlphaInspection.hasTransparentMargin
+                                ? '透明縁があります。選択画像だけをトリミングできます。'
+                                : '透明縁はありません。現在の画像サイズが表示範囲と一致しています。'}
+                            </p>
+                            {Object.values(activeAlphaInspection.touchesEdge).some(Boolean) && (
+                              <p role="alert" className="editor-note">
+                                表示pixelが画像端に接しています。接している辺にはトリミング後も余白がありません。
+                              </p>
+                            )}
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          disabled={
+                            !activeAlphaInspection.bounds ||
+                            !activeAlphaInspection.hasTransparentMargin ||
+                            !!imageProcessing ||
+                            persistentMutationBlocked
+                          }
+                          onClick={() => void handleAlphaTrim()}
+                        >
+                          透明縁をトリミング
+                        </button>
+                      </div>
+                    )}
+                  </fieldset>
+
+                  <fieldset className="editor-fieldset">
+                    <legend>透明padding</legend>
+                    <p className="editor-note">
+                      選択画像の周囲へ透明pixelを追加します。元の内容がworld上で動かないようLayer位置を補正し、Asset
+                      canvasとゲーム情報は変更しません。
+                    </p>
+                    {(['top', 'right', 'bottom', 'left'] as const).map((side) => (
+                      <label className="editor-field" key={side}>
+                        padding {side}（px）
+                        <input
+                          type="number"
+                          aria-label={`padding ${side}`}
+                          min={0}
+                          max={MAX_LAYER_IMAGE_EDGE}
+                          step={1}
+                          value={layerPadding[side]}
+                          onChange={(event) =>
+                            setLayerPadding((current) => ({
+                              ...current,
+                              [side]: Math.min(
+                                MAX_LAYER_IMAGE_EDGE,
+                                Math.max(0, Math.round(Number(event.target.value) || 0)),
+                              ),
+                            }))
+                          }
+                        />
+                      </label>
+                    ))}
+                    {paddingOutputSize && (
+                      <p className="editor-note" aria-label="padding変更後preview">
+                        変更後: {paddingOutputSize.width} x {paddingOutputSize.height}px
+                        {paddingPreviewPosition
+                          ? ` / Layer位置 x ${roundValue(paddingPreviewPosition.x)}, y ${roundValue(
+                              paddingPreviewPosition.y,
+                            )}`
+                          : ''}
+                      </p>
+                    )}
+                    {!paddingOutputValid && (
+                      <p role="alert" className="editor-note">
+                        変更後の幅と高さは1〜{MAX_LAYER_IMAGE_EDGE}pxにしてください。
+                      </p>
+                    )}
+                    {paddingExtendsOutside && (
+                      <p role="alert" className="editor-note">
+                        変更後のLayer画像はAsset canvas外へはみ出します。canvasは自動拡張しません。
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      disabled={
+                        !paddingHasChange ||
+                        !paddingOutputValid ||
+                        !!imageProcessing ||
+                        persistentMutationBlocked
+                      }
+                      onClick={() =>
+                        void applyImageEdit({ type: 'padLayerImage', padding: layerPadding })
+                      }
+                    >
+                      透明paddingを追加
+                    </button>
+                  </fieldset>
+
+                  <fieldset className="editor-fieldset">
+                    <legend>Layer画像リサイズ</legend>
+                    <p className="editor-note">
+                      Layer中心を固定して選択画像だけをリサイズします。pixel
+                      artはnearest、写真・滑らかな素材はsmoothが基本です。Asset
+                      canvasとゲーム情報は変更しません。
+                    </p>
+                    <label className="editor-field">
+                      リサイズ後の幅（px）
+                      <input
+                        type="number"
+                        aria-label="リサイズ後の幅"
+                        min={1}
                         max={MAX_LAYER_IMAGE_EDGE}
                         step={1}
-                        value={layerPadding[side]}
+                        value={layerResizeWidth}
                         onChange={(event) =>
-                          setLayerPadding((current) => ({
-                            ...current,
-                            [side]: Math.min(
-                              MAX_LAYER_IMAGE_EDGE,
-                              Math.max(0, Math.round(Number(event.target.value) || 0)),
-                            ),
+                          setLayerResizeWidth(Math.round(Number(event.target.value) || 0))
+                        }
+                      />
+                    </label>
+                    <label className="editor-field">
+                      リサイズ後の高さ（px）
+                      <input
+                        type="number"
+                        aria-label="リサイズ後の高さ"
+                        min={1}
+                        max={MAX_LAYER_IMAGE_EDGE}
+                        step={1}
+                        value={layerResizeHeight}
+                        onChange={(event) =>
+                          setLayerResizeHeight(Math.round(Number(event.target.value) || 0))
+                        }
+                      />
+                    </label>
+                    <label className="editor-field">
+                      補間方法
+                      <select
+                        aria-label="リサイズ補間方法"
+                        value={layerResizeInterpolation}
+                        onChange={(event) =>
+                          setLayerResizeInterpolation(
+                            event.target.value as LayerResizeInterpolation,
+                          )
+                        }
+                      >
+                        <option value="nearest">nearest（pixel art向け）</option>
+                        <option value="smooth">smooth（滑らか）</option>
+                      </select>
+                    </label>
+                    {selectedTextureSize && resizeOutputValid && (
+                      <p className="editor-note" aria-label="リサイズ変更後preview">
+                        変更前: {selectedTextureSize.width} x {selectedTextureSize.height}px /
+                        変更後: {layerResizeWidth} x {layerResizeHeight}px
+                        {resizePreviewPosition
+                          ? ` / Layer位置 x ${roundValue(resizePreviewPosition.x)}, y ${roundValue(
+                              resizePreviewPosition.y,
+                            )}`
+                          : ''}
+                      </p>
+                    )}
+                    {!resizeOutputValid && (
+                      <p role="alert" className="editor-note">
+                        変更後の幅と高さは1〜{MAX_LAYER_IMAGE_EDGE}pxの整数にしてください。
+                      </p>
+                    )}
+                    {resizeExtendsOutside && (
+                      <p role="alert" className="editor-note">
+                        変更後のLayer画像はAsset canvas外へはみ出します。canvasは自動拡張しません。
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      disabled={
+                        !resizeHasChange ||
+                        !resizeOutputValid ||
+                        !!imageProcessing ||
+                        persistentMutationBlocked
+                      }
+                      onClick={() =>
+                        void applyImageEdit({
+                          type: 'resizeLayerImage',
+                          width: layerResizeWidth,
+                          height: layerResizeHeight,
+                          interpolation: layerResizeInterpolation,
+                        })
+                      }
+                    >
+                      Layer画像をリサイズ
+                    </button>
+                  </fieldset>
+
+                  <label className="editor-field">
+                    背景透過の許容量（0-100）
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={bgTolerance}
+                      onChange={(event) => setBgTolerance(Number(event.target.value) || 0)}
+                    />
+                  </label>
+                  <label className="editor-field">
+                    消しゴムサイズ（px）
+                    <input
+                      type="number"
+                      min={2}
+                      max={128}
+                      value={eraserSize}
+                      onChange={(event) =>
+                        setEraserSize(Math.max(2, Number(event.target.value) || 2))
+                      }
+                    />
+                  </label>
+
+                  <fieldset className="editor-fieldset">
+                    <legend>色調整（HSL）</legend>
+                    <label className="editor-field">
+                      色相（-180〜180）
+                      <input
+                        type="number"
+                        min={-180}
+                        max={180}
+                        value={hsl.hue}
+                        onChange={(event) =>
+                          setHsl((prev) => ({ ...prev, hue: Number(event.target.value) || 0 }))
+                        }
+                      />
+                    </label>
+                    <label className="editor-field">
+                      彩度（-100〜100）
+                      <input
+                        type="number"
+                        min={-100}
+                        max={100}
+                        value={hsl.saturation}
+                        onChange={(event) =>
+                          setHsl((prev) => ({
+                            ...prev,
+                            saturation: Number(event.target.value) || 0,
                           }))
                         }
                       />
                     </label>
-                  ))}
-                  {paddingOutputSize && (
-                    <p className="editor-note" aria-label="padding変更後preview">
-                      変更後: {paddingOutputSize.width} x {paddingOutputSize.height}px
-                      {paddingPreviewPosition
-                        ? ` / Layer位置 x ${roundValue(paddingPreviewPosition.x)}, y ${roundValue(
-                            paddingPreviewPosition.y,
-                          )}`
-                        : ''}
-                    </p>
-                  )}
-                  {!paddingOutputValid && (
-                    <p role="alert" className="editor-note">
-                      変更後の幅と高さは1〜{MAX_LAYER_IMAGE_EDGE}pxにしてください。
-                    </p>
-                  )}
-                  {paddingExtendsOutside && (
-                    <p role="alert" className="editor-note">
-                      変更後のLayer画像はAsset canvas外へはみ出します。canvasは自動拡張しません。
-                    </p>
-                  )}
-                  <button
-                    type="button"
-                    disabled={
-                      !paddingHasChange ||
-                      !paddingOutputValid ||
-                      !!imageProcessing ||
-                      persistentMutationBlocked
-                    }
-                    onClick={() =>
-                      void applyImageEdit({ type: 'padLayerImage', padding: layerPadding })
-                    }
-                  >
-                    透明paddingを追加
-                  </button>
-                </fieldset>
+                    <label className="editor-field">
+                      明度（-100〜100）
+                      <input
+                        type="number"
+                        min={-100}
+                        max={100}
+                        value={hsl.lightness}
+                        onChange={(event) =>
+                          setHsl((prev) => ({
+                            ...prev,
+                            lightness: Number(event.target.value) || 0,
+                          }))
+                        }
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={!!imageProcessing || persistentMutationBlocked}
+                      onClick={() => void applyImageEdit({ type: 'adjustHsl', ...hsl })}
+                    >
+                      色調整を適用
+                    </button>
+                  </fieldset>
 
-                <fieldset className="editor-fieldset">
-                  <legend>Layer画像リサイズ</legend>
-                  <p className="editor-note">
-                    Layer中心を固定して選択画像だけをリサイズします。pixel
-                    artはnearest、写真・滑らかな素材はsmoothが基本です。Asset
-                    canvasとゲーム情報は変更しません。
-                  </p>
-                  <label className="editor-field">
-                    リサイズ後の幅（px）
-                    <input
-                      type="number"
-                      aria-label="リサイズ後の幅"
-                      min={1}
-                      max={MAX_LAYER_IMAGE_EDGE}
-                      step={1}
-                      value={layerResizeWidth}
-                      onChange={(event) =>
-                        setLayerResizeWidth(Math.round(Number(event.target.value) || 0))
-                      }
-                    />
-                  </label>
-                  <label className="editor-field">
-                    リサイズ後の高さ（px）
-                    <input
-                      type="number"
-                      aria-label="リサイズ後の高さ"
-                      min={1}
-                      max={MAX_LAYER_IMAGE_EDGE}
-                      step={1}
-                      value={layerResizeHeight}
-                      onChange={(event) =>
-                        setLayerResizeHeight(Math.round(Number(event.target.value) || 0))
-                      }
-                    />
-                  </label>
-                  <label className="editor-field">
-                    補間方法
-                    <select
-                      aria-label="リサイズ補間方法"
-                      value={layerResizeInterpolation}
-                      onChange={(event) =>
-                        setLayerResizeInterpolation(event.target.value as LayerResizeInterpolation)
+                  <fieldset className="editor-fieldset">
+                    <legend>パレット・色違い・輪郭・反転</legend>
+                    <p className="editor-note">
+                      選択中のedit画像から主要色を読み取り専用で抽出します。抽出結果は保存せず、swatchを選ぶと色置換の対象色へ設定できます。
+                    </p>
+                    <label className="editor-field">
+                      抽出色数（1-{MAX_PALETTE_COLORS}）
+                      <input
+                        type="number"
+                        aria-label="パレット抽出色数"
+                        min={1}
+                        max={MAX_PALETTE_COLORS}
+                        step={1}
+                        value={paletteMaxColors}
+                        onChange={(event) => {
+                          const next = Math.min(
+                            MAX_PALETTE_COLORS,
+                            Math.max(1, Math.round(Number(event.target.value) || 1)),
+                          );
+                          setPaletteMaxColors(next);
+                          setPaletteExtraction(null);
+                        }}
+                      />
+                    </label>
+                    <label className="editor-field">
+                      palette alphaしきい値（0-255）
+                      <input
+                        type="number"
+                        aria-label="パレットalphaしきい値"
+                        min={0}
+                        max={255}
+                        step={1}
+                        value={paletteAlphaThreshold}
+                        onChange={(event) => {
+                          const next = Math.min(
+                            255,
+                            Math.max(0, Math.round(Number(event.target.value) || 0)),
+                          );
+                          setPaletteAlphaThreshold(next);
+                          setPaletteExtraction(null);
+                        }}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={!!imageProcessing || persistentMutationBlocked}
+                      onClick={() => void handlePaletteExtract()}
+                    >
+                      パレットを抽出
+                    </button>
+                    {activePaletteExtraction && (
+                      <div className="palette-result" aria-label="抽出パレット">
+                        <p className="editor-note">
+                          表示pixel {activePaletteExtraction.visiblePixelCount} / 透明扱い{' '}
+                          {activePaletteExtraction.transparentPixelCount} / RGB{' '}
+                          {activePaletteExtraction.quantizationBits}-bit量子化
+                        </p>
+                        {activePaletteExtraction.colors.length === 0 ? (
+                          <p role="alert" className="editor-note">
+                            しきい値を超える色がありません。
+                          </p>
+                        ) : (
+                          <div className="palette-swatch-list">
+                            {activePaletteExtraction.colors.map((entry) => {
+                              const hex = rgbToHex(entry.color);
+                              return (
+                                <button
+                                  key={`${hex}-${entry.count}`}
+                                  type="button"
+                                  className="palette-swatch-button"
+                                  aria-label={`抽出色 ${hex} を置換元に設定`}
+                                  onClick={() => {
+                                    setReplaceFrom(hex);
+                                    setEditorError(null);
+                                  }}
+                                >
+                                  <span
+                                    className="palette-swatch-chip"
+                                    style={{ backgroundColor: hex }}
+                                    aria-hidden="true"
+                                  />
+                                  <span>
+                                    {hex} · {entry.count}px ·{' '}
+                                    {Math.round(entry.coverage * 1000) / 10}%
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <h4 className="repair-section-heading">色置換</h4>
+                    <label className="editor-field">
+                      対象色（スポイトまたは抽出paletteから選べます）
+                      <input
+                        type="color"
+                        aria-label="色置換の対象色"
+                        value={replaceFrom}
+                        onChange={(event) => setReplaceFrom(event.target.value)}
+                      />
+                    </label>
+                    <label className="editor-field">
+                      置換色
+                      <input
+                        type="color"
+                        aria-label="色置換の置換色"
+                        value={replaceTo}
+                        onChange={(event) => setReplaceTo(event.target.value)}
+                      />
+                    </label>
+                    <label className="editor-field">
+                      許容量（0-100）
+                      <input
+                        type="number"
+                        aria-label="色置換の許容量"
+                        min={0}
+                        max={100}
+                        value={replaceTolerance}
+                        onChange={(event) => setReplaceTolerance(Number(event.target.value) || 0)}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={!!imageProcessing || persistentMutationBlocked}
+                      onClick={() =>
+                        void applyImageEdit({
+                          type: 'replaceColor',
+                          from: hexToRgb(replaceFrom),
+                          to: hexToRgb(replaceTo),
+                          tolerance: Math.round((replaceTolerance / 100) * 255),
+                        })
                       }
                     >
-                      <option value="nearest">nearest（pixel art向け）</option>
-                      <option value="smooth">smooth（滑らか）</option>
-                    </select>
-                  </label>
-                  {selectedTextureSize && resizeOutputValid && (
-                    <p className="editor-note" aria-label="リサイズ変更後preview">
-                      変更前: {selectedTextureSize.width} x {selectedTextureSize.height}px / 変更後:{' '}
-                      {layerResizeWidth} x {layerResizeHeight}px
-                      {resizePreviewPosition
-                        ? ` / Layer位置 x ${roundValue(resizePreviewPosition.x)}, y ${roundValue(
-                            resizePreviewPosition.y,
-                          )}`
-                        : ''}
-                    </p>
-                  )}
-                  {!resizeOutputValid && (
-                    <p role="alert" className="editor-note">
-                      変更後の幅と高さは1〜{MAX_LAYER_IMAGE_EDGE}pxの整数にしてください。
-                    </p>
-                  )}
-                  {resizeExtendsOutside && (
-                    <p role="alert" className="editor-note">
-                      変更後のLayer画像はAsset canvas外へはみ出します。canvasは自動拡張しません。
-                    </p>
-                  )}
-                  <button
-                    type="button"
-                    disabled={
-                      !resizeHasChange ||
-                      !resizeOutputValid ||
-                      !!imageProcessing ||
-                      persistentMutationBlocked
-                    }
-                    onClick={() =>
-                      void applyImageEdit({
-                        type: 'resizeLayerImage',
-                        width: layerResizeWidth,
-                        height: layerResizeHeight,
-                        interpolation: layerResizeInterpolation,
-                      })
-                    }
-                  >
-                    Layer画像をリサイズ
-                  </button>
-                </fieldset>
+                      パレット置換を適用
+                    </button>
 
-                <label className="editor-field">
-                  背景透過の許容量（0-100）
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={bgTolerance}
-                    onChange={(event) => setBgTolerance(Number(event.target.value) || 0)}
-                  />
-                </label>
-                <label className="editor-field">
-                  消しゴムサイズ（px）
-                  <input
-                    type="number"
-                    min={2}
-                    max={128}
-                    value={eraserSize}
-                    onChange={(event) =>
-                      setEraserSize(Math.max(2, Number(event.target.value) || 2))
-                    }
-                  />
-                </label>
+                    <h4 className="repair-section-heading">輪郭線</h4>
+                    <label className="editor-field">
+                      輪郭線の色
+                      <input
+                        type="color"
+                        aria-label="輪郭線の色"
+                        value={outlineColor}
+                        onChange={(event) => setOutlineColor(event.target.value)}
+                      />
+                    </label>
+                    <label className="editor-field">
+                      太さ（px）
+                      <input
+                        type="number"
+                        aria-label="輪郭線の太さ"
+                        min={1}
+                        max={16}
+                        value={outlineThickness}
+                        onChange={(event) =>
+                          setOutlineThickness(Math.max(1, Number(event.target.value) || 1))
+                        }
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={!!imageProcessing || persistentMutationBlocked}
+                      onClick={() =>
+                        void applyImageEdit({
+                          type: 'outline',
+                          color: hexToRgb(outlineColor),
+                          thickness: outlineThickness,
+                        })
+                      }
+                    >
+                      輪郭線を追加
+                    </button>
 
-                <fieldset className="editor-fieldset">
-                  <legend>色調整（HSL）</legend>
-                  <label className="editor-field">
-                    色相（-180〜180）
-                    <input
-                      type="number"
-                      min={-180}
-                      max={180}
-                      value={hsl.hue}
-                      onChange={(event) =>
-                        setHsl((prev) => ({ ...prev, hue: Number(event.target.value) || 0 }))
-                      }
-                    />
-                  </label>
-                  <label className="editor-field">
-                    彩度（-100〜100）
-                    <input
-                      type="number"
-                      min={-100}
-                      max={100}
-                      value={hsl.saturation}
-                      onChange={(event) =>
-                        setHsl((prev) => ({
-                          ...prev,
-                          saturation: Number(event.target.value) || 0,
-                        }))
-                      }
-                    />
-                  </label>
-                  <label className="editor-field">
-                    明度（-100〜100）
-                    <input
-                      type="number"
-                      min={-100}
-                      max={100}
-                      value={hsl.lightness}
-                      onChange={(event) =>
-                        setHsl((prev) => ({
-                          ...prev,
-                          lightness: Number(event.target.value) || 0,
-                        }))
-                      }
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    disabled={!!imageProcessing || persistentMutationBlocked}
-                    onClick={() => void applyImageEdit({ type: 'adjustHsl', ...hsl })}
-                  >
-                    色調整を適用
-                  </button>
-                </fieldset>
-
-                <fieldset className="editor-fieldset">
-                  <legend>パレット・色違い・輪郭・反転</legend>
-                  <p className="editor-note">
-                    選択中のedit画像から主要色を読み取り専用で抽出します。抽出結果は保存せず、swatchを選ぶと色置換の対象色へ設定できます。
-                  </p>
-                  <label className="editor-field">
-                    抽出色数（1-{MAX_PALETTE_COLORS}）
-                    <input
-                      type="number"
-                      aria-label="パレット抽出色数"
-                      min={1}
-                      max={MAX_PALETTE_COLORS}
-                      step={1}
-                      value={paletteMaxColors}
-                      onChange={(event) => {
-                        const next = Math.min(
-                          MAX_PALETTE_COLORS,
-                          Math.max(1, Math.round(Number(event.target.value) || 1)),
-                        );
-                        setPaletteMaxColors(next);
-                        setPaletteExtraction(null);
+                    <h4 className="repair-section-heading">レイヤー反転</h4>
+                    <button
+                      type="button"
+                      className="layer-flip-button"
+                      aria-pressed={selectedLayer.transform.scale.x < 0}
+                      disabled={!!imageProcessing || persistentMutationBlocked}
+                      onClick={() => {
+                        if (selectedAsset) {
+                          commitPanelChange(
+                            '左右反転',
+                            flipLayerHorizontal(selectedAsset, selectedLayer.id),
+                          );
+                        }
                       }}
-                    />
-                  </label>
-                  <label className="editor-field">
-                    palette alphaしきい値（0-255）
-                    <input
-                      type="number"
-                      aria-label="パレットalphaしきい値"
-                      min={0}
-                      max={255}
-                      step={1}
-                      value={paletteAlphaThreshold}
-                      onChange={(event) => {
-                        const next = Math.min(
-                          255,
-                          Math.max(0, Math.round(Number(event.target.value) || 0)),
-                        );
-                        setPaletteAlphaThreshold(next);
-                        setPaletteExtraction(null);
-                      }}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    disabled={!!imageProcessing || persistentMutationBlocked}
-                    onClick={() => void handlePaletteExtract()}
-                  >
-                    パレットを抽出
-                  </button>
-                  {activePaletteExtraction && (
-                    <div className="palette-result" aria-label="抽出パレット">
-                      <p className="editor-note">
-                        表示pixel {activePaletteExtraction.visiblePixelCount} / 透明扱い{' '}
-                        {activePaletteExtraction.transparentPixelCount} / RGB{' '}
-                        {activePaletteExtraction.quantizationBits}-bit量子化
-                      </p>
-                      {activePaletteExtraction.colors.length === 0 ? (
-                        <p role="alert" className="editor-note">
-                          しきい値を超える色がありません。
-                        </p>
-                      ) : (
-                        <div className="palette-swatch-list">
-                          {activePaletteExtraction.colors.map((entry) => {
-                            const hex = rgbToHex(entry.color);
-                            return (
-                              <button
-                                key={`${hex}-${entry.count}`}
-                                type="button"
-                                className="palette-swatch-button"
-                                aria-label={`抽出色 ${hex} を置換元に設定`}
-                                onClick={() => {
-                                  setReplaceFrom(hex);
-                                  setEditorError(null);
-                                }}
-                              >
-                                <span
-                                  className="palette-swatch-chip"
-                                  style={{ backgroundColor: hex }}
-                                  aria-hidden="true"
-                                />
-                                <span>
-                                  {hex} · {entry.count}px · {Math.round(entry.coverage * 1000) / 10}
-                                  %
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                    >
+                      左右反転
+                    </button>
+                  </fieldset>
+                </div>
+              </>
+            )}
+          </section>
+          <section
+            aria-label="ゲーム用の情報"
+            hidden={propertySection !== 'all' && propertySection !== 'game-data'}
+          >
+            <h3 id="property-game-data" className="editor-subheading">
+              ゲーム情報
+            </h3>
+            {selectedAsset ? (
+              <GameDataPanel
+                asset={selectedAsset}
+                showColliders={showColliders}
+                newAnchorRole={newAnchorRole}
+                onNewAnchorRoleChange={setNewAnchorRole}
+                onToggleShowColliders={() => setShowColliders((v) => !v)}
+                snapEnabled={snapEnabled}
+                gridSize={gridSize}
+                onCommit={commitPanelChange}
+                onLiveChange={applyAssetSnapshot}
+                onBeginFieldEdit={beginLayerEdit}
+                onCommitFieldEdit={commitLayerEdit}
+                selectedColliderId={selectedColliderId}
+                onSelectCollider={setSelectedColliderId}
+                selectedFrame={selectedTimelineFrame}
+                isPlaying={isPlaying}
+                onFrameCommit={commitFrameColliderChange}
+                onFrameError={setEditorError}
+              />
+            ) : (
+              <p className="editor-note">
+                アセットを選ぶと原点・アンカー・当たり判定を設定できます。
+              </p>
+            )}
 
-                  <h4 className="repair-section-heading">色置換</h4>
-                  <label className="editor-field">
-                    対象色（スポイトまたは抽出paletteから選べます）
-                    <input
-                      type="color"
-                      aria-label="色置換の対象色"
-                      value={replaceFrom}
-                      onChange={(event) => setReplaceFrom(event.target.value)}
-                    />
-                  </label>
-                  <label className="editor-field">
-                    置換色
-                    <input
-                      type="color"
-                      aria-label="色置換の置換色"
-                      value={replaceTo}
-                      onChange={(event) => setReplaceTo(event.target.value)}
-                    />
-                  </label>
-                  <label className="editor-field">
-                    許容量（0-100）
-                    <input
-                      type="number"
-                      aria-label="色置換の許容量"
-                      min={0}
-                      max={100}
-                      value={replaceTolerance}
-                      onChange={(event) => setReplaceTolerance(Number(event.target.value) || 0)}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    disabled={!!imageProcessing || persistentMutationBlocked}
-                    onClick={() =>
-                      void applyImageEdit({
-                        type: 'replaceColor',
-                        from: hexToRgb(replaceFrom),
-                        to: hexToRgb(replaceTo),
-                        tolerance: Math.round((replaceTolerance / 100) * 255),
-                      })
-                    }
-                  >
-                    パレット置換を適用
-                  </button>
+            <h3 className="editor-subheading">ゲーム属性</h3>
+            {selectedAsset ? (
+              <GameAttributesPanel asset={selectedAsset} onCommit={commitPanelChange} />
+            ) : (
+              <p className="editor-note">アセットを選ぶとゲーム属性を編集できます。</p>
+            )}
+          </section>
+          <section
+            aria-label="パーツと動き"
+            hidden={propertySection !== 'all' && propertySection !== 'parts'}
+          >
+            <h3 id="property-parts" className="editor-subheading">
+              パーツ
+            </h3>
+            {selectedAsset ? (
+              <PartPanel
+                asset={selectedAsset}
+                checkedLayerIds={checkedLayerIds}
+                onClearChecked={() => setCheckedLayerIds([])}
+                onCommit={commitPanelChange}
+                onLiveChange={applyAssetSnapshot}
+                onBeginFieldEdit={beginLayerEdit}
+                onCommitFieldEdit={commitLayerEdit}
+              />
+            ) : (
+              <p className="editor-note">アセットを選ぶとパーツを操作できます。</p>
+            )}
 
-                  <h4 className="repair-section-heading">輪郭線</h4>
-                  <label className="editor-field">
-                    輪郭線の色
-                    <input
-                      type="color"
-                      aria-label="輪郭線の色"
-                      value={outlineColor}
-                      onChange={(event) => setOutlineColor(event.target.value)}
-                    />
-                  </label>
-                  <label className="editor-field">
-                    太さ（px）
-                    <input
-                      type="number"
-                      aria-label="輪郭線の太さ"
-                      min={1}
-                      max={16}
-                      value={outlineThickness}
-                      onChange={(event) =>
-                        setOutlineThickness(Math.max(1, Number(event.target.value) || 1))
-                      }
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    disabled={!!imageProcessing || persistentMutationBlocked}
-                    onClick={() =>
-                      void applyImageEdit({
-                        type: 'outline',
-                        color: hexToRgb(outlineColor),
-                        thickness: outlineThickness,
-                      })
-                    }
-                  >
-                    輪郭線を追加
-                  </button>
-
-                  <h4 className="repair-section-heading">レイヤー反転</h4>
-                  <button
-                    type="button"
-                    className="layer-flip-button"
-                    aria-pressed={selectedLayer.transform.scale.x < 0}
-                    disabled={!!imageProcessing || persistentMutationBlocked}
-                    onClick={() => {
-                      if (selectedAsset) {
-                        commitPanelChange(
-                          '左右反転',
-                          flipLayerHorizontal(selectedAsset, selectedLayer.id),
-                        );
-                      }
-                    }}
-                  >
-                    左右反転
-                  </button>
-                </fieldset>
-              </div>
-            </>
-          )}
-
-          <h3 id="property-game-data" className="editor-subheading">
-            ゲーム情報
-          </h3>
-          {selectedAsset ? (
-            <GameDataPanel
-              asset={selectedAsset}
-              showColliders={showColliders}
-              newAnchorRole={newAnchorRole}
-              onNewAnchorRoleChange={setNewAnchorRole}
-              onToggleShowColliders={() => setShowColliders((v) => !v)}
-              snapEnabled={snapEnabled}
-              gridSize={gridSize}
-              onCommit={commitPanelChange}
-              onLiveChange={applyAssetSnapshot}
-              onBeginFieldEdit={beginLayerEdit}
-              onCommitFieldEdit={commitLayerEdit}
-              selectedColliderId={selectedColliderId}
-              onSelectCollider={setSelectedColliderId}
-              selectedFrame={selectedTimelineFrame}
-              isPlaying={isPlaying}
-              onFrameCommit={commitFrameColliderChange}
-              onFrameError={setEditorError}
-            />
-          ) : (
-            <p className="editor-note">
-              アセットを選ぶと原点・アンカー・当たり判定を設定できます。
-            </p>
-          )}
-
-          <h3 className="editor-subheading">ゲーム属性</h3>
-          {selectedAsset ? (
-            <GameAttributesPanel asset={selectedAsset} onCommit={commitPanelChange} />
-          ) : (
-            <p className="editor-note">アセットを選ぶとゲーム属性を編集できます。</p>
-          )}
-
-          <h3 id="property-parts" className="editor-subheading">
-            パーツ
-          </h3>
-          {selectedAsset ? (
-            <PartPanel
-              asset={selectedAsset}
-              checkedLayerIds={checkedLayerIds}
-              onClearChecked={() => setCheckedLayerIds([])}
-              onCommit={commitPanelChange}
-              onLiveChange={applyAssetSnapshot}
-              onBeginFieldEdit={beginLayerEdit}
-              onCommitFieldEdit={commitLayerEdit}
-            />
-          ) : (
-            <p className="editor-note">アセットを選ぶとパーツを操作できます。</p>
-          )}
-
-          <h3 className="editor-subheading">リグ</h3>
-          {selectedAsset ? (
-            <RigPanel asset={selectedAsset} onCommit={commitPanelChange} />
-          ) : (
-            <p className="editor-note">アセットを選ぶとリグを編集できます。</p>
-          )}
-
+            <h3 className="editor-subheading">リグ</h3>
+            {selectedAsset ? (
+              <RigPanel asset={selectedAsset} onCommit={commitPanelChange} />
+            ) : (
+              <p className="editor-note">アセットを選ぶとリグを編集できます。</p>
+            )}
+          </section>
           <h3 className="editor-subheading">アセット</h3>
           {assets.length === 0 ? (
             <p className="editor-note">

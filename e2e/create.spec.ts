@@ -150,6 +150,10 @@ test('Asset種別をProject要約と同期し、独立copyをBlobごと追加し
   await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
   await expect.poll(async () => (await readAllAssets(page)).length, { timeout: 10_000 }).toBe(1);
 
+  // The transaction can be visible before the UI finishes recording structural history.
+  await expect(
+    properties.getByRole('button', { name: '独立コピーを作成', exact: true }),
+  ).toBeEnabled();
   await properties.getByLabel('アセット種別').selectOption('tile');
   await expect(page.getByRole('status')).toContainText('保存済み');
   await expect.poll(async () => (await readAllAssets(page))[0]?.assetType).toBe('tile');

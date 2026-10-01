@@ -1,3 +1,4 @@
+import { drawStarterArtwork } from './starterArtwork';
 /**
  * 画像を取り込まず、型・size・明示templateから新規アセットを作る UI 側ユーティリティ。
  * Asset JSON は core/model の純粋関数で組み立て、size を検査した後だけ Canvas / Blob を生成する。
@@ -86,6 +87,7 @@ export interface CreateBlankAssetBundleOptions {
   templateId?: AssetCreationTemplateId;
   createCharacterBodyPart?: boolean;
   now?: Date;
+  starterArtwork?: boolean;
 }
 
 export interface BlankAssetBundle {
@@ -94,7 +96,11 @@ export interface BlankAssetBundle {
   blobs: Array<{ key: string; blob: Blob }>;
 }
 
-async function createTransparentPngBlob(width: number, height: number): Promise<Blob> {
+async function createTransparentPngBlob(
+  width: number,
+  height: number,
+  artworkType?: AssetType,
+): Promise<Blob> {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -103,6 +109,7 @@ async function createTransparentPngBlob(width: number, height: number): Promise<
     throw new Error('この環境では Canvas 2D が使えません。');
   }
   context.clearRect(0, 0, width, height);
+  if (artworkType) drawStarterArtwork(context, artworkType);
   return await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (blob) {
@@ -130,7 +137,11 @@ export async function createBlankAssetBundle(
     createCharacterBodyPart: options.createCharacterBodyPart,
     now: options.now,
   });
-  const blob = await createTransparentPngBlob(size.width, size.height);
+  const blob = await createTransparentPngBlob(
+    size.width,
+    size.height,
+    options.starterArtwork ? options.assetType : undefined,
+  );
   const blobs = asset.textures.map((texture) => ({
     key: blobKeyFor(asset.id, texture.path),
     blob,

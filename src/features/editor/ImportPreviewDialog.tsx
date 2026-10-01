@@ -19,6 +19,8 @@ interface ImportPreviewDialogProps {
   busy: boolean;
   onConfirm: () => Promise<void>;
   onCancel: () => void;
+  errorMessage?: string | null;
+  completionNote?: string;
 }
 
 /** L1の「正本へ保存する前に内容・loss・warningを確認する」共通dialog。 */
@@ -27,6 +29,8 @@ export function ImportPreviewDialog({
   busy,
   onConfirm,
   onCancel,
+  errorMessage,
+  completionNote,
 }: ImportPreviewDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
@@ -127,6 +131,11 @@ export function ImportPreviewDialog({
           </label>
         )}
 
+        {errorMessage && (
+          <p className="home-error" role="alert">
+            {errorMessage}
+          </p>
+        )}
         <div className="import-preview-actions">
           <button ref={cancelButtonRef} type="button" disabled={busy} onClick={onCancel}>
             取り込みを取消
@@ -140,7 +149,8 @@ export function ImportPreviewDialog({
           </button>
         </div>
         <p className="editor-note">
-          確定後は1回の「元に戻す」で今回の取り込み全体を削除し、「やり直す」で復元できます。
+          {completionNote ??
+            '確定後は1回の「元に戻す」で今回の取り込み全体を削除し、「やり直す」で復元できます。'}
         </p>
       </section>
     </dialog>

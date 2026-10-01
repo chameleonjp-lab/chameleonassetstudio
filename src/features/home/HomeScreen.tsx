@@ -21,6 +21,7 @@ import {
   recoverProjectWithoutInvalidFamilies,
   restoreProject,
   saveProject,
+  saveProjectBundle,
   saveQuarantineEntry,
   stageCasprojImport,
   type ProjectSummary,
@@ -30,6 +31,13 @@ import {
   type StorageWarningLevel,
   type TrashSummary,
 } from '../../core/storage';
+import {
+  NEW_ASSET_IMPORT_ACCEPT,
+  prepareNewAssetImageImport,
+  type PreparedNewAssetImageImport,
+} from '../../core/images/importOptionalImage';
+import { ImportPreviewDialog } from '../editor/ImportPreviewDialog';
+import { ProjectThumbnail } from './ProjectThumbnail';
 import './home.css';
 
 interface HomeScreenProps {
@@ -64,6 +72,10 @@ function formatUsagePercentage(ratio: number): string {
 }
 
 export function HomeScreen({ onOpenProject }: HomeScreenProps) {
+  const [pendingImage, setPendingImage] = useState<{
+    fileName: string;
+    prepared: PreparedNewAssetImageImport;
+  } | null>(null);
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [trash, setTrash] = useState<TrashSummary[]>([]);
   const [quarantine, setQuarantine] = useState<QuarantineSummary[]>([]);
@@ -166,6 +178,46 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
     }
   };
 
+  const handleImportImage = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setImporting(true);
+    setErrorMessage(null);
+    try {
+      setPendingImage({ fileName: file.name, prepared: await prepareNewAssetImageImport(file) });
+    } catch (error) {
+      setErrorMessage(`画像を取り込めませんでした: ${toErrorMessage(error)}`);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleConfirmImage = async () => {
+    if (!pendingImage) return;
+    setImporting(true);
+    setErrorMessage(null);
+    try {
+      const { asset, blobs } = pendingImage.prepared;
+      const project = createEmptyProject(newName.trim() || asset.displayName);
+      project.assets = [
+        {
+          id: asset.id,
+          name: asset.name,
+          displayName: asset.displayName,
+          assetType: asset.assetType,
+        },
+      ];
+      await saveProjectBundle(project, [asset], blobs);
+      setPendingImage(null);
+      onOpenProject(project.id);
+    } catch (error) {
+      setErrorMessage(`画像を保存できませんでした: ${toErrorMessage(error)}`);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const handleImportCasproj = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files ? Array.from(event.target.files) : [];
     event.target.value = '';
@@ -188,7 +240,7 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
       setImportWarnings(staged.warnings);
       setImportMigrations(staged.appliedMigrations);
       setImportSuccessMessage(
-        `「${staged.project.name}」を新しいcopyとして読み込みました。元の.casprojファイルは変更されていません。`,
+        `「${staged.project.name}」を別のプロジェクトとして読み込みました。元の.casprojファイルは変更されていません。`,
       );
     } catch (error) {
       const importErrorMessage = `.casproj を読み込めませんでした: ${toErrorMessage(error)} 既存の保存済みプロジェクトは変更されていません。`;
@@ -328,106 +380,23 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
         </p>
       )}
 
-      <section className="home-section home-storage" aria-label="保存容量">
-        <div className="home-section-header">
-          <h2>保存容量</h2>
-          <button type="button" onClick={() => void refreshStorage()} disabled={storageRefreshing}>
-            {storageRefreshing ? '確認中…' : '容量を再確認'}
+      {usage && ['notice', 'warning', 'critical'].includes(warningLevel) && (
+        <p className={`home-storage-warning home-storage-warning--${warningLevel}`} role="status">
+          {STORAGE_WARNING_MESSAGES[warningLevel]}
+          <button type="button" onClick={() => scrollToSection('home-storage')}>
+            保存容量を確認
           </button>
-        </div>
+        </p>
+      )}
 
-        {usage === null ? (
-          <p role="status">保存容量を確認しています。</p>
-        ) : (
-          <div className="home-storage-details">
-            {usage.status === 'available' ? (
-              <p>
-                使用量: {usage.usageBytes !== null ? formatBytes(usage.usageBytes) : '取得不能'} /{' '}
-                {usage.quotaBytes !== null ? formatBytes(usage.quotaBytes) : '取得不能'}
-                {usage.usageRatio !== null
-                  ? `（${formatUsagePercentage(usage.usageRatio)}）`
-                  : '（使用率は計算できません）'}
-              </p>
-            ) : usage.status === 'unsupported' ? (
-              <p>この環境は使用量の取得に対応していません。</p>
-            ) : (
-              <p>使用量の取得中にエラーが発生しました。</p>
-            )}
-            <p className="home-storage-note">
-              この値はブラウザによる推定であり、次の保存成功や実際の空き容量を保証しません。
-            </p>
-          </div>
-        )}
-
-        <div className={`home-storage-warning home-storage-warning--${warningLevel}`} role="status">
-          <strong>
-            {warningLevel === 'normal'
-              ? '通常'
-              : warningLevel === 'notice'
-                ? 'お知らせ'
-                : warningLevel === 'warning'
-                  ? '警告'
-                  : warningLevel === 'critical'
-                    ? '重要な警告'
-                    : '使用率不明'}
-          </strong>
-          <p>{STORAGE_WARNING_MESSAGES[warningLevel]}</p>
-        </div>
-
-        <div className="home-persistent-storage">
-          <h3>保存領域の保護</h3>
-          <p role="status">
-            {persistentStorage === null
-              ? '保護状態を確認しています。'
-              : PERSISTENT_STORAGE_MESSAGES[persistentStorage]}
-          </p>
-          {persistentStorage === 'not-granted' && canRequestPersistentStorage() && (
-            <button
-              type="button"
-              onClick={() => void handleRequestPersistentStorage()}
-              disabled={persistRequesting}
-            >
-              {persistRequesting ? '要求中…' : '保存領域の保護を要求'}
-            </button>
-          )}
-        </div>
-
-        {storageActionMessage && (
-          <p
-            className={storageActionMessage.type === 'error' ? 'home-error' : 'home-storage-note'}
-            role={storageActionMessage.type === 'error' ? 'alert' : 'status'}
-          >
-            {storageActionMessage.text}
-          </p>
-        )}
-
-        <div className="home-storage-guidance">
-          <h3>容量を確保する前に</h3>
-          <p>
-            必要なプロジェクトを開き、編集画面の「.casproj をダウンロード」で退避してください。
-            退避を確認してから、ごみ箱や不要なデータを手動で整理します。
-          </p>
-          <div className="home-storage-actions">
-            <button
-              type="button"
-              onClick={() => scrollToSection('home-projects')}
-              disabled={!projects || projects.length === 0}
-            >
-              バックアップするプロジェクトを選ぶ
-            </button>
-            {trash.length > 0 && (
-              <button type="button" onClick={() => scrollToSection('home-trash')}>
-                ごみ箱を確認
-              </button>
-            )}
-            {quarantine.length > 0 && (
-              <button type="button" onClick={() => scrollToSection('home-quarantine')}>
-                読み込み失敗データを確認
-              </button>
-            )}
-          </div>
-        </div>
-      </section>
+      {storageActionMessage && (
+        <p
+          className={storageActionMessage.type === 'error' ? 'home-error' : 'home-storage-note'}
+          role={storageActionMessage.type === 'error' ? 'alert' : 'status'}
+        >
+          {storageActionMessage.text}
+        </p>
+      )}
 
       <section className="home-section" aria-label="新規プロジェクト">
         <h2>新規プロジェクト</h2>
@@ -447,6 +416,20 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
         </div>
       </section>
 
+      <section className="home-section" aria-label="画像から始める">
+        <h2>画像から始める</h2>
+        <label className="home-import-button">
+          画像を取り込む
+          <input
+            className="visually-hidden-input"
+            type="file"
+            accept={NEW_ASSET_IMPORT_ACCEPT}
+            disabled={importing || creating}
+            onChange={(event) => void handleImportImage(event)}
+          />
+        </label>
+        <p>画像を選ぶと、新しいプロジェクトで編集を始められます。</p>
+      </section>
       <section className="home-section" aria-label="プロジェクトの読み込み">
         <h2>プロジェクトの読み込み</h2>
         <div className="home-import">
@@ -472,7 +455,7 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
         )}
         {importMigrations.length > 0 && (
           <div className="home-import-warnings" role="status">
-            <h3>適用したmigration</h3>
+            <h3>読み込み時の更新</h3>
             {importMigrations.map((migration) => (
               <p key={migration}>{migration}</p>
             ))}
@@ -482,13 +465,14 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
       </section>
 
       <section id="home-projects" className="home-section" aria-label="プロジェクト一覧">
-        <h2>プロジェクト一覧</h2>
+        <h2>続きから</h2>
         {projects === null && <p>読み込み中…</p>}
         {projects !== null && projects.length === 0 && <p>保存済みのプロジェクトはありません。</p>}
         {projects !== null && projects.length > 0 && (
           <ul className="home-list">
             {projects.map((summary) => (
               <li key={summary.id} className="home-list-item">
+                <ProjectThumbnail projectId={summary.id} />
                 <div className="home-item-main">
                   <span className="home-item-name">{summary.name}</span>
                   <span className="home-item-meta">
@@ -532,6 +516,108 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
             ))}
           </ul>
         )}
+      </section>
+
+      <section id="home-storage" className="home-section home-storage" aria-label="保存容量">
+        <details open={warningLevel !== 'normal'}>
+          <summary>保存容量・バックアップ</summary>
+          <div className="home-section-header">
+            <h2>保存容量</h2>
+            <button
+              type="button"
+              onClick={() => void refreshStorage()}
+              disabled={storageRefreshing}
+            >
+              {storageRefreshing ? '確認中…' : '容量を再確認'}
+            </button>
+          </div>
+
+          {usage === null ? (
+            <p role="status">保存容量を確認しています。</p>
+          ) : (
+            <div className="home-storage-details">
+              {usage.status === 'available' ? (
+                <p>
+                  使用量: {usage.usageBytes !== null ? formatBytes(usage.usageBytes) : '取得不能'} /{' '}
+                  {usage.quotaBytes !== null ? formatBytes(usage.quotaBytes) : '取得不能'}
+                  {usage.usageRatio !== null
+                    ? `（${formatUsagePercentage(usage.usageRatio)}）`
+                    : '（使用率は計算できません）'}
+                </p>
+              ) : usage.status === 'unsupported' ? (
+                <p>この環境は使用量の取得に対応していません。</p>
+              ) : (
+                <p>使用量の取得中にエラーが発生しました。</p>
+              )}
+              <p className="home-storage-note">
+                この値はブラウザによる推定であり、次の保存成功や実際の空き容量を保証しません。
+              </p>
+            </div>
+          )}
+
+          <div
+            className={`home-storage-warning home-storage-warning--${warningLevel}`}
+            role="status"
+          >
+            <strong>
+              {warningLevel === 'normal'
+                ? '通常'
+                : warningLevel === 'notice'
+                  ? 'お知らせ'
+                  : warningLevel === 'warning'
+                    ? '警告'
+                    : warningLevel === 'critical'
+                      ? '重要な警告'
+                      : '使用率不明'}
+            </strong>
+            <p>{STORAGE_WARNING_MESSAGES[warningLevel]}</p>
+          </div>
+
+          <div className="home-persistent-storage">
+            <h3>保存領域の保護</h3>
+            <p role="status">
+              {persistentStorage === null
+                ? '保護状態を確認しています。'
+                : PERSISTENT_STORAGE_MESSAGES[persistentStorage]}
+            </p>
+            {persistentStorage === 'not-granted' && canRequestPersistentStorage() && (
+              <button
+                type="button"
+                onClick={() => void handleRequestPersistentStorage()}
+                disabled={persistRequesting}
+              >
+                {persistRequesting ? '要求中…' : '保存領域の保護を要求'}
+              </button>
+            )}
+          </div>
+
+          <div className="home-storage-guidance">
+            <h3>容量を確保する前に</h3>
+            <p>
+              必要なプロジェクトを開き、編集画面の「.casproj をダウンロード」で退避してください。
+              退避を確認してから、ごみ箱や不要なデータを手動で整理します。
+            </p>
+            <div className="home-storage-actions">
+              <button
+                type="button"
+                onClick={() => scrollToSection('home-projects')}
+                disabled={!projects || projects.length === 0}
+              >
+                バックアップするプロジェクトを選ぶ
+              </button>
+              {trash.length > 0 && (
+                <button type="button" onClick={() => scrollToSection('home-trash')}>
+                  ごみ箱を確認
+                </button>
+              )}
+              {quarantine.length > 0 && (
+                <button type="button" onClick={() => scrollToSection('home-quarantine')}>
+                  読み込み失敗データを確認
+                </button>
+              )}
+            </div>
+          </div>
+        </details>
       </section>
 
       {trash.length > 0 && (
@@ -606,6 +692,28 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
             ))}
           </ul>
         </section>
+      )}
+      {pendingImage && (
+        <ImportPreviewDialog
+          preview={{
+            id: pendingImage.prepared.asset.id,
+            title: pendingImage.fileName,
+            modeLabel: pendingImage.prepared.preview.modeLabel,
+            fileNames: [pendingImage.fileName],
+            assetCount: 1,
+            layerCount: pendingImage.prepared.asset.layers.length,
+            frameCount: pendingImage.prepared.asset.frames?.length ?? 0,
+            animationCount: pendingImage.prepared.asset.animations.length,
+            details: pendingImage.prepared.preview.details,
+            losses: pendingImage.prepared.preview.losses,
+            warnings: pendingImage.prepared.preview.warnings,
+          }}
+          busy={importing}
+          errorMessage={errorMessage}
+          completionNote="新しいプロジェクトを作成します。ホームのごみ箱から削除・復元できます。"
+          onConfirm={handleConfirmImage}
+          onCancel={() => setPendingImage(null)}
+        />
       )}
     </main>
   );

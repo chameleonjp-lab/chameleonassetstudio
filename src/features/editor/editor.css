@@ -242,7 +242,8 @@
   gap: 0.35rem;
 }
 
-.editor-properties-guide nav a {
+.editor-properties-guide nav a,
+.editor-properties-guide nav button {
   padding: 0.3rem 0.5rem;
   border: 1px solid #8885;
   border-radius: 999px;
@@ -2867,4 +2868,18 @@
   padding: 0.45rem 0.8rem;
   font: inherit;
   font-weight: 700;
+}
+
+.editor-properties-guide nav [aria-current='page'] {
+  font-weight: 700;
+  border-color: #2a9d8f;
+}
+
+.editor-properties-guide nav a,
+.editor-properties-guide nav button {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
