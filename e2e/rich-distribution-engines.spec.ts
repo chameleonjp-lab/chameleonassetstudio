@@ -102,6 +102,7 @@ async function seedRichProject(page: Page, scale: number) {
         payload: { value: n, inert: 'globalThis.mustNotRun = true' },
       })),
     }));
+    delete asset.animations[0].events[0].payload;
     const copy = structuredClone(asset);
     copy.id = asset.id + '_copy';
     const yellow = document.createElement('canvas');
@@ -129,6 +130,13 @@ async function seedRichProject(page: Page, scale: number) {
   }, scale);
   await page.reload();
   await page.getByRole('button', { name: '「Rich engine integration」を開く' }).click();
+  await page.getByLabel('アニメーション選択', { exact: true }).selectOption('loop');
+  await page.getByRole('button', { name: 'イベント「event_0」の追加データを編集' }).click();
+  await page
+    .getByLabel('イベント「event_0」の追加データJSON')
+    .fill(JSON.stringify({ value: 0, inert: 'globalThis.mustNotRun = true' }));
+  await page.getByRole('button', { name: '追加データを保存', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: '保存済み' })).toBeVisible();
 }
 
 function consumer(engine: 'canvas2d' | 'pixijs' | 'phaser' | 'phaser-webgl') {

@@ -5,6 +5,9 @@ import {
   addAnimationEvent,
   animationEventFrameCandidates,
   changeAnimationEventFrame,
+  changeAnimationEventPayload,
+  parseAnimationEventPayload,
+  EVENT_PAYLOAD_EDIT_MAX_BYTES,
   removeAnimationEvent,
   renameAnimationEvent,
 } from './animationEvents';
@@ -148,5 +151,107 @@ describe('D3 animation event editing', () => {
 
     const noop = renameAnimationEvent(source, 'animation_1', 'event_existing', 'step');
     expect(noop).toEqual({ ok: true, asset: source, changed: false });
+  });
+});
+
+describe('payload authoring without format changes', () => {
+  it.each([
+    'null',
+    'false',
+    '42',
+    '""',
+    '[]',
+    '{}',
+    '[1,"step",null,false]',
+    '{"sound":"step","power":2}',
+  ])('accepts shallow JSON %s', (text) => {
+    expect(parseAnimationEventPayload(text)).toEqual({ ok: true, payload: JSON.parse(text) });
+  });
+  it.each(['', 'undefined', '{', '1e400', '[1e400]', '{"x":1e400}', '[[1]]', '{"x":{}}'])(
+    'rejects invalid or nested JSON %s without mutation',
+    (text) => {
+      const asset = fixture();
+      const before = structuredClone(asset);
+      expect(
+        changeAnimationEventPayload(asset, 'animation_1', 'event_existing', text),
+      ).toMatchObject({ ok: false, asset });
+      expect(asset).toEqual(before);
+    },
+  );
+  it('bounds UTF-8 editing bytes inclusively and preserves larger imported payloads', () => {
+    expect(
+      parseAnimationEventPayload(JSON.stringify('x'.repeat(EVENT_PAYLOAD_EDIT_MAX_BYTES - 2))).ok,
+    ).toBe(true);
+    expect(
+      parseAnimationEventPayload(JSON.stringify('x'.repeat(EVENT_PAYLOAD_EDIT_MAX_BYTES - 1))).ok,
+    ).toBe(false);
+    expect(parseAnimationEventPayload(JSON.stringify('あ'.repeat(6000))).ok).toBe(false);
+    const asset = fixture();
+    asset.animations[0].events![0].payload = 'x'.repeat(20000);
+    const result = changeAnimationEventPayload(
+      asset,
+      'animation_1',
+      'event_existing',
+      JSON.stringify('x'.repeat(20000)),
+    );
+    expect(result).toMatchObject({ ok: false, asset });
+    expect(asset.animations[0].events![0].payload).toHaveLength(20000);
+  });
+  it('changes only target payload and timestamp; null and absent remain distinct', () => {
+    const asset = fixture();
+    const before = structuredClone(asset);
+    const result = changeAnimationEventPayload(asset, 'animation_1', 'event_existing', 'null');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.asset.animations[0].events![0].payload).toBeNull();
+    const expected = structuredClone(before);
+    expected.animations[0].events![0].payload = null;
+    expected.updatedAt = result.asset.updatedAt;
+    expect(result.asset).toEqual(expected);
+    expect(asset).toEqual(before);
+    const removed = changeAnimationEventPayload(
+      result.asset,
+      'animation_1',
+      'event_existing',
+      null,
+    );
+    if (!removed.ok) throw new Error(removed.reason);
+    expect(Object.hasOwn(removed.asset.animations[0].events![0], 'payload')).toBe(false);
+    expect(
+      changeAnimationEventPayload(removed.asset, 'animation_1', 'event_existing', null),
+    ).toMatchObject({ changed: false, asset: removed.asset });
+  });
+  it('no-op ignores formatting/object key order but respects array order and primitive types', () => {
+    const asset = fixture();
+    asset.animations[0].events![0].payload = { a: 1, b: false };
+    expect(
+      changeAnimationEventPayload(asset, 'animation_1', 'event_existing', '{ "b":false,"a":1 }'),
+    ).toMatchObject({ changed: false, asset });
+    asset.animations[0].events![0].payload = [1, 2];
+    expect(
+      changeAnimationEventPayload(asset, 'animation_1', 'event_existing', '[2,1]'),
+    ).toMatchObject({ changed: true });
+  });
+  it('allows dangling event authoring without changing reference and refuses ambiguous IDs', () => {
+    const asset = fixture();
+    const result = changeAnimationEventPayload(
+      asset,
+      'animation_1',
+      'event_dangling',
+      '{"__proto__":"inert","constructor":"also inert"}',
+    );
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.asset.animations[0].events![1]).toMatchObject({
+      frameId: 'outside',
+      payload: JSON.parse('{"__proto__":"inert","constructor":"also inert"}'),
+    });
+    expect(Object.getPrototypeOf(result.asset.animations[0].events![1].payload)).toBe(
+      Object.prototype,
+    );
+    expect(changeAnimationEventPayload(asset, 'missing', 'event_existing', '{}').ok).toBe(false);
+    asset.animations[0].events!.push({ ...asset.animations[0].events![0] });
+    expect(changeAnimationEventPayload(asset, 'animation_1', 'event_existing', '{}').ok).toBe(
+      false,
+    );
   });
 });

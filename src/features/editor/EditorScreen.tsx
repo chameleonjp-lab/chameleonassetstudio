@@ -5325,9 +5325,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             onRewind={handleRewindAnimation}
             onCommit={(label, next) => {
               if (selectedAsset && !isPlaying)
-                commitAssetChange(label, selectedAsset, next, {
+                return commitAssetChange(label, selectedAsset, next, {
                   allowFramePreview: editFrameId !== null && editFrameId === previewFrameId,
                 });
+              return false;
             }}
             onLiveChange={(next) => {
               if (!isPlaying)
