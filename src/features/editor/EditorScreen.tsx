@@ -2,6 +2,7 @@ import { assertFrameImportActive } from '../../core/images/frameImportBudget';
 import { prepareFrameDrawing, frameDrawingLayerIsIndependent } from './frameDrawing';
 import { duplicateFrame } from '../../core/model/assetOps';
 import { CommittedInput } from './CommittedInput';
+import { BuildInformation } from '../../app/BuildInformation';
 import {
   useCallback,
   useEffect,
@@ -481,6 +482,16 @@ async function transformPaletteBatchBlob(
   onProgress?.(1);
   return { blob, changed };
 }
+
+const NEW_TEMPLATE_DESCRIPTIONS: Record<AssetCreationTemplateId, string> = {
+  blank: '透明な画像から自由に描きます。',
+  'character-basic': '体の当たり判定を用意します。動かすパーツは必要に応じて追加できます。',
+  'item-pickup': '拾える範囲とアイテムの設定を用意します。',
+  'background-loop': '横に繰り返して表示する背景を用意します。',
+  'tile-floor': '32ピクセル四方の床タイルとして使う設定を用意します。',
+  'gimmick-platform': '上に乗れる足場の設定と当たり判定を用意します。',
+  'effect-spark': '短く光る演出に使う設定を用意します。',
+};
 
 export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const autosaveRef = useRef<AutosaveQueue | null>(null);
@@ -3762,7 +3773,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 ))
             }
             onClick={() => void handleHistoryUndo()}
-            title={historyState.undoLabel ?? undefined}
+            title={historyState.undoLabel
+              ?.replace('Frame別当たり判定', 'コマ別の当たり判定')
+              .replace('geometry変更', '位置・サイズを変更')
+              .replace('geometry解除', '位置・サイズの上書きを解除')}
           >
             元に戻す
           </button>
@@ -3779,7 +3793,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 ))
             }
             onClick={() => void handleHistoryRedo()}
-            title={historyState.redoLabel ?? undefined}
+            title={historyState.redoLabel
+              ?.replace('Frame別当たり判定', 'コマ別の当たり判定')
+              .replace('geometry変更', '位置・サイズを変更')
+              .replace('geometry解除', '位置・サイズの上書きを解除')}
           >
             やり直す
           </button>
@@ -3879,55 +3896,58 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                     : 'フレームをプレビュー中です。パン・ズーム・レイヤー選択ができます。描き直すにはタイムラインの「このコマを描く」を選んでください。'}
                 </p>
               )}
-              <nav
-                className="editor-mobile-toolbar"
-                aria-label="編集ツール"
-                aria-describedby="active-tool-help"
-              >
-                {toolButtons.map((item) => (
-                  <button
-                    key={item.tool}
-                    type="button"
-                    aria-pressed={tool === item.tool}
-                    disabled={
-                      framePreviewActive &&
-                      !canUseToolDuringFramePreview(item.tool) &&
-                      !(editFrameId && LAYER_TOOLS.includes(item.tool))
-                    }
-                    onClick={() => activateTool(item.tool)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </nav>
-              <div
-                id="active-tool-help"
-                className="editor-tool-help"
-                data-change-kind={activeToolGuide.kind}
-              >
-                <div className="editor-tool-help-heading">
-                  <strong>現在：{activeToolGuide.label}</strong>
-                  <span>{activeToolGuide.kind}</span>
-                </div>
-                <p>
-                  <b>できること：</b>
-                  {activeToolGuide.purpose}
-                </p>
-                <p>
-                  <b>操作：</b>
-                  {activeToolGuide.gesture}
-                </p>
-                <p>
-                  <b>変化と戻し方：</b>
-                  {activeToolGuide.effect}
-                </p>
-                <a
-                  href={`${import.meta.env.BASE_URL}guide/features/#tool-${activeToolGuide.tool}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+              <div className="editor-canvas-tools">
+                <nav
+                  className="editor-mobile-toolbar"
+                  aria-label="編集ツール"
+                  aria-describedby="active-tool-help"
                 >
-                  図で詳しく見る
-                </a>
+                  {toolButtons.map((item) => (
+                    <button
+                      key={item.tool}
+                      type="button"
+                      aria-pressed={tool === item.tool}
+                      disabled={
+                        framePreviewActive &&
+                        !canUseToolDuringFramePreview(item.tool) &&
+                        !(editFrameId && LAYER_TOOLS.includes(item.tool))
+                      }
+                      onClick={() => activateTool(item.tool)}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </nav>
+                <details
+                  id="active-tool-help"
+                  className="editor-tool-help"
+                  data-change-kind={activeToolGuide.kind}
+                >
+                  <summary className="editor-tool-help-heading">
+                    <strong>現在：{activeToolGuide.label}</strong>
+                    <span>{activeToolGuide.kind}</span>
+                    <span className="tool-help-hint">使い方</span>
+                  </summary>
+                  <p>
+                    <b>できること：</b>
+                    {activeToolGuide.purpose}
+                  </p>
+                  <p>
+                    <b>操作：</b>
+                    {activeToolGuide.gesture}
+                  </p>
+                  <p>
+                    <b>変化と戻し方：</b>
+                    {activeToolGuide.effect}
+                  </p>
+                  <a
+                    href={`${import.meta.env.BASE_URL}guide/features/#tool-${activeToolGuide.tool}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    図で詳しく見る
+                  </a>
+                </details>
               </div>
               <CanvasEditor
                 asset={frameAlignmentPreview?.targetAsset ?? previewAsset ?? selectedAsset}
@@ -4065,6 +4085,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               ？ プロパティの機能を図で見る
             </a>
           </div>
+          <BuildInformation />
           <label className="editor-field">
             プロジェクト名
             <CommittedInput
@@ -4082,7 +4103,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             hidden={propertySection !== 'all' && propertySection !== 'asset'}
           >
             <h3 id="property-asset" className="editor-subheading">
-              アセット
+              素材を選ぶ
             </h3>
             {selectedAsset ? (
               <>
@@ -4214,10 +4235,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   ))}
                 </select>
               </label>
-              <p className="editor-note">
-                {newAssetTemplates.find((template) => template.id === newAssetTemplateId)
-                  ?.description ?? ''}
-              </p>
+              <p className="editor-note">{NEW_TEMPLATE_DESCRIPTIONS[newAssetTemplateId]}</p>
               {['character', 'item', 'tile', 'effect'].includes(newAssetType) && (
                 <label className="editor-field editor-field-checkbox">
                   <input
@@ -4236,7 +4254,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                     checked={newAssetCreateBodyPart}
                     onChange={(event) => setNewAssetCreateBodyPart(event.target.checked)}
                   />
-                  main layerを参照するbody Partも作成する
+                  体のパーツも用意する
                 </label>
               )}
               <button
@@ -4345,7 +4363,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             hidden={propertySection !== 'all' && propertySection !== 'layers'}
           >
             <h3 id="property-canvas" className="editor-subheading">
-              Asset canvasサイズ
+              キャンバスの大きさ
             </h3>
             {selectedAsset ? (
               <CanvasResizePanel asset={selectedAsset} onCommit={commitPanelChange} />
@@ -4513,7 +4531,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   <fieldset className="editor-fieldset">
                     <legend>選択範囲</legend>
                     <p className="editor-note">
-                      「範囲」ツールでキャンバスをドラッグすると矩形選択を作れます。選択中は他のラスターツールが選択範囲をmaskとして使います。Escで解除できます。
+                      「範囲」でドラッグして囲むと、その範囲だけ描き直せます。Escキーで選択を解除できます。
                     </p>
                     {selection && (
                       <p className="editor-note">
@@ -4656,12 +4674,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   <fieldset className="editor-fieldset">
                     <legend>透明縁・トリミング</legend>
                     <p className="editor-note">
-                      alpha
-                      boundsを読み取り専用で検査します。結果は保存せず、トリミング時も選択layerの画像だけを変更します。Asset
-                      canvas、原点、アンカー、当たり判定は変更しません。
+                      画像の透明な余白を調べます。トリミングすると、選択中の画像の余白だけを取り除きます。
                     </p>
                     <label className="editor-field">
-                      alphaしきい値（0-255）
+                      不透明度のしきい値（0-255）
                       <input
                         type="number"
                         aria-label="alphaしきい値"
@@ -4692,7 +4708,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                         !activeAlphaInspection.bounds ||
                         !activeAlphaInspection.margins ? (
                           <p role="alert" className="editor-note">
-                            しきい値を超える表示pixelがありません。トリミングできません。
+                            しきい値を超える表示ピクセルがありません。トリミングできません。
                           </p>
                         ) : (
                           <>
@@ -4714,7 +4730,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                             </p>
                             {Object.values(activeAlphaInspection.touchesEdge).some(Boolean) && (
                               <p role="alert" className="editor-note">
-                                表示pixelが画像端に接しています。接している辺にはトリミング後も余白がありません。
+                                表示ピクセルが画像端に接しています。接している辺にはトリミング後も余白がありません。
                               </p>
                             )}
                           </>
@@ -4736,14 +4752,14 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   </fieldset>
 
                   <fieldset className="editor-fieldset">
-                    <legend>透明padding</legend>
+                    <legend>透明な余白</legend>
                     <p className="editor-note">
-                      選択画像の周囲へ透明pixelを追加します。元の内容がworld上で動かないようLayer位置を補正し、Asset
-                      canvasとゲーム情報は変更しません。
+                      選択中の画像の周囲に透明な余白を追加します。絵の位置を保ちながら画像を広げます。
                     </p>
                     {(['top', 'right', 'bottom', 'left'] as const).map((side) => (
                       <label className="editor-field" key={side}>
-                        padding {side}（px）
+                        余白 {({ top: '上', right: '右', bottom: '下', left: '左' } as const)[side]}
+                        （px）
                         <input
                           type="number"
                           aria-label={`padding ${side}`}
@@ -4767,7 +4783,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                       <p className="editor-note" aria-label="padding変更後preview">
                         変更後: {paddingOutputSize.width} x {paddingOutputSize.height}px
                         {paddingPreviewPosition
-                          ? ` / Layer位置 x ${roundValue(paddingPreviewPosition.x)}, y ${roundValue(
+                          ? ` / レイヤー位置 x ${roundValue(paddingPreviewPosition.x)}, y ${roundValue(
                               paddingPreviewPosition.y,
                             )}`
                           : ''}
@@ -4780,7 +4796,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                     )}
                     {paddingExtendsOutside && (
                       <p role="alert" className="editor-note">
-                        変更後のLayer画像はAsset canvas外へはみ出します。canvasは自動拡張しません。
+                        変更後の画像はキャンバスからはみ出します。キャンバスの大きさは変わりません。
                       </p>
                     )}
                     <button
@@ -4795,16 +4811,14 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                         void applyImageEdit({ type: 'padLayerImage', padding: layerPadding })
                       }
                     >
-                      透明paddingを追加
+                      透明な余白を追加
                     </button>
                   </fieldset>
 
                   <fieldset className="editor-fieldset">
-                    <legend>Layer画像リサイズ</legend>
+                    <legend>選択中の画像をリサイズ</legend>
                     <p className="editor-note">
-                      Layer中心を固定して選択画像だけをリサイズします。pixel
-                      artはnearest、写真・滑らかな素材はsmoothが基本です。Asset
-                      canvasとゲーム情報は変更しません。
+                      画像の中心を保って大きさを変えます。ドット絵は「くっきり」、写真は「滑らか」を選んでください。
                     </p>
                     <label className="editor-field">
                       リサイズ後の幅（px）
@@ -4845,8 +4859,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                           )
                         }
                       >
-                        <option value="nearest">nearest（pixel art向け）</option>
-                        <option value="smooth">smooth（滑らか）</option>
+                        <option value="nearest">くっきり（ドット絵向け）</option>
+                        <option value="smooth">滑らか（写真向け）</option>
                       </select>
                     </label>
                     {selectedTextureSize && resizeOutputValid && (
@@ -4854,7 +4868,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                         変更前: {selectedTextureSize.width} x {selectedTextureSize.height}px /
                         変更後: {layerResizeWidth} x {layerResizeHeight}px
                         {resizePreviewPosition
-                          ? ` / Layer位置 x ${roundValue(resizePreviewPosition.x)}, y ${roundValue(
+                          ? ` / レイヤー位置 x ${roundValue(resizePreviewPosition.x)}, y ${roundValue(
                               resizePreviewPosition.y,
                             )}`
                           : ''}
@@ -4867,7 +4881,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                     )}
                     {resizeExtendsOutside && (
                       <p role="alert" className="editor-note">
-                        変更後のLayer画像はAsset canvas外へはみ出します。canvasは自動拡張しません。
+                        変更後の画像はキャンバスからはみ出します。キャンバスの大きさは変わりません。
                       </p>
                     )}
                     <button
@@ -4887,7 +4901,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                         })
                       }
                     >
-                      Layer画像をリサイズ
+                      選択中の画像をリサイズ
                     </button>
                   </fieldset>
 
@@ -4970,7 +4984,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                   <fieldset className="editor-fieldset">
                     <legend>パレット・色違い・輪郭・反転</legend>
                     <p className="editor-note">
-                      選択中のedit画像から主要色を読み取り専用で抽出します。抽出結果は保存せず、swatchを選ぶと色置換の対象色へ設定できます。
+                      画像からよく使われている色を取り出します。色見本を選ぶと、その色を別の色に置き換えられます。
                     </p>
                     <label className="editor-field">
                       抽出色数（1-{MAX_PALETTE_COLORS}）
@@ -4992,7 +5006,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                       />
                     </label>
                     <label className="editor-field">
-                      palette alphaしきい値（0-255）
+                      色抽出の不透明度のしきい値（0-255）
                       <input
                         type="number"
                         aria-label="パレットalphaしきい値"
@@ -5020,7 +5034,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                     {activePaletteExtraction && (
                       <div className="palette-result" aria-label="抽出パレット">
                         <p className="editor-note">
-                          表示pixel {activePaletteExtraction.visiblePixelCount} / 透明扱い{' '}
+                          表示ピクセル {activePaletteExtraction.visiblePixelCount} / 透明扱い{' '}
                           {activePaletteExtraction.transparentPixelCount} / RGB{' '}
                           {activePaletteExtraction.quantizationBits}-bit量子化
                         </p>
@@ -5062,7 +5076,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
                     <h4 className="repair-section-heading">色置換</h4>
                     <label className="editor-field">
-                      対象色（スポイトまたは抽出paletteから選べます）
+                      対象色（スポイトまたは抽出した色見本から選べます）
                       <input
                         type="color"
                         aria-label="色置換の対象色"
@@ -5232,7 +5246,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               <p className="editor-note">アセットを選ぶとリグを編集できます。</p>
             )}
           </section>
-          <h3 className="editor-subheading">アセット</h3>
+
           {assets.length === 0 ? (
             <p className="editor-note">
               アセットがありません。画像を取り込むか、新規アセットを作成してください。

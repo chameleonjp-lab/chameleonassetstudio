@@ -292,7 +292,7 @@ export function AssetBatchPanel({
       setPreview(null);
       setIncludedIds(new Set());
       setWarningsConfirmed(false);
-      setMessage('一括変更を1件の履歴として原子的に確定しました。');
+      setMessage('選択した素材をまとめて保存しました。取り消しも一回で戻せます。');
     } catch (cause) {
       setError(
         `${cause instanceof Error ? cause.message : String(cause)} 正本は部分更新されていません。previewを作り直してください。`,
@@ -304,10 +304,9 @@ export function AssetBatchPanel({
 
   return (
     <section className="asset-batch-panel" aria-label="Asset一括変更">
-      <h3>Asset一括変更</h3>
+      <h3>素材をまとめて変更</h3>
       <p className="editor-note">
-        最大16 Assetを1件ずつ準備し、選択した全targetを1回の保存と1件の履歴で確定します。
-        Project全体は自動選択しません。
+        最大16件の素材を選び、変更内容を確認してからまとめて保存します。取り消しも一回で戻せます。
       </p>
 
       <label className="editor-field">
@@ -318,15 +317,15 @@ export function AssetBatchPanel({
           disabled={preparing || executing || busy}
           onChange={(event) => changeOperation(event.target.value as BatchOperation)}
         >
-          <option value="linked-refresh">linked variant refresh</option>
-          <option value="palette">Asset / layer palette置換</option>
-          <option value="canvas-resize">Asset canvas resize</option>
+          <option value="linked-refresh">関連するコピーを更新</option>
+          <option value="palette">画像の色を置き換える</option>
+          <option value="canvas-resize">キャンバスの大きさを変更</option>
         </select>
       </label>
 
       <fieldset className="asset-batch-target-picker" disabled={preparing || executing || busy}>
         <legend>
-          準備するtarget（{targetAssetIds.length}/{MAX_ASSET_BATCH_REVISION_TARGETS}）
+          変更する素材（{targetAssetIds.length}/{MAX_ASSET_BATCH_REVISION_TARGETS}）
         </legend>
         {operation === 'linked-refresh' ? (
           linked.length > 0 ? (
@@ -341,7 +340,7 @@ export function AssetBatchPanel({
               </label>
             ))
           ) : (
-            <p className="editor-note">linked variantがありません。</p>
+            <p className="editor-note">関連するコピーがありません。</p>
           )
         ) : operation === 'palette' ? (
           paletteCandidates.length > 0 ? (
@@ -376,7 +375,7 @@ export function AssetBatchPanel({
               </div>
             ))
           ) : (
-            <p className="editor-note">edit画像layerがありません。</p>
+            <p className="editor-note">編集できる画像レイヤーがありません。</p>
           )
         ) : (
           assets.map((asset) => (
@@ -419,7 +418,7 @@ export function AssetBatchPanel({
             />
           </label>
           <label className="editor-field">
-            tolerance（0〜255）
+            色の許容差（0〜255）
             <input
               aria-label="一括palette tolerance"
               type="number"
@@ -439,7 +438,7 @@ export function AssetBatchPanel({
       {operation === 'canvas-resize' && (
         <div className="asset-batch-config-grid">
           <label className="editor-field">
-            一括canvas幅
+            一括キャンバス幅
             <input
               type="number"
               min={1}
@@ -453,7 +452,7 @@ export function AssetBatchPanel({
             />
           </label>
           <label className="editor-field">
-            一括canvas高さ
+            一括キャンバス高さ
             <input
               type="number"
               min={1}
@@ -467,7 +466,7 @@ export function AssetBatchPanel({
             />
           </label>
           <label className="editor-field">
-            旧canvasの基準位置
+            元のキャンバスの基準位置
             <select
               aria-label="一括canvas基準位置"
               value={canvasAnchor}
@@ -492,7 +491,7 @@ export function AssetBatchPanel({
           disabled={preparing || executing || busy || targetAssetIds.length === 0}
           onClick={() => void handlePrepare()}
         >
-          target previewを準備
+          変更内容を確認
         </button>
         {preparing && (
           <button type="button" disabled={cancelRequested} onClick={handleCancel}>
@@ -509,14 +508,16 @@ export function AssetBatchPanel({
             {Math.round(progress.percent)}%）
           </span>
           {cancelRequested && (
-            <small>処理中targetを閉じた後に停止します。正本は変更しません。</small>
+            <small>
+              準備中の素材の処理が終わってから停止します。保存済みの内容は変わりません。
+            </small>
           )}
         </div>
       )}
 
       {preview && (
         <div className="asset-batch-preview" role="region" aria-label="一括変更preview">
-          <h4>対象別preview</h4>
+          <h4>素材ごとの変更内容</h4>
           <ul>
             {preview.targets.map((target) => {
               const selectable = isAssetBatchTargetSelectable(target);
@@ -553,7 +554,7 @@ export function AssetBatchPanel({
                   )}
                   {target.reasons.map((reason) => (
                     <p className="asset-batch-reason" key={reason}>
-                      {reason}
+                      {reason.replace('canvas外へ出るデータ', 'キャンバスからはみ出すデータ')}
                     </p>
                   ))}
                   <small>推定変更量: {formatBytes(target.estimatedChangeBytes)}</small>
@@ -565,7 +566,7 @@ export function AssetBatchPanel({
           {storage && (
             <div className={`asset-batch-storage ${storage.warningLevel}`}>
               <p>
-                選択target {includedIds.size}件 / 推定変更量{' '}
+                選択した素材 {includedIds.size}件 / 推定変更量{' '}
                 {formatBytes(storage.estimatedChangeBytes)}
                 {storage.projectedUsageBytes !== null && (
                   <> / 推定保存使用量 {formatBytes(storage.projectedUsageBytes)}</>
@@ -588,7 +589,7 @@ export function AssetBatchPanel({
                 checked={warningsConfirmed}
                 onChange={(event) => setWarningsConfirmed(event.target.checked)}
               />
-              warning対象を確認しました。clamp、crop、削除なしで実行します。
+              注意が必要な素材を確認しました。はみ出した部分を切り取らずに保存します。
             </label>
           )}
 
@@ -603,10 +604,10 @@ export function AssetBatchPanel({
             }
             onClick={() => void handleExecute()}
           >
-            {executing ? '全targetを原子保存中…' : '選択targetを一括実行'}
+            {executing ? 'まとめて保存中…' : '選択した素材を一括実行'}
           </button>
           <p className="editor-note">
-            保存開始後は取消できません。失敗時は全targetを無変更にし、履歴も追加しません。
+            保存中は取り消せません。失敗した場合は、すべての素材を保存前の状態に戻します。
           </p>
         </div>
       )}

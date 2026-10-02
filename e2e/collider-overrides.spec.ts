@@ -137,7 +137,7 @@ async function setupO1Project(page: Page, name: string): Promise<void> {
 async function selectFrameScope(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'frame_1', exact: true }).click();
   await page.getByLabel('当たり判定の編集範囲').selectOption('frame');
-  await expect(page.getByText('Frame別編集中: 「frame_1」')).toBeVisible();
+  await expect(page.getByText('コマ別編集中: 「frame_1」')).toBeVisible();
 }
 
 async function seedUnknownOverride(page: Page): Promise<void> {
@@ -192,9 +192,9 @@ test('Frame別geometry/visibleを1履歴で確定・取消・Undo/Redo・reload�
 
   const undo = page.getByRole('button', { name: '元に戻す', exact: true });
   const redo = page.getByRole('button', { name: 'やり直す', exact: true });
-  const width = page.getByLabel('Frame「frame_1」判定「body」幅');
-  const x = page.getByLabel('Frame「frame_1」判定「body」X');
-  const visible = page.getByLabel('Frame「frame_1」判定「body」の表示');
+  const width = page.getByLabel('コマ「frame_1」判定「body」幅');
+  const x = page.getByLabel('コマ「frame_1」判定「body」X');
+  const visible = page.getByLabel('コマ「frame_1」判定「body」の表示');
   await expect(width).toHaveValue('32');
   await expect(undo).toBeDisabled();
 
@@ -216,10 +216,10 @@ test('Frame別geometry/visibleを1履歴で確定・取消・Undo/Redo・reload�
 
   await width.fill('20');
   await width.press('Enter');
-  await expect(undo).toHaveAttribute('title', 'Frame別当たり判定: geometry変更');
+  await expect(undo).toHaveAttribute('title', 'コマ別の当たり判定: 位置・サイズを変更');
   await undo.click();
   await expect(width).toHaveValue('32');
-  await expect(redo).toHaveAttribute('title', 'Frame別当たり判定: geometry変更');
+  await expect(redo).toHaveAttribute('title', 'コマ別の当たり判定: 位置・サイズを変更');
   await redo.click();
   await expect(width).toHaveValue('20');
 
@@ -228,15 +228,15 @@ test('Frame別geometry/visibleを1履歴で確定・取消・Undo/Redo・reload�
   await expect(x).toHaveValue('5');
   await expect(page.locator('.editor')).toHaveAttribute('aria-busy', 'false');
   await visible.selectOption('hide');
-  await expect(page.getByText(/Frameで非表示/)).toBeVisible();
+  await expect(page.getByText(/このコマで非表示/)).toBeVisible();
 
-  const radius = page.getByLabel('Frame「frame_1」判定「pickup」半径');
-  const circleVisible = page.getByLabel('Frame「frame_1」判定「pickup」の表示');
+  const radius = page.getByLabel('コマ「frame_1」判定「pickup」半径');
+  const circleVisible = page.getByLabel('コマ「frame_1」判定「pickup」の表示');
   await radius.fill('12');
   await radius.press('Enter');
   await expect(page.locator('.editor')).toHaveAttribute('aria-busy', 'false');
   await circleVisible.selectOption('show');
-  await expect(page.getByText(/Frameで表示/)).toBeVisible();
+  await expect(page.getByText(/このコマで表示/)).toBeVisible();
   await expect(saveStatus(page)).toHaveText('保存済み', { timeout: 10_000 });
 
   const stored = await readStoredAsset(page);
@@ -268,10 +268,10 @@ test('Frame別geometry/visibleを1履歴で確定・取消・Undo/Redo・reload�
 
   await reopenProject(page, projectName);
   await selectFrameScope(page);
-  await expect(page.getByLabel('Frame「frame_1」判定「body」幅')).toHaveValue('20');
-  await expect(page.getByLabel('Frame「frame_1」判定「body」の表示')).toHaveValue('hide');
-  await expect(page.getByLabel('Frame「frame_1」判定「pickup」半径')).toHaveValue('12');
-  await expect(page.getByLabel('Frame「frame_1」判定「pickup」の表示')).toHaveValue('show');
+  await expect(page.getByLabel('コマ「frame_1」判定「body」幅')).toHaveValue('20');
+  await expect(page.getByLabel('コマ「frame_1」判定「body」の表示')).toHaveValue('hide');
+  await expect(page.getByLabel('コマ「frame_1」判定「pickup」半径')).toHaveValue('12');
+  await expect(page.getByLabel('コマ「frame_1」判定「pickup」の表示')).toHaveValue('show');
 });
 
 test('参照中collider削除と未知fieldだけを残すresetを拒否し、明示全解除だけ許可する', async ({
@@ -289,7 +289,7 @@ test('参照中collider削除と未知fieldだけを残すresetを拒否し、�
 
   await page.getByLabel('当たり判定の編集範囲').selectOption('frame');
   await expect(
-    page.getByText(/未知field（name、futureEntry、rect\.futureGeometry）を保持中/),
+    page.getByText(/未知の項目（name、futureEntry、rect\.futureGeometry）を保持中/),
   ).toBeVisible();
   page.once('dialog', async (dialog) => {
     expect(dialog.message()).toContain('rect.futureGeometry');
@@ -303,14 +303,14 @@ test('参照中collider削除と未知fieldだけを残すresetを拒否し、�
     expect(dialog.message()).toContain('rect.futureGeometry');
     await dialog.dismiss();
   });
-  await page.getByRole('button', { name: 'このFrameの上書きをすべて解除' }).click();
+  await page.getByRole('button', { name: 'このコマの上書きをすべて解除' }).click();
   expect((await readStoredAsset(page)).frames[0].colliderOverrides?.[0]).toHaveProperty('rect');
 
   page.once('dialog', async (dialog) => {
     expect(dialog.message()).toContain('rect.futureGeometry');
     await dialog.accept();
   });
-  await page.getByRole('button', { name: 'このFrameの上書きをすべて解除' }).click();
+  await page.getByRole('button', { name: 'このコマの上書きをすべて解除' }).click();
   await expect(saveStatus(page)).toHaveText('保存済み', { timeout: 10_000 });
   expect((await readStoredAsset(page)).frames[0]).not.toHaveProperty('colliderOverrides');
 });
@@ -337,7 +337,7 @@ test('保存失敗はBlobを変えずAsset/Project/History/UIを戻しerrorを�
     };
   });
 
-  const width = page.getByLabel('Frame「frame_1」判定「body」幅');
+  const width = page.getByLabel('コマ「frame_1」判定「body」幅');
   await width.fill('20');
   await width.press('Enter');
   await expect(saveStatus(page)).toContainText('保存失敗', { timeout: 10_000 });
@@ -370,7 +370,7 @@ test.describe('mobile O1', () => {
     const mobileNav = page.getByRole('navigation', { name: '画面切り替え' });
     await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).tap();
     await page.getByLabel('アニメーション選択').selectOption({ label: 'o1_animation' });
-    await page.getByLabel('ループ').uncheck();
+    await page.getByRole('checkbox', { name: 'ループ', exact: true }).uncheck();
     await expect(saveStatus(page)).toHaveText('保存済み', { timeout: 10_000 });
     await reopenProject(page, projectName);
     await mobileNav.getByRole('button', { name: 'タイムライン', exact: true }).tap();
@@ -383,17 +383,17 @@ test.describe('mobile O1', () => {
     await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).tap();
     const frameOption = page
       .getByLabel('当たり判定の編集範囲')
-      .getByRole('option', { name: /選択Frame/ });
+      .getByRole('option', { name: /選択したコマ/ });
     await expect(frameOption).toHaveJSProperty('disabled', true);
-    await expect(
-      page.getByRole('list', { name: /Frame「frame_1」の当たり判定上書き/ }),
-    ).toHaveCount(0);
+    await expect(page.getByRole('list', { name: /コマ「frame_1」の当たり判定上書き/ })).toHaveCount(
+      0,
+    );
     expect(await readStoredAsset(page)).toEqual(beforePlayback);
     await expect(undo).toBeDisabled();
 
     await page.clock.runFor(200);
     await expect(frameOption).toHaveJSProperty('disabled', true);
-    await expect(page.getByText(/タイムラインで停止中のFrameを選択/)).toBeVisible();
+    await expect(page.getByText(/タイムラインで停止中のコマを選択/)).toBeVisible();
     expect(await readStoredAsset(page)).toEqual(beforePlayback);
     await expect(undo).toBeDisabled();
     await page.clock.resume();
@@ -403,8 +403,8 @@ test.describe('mobile O1', () => {
     await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).tap();
     const scope = page.getByLabel('当たり判定の編集範囲');
     await scope.selectOption('frame');
-    const width = page.getByLabel('Frame「frame_1」判定「body」幅');
-    const reset = page.getByRole('button', { name: 'このFrameの上書きをすべて解除' });
+    const width = page.getByLabel('コマ「frame_1」判定「body」幅');
+    const reset = page.getByRole('button', { name: 'このコマの上書きをすべて解除' });
     await width.tap();
     await width.fill('30');
     await width.press('Tab');
@@ -428,7 +428,7 @@ test.describe('mobile O1', () => {
         'input[aria-label*="判定"][aria-label$="幅"]',
       )!;
       const resetButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(
-        (button) => button.textContent?.includes('このFrameの上書きをすべて解除'),
+        (button) => button.textContent?.includes('このコマの上書きをすべて解除'),
       )!;
       const properties = document.querySelector<HTMLElement>('.editor-properties.mobile-active')!;
       const dimensions = (element: HTMLElement) => ({

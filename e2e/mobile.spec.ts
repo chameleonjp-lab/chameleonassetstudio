@@ -56,6 +56,8 @@ test('スマホ縦で全編集ツールを選べ、選択中ツールの効果�
   await expect(eraserButton).toHaveAttribute('aria-pressed', 'true');
 
   const help = page.locator('#active-tool-help');
+  await expect(help).not.toHaveAttribute('open');
+  await help.locator('summary').click();
   await expect(help).toContainText('現在：消しゴム');
   await expect(help).toContainText('できること：');
   await expect(help).toContainText('操作：');

@@ -255,18 +255,18 @@ export function GameDataPanel({
           value={colliderScope}
           onChange={(event) => setColliderScope(event.target.value as 'asset' | 'frame')}
         >
-          <option value="asset">Asset共通</option>
+          <option value="asset">素材共通</option>
           <option value="frame" disabled={!selectedFrame || isPlaying}>
-            選択Frame{selectedFrame ? `「${selectedFrame.name}」` : '（タイムラインで選択）'}
+            選択したコマ{selectedFrame ? `「${selectedFrame.name}」` : '（タイムラインで選択）'}
           </option>
         </select>
       </label>
       <p className="editor-note">
         {colliderScope === 'frame' && selectedFrame
-          ? `Frame別編集中: 「${selectedFrame.name}」。省略した値はAsset共通値を使います。`
+          ? `コマ別編集中: 「${selectedFrame.name}」。省略した値は素材共通値を使います。`
           : isPlaying
-            ? 'Animation再生中はFrame別編集へ切り替えられません。停止してFrameを選択してください。'
-            : 'Asset共通を編集中です。Frame別編集はタイムラインで停止中のFrameを選択して切り替えます。'}
+            ? 'アニメーション再生中はコマ別編集へ切り替えられません。停止してコマを選択してください。'
+            : '素材共通を編集中です。コマ別編集はタイムラインで停止中のコマを選択して切り替えます。'}
       </p>
       <div className="gamedata-buttons">
         <button type="button" aria-pressed={showColliders} onClick={onToggleShowColliders}>
@@ -586,11 +586,11 @@ function FrameColliderOverridePanel({
   };
 
   if (asset.colliders.length === 0) {
-    return <p className="editor-note">先にAsset共通の当たり判定を追加してください。</p>;
+    return <p className="editor-note">先に素材共通の当たり判定を追加してください。</p>;
   }
 
   return (
-    <ul className="gamedata-list" aria-label={`Frame「${frame.name}」の当たり判定上書き`}>
+    <ul className="gamedata-list" aria-label={`コマ「${frame.name}」の当たり判定上書き`}>
       {asset.colliders.map((collider, index) => {
         const effective = effectiveColliders[index];
         const override = findFrameColliderOverride(frame, collider.id);
@@ -603,13 +603,13 @@ function FrameColliderOverridePanel({
           const parsed = Number(raw);
           if (!Number.isFinite(parsed)) {
             onError(
-              `Frame「${frame.name}」の判定「${collider.name}」${field}は有限な数値で入力してください。`,
+              `コマ「${frame.name}」の判定「${collider.name}」${field}は有限な数値で入力してください。`,
             );
             return false;
           }
           if ((field === 'width' || field === 'height' || field === 'radius') && parsed <= 0) {
             onError(
-              `Frame「${frame.name}」の判定「${collider.name}」${field}は0より大きい値を入力してください。`,
+              `コマ「${frame.name}」の判定「${collider.name}」${field}は0より大きい値を入力してください。`,
             );
             return false;
           }
@@ -660,7 +660,7 @@ function FrameColliderOverridePanel({
               <span className="gamedata-shape">{collider.shape === 'rect' ? '矩形' : '円'}</span>
               <button
                 type="button"
-                aria-label={`Frame「${frame.name}」の判定「${collider.name}」を選択`}
+                aria-label={`コマ「${frame.name}」の判定「${collider.name}」を選択`}
                 aria-pressed={selected}
                 onClick={() => onSelectCollider(collider.id)}
               >
@@ -668,12 +668,12 @@ function FrameColliderOverridePanel({
               </button>
             </div>
             <p className="editor-note">
-              位置・サイズ: {override?.rect || override?.circle ? 'Frame値' : 'Asset共通値'} / 表示:{' '}
+              位置・サイズ: {override?.rect || override?.circle ? 'コマの値' : '素材共通値'} / 表示:{' '}
               {override?.visible === undefined
-                ? `Asset共通（${collider.visible ? '表示' : '非表示'}）`
+                ? `素材共通（${collider.visible ? '表示' : '非表示'}）`
                 : override.visible
-                  ? 'Frameで表示'
-                  : 'Frameで非表示'}
+                  ? 'このコマで表示'
+                  : 'このコマで非表示'}
             </p>
             <div className="gamedata-inline-fields">
               {fields.map(([field, label]) => {
@@ -689,7 +689,7 @@ function FrameColliderOverridePanel({
                           ? 1
                           : undefined
                       }
-                      aria-label={`Frame「${frame.name}」判定「${collider.name}」${label}`}
+                      aria-label={`コマ「${frame.name}」判定「${collider.name}」${label}`}
                       value={String(current)}
                       normalize={(raw) =>
                         normalizeNumber(
@@ -704,9 +704,9 @@ function FrameColliderOverridePanel({
               })}
             </div>
             <label className="editor-field">
-              Frame別の表示
+              コマ別の表示
               <select
-                aria-label={`Frame「${frame.name}」判定「${collider.name}」の表示`}
+                aria-label={`コマ「${frame.name}」判定「${collider.name}」の表示`}
                 value={
                   override?.visible === undefined ? 'inherit' : override.visible ? 'show' : 'hide'
                 }
@@ -723,7 +723,7 @@ function FrameColliderOverridePanel({
                   );
                 }}
               >
-                <option value="inherit">Asset共通値を使う</option>
+                <option value="inherit">素材共通値を使う</option>
                 <option value="show">表示</option>
                 <option value="hide">非表示</option>
               </select>
@@ -736,7 +736,7 @@ function FrameColliderOverridePanel({
                   if (
                     unknownGeometryPaths.length > 0 &&
                     !window.confirm(
-                      `未知field（${unknownGeometryPaths.join('、')}）を含む位置・サイズの上書きを削除します。よろしいですか？`,
+                      `未知の項目（${unknownGeometryPaths.join('、')}）を含む位置・サイズの上書きを削除します。よろしいですか？`,
                     )
                   ) {
                     return;
@@ -755,8 +755,8 @@ function FrameColliderOverridePanel({
                 onClick={() => {
                   const message =
                     unknownPaths.length > 0
-                      ? `未知field（${unknownPaths.join('、')}）を含む、このFrameの上書き全体を削除します。よろしいですか？`
-                      : 'このFrameの位置・サイズと表示の上書きをすべて解除します。よろしいですか？';
+                      ? `未知の項目（${unknownPaths.join('、')}）を含む、このコマの上書き全体を削除します。よろしいですか？`
+                      : 'このコマの位置・サイズと表示の上書きをすべて解除します。よろしいですか？';
                   if (!window.confirm(message)) {
                     return;
                   }
@@ -766,13 +766,13 @@ function FrameColliderOverridePanel({
                   );
                 }}
               >
-                このFrameの上書きをすべて解除
+                このコマの上書きをすべて解除
               </button>
             </div>
             {unknownPaths.length > 0 && (
               <p className="export-warning">
-                未知field（{unknownPaths.join('、')}
-                ）を保持中です。field単位の解除で未知fieldだけが残る場合は拒否します。
+                未知の項目（{unknownPaths.join('、')}
+                ）を保持中です。field単位の解除で未知の項目だけが残る場合は拒否します。
               </p>
             )}
           </li>

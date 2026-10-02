@@ -172,9 +172,9 @@ test('canvas resizeはpreview除外を守り、1履歴でUndo / Redo・reloadで
   await panel.getByLabel('一括操作').selectOption('canvas-resize');
   await selectPickerTarget(panel, 'batch-first');
   await selectPickerTarget(panel, 'batch-excluded');
-  await panel.getByLabel('一括canvas幅').fill('520');
-  await panel.getByLabel('一括canvas高さ').fill('520');
-  await panel.getByRole('button', { name: 'target previewを準備' }).click();
+  await panel.getByLabel('一括キャンバス幅').fill('520');
+  await panel.getByLabel('一括キャンバス高さ').fill('520');
+  await panel.getByRole('button', { name: '変更内容を確認' }).click();
 
   const preview = panel.getByRole('region', { name: '一括変更preview' });
   await expect(preview.getByText('batch-first', { exact: true })).toBeVisible();
@@ -184,7 +184,7 @@ test('canvas resizeはpreview除外を守り、1履歴でUndo / Redo・reloadで
     .filter({ hasText: 'batch-excluded' })
     .getByRole('checkbox')
     .uncheck();
-  await preview.getByRole('button', { name: '選択targetを一括実行' }).click();
+  await preview.getByRole('button', { name: '選択した素材を一括実行' }).click();
 
   await expect
     .poll(async () => (await readAssetStates(page))['batch-first'].canvasSize)
@@ -240,11 +240,11 @@ test('palette置換は明示した2 Asset / layerだけを変え、sourceと初�
   await selectPickerTarget(panel, 'palette-two');
   await panel.getByLabel('一括palette置換元色').fill('#ff0000');
   await panel.getByLabel('一括palette置換先色').fill('#0000ff');
-  await panel.getByRole('button', { name: 'target previewを準備' }).click();
+  await panel.getByRole('button', { name: '変更内容を確認' }).click();
   const preview = panel.getByRole('region', { name: '一括変更preview' });
   await expect(preview.getByText('実行可能')).toHaveCount(2);
   await expect(preview.getByRole('button', { name: '.casproj退避を開く' })).toBeVisible();
-  await preview.getByRole('button', { name: '選択targetを一括実行' }).click();
+  await preview.getByRole('button', { name: '選択した素材を一括実行' }).click();
 
   await expect
     .poll(async () => (await readAssetStates(page))['palette-one'].editDigest)
@@ -281,17 +281,19 @@ test('縮小canvas resizeはwarningを提示し、明示確認まで実行でき
   const panel = batchPanel(page);
   await panel.getByLabel('一括操作').selectOption('canvas-resize');
   await selectPickerTarget(panel, 'warn-target');
-  await panel.getByLabel('一括canvas幅').fill('16');
-  await panel.getByLabel('一括canvas高さ').fill('16');
-  await panel.getByRole('button', { name: 'target previewを準備' }).click();
+  await panel.getByLabel('一括キャンバス幅').fill('16');
+  await panel.getByLabel('一括キャンバス高さ').fill('16');
+  await panel.getByRole('button', { name: '変更内容を確認' }).click();
 
   const preview = panel.getByRole('region', { name: '一括変更preview' });
   await expect(preview.locator('.asset-batch-status.warning')).toBeVisible();
-  await expect(preview.getByText(/変更後にcanvas外へ出るデータが\d+件あります/)).toBeVisible();
+  await expect(
+    preview.getByText(/変更後にキャンバスからはみ出すデータが\d+件あります/),
+  ).toBeVisible();
 
-  const execute = preview.getByRole('button', { name: '選択targetを一括実行' });
+  const execute = preview.getByRole('button', { name: '選択した素材を一括実行' });
   await expect(execute).toBeDisabled();
-  await preview.getByRole('checkbox', { name: /warning対象を確認しました/ }).check();
+  await preview.getByRole('checkbox', { name: /注意が必要な素材を確認しました/ }).check();
   await expect(execute).toBeEnabled();
   await execute.click();
 
@@ -321,9 +323,9 @@ test('2 target保存の途中失敗は全件rollbackしHistoryを追加しない
   await panel.getByLabel('一括操作').selectOption('canvas-resize');
   await selectPickerTarget(panel, 'rollback-one');
   await selectPickerTarget(panel, 'rollback-two');
-  await panel.getByLabel('一括canvas幅').fill('530');
-  await panel.getByLabel('一括canvas高さ').fill('530');
-  await panel.getByRole('button', { name: 'target previewを準備' }).click();
+  await panel.getByLabel('一括キャンバス幅').fill('530');
+  await panel.getByLabel('一括キャンバス高さ').fill('530');
+  await panel.getByRole('button', { name: '変更内容を確認' }).click();
 
   await page.evaluate(() => {
     const prototype = IDBObjectStore.prototype as IDBObjectStore & {
@@ -339,7 +341,7 @@ test('2 target保存の途中失敗は全件rollbackしHistoryを追加しない
       return original.call(this, value, key);
     } as IDBObjectStore['put'];
   });
-  await panel.getByRole('button', { name: '選択targetを一括実行' }).click();
+  await panel.getByRole('button', { name: '選択した素材を一括実行' }).click();
   await expect(panel.getByRole('alert')).toContainText('正本は部分更新されていません');
   await page.evaluate(() => {
     const prototype = IDBObjectStore.prototype as IDBObjectStore & {
@@ -372,8 +374,8 @@ test.describe('iPhone SE級touchのbatch準備', () => {
     await panel.getByLabel('一括操作').selectOption('canvas-resize');
     await selectPickerTarget(panel, 'mobile-one');
     await selectPickerTarget(panel, 'mobile-two');
-    await panel.getByLabel('一括canvas幅').fill('540');
-    await panel.getByLabel('一括canvas高さ').fill('540');
+    await panel.getByLabel('一括キャンバス幅').fill('540');
+    await panel.getByLabel('一括キャンバス高さ').fill('540');
     await page.evaluate(() => {
       let resolveEstimate!: (value: StorageEstimate) => void;
       const pending = new Promise<StorageEstimate>((resolve) => {
@@ -387,7 +389,7 @@ test.describe('iPhone SE級touchのbatch準備', () => {
         () => resolveEstimate({ usage: 100, quota: 1_000_000 });
     });
 
-    await panel.getByRole('button', { name: 'target previewを準備' }).tap();
+    await panel.getByRole('button', { name: '変更内容を確認' }).tap();
     await expect(panel.getByRole('status', { name: '一括処理の進捗' })).toBeVisible();
     await panel.getByRole('button', { name: '準備を取消' }).tap();
     await page.evaluate(() =>

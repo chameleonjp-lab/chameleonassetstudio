@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "e2e": "playwright test --project=chromium",
     "e2e:webkit": "playwright test --config playwright.webkit.config.ts",
+    "e2e:quality": "playwright test --config playwright.production.config.ts",
     "test:ci-scope": "node --test tools/ci/*.test.mjs",
     "measure:h3:node": "vite-node tools/h3/measure-node.ts",
     "measure:h3:build": "tsc --noEmit && vite build --config tools/h3/vite.config.ts",

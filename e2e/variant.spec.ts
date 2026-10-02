@@ -86,14 +86,16 @@ async function createBlankAsset(properties: Locator, name: string): Promise<void
 }
 
 function variantPanel(page: Page): Locator {
-  return page.getByRole('region', { name: 'Family / Variant' });
+  return page.getByRole('region', { name: '素材の関係' });
 }
 
 async function createFamily(panel: Locator, name: string, baseLabel: string): Promise<void> {
-  await panel.getByLabel('Family名').fill(name);
-  await panel.getByLabel('standalone base Asset').selectOption({ label: baseLabel });
-  await panel.getByRole('button', { name: 'Familyを作成', exact: true }).click();
-  await expect(panel.getByText('Family base', { exact: true })).toBeVisible();
+  await panel.getByLabel('グループ名').fill(name);
+  await panel.getByLabel('元にする独立素材').selectOption({ label: baseLabel });
+  await panel.getByRole('button', { name: 'グループを作成', exact: true }).click();
+  await expect(
+    panel.locator('.variant-current-status').getByText('元の素材', { exact: true }),
+  ).toBeVisible();
 }
 
 test('Family作成、manual登録・detach・variant削除・Family解除が永続化される', async ({ page }) => {
@@ -105,24 +107,24 @@ test('Family作成、manual登録・detach・variant削除・Family解除が永�
   const panel = variantPanel(page);
   await createFamily(panel, 'hero-family', 'base');
 
-  await panel.getByLabel('standalone member').selectOption({ label: 'detach-target' });
-  await panel.getByRole('button', { name: 'manual variantとして登録' }).click();
-  await expect(panel.getByText('manual（自動更新なし）', { exact: true })).toBeVisible();
+  await panel.getByLabel('登録する独立素材').selectOption({ label: 'detach-target' });
+  await panel.getByRole('button', { name: '自由なコピーとして登録' }).click();
+  await expect(panel.getByText('自由なコピー（自動更新なし）', { exact: true })).toBeVisible();
   page.once('dialog', (dialog) => {
     expect(dialog.message()).toContain('manual variantとしての登録は失われます');
     void dialog.accept();
   });
-  await panel.getByRole('button', { name: 'Familyから外す（Assetは残す）' }).click();
-  await expect(panel.getByText('standalone / 独立', { exact: true })).toBeVisible();
+  await panel.getByRole('button', { name: 'グループから外す（素材は残す）' }).click();
+  await expect(panel.getByText('独立した素材', { exact: true })).toBeVisible();
 
   await properties
     .locator('.asset-list')
     .getByRole('button', { name: 'base', exact: true })
     .click();
-  await panel.getByLabel('standalone member').selectOption({ label: 'delete-target' });
-  await panel.getByRole('button', { name: 'manual variantとして登録' }).click();
+  await panel.getByLabel('登録する独立素材').selectOption({ label: 'delete-target' });
+  await panel.getByRole('button', { name: '自由なコピーとして登録' }).click();
   page.once('dialog', (dialog) => void dialog.accept());
-  await panel.getByRole('button', { name: 'variantアセットを削除' }).click();
+  await panel.getByRole('button', { name: 'コピーを削除' }).click();
   await expect(
     properties.locator('.asset-list').getByRole('button', { name: 'delete-target', exact: true }),
   ).toHaveCount(0);
@@ -132,8 +134,8 @@ test('Family作成、manual登録・detach・variant削除・Family解除が永�
     .getByRole('button', { name: 'base', exact: true })
     .click();
   page.once('dialog', (dialog) => void dialog.accept());
-  await panel.getByRole('button', { name: 'Familyを解除（Assetは残す）' }).click();
-  await expect(panel.getByText('standalone / 独立', { exact: true })).toBeVisible();
+  await panel.getByRole('button', { name: 'グループを解除（素材は残す）' }).click();
+  await expect(panel.getByText('独立した素材', { exact: true })).toBeVisible();
 
   const beforeReload = await readStoredState(page);
   expect(beforeReload.projects[0].families).toEqual([]);
@@ -144,7 +146,7 @@ test('Family作成、manual登録・detach・variant削除・Family解除が永�
 
   await page.reload();
   await page.getByRole('button', { name: '「variant管理」を開く' }).click();
-  await expect(variantPanel(page).getByText('standalone / 独立', { exact: true })).toBeVisible();
+  await expect(variantPanel(page).getByText('独立した素材', { exact: true })).toBeVisible();
 });
 
 test('linked mirrorはbase変更をstale判定し、preview後の明示refreshとUndo/Redoを行う', async ({
@@ -163,8 +165,8 @@ test('linked mirrorはbase変更をstale判定し、preview後の明示refresh�
   const base = stateBefore.assets[0];
   const panel = variantPanel(page);
   await createFamily(panel, 'mirror-family', base.displayName);
-  await panel.getByRole('button', { name: 'linked左右反転を作成' }).click();
-  await expect(panel.getByText('linked左右反転', { exact: true })).toBeVisible();
+  await panel.getByRole('button', { name: '左右反転コピーを作成' }).click();
+  await expect(panel.getByText('左右反転コピー', { exact: true })).toBeVisible();
   await expect(panel.getByText(/状態: 同期済み/)).toBeVisible();
 
   const linkedState = await readStoredState(page);
@@ -185,11 +187,11 @@ test('linked mirrorはbase変更をstale判定し、preview後の明示refresh�
   await xInput.fill('7');
   await xInput.blur();
 
-  await panel.getByRole('button', { name: /このvariant.*を選択/ }).click();
-  await expect(panel.getByText(/状態: 更新候補（stale）/)).toBeVisible();
-  await panel.getByRole('button', { name: 'refresh前後をpreview' }).click();
-  await expect(panel.getByRole('region', { name: 'linked refresh preview' })).toBeVisible();
-  await panel.getByRole('button', { name: 'このvariantを明示refresh' }).click();
+  await panel.getByRole('button', { name: /このコピー.*を選択/ }).click();
+  await expect(panel.getByText(/状態: 元の素材に変更あり/)).toBeVisible();
+  await panel.getByRole('button', { name: '更新前後を比較' }).click();
+  await expect(panel.getByRole('region', { name: 'コピーの更新内容' })).toBeVisible();
+  await panel.getByRole('button', { name: 'このコピーを更新' }).click();
   await expect(panel.getByText(/状態: 同期済み/)).toBeVisible();
 
   const refreshedState = await readStoredState(page);
@@ -210,7 +212,7 @@ test('linked mirrorはbase変更をstale判定し、preview後の明示refresh�
   await page.getByRole('button', { name: '元に戻す' }).click();
   await expect(panel.getByText(/状態: 同期済み/)).toBeVisible();
   await page.getByRole('button', { name: '元に戻す' }).click();
-  await expect(panel.getByText(/状態: 更新候補（stale）/)).toBeVisible();
+  await expect(panel.getByText(/状態: 元の素材に変更あり/)).toBeVisible();
   await page.getByRole('button', { name: 'やり直す' }).click();
   await expect(panel.getByText(/状態: 同期済み/)).toBeVisible();
 
@@ -221,24 +223,24 @@ test('linked mirrorはbase変更をstale判定し、preview後の明示refresh�
   await properties.locator('.layer-fields').getByLabel('X', { exact: true }).fill('12');
   await properties.locator('.layer-fields').getByLabel('X', { exact: true }).blur();
   await expect(panel.getByText(/状態: 手動調整あり/)).toBeVisible();
-  await panel.getByRole('button', { name: 'refresh前後をpreview' }).click();
-  const refreshButton = panel.getByRole('button', { name: 'このvariantを明示refresh' });
+  await panel.getByRole('button', { name: '更新前後を比較' }).click();
+  const refreshButton = panel.getByRole('button', { name: 'このコピーを更新' });
   await expect(refreshButton).toBeDisabled();
-  await panel.getByLabel('write-set内の手動調整を上書きすることを確認しました').check();
+  await panel.getByLabel('更新対象の手動調整を上書きすることを確認しました').check();
   await expect(refreshButton).toBeEnabled();
-  await panel.getByRole('button', { name: 'refresh前後をpreview' }).click();
+  await panel.getByRole('button', { name: '更新前後を比較' }).click();
   await expect(
-    panel.getByLabel('write-set内の手動調整を上書きすることを確認しました'),
+    panel.getByLabel('更新対象の手動調整を上書きすることを確認しました'),
   ).not.toBeChecked();
   await expect(refreshButton).toBeDisabled();
-  await panel.getByLabel('write-set内の手動調整を上書きすることを確認しました').check();
+  await panel.getByLabel('更新対象の手動調整を上書きすることを確認しました').check();
   await refreshButton.click();
   await expect(panel.getByText(/状態: 同期済み/)).toBeVisible();
 
   await page.reload();
   await page.getByRole('button', { name: '「mirror refresh」を開く' }).click();
   const reloadedStatus = panel.getByText(/状態: 同期済み/);
-  const reloadedVariantButton = panel.getByRole('button', { name: /このvariant.*を選択/ });
+  const reloadedVariantButton = panel.getByRole('button', { name: /このコピー.*を選択/ });
   await expect(reloadedStatus.or(reloadedVariantButton)).toBeVisible();
   if (await reloadedVariantButton.isVisible()) {
     await reloadedVariantButton.click();
@@ -258,8 +260,8 @@ test('linked paletteはbase Blob変更をpreview画像で比較して明示refre
   const base = (await readStoredState(page)).assets[0];
   const panel = variantPanel(page);
   await createFamily(panel, 'palette-family', base.displayName);
-  await panel.getByRole('button', { name: 'linked paletteを作成' }).click();
-  await expect(panel.getByText('linked palette', { exact: true })).toBeVisible();
+  await panel.getByRole('button', { name: '色違いコピーを作成' }).click();
+  await expect(panel.getByText('色違いコピー', { exact: true })).toBeVisible();
   await expect(panel.getByText(/状態: 同期済み/)).toBeVisible();
 
   await properties
@@ -273,13 +275,13 @@ test('linked paletteはbase Blob変更をpreview画像で比較して明示refre
   await properties.getByLabel('色相（-180〜180）').fill('180');
   await properties.getByRole('button', { name: '色調整を適用' }).click();
 
-  await panel.getByRole('button', { name: /このvariant.*を選択/ }).click();
-  await expect(panel.getByText(/状態: 更新候補（stale）/)).toBeVisible();
-  await panel.getByRole('button', { name: 'refresh前後をpreview' }).click();
-  const preview = panel.getByRole('region', { name: 'linked refresh preview' });
-  await expect(preview.getByRole('img', { name: 'refresh前のvariant画像' })).toBeVisible();
-  await expect(preview.getByRole('img', { name: 'refresh後のvariant画像' })).toBeVisible();
-  await panel.getByRole('button', { name: 'このvariantを明示refresh' }).click();
+  await panel.getByRole('button', { name: /このコピー.*を選択/ }).click();
+  await expect(panel.getByText(/状態: 元の素材に変更あり/)).toBeVisible();
+  await panel.getByRole('button', { name: '更新前後を比較' }).click();
+  const preview = panel.getByRole('region', { name: 'コピーの更新内容' });
+  await expect(preview.getByRole('img', { name: '変更前のコピー画像' })).toBeVisible();
+  await expect(preview.getByRole('img', { name: '変更後のコピー画像' })).toBeVisible();
+  await panel.getByRole('button', { name: 'このコピーを更新' }).click();
   await expect(panel.getByText(/状態: 同期済み/)).toBeVisible();
 });
 
@@ -341,7 +343,7 @@ test('不正familiesの保存済みProjectは通常openせず、元を残してs
   await expect(
     page.getByRole('heading', { name: 'invalid family stored（Family隔離copy）' }),
   ).toBeVisible();
-  await expect(variantPanel(page).getByText('standalone / 独立', { exact: true })).toBeVisible();
+  await expect(variantPanel(page).getByText('独立した素材', { exact: true })).toBeVisible();
 
   const recoveredState = await readStoredState(page);
   expect(recoveredState.projects).toHaveLength(2);
@@ -354,7 +356,7 @@ test('不正familiesの保存済みProjectは通常openせず、元を残してs
   expect(recovered.assets[0].id).not.toBe(original.assets[0].id);
 });
 
-test.describe('スマホtouchでのFamily / Variant操作', () => {
+test.describe('スマホtouchでの素材の関係操作', () => {
   test.use({ hasTouch: true, viewport: { width: 375, height: 667 } });
 
   test('長い名前でもFamily作成からmirror preview・明示refreshまでtap操作できる', async ({
@@ -385,11 +387,11 @@ test.describe('スマホtouchでのFamily / Variant操作', () => {
 
     const panel = variantPanel(page);
     const longFamilyName = `mobile-family-${'B'.repeat(180)}`;
-    await panel.getByLabel('Family名').fill(longFamilyName);
-    await panel.getByLabel('standalone base Asset').selectOption({ label: longAssetName });
-    await panel.getByRole('button', { name: 'Familyを作成', exact: true }).tap();
+    await panel.getByLabel('グループ名').fill(longFamilyName);
+    await panel.getByLabel('元にする独立素材').selectOption({ label: longAssetName });
+    await panel.getByRole('button', { name: 'グループを作成', exact: true }).tap();
     await expect(panel.getByText(longFamilyName, { exact: true })).toBeVisible();
-    await panel.getByRole('button', { name: 'linked左右反転を作成' }).tap();
+    await panel.getByRole('button', { name: '左右反転コピーを作成' }).tap();
     await expect(panel.getByText(/状態: 同期済み/)).toBeVisible();
 
     await properties
@@ -403,17 +405,18 @@ test.describe('スマホtouchでのFamily / Variant操作', () => {
     const xInput = properties.locator('.layer-fields').getByLabel('X', { exact: true });
     await xInput.fill('9');
     await xInput.blur();
-    await panel.getByRole('button', { name: /このvariant.*を選択/ }).tap();
-    await expect(panel.getByText(/状態: 更新候補（stale）/)).toBeVisible();
-    await panel.getByRole('button', { name: 'refresh前後をpreview' }).tap();
-    await expect(panel.getByRole('region', { name: 'linked refresh preview' })).toBeVisible();
+    await panel.getByRole('button', { name: /このコピー.*を選択/ }).tap();
+    await expect(panel.getByText(/状態: 元の素材に変更あり/)).toBeVisible();
+    await panel.getByRole('button', { name: '更新前後を比較' }).tap();
+    await expect(panel.getByRole('region', { name: 'コピーの更新内容' })).toBeVisible();
+    await panel.getByText('保存データの差分を詳しく見る', { exact: true }).tap();
     await expect(panel.getByText('layerの具体的な差分')).toBeVisible();
     await expect(
       panel
         .getByRole('region', { name: 'write-setの具体的な差分' })
         .getByText(/transform\.position\.x/),
     ).toBeVisible();
-    await panel.getByRole('button', { name: 'このvariantを明示refresh' }).tap();
+    await panel.getByRole('button', { name: 'このコピーを更新' }).tap();
     await expect(panel.getByText(/状態: 同期済み/)).toBeVisible();
 
     await page
@@ -424,7 +427,7 @@ test.describe('スマホtouchでのFamily / Variant操作', () => {
     await variantX.fill('17');
     await variantX.blur();
     await expect(panel.getByText(/状態: 手動調整あり/)).toBeVisible();
-    await panel.getByRole('button', { name: 'refresh前後をpreview' }).tap();
+    await panel.getByRole('button', { name: '更新前後を比較' }).tap();
     const overwriteConfirmation = panel.locator('.variant-confirm-overwrite');
     await expect(overwriteConfirmation).toBeVisible();
     expect((await overwriteConfirmation.boundingBox())?.height).toBeGreaterThanOrEqual(44);
@@ -468,13 +471,13 @@ test.describe('スマホtouchでのFamily / Variant操作', () => {
     await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).tap();
 
     const panel = variantPanel(page);
-    await panel.getByLabel('Family名').fill('rig-family');
-    await panel.getByLabel('standalone base Asset').selectOption({ label: 'rig-base' });
-    await panel.getByRole('button', { name: 'Familyを作成', exact: true }).tap();
+    await panel.getByLabel('グループ名').fill('rig-family');
+    await panel.getByLabel('元にする独立素材').selectOption({ label: 'rig-base' });
+    await panel.getByRole('button', { name: 'グループを作成', exact: true }).tap();
     const rotation = properties.getByLabel('ポーズ回転');
     await rotation.fill('10');
     await rotation.blur();
-    await panel.getByRole('button', { name: 'linked左右反転を作成' }).tap();
+    await panel.getByRole('button', { name: '左右反転コピーを作成' }).tap();
     const globalStatus = page.locator('.editor-global-status');
     await expect(globalStatus).toBeVisible();
     await expect(globalStatus).toContainText('bind pose');
@@ -496,7 +499,7 @@ test('複数画像・2コマのlinked反転は画素更新・Undo・再開・bac
   const base = (await readStoredState(page)).assets[0];
   const panel = variantPanel(page);
   await createFamily(panel, 'frames-family', base.displayName);
-  await panel.getByRole('button', { name: 'linked左右反転を作成' }).click();
+  await panel.getByRole('button', { name: '左右反転コピーを作成' }).click();
   await expect(panel.getByText(/状態: 同期済み/)).toBeVisible();
   const pixels = () =>
     page.evaluate(async () => {
@@ -539,10 +542,10 @@ test('複数画像・2コマのlinked反転は画素更新・Undo・再開・bac
   await properties.getByLabel('色相（-180〜180）').fill('180');
   await properties.getByRole('button', { name: '色調整を適用' }).click();
   await expect(page.locator('.editor')).toHaveAttribute('aria-busy', 'false');
-  await panel.getByRole('button', { name: /このvariant.*を選択/ }).click();
-  await expect(panel.getByText(/状態: 更新候補（stale）/)).toBeVisible();
-  await panel.getByRole('button', { name: 'refresh前後をpreview' }).click();
-  await panel.getByRole('button', { name: 'このvariantを明示refresh' }).click();
+  await panel.getByRole('button', { name: /このコピー.*を選択/ }).click();
+  await expect(panel.getByText(/状態: 元の素材に変更あり/)).toBeVisible();
+  await panel.getByRole('button', { name: '更新前後を比較' }).click();
+  await panel.getByRole('button', { name: 'このコピーを更新' }).click();
   await expect.poll(async () => (await pixels())[0]).not.toBe(before[0]);
   const after = await pixels();
   expect(after[1]).toBe(before[1]);

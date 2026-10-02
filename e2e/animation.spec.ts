@@ -546,7 +546,7 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
   await page.getByRole('button', { name: 'フレーム追加' }).click();
   await page.getByLabel('新しいアニメーション名').fill('once');
   await page.getByRole('button', { name: '作成', exact: true }).click();
-  await page.getByLabel('ループ').uncheck();
+  await page.getByRole('checkbox', { name: 'ループ', exact: true }).uncheck();
   await expect.poll(async () => (await readStoredAsset(page)).frames).toHaveLength(2);
   await expect.poll(async () => (await readStoredAsset(page)).animations[0]?.loop).toBe(false);
   await expect(page.getByRole('status')).toContainText('保存済み');
@@ -605,7 +605,7 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
     width: element.clientWidth,
     height: element.clientHeight,
   }));
-  const canvasCenter = { x: canvasSize.width / 2, y: canvasSize.height / 2 };
+  let canvasCenter = { x: canvasSize.width / 2, y: canvasSize.height / 2 };
   await canvas.click({ position: canvasCenter });
   const previewEditAlert = page
     .getByRole('alert')
@@ -615,6 +615,14 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
 
   await panTool.click();
   await expect(panTool).toHaveAttribute('aria-pressed', 'true');
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+  const panCanvasBox = (await canvas.boundingBox())!;
+  canvasCenter = { x: panCanvasBox.width / 2, y: panCanvasBox.height / 2 };
   const panDelta = Math.min(160, canvasSize.width / 2 - 8);
   await canvas.hover({ position: canvasCenter });
   await page.mouse.down();
@@ -641,7 +649,7 @@ test('iPhone幅のFrame preview中は保存編集を拒否し、停止後に再�
 
   await mobileNav.getByRole('button', { name: '編集', exact: true }).click();
   await canvas.click({
-    position: { x: canvasCenter.x + panDelta - 24, y: canvasCenter.y },
+    position: await canvasPositionForWorld(page, { x: 32, y: 32 }, 64),
   });
   await mobileNav.getByRole('button', { name: 'プロパティ', exact: true }).click();
   await expect(mainLayerButton).toHaveAttribute('aria-pressed', 'true');
@@ -731,7 +739,7 @@ test('iPhone幅で反復Frameの出現位置を選び、前後を赤・青の25%
   await page.getByRole('button', { name: 'フレーム追加' }).click();
   await page.getByLabel('新しいアニメーション名').fill('onion');
   await page.getByRole('button', { name: '作成', exact: true }).click();
-  await page.getByLabel('ループ').uncheck();
+  await page.getByRole('checkbox', { name: 'ループ', exact: true }).uncheck();
   await expect(page.getByRole('status')).toContainText('保存済み');
 
   await writeStoredAnimationFixture(page, { frameSequence: [0, 1, 0] });
@@ -1579,7 +1587,7 @@ test('fps とループを変更でき、リロード後も保持される', asyn
   await fpsInput.blur();
   await expect.poll(async () => (await readStoredAsset(page)).animations[0]?.fps).toBe(12);
 
-  await page.getByLabel('ループ').uncheck();
+  await page.getByRole('checkbox', { name: 'ループ', exact: true }).uncheck();
   await expect.poll(async () => (await readStoredAsset(page)).animations[0]?.loop).toBe(false);
 
   // 再読み込み後も残る

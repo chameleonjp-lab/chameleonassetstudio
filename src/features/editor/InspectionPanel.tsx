@@ -39,7 +39,7 @@ export function InspectionPanel({ asset, tolerateInvalidRuntime = false }: Inspe
     <section aria-label="素材検査">
       <h4 className="gamedata-heading">素材検査（読み取り専用）</h4>
       <p className="editor-note">
-        現在の素材を確認して不足・矛盾・推奨項目を表示します。検査結果は保存されず、保存・autosave・.casproj・exportも止めません。
+        素材の不足や矛盾と直し方を確認できます。検査しても素材は変わらず、保存や書き出しも続けられます。
       </p>
       {inspection.unavailable && (
         <p className="import-error" role="alert">
@@ -60,13 +60,15 @@ export function InspectionPanel({ asset, tolerateInvalidRuntime = false }: Inspe
                 <strong>
                   {SEVERITY_LABELS[issue.severity]}: {issue.message}
                 </strong>
-                <code>{issue.code}</code>
               </div>
               <p className="editor-note">理由: {issue.reason}</p>
               <p className="editor-note">直し方・確認方法: {issue.action}</p>
-              <p className="editor-note">
-                確認場所: {issue.target.label}（{issue.target.path}）
-              </p>
+              <p className="editor-note">確認場所: {issue.target.label}</p>
+              <details className="editor-note">
+                <summary>検査の詳細</summary>
+                <code>{issue.code}</code>
+                <p>保存データの位置: {issue.target.path}</p>
+              </details>
             </li>
           ))}
         </ul>

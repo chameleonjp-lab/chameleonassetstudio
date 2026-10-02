@@ -79,19 +79,19 @@ SVG / GIF / APNGは、新規Assetを作る「画像を選ぶ」またはdrag & d
 
 - Asset、TextureRef、レイヤー、パーツ、フレーム、アニメーションなどは新しいIDへ置き換えられ、画像Blobも新しいAsset用に複製されます。
 - コピー後は元と別のアセットです。片方の編集・削除はもう片方へ反映されません。
-- Project保存形式にはoptionalなFamily / Variant契約がありますが、この「独立コピー」は明示操作なしにFamilyへ登録されません。linked variantではなく、自動追従や元への逆反映も行いません。
+- Project保存形式にはoptionalな素材の関係契約がありますが、この「独立コピー」は明示操作なしにFamilyへ登録されません。linked variantではなく、自動追従や元への逆反映も行いません。
 - この編集セッション内で、**Undo / Redoでコピーの追加を取り消し、やり直せます**。
 - アセット一覧には種別とキャンバスサイズが表示されます。種別変更はAsset本体とProject内の要約へまとめて保存されます。
 
-### 2.6 Family / Variantを管理する（2D-2-VARIANT Slice C、2026-07）
+### 2.6 素材の関係を管理する（2D-2-VARIANT Slice C、2026-07）
 
 `.casproj`の`project.json`は、同じ素材のbaseと左右反転・palette・手修正版の関係をoptionalなFamily registryとして保持できます。fieldがない既存`0.1.0`ファイルは、従来どおり全Assetが独立したデータとして読み込まれます。
 
-- プロパティの「Family / Variant」で、Family名とstandalone base Assetを選び「Familyを作成」します。1つのAssetは1つのFamilyにだけ所属できます。
+- プロパティの「素材の関係」で、グループ名と元にする独立素材を選び「グループを作成」します。1つのAssetは1つのFamilyにだけ所属できます。
 - base選択中は、既存standalone Assetを`manual` variantとして登録するか、`linked左右反転`、または対象image layerを1件選んだ`linked palette`を作成できます。manualは装備差分・手修正解像度などの追跡用で、自動refreshしません。
-- linked variantはrecipeと最後の同期fingerprintを保存しますが、baseを編集しただけでbackground更新しません。variantを選び、状態が「更新候補（stale）」または「手動調整あり」になったら「refresh前後をpreview」で変更対象・維持対象と画像差分を確認し、「このvariantを明示refresh」で確定します。
+- linked variantはrecipeと最後の同期fingerprintを保存しますが、baseを編集しただけでbackground更新しません。variantを選び、状態が「元の素材に変更あり」または「手動調整あり」になったら「更新前後を比較」で変更対象・維持対象と画像差分を確認し、「このコピーを更新」で確定します。
 - write-set内に手動調整がある場合、refresh buttonは確認checkboxを選ぶまで無効です。欠落画像、rig / bind pose / rotation limit、未対応の複数edit画像などは理由付きで更新不可になります。対象を安全に再生成できない場合はFamilyから外して作り直してください。
-- 「Familyから外す」はAssetを残してstandaloneへ戻します。「variantアセットを削除」はFamily参照・Asset・画像Blobを同時に削除します。「Familyを解除」は全member Assetを残します。現在の画面にbase付替えはないため、baseを変える場合はFamilyを解除して作り直してください。
+- 「Familyから外す」はAssetを残してstandaloneへ戻します。「コピーを削除」はFamily参照・Asset・画像Blobを同時に削除します。「Familyを解除」は全member Assetを残します。現在の画面にbase付替えはないため、baseを変える場合はFamilyを解除して作り直してください。
 - 「独立コピーを作成」「独立左右反転コピーを作成」は従来どおりstandaloneで、Family登録も自動refreshも行いません。
 - Family付き`.casproj`を読み込むとProject / Asset IDは衝突回避のため再採番され、Family参照も追従します。内部Layer等のID、recipe、fingerprintは保持されます。
 - FamilyのbaseはFamily解除より先に削除できません。Family情報だけが不正な保存済みProjectは通常openを無効にし、ホームの「隔離copyを作成」から元Projectを変更せず、全Assetを別IDのstandalone copyとして復旧できます。作成後はホームに隔離理由と未知参照の注意を表示するので、確認してから新しいcopyを開きます。Family以外も不正なProjectはこの導線の対象外です。不正なFamily参照を含む`.casproj`は正本へ保存せず、読み込み失敗データとしてquarantineします。
@@ -102,10 +102,10 @@ SVG / GIF / APNGは、新規Assetを作る「画像を選ぶ」またはdrag & d
 プロパティの「Asset一括変更」で、linked variant refresh、明示したAsset / layerのpalette置換、Asset canvas resizeを最大16 Assetへ適用できます。
 
 1. 「一括操作」を選びます。Project全体は自動選択されないため、変更するAssetをcheckboxで明示します。paletteはAssetごとに1つのedit画像layerも選びます。
-2. 操作値を入力し「target previewを準備」を押します。画像を含む場合も1 targetずつ処理し、進捗を表示します。「準備を取消」は処理中targetを閉じてから停止し、この時点では正本を変更しません。
+2. 操作値を入力し「変更内容を確認」を押します。画像を含む場合も1 targetずつ処理し、進捗を表示します。「準備を取消」は処理中targetを閉じてから停止し、この時点では正本を変更しません。
 3. targetごとの`実行可能 / warning / 手動調整あり / 対象外 / 変更なし`、変更内容、理由、推定変更量、推定保存使用量を確認します。不要なtargetはpreviewで除外できます。対象外と変更なしは選べません。
 4. `手動調整あり`は対象checkbox自体が明示上書き確認です。canvas warningを含める場合は、clamp、crop、削除を行わないことを別checkboxで確認します。
-5. 必要なら「.casproj退避を開く」から先にbackupし、「選択targetを一括実行」を押します。保存開始後は取消できません。
+5. 必要なら「.casproj退避を開く」から先にbackupし、「選択した素材を一括実行」を押します。保存開始後は取消できません。
 
 選択targetはProject要約、Asset、edit Blob、復旧点を1つのtransactionで保存し、1回のUndo / Redoで全件を戻します。validation、容量不足、preview後の競合、保存失敗のどれかが起きた場合、途中までの結果を残さずHistoryも追加しません。paletteとlinked refreshはsource Blobを変更せず、previewで除外したAsset、standalone Asset、recipe対象外fieldも変更しません。初回の破壊的Blob変更では各Assetに復旧点を作りますが、同じ履歴のUndo / Redoを繰り返しても同内容の復旧点を追加しません。
 
@@ -134,7 +134,7 @@ SVG / GIF / APNGは、新規Assetを作る「画像を選ぶ」またはdrag & d
 - **原点**: 原点ツールまたは数値入力で設定。キャラクターは足元中央が基本です。
 - **アンカー**: 用途（foot / hand_left / weapon など）付きの参照座標。
 - **当たり判定**: 矩形 / 円。用途（body / attack / pickup など）と表示切替。ツールバーの「判定」ツールでキャンバス上から直接、選択・移動・リサイズもできます（詳細は 8 章「Phase 19-C 判定表示・選択」を参照）。
-- **Frame別の当たり判定**: ゲーム用データの「編集対象」で「選択中のFrame」を選ぶと、再生停止中のFrameだけ位置・サイズとdebug表示を上書きできます。初期状態はAsset共通編集です。Frame側の表示は「共通を使う / 表示 / 非表示」、位置・サイズは「位置・サイズを共通へ戻す」、entry全体は確認付きの「このFrameの上書きをすべて解除」で戻します。Frame別上書きから参照されるAsset共通判定は、先に上書きを解除するまで削除できません。
+- **Frame別の当たり判定**: ゲーム用データの「編集対象」で「選択中のFrame」を選ぶと、再生停止中のFrameだけ位置・サイズとdebug表示を上書きできます。初期状態はAsset共通編集です。Frame側の表示は「共通を使う / 表示 / 非表示」、位置・サイズは「位置・サイズを共通へ戻す」、entry全体は確認付きの「このコマの上書きをすべて解除」で戻します。Frame別上書きから参照されるAsset共通判定は、先に上書きを解除するまで削除できません。
 - **ゲーム属性**: アイテムの score / rarity など自由な key-value。文字列と有限数値はEnterまたはフォーカスを外すと確定し、Escで取り消せます。配列・object・boolean・nullは内容と型を読み取り専用で表示し、通常入力で文字列へ置き換えません。同じ属性名の再追加は、既存値を守るため拒否します。
 - **種別ごとの設定**: 背景レイヤー（役割 / パララックス速度 / ループ + プレビュー）、タイル（tileSize / 衝突タイプ）、ギミック（movementPreset）、アイテムテンプレート。Asset種別を変えても以前のtile / gimmick / effect / background設定は自動削除されません。「保持中の旧種別設定」に理由と内容が表示され、不要な設定だけを明示的に削除できます。
 
