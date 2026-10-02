@@ -662,7 +662,7 @@ describe('Slice C family variant recipe / fingerprint', () => {
       id: 'tex_second_edit',
       path: 'textures/second.png',
     });
-    expect(() => createLinkedMirrorVariantDraft(multiple)).toThrow('edit textureが複数');
+    expect(createLinkedMirrorVariantDraft(multiple).recipe.writeSet.blobPaths).toHaveLength(2);
 
     const fixture = await mirrorFixture();
     fixture.variantBlobs.delete('textures/main.png');

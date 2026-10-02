@@ -203,12 +203,6 @@ export function createLinkedMirrorVariantDraft(
     ...rigReasons(base, 'base Asset'),
     ...unsupportedMotionDataReasons(base, 'base Asset'),
   ];
-  const editTextures = base.textures.filter((texture) => texture.kind === 'edit');
-  if (editTextures.length > 1) {
-    reasons.push(
-      '現行の復旧点は1 Assetにつき1 edit Blobのため、edit textureが複数あるAssetはlinked mirrorにできません。',
-    );
-  }
   if (reasons.length > 0) {
     throw new FamilyVariantRecipeError(reasons.join(' '));
   }
@@ -630,9 +624,6 @@ async function linkedVariantIneligibleReasons(options: {
     if (!mapped || mapped.targetTexture.kind !== 'edit' || mapped.baseTexture.kind !== 'edit') {
       reasons.push(`blobPathsは対応する既存edit TextureRefを指す必要があります: ${path}`);
     }
-  }
-  if (recipe.writeSet.blobPaths.length > 1) {
-    reasons.push('現行の復旧点は1 Assetにつき1 edit Blobのため、複数Blob refreshはできません。');
   }
 
   const writeTextureIds = new Set(recipe.writeSet.textures);

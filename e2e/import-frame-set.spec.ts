@@ -296,18 +296,18 @@ test('連番previewを自然数順で確定し、1 Undo/Redo・reload後もframe
   expect((await readAssets(page))[0]).toEqual(asset);
 });
 
-test('連番は17件超と混在寸法を生成前に拒否し、正本へ保存しない', async ({ page }) => {
+test('連番は64件超と混在寸法を生成前に拒否し、正本へ保存しない', async ({ page }) => {
   await createProject(page, 'sequence rejection');
   const small = await makeSolidPng(page, '#ff0000', 8, 8);
   await page.getByLabel('連番ファイルを選ぶ').setInputFiles(
-    Array.from({ length: 17 }, (_, index) => ({
+    Array.from({ length: 65 }, (_, index) => ({
       name: `limit_${index + 1}.png`,
       mimeType: 'image/png',
       buffer: small,
     })),
   );
   await page.getByRole('button', { name: '連番previewを準備' }).click();
-  await expect(page.getByRole('alert')).toContainText('最大16件');
+  await expect(page.getByRole('alert')).toContainText('最大64件');
   expect(await readAssets(page)).toEqual([]);
 
   const large = await makeSolidPng(page, '#00ff00', 16, 8);

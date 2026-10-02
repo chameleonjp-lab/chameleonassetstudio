@@ -361,11 +361,20 @@ test.describe('スマホtouchでのFamily / Variant操作', () => {
     page,
   }) => {
     await createProject(page, 'variant mobile touch');
-    expect(await page.evaluate(() => navigator.maxTouchPoints)).toBeGreaterThan(0);
+    await page.evaluate(() =>
+      document.addEventListener(
+        'pointerdown',
+        (event) => {
+          document.documentElement.setAttribute('data-last-input', event.pointerType);
+        },
+        { once: true },
+      ),
+    );
     await page
       .getByRole('navigation', { name: '画面切り替え' })
       .getByRole('button', { name: 'プロパティ' })
       .tap();
+    await expect(page.locator('html')).toHaveAttribute('data-last-input', 'touch');
     const properties = page.getByRole('complementary', { name: 'プロパティ' });
     const longAssetName = `mobile-base-${'A'.repeat(180)}`;
     await properties.getByLabel('新規アセット名').fill(longAssetName);
@@ -471,4 +480,85 @@ test.describe('スマホtouchでのFamily / Variant操作', () => {
     await expect(globalStatus).toContainText('bind pose');
     await expect(page.getByRole('region', { name: 'キャンバス', exact: true })).toBeHidden();
   });
+});
+
+test('複数画像・2コマのlinked反転は画素更新・Undo・再開・backupを保持する', async ({ page }) => {
+  test.setTimeout(60000);
+  const properties = await createProject(page, 'multi-frame mirror');
+  const red = await makePngBuffer(page, '#e03020');
+  const green = await makePngBuffer(page, '#30c040');
+  await page.getByLabel('連番ファイルを選ぶ').setInputFiles([
+    { name: 'hero_1.png', mimeType: 'image/png', buffer: red },
+    { name: 'hero_2.png', mimeType: 'image/png', buffer: green },
+  ]);
+  await page.getByRole('button', { name: '連番previewを準備' }).click();
+  await confirmImageImport(page);
+  const base = (await readStoredState(page)).assets[0];
+  const panel = variantPanel(page);
+  await createFamily(panel, 'frames-family', base.displayName);
+  await panel.getByRole('button', { name: 'linked左右反転を作成' }).click();
+  await expect(panel.getByText(/状態: 同期済み/)).toBeVisible();
+  const pixels = () =>
+    page.evaluate(async () => {
+      const storage = '/src/core/storage/index.ts';
+      const model = '/src/core/model/index.ts';
+      const exporter = '/src/core/export/exportAsset.ts';
+      const { listProjects, listProjectAssets, loadProject } = await import(storage);
+      const { applyFrameToAsset } = await import(model);
+      const { exportImage } = await import(exporter);
+      const { project } = await loadProject((await listProjects())[0].id);
+      const assets = await listProjectAssets(project.id);
+      const id = project.families[0].variants[0].assetId;
+      const asset = assets.find((item: { id: string }) => item.id === id);
+      const values = [];
+      for (const frame of asset.frames) {
+        const blob = await exportImage(applyFrameToAsset(asset, frame.id), 'image/png');
+        const bitmap = await createImageBitmap(blob);
+        const canvas = document.createElement('canvas');
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+        const context = canvas.getContext('2d')!;
+        context.drawImage(bitmap, 0, 0);
+        bitmap.close();
+        const bytes = context.getImageData(0, 0, canvas.width, canvas.height).data;
+        const hash = await crypto.subtle.digest('SHA-256', bytes);
+        values.push(Array.from(new Uint8Array(hash)).join(','));
+      }
+      return values;
+    });
+  const before = await pixels();
+  expect(before).toHaveLength(2);
+  await properties
+    .locator('.asset-list')
+    .getByRole('button', { name: base.displayName, exact: true })
+    .click();
+  await page
+    .getByRole('list', { name: 'レイヤー一覧' })
+    .getByRole('button', { name: base.layers[0].name, exact: true })
+    .click();
+  await properties.getByLabel('色相（-180〜180）').fill('180');
+  await properties.getByRole('button', { name: '色調整を適用' }).click();
+  await expect(page.locator('.editor')).toHaveAttribute('aria-busy', 'false');
+  await panel.getByRole('button', { name: /このvariant.*を選択/ }).click();
+  await expect(panel.getByText(/状態: 更新候補（stale）/)).toBeVisible();
+  await panel.getByRole('button', { name: 'refresh前後をpreview' }).click();
+  await panel.getByRole('button', { name: 'このvariantを明示refresh' }).click();
+  await expect.poll(async () => (await pixels())[0]).not.toBe(before[0]);
+  const after = await pixels();
+  expect(after[1]).toBe(before[1]);
+  await page.getByRole('button', { name: '元に戻す', exact: true }).click();
+  await expect.poll(pixels).toEqual(before);
+  await page.getByRole('button', { name: 'やり直す', exact: true }).click();
+  await expect.poll(pixels).toEqual(after);
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: '.casproj をダウンロード' }).click();
+  const backup = await (await download).path();
+  await page.reload();
+  await page.getByRole('button', { name: '「multi-frame mirror」を開く' }).click();
+  await expect.poll(pixels).toEqual(after);
+  await page.getByRole('button', { name: '← ホーム' }).click();
+  await page.getByLabel('.casproj を読み込む').setInputFiles(backup!);
+  await expect(page.getByRole('button', { name: '「multi-frame mirror」を開く' })).toHaveCount(2);
+  await page.getByRole('button', { name: '「multi-frame mirror」を開く' }).first().click();
+  await expect.poll(pixels).toEqual(after);
 });

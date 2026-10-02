@@ -6,7 +6,6 @@ import {
   animationEventFrameCandidates,
   calculateAnimationDurationMs,
   captureFrame,
-  duplicateFrame,
   moveFrameOrder,
   removeAnimation,
   removeAnimationEvent,
@@ -35,6 +34,8 @@ interface TimelinePanelProps {
   onSelectAnimation: (id: string | null) => void;
   /** クリックでそのフレームをプレビューする。 */
   onSelectFrame: (frameId: string) => void;
+  onDrawFrame: (frameId: string) => void;
+  onDuplicateFrame: (frameId: string) => void;
   /** 選択中Animationの出現位置を、Frame IDと分けてプレビューする。 */
   onSelectOccurrence: (occurrenceIndex: number) => void;
   showPreviousOnionSkin: boolean;
@@ -107,6 +108,8 @@ export function TimelinePanel({
   selectedAnimationId,
   onSelectAnimation,
   onSelectFrame,
+  onDrawFrame,
+  onDuplicateFrame,
   onSelectOccurrence,
   showPreviousOnionSkin,
   showNextOnionSkin,
@@ -282,8 +285,16 @@ export function TimelinePanel({
                 </button>
                 <button
                   type="button"
+                  disabled={isPlaying}
+                  aria-label={`フレーム「${frame.name}」を描く`}
+                  onClick={() => onDrawFrame(frame.id)}
+                >
+                  このコマを描く
+                </button>
+                <button
+                  type="button"
                   aria-label={`フレーム「${frame.name}」を複製`}
-                  onClick={() => onCommit('フレーム複製', duplicateFrame(asset, frame.id))}
+                  onClick={() => onDuplicateFrame(frame.id)}
                 >
                   複製
                 </button>

@@ -562,7 +562,7 @@ export function VariantPanel({
               linked左右反転を作成
             </button>
             <p className="editor-note">
-              rig、欠落Blob、複数edit textureを含むbaseは理由付きで拒否します。
+              リグの動きや画像の欠落がある素材は、理由を示して作成を止めます。複数レイヤー・複数コマの画像も保持します。
             </p>
           </fieldset>
 

@@ -1,3 +1,9 @@
+import {
+  assertFrameImportActive,
+  assertFramePixelBudget,
+  assertFrameEncodedBudget,
+  type FrameImportOptions,
+} from './frameImportBudget';
 import { decodeImageSource } from './decodeImageSource';
 import {
   DEFAULT_OPTIONAL_ANIMATION_FPS,
@@ -324,6 +330,7 @@ async function prepareAnimatedImport(
   format: 'gif' | 'apng',
   bytes: Uint8Array,
   preflight: AnimatedImagePreflight,
+  options: FrameImportOptions = {},
 ): Promise<PreparedNewAssetImageImport> {
   const preflightDimensionError = checkImageDimensions(preflight.width, preflight.height);
   if (preflightDimensionError) {
@@ -336,11 +343,14 @@ async function prepareAnimatedImport(
     );
   }
 
+  assertFrameImportActive(options);
+  assertFramePixelBudget(preflight.width * preflight.height * preflight.frameCount);
+  assertFrameEncodedBudget(file.size);
   const canonicalMimeType = format === 'gif' ? 'image/gif' : 'image/png';
   const sourceBlob =
     format === 'apng' && file.type !== 'image/png' ? file.slice(0, file.size, 'image/png') : file;
   const [decoded, hash] = await Promise.all([
-    decodeAnimatedImage(sourceBlob, bytes, canonicalMimeType, preflight),
+    decodeAnimatedImage(sourceBlob, bytes, canonicalMimeType, preflight, options),
     sha256Blob(file),
   ]);
   if (decoded.size.width !== preflight.width || decoded.size.height !== preflight.height) {
@@ -380,6 +390,12 @@ async function prepareAnimatedImport(
     layers,
     frameParts.map(({ layer }) => layer.name),
   );
+  frames.forEach((frame, index) => {
+    const duration = decoded.durationsMicroseconds[index];
+    if (duration !== null && duration !== undefined && Number.isFinite(duration) && duration > 0) {
+      frame.durationMs = duration / 1000;
+    }
+  });
   const animation: Animation = {
     id: generateId('anim'),
     name,
@@ -409,17 +425,12 @@ async function prepareAnimatedImport(
       '全frameが必要な場合はImageDecoder対応browserで同じsource原本を取り込んでください。',
     );
   } else {
-    if (timing.variableDurations) {
-      losses.push(
-        `${file.name}: frameごとの可変表示時間は保持できないため、合計${timing.durationMs}msを${timing.fps}fpsの等間隔再生へ変換します。`,
-      );
-    }
     if (timing.missingDuration) {
       losses.push(
-        `${file.name}: frame durationを取得できないため${DEFAULT_OPTIONAL_ANIMATION_FPS}fpsを使用します。`,
+        `${file.name}: 一部のコマの表示時間を取得できないため、そのコマには${DEFAULT_OPTIONAL_ANIMATION_FPS}fpsを使用します。`,
       );
     }
-    if (timing.rounded || timing.clamped) {
+    if (timing.missingDuration && (timing.rounded || timing.clamped)) {
       losses.push(
         `${file.name}: 現行の整数fps（1〜240）へ丸め、再生時間は約${
           Math.round(timing.playbackDurationMs * 1000) / 1000
@@ -471,7 +482,11 @@ function standardPreview(file: File): NewAssetImportPreview {
 }
 
 /** 新規Asset入口だけで通常画像とoptional形式を分類し、保存前の完全なbundleを準備する。 */
-export async function prepareNewAssetImageImport(file: File): Promise<PreparedNewAssetImageImport> {
+export async function prepareNewAssetImageImport(
+  file: File,
+  options: FrameImportOptions = {},
+): Promise<PreparedNewAssetImageImport> {
+  assertFrameImportActive(options);
   const unsupportedMessage = unsupportedFormatMessage(file);
   if (unsupportedMessage) {
     throw new ImageImportError(unsupportedMessage, { kind: 'unsupported-type' });
@@ -494,7 +509,7 @@ export async function prepareNewAssetImageImport(file: File): Promise<PreparedNe
         kind: 'signature',
       });
     }
-    return prepareAnimatedImport(file, 'gif', bytes, preflight);
+    return prepareAnimatedImport(file, 'gif', bytes, preflight, options);
   }
   if (file.type === 'image/png' || file.type === 'image/apng') {
     await assertOptionalSignature(file);
@@ -513,7 +528,7 @@ export async function prepareNewAssetImageImport(file: File): Promise<PreparedNe
       throw new ImageImportError(dimensionError, { kind: 'dimension' });
     }
     if (inspection.animated) {
-      return prepareAnimatedImport(file, 'apng', bytes, inspection);
+      return prepareAnimatedImport(file, 'apng', bytes, inspection, options);
     }
     if (file.type === 'image/apng' || fileExtension(file.name) === 'apng') {
       throw new ImageImportError('APNG宣言ですがacTL animation chunkがありません。', {

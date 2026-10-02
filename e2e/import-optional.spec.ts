@@ -184,6 +184,7 @@ interface OptionalStoredAsset {
   layers: Array<{ id: string; visible: boolean }>;
   frames: Array<{
     id: string;
+    durationMs?: number;
     layerStates: Array<{ layerId: string; visible?: boolean }>;
   }>;
   animations: Array<{
@@ -428,7 +429,7 @@ test('malformed・invalid UTF-8 SVGはsignature失敗としてquarantineする',
   expect(await readQuarantineCount(page)).toBe(3);
 });
 
-test('animated GIFを全frame化し、総durationをuniform fpsへ写像する', async ({ page }) => {
+test('animated GIFの個別時間を保持し、非対応環境は先頭コマを確認して保存する', async ({ page }) => {
   await createProject(page, 'animated GIF');
   const gif = animatedGifBuffer(2, 2);
   await page.getByLabel('画像を選ぶ').setInputFiles({
@@ -437,9 +438,21 @@ test('animated GIFを全frame化し、総durationをuniform fpsへ写像する',
     buffer: gif,
   });
   const dialog = page.getByRole('dialog', { name: '取り込み確定前preview' });
+  if (!(await page.evaluate(() => 'ImageDecoder' in window))) {
+    await expect(dialog).toContainText('ImageDecoderを利用できない');
+    await expect(dialog).toContainText('2frame中の先頭1frameだけ');
+    await expect(dialog.getByRole('button', { name: '取り込みを確定' })).toBeDisabled();
+    await confirmLossPreview(page);
+    const asset = (await readAssets(page))[0];
+    expect(asset.frames).toHaveLength(1);
+    expect(asset.frames[0].durationMs).toBeUndefined();
+    expect(asset.animations[0].durationMs).toBeUndefined();
+    expect(Buffer.from(await readSourceBytes(page, asset))).toEqual(gif);
+    return;
+  }
   await expect(dialog).toContainText('frame 2件 / animation 1件');
   await expect(dialog).toContainText('7fps');
-  await expect(dialog).toContainText('可変表示時間');
+  await expect(dialog).not.toContainText('可変表示時間は保持できない');
   await expect(dialog).toContainText('有限回repeat');
   await confirmLossPreview(page);
 
@@ -447,6 +460,9 @@ test('animated GIFを全frame化し、総durationをuniform fpsへ写像する',
   expect(asset.layers).toHaveLength(2);
   expect(asset.frames).toHaveLength(2);
   expect(asset.animations[0]).toMatchObject({ fps: 7, loop: false, durationMs: 300 });
+  expect(asset.frames.map((frame: { durationMs?: number }) => frame.durationMs)).toEqual([
+    100, 200,
+  ]);
   expect(asset.animations[0].frameIds).toHaveLength(2);
   expect(await readEditColors(page, asset.id)).toEqual([
     [255, 0, 0, 255],
@@ -466,6 +482,18 @@ test('image/png宣言のAPNGをacTLで判別し、canonical source MIMEの全fra
     buffer: apng,
   });
   const dialog = page.getByRole('dialog', { name: '取り込み確定前preview' });
+  if (!(await page.evaluate(() => 'ImageDecoder' in window))) {
+    await expect(dialog).toContainText('ImageDecoderを利用できない');
+    await expect(dialog).toContainText('2frame中の先頭1frameだけ');
+    await expect(dialog.getByRole('button', { name: '取り込みを確定' })).toBeDisabled();
+    await confirmLossPreview(page);
+    const asset = (await readAssets(page))[0];
+    expect(asset.frames).toHaveLength(1);
+    expect(asset.frames[0].durationMs).toBeUndefined();
+    expect(asset.animations[0].durationMs).toBeUndefined();
+    expect(Buffer.from(await readSourceBytes(page, asset))).toEqual(apng);
+    return;
+  }
   await expect(dialog).toContainText(
     'signal.pngから2件のedit PNG・layer・frameとanimationを作成します',
   );
@@ -526,7 +554,7 @@ test('animated画像の巨大宣言canvasをcodec起動前に拒否してquarant
   expect(await readQuarantineCount(page)).toBe(1);
 });
 
-test('unsupported形式と17frame GIFを理由付き拒否し、正本・quarantineを変更しない', async ({
+test('unsupported形式と65frame GIFを理由付き拒否し、正本・quarantineを変更しない', async ({
   page,
 }) => {
   await createProject(page, 'optional limits');
@@ -541,9 +569,9 @@ test('unsupported形式と17frame GIFを理由付き拒否し、正本・quarant
   await input.setInputFiles({
     name: 'too-many.gif',
     mimeType: 'image/gif',
-    buffer: animatedGifBuffer(17),
+    buffer: animatedGifBuffer(65),
   });
-  await expect(page.getByRole('alert')).toContainText('最大16frame');
+  await expect(page.getByRole('alert')).toContainText('最大64frame');
   expect(await readAssets(page)).toHaveLength(0);
   expect(await readQuarantineCount(page)).toBe(0);
 });
