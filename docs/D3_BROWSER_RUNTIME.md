@@ -33,3 +33,7 @@ Phaser `keyPrefix` must be unique per adapter instance in that scene's texture m
 `node --test tools/d3/distributionRuntime.test.mjs` imports the actual shipped JS directly. The Vitest wrapper runs this suite in normal CI. Tests cover 1/2/3x placement, crop rectangles, multiple pages, hidden colliders, variable duration, repeated frame IDs, loops/nonloops, initial and ordered events, long ticks, stop/restart, bounded catch-up, texture collisions and allocation cleanup. Existing timeline/geometry suites cover canonical builder semantics and precision boundaries.
 
 These mock tests prove JavaScript importability and adapter calls, not actual PixiJS/Phaser rendering. Product-export-to-real-browser engine rendering and pixel/gameplay assertions are a separate integration verification requirement. The helpers do not replace the strict manifest/package loader's version, path, reference, bounds, HTTP/decode, integrity, or cancellation checks.
+
+## 0.2 image-coordinate contract
+
+`rect` is the frame box on its packed page. `contentRect` is relative to that box, so its x/y are zero when the renderer has trimmed and moved the pixels. `contentOffset` retains the trim displacement in the scaled source canvas, and `sourceSize` retains that whole canvas. Origin, anchors and colliders use scaled source-canvas coordinates. The exporter converts the packer's source crop into this sheet-relative representation; it must not add the source trim displacement a second time when sampling page pixels. Legacy 0.1 manifests are unchanged.

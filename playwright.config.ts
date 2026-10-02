@@ -42,6 +42,7 @@ export default defineConfig({
         'onion-skin-browser.spec.ts',
         'rich-distribution-controls.spec.ts',
         'rich-distribution-engines.spec.ts',
+        'legacy-distribution-pixels.spec.ts',
       ],
       use: { ...devices['Desktop Safari'] },
     },

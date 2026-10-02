@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { Asset } from '../model';
 import characterAsset from '../samples/asset.character.json';
-import type { DistributionManifest } from './atlas';
+import { computeDistributionSheetLayout, type DistributionManifest } from './atlas';
 import {
   assertPackageClosure,
+  buildGenericWebHelper,
   buildGenericWebSidecar,
   buildPackageManifest,
   buildVerificationRecord,
@@ -104,4 +105,61 @@ describe('Generic Web package manifest', () => {
       'atlas/spritesheet.png',
     );
   });
+});
+
+describe('legacy Generic Web helper crop compatibility', () => {
+  for (const profile of ['fixed-grid', 'packed'] as const) {
+    it.each([1, 2, 3])(
+      `samples the actual ${profile} packer coordinates at %sx without changing 0.1 metadata`,
+      (scale) => {
+        const layout = computeDistributionSheetLayout(
+          [
+            {
+              id: 'frame',
+              name: 'frame',
+              sourceSize: { width: 32 * scale, height: 32 * scale },
+              contentRect: { x: 2 * scale, y: 3 * scale, width: 8 * scale, height: 9 * scale },
+            },
+          ],
+          { profile },
+        );
+        const manifest = { profile, frames: layout.frames };
+        const before = structuredClone(manifest);
+        const calls: unknown[][] = [];
+        const draw = new Function(
+          buildGenericWebHelper().replaceAll('export ', '') + '; return drawGenericWebFrame;',
+        )() as (
+          context: { drawImage: (...args: unknown[]) => void },
+          loaded: unknown,
+          name: string,
+          x: number,
+          y: number,
+        ) => void;
+        const image = { page: 0 };
+        draw(
+          {
+            drawImage: (...args) => {
+              calls.push(args);
+            },
+          },
+          { manifest, images: [image] },
+          'frame',
+          100,
+          200,
+        );
+        expect(calls[0]).toEqual([
+          image,
+          layout.frames[0].rect.x + (profile === 'packed' ? 0 : 2 * scale),
+          layout.frames[0].rect.y + (profile === 'packed' ? 0 : 3 * scale),
+          8 * scale,
+          9 * scale,
+          100 + 2 * scale,
+          200 + 3 * scale,
+          8 * scale,
+          9 * scale,
+        ]);
+        expect(manifest).toEqual(before);
+      },
+    );
+  }
 });
