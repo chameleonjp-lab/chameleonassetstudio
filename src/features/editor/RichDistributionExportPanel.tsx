@@ -156,21 +156,23 @@ function RichDistributionControls({ asset, project, projectAssets }: Props) {
   };
 
   return (
-    <section className="export-option" aria-label="新版配布用ZIP">
+    <section className="export-option rich-distribution-export" aria-label="新版配布用ZIP">
       <h3>ゲーム情報付き配布用ZIP（0.2）</h3>
       <p>
         コマごとの表示時間・イベント・当たり判定を保持します。複数素材はID別のフォルダーにまとめます。
       </p>
       <fieldset className="editor-fieldset" disabled={loading || saving}>
         <legend>出力する素材</legend>
-        {available.map((item) => (
-          <label key={item.id} className="editor-field">
+        {available.map((item, index) => (
+          <label key={item.id} className="editor-field rich-distribution-asset">
             <input
               type="checkbox"
               checked={selectedIds.includes(item.id)}
               onChange={(event) => changeSelection(item.id, event.target.checked)}
             />
-            {item.name}（{item.id}）
+            <span>
+              {index + 1}. {item.displayName || item.name}
+            </span>
           </label>
         ))}
       </fieldset>

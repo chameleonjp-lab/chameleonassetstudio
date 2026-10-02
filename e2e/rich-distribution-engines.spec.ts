@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
 import { unzipSync } from 'fflate';
@@ -12,7 +12,7 @@ async function seedRichProject(page: Page, scale: number) {
     const storagePath = '/src/core/storage/index.ts';
     const { createEmptyProject, createImageAsset } = await import(factoriesPath);
     const { saveProjectBundle } = await import(storagePath);
-    const project = createEmptyProject('Rich engine integration');
+    const project = createEmptyProject(`Rich engine integration ${scale}x`);
     // Each trimmed frame is larger than half a 2048px page in both axes.
     // Thus all scales exercise real multi-page packing without patching the exporter.
     const side = Math.ceil(1050 / scale);
@@ -128,7 +128,7 @@ async function seedRichProject(page: Page, scale: number) {
     await saveProjectBundle(project, [asset, copy], [...blobs, ...copyBlobs]);
   }, scale);
   await page.reload();
-  await page.getByRole('button', { name: '「Rich engine integration」を開く' }).click();
+  await page.getByRole('button', { name: `「Rich engine integration ${scale}x」を開く` }).click();
 }
 
 function consumer(engine: 'canvas2d' | 'pixijs' | 'phaser' | 'phaser-webgl') {
@@ -251,6 +251,20 @@ for (const engine of ['canvas2d', 'pixijs', 'phaser', 'phaser-webgl'] as const) 
         await panel.getByLabel('新版配布画像の配置').selectOption(profile);
         await panel.getByLabel('新版配布画像の倍率').selectOption(String(scale));
         await panel.getByLabel('新版配布画像間の余白').fill('2');
+        if (engine === 'canvas2d' && profile === 'packed') {
+          await panel.getByRole('button', { name: '出力設定を保存', exact: true }).click();
+          await expect(panel.getByRole('status')).toContainText('出力設定を保存しました');
+          const [backup] = await Promise.all([
+            page.waitForEvent('download'),
+            page.getByRole('button', { name: '.casproj をダウンロード', exact: true }).click(),
+          ]);
+          const backupPath = testInfo.outputPath(`rich-engine-integration-${scale}x.casproj`);
+          await backup.saveAs(backupPath);
+          await testInfo.attach(`rich-engine-integration-${scale}x.casproj`, {
+            path: backupPath,
+            contentType: 'application/zip',
+          });
+        }
         const downloaded = page.waitForEvent('download', { timeout: 30_000 });
         void downloaded.catch(() => {});
         await panel.getByRole('button', { name: '新版配布用ZIPをダウンロード' }).click();
@@ -263,7 +277,14 @@ for (const engine of ['canvas2d', 'pixijs', 'phaser', 'phaser-webgl'] as const) 
               throw new Error(await panel.getByRole('alert').innerText());
             }),
         ]);
-        const entries = unzipSync(await readFile((await download.path())!));
+        const zipPath = testInfo.outputPath(`rich-${engine}-${profile}-${scale}x.zip`);
+        await download.saveAs(zipPath);
+        const zipBytes = await readFile(zipPath);
+        await testInfo.attach(`rich-${engine}-${profile}-${scale}x.zip`, {
+          path: zipPath,
+          contentType: 'application/zip',
+        });
+        const entries = unzipSync(zipBytes);
         const pkg = JSON.parse(new TextDecoder().decode(entries['package-manifest.json']));
         expect(pkg).toMatchObject({
           format: 'chameleon-package',
@@ -411,9 +432,10 @@ for (const engine of ['canvas2d', 'pixijs', 'phaser', 'phaser-webgl'] as const) 
             ),
         );
         expect(exampleErrors).toEqual([]);
-        await testInfo.attach('rich-distribution-runtime-evidence.json', {
-          contentType: 'application/json',
-          body: JSON.stringify(
+        const evidencePath = testInfo.outputPath('rich-distribution-runtime-evidence.json');
+        await writeFile(
+          evidencePath,
+          JSON.stringify(
             {
               engine,
               profile,
@@ -422,7 +444,10 @@ for (const engine of ['canvas2d', 'pixijs', 'phaser', 'phaser-webgl'] as const) 
               browserVersion: browser.version(),
               rendererType: data.rendererType,
               engineVersion: data.engineVersion,
+              platform: process.platform,
+              viewport: page.viewportSize(),
               sourceCommit: process.env.GITHUB_SHA ?? 'local-unrecorded',
+              zipHash: createHash('sha256').update(zipBytes).digest('hex'),
               packageHash: createHash('sha256')
                 .update(entries['package-manifest.json'])
                 .digest('hex'),
@@ -434,6 +459,10 @@ for (const engine of ['canvas2d', 'pixijs', 'phaser', 'phaser-webgl'] as const) 
             null,
             2,
           ),
+        );
+        await testInfo.attach('rich-distribution-runtime-evidence.json', {
+          contentType: 'application/json',
+          path: evidencePath,
         });
       });
     }

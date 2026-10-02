@@ -14,7 +14,10 @@ import {
 
 type Point = { x: number; y: number };
 
-/** Game metadata uses scaled source-canvas coordinates; image rectangles use sheet coordinates. */
+/**
+ * Pixels are already scaled. rect is page-local and contentRect is relative to rect.
+ * contentOffset, origin, anchors and colliders use the untrimmed source canvas.
+ */
 export interface DistributionFrameData extends DistributionSheetFrameLayout {
   origin: Point;
   anchors: Asset['anchors'];

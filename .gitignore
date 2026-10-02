@@ -9,5 +9,6 @@ test-results
 *.tsbuildinfo
 
 playwright-report-webkit
+playwright-report-quality
 test-results-webkit
 test-results-quality

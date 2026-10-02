@@ -283,8 +283,8 @@ Actionsの14日保持の成果物を、正式版の永続的な出荷記録の�
 | R02 | main確認済み（[PR #283](https://github.com/chameleonjp-lab/chameleonassetstudio/pull/283)）。[実装・互換性・検証境界](R02_STORAGE_HISTORY.md) | 新機能も同じ保存・履歴経路へ接続する |
 | R03 | main確認済み（[PR #284](https://github.com/chameleonjp-lab/chameleonassetstudio/pull/284)）。小画面の追加修正はR06で検査 | ホーム取込・見本・制作導線を最終候補版でも確認する |
 | R04 | main確認済み（[PR #285](https://github.com/chameleonjp-lab/chameleonassetstudio/pull/285)）。独立コマ描画・個別時間・64コマ取込 | R05・R06でも保存・出力・実機の重要経路を確認する |
-| R05 | 配布画面を部分実装。[PR #286](https://github.com/chameleonjp-lab/chameleonassetstudio/pull/286)はR04作業ブランチへmerge、mainは未統合。[D3の具体案](R05_OUTPUT_PROPOSAL.md)は判断待ち | 新版出力・3受取先・複数素材・設定保存・取消を完成する |
-| R06 | 遅延読込・版表示・製品ビルド検査を部分実装。[PR #287](https://github.com/chameleonjp-lab/chameleonassetstudio/pull/287)はR05作業ブランチへmerge。品質修正はmain向け後続Draftで継続 | R05後の最終版の性能・iPhone実機・出荷・公開照合 |
+| R05 | 旧配布画面は[PR #288](https://github.com/chameleonjp-lab/chameleonassetstudio/pull/288)でmain統合済み。新版の試作候補も[PR #289](https://github.com/chameleonjp-lab/chameleonassetstudio/pull/289)でmain統合済み（`e04902b6`、tree `04a359ad`）。CI #954全成功。追加の小画面・証拠保存・実機素材・性能計測は統合検査中。実ZIP→3受取先は両browserで成功。[D3の具体案](R05_OUTPUT_PROPOSAL.md)は採用判断待ち | D3採用、追加修正後の全CI・独立確認、最終候補版の出力・実機確認 |
+| R06 | 遅延読込・版表示・小画面・PNG画素保持・入力性能検査はPR #288でmain統合済み。CI #948全成功、main `0f763c49`のtreeと検査済みtreeの一致を確認 | R05後の最終版の性能・iPhone実機・出荷・公開照合 |
 
 同じ実装依頼で既存PRを更新し、工程内の項目ごとに次の依頼を要求しない。merge後は最新mainを照合する。現在は節8 D3の新版出力採用だけを判断待ちとし、画面・検査・性能測定の準備は進める。Draftの作成やCI成功だけで工程・正式公開を完了扱いしない。
 
