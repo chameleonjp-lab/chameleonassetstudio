@@ -43,7 +43,7 @@ const CHECKER_LIGHT = '#e9e9e9';
 const CHECKER_DARK = '#c9c9c9';
 const CANVAS_BORDER = 'rgba(128, 128, 128, 0.9)';
 const SELECTION_COLOR = '#3a86ff';
-let tintScratchCanvas: OffscreenCanvas | HTMLCanvasElement | null = null;
+let tintScratchCanvas: OffscreenCanvas | null = null;
 
 /** 透明背景の市松模様（要件 11.3）。アセットキャンバスの矩形内に描く。 */
 function drawCheckerboard(
@@ -91,17 +91,21 @@ function tintedBitmap(
 ): CanvasImageSource | null {
   const width = Math.max(1, Math.round(textureSize.width));
   const height = Math.max(1, Math.round(textureSize.height));
-  const canvas =
-    tintScratchCanvas ??
-    (typeof OffscreenCanvas !== 'undefined'
-      ? new OffscreenCanvas(width, height)
-      : typeof document !== 'undefined'
-        ? document.createElement('canvas')
-        : null);
+  // A transformed WebKit draw may defer reading its source. Snapshot shared
+  // scratch pixels before repainting them; keep fallback canvases independent.
+  const canSnapshot =
+    typeof OffscreenCanvas !== 'undefined' &&
+    typeof OffscreenCanvas.prototype.transferToImageBitmap === 'function';
+  const canvas = canSnapshot
+    ? (tintScratchCanvas ??= new OffscreenCanvas(width, height))
+    : typeof document !== 'undefined'
+      ? document.createElement('canvas')
+      : typeof OffscreenCanvas !== 'undefined'
+        ? new OffscreenCanvas(width, height)
+        : null;
   if (!canvas) {
     return null;
   }
-  tintScratchCanvas = canvas;
   canvas.width = width;
   canvas.height = height;
   const context = canvas.getContext('2d') as
@@ -120,7 +124,7 @@ function tintedBitmap(
     return null;
   }
 
-  return canvas;
+  return canSnapshot ? (canvas as OffscreenCanvas).transferToImageBitmap() : canvas;
 }
 
 function drawLayer(
@@ -159,6 +163,9 @@ function drawLayer(
     // asset切り替え直後、直前のbitmapが読み込みeffectのcleanupでcloseされた直後の
     // 1フレームだけ発生し得る（新しいbitmapへの差し替えは次のrenderで反映される）。
     // 描画をskipするだけで安全なため、ここで握りつぶす。
+  }
+  if (options.color && typeof ImageBitmap !== 'undefined' && source instanceof ImageBitmap) {
+    source.close();
   }
   ctx.restore();
 }
