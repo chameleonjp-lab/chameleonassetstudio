@@ -1,3 +1,9 @@
+import {
+  assertFrameImportActive,
+  assertFrameEncodedBudget,
+  frameImportCheckpoint,
+  type FrameImportOptions,
+} from './frameImportBudget';
 import { decodeImageSource } from './decodeImageSource';
 import {
   ImageImportError,
@@ -140,7 +146,9 @@ export async function decodeAnimatedImage(
   bytes: Uint8Array,
   canonicalMimeType: 'image/gif' | 'image/png',
   preflight: AnimatedImagePreflight,
+  options: FrameImportOptions = {},
 ): Promise<EncodedAnimatedImage> {
+  assertFrameImportActive(options);
   const Decoder = globalThis.ImageDecoder;
   if (typeof Decoder !== 'function') {
     return decodeFirstFrameFallback(blob, preflight.repetition);
@@ -192,10 +200,12 @@ export async function decodeAnimatedImage(
     }
 
     const frames: Blob[] = [];
+    let encodedBytes = blob.size;
     const durationsMicroseconds: Array<number | null> = [];
     let thumbnail: EncodedThumbnail | null = null;
     let size: { width: number; height: number } | null = null;
     for (let frameIndex = 0; frameIndex < track.frameCount; frameIndex += 1) {
+      assertFrameImportActive(options);
       const result = await decoder.decode({ frameIndex, completeFramesOnly: true });
       const decoded = decodedVideoFrame(result.image);
       try {
@@ -212,11 +222,15 @@ export async function decodeAnimatedImage(
         if (frameIndex === 0) {
           thumbnail = await encodeDecodedThumbnail(decoded);
         }
-        frames.push(await encodeFrame(decoded));
+        const frameBlob = await encodeFrame(decoded);
+        encodedBytes += frameBlob.size;
+        assertFrameEncodedBudget(encodedBytes + (thumbnail?.blob.size ?? 0));
+        frames.push(frameBlob);
         durationsMicroseconds.push(result.image.duration);
       } finally {
         decoded.close();
       }
+      await frameImportCheckpoint(options, frameIndex + 1, track.frameCount);
     }
     if (!size || !thumbnail || frames.length < 1) {
       throw new ImageImportError('animated画像からframeを生成できませんでした。', {
@@ -233,7 +247,10 @@ export async function decodeAnimatedImage(
       usedFallback: false,
     };
   } catch (error) {
-    if (error instanceof ImageImportError) {
+    if (
+      error instanceof ImageImportError ||
+      (error instanceof DOMException && error.name === 'AbortError')
+    ) {
       throw error;
     }
     throw new ImageImportError(

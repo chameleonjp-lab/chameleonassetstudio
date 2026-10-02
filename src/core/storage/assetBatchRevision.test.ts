@@ -12,6 +12,7 @@ import {
   loadBlob,
   loadProject,
   saveAssetBatchRevision,
+  saveAssetRevision,
   saveBlob,
   saveProject,
   saveProjectBundle,
@@ -691,7 +692,7 @@ describe('Slice B saveAssetBatchRevision', () => {
     };
     await expect(
       saveAssetBatchRevision({ ...fixture.input, targets: [duplicateBlobTarget] }),
-    ).rejects.toThrow(/1件以下/);
+    ).rejects.toThrow(/同じ Blob key/);
     await expectBeforeState(fixture);
   });
 
@@ -990,5 +991,46 @@ describe('Slice B saveAssetBatchRevision', () => {
     expect((await loadAsset(fixture.variant.id)).asset).toEqual(fixture.afterVariant);
     expect(await bytesAt(keyFor(fixture.base, editTexture(fixture.base)))).toEqual([91]);
     expect(await bytesAt(keyFor(fixture.variant, editTexture(fixture.variant)))).toEqual([92]);
+  });
+  it('複数の編集画像を同時に変更し、素材ごとに全画像の復旧点を1件保存する', async () => {
+    const fixture = await seedBatchFixture();
+    const second: TextureRef = {
+      ...editTexture(fixture.base),
+      id: 'edit_second',
+      path: 'textures/second.png',
+    };
+    fixture.base.textures.push(second);
+    fixture.afterBase.textures.push(structuredClone(second));
+    const beforeSecond = new Blob([new Uint8Array([42])], { type: second.mimeType });
+    await saveAssetRevision({
+      projectId: fixture.beforeProject.id,
+      asset: fixture.base,
+      putBlobs: [{ key: keyFor(fixture.base, second), blob: beforeSecond }],
+    });
+    fixture.input.targets[0].blobs!.push({
+      key: keyFor(fixture.base, second),
+      before: beforeSecond,
+      after: new Blob([new Uint8Array([93])], { type: second.mimeType }),
+    });
+    await saveAssetBatchRevision(fixture.input);
+    expect(await bytesAt(keyFor(fixture.base, second))).toEqual([93]);
+    const snapshots = await listSnapshots(fixture.base.id);
+    expect(snapshots).toHaveLength(1);
+    const restored = await restoreSnapshot(snapshots[0].id);
+    expect(restored.images).toHaveLength(2);
+    expect([
+      ...new Uint8Array(
+        await restored.images
+          .find((image) => image.key === keyFor(fixture.base, second))!
+          .blob.arrayBuffer(),
+      ),
+    ]).toEqual([42]);
+    await saveAssetBatchRevision({
+      ...reverseInput(fixture.input, ''),
+      historyReplay: true,
+      allowProjectUpdatedAtDrift: true,
+    });
+    expect(await bytesAt(keyFor(fixture.base, second))).toEqual([42]);
+    expect(await listSnapshots(fixture.base.id)).toHaveLength(1);
   });
 });

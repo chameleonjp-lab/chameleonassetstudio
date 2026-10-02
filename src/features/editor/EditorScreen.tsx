@@ -1,3 +1,6 @@
+import { assertFrameImportActive } from '../../core/images/frameImportBudget';
+import { prepareFrameDrawing, frameDrawingLayerIsIndependent } from './frameDrawing';
+import { duplicateFrame } from '../../core/model/assetOps';
 import { CommittedInput } from './CommittedInput';
 import {
   useCallback,
@@ -589,6 +592,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
   // タイムライン（Phase 9）
   const [selectedAnimationId, setSelectedAnimationId] = useState<string | null>(null);
+  const importAbortRef = useRef<AbortController | null>(null);
+  const [editFrameId, setEditFrameId] = useState<string | null>(null);
   const [previewFrameId, setPreviewFrameId] = useState<string | null>(null);
   const [selectedTimelineFrameId, setSelectedTimelineFrameId] = useState<string | null>(null);
   const [previewOccurrenceIndex, setPreviewOccurrenceIndex] = useState<number | null>(null);
@@ -1077,7 +1082,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     const allowFramePreview =
       framePreviewActive &&
       !isPlaying &&
-      (historyState.undoLabel?.startsWith('Frame別当たり判定') ?? false);
+      (editFrameId !== null || (historyState.undoLabel?.startsWith('Frame別当たり判定') ?? false));
     if (!canStartEditorPersistentMutation({ allowFramePreview })) {
       return;
     }
@@ -1094,6 +1099,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     framePreviewActive,
     history,
     historyState.undoLabel,
+    editFrameId,
     isPlaying,
   ]);
 
@@ -1101,7 +1107,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     const allowFramePreview =
       framePreviewActive &&
       !isPlaying &&
-      (historyState.redoLabel?.startsWith('Frame別当たり判定') ?? false);
+      (editFrameId !== null || (historyState.redoLabel?.startsWith('Frame別当たり判定') ?? false));
     if (!canStartEditorPersistentMutation({ allowFramePreview })) {
       return;
     }
@@ -1118,6 +1124,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     framePreviewActive,
     history,
     historyState.redoLabel,
+    editFrameId,
     isPlaying,
   ]);
 
@@ -1209,6 +1216,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   useEffect(() => {
     setSelectedAnimationId(null);
     setPreviewFrameId(null);
+    setEditFrameId(null);
     setSelectedTimelineFrameId(null);
     setPreviewOccurrenceIndex(null);
     setFiredAnimationEvents([]);
@@ -1293,12 +1301,73 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setSelectedAnimationId(id);
     setIsPlaying(false);
     setPreviewFrameId(null);
+    setEditFrameId(null);
     setSelectedTimelineFrameId(null);
     setPreviewOccurrenceIndex(null);
     setFiredAnimationEvents([]);
   };
 
+  const handleDrawFrame = async (frameId: string) => {
+    if (!selectedAsset || isPlaying || !beginEditorPersistentMutation({ allowFramePreview: true }))
+      return;
+    setEditorError(null);
+    try {
+      await autosave.flush();
+      const before = selectedAsset;
+      const prepared = await prepareFrameDrawing(before, frameId, loadBlob);
+      if (prepared.asset !== before) {
+        const keys = prepared.blobs.map((entry) => entry.key);
+        await commitPersistentMutationWithHistory({
+          apply: () => saveAssetRevisionAndApply(prepared.asset, { putBlobs: prepared.blobs }),
+          history,
+          entry: {
+            label: 'コマの描画を準備',
+            undo: () => saveAssetRevisionAndApply(before, { deleteBlobKeys: keys }),
+            redo: () => saveAssetRevisionAndApply(prepared.asset, { putBlobs: prepared.blobs }),
+          },
+        });
+      }
+      setPreviewFrameId(frameId);
+      setSelectedTimelineFrameId(frameId);
+      const index = selectedAnimation?.frameIds.indexOf(frameId) ?? -1;
+      setPreviewOccurrenceIndex(index >= 0 ? index : null);
+      setEditFrameId(frameId);
+      setSelectedLayerId(prepared.layerIds[0]);
+      setSelection(null);
+      setSelectionClipboard(null);
+      setTool('brush');
+      setMobileView('canvas');
+    } catch (error) {
+      setEditorError(
+        `コマの描画を開始できませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      endEditorPersistentMutation();
+    }
+  };
+
+  useEffect(() => {
+    if (
+      editFrameId &&
+      (!selectedAsset?.frames?.some((frame) => frame.id === editFrameId) ||
+        (selectedLayerId !== null &&
+          !selectedAsset.layers.some((layer) => layer.id === selectedLayerId)))
+    ) {
+      setEditFrameId(null);
+      setPreviewFrameId(null);
+      setSelectedLayerId(null);
+    }
+  }, [editFrameId, selectedAsset, selectedLayerId]);
+
+  const handleDuplicateTimelineFrame = (frameId: string) => {
+    if (!selectedAsset || isPlaying) return;
+    const next = duplicateFrame(selectedAsset, frameId);
+    commitAssetChange('フレーム複製', selectedAsset, next, { allowFramePreview: true });
+    setEditFrameId(null);
+  };
+
   const handleSelectFrame = (frameId: string) => {
+    setEditFrameId(null);
     if (frameAlignmentDraftRef.current) {
       setEditorError(FRAME_ALIGNMENT_ACTIVE_MESSAGE);
       return;
@@ -1311,6 +1380,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   };
 
   const handleSelectOccurrence = (occurrenceIndex: number) => {
+    setEditFrameId(null);
     if (frameAlignmentDraftRef.current) {
       setEditorError(FRAME_ALIGNMENT_ACTIVE_MESSAGE);
       return;
@@ -1376,6 +1446,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
       setIsPlaying(false);
       setPreviewFrameId(null);
+      setEditFrameId(null);
       setSelectedTimelineFrameId(null);
       setPreviewOccurrenceIndex(null);
       setFiredAnimationEvents([]);
@@ -1477,6 +1548,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   };
 
   const handlePlayAnimation = () => {
+    setEditFrameId(null);
     if (frameAlignmentDraftRef.current) {
       setEditorError(FRAME_ALIGNMENT_ACTIVE_MESSAGE);
       return;
@@ -1492,6 +1564,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const handleStopAnimation = () => {
     setIsPlaying(false);
     setPreviewFrameId(null);
+    setEditFrameId(null);
     setSelectedTimelineFrameId(null);
     setPreviewOccurrenceIndex(null);
     setFiredAnimationEvents([]);
@@ -1499,6 +1572,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   };
 
   const handleRewindAnimation = () => {
+    setEditFrameId(null);
     if (frameAlignmentDraftRef.current) {
       setEditorError(FRAME_ALIGNMENT_ACTIVE_MESSAGE);
       return;
@@ -1544,7 +1618,15 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
       setEditorError('元画像（source）は破壊的編集できません。編集用画像を選択してください。');
       return false;
     }
-    if (!beginEditorPersistentMutation()) {
+    if (
+      editFrameId &&
+      (editFrameId !== previewFrameId ||
+        !frameDrawingLayerIsIndependent(selectedAsset, editFrameId, selectedLayer.id))
+    ) {
+      setEditorError('このコマの独立した画像レイヤーを選んでください。');
+      return false;
+    }
+    if (!beginEditorPersistentMutation({ allowFramePreview: editFrameId !== null && !isPlaying })) {
       return false;
     }
     const label = operationLabel(operation);
@@ -1564,28 +1646,42 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
       const before = selectedAsset;
       let nextLayers = before.layers;
+      let nextFrames = before.frames;
+      const drawingLayer = editFrameId
+        ? applyFrameToAsset(before, editFrameId).layers.find(
+            (layer) => layer.id === selectedLayer.id,
+          )!
+        : selectedLayer;
       if (
         operation.type === 'crop' ||
         operation.type === 'padLayerImage' ||
         operation.type === 'resizeLayerImage'
       ) {
-        const nextPosition = repairedLayerPosition(selectedLayer, texture.size, operation, {
+        const nextPosition = repairedLayerPosition(drawingLayer, texture.size, operation, {
           width: afterBuffer.width,
           height: afterBuffer.height,
         });
-        nextLayers = before.layers.map((layer) =>
-          layer.id === selectedLayer.id
-            ? {
-                ...layer,
-                transform: { ...layer.transform, position: nextPosition },
-              }
-            : layer,
-        );
+        const transform = { ...drawingLayer.transform, position: nextPosition };
+        if (editFrameId) {
+          nextFrames = before.frames?.map((frame) => {
+            if (frame.id !== editFrameId) return frame;
+            const states = [...frame.layerStates];
+            const index = states.findIndex((state) => state.layerId === selectedLayer.id);
+            if (index < 0) states.push({ layerId: selectedLayer.id, transform });
+            else states[index] = { ...states[index], transform };
+            return { ...frame, layerStates: states };
+          });
+        } else {
+          nextLayers = before.layers.map((layer) =>
+            layer.id === selectedLayer.id ? { ...layer, transform } : layer,
+          );
+        }
       }
       const next: Asset = {
         ...before,
         updatedAt: new Date().toISOString(),
         layers: nextLayers,
+        frames: nextFrames,
         textures: before.textures.map((tex) =>
           tex.id === texture.id
             ? { ...tex, size: { width: afterBuffer.width, height: afterBuffer.height } }
@@ -2787,14 +2883,22 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setEditorError(null);
     setImportStatusLabel('画像のpreviewを準備中…');
     setImporting(true);
+    const controller = new AbortController();
+    importAbortRef.current = controller;
+    const importOptions = {
+      signal: controller.signal,
+      onProgress: (done: number, total: number) =>
+        setImportStatusLabel(`コマ画像を準備中… ${done}/${total}`),
+    };
     let currentFile: File | undefined;
     try {
       assertImageBatchCount(batch.length);
       const staged = [];
       for (const file of batch) {
         currentFile = file;
-        staged.push(await prepareNewAssetImageImport(file));
+        staged.push(await prepareNewAssetImageImport(file, importOptions));
       }
+      assertFrameImportActive(importOptions);
       const stagedAssets = staged.map(({ asset }) => asset);
       const containsOptionalFormat = staged.some(({ preview }) => preview.format !== 'standard');
       setPendingImageImport({
@@ -2824,6 +2928,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         blobs: staged.flatMap(({ blobs }) => blobs),
       });
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        setEditorError(null);
+        return;
+      }
       const quarantined = await quarantineFailedImage(currentFile, error);
       setEditorError(
         `${error instanceof Error ? error.message : String(error)} 選択した画像は1件も追加されていません。${
@@ -2831,6 +2939,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         }`,
       );
     } finally {
+      if (importAbortRef.current === controller) importAbortRef.current = null;
       setImporting(false);
       endEditorPersistentMutation();
     }
@@ -2843,9 +2952,22 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setEditorError(null);
     setImportStatusLabel('連番previewを準備中…');
     setImporting(true);
+    const controller = new AbortController();
+    importAbortRef.current = controller;
+    const importOptions = {
+      signal: controller.signal,
+      onProgress: (done: number, total: number) =>
+        setImportStatusLabel(`コマ画像を準備中… ${done}/${total}`),
+    };
     try {
-      stageFrameSetResult(await prepareSequenceImport(files));
+      const result = await prepareSequenceImport(files, importOptions);
+      assertFrameImportActive(importOptions);
+      stageFrameSetResult(result);
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        setEditorError(null);
+        return;
+      }
       const failedFile = error instanceof FrameSetImportError ? error.file : undefined;
       const quarantined = await quarantineFailedImage(failedFile, error);
       setEditorError(
@@ -2854,6 +2976,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         }`,
       );
     } finally {
+      if (importAbortRef.current === controller) importAbortRef.current = null;
       setImporting(false);
       endEditorPersistentMutation();
     }
@@ -2866,9 +2989,22 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     setEditorError(null);
     setImportStatusLabel('Sprite Sheet previewを準備中…');
     setImporting(true);
+    const controller = new AbortController();
+    importAbortRef.current = controller;
+    const importOptions = {
+      signal: controller.signal,
+      onProgress: (done: number, total: number) =>
+        setImportStatusLabel(`コマ画像を準備中… ${done}/${total}`),
+    };
     try {
-      stageFrameSetResult(await prepareSpriteSheetImport(file, grid));
+      const result = await prepareSpriteSheetImport(file, grid, importOptions);
+      assertFrameImportActive(importOptions);
+      stageFrameSetResult(result);
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        setEditorError(null);
+        return;
+      }
       const quarantined = await quarantineFailedImage(file, error);
       setEditorError(
         `${error instanceof Error ? error.message : String(error)} 正本は変更されていません。${
@@ -2876,6 +3012,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         }`,
       );
     } finally {
+      if (importAbortRef.current === controller) importAbortRef.current = null;
       setImporting(false);
       endEditorPersistentMutation();
     }
@@ -2891,6 +3028,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     try {
       stageFrameSetResult(await prepareTileSetImport(file, input));
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        setEditorError(null);
+        return;
+      }
       const quarantined = await quarantineFailedImage(file, error);
       setEditorError(
         `${error instanceof Error ? error.message : String(error)} 正本は変更されていません。${
@@ -3470,6 +3611,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         selectedLayerId: staged.at(-1)?.layer.id ?? null,
       });
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        setEditorError(null);
+        return;
+      }
       const quarantined = await quarantineFailedImage(currentFile, error);
       setEditorError(
         `${error instanceof Error ? error.message : String(error)} 選択した画像レイヤーは1件も追加されていません。${
@@ -3563,7 +3708,16 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
 
   const statusMessages = (
     <>
-      {importing && <p className="import-status">{importStatusLabel}</p>}
+      {importing && (
+        <div className="import-status" role="status">
+          <p>{importStatusLabel}</p>
+          {importAbortRef.current && (
+            <button type="button" onClick={() => importAbortRef.current?.abort()}>
+              取り込み準備を取消
+            </button>
+          )}
+        </div>
+      )}
       {imageProcessing && (
         <p className="import-status">
           {imageProcessing.label} 処理中… {Math.round(imageProcessing.progress * 100)}%
@@ -3602,7 +3756,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               persistentMutationBlocked ||
               isPlaying ||
               (framePreviewActive &&
-                !(historyState.undoLabel?.startsWith('Frame別当たり判定') ?? false))
+                !(
+                  editFrameId !== null ||
+                  (historyState.undoLabel?.startsWith('Frame別当たり判定') ?? false)
+                ))
             }
             onClick={() => void handleHistoryUndo()}
             title={historyState.undoLabel ?? undefined}
@@ -3616,7 +3773,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               persistentMutationBlocked ||
               isPlaying ||
               (framePreviewActive &&
-                !(historyState.redoLabel?.startsWith('Frame別当たり判定') ?? false))
+                !(
+                  editFrameId !== null ||
+                  (historyState.redoLabel?.startsWith('Frame別当たり判定') ?? false)
+                ))
             }
             onClick={() => void handleHistoryRedo()}
             title={historyState.redoLabel ?? undefined}
@@ -3688,7 +3848,11 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
               type="button"
               aria-pressed={tool === item.tool}
               title={item.purpose}
-              disabled={framePreviewActive && !canUseToolDuringFramePreview(item.tool)}
+              disabled={
+                framePreviewActive &&
+                !canUseToolDuringFramePreview(item.tool) &&
+                !(editFrameId && LAYER_TOOLS.includes(item.tool))
+              }
               onClick={() => activateTool(item.tool)}
             >
               {item.label}
@@ -3710,8 +3874,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             <div className={`canvas-editor-frame${dragOver ? ' drag-over' : ''}`}>
               {framePreviewActive && (
                 <p className="editor-note" role="status" aria-label="フレームプレビューの編集制限">
-                  フレームをプレビュー中です。キャンバスはパン・ズーム・レイヤー選択だけ利用できます。
-                  停止中はプロパティの「Frame別」から当たり判定だけ編集できます。
+                  {editFrameId
+                    ? 'このコマだけを描いています。別のコマの絵は変わりません。停止すると通常編集へ戻ります。'
+                    : 'フレームをプレビュー中です。パン・ズーム・レイヤー選択ができます。描き直すにはタイムラインの「このコマを描く」を選んでください。'}
                 </p>
               )}
               <nav
@@ -3724,7 +3889,11 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                     key={item.tool}
                     type="button"
                     aria-pressed={tool === item.tool}
-                    disabled={framePreviewActive && !canUseToolDuringFramePreview(item.tool)}
+                    disabled={
+                      framePreviewActive &&
+                      !canUseToolDuringFramePreview(item.tool) &&
+                      !(editFrameId && LAYER_TOOLS.includes(item.tool))
+                    }
                     onClick={() => activateTool(item.tool)}
                   >
                     {item.label}
@@ -3767,7 +3936,10 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 alignmentReferenceAsset={frameAlignmentPreview?.referenceAsset ?? null}
                 tool={tool}
                 selectedLayerId={selectedLayerId}
-                readOnly={framePreviewActive || !!frameAlignmentDraft}
+                readOnly={
+                  (framePreviewActive && (!editFrameId || tool === 'select')) ||
+                  !!frameAlignmentDraft
+                }
                 onReadOnlyAttempt={() =>
                   setEditorError(
                     frameAlignmentDraft
@@ -5127,6 +5299,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             selectedAnimationId={selectedAnimationId}
             onSelectAnimation={handleSelectAnimation}
             onSelectFrame={handleSelectFrame}
+            onDrawFrame={(frameId) => void handleDrawFrame(frameId)}
+            onDuplicateFrame={handleDuplicateTimelineFrame}
             onSelectOccurrence={handleSelectOccurrence}
             showPreviousOnionSkin={showPreviousOnionSkin}
             showNextOnionSkin={showNextOnionSkin}
@@ -5135,10 +5309,36 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             onPlay={handlePlayAnimation}
             onStop={handleStopAnimation}
             onRewind={handleRewindAnimation}
-            onCommit={commitPanelChange}
-            onLiveChange={applyAssetSnapshot}
-            onBeginFieldEdit={beginLayerEdit}
-            onCommitFieldEdit={commitLayerEdit}
+            onCommit={(label, next) => {
+              if (selectedAsset && !isPlaying)
+                commitAssetChange(label, selectedAsset, next, {
+                  allowFramePreview: editFrameId !== null && editFrameId === previewFrameId,
+                });
+            }}
+            onLiveChange={(next) => {
+              if (!isPlaying)
+                applyAssetSnapshot(next, {
+                  allowFramePreview: editFrameId !== null && editFrameId === previewFrameId,
+                });
+            }}
+            onBeginFieldEdit={() => {
+              if (
+                !isPlaying &&
+                canStartEditorPersistentMutation({
+                  allowFramePreview: editFrameId !== null && editFrameId === previewFrameId,
+                })
+              )
+                layerEditBeforeRef.current = selectedAsset;
+            }}
+            onCommitFieldEdit={() => {
+              const before = layerEditBeforeRef.current;
+              layerEditBeforeRef.current = null;
+              const current = assets.find((asset) => asset.id === before?.id);
+              if (before && current && before !== current && !isPlaying)
+                commitAssetChange('コマの設定', before, current, {
+                  allowFramePreview: editFrameId !== null && editFrameId === previewFrameId,
+                });
+            }}
             frameAlignmentDraft={frameAlignmentDraft}
             frameAlignmentPreviewError={frameAlignmentPreviewError}
             onStartFrameAlignment={(referenceFrameId, targetFrameId) =>

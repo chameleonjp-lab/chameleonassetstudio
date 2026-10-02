@@ -79,7 +79,7 @@ export function ImportFrameSetPanel({
     <fieldset className="editor-fieldset import-frame-set-panel" disabled={busy}>
       <legend>連番・Sheet・Tileset・Atlasを取り込む</legend>
       <p className="editor-note">
-        通常画像の「1 file = 1 Asset」は維持します。ここでは明示的に1 Assetのframe列を作ります。
+        連番やシートから1つの動く素材を作ります。最大64コマ、展開後の画像は合計64MiB、元画像と保存画像は合計128MiBまでです。通常の画像追加は最大16枚です。
       </p>
 
       <label className="editor-field">

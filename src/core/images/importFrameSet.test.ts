@@ -56,7 +56,7 @@ describe('computeManualGrid', () => {
     ).toBe(true);
   });
 
-  it('16cellを受け入れ、17cell・0cell・不正な数値を生成前に拒否する', () => {
+  it('64cellを受け入れ、65cell・0cell・不正な数値を生成前に拒否する', () => {
     expect(
       computeManualGrid(
         { width: MAX_FRAME_SET_ITEMS, height: 1 },
@@ -68,7 +68,7 @@ describe('computeManualGrid', () => {
         { width: MAX_FRAME_SET_ITEMS + 1, height: 1 },
         { cellWidth: 1, cellHeight: 1, margin: 0, spacing: 0 },
       ),
-    ).toThrow('最大16件');
+    ).toThrow('最大64件');
     expect(() =>
       computeManualGrid(
         { width: 4, height: 4 },

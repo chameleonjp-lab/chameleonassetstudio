@@ -852,6 +852,7 @@ test('iPhone幅で反復Frameの出現位置を選び、前後を赤・青の25%
 
   await firstOccurrence.click();
   await page.clock.install();
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 10));
   await page.getByRole('button', { name: '再生', exact: true }).click();
   await expect(previousToggle).toBeDisabled();
   await expect(nextToggle).toBeDisabled();

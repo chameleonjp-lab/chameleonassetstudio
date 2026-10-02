@@ -1,4 +1,11 @@
 import {
+  assertFrameImportActive,
+  assertFramePixelBudget,
+  assertFrameEncodedBudget,
+  frameImportCheckpoint,
+  type FrameImportOptions,
+} from './frameImportBudget';
+import {
   TILE_COLLISION_TYPES,
   createImageAsset,
   generateId,
@@ -30,7 +37,7 @@ import {
 } from './importImage';
 
 /** iPhoneを含む既存画像batch契約と揃えた、1回のanimated import上限。 */
-export const MAX_FRAME_SET_ITEMS = INPUT_SAFETY_LIMITS.maxImageBatchFiles;
+export const MAX_FRAME_SET_ITEMS = INPUT_SAFETY_LIMITS.maxAnimationFrames;
 export const DEFAULT_FRAME_SET_FPS = 8;
 
 export interface FrameSetPreview {
@@ -173,13 +180,36 @@ async function importSequenceLayerFile(file: File, asset: Asset): Promise<Import
 /** 同寸法の画像列を、source/edit/layer/frameを持つ1 Assetへメモリ上で準備する。 */
 export async function prepareSequenceImport(
   files: readonly File[],
+  options: FrameImportOptions = {},
 ): Promise<PreparedFrameSetImport> {
+  assertFrameImportActive(options);
   assertFrameSetCount(files.length, '連番画像');
+  assertFrameEncodedBudget(files.reduce((sum, file) => sum + file.size, 0));
   const ordered = naturalFileOrder(files);
   const first = await importSequenceFirstFile(ordered[0]);
+  assertFramePixelBudget(
+    first.asset.canvasSize.width * first.asset.canvasSize.height * files.length,
+  );
+  let encodedBytes = first.blobs.reduce((sum, entry) => sum + entry.blob.size, 0);
+  assertFrameEncodedBudget(encodedBytes);
   const additions: ImportLayerResult[] = [];
+  await frameImportCheckpoint(options, 1, files.length);
   for (const file of ordered.slice(1)) {
-    additions.push(await importSequenceLayerFile(file, first.asset));
+    const addition = await importSequenceLayerFile(file, first.asset);
+    const edit = addition.textures.find((texture) => texture.kind === 'edit')!;
+    if (
+      edit.size.width !== first.asset.canvasSize.width ||
+      edit.size.height !== first.asset.canvasSize.height
+    ) {
+      throw new FrameSetImportError(
+        `連番画像はすべて同じ寸法にしてください。${file.name}の寸法が先頭と異なります。自動拡縮やpaddingは行いません。`,
+        { file },
+      );
+    }
+    additions.push(addition);
+    encodedBytes += addition.blobs.reduce((sum, entry) => sum + entry.blob.size, 0);
+    assertFrameEncodedBudget(encodedBytes);
+    await frameImportCheckpoint(options, additions.length + 1, files.length);
   }
 
   const firstSize = first.asset.canvasSize;
@@ -279,7 +309,7 @@ export interface FrameRegionAnimationInput {
   frameNames: string[];
 }
 
-export interface PrepareImageRegionsOptions {
+export interface PrepareImageRegionsOptions extends FrameImportOptions {
   mode: 'sheet' | 'tileset' | 'atlas';
   sourceLabel: string;
   assetName: string;
@@ -442,6 +472,10 @@ async function prepareValidatedImageRegions(
 ): Promise<PreparedFrameSetImport> {
   const { decoded, mimeType, extension, hash } = validated;
   assertExplicitRegions(options.regions, { width: decoded.width, height: decoded.height });
+  assertFrameImportActive(options);
+  assertFramePixelBudget(
+    options.regions.reduce((sum, region) => sum + region.width * region.height, 0),
+  );
   const firstRegion = options.regions[0];
   const thumbnail = await encodeDecodedThumbnail(decoded, firstRegion);
   const now = new Date();
@@ -471,7 +505,10 @@ async function prepareValidatedImageRegions(
   const layers: Layer[] = [];
   const regionBlobs: Array<{ key: string; blob: Blob }> = [];
 
+  let encodedBytes = file.size + thumbnail.blob.size;
+  assertFrameEncodedBudget(encodedBytes);
   for (const [index, region] of options.regions.entries()) {
+    assertFrameImportActive(options);
     const layerId = index === 0 ? baseLayer.id : generateId('layer');
     const texture: TextureRef =
       index === 0
@@ -501,6 +538,9 @@ async function prepareValidatedImageRegions(
       key: blobKeyFor(base.id, texture.path),
       blob: await encodeDecodedImageRegion(decoded, region),
     });
+    encodedBytes += regionBlobs[regionBlobs.length - 1].blob.size;
+    assertFrameEncodedBudget(encodedBytes);
+    await frameImportCheckpoint(options, index + 1, options.regions.length);
   }
 
   const frames = buildFrameSetFrames(
@@ -604,6 +644,7 @@ export async function prepareImageRegionsImport(
 export async function prepareSpriteSheetImport(
   file: File,
   gridInput: ManualGridInput,
+  importOptions: FrameImportOptions = {},
 ): Promise<PreparedFrameSetImport> {
   let validated;
   try {
@@ -623,6 +664,7 @@ export async function prepareSpriteSheetImport(
     const assetName = assetNameFromFileName(file.name);
     const losses = sheetLosses(gridInput, layout);
     return await prepareValidatedImageRegions(file, validated, {
+      ...importOptions,
       mode: 'sheet',
       sourceLabel: 'Sprite Sheet',
       assetName,

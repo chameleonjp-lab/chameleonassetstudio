@@ -691,8 +691,7 @@ export interface AssetBatchRevisionTarget {
   beforeAsset: Asset;
   afterAsset: Asset;
   /**
-   * 現行snapshot形式は1 Asset + 1 edit Blobの復旧点なので、Slice Bでは1 targetにつき
-   * 高々1件に制限する。複数Blob対応は永続形式を推測せず後続契約へ戻す。
+   * 変更する編集画像一式。素材ごとに全編集画像を含む復旧点を1件だけ保存する。
    */
   blobs?: AssetBatchBlobRevision[];
 }
@@ -861,11 +860,6 @@ function assertBatchTextureAndBlobContract(
   allBlobKeys: Set<string>,
 ): void {
   const blobs = target.blobs ?? [];
-  if (blobs.length > 1) {
-    throw new StorageError(
-      `現行の復旧点は1 Assetにつき1 edit Blobのため、同時変更は1件以下にしてください: ${target.beforeAsset.id}`,
-    );
-  }
 
   const beforeIndex = buildTextureIndex(target.beforeAsset, 'batch保存前 Asset');
   const afterIndex = buildTextureIndex(target.afterAsset, 'batch保存後 Asset');
@@ -932,16 +926,17 @@ async function prepareBatchTargets(
     for (const revision of target.blobs ?? []) {
       const beforeBytes = await revision.before.arrayBuffer();
       const afterBytes = await revision.after.arrayBuffer();
-      const snapshot = createSnapshots
-        ? await prepareAssetSnapshot({
-            projectId,
-            assetId: target.beforeAsset.id,
-            label: snapshotLabel,
-            asset: target.beforeAsset,
-            blobKey: revision.key,
-            blob: revision.before,
-          })
-        : undefined;
+      const snapshot =
+        createSnapshots && blobs.length === 0
+          ? await prepareAssetSnapshot({
+              projectId,
+              assetId: target.beforeAsset.id,
+              label: snapshotLabel,
+              asset: target.beforeAsset,
+              blobKey: revision.key,
+              blob: revision.before,
+            })
+          : undefined;
       blobs.push({
         key: revision.key,
         beforeMimeType: revision.before.type,

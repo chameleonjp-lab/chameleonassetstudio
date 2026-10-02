@@ -12,6 +12,9 @@ export const INPUT_SAFETY_LIMITS = {
   maxCompressionRatio: 100,
   compressionRatioMinimumExpandedBytes: MEBIBYTE,
   maxImageBatchFiles: 16,
+  maxAnimationFrames: 64,
+  maxAnimationDecodedBytes: 64 * MEBIBYTE,
+  maxAnimationStoredBytes: 128 * MEBIBYTE,
 } as const;
 
 export type InputSafetyErrorKind = 'input-limit' | 'unsafe-input';
