@@ -22,6 +22,7 @@ interface Props {
   asset: Asset;
   project: Project;
   projectAssets: Asset[];
+  onSettingsSaved?: () => void;
 }
 
 /** Remount on project/current-asset navigation so selection and asynchronous work stay scoped. */
@@ -29,7 +30,7 @@ export function RichDistributionExportPanel(props: Props) {
   return <RichDistributionControls key={`${props.project.id}/${props.asset.id}`} {...props} />;
 }
 
-function RichDistributionControls({ asset, project, projectAssets }: Props) {
+function RichDistributionControls({ asset, project, projectAssets, onSettingsSaved }: Props) {
   const [settings, setSettings] = useState<RichDistributionSettings>({
     ...DEFAULT_RICH_DISTRIBUTION_SETTINGS,
   });
@@ -110,7 +111,10 @@ function RichDistributionControls({ asset, project, projectAssets }: Props) {
       const file = await loadProjectExportPresets(project.id);
       if (!active.current) return;
       await saveProjectExportPresets(project.id, withRichDistributionSettings(file, settings));
-      if (active.current) setStatus('出力設定を保存しました。.casprojにも含まれます。');
+      if (active.current) {
+        onSettingsSaved?.();
+        setStatus('出力設定を保存しました。.casprojにも含まれます。');
+      }
     } catch (cause) {
       if (active.current) setError(`出力設定を保存できませんでした: ${message(cause)}`);
     } finally {

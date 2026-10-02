@@ -25,6 +25,7 @@ interface ExportPanelProps {
   project: Project;
   /** プロジェクト内の全アセット（`.casproj` に同梱する）。 */
   projectAssets: Asset[];
+  onSettingsSaved?: () => void;
 }
 
 type ExportKind = 'png' | 'webp' | 'json' | 'zip' | 'casproj';
@@ -68,7 +69,7 @@ const EXPORT_OPTIONS: Array<{
 ];
 
 /** アセットの書き出しパネル（Phase 10 / 13）。PNG / WebP / asset.json / ZIP / .casproj をダウンロードする。 */
-export function ExportPanel({ asset, project, projectAssets }: ExportPanelProps) {
+export function ExportPanel({ asset, project, projectAssets, onSettingsSaved }: ExportPanelProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completedFileName, setCompletedFileName] = useState<string | null>(null);
@@ -139,7 +140,12 @@ export function ExportPanel({ asset, project, projectAssets }: ExportPanelProps)
           <code>.casproj</code>も保存してください。
         </p>
       </div>
-      <RichDistributionExportPanel asset={asset} project={project} projectAssets={projectAssets} />
+      <RichDistributionExportPanel
+        asset={asset}
+        project={project}
+        projectAssets={projectAssets}
+        onSettingsSaved={onSettingsSaved}
+      />
       <DistributionExportPanel asset={asset} />
       <div className="export-buttons">
         {EXPORT_OPTIONS.map((option) => (

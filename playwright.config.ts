@@ -44,6 +44,7 @@ export default defineConfig({
         'rich-distribution-engines.spec.ts',
         'legacy-distribution-pixels.spec.ts',
         'event-payload.spec.ts',
+        'revision-review.spec.ts',
       ],
       use: { ...devices['Desktop Safari'] },
     },

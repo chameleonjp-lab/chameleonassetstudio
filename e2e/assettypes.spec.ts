@@ -61,6 +61,7 @@ test('背景種別でパララックスプレビューが表示され、リロ�
 
   const roleSelect = page.getByLabel('役割');
   await roleSelect.selectOption('far');
+  await expect(roleSelect).toHaveValue('far');
 
   await expect(page.getByLabel('背景プレビュー')).toBeVisible();
   await expect(page.getByLabel('カメラ位置')).toBeVisible();

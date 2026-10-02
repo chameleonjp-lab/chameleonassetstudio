@@ -163,6 +163,7 @@ import {
   commitPersistentMutationWithHistory,
 } from './editorMutationGuard';
 import { ExportPanel } from './ExportPanel';
+import { RevisionReviewPanel } from './RevisionReviewPanel';
 import type { FrameAlignmentDraft } from './FrameAlignmentPanel';
 import { GameAttributesPanel } from './GameAttributesPanel';
 import { GameCheckMode } from './GameCheckMode';
@@ -510,6 +511,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const historyState = useSyncExternalStore(subscribeHistory, () => history.getState());
 
   const [project, setProject] = useState<Project | null>(null);
+  const [reviewSettingsVersion, setReviewSettingsVersion] = useState(0);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
@@ -4464,6 +4466,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 </label>
                 {selectedAsset?.assetType === 'background' && (
                   <BackgroundLayerFields
+                    disabled={persistentMutationBlocked}
                     asset={selectedAsset}
                     layer={selectedLayer}
                     onCommit={commitPanelChange}
@@ -5374,8 +5377,53 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         aria-label="書き出し"
       >
         <h2>書き出し</h2>
-        {selectedAsset && project ? (
-          <ExportPanel asset={selectedAsset} project={project} projectAssets={assets} />
+        {project ? (
+          <>
+            <RevisionReviewPanel
+              project={project}
+              assets={assets}
+              blocked={persistentMutationBlocked}
+              settingsVersion={reviewSettingsVersion}
+              prepare={async () => {
+                await history.waitForPending();
+                await AutosaveQueue.flushAll();
+              }}
+              onEdit={(assetId, panel) => {
+                if (!assets.some((asset) => asset.id === assetId)) return;
+                setSelectedAssetId(assetId);
+                setSelectedLayerId(null);
+                setCheckedLayerIds([]);
+                if (panel === 'timeline') {
+                  setMobileView('timeline');
+                } else {
+                  const section =
+                    panel === 'asset-type'
+                      ? 'asset'
+                      : panel === 'game-attributes'
+                        ? 'game-data'
+                        : panel;
+                  setPropertySection(section);
+                  setRightOpen(true);
+                  setMobileView('properties');
+                  requestAnimationFrame(() =>
+                    document
+                      .getElementById(`property-${section}`)
+                      ?.scrollIntoView({ block: 'start' }),
+                  );
+                }
+              }}
+            />
+            {selectedAsset ? (
+              <ExportPanel
+                asset={selectedAsset}
+                project={project}
+                projectAssets={assets}
+                onSettingsSaved={() => setReviewSettingsVersion((value) => value + 1)}
+              />
+            ) : (
+              <p>アセットを選ぶと書き出せます。</p>
+            )}
+          </>
         ) : (
           <p className="editor-note">アセットを選ぶと書き出せます。</p>
         )}
@@ -5390,7 +5438,22 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             key={item.view}
             type="button"
             aria-pressed={mobileView === item.view}
-            onClick={() => setMobileView(item.view)}
+            onPointerDown={(event) => {
+              // Commit a focused field after activation, so blur-driven layout changes
+              // cannot move the navigation target between pointer down and click.
+              if (
+                event.button === 0 &&
+                (document.activeElement instanceof HTMLInputElement ||
+                  document.activeElement instanceof HTMLTextAreaElement)
+              )
+                event.preventDefault();
+            }}
+            onClick={(event) => {
+              const focused = document.activeElement;
+              if (focused instanceof HTMLElement && focused !== event.currentTarget) focused.blur();
+              event.currentTarget.focus();
+              setMobileView(item.view);
+            }}
           >
             {item.label}
           </button>
