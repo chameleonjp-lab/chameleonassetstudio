@@ -8,6 +8,7 @@ import {
   scaleDistributionPoint,
   scaleDistributionRect,
   type DistributionScale,
+  type DistributionProfile,
   type DistributionSheetFrameLayout,
 } from './atlas';
 
@@ -39,6 +40,7 @@ export function buildDistributionFrameData(
   asset: Asset,
   layout: readonly DistributionSheetFrameLayout[],
   scale: DistributionScale,
+  profile: DistributionProfile = 'fixed-grid',
 ): DistributionFrameData[] {
   normalizeDistributionScale(scale);
   const ids = new Set<string>();
@@ -50,6 +52,10 @@ export function buildDistributionFrameData(
       throw new Error('Distribution frame has no canonical source');
     const result = {
       ...structuredClone(frame),
+      // The packer stores the crop in source-canvas coordinates. Packed pixels
+      // are moved to rect.x/y, so the consumer's in-sheet crop starts at zero.
+      contentRect:
+        profile === 'packed' ? { ...frame.contentRect, x: 0, y: 0 } : { ...frame.contentRect },
       origin: scaleDistributionPoint(asset.origin, scale),
       anchors: asset.anchors.map((anchor) => ({
         ...structuredClone(anchor),

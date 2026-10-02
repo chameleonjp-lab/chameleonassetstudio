@@ -223,14 +223,24 @@ for (const engine of ['canvas2d', 'pixijs', 'phaser'] as const) {
         await useVerifiedEngineCache(page, engine === 'pixijs' ? 'pixi' : 'phaser');
       await seedRichProject(page, scale);
       const panel = page.getByRole('region', { name: '新版配布用ZIP', exact: true });
+      await expect(panel.getByRole('checkbox')).toHaveCount(2);
       for (const checkbox of await panel.getByRole('checkbox').all()) await checkbox.check();
       await panel.getByLabel('新版配布の利用先').selectOption(engine);
       await panel.getByLabel('新版配布画像の配置').selectOption('packed');
       await panel.getByLabel('新版配布画像の倍率').selectOption(String(scale));
       await panel.getByLabel('新版配布画像間の余白').fill('2');
-      const downloaded = page.waitForEvent('download');
+      const downloaded = page.waitForEvent('download', { timeout: 30_000 });
+      void downloaded.catch(() => {});
       await panel.getByRole('button', { name: '新版配布用ZIPをダウンロード' }).click();
-      const download = await downloaded;
+      const download = await Promise.race([
+        downloaded,
+        panel
+          .getByRole('alert')
+          .waitFor({ state: 'visible', timeout: 30_000 })
+          .then(async () => {
+            throw new Error(await panel.getByRole('alert').innerText());
+          }),
+      ]);
       const entries = unzipSync(await readFile((await download.path())!));
       const pkg = JSON.parse(new TextDecoder().decode(entries['package-manifest.json']));
       expect(pkg).toMatchObject({ format: 'chameleon-package', version: '0.2.0', target: engine });

@@ -213,7 +213,12 @@ export async function exportRichDistributionZip(
       scale,
       source: { assetJson: 'asset.json', canonical: true, sha256: await richSha256(assetBytes) },
       pages,
-      frames: buildDistributionFrameData(asset, rendered.layout.frames, scale),
+      frames: buildDistributionFrameData(
+        asset,
+        rendered.layout.frames,
+        scale,
+        rendered.layout.profile,
+      ),
       animations: buildDistributionTimelines(asset, rendered.layout.frames),
     };
     const manifestHash = await richSha256(strToU8(canonicalJson(unsigned)));

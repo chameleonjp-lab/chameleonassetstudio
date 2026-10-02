@@ -101,3 +101,46 @@ describe('rich distribution separate export path', () => {
     expect(calls.close).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('real packed-layout contract', () => {
+  it.each([1, 2, 3])(
+    'exports a trimmed %sx package accepted by its bundled validator',
+    async (scale) => {
+      const asset = fixture();
+      calls.load.mockResolvedValue(new Map([['image', { close: calls.close }]]));
+      calls.render.mockImplementation(async (source: Asset) => {
+        const layout = computeDistributionSheetLayout(
+          source.frames!.map((frame) => ({
+            id: frame.id,
+            name: frame.name,
+            sourceSize: {
+              width: source.canvasSize.width * scale,
+              height: source.canvasSize.height * scale,
+            },
+            contentRect: { x: 2 * scale, y: 3 * scale, width: 8 * scale, height: 9 * scale },
+          })),
+          { profile: 'packed' },
+        );
+        return { layout, pages: layout.pages.map(() => new Blob(['PNG fixture'])) };
+      });
+      const archive = unzipSync(
+        new Uint8Array(
+          await (
+            await exportRichDistributionZip([asset], { profile: 'packed', scale })
+          ).arrayBuffer(),
+        ),
+      );
+      const pkg = JSON.parse(new TextDecoder().decode(archive['package-manifest.json']));
+      const manifest = validateRichDistributionManifest(
+        JSON.parse(new TextDecoder().decode(archive[pkg.assets[0].manifest])),
+      );
+      expect(manifest.frames[0].contentRect).toEqual({
+        x: 0,
+        y: 0,
+        width: 8 * scale,
+        height: 9 * scale,
+      });
+      expect(manifest.frames[0].contentOffset).toEqual({ x: 2 * scale, y: 3 * scale });
+    },
+  );
+});

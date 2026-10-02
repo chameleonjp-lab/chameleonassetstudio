@@ -107,3 +107,33 @@ describe('distribution frame game data', () => {
     expect(() => projectDistributionFrame(frame, { x: Number.MAX_VALUE, y: 0 })).toThrow(/finite/);
   });
 });
+
+describe('packed source-to-sheet coordinate conversion', () => {
+  it.each([1, 2, 3] as DistributionScale[])(
+    'moves the real packer crop to sheet-local coordinates at %sx',
+    (scale) => {
+      const asset = source();
+      const layout = computeDistributionSheetLayout(
+        [
+          {
+            id: 'first',
+            name: 'same',
+            sourceSize: { width: 32 * scale, height: 32 * scale },
+            contentRect: { x: 2 * scale, y: 3 * scale, width: 8 * scale, height: 9 * scale },
+          },
+        ],
+        { profile: 'packed' },
+      );
+      const frame = buildDistributionFrameData(asset, layout.frames, scale, 'packed')[0];
+      expect(frame.contentRect).toEqual({ x: 0, y: 0, width: 8 * scale, height: 9 * scale });
+      expect(frame.contentOffset).toEqual({ x: 2 * scale, y: 3 * scale });
+      expect(projectDistributionFrame(frame, { x: 100, y: 200 }).sourceRect).toEqual({
+        x: layout.frames[0].rect.x,
+        y: layout.frames[0].rect.y,
+        width: 8 * scale,
+        height: 9 * scale,
+      });
+      expect(layout.frames[0].contentRect.x).toBe(2 * scale);
+    },
+  );
+});
