@@ -30,7 +30,9 @@ test('使用率80%の警告を表示し、永続保存はボタン操作まで�
   ).toBe(0);
 
   await storage.getByRole('button', { name: '保存領域の保護を要求' }).click();
-  await expect(storage).toContainText('保存領域の保護が有効になりました');
+  await expect(
+    page.getByRole('status').filter({ hasText: '保存領域の保護が有効になりました' }),
+  ).toBeVisible();
   expect(
     await page.evaluate(
       () => (globalThis as unknown as { __capacityPersistCalls: number }).__capacityPersistCalls,

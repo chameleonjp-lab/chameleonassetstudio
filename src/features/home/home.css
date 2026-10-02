@@ -310,3 +310,36 @@
     overflow-wrap: anywhere;
   }
 }
+
+.home-storage summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+}
+.home-storage details[open] > summary {
+  margin-bottom: 0.75rem;
+}
+.home-storage details > div {
+  margin-bottom: 0.75rem;
+}
+.home-thumbnail {
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #8882;
+}
+.home-thumbnail img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.home-import-button:focus-within {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}

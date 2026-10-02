@@ -111,6 +111,8 @@ async function setupO1Project(page: Page, name: string): Promise<void> {
   await page.goto('/');
   await page.getByLabel('プロジェクト名').fill(name);
   await page.getByRole('button', { name: '作成', exact: true }).click();
+  await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+  await expect(page.getByLabel('画像を選ぶ')).toBeEnabled();
   await page.getByLabel('画像を選ぶ').setInputFiles({
     name: 'base.png',
     mimeType: 'image/png',
