@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Asset } from '../model';
 import { updateFrameDuration } from '../model/assetOps';
 import { inspectPngAnimation } from '../images/imageInputSafety';
+import { decodeImageSource } from '../images/decodeImageSource';
 import characterAsset from '../samples/asset.character.json';
 import {
   exportAssetJson,
@@ -110,6 +111,48 @@ describe('exportAsset texture kind boundary', () => {
     await expect(exportImage(assetReferencing('edit'), 'image/png')).resolves.toBeInstanceOf(Blob);
     expect(loadBlobMock).toHaveBeenCalled();
   });
+
+  it.each(['missing', 'decode', 'kind'] as const)(
+    '2枚目の画像が %s で拒否されたら、読込済みの1枚目を解放する',
+    async (failure) => {
+      const asset = assetReferencing('edit');
+      const first = asset.textures.find((texture) => texture.id === asset.layers[0].textureId)!;
+      asset.textures.push({
+        ...first,
+        id: 'tex_second_edit',
+        path: 'textures/edit/second.png',
+        mimeType: 'image/png',
+        kind: failure === 'kind' ? 'thumbnail' : 'edit',
+      });
+      asset.layers.push({
+        ...structuredClone(asset.layers[0]),
+        id: 'layer_second_edit',
+        textureId: 'tex_second_edit',
+      });
+      const close = vi.fn();
+      vi.mocked(decodeImageSource).mockResolvedValueOnce({
+        source: {} as ImageBitmap,
+        width: 1,
+        height: 1,
+        close,
+      });
+      if (failure === 'missing') {
+        loadBlobMock.mockResolvedValueOnce(new Blob()).mockResolvedValueOnce(null);
+      } else if (failure === 'decode') {
+        vi.mocked(decodeImageSource).mockRejectedValueOnce(new Error('decode failed'));
+      }
+
+      await expect(exportImage(asset, 'image/png')).rejects.toThrow(
+        failure === 'missing'
+          ? /画像 Blob/
+          : failure === 'decode'
+            ? /decode failed/
+            : /edit テクスチャ/,
+      );
+      expect(close).toHaveBeenCalledTimes(1);
+      expect(saveAssetRevision).not.toHaveBeenCalled();
+    },
+  );
 
   it('合成不要のPNGは検証済みの編集画像を保持し、移動・不透明度・重なりは合成する', async () => {
     const asset = assetReferencing('edit');

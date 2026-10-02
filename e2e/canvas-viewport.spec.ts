@@ -229,28 +229,41 @@ test.describe('小画面の描画領域', () => {
     expect((await storedSample(page)).bytes).toEqual(original.bytes);
   });
 
-  test('R06: 文字を拡大した320pxタイムラインでもコマの描画操作へ到達できる', async ({ page }) => {
-    await page.setViewportSize({ width: 320, height: 568 });
-    await createSample(page);
-    await page.addStyleTag({ content: 'html { font-size: 24px; }' });
-    const nav = page.getByRole('navigation', { name: '画面切り替え' });
-    await nav.getByRole('button', { name: 'タイムライン', exact: true }).click();
-    await page.getByRole('button', { name: 'フレーム追加', exact: true }).click();
-    const draw = page.getByRole('button', { name: 'フレーム「frame_1」を描く' });
-    await draw.scrollIntoViewIfNeeded();
-    await expect(async () => {
-      expect(
-        await draw.evaluate((element) => {
+  for (const font of [
+    { name: '文字を拡大した', style: 'html { font-size: 24px; }' },
+    { name: '代替字体を使う', style: '* { font-family: serif !important; }' },
+  ]) {
+    test(`R06: ${font.name}320pxタイムラインでもコマの描画操作へ到達できる`, async ({ page }) => {
+      await page.setViewportSize({ width: 320, height: 568 });
+      await createSample(page);
+      const nav = page.getByRole('navigation', { name: '画面切り替え' });
+      await nav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+      await page.getByRole('button', { name: 'フレーム追加', exact: true }).click();
+      await page.addStyleTag({ content: font.style });
+      const draw = page.getByRole('button', { name: 'フレーム「frame_1」を描く' });
+      await draw.scrollIntoViewIfNeeded();
+      await expect(async () => {
+        const bounds = await draw.evaluate((element) => {
           const box = element.getBoundingClientRect();
+          const list = element.closest('.timeline-frame-list')!.getBoundingClientRect();
           const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
-          return hit === element || element.contains(hit);
-        }),
-      ).toBe(true);
-    }).toPass();
-    await draw.click();
-    await nav.getByRole('button', { name: '編集', exact: true }).click();
-    await expect(page.getByRole('status', { name: 'フレームプレビューの編集制限' })).toContainText(
-      'このコマだけを描いています',
-    );
-  });
+          return {
+            hit: hit === element || element.contains(hit),
+            left: box.left,
+            right: box.right,
+            listLeft: list.left,
+            listRight: list.right,
+          };
+        });
+        expect(bounds.hit).toBe(true);
+        expect(bounds.left).toBeGreaterThanOrEqual(bounds.listLeft - 1);
+        expect(bounds.right).toBeLessThanOrEqual(bounds.listRight + 1);
+      }).toPass();
+      await draw.click();
+      await nav.getByRole('button', { name: '編集', exact: true }).click();
+      await expect(
+        page.getByRole('status', { name: 'フレームプレビューの編集制限' }),
+      ).toContainText('このコマだけを描いています');
+    });
+  }
 });

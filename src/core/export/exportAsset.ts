@@ -109,26 +109,31 @@ async function loadAssetBitmaps(
   const textureIds = new Set(
     asset.layers.map((layer) => layer.textureId).filter((id): id is string => Boolean(id)),
   );
-  for (const textureId of textureIds) {
-    const texture = asset.textures.find((tex) => tex.id === textureId);
-    if (!texture) {
-      // 透明な空画像を正常な書き出しとして扱わない（Phase 15.5-A）
-      throw new ExportError(
-        `画像テクスチャ定義が見つかりません: asset=${asset.id} texture=${textureId}（書き出し合成）`,
-      );
+  try {
+    for (const textureId of textureIds) {
+      const texture = asset.textures.find((tex) => tex.id === textureId);
+      if (!texture) {
+        // 透明な空画像を正常な書き出しとして扱わない（Phase 15.5-A）
+        throw new ExportError(
+          `画像テクスチャ定義が見つかりません: asset=${asset.id} texture=${textureId}（書き出し合成）`,
+        );
+      }
+      if (texture.kind !== 'edit') {
+        throw new ExportError(
+          `書き出し対象レイヤーは edit テクスチャを参照する必要があります: asset=${asset.id} texture=${texture.id} kind=${texture.kind}`,
+        );
+      }
+      const blob = await loadBlob(blobKeyFor(asset.id, texture.path));
+      if (!blob) {
+        throw new ExportError(
+          `画像 Blob が見つかりません: asset=${asset.id} texture=${texture.id} path=${texture.path}（書き出し合成）`,
+        );
+      }
+      bitmaps.set(textureId, { ...(await decodeImageSource(blob)), blob });
     }
-    if (texture.kind !== 'edit') {
-      throw new ExportError(
-        `書き出し対象レイヤーは edit テクスチャを参照する必要があります: asset=${asset.id} texture=${texture.id} kind=${texture.kind}`,
-      );
-    }
-    const blob = await loadBlob(blobKeyFor(asset.id, texture.path));
-    if (!blob) {
-      throw new ExportError(
-        `画像 Blob が見つかりません: asset=${asset.id} texture=${texture.id} path=${texture.path}（書き出し合成）`,
-      );
-    }
-    bitmaps.set(textureId, { ...(await decodeImageSource(blob)), blob });
+  } catch (error) {
+    for (const decoded of bitmaps.values()) decoded.close();
+    throw error;
   }
   return bitmaps;
 }
