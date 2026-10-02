@@ -5438,7 +5438,22 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
             key={item.view}
             type="button"
             aria-pressed={mobileView === item.view}
-            onClick={() => setMobileView(item.view)}
+            onPointerDown={(event) => {
+              // Commit a focused field after activation, so blur-driven layout changes
+              // cannot move the navigation target between pointer down and click.
+              if (
+                event.button === 0 &&
+                (document.activeElement instanceof HTMLInputElement ||
+                  document.activeElement instanceof HTMLTextAreaElement)
+              )
+                event.preventDefault();
+            }}
+            onClick={(event) => {
+              const focused = document.activeElement;
+              if (focused instanceof HTMLElement && focused !== event.currentTarget) focused.blur();
+              event.currentTarget.focus();
+              setMobileView(item.view);
+            }}
           >
             {item.label}
           </button>

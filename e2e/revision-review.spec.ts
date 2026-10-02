@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 import { unzipSync } from 'fflate';
 
+test.use({ trace: 'retain-on-failure' });
+
 async function setup(page: Page) {
   await page.goto('/');
   await page.getByLabel('プロジェクト名').fill('Revision workflow');
@@ -56,6 +58,11 @@ test('前版を変更せず参照し、編集・再比較・実ZIP・backupま�
     .getByRole('navigation', { name: '画面切り替え' })
     .getByRole('button', { name: '書き出し' })
     .click();
+  await expect(
+    page
+      .getByRole('navigation', { name: '画面切り替え' })
+      .getByRole('button', { name: '書き出し' }),
+  ).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: '修正と受渡しを開く' }).click();
   await expect(
     panel.getByText(
@@ -223,16 +230,16 @@ test('保存中の背景設定を操作可能にせず、次の役割変更を�
       });
   });
   await page.getByRole('button', { name: '背景設定を追加' }).click();
-  await expect(page.getByLabel('役割', { exact: true })).toBeDisabled();
+  await expect(page.getByRole('combobox', { name: '役割', exact: true })).toBeDisabled();
   await page.evaluate(() =>
     (window as typeof window & { releaseBackground?: () => void }).releaseBackground?.(),
   );
-  await expect(page.getByLabel('役割', { exact: true })).toBeEnabled();
-  await page.getByLabel('役割', { exact: true }).selectOption('far');
-  await expect(page.getByLabel('役割', { exact: true })).toHaveValue('far');
+  await expect(page.getByRole('combobox', { name: '役割', exact: true })).toBeEnabled();
+  await page.getByRole('combobox', { name: '役割', exact: true }).selectOption('far');
+  await expect(page.getByRole('combobox', { name: '役割', exact: true })).toHaveValue('far');
   await expect(page.getByRole('button', { name: '元に戻す', exact: true })).toBeEnabled();
   await page.reload();
   await page.getByRole('button', { name: '「Revision workflow」を開く' }).click();
   await page.getByRole('button', { name: 'main', exact: true }).click();
-  await expect(page.getByLabel('役割', { exact: true })).toHaveValue('far');
+  await expect(page.getByRole('combobox', { name: '役割', exact: true })).toHaveValue('far');
 });
