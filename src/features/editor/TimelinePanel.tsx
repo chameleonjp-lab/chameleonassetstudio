@@ -13,11 +13,13 @@ import {
   renameFrame,
   updateAnimation,
   changeAnimationEventFrame,
+  changeAnimationEventPayload,
   renameAnimationEvent,
   updateFrameDuration,
   type AnimationEvent,
   type Asset,
 } from '../../core/model';
+import { EventPayloadEditor } from './EventPayloadEditor';
 import { FrameAlignmentPanel, type FrameAlignmentDraft } from './FrameAlignmentPanel';
 import { ONION_SKIN_NEXT_COLOR, ONION_SKIN_OPACITY, ONION_SKIN_PREVIOUS_COLOR } from './onionSkin';
 
@@ -46,7 +48,7 @@ interface TimelinePanelProps {
   onStop: () => void;
   onRewind: () => void;
   /** 履歴に積む変更（ボタン操作）。 */
-  onCommit: (label: string, next: Asset) => void;
+  onCommit: (label: string, next: Asset) => boolean;
   /** 数値・文字入力の途中変更（履歴はフォーカス確定側で積む）。 */
   onLiveChange: (next: Asset) => void;
   onBeginFieldEdit: () => void;
@@ -582,6 +584,32 @@ export function TimelinePanel({
                           </option>
                         ))}
                       </select>
+                      <EventPayloadEditor
+                        key={`${asset.id}-${selectedAnimation.id}-${event.id}-${JSON.stringify(event.payload)}-${!!playingFrameId}-${!!frameAlignmentDraft}`}
+                        event={event}
+                        disabled={isPlaying || !!playingFrameId || !!frameAlignmentDraft}
+                        onApply={(text) => {
+                          const result = changeAnimationEventPayload(
+                            asset,
+                            selectedAnimation.id,
+                            event.id,
+                            text,
+                          );
+                          if (
+                            result.ok &&
+                            result.changed &&
+                            !onCommit('イベント追加データ変更', result.asset)
+                          ) {
+                            return {
+                              ok: false,
+                              asset,
+                              reason:
+                                '別の操作中のため保存できません。操作が終わってから再試行してください。',
+                            };
+                          }
+                          return result;
+                        }}
+                      />
                       <button
                         type="button"
                         aria-label={`イベント「${event.name}」を削除`}
