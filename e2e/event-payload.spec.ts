@@ -47,11 +47,15 @@ test('payload draft validates, cancels, commits once, restores through history a
   await edit.click();
   await input.fill('{"sound":{"nested":true}}');
   await save.click();
-  await expect(page.getByRole('alert')).toContainText('入れ子');
+  await expect(
+    page.getByRole('group', { name: 'イベント「step」の追加データ編集' }).getByRole('alert'),
+  ).toContainText('入れ子');
   expect(await stored(page)).toEqual(before);
   await input.fill('1e400');
   await save.click();
-  await expect(page.getByRole('alert')).toContainText('有限');
+  await expect(
+    page.getByRole('group', { name: 'イベント「step」の追加データ編集' }).getByRole('alert'),
+  ).toContainText('有限');
   await input.fill('{"sound":"cancel"}');
   await input.press('Escape');
   await expect(input).toHaveCount(0);
