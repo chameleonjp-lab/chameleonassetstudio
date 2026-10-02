@@ -37,6 +37,7 @@ export default defineConfig({
         'export.spec.ts',
         'casproj.spec.ts',
         'device-flow.spec.ts',
+        'onion-skin-browser.spec.ts',
       ],
       use: { ...devices['Desktop Safari'] },
     },
