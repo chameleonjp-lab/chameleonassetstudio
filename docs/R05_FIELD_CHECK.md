@@ -14,6 +14,9 @@
 自作の単色・透明画像で、外部の作品は含まない。製品画面で設定を保存し、.casprojと新版ZIPをダウンロードして作成した。
 画像サイズは各倍率で透明余白除去後1050×1050となる。2素材・各3コマがそれぞれ3ページへ分かれる。
 参考ZIPは初回RAFでdelta=0とする修正後の見本・helperを含む。3倍率とも現行runtimeとの一致を自動確認する。
+各ZIPの全エントリをそのまま公開用ディレクトリにも配置し、ZIPとのバイト一致を検査する。
+PR #290のmerge・Pages更新後は、iPhoneから[HTTPSの確認素材一覧](https://chameleonjp-lab.github.io/chameleonassetstudio/release-fixtures/index.html)へ直接アクセスできる。
+一覧からバックアップ・ZIPをダウンロードし、3倍率それぞれのCanvas 2D / PixiJS / Phaser見本を開ける。
 ファイル・manifest・ページ・runtimeのhashは[確認素材の記録](evidence/r05-field-kit-2026-10-02.json)へ保存した。
 大きい1倍用素材を2倍・3倍で出すと2048pxページ上限を超える。対応する倍率の素材を使う。
 
@@ -36,8 +39,10 @@
 - ワールド原点を(20,30)にすると、色面の左上は(20−2×倍率, 30−2×倍率)、アンカーは(20＋3×倍率, 30＋3×倍率)。
 - 緑コマの判定は非表示指定を保持し、矩形は(20＋6×倍率, 30＋6×倍率)、大きさ12×13に倍率を掛けた値。他コマは(20＋2×倍率, 30＋2×倍率)、大きさ8×9に倍率を掛けた値。
 
-ZIPを展開してHTTPサーバーで配信し、`examples/canvas2d.html`、`examples/pixijs.html`、`examples/phaser.html`を開く。
-PCで配信する場合は展開先で`npx serve .`を実行し、同じネットワークのiPhoneからサーバーURLへアクセスする。
+自分で出したZIPは展開してHTTPSで配信し、`examples/canvas2d.html`、`examples/pixijs.html`、`examples/phaser.html`を開く。
+画像のSHA-256照合はWebCryptoを使うため、iPhoneからLANの平文HTTPで開く方法では動作しない。端末が信頼する証明書のHTTPSを使う。
+PC上だけで確認する場合は展開先で`npx serve .`を実行し、そのPCの`http://localhost:3000`（実際に表示されたポート）を開く。
+上のHTTPS一覧は同梱する参考ZIPの受取確認用であり、実機で新たに出したZIPの確認結果を代用しない。
 PixiJS 8.12.0・Phaser 4.2.0の見本はCDN取得のため通信が必要。`file://`ではfetchできない。
 
 実ゲームの比較には`helpers/`のadapterを使い、上記ワールド原点を渡す。

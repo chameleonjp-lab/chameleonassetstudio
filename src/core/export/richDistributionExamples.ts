@@ -28,7 +28,7 @@ export function buildRichDistributionExample(target: 'canvas2d' | 'pixijs' | 'ph
       cleanup=()=>{player?.dispose();game.destroy(true);};`;
   return `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Chameleon ${target} preview</title>
 <style>body{font-family:sans-serif;margin:16px}canvas{max-width:100%;height:auto;image-rendering:pixelated}button,select{font-size:16px;min-height:44px}#status{white-space:pre-wrap}</style>
-<h1>${target} 配布素材の見本</h1><p>HTTPサーバーで開いてください。イベントはデータとして受け取り、自動実行しません。</p><label>素材 <select id="asset"></select></label><p id="status">読み込み中</p><div id="stage"></div>${library}
+<h1>${target} 配布素材の見本</h1><p>HTTPSまたはPCのlocalhostで開いてください。イベントはデータとして受け取り、自動実行しません。</p><label>素材 <select id="asset"></select></label><p id="status">読み込み中</p><div id="stage"></div>${library}
 <script type="module">
 import {loadRichPackage} from '../helpers/distributionManifestV2.js';
 import {create${adapter}Distribution} from '../helpers/distribution${adapter}.js';
@@ -36,12 +36,13 @@ const status=document.querySelector('#status'), select=document.querySelector('#
 let cleanup=()=>{}, sequence=0, disposed=false;
 const controller=new AbortController();
 try {
+ if(!globalThis.crypto?.subtle) throw new Error('画像の照合にはHTTPSが必要です。PCではlocalhostも使えます。');
  const pkg=await loadRichPackage('../package-manifest.json',{signal:controller.signal});
- pkg.assets.forEach((loaded,index)=>{const option=document.createElement('option');option.value=String(index);option.textContent=pkg.packageManifest.assets[index].name;select.append(option);});
+ pkg.assets.forEach((loaded,index)=>{const option=document.createElement('option');option.value=String(index);option.textContent=(index+1)+'. '+pkg.packageManifest.assets[index].name;select.append(option);});
  async function show(){const token=++sequence;select.disabled=true;cleanup();stage.replaceChildren();
   try{const loaded=pkg.assets[Number(select.value)]; const first=loaded.manifest.frames[0]; const width=first.sourceSize.width,height=first.sourceSize.height,position={...first.origin};
    ${create}
-   if(disposed||token!==sequence){cleanup();return;} status.textContent='読み込み成功: '+loaded.manifest.assetId;
+   if(disposed||token!==sequence){cleanup();return;} status.textContent='読み込み成功: '+(Number(select.value)+1)+'. '+pkg.packageManifest.assets[Number(select.value)].name;
   }catch(error){status.textContent=String(error);}finally{select.disabled=false;}
  }
  select.addEventListener('change',show);await show();

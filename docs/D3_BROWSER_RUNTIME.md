@@ -6,6 +6,8 @@ The four standalone ESM files in `src/core/export/distribution{Runtime,Canvas,Pi
 
 First validate and load distribution 0.2.0 through the package loader. Adapters receive a validated `manifest`, fully decoded `images` indexed by manifest page, and real engine objects supplied by the host. The loader owns decoded images and its disposal; adapter disposal releases only the textures it created. Dispose the adapter before disposing the loaded images. No engine is downloaded or installed by the helpers.
 
+Serve packages and examples over HTTPS. The loader verifies image SHA-256 using WebCrypto, so plain HTTP from an iPhone to a LAN server cannot load the package. A PC's own localhost is also supported; it does not make the same server's LAN URL a secure context on the phone. The shipped examples explain this requirement before loading when WebCrypto is unavailable.
+
 ## Common API
 
 - `createCanvasDistribution({manifest, images, context, animationId?, position?})`

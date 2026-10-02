@@ -1,6 +1,45 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 import { unzipSync } from 'fflate';
+import { useVerifiedEngineCache } from './engineTestHelpers';
+
+test('公開用の確認素材から全倍率・全engineの実ZIP見本を直接開ける', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 320, height: 568 });
+  await useVerifiedEngineCache(page, 'pixi');
+  await useVerifiedEngineCache(page, 'phaser');
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/release-fixtures/index.html');
+  await expect(page.getByRole('heading', { name: '配布素材の確認' })).toBeVisible();
+  await expect(page.getByRole('link')).toHaveCount(16);
+  for (const link of await page.getByRole('link').all()) {
+    const box = await link.boundingBox();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(320);
+  }
+  expect(
+    await page.evaluate(() =>
+      Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+    ),
+  ).toBeLessThanOrEqual(320);
+  for (const scale of [1, 2, 3]) {
+    for (const engine of ['canvas2d', 'pixijs', 'phaser']) {
+      await page.goto(`/release-fixtures/r05-${scale}x/examples/${engine}.html`);
+      await expect(page.locator('#status')).toHaveText('読み込み成功: 1. rich_engine');
+      await expect(page.getByRole('combobox', { name: '素材' }).locator('option')).toHaveText([
+        '1. rich_engine',
+        '2. rich_engine',
+      ]);
+      await expect(page.locator('#stage canvas')).toBeVisible();
+      await page.getByRole('combobox', { name: '素材' }).selectOption('1');
+      await expect(page.locator('#status')).toHaveText('読み込み成功: 2. rich_engine');
+      await expect(page.locator('#stage canvas')).toBeVisible();
+    }
+  }
+  expect(errors).toEqual([]);
+});
 
 async function setup(page: Page) {
   await page.goto('/');

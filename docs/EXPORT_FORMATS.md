@@ -260,7 +260,7 @@ distribution用UI、375×667のproduct-path E2E、engine読込検証、物理iPh
 
 画面で素材・利用先・配置・倍率・余白を選び、「出力設定を保存」で明示保存する。
 「新版配布用ZIPをダウンロード」でまとめて出し、取消・選択変更・画面移動後は古い処理からダウンロードしない。
-展開したZIPをHTTPで配信し、`examples/canvas2d.html`、`examples/pixijs.html`、`examples/phaser.html`を開く。`file://`ではfetchできない。
+展開したZIPをHTTPS（PC上の確認はlocalhostも可）で配信し、`examples/canvas2d.html`、`examples/pixijs.html`、`examples/phaser.html`を開く。画像のSHA-256照合にWebCryptoを使うため、iPhoneからLANの平文HTTPでは動作しない。`file://`ではfetchできない。
 PixiJS / Phaserの見本は固定版をCDNから取得する。自分のゲームでは同梱ESMへ実engineと位置を渡す。
 詳しいAPI・上限・検査結果は[D3統合記録](D3_CONSUMER_INTEGRATION_NOTES.md)と[受取API](D3_BROWSER_RUNTIME.md)を参照。
 

@@ -19,6 +19,35 @@ it.each([1, 2, 3])('keeps the %ix field-check ZIP on the current shipped runtime
       readFileSync(new URL(`./${name}`, import.meta.url), 'utf8'),
     );
   }
+  for (const [path, bytes] of Object.entries(entries)) {
+    expect(
+      new Uint8Array(
+        readFileSync(
+          new URL(`../../../public/release-fixtures/r05-${scale}x/${path}`, import.meta.url),
+        ),
+      ),
+      path,
+    ).toEqual(bytes);
+  }
+});
+
+it('explains the HTTPS requirement before loading a package without WebCrypto', async () => {
+  const status = { textContent: '' };
+  const load = vi.fn();
+  const module = buildRichDistributionExample('canvas2d')
+    .split('<script type="module">')[1]
+    .split('</script>')[0]
+    .replace(/^import .*;\n/gm, '');
+  const run = new Function(
+    'document',
+    'globalThis',
+    'loadRichPackage',
+    `return (async () => { ${module} })();`,
+  );
+  await run({ querySelector: () => status }, { crypto: undefined }, load);
+  expect(status.textContent).toContain('HTTPS');
+  expect(status.textContent).toContain('localhost');
+  expect(load).not.toHaveBeenCalled();
 });
 
 it('starts the shipped Canvas example when the first RAF timestamp precedes performance.now', async () => {
@@ -93,6 +122,7 @@ it('starts the shipped Canvas example when the first RAF timestamp precedes perf
     'performance',
     'requestAnimationFrame',
     'cancelAnimationFrame',
+    'globalThis',
     `return (async () => { ${module} })();`,
   );
   await run(
@@ -106,6 +136,7 @@ it('starts the shipped Canvas example when the first RAF timestamp precedes perf
       return callbacks.length;
     },
     cancel,
+    { crypto: { subtle: {} } },
   );
   expect(status.textContent).toContain('読み込み成功');
   for (const time of [900, 900, 916]) {
