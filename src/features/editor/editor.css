@@ -2967,3 +2967,25 @@
     min-height: 44px;
   }
 }
+
+.event-payload-editor {
+  min-width: 0;
+}
+.event-payload-editor textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 16px;
+  resize: vertical;
+}
+.event-payload-editor button {
+  min-height: 44px;
+  max-width: 100%;
+  white-space: normal;
+}
+.event-payload-editor [role='group'] {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}

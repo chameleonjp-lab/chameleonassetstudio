@@ -239,6 +239,10 @@ merge後は最新mainを確認して次の工程へ進める。人間へ毎回�
 
 判断資料だけをmergeして次の判断資料を作る循環は作らない。判断に必要な試作・再現・比較を同じ統合PRで準備し、採用した後は同じPRへ本実装を入れる。判断が必要な部分だけを保留し、独立して進められる実装や検査は続ける。
 
+### 2026-10-02 D3採用記録
+
+利用者から、旧ZIPを残す新版出力とWeb/PixiJS/Phaser対応を調整して進め、サービスの質を優先する明示指示を受けたため、D3の推奨案を採用した。これは計画書やPRをmergeした事実だけから推定した承認ではない。PR #289で実装を統合し、PR #291で既存payload契約の編集入口を追加した。PR #290では両方を保持して品質修正を統合する。採用回答を再度の停止条件にしない。実機、性能・メモリ受入、最終候補のmergeと配信照合は別の未完了条件として維持する。
+
 ## 9. 検査を短くする具体的な設計
 
 利用者の保存や出力を守る検査は残す。削除やskipで見かけの時間を短くするのでなく、実行する時点と対象を分ける。
@@ -283,10 +287,10 @@ Actionsの14日保持の成果物を、正式版の永続的な出荷記録の�
 | R02 | main確認済み（[PR #283](https://github.com/chameleonjp-lab/chameleonassetstudio/pull/283)）。[実装・互換性・検証境界](R02_STORAGE_HISTORY.md) | 新機能も同じ保存・履歴経路へ接続する |
 | R03 | main確認済み（[PR #284](https://github.com/chameleonjp-lab/chameleonassetstudio/pull/284)）。小画面の追加修正はR06で検査 | ホーム取込・見本・制作導線を最終候補版でも確認する |
 | R04 | main確認済み（[PR #285](https://github.com/chameleonjp-lab/chameleonassetstudio/pull/285)）。独立コマ描画・個別時間・64コマ取込 | R05・R06でも保存・出力・実機の重要経路を確認する |
-| R05 | 旧配布画面は[PR #288](https://github.com/chameleonjp-lab/chameleonassetstudio/pull/288)でmain統合済み。新版の試作候補も[PR #289](https://github.com/chameleonjp-lab/chameleonassetstudio/pull/289)でmain統合済み（`e04902b6`、tree `04a359ad`）。CI #954全成功。追加の小画面・証拠保存・実機素材・性能計測は統合検査中。実ZIP→3受取先は両browserで成功。[D3の具体案](R05_OUTPUT_PROPOSAL.md)は採用判断待ち | D3採用、追加修正後の全CI・独立確認、最終候補版の出力・実機確認 |
+| R05 | 旧配布画面は[PR #288](https://github.com/chameleonjp-lab/chameleonassetstudio/pull/288)でmain統合済み。採用済みの新版も[PR #289](https://github.com/chameleonjp-lab/chameleonassetstudio/pull/289)でmain統合済み（`e04902b6`、tree `04a359ad`）。CI #954全成功。追加の小画面・証拠保存・実機素材・性能計測は統合検査中。実ZIP→3受取先は両browserで成功。[D3仕様](R05_OUTPUT_PROPOSAL.md)は採用済み。PR #291のpayload編集もmain統合済み | 追加修正後の全CI・独立確認、最終候補版の出力・実機確認 |
 | R06 | 遅延読込・版表示・小画面・PNG画素保持・入力性能検査はPR #288でmain統合済み。CI #948全成功、main `0f763c49`のtreeと検査済みtreeの一致を確認 | R05後の最終版の性能・iPhone実機・出荷・公開照合 |
 
-同じ実装依頼で既存PRを更新し、工程内の項目ごとに次の依頼を要求しない。merge後は最新mainを照合する。現在は節8 D3の新版出力採用だけを判断待ちとし、画面・検査・性能測定の準備は進める。Draftの作成やCI成功だけで工程・正式公開を完了扱いしない。
+同じ実装依頼で既存PRを更新し、工程内の項目ごとに次の依頼を要求しない。merge後は最新mainを照合する。節8 D3は利用者指示で採用済み。PR #290の品質修正を最新mainへ統合し、画面・検査・性能測定と実機確認を進める。Draftの作成やCI成功だけで工程・正式公開を完了扱いしない。
 
 作業報告は、何が利用者にできるようになったか、どの課題が通ったか、どの版を確認したか、残る問題、PRのURLを先に示す。長い内部ログや古い工程番号を進行報告の中心にしない。
 

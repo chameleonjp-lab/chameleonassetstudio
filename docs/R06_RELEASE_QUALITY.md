@@ -80,5 +80,5 @@ R05新版出力を含む最終候補版と確認素材が揃ってから、人�
 最終PRのheadとtree、mainのtree、全検査結果、素材の権利・画像hash、出力hash、受取結果を対応付ける。
 merge判断は人間が行う。公開後にbuild-info.jsonのrevisionと出荷版を照合し、6課題の重要経路を確認する。
 14日保持のActionsログだけを永続的な出荷証拠にしない。
-R05試作候補はPR #289でmain統合済み。実ZIP→新版受取はChromium・WebKitで成功した。[検証境界](D3_CONSUMER_INTEGRATION_NOTES.md)を参照。
-D3採用、追加修正後の最終CI、最終性能測定、実機、候補版のmerge・配信確認は現在未完了。
+D3は2026-10-02の利用者指示で採用済みで、R05新版はPR #289でmain統合済み。実ZIP→新版受取はChromium・WebKitで成功した。[検証境界](D3_CONSUMER_INTEGRATION_NOTES.md)を参照。
+PR #291のpayload編集を含む最新mainと追加品質修正の統合後の最終CI、最終性能・メモリ受入、実機、PR #290候補版のmerge・配信確認は別途必要。過去の候補版のCIや人間受入を最新版へ自動転用しない。

@@ -52,6 +52,9 @@ async function setup(page: Page) {
   if (await nav.isVisible()) await nav.getByRole('button', { name: 'プロパティ' }).click();
   await page.getByLabel('見本の絵を入れて始める').check();
   await page.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
+  // Structural History flushes asynchronously after the new asset first appears.
+  // Finish setup before the cancellation test replaces the global flush boundary.
+  await expect(page.getByRole('button', { name: '元に戻す', exact: true })).toBeEnabled();
   if (await nav.isVisible()) await nav.getByRole('button', { name: '書き出し' }).click();
   const panel = page.getByRole('region', { name: '新版配布用ZIP', exact: true });
   await expect(panel.getByRole('button', { name: '新版配布用ZIPをダウンロード' })).toBeEnabled();
