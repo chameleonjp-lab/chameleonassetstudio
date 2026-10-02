@@ -1,0 +1,5080 @@
+{
+  "status": "D3 prototype candidate; adoption pending",
+  "date": "2026-10-02",
+  "scope": "Baseline nine packed engine/scale cases on Linux WebKit; later expanded fixed-grid/WebGL/example/mobile cases are not certified by this record.",
+  "sourceHead": "9c677723596a3be152a0a17df082756760ff428e",
+  "testedMerge": "9e9969ff7a7e284523a8ab0cc5612edffeeb37c6",
+  "testedTree": "80f7892199f769e0090bff678773a514dd83f416",
+  "ci": {
+    "runId": 36957625478,
+    "runNumber": 952,
+    "url": "https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/36957625478",
+    "conclusion": "success",
+    "unit": 1017,
+    "chromium": 252,
+    "webkit": 66,
+    "productionQuality": 4,
+    "h3": 1,
+    "pagesOpen": 1,
+    "pagesClosed": 1,
+    "failed": 0,
+    "flaky": 0,
+    "skipped": 0,
+    "retries": 0
+  },
+  "artifact": {
+    "id": 11206434201,
+    "name": "playwright-report-36957625478-1",
+    "sha256": "a348d16ead9f03b2b150bed57398a9aaf3db67fdf0c7ea2a88fc80e3df9e6c5f"
+  },
+  "fixture": {
+    "generator": "e2e/rich-distribution-engines.spec.ts at sourceHead",
+    "rights": "Self-generated solid RGB/yellow/transparent pixels; no third-party artwork.",
+    "assets": 2,
+    "framesPerAsset": 3,
+    "sameDisplayNames": true,
+    "pagesPerAsset": 3,
+    "durationsMs": [
+      100,
+      200,
+      300
+    ],
+    "repeatedFrameId": true,
+    "worldOrigin": {
+      "x": 20,
+      "y": 30
+    }
+  },
+  "limits": {
+    "realDevice": false,
+    "physicalSafariVerified": false,
+    "adoptionGranted": false,
+    "r05Complete": false,
+    "browserVersion": "Not captured in this baseline attachment; subsequent cases record it.",
+    "chromiumRawRecords": "Initial HTML report was overwritten by production quality. Passed test counts are confirmed from CI logs. Subsequent configuration separates all three reports."
+  },
+  "records": [
+    {
+      "engine": "canvas2d",
+      "scale": 1,
+      "browser": "webkit-critical",
+      "sourceCommit": "9e9969ff7a7e284523a8ab0cc5612edffeeb37c6",
+      "packageHash": "d3eb9e21236a6e3b5de6d4def08fa92534be5a01825d8bb4c16492ef95a4363a",
+      "assets": [
+        {
+          "id": "asset_e6be268b-72bd-4375-9f8a-26b5d282e325",
+          "manifest": "assets/1b07eca94cb661c88ced4107d2f8b94b4706c0d4fededbd3e5f1681bfbe4ec73/manifest.json",
+          "manifestHash": "42797c82c632af53f7731afcf74014f821efeda0416cbd1a4418e4831ea2c9e6",
+          "name": "rich_engine"
+        },
+        {
+          "id": "asset_e6be268b-72bd-4375-9f8a-26b5d282e325_copy",
+          "manifest": "assets/0a6a78c80cbd777f3221f04eb886d2ac02f548eaa5ffb57de3f6521adb8d27ca/manifest.json",
+          "manifestHash": "907c5cf2c9d72d212f15e53daaff2eff09aaac4b87f006933174f201643ee38d",
+          "name": "rich_engine"
+        }
+      ],
+      "pages": [
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-000.png",
+          "sha256": "42e81202b63135a633b3239487ec7c0f098798a2bf567d88ea5a0713aa32bf71",
+          "width": 1050
+        },
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-001.png",
+          "sha256": "33784d885ba5875fc0f4254e29bc739078718e1919ef1e71f89e709d64560199",
+          "width": 1050
+        },
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-002.png",
+          "sha256": "5e9fac71ad4b7263513a8e6075479ed0c4a6d403669b247b0393480cfbc6e129",
+          "width": 1050
+        }
+      ],
+      "profile": "packed",
+      "gameDataForFrame": {
+        "frame_0": {
+          "frameId": "frame_0",
+          "page": 0,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 18,
+            "y": 28,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 23,
+                "y": 33
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 9,
+                "width": 8,
+                "x": 22,
+                "y": 32
+              },
+              "shape": "rect",
+              "visible": true
+            }
+          ]
+        },
+        "frame_1": {
+          "frameId": "frame_1",
+          "page": 1,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 18,
+            "y": 28,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 23,
+                "y": 33
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 13,
+                "width": 12,
+                "x": 26,
+                "y": 36
+              },
+              "shape": "rect",
+              "visible": false
+            }
+          ]
+        },
+        "frame_2": {
+          "frameId": "frame_2",
+          "page": 2,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 18,
+            "y": 28,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 23,
+                "y": 33
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 9,
+                "width": 8,
+                "x": 22,
+                "y": 32
+              },
+              "shape": "rect",
+              "visible": true
+            }
+          ]
+        }
+      },
+      "runs": [
+        {
+          "animationId": "loop",
+          "frameIds": [
+            "frame_0",
+            "frame_0",
+            "frame_1",
+            "frame_1",
+            "frame_2",
+            "frame_2",
+            "frame_0",
+            "frame_0",
+            "frame_0",
+            "frame_0"
+          ],
+          "pixels": [
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ]
+          ],
+          "outsideAlpha": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "events": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 100,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_true_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 300,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_true_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 600,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 700,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 800,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_true_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 1000,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_true_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 1300,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 1400,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ],
+          "lastCycle": 2,
+          "lastComplete": false,
+          "lastRunning": true,
+          "stoppedEvents": [],
+          "restartEvents": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "animationId": "once",
+          "frameIds": [
+            "frame_0",
+            "frame_0",
+            "frame_1",
+            "frame_1",
+            "frame_2",
+            "frame_2",
+            "frame_0",
+            "frame_0",
+            "frame_0",
+            "frame_0"
+          ],
+          "pixels": [
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ]
+          ],
+          "outsideAlpha": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "events": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 100,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_false_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 300,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_false_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 600,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ],
+          "lastCycle": 0,
+          "lastComplete": true,
+          "lastRunning": false,
+          "stoppedEvents": [],
+          "restartEvents": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "engine": "canvas2d",
+      "scale": 2,
+      "browser": "webkit-critical",
+      "sourceCommit": "9e9969ff7a7e284523a8ab0cc5612edffeeb37c6",
+      "packageHash": "60f37f5c2050b19521162a0132c3fa01f13df608d4b6c1ac01afd03303b97f78",
+      "assets": [
+        {
+          "id": "asset_fc8a009a-6823-42c6-9d84-bd32f0f47b3c",
+          "manifest": "assets/b1f175923fb203eadd31b3b829a990d020c7698ec2173c30e8f4951201f0781a/manifest.json",
+          "manifestHash": "135a9725f2b09528df59934f417b5abcaad0ab0df7dd8e87c81379992d89cfc3",
+          "name": "rich_engine"
+        },
+        {
+          "id": "asset_fc8a009a-6823-42c6-9d84-bd32f0f47b3c_copy",
+          "manifest": "assets/a8fb6312f7c1baf9687de0cf33199fc603f1fb7be9a53270fbe6e566ffdf989e/manifest.json",
+          "manifestHash": "c84b61159e3e195f3b8a237ce7c3fe89d364cd6a98cfb826573b46ad91a291f6",
+          "name": "rich_engine"
+        }
+      ],
+      "pages": [
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-000.png",
+          "sha256": "42e81202b63135a633b3239487ec7c0f098798a2bf567d88ea5a0713aa32bf71",
+          "width": 1050
+        },
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-001.png",
+          "sha256": "33784d885ba5875fc0f4254e29bc739078718e1919ef1e71f89e709d64560199",
+          "width": 1050
+        },
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-002.png",
+          "sha256": "5e9fac71ad4b7263513a8e6075479ed0c4a6d403669b247b0393480cfbc6e129",
+          "width": 1050
+        }
+      ],
+      "profile": "packed",
+      "gameDataForFrame": {
+        "frame_0": {
+          "frameId": "frame_0",
+          "page": 0,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 16,
+            "y": 26,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 26,
+                "y": 36
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 18,
+                "width": 16,
+                "x": 24,
+                "y": 34
+              },
+              "shape": "rect",
+              "visible": true
+            }
+          ]
+        },
+        "frame_1": {
+          "frameId": "frame_1",
+          "page": 1,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 16,
+            "y": 26,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 26,
+                "y": 36
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 26,
+                "width": 24,
+                "x": 32,
+                "y": 42
+              },
+              "shape": "rect",
+              "visible": false
+            }
+          ]
+        },
+        "frame_2": {
+          "frameId": "frame_2",
+          "page": 2,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 16,
+            "y": 26,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 26,
+                "y": 36
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 18,
+                "width": 16,
+                "x": 24,
+                "y": 34
+              },
+              "shape": "rect",
+              "visible": true
+            }
+          ]
+        }
+      },
+      "runs": [
+        {
+          "animationId": "loop",
+          "frameIds": [
+            "frame_0",
+            "frame_0",
+            "frame_1",
+            "frame_1",
+            "frame_2",
+            "frame_2",
+            "frame_0",
+            "frame_0",
+            "frame_0",
+            "frame_0"
+          ],
+          "pixels": [
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ]
+          ],
+          "outsideAlpha": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "events": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 100,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_true_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 300,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_true_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 600,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 700,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 800,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_true_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 1000,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_true_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 1300,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 1400,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ],
+          "lastCycle": 2,
+          "lastComplete": false,
+          "lastRunning": true,
+          "stoppedEvents": [],
+          "restartEvents": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "animationId": "once",
+          "frameIds": [
+            "frame_0",
+            "frame_0",
+            "frame_1",
+            "frame_1",
+            "frame_2",
+            "frame_2",
+            "frame_0",
+            "frame_0",
+            "frame_0",
+            "frame_0"
+          ],
+          "pixels": [
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ]
+          ],
+          "outsideAlpha": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "events": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 100,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_false_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 300,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_false_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 600,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ],
+          "lastCycle": 0,
+          "lastComplete": true,
+          "lastRunning": false,
+          "stoppedEvents": [],
+          "restartEvents": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "engine": "canvas2d",
+      "scale": 3,
+      "browser": "webkit-critical",
+      "sourceCommit": "9e9969ff7a7e284523a8ab0cc5612edffeeb37c6",
+      "packageHash": "83e40ba0f8358cd02bde5720f7bb49583643146da6b61a75f9b999f4e563dce7",
+      "assets": [
+        {
+          "id": "asset_b183b9f3-0933-41fa-b726-eadeb14ab291",
+          "manifest": "assets/7d37df2ad5f065bdc3c4e1f39b3388bd73d16f9c02f39edf1d34b2d44aafc84c/manifest.json",
+          "manifestHash": "96a867fd506947a47f993d00f52d6055356573f67fe769ac4b73c02266339932",
+          "name": "rich_engine"
+        },
+        {
+          "id": "asset_b183b9f3-0933-41fa-b726-eadeb14ab291_copy",
+          "manifest": "assets/ad7c820ace76505b5f4a03b036bcc1680ee95e7da742b2adb88b34455f7cb5fe/manifest.json",
+          "manifestHash": "a6d28f48b8a5f1055b005cdfd7c243a7b872f370a39919fbd9e96e4ef4d0b8f3",
+          "name": "rich_engine"
+        }
+      ],
+      "pages": [
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-000.png",
+          "sha256": "42e81202b63135a633b3239487ec7c0f098798a2bf567d88ea5a0713aa32bf71",
+          "width": 1050
+        },
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-001.png",
+          "sha256": "33784d885ba5875fc0f4254e29bc739078718e1919ef1e71f89e709d64560199",
+          "width": 1050
+        },
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-002.png",
+          "sha256": "5e9fac71ad4b7263513a8e6075479ed0c4a6d403669b247b0393480cfbc6e129",
+          "width": 1050
+        }
+      ],
+      "profile": "packed",
+      "gameDataForFrame": {
+        "frame_0": {
+          "frameId": "frame_0",
+          "page": 0,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 14,
+            "y": 24,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 29,
+                "y": 39
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 27,
+                "width": 24,
+                "x": 26,
+                "y": 36
+              },
+              "shape": "rect",
+              "visible": true
+            }
+          ]
+        },
+        "frame_1": {
+          "frameId": "frame_1",
+          "page": 1,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 14,
+            "y": 24,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 29,
+                "y": 39
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 39,
+                "width": 36,
+                "x": 38,
+                "y": 48
+              },
+              "shape": "rect",
+              "visible": false
+            }
+          ]
+        },
+        "frame_2": {
+          "frameId": "frame_2",
+          "page": 2,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 14,
+            "y": 24,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 29,
+                "y": 39
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 27,
+                "width": 24,
+                "x": 26,
+                "y": 36
+              },
+              "shape": "rect",
+              "visible": true
+            }
+          ]
+        }
+      },
+      "runs": [
+        {
+          "animationId": "loop",
+          "frameIds": [
+            "frame_0",
+            "frame_0",
+            "frame_1",
+            "frame_1",
+            "frame_2",
+            "frame_2",
+            "frame_0",
+            "frame_0",
+            "frame_0",
+            "frame_0"
+          ],
+          "pixels": [
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ]
+          ],
+          "outsideAlpha": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "events": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 100,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_true_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 300,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_true_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 600,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 700,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 800,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_true_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 1000,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_true_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 1300,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 1400,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ],
+          "lastCycle": 2,
+          "lastComplete": false,
+          "lastRunning": true,
+          "stoppedEvents": [],
+          "restartEvents": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "animationId": "once",
+          "frameIds": [
+            "frame_0",
+            "frame_0",
+            "frame_1",
+            "frame_1",
+            "frame_2",
+            "frame_2",
+            "frame_0",
+            "frame_0",
+            "frame_0",
+            "frame_0"
+          ],
+          "pixels": [
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ]
+          ],
+          "outsideAlpha": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "events": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 100,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_false_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 300,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_false_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 600,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ],
+          "lastCycle": 0,
+          "lastComplete": true,
+          "lastRunning": false,
+          "stoppedEvents": [],
+          "restartEvents": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "engine": "pixijs",
+      "scale": 1,
+      "browser": "webkit-critical",
+      "sourceCommit": "9e9969ff7a7e284523a8ab0cc5612edffeeb37c6",
+      "packageHash": "bd9186e37faa27c605e336300720de74de09e22a18e42abf8763cb94545c801c",
+      "assets": [
+        {
+          "id": "asset_303f45c1-abdb-4423-98c4-522693a2e672",
+          "manifest": "assets/36b8f78da18024bdab47a2b775873f867d0b3f470f50ca4f5fde7490f822bc05/manifest.json",
+          "manifestHash": "c37a228e38b4a565a0045196de5298776c8ca7e40800f8ba57dc2eb6811810b4",
+          "name": "rich_engine"
+        },
+        {
+          "id": "asset_303f45c1-abdb-4423-98c4-522693a2e672_copy",
+          "manifest": "assets/efccb974fe6d9e0d4b6132c19a2ef1f6c77cb04cc700a70917fa2d3fd477e664/manifest.json",
+          "manifestHash": "0a013681cfd6934a6341e1966195ce251e6450514c61323a241bc0a3c13c2649",
+          "name": "rich_engine"
+        }
+      ],
+      "pages": [
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-000.png",
+          "sha256": "42e81202b63135a633b3239487ec7c0f098798a2bf567d88ea5a0713aa32bf71",
+          "width": 1050
+        },
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-001.png",
+          "sha256": "33784d885ba5875fc0f4254e29bc739078718e1919ef1e71f89e709d64560199",
+          "width": 1050
+        },
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-002.png",
+          "sha256": "5e9fac71ad4b7263513a8e6075479ed0c4a6d403669b247b0393480cfbc6e129",
+          "width": 1050
+        }
+      ],
+      "profile": "packed",
+      "gameDataForFrame": {
+        "frame_0": {
+          "frameId": "frame_0",
+          "page": 0,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 18,
+            "y": 28,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 23,
+                "y": 33
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 9,
+                "width": 8,
+                "x": 22,
+                "y": 32
+              },
+              "shape": "rect",
+              "visible": true
+            }
+          ]
+        },
+        "frame_1": {
+          "frameId": "frame_1",
+          "page": 1,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 18,
+            "y": 28,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 23,
+                "y": 33
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 13,
+                "width": 12,
+                "x": 26,
+                "y": 36
+              },
+              "shape": "rect",
+              "visible": false
+            }
+          ]
+        },
+        "frame_2": {
+          "frameId": "frame_2",
+          "page": 2,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 18,
+            "y": 28,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 23,
+                "y": 33
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 9,
+                "width": 8,
+                "x": 22,
+                "y": 32
+              },
+              "shape": "rect",
+              "visible": true
+            }
+          ]
+        }
+      },
+      "runs": [
+        {
+          "animationId": "loop",
+          "frameIds": [
+            "frame_0",
+            "frame_0",
+            "frame_1",
+            "frame_1",
+            "frame_2",
+            "frame_2",
+            "frame_0",
+            "frame_0",
+            "frame_0",
+            "frame_0"
+          ],
+          "pixels": [
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ]
+          ],
+          "outsideAlpha": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "events": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 100,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_true_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 300,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_true_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 600,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 700,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 800,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_true_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 1000,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_true_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 1300,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 1400,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ],
+          "lastCycle": 2,
+          "lastComplete": false,
+          "lastRunning": true,
+          "stoppedEvents": [],
+          "restartEvents": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "animationId": "once",
+          "frameIds": [
+            "frame_0",
+            "frame_0",
+            "frame_1",
+            "frame_1",
+            "frame_2",
+            "frame_2",
+            "frame_0",
+            "frame_0",
+            "frame_0",
+            "frame_0"
+          ],
+          "pixels": [
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ]
+          ],
+          "outsideAlpha": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "events": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 100,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_false_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 300,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_false_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 600,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ],
+          "lastCycle": 0,
+          "lastComplete": true,
+          "lastRunning": false,
+          "stoppedEvents": [],
+          "restartEvents": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "engine": "pixijs",
+      "scale": 2,
+      "browser": "webkit-critical",
+      "sourceCommit": "9e9969ff7a7e284523a8ab0cc5612edffeeb37c6",
+      "packageHash": "98fd5278966e1a6c1929626711aba3603cb13dfb774bbfd30ed87105a3f9ce28",
+      "assets": [
+        {
+          "id": "asset_d1a724b7-3146-4f36-bf4c-fbb4708e6fa9",
+          "manifest": "assets/271b8f127db3d766d98579a3918ca874f6efdc89505b4e921bf04e01c3f424ff/manifest.json",
+          "manifestHash": "4b4b5c420de40b46ddb28c6edfab5e61eadaa0260ae4215670755f4bdf2851d6",
+          "name": "rich_engine"
+        },
+        {
+          "id": "asset_d1a724b7-3146-4f36-bf4c-fbb4708e6fa9_copy",
+          "manifest": "assets/e06e3b18e39a8aef85030cf3fc5242dcfa02267f035f7798a4523392c12c1be7/manifest.json",
+          "manifestHash": "e90cd7789b7dfc4d7a37dac13bc7a52af2458f47c3ea141ef6d82a290c8754b6",
+          "name": "rich_engine"
+        }
+      ],
+      "pages": [
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-000.png",
+          "sha256": "42e81202b63135a633b3239487ec7c0f098798a2bf567d88ea5a0713aa32bf71",
+          "width": 1050
+        },
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-001.png",
+          "sha256": "33784d885ba5875fc0f4254e29bc739078718e1919ef1e71f89e709d64560199",
+          "width": 1050
+        },
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-002.png",
+          "sha256": "5e9fac71ad4b7263513a8e6075479ed0c4a6d403669b247b0393480cfbc6e129",
+          "width": 1050
+        }
+      ],
+      "profile": "packed",
+      "gameDataForFrame": {
+        "frame_0": {
+          "frameId": "frame_0",
+          "page": 0,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 16,
+            "y": 26,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 26,
+                "y": 36
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 18,
+                "width": 16,
+                "x": 24,
+                "y": 34
+              },
+              "shape": "rect",
+              "visible": true
+            }
+          ]
+        },
+        "frame_1": {
+          "frameId": "frame_1",
+          "page": 1,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 16,
+            "y": 26,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 26,
+                "y": 36
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 26,
+                "width": 24,
+                "x": 32,
+                "y": 42
+              },
+              "shape": "rect",
+              "visible": false
+            }
+          ]
+        },
+        "frame_2": {
+          "frameId": "frame_2",
+          "page": 2,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 16,
+            "y": 26,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 26,
+                "y": 36
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 18,
+                "width": 16,
+                "x": 24,
+                "y": 34
+              },
+              "shape": "rect",
+              "visible": true
+            }
+          ]
+        }
+      },
+      "runs": [
+        {
+          "animationId": "loop",
+          "frameIds": [
+            "frame_0",
+            "frame_0",
+            "frame_1",
+            "frame_1",
+            "frame_2",
+            "frame_2",
+            "frame_0",
+            "frame_0",
+            "frame_0",
+            "frame_0"
+          ],
+          "pixels": [
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ]
+          ],
+          "outsideAlpha": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "events": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 100,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_true_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 300,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_true_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 600,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 700,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 800,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_true_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 1000,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_true_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 1300,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 1400,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ],
+          "lastCycle": 2,
+          "lastComplete": false,
+          "lastRunning": true,
+          "stoppedEvents": [],
+          "restartEvents": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "animationId": "once",
+          "frameIds": [
+            "frame_0",
+            "frame_0",
+            "frame_1",
+            "frame_1",
+            "frame_2",
+            "frame_2",
+            "frame_0",
+            "frame_0",
+            "frame_0",
+            "frame_0"
+          ],
+          "pixels": [
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ]
+          ],
+          "outsideAlpha": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "events": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 100,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_false_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 300,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_false_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 600,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ],
+          "lastCycle": 0,
+          "lastComplete": true,
+          "lastRunning": false,
+          "stoppedEvents": [],
+          "restartEvents": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "engine": "pixijs",
+      "scale": 3,
+      "browser": "webkit-critical",
+      "sourceCommit": "9e9969ff7a7e284523a8ab0cc5612edffeeb37c6",
+      "packageHash": "f04bc6fe0713b8c2e4781bb048116a08274065bca9a8501010a524fe4a71c7c2",
+      "assets": [
+        {
+          "id": "asset_3e8e5af3-fd12-4c4a-b268-9e7bff293d3a",
+          "manifest": "assets/9c7a4579fbcb17448a48acc7922cb1f188558087725188185acf96ab1d0cacbe/manifest.json",
+          "manifestHash": "186bc31770003b2f944da937054ae26a2987de5eda5b36fbfc7fdfda59a4b976",
+          "name": "rich_engine"
+        },
+        {
+          "id": "asset_3e8e5af3-fd12-4c4a-b268-9e7bff293d3a_copy",
+          "manifest": "assets/1ada44011daac5106d7580a0023c972d9e186270b7f79844fb87d02ae7f35f78/manifest.json",
+          "manifestHash": "4b547fd48c3365d76a204e3230a4785f778f933ac24517b5c164912ea828b249",
+          "name": "rich_engine"
+        }
+      ],
+      "pages": [
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-000.png",
+          "sha256": "42e81202b63135a633b3239487ec7c0f098798a2bf567d88ea5a0713aa32bf71",
+          "width": 1050
+        },
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-001.png",
+          "sha256": "33784d885ba5875fc0f4254e29bc739078718e1919ef1e71f89e709d64560199",
+          "width": 1050
+        },
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-002.png",
+          "sha256": "5e9fac71ad4b7263513a8e6075479ed0c4a6d403669b247b0393480cfbc6e129",
+          "width": 1050
+        }
+      ],
+      "profile": "packed",
+      "gameDataForFrame": {
+        "frame_0": {
+          "frameId": "frame_0",
+          "page": 0,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 14,
+            "y": 24,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 29,
+                "y": 39
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 27,
+                "width": 24,
+                "x": 26,
+                "y": 36
+              },
+              "shape": "rect",
+              "visible": true
+            }
+          ]
+        },
+        "frame_1": {
+          "frameId": "frame_1",
+          "page": 1,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 14,
+            "y": 24,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 29,
+                "y": 39
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 39,
+                "width": 36,
+                "x": 38,
+                "y": 48
+              },
+              "shape": "rect",
+              "visible": false
+            }
+          ]
+        },
+        "frame_2": {
+          "frameId": "frame_2",
+          "page": 2,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 14,
+            "y": 24,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 29,
+                "y": 39
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 27,
+                "width": 24,
+                "x": 26,
+                "y": 36
+              },
+              "shape": "rect",
+              "visible": true
+            }
+          ]
+        }
+      },
+      "runs": [
+        {
+          "animationId": "loop",
+          "frameIds": [
+            "frame_0",
+            "frame_0",
+            "frame_1",
+            "frame_1",
+            "frame_2",
+            "frame_2",
+            "frame_0",
+            "frame_0",
+            "frame_0",
+            "frame_0"
+          ],
+          "pixels": [
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ]
+          ],
+          "outsideAlpha": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "events": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 100,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_true_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 300,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_true_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 600,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 700,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 800,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_true_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 1000,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_true_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 1300,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 1400,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ],
+          "lastCycle": 2,
+          "lastComplete": false,
+          "lastRunning": true,
+          "stoppedEvents": [],
+          "restartEvents": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "animationId": "once",
+          "frameIds": [
+            "frame_0",
+            "frame_0",
+            "frame_1",
+            "frame_1",
+            "frame_2",
+            "frame_2",
+            "frame_0",
+            "frame_0",
+            "frame_0",
+            "frame_0"
+          ],
+          "pixels": [
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ]
+          ],
+          "outsideAlpha": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "events": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 100,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_false_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 300,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_false_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 600,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ],
+          "lastCycle": 0,
+          "lastComplete": true,
+          "lastRunning": false,
+          "stoppedEvents": [],
+          "restartEvents": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "engine": "phaser",
+      "scale": 1,
+      "browser": "webkit-critical",
+      "sourceCommit": "9e9969ff7a7e284523a8ab0cc5612edffeeb37c6",
+      "packageHash": "02196217716e3acf514feb3460aea17c9fc10433acb1d5720ad51f69942f2af7",
+      "assets": [
+        {
+          "id": "asset_73939e5e-f554-4ff1-ab1d-b00299f9e7d8",
+          "manifest": "assets/1c12ba6f14c4f57aeaf8b81cf8f7b6b9669bbdae2eea3b514d50023d82ebc545/manifest.json",
+          "manifestHash": "b2c1353fc74b7ec16657b9e2a613f9aae40b258b64b35145c062493f1133fcfb",
+          "name": "rich_engine"
+        },
+        {
+          "id": "asset_73939e5e-f554-4ff1-ab1d-b00299f9e7d8_copy",
+          "manifest": "assets/f9b9d096085eb6dd3aa95cbb52ffc5656086caa506e68c81c17b656d2ba77dda/manifest.json",
+          "manifestHash": "ecc383ebb3ea7a75b413c57bebf6970df1c2388d6460f39b25141095d2c642f0",
+          "name": "rich_engine"
+        }
+      ],
+      "pages": [
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-000.png",
+          "sha256": "42e81202b63135a633b3239487ec7c0f098798a2bf567d88ea5a0713aa32bf71",
+          "width": 1050
+        },
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-001.png",
+          "sha256": "33784d885ba5875fc0f4254e29bc739078718e1919ef1e71f89e709d64560199",
+          "width": 1050
+        },
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-002.png",
+          "sha256": "5e9fac71ad4b7263513a8e6075479ed0c4a6d403669b247b0393480cfbc6e129",
+          "width": 1050
+        }
+      ],
+      "profile": "packed",
+      "gameDataForFrame": {
+        "frame_0": {
+          "frameId": "frame_0",
+          "page": 0,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 18,
+            "y": 28,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 23,
+                "y": 33
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 9,
+                "width": 8,
+                "x": 22,
+                "y": 32
+              },
+              "shape": "rect",
+              "visible": true
+            }
+          ]
+        },
+        "frame_1": {
+          "frameId": "frame_1",
+          "page": 1,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 18,
+            "y": 28,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 23,
+                "y": 33
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 13,
+                "width": 12,
+                "x": 26,
+                "y": 36
+              },
+              "shape": "rect",
+              "visible": false
+            }
+          ]
+        },
+        "frame_2": {
+          "frameId": "frame_2",
+          "page": 2,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 18,
+            "y": 28,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 23,
+                "y": 33
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 9,
+                "width": 8,
+                "x": 22,
+                "y": 32
+              },
+              "shape": "rect",
+              "visible": true
+            }
+          ]
+        }
+      },
+      "runs": [
+        {
+          "animationId": "loop",
+          "frameIds": [
+            "frame_0",
+            "frame_0",
+            "frame_1",
+            "frame_1",
+            "frame_2",
+            "frame_2",
+            "frame_0",
+            "frame_0",
+            "frame_0",
+            "frame_0"
+          ],
+          "pixels": [
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ]
+          ],
+          "outsideAlpha": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "events": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 100,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_true_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 300,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_true_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 600,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 700,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 800,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_true_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 1000,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_true_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 1300,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 1400,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ],
+          "lastCycle": 2,
+          "lastComplete": false,
+          "lastRunning": true,
+          "stoppedEvents": [],
+          "restartEvents": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "animationId": "once",
+          "frameIds": [
+            "frame_0",
+            "frame_0",
+            "frame_1",
+            "frame_1",
+            "frame_2",
+            "frame_2",
+            "frame_0",
+            "frame_0",
+            "frame_0",
+            "frame_0"
+          ],
+          "pixels": [
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ]
+          ],
+          "outsideAlpha": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "events": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 100,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_false_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 300,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_false_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 600,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ],
+          "lastCycle": 0,
+          "lastComplete": true,
+          "lastRunning": false,
+          "stoppedEvents": [],
+          "restartEvents": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "engine": "phaser",
+      "scale": 2,
+      "browser": "webkit-critical",
+      "sourceCommit": "9e9969ff7a7e284523a8ab0cc5612edffeeb37c6",
+      "packageHash": "bec95aca9a3d57eea4e71b544fa83f6bbdb9b96ed0e5e647883fa302b0259574",
+      "assets": [
+        {
+          "id": "asset_b5f499d0-432a-4b8e-b01e-5d34017ab825",
+          "manifest": "assets/74497a70ff83db0afb729c24415b01b028a7b353fff8c48ca1fb7eb6a4e3ba13/manifest.json",
+          "manifestHash": "cf2f66d4a9cde7da406bfa9b887367261e61018d8af48ce113060468923f9b52",
+          "name": "rich_engine"
+        },
+        {
+          "id": "asset_b5f499d0-432a-4b8e-b01e-5d34017ab825_copy",
+          "manifest": "assets/057e6cd52f65b24b7394e89056591a15f64c3e213a4a47e862b9237e33eb5ea9/manifest.json",
+          "manifestHash": "5674ae23931be354a084e380d631414b91f092976150651f1f20df560cf356ee",
+          "name": "rich_engine"
+        }
+      ],
+      "pages": [
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-000.png",
+          "sha256": "42e81202b63135a633b3239487ec7c0f098798a2bf567d88ea5a0713aa32bf71",
+          "width": 1050
+        },
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-001.png",
+          "sha256": "33784d885ba5875fc0f4254e29bc739078718e1919ef1e71f89e709d64560199",
+          "width": 1050
+        },
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-002.png",
+          "sha256": "5e9fac71ad4b7263513a8e6075479ed0c4a6d403669b247b0393480cfbc6e129",
+          "width": 1050
+        }
+      ],
+      "profile": "packed",
+      "gameDataForFrame": {
+        "frame_0": {
+          "frameId": "frame_0",
+          "page": 0,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 16,
+            "y": 26,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 26,
+                "y": 36
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 18,
+                "width": 16,
+                "x": 24,
+                "y": 34
+              },
+              "shape": "rect",
+              "visible": true
+            }
+          ]
+        },
+        "frame_1": {
+          "frameId": "frame_1",
+          "page": 1,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 16,
+            "y": 26,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 26,
+                "y": 36
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 26,
+                "width": 24,
+                "x": 32,
+                "y": 42
+              },
+              "shape": "rect",
+              "visible": false
+            }
+          ]
+        },
+        "frame_2": {
+          "frameId": "frame_2",
+          "page": 2,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 16,
+            "y": 26,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 26,
+                "y": 36
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 18,
+                "width": 16,
+                "x": 24,
+                "y": 34
+              },
+              "shape": "rect",
+              "visible": true
+            }
+          ]
+        }
+      },
+      "runs": [
+        {
+          "animationId": "loop",
+          "frameIds": [
+            "frame_0",
+            "frame_0",
+            "frame_1",
+            "frame_1",
+            "frame_2",
+            "frame_2",
+            "frame_0",
+            "frame_0",
+            "frame_0",
+            "frame_0"
+          ],
+          "pixels": [
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ]
+          ],
+          "outsideAlpha": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "events": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 100,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_true_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 300,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_true_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 600,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 700,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 800,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_true_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 1000,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_true_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 1300,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 1400,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ],
+          "lastCycle": 2,
+          "lastComplete": false,
+          "lastRunning": true,
+          "stoppedEvents": [],
+          "restartEvents": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "animationId": "once",
+          "frameIds": [
+            "frame_0",
+            "frame_0",
+            "frame_1",
+            "frame_1",
+            "frame_2",
+            "frame_2",
+            "frame_0",
+            "frame_0",
+            "frame_0",
+            "frame_0"
+          ],
+          "pixels": [
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ]
+          ],
+          "outsideAlpha": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "events": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 100,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_false_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 300,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_false_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 600,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ],
+          "lastCycle": 0,
+          "lastComplete": true,
+          "lastRunning": false,
+          "stoppedEvents": [],
+          "restartEvents": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "engine": "phaser",
+      "scale": 3,
+      "browser": "webkit-critical",
+      "sourceCommit": "9e9969ff7a7e284523a8ab0cc5612edffeeb37c6",
+      "packageHash": "dcd4176ed6bfda0c5e580855cd626a2543ed1c1f428d66df8861d093b5cf12fb",
+      "assets": [
+        {
+          "id": "asset_be26e4c1-4946-4cba-a20c-7ea811e17c49",
+          "manifest": "assets/cb735efebe9c2ed8e2e5c8b761527f291972043ec440addcdaa904979f47c241/manifest.json",
+          "manifestHash": "d1ee0481e64504cdb18036012dcf41d3b8c592b96a2aa7621576c035b0cb1a88",
+          "name": "rich_engine"
+        },
+        {
+          "id": "asset_be26e4c1-4946-4cba-a20c-7ea811e17c49_copy",
+          "manifest": "assets/c613e655f7bb3cbce53b372be9f7b59d29f0c377da55ddfd60621c4e76144f16/manifest.json",
+          "manifestHash": "19e0dae7d66dc28f9d0bc9a2d03d64d5925f1eacef57f4614a7bc54d91050310",
+          "name": "rich_engine"
+        }
+      ],
+      "pages": [
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-000.png",
+          "sha256": "42e81202b63135a633b3239487ec7c0f098798a2bf567d88ea5a0713aa32bf71",
+          "width": 1050
+        },
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-001.png",
+          "sha256": "33784d885ba5875fc0f4254e29bc739078718e1919ef1e71f89e709d64560199",
+          "width": 1050
+        },
+        {
+          "height": 1050,
+          "path": "atlas/pages/page-002.png",
+          "sha256": "5e9fac71ad4b7263513a8e6075479ed0c4a6d403669b247b0393480cfbc6e129",
+          "width": 1050
+        }
+      ],
+      "profile": "packed",
+      "gameDataForFrame": {
+        "frame_0": {
+          "frameId": "frame_0",
+          "page": 0,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 14,
+            "y": 24,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 29,
+                "y": 39
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 27,
+                "width": 24,
+                "x": 26,
+                "y": 36
+              },
+              "shape": "rect",
+              "visible": true
+            }
+          ]
+        },
+        "frame_1": {
+          "frameId": "frame_1",
+          "page": 1,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 14,
+            "y": 24,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 29,
+                "y": 39
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 39,
+                "width": 36,
+                "x": 38,
+                "y": 48
+              },
+              "shape": "rect",
+              "visible": false
+            }
+          ]
+        },
+        "frame_2": {
+          "frameId": "frame_2",
+          "page": 2,
+          "sourceRect": {
+            "x": 0,
+            "y": 0,
+            "width": 1050,
+            "height": 1050
+          },
+          "destinationRect": {
+            "x": 14,
+            "y": 24,
+            "width": 1050,
+            "height": 1050
+          },
+          "origin": {
+            "x": 20,
+            "y": 30
+          },
+          "anchors": [
+            {
+              "id": "hand",
+              "name": "hand",
+              "position": {
+                "x": 29,
+                "y": 39
+              },
+              "role": "custom"
+            }
+          ],
+          "colliders": [
+            {
+              "id": "body",
+              "name": "body",
+              "purpose": "body",
+              "rect": {
+                "height": 27,
+                "width": 24,
+                "x": 26,
+                "y": 36
+              },
+              "shape": "rect",
+              "visible": true
+            }
+          ]
+        }
+      },
+      "runs": [
+        {
+          "animationId": "loop",
+          "frameIds": [
+            "frame_0",
+            "frame_0",
+            "frame_1",
+            "frame_1",
+            "frame_2",
+            "frame_2",
+            "frame_0",
+            "frame_0",
+            "frame_0",
+            "frame_0"
+          ],
+          "pixels": [
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ]
+          ],
+          "outsideAlpha": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "events": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 100,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_true_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 300,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_true_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 600,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 700,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 800,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_true_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 1000,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_true_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 1300,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 1400,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ],
+          "lastCycle": 2,
+          "lastComplete": false,
+          "lastRunning": true,
+          "stoppedEvents": [],
+          "restartEvents": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_true_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "animationId": "once",
+          "frameIds": [
+            "frame_0",
+            "frame_0",
+            "frame_1",
+            "frame_1",
+            "frame_2",
+            "frame_2",
+            "frame_0",
+            "frame_0",
+            "frame_0",
+            "frame_0"
+          ],
+          "pixels": [
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              255,
+              0,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              0,
+              0,
+              255,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ],
+            [
+              255,
+              0,
+              0,
+              255
+            ]
+          ],
+          "outsideAlpha": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "events": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "timeMs": 100,
+              "event": {
+                "frameId": "frame_1",
+                "id": "event_false_1",
+                "name": "event_1",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "timeMs": 300,
+              "event": {
+                "frameId": "frame_2",
+                "id": "event_false_2",
+                "name": "event_2",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "timeMs": 600,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ],
+          "lastCycle": 0,
+          "lastComplete": true,
+          "lastRunning": false,
+          "stoppedEvents": [],
+          "restartEvents": [
+            {
+              "timeMs": 0,
+              "event": {
+                "frameId": "frame_0",
+                "id": "event_false_0",
+                "name": "event_0",
+                "payload": {
+                  "inert": "globalThis.mustNotRun = true",
+                  "value": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

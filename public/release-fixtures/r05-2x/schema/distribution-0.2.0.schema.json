@@ -1,0 +1,436 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://chameleonjp-lab.github.io/chameleonassetstudio/schema/distribution-0.2.0.schema.json",
+  "title": "Additive Chameleon Distribution 0.2.0",
+  "description": "Structural validation. Runtime reader additionally enforces safe paths, unique identifiers, references, bounds, timeline semantics, hashes and budgets.",
+  "type": "object",
+  "required": [
+    "format",
+    "version",
+    "assetId",
+    "profile",
+    "scale",
+    "source",
+    "pages",
+    "frames",
+    "animations",
+    "integrity"
+  ],
+  "properties": {
+    "format": {
+      "const": "chameleon-distribution"
+    },
+    "version": {
+      "const": "0.2.0"
+    },
+    "assetId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "profile": {
+      "enum": ["fixed-grid", "packed"]
+    },
+    "scale": {
+      "enum": [1, 2, 3]
+    },
+    "source": {
+      "type": "object",
+      "required": ["assetJson", "canonical", "sha256"],
+      "properties": {
+        "assetJson": {
+          "const": "asset.json"
+        },
+        "canonical": {
+          "const": true
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "width", "height", "sha256"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2048
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2048
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      },
+      "minItems": 1,
+      "maxItems": 4
+    },
+    "frames": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "page",
+          "rect",
+          "sourceSize",
+          "contentRect",
+          "contentOffset",
+          "rotated",
+          "origin",
+          "anchors",
+          "colliders"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rect": {
+            "type": "object",
+            "required": ["x", "y", "width", "height"],
+            "properties": {
+              "x": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "y": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "sourceSize": {
+            "type": "object",
+            "required": ["width", "height"],
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "contentRect": {
+            "type": "object",
+            "required": ["x", "y", "width", "height"],
+            "properties": {
+              "x": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "y": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "contentOffset": {
+            "type": "object",
+            "required": ["x", "y"],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            }
+          },
+          "rotated": {
+            "const": false
+          },
+          "origin": {
+            "type": "object",
+            "required": ["x", "y"],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            }
+          },
+          "anchors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "name", "role", "position"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string"
+                },
+                "position": {
+                  "type": "object",
+                  "required": ["x", "y"],
+                  "properties": {
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "colliders": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "required": ["id", "name", "purpose", "visible", "shape", "rect"],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "purpose": {
+                      "type": "string"
+                    },
+                    "visible": {
+                      "type": "boolean"
+                    },
+                    "shape": {
+                      "const": "rect"
+                    },
+                    "rect": {
+                      "type": "object",
+                      "required": ["x", "y", "width", "height"],
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "width": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "height": {
+                          "type": "number",
+                          "minimum": 0
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": ["id", "name", "purpose", "visible", "shape", "circle"],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "purpose": {
+                      "type": "string"
+                    },
+                    "visible": {
+                      "type": "boolean"
+                    },
+                    "shape": {
+                      "const": "circle"
+                    },
+                    "circle": {
+                      "type": "object",
+                      "required": ["x", "y", "radius"],
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "radius": {
+                          "type": "number",
+                          "minimum": 0
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "minItems": 1,
+      "maxItems": 4096
+    },
+    "animations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "loop", "durationMs", "occurrences"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "loop": {
+            "type": "boolean"
+          },
+          "durationMs": {
+            "type": "number",
+            "minimum": 0
+          },
+          "occurrences": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "index",
+                "frameId",
+                "frameIndex",
+                "page",
+                "startMs",
+                "durationMs",
+                "events"
+              ],
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "frameId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "frameIndex": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "page": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "startMs": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "durationMs": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "events": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "name", "frameId"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "frameId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "payload": {
+                        "anyOf": [
+                          {
+                            "type": ["string", "number", "boolean", "null"]
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": ["string", "number", "boolean", "null"]
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": ["string", "number", "boolean", "null"]
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "maxItems": 4096
+          }
+        }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "required": ["algorithm", "manifestHash"],
+      "properties": {
+        "algorithm": {
+          "const": "SHA-256"
+        },
+        "manifestHash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    }
+  }
+}

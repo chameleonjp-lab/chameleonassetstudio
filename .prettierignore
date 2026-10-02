@@ -4,6 +4,8 @@ coverage
 playwright-report
 test-results
 package-lock.json
+# Keep the hosted previews byte-identical to the exported ZIP entries.
+public/release-fixtures/r05-*/
 docs
 # 日本語の説明文は、コード用の自動整形で更新を止めない。
 *.md

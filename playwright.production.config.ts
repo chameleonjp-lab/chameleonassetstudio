@@ -17,4 +17,7 @@ export default defineConfig({
     reuseExistingServer: false,
   },
   outputDir: 'test-results-quality',
+  reporter: process.env.CI
+    ? [['github'], ['html', { open: 'never', outputFolder: 'playwright-report-quality' }]]
+    : 'list',
 });

@@ -1,0 +1,624 @@
+{
+  "date": "2026-10-02",
+  "status": "D3 prototype candidate; adoption pending",
+  "generator": "e2e/rich-distribution-engines.spec.ts: seedRichProject + actual UI .casproj/ZIP downloads",
+  "sourceCommit": "2fc8e1d0a90e1d9b1593773f834fa8173ce73497",
+  "rights": "Self-generated RGB/yellow/transparent pixels; no third-party artwork",
+  "verifiedLocally": {
+    "browser": "Chromium 149.0.7827.55",
+    "cases": 3,
+    "failures": 0
+  },
+  "realDevice": false,
+  "fixtures": [
+    {
+      "scale": 1,
+      "files": [
+        {
+          "path": "public/release-fixtures/r05-1x.casproj",
+          "bytes": 80223,
+          "sha256": "b6083ddf301fab56430b51202a78f32a1063e47c5e770732f14bf24258e06936"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x.zip",
+          "bytes": 105098,
+          "sha256": "c8d8dfd7a6b8a7764591364c443f1e7c2a700b46144fd8f3e015736a52cbbc3c"
+        }
+      ],
+      "package": {
+        "assets": [
+          {
+            "id": "asset_4c8ef5f5-fe8b-439f-a912-94f74eb46757",
+            "manifest": "assets/851ce0385c536821240f40caaa80fe16a0f508e004129964726d0a6c8fb19460/manifest.json",
+            "manifestHash": "61538ff509d0fe48ee4f7bca8b626a9d2516c003ccce87081c25d87069c7b094",
+            "name": "rich_engine"
+          },
+          {
+            "id": "asset_4c8ef5f5-fe8b-439f-a912-94f74eb46757_copy",
+            "manifest": "assets/528bf825407be411c71e98fc9467125dfa5ff972c61169c710c237a415a68bbf/manifest.json",
+            "manifestHash": "917384c3ca79cda851d7f1d5e12f57cd5f731e2f9767c6fddd271a5d4ae639a7",
+            "name": "rich_engine"
+          }
+        ],
+        "format": "chameleon-package",
+        "target": "canvas2d",
+        "version": "0.2.0"
+      },
+      "pages": [
+        [
+          {
+            "height": 1050,
+            "path": "atlas/pages/page-000.png",
+            "sha256": "7d338f0486a3c7d037abf5417781e9ceeab9fa71337a0514ae90c6f975011446",
+            "width": 1050
+          },
+          {
+            "height": 1050,
+            "path": "atlas/pages/page-001.png",
+            "sha256": "b2f55c1c30aca43c54cf17798ac7307b3178b8ef7915f70f67365109e34fd629",
+            "width": 1050
+          },
+          {
+            "height": 1050,
+            "path": "atlas/pages/page-002.png",
+            "sha256": "c6510e122074263c003b4baa33a2f74407c85d41cc13bec5e9db5d4e3e58f7b1",
+            "width": 1050
+          }
+        ],
+        [
+          {
+            "height": 1050,
+            "path": "atlas/pages/page-000.png",
+            "sha256": "e8bcbecd30fc4e652d6ae4bdf76546becae934e982601e86de0854e5de48be2d",
+            "width": 1050
+          },
+          {
+            "height": 1050,
+            "path": "atlas/pages/page-001.png",
+            "sha256": "b2f55c1c30aca43c54cf17798ac7307b3178b8ef7915f70f67365109e34fd629",
+            "width": 1050
+          },
+          {
+            "height": 1050,
+            "path": "atlas/pages/page-002.png",
+            "sha256": "c6510e122074263c003b4baa33a2f74407c85d41cc13bec5e9db5d4e3e58f7b1",
+            "width": 1050
+          }
+        ]
+      ],
+      "runtimeFileHashes": {
+        "helpers/distributionRuntime.js": "c11761736c72951f0fae7eb723349bc14dad246fd0829183844d323551fa913e",
+        "helpers/distributionCanvas.js": "418f5c3e255de9981c2e5c064f756ff0a422baec7c670b6a6e0105ba8892b2f9",
+        "helpers/distributionPixi.js": "3b6190bce85fb73df6b003b60097f386943dd335d60d7e25f2fbbed39cc89712",
+        "helpers/distributionPhaser.js": "ec9abbcb19091abd5dfd213fa0760dcc95a8b5f2a16b7475af488b9246582d40",
+        "helpers/distributionManifestV2.js": "7d8ef4f6083f472f510ea5c732dd7834a1257ae15a0a709c5c138e726d4a9b3d",
+        "examples/canvas2d.html": "d857cbf43e742194b04609b601121b8c723f96f76c8d6c8132bf8b69d6e88157",
+        "examples/pixijs.html": "9a87102c451cb1851a3e22caf117cbd9441dc7a50ba3643ea4a924152cb6a44b",
+        "examples/phaser.html": "c6b28e07d702b8938d63a3ea00a3ca129d30d63aecf4b62ca981b0bda346facc"
+      },
+      "canvasSide": 1062,
+      "loopDurationMs": 700,
+      "previewFiles": [
+        {
+          "path": "public/release-fixtures/r05-1x/assets/851ce0385c536821240f40caaa80fe16a0f508e004129964726d0a6c8fb19460/asset.json",
+          "bytes": 3252,
+          "sha256": "7e10155877dc689a260d77c436d26fefc4d0e85911998593ea4d67f850c81655"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/assets/851ce0385c536821240f40caaa80fe16a0f508e004129964726d0a6c8fb19460/atlas/pages/page-000.png",
+          "bytes": 25804,
+          "sha256": "7d338f0486a3c7d037abf5417781e9ceeab9fa71337a0514ae90c6f975011446"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/assets/851ce0385c536821240f40caaa80fe16a0f508e004129964726d0a6c8fb19460/atlas/pages/page-001.png",
+          "bytes": 25789,
+          "sha256": "b2f55c1c30aca43c54cf17798ac7307b3178b8ef7915f70f67365109e34fd629"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/assets/851ce0385c536821240f40caaa80fe16a0f508e004129964726d0a6c8fb19460/atlas/pages/page-002.png",
+          "bytes": 25805,
+          "sha256": "c6510e122074263c003b4baa33a2f74407c85d41cc13bec5e9db5d4e3e58f7b1"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/assets/851ce0385c536821240f40caaa80fe16a0f508e004129964726d0a6c8fb19460/manifest.json",
+          "bytes": 4201,
+          "sha256": "3b620341933cdbb20ccea4a699d0ad1dce866d87e76a9ec4810a52135919886e"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/assets/528bf825407be411c71e98fc9467125dfa5ff972c61169c710c237a415a68bbf/asset.json",
+          "bytes": 3257,
+          "sha256": "93be10b208f2878556d09face2dc63f849d997b9200c8c496d2ed4c242c64ca9"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/assets/528bf825407be411c71e98fc9467125dfa5ff972c61169c710c237a415a68bbf/atlas/pages/page-000.png",
+          "bytes": 25805,
+          "sha256": "e8bcbecd30fc4e652d6ae4bdf76546becae934e982601e86de0854e5de48be2d"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/assets/528bf825407be411c71e98fc9467125dfa5ff972c61169c710c237a415a68bbf/atlas/pages/page-001.png",
+          "bytes": 25789,
+          "sha256": "b2f55c1c30aca43c54cf17798ac7307b3178b8ef7915f70f67365109e34fd629"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/assets/528bf825407be411c71e98fc9467125dfa5ff972c61169c710c237a415a68bbf/atlas/pages/page-002.png",
+          "bytes": 25805,
+          "sha256": "c6510e122074263c003b4baa33a2f74407c85d41cc13bec5e9db5d4e3e58f7b1"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/assets/528bf825407be411c71e98fc9467125dfa5ff972c61169c710c237a415a68bbf/manifest.json",
+          "bytes": 4206,
+          "sha256": "884d71978777562be89c16dede9f98c8ce5053cb4e0454980a0900010e2d88ad"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/package-manifest.json",
+          "bytes": 593,
+          "sha256": "dc1f25d62f896c9e88b4b3675992319e181f146a7c96fd50246b859319d20b67"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/schema/distribution-0.2.0.schema.json",
+          "bytes": 11850,
+          "sha256": "49749996574ccff8f91bfa223ab0b85966522b22dc52a5e5d9f22f48df7c16b6"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/schema/package-0.2.0.schema.json",
+          "bytes": 1025,
+          "sha256": "8d6c9a18c0498cd6eeffa05c4a7c9c5507ae48ad61b8b0d3e1cfafcd0597a864"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/helpers/distributionRuntime.js",
+          "bytes": 12102,
+          "sha256": "c11761736c72951f0fae7eb723349bc14dad246fd0829183844d323551fa913e"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/helpers/distributionCanvas.js",
+          "bytes": 620,
+          "sha256": "418f5c3e255de9981c2e5c064f756ff0a422baec7c670b6a6e0105ba8892b2f9"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/helpers/distributionPixi.js",
+          "bytes": 1704,
+          "sha256": "3b6190bce85fb73df6b003b60097f386943dd335d60d7e25f2fbbed39cc89712"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/helpers/distributionPhaser.js",
+          "bytes": 2344,
+          "sha256": "ec9abbcb19091abd5dfd213fa0760dcc95a8b5f2a16b7475af488b9246582d40"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/helpers/distributionManifestV2.js",
+          "bytes": 12549,
+          "sha256": "7d8ef4f6083f472f510ea5c732dd7834a1257ae15a0a709c5c138e726d4a9b3d"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/examples/canvas2d.html",
+          "bytes": 2900,
+          "sha256": "d857cbf43e742194b04609b601121b8c723f96f76c8d6c8132bf8b69d6e88157"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/examples/pixijs.html",
+          "bytes": 2835,
+          "sha256": "9a87102c451cb1851a3e22caf117cbd9441dc7a50ba3643ea4a924152cb6a44b"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/examples/phaser.html",
+          "bytes": 2829,
+          "sha256": "c6b28e07d702b8938d63a3ea00a3ca129d30d63aecf4b62ca981b0bda346facc"
+        },
+        {
+          "path": "public/release-fixtures/r05-1x/README.md",
+          "bytes": 598,
+          "sha256": "7c8dff991186670c940d5fcd9860388d936bf2349795c9b1f25c67b26abc1e1e"
+        }
+      ]
+    },
+    {
+      "scale": 2,
+      "files": [
+        {
+          "path": "public/release-fixtures/r05-2x.casproj",
+          "bytes": 31934,
+          "sha256": "972badaf50e817553a4edad5044f59a957198d1f05cace6e8aea10ecd3744ad6"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x.zip",
+          "bytes": 105085,
+          "sha256": "f6c06e78bf03fc85f0267ee5c299cc17ec3bb36dafba9c7af2493ef318729df6"
+        }
+      ],
+      "package": {
+        "assets": [
+          {
+            "id": "asset_a90e6969-a839-4f54-bbbb-57b433c97fa0",
+            "manifest": "assets/f7926077b2b9a898429099990bd0a3a872203abfe85f18da3c0fb548310b7091/manifest.json",
+            "manifestHash": "23bf3aea5b538c4691ed6804fbc9ce48e052e7d91bf93ea4b04b2f637d3fe9d4",
+            "name": "rich_engine"
+          },
+          {
+            "id": "asset_a90e6969-a839-4f54-bbbb-57b433c97fa0_copy",
+            "manifest": "assets/058277e75acd8fa4cd727986f6830c891dc9dd932a4f3283b0a5809a62fe3b30/manifest.json",
+            "manifestHash": "02626f29c63910cbf9fcf239b56c101b0cb4093b9159cdf0e07d24078e75881b",
+            "name": "rich_engine"
+          }
+        ],
+        "format": "chameleon-package",
+        "target": "canvas2d",
+        "version": "0.2.0"
+      },
+      "pages": [
+        [
+          {
+            "height": 1050,
+            "path": "atlas/pages/page-000.png",
+            "sha256": "7d338f0486a3c7d037abf5417781e9ceeab9fa71337a0514ae90c6f975011446",
+            "width": 1050
+          },
+          {
+            "height": 1050,
+            "path": "atlas/pages/page-001.png",
+            "sha256": "b2f55c1c30aca43c54cf17798ac7307b3178b8ef7915f70f67365109e34fd629",
+            "width": 1050
+          },
+          {
+            "height": 1050,
+            "path": "atlas/pages/page-002.png",
+            "sha256": "c6510e122074263c003b4baa33a2f74407c85d41cc13bec5e9db5d4e3e58f7b1",
+            "width": 1050
+          }
+        ],
+        [
+          {
+            "height": 1050,
+            "path": "atlas/pages/page-000.png",
+            "sha256": "e8bcbecd30fc4e652d6ae4bdf76546becae934e982601e86de0854e5de48be2d",
+            "width": 1050
+          },
+          {
+            "height": 1050,
+            "path": "atlas/pages/page-001.png",
+            "sha256": "b2f55c1c30aca43c54cf17798ac7307b3178b8ef7915f70f67365109e34fd629",
+            "width": 1050
+          },
+          {
+            "height": 1050,
+            "path": "atlas/pages/page-002.png",
+            "sha256": "c6510e122074263c003b4baa33a2f74407c85d41cc13bec5e9db5d4e3e58f7b1",
+            "width": 1050
+          }
+        ]
+      ],
+      "runtimeFileHashes": {
+        "helpers/distributionRuntime.js": "c11761736c72951f0fae7eb723349bc14dad246fd0829183844d323551fa913e",
+        "helpers/distributionCanvas.js": "418f5c3e255de9981c2e5c064f756ff0a422baec7c670b6a6e0105ba8892b2f9",
+        "helpers/distributionPixi.js": "3b6190bce85fb73df6b003b60097f386943dd335d60d7e25f2fbbed39cc89712",
+        "helpers/distributionPhaser.js": "ec9abbcb19091abd5dfd213fa0760dcc95a8b5f2a16b7475af488b9246582d40",
+        "helpers/distributionManifestV2.js": "7d8ef4f6083f472f510ea5c732dd7834a1257ae15a0a709c5c138e726d4a9b3d",
+        "examples/canvas2d.html": "d857cbf43e742194b04609b601121b8c723f96f76c8d6c8132bf8b69d6e88157",
+        "examples/pixijs.html": "9a87102c451cb1851a3e22caf117cbd9441dc7a50ba3643ea4a924152cb6a44b",
+        "examples/phaser.html": "c6b28e07d702b8938d63a3ea00a3ca129d30d63aecf4b62ca981b0bda346facc"
+      },
+      "canvasSide": 537,
+      "loopDurationMs": 700,
+      "previewFiles": [
+        {
+          "path": "public/release-fixtures/r05-2x/assets/f7926077b2b9a898429099990bd0a3a872203abfe85f18da3c0fb548310b7091/asset.json",
+          "bytes": 3244,
+          "sha256": "d4a3991cd87b570fe5534bba05eb2b2984dbb2a053b9048fb28f3ba10a0b6b36"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/assets/f7926077b2b9a898429099990bd0a3a872203abfe85f18da3c0fb548310b7091/atlas/pages/page-000.png",
+          "bytes": 25804,
+          "sha256": "7d338f0486a3c7d037abf5417781e9ceeab9fa71337a0514ae90c6f975011446"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/assets/f7926077b2b9a898429099990bd0a3a872203abfe85f18da3c0fb548310b7091/atlas/pages/page-001.png",
+          "bytes": 25789,
+          "sha256": "b2f55c1c30aca43c54cf17798ac7307b3178b8ef7915f70f67365109e34fd629"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/assets/f7926077b2b9a898429099990bd0a3a872203abfe85f18da3c0fb548310b7091/atlas/pages/page-002.png",
+          "bytes": 25805,
+          "sha256": "c6510e122074263c003b4baa33a2f74407c85d41cc13bec5e9db5d4e3e58f7b1"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/assets/f7926077b2b9a898429099990bd0a3a872203abfe85f18da3c0fb548310b7091/manifest.json",
+          "bytes": 4218,
+          "sha256": "4765b08ee9de5e54092448e022ad4252e1331f7285b03ed4232c8d4558f5a779"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/assets/058277e75acd8fa4cd727986f6830c891dc9dd932a4f3283b0a5809a62fe3b30/asset.json",
+          "bytes": 3249,
+          "sha256": "34e94eda1f18d9a9a13da6f6371254a9261ed865b4f4ace5aee6b2cc23e30f96"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/assets/058277e75acd8fa4cd727986f6830c891dc9dd932a4f3283b0a5809a62fe3b30/atlas/pages/page-000.png",
+          "bytes": 25805,
+          "sha256": "e8bcbecd30fc4e652d6ae4bdf76546becae934e982601e86de0854e5de48be2d"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/assets/058277e75acd8fa4cd727986f6830c891dc9dd932a4f3283b0a5809a62fe3b30/atlas/pages/page-001.png",
+          "bytes": 25789,
+          "sha256": "b2f55c1c30aca43c54cf17798ac7307b3178b8ef7915f70f67365109e34fd629"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/assets/058277e75acd8fa4cd727986f6830c891dc9dd932a4f3283b0a5809a62fe3b30/atlas/pages/page-002.png",
+          "bytes": 25805,
+          "sha256": "c6510e122074263c003b4baa33a2f74407c85d41cc13bec5e9db5d4e3e58f7b1"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/assets/058277e75acd8fa4cd727986f6830c891dc9dd932a4f3283b0a5809a62fe3b30/manifest.json",
+          "bytes": 4223,
+          "sha256": "845eb43f90142b10da9410b3cf9976a91aa17344ea57101a5bc886c738a29c03"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/package-manifest.json",
+          "bytes": 593,
+          "sha256": "7d88ed0d8fd3ee69c81610acfdf9c8e6ae067a75d6dc49385a3a76a012b68ab8"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/schema/distribution-0.2.0.schema.json",
+          "bytes": 11850,
+          "sha256": "49749996574ccff8f91bfa223ab0b85966522b22dc52a5e5d9f22f48df7c16b6"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/schema/package-0.2.0.schema.json",
+          "bytes": 1025,
+          "sha256": "8d6c9a18c0498cd6eeffa05c4a7c9c5507ae48ad61b8b0d3e1cfafcd0597a864"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/helpers/distributionRuntime.js",
+          "bytes": 12102,
+          "sha256": "c11761736c72951f0fae7eb723349bc14dad246fd0829183844d323551fa913e"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/helpers/distributionCanvas.js",
+          "bytes": 620,
+          "sha256": "418f5c3e255de9981c2e5c064f756ff0a422baec7c670b6a6e0105ba8892b2f9"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/helpers/distributionPixi.js",
+          "bytes": 1704,
+          "sha256": "3b6190bce85fb73df6b003b60097f386943dd335d60d7e25f2fbbed39cc89712"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/helpers/distributionPhaser.js",
+          "bytes": 2344,
+          "sha256": "ec9abbcb19091abd5dfd213fa0760dcc95a8b5f2a16b7475af488b9246582d40"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/helpers/distributionManifestV2.js",
+          "bytes": 12549,
+          "sha256": "7d8ef4f6083f472f510ea5c732dd7834a1257ae15a0a709c5c138e726d4a9b3d"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/examples/canvas2d.html",
+          "bytes": 2900,
+          "sha256": "d857cbf43e742194b04609b601121b8c723f96f76c8d6c8132bf8b69d6e88157"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/examples/pixijs.html",
+          "bytes": 2835,
+          "sha256": "9a87102c451cb1851a3e22caf117cbd9441dc7a50ba3643ea4a924152cb6a44b"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/examples/phaser.html",
+          "bytes": 2829,
+          "sha256": "c6b28e07d702b8938d63a3ea00a3ca129d30d63aecf4b62ca981b0bda346facc"
+        },
+        {
+          "path": "public/release-fixtures/r05-2x/README.md",
+          "bytes": 598,
+          "sha256": "7c8dff991186670c940d5fcd9860388d936bf2349795c9b1f25c67b26abc1e1e"
+        }
+      ]
+    },
+    {
+      "scale": 3,
+      "files": [
+        {
+          "path": "public/release-fixtures/r05-3x.casproj",
+          "bytes": 24559,
+          "sha256": "cc568258b565d77b07faf69aae11953d6d1f7f709e8e70dba0ebd8b04c487631"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x.zip",
+          "bytes": 105090,
+          "sha256": "a7c8dc8d1159b672f9066bcd15a9472b315b731128ab3cc55bb4c2469d012f51"
+        }
+      ],
+      "package": {
+        "assets": [
+          {
+            "id": "asset_f8b3f81d-39e8-4ecc-9372-e192a7ef0cf7",
+            "manifest": "assets/03b4123639f6fc2df8ff0edd2ec0d2da52159ca822652e50a1b13fee3248e340/manifest.json",
+            "manifestHash": "cfa8c186c7b1474f3047d914bb42c7c71662d25b853e99e5cca20e34cbd86719",
+            "name": "rich_engine"
+          },
+          {
+            "id": "asset_f8b3f81d-39e8-4ecc-9372-e192a7ef0cf7_copy",
+            "manifest": "assets/f8ec2f1efdaaae74e1f708a4af0a3af5cffe527d9f1ebe45bc58a7c488b1d588/manifest.json",
+            "manifestHash": "9e851650ad04f876324ece12b47e001567d3e3a8ecb9c370de7e084cc5a2b350",
+            "name": "rich_engine"
+          }
+        ],
+        "format": "chameleon-package",
+        "target": "canvas2d",
+        "version": "0.2.0"
+      },
+      "pages": [
+        [
+          {
+            "height": 1050,
+            "path": "atlas/pages/page-000.png",
+            "sha256": "7d338f0486a3c7d037abf5417781e9ceeab9fa71337a0514ae90c6f975011446",
+            "width": 1050
+          },
+          {
+            "height": 1050,
+            "path": "atlas/pages/page-001.png",
+            "sha256": "b2f55c1c30aca43c54cf17798ac7307b3178b8ef7915f70f67365109e34fd629",
+            "width": 1050
+          },
+          {
+            "height": 1050,
+            "path": "atlas/pages/page-002.png",
+            "sha256": "c6510e122074263c003b4baa33a2f74407c85d41cc13bec5e9db5d4e3e58f7b1",
+            "width": 1050
+          }
+        ],
+        [
+          {
+            "height": 1050,
+            "path": "atlas/pages/page-000.png",
+            "sha256": "e8bcbecd30fc4e652d6ae4bdf76546becae934e982601e86de0854e5de48be2d",
+            "width": 1050
+          },
+          {
+            "height": 1050,
+            "path": "atlas/pages/page-001.png",
+            "sha256": "b2f55c1c30aca43c54cf17798ac7307b3178b8ef7915f70f67365109e34fd629",
+            "width": 1050
+          },
+          {
+            "height": 1050,
+            "path": "atlas/pages/page-002.png",
+            "sha256": "c6510e122074263c003b4baa33a2f74407c85d41cc13bec5e9db5d4e3e58f7b1",
+            "width": 1050
+          }
+        ]
+      ],
+      "runtimeFileHashes": {
+        "helpers/distributionRuntime.js": "c11761736c72951f0fae7eb723349bc14dad246fd0829183844d323551fa913e",
+        "helpers/distributionCanvas.js": "418f5c3e255de9981c2e5c064f756ff0a422baec7c670b6a6e0105ba8892b2f9",
+        "helpers/distributionPixi.js": "3b6190bce85fb73df6b003b60097f386943dd335d60d7e25f2fbbed39cc89712",
+        "helpers/distributionPhaser.js": "ec9abbcb19091abd5dfd213fa0760dcc95a8b5f2a16b7475af488b9246582d40",
+        "helpers/distributionManifestV2.js": "7d8ef4f6083f472f510ea5c732dd7834a1257ae15a0a709c5c138e726d4a9b3d",
+        "examples/canvas2d.html": "d857cbf43e742194b04609b601121b8c723f96f76c8d6c8132bf8b69d6e88157",
+        "examples/pixijs.html": "9a87102c451cb1851a3e22caf117cbd9441dc7a50ba3643ea4a924152cb6a44b",
+        "examples/phaser.html": "c6b28e07d702b8938d63a3ea00a3ca129d30d63aecf4b62ca981b0bda346facc"
+      },
+      "canvasSide": 362,
+      "loopDurationMs": 700,
+      "previewFiles": [
+        {
+          "path": "public/release-fixtures/r05-3x/assets/03b4123639f6fc2df8ff0edd2ec0d2da52159ca822652e50a1b13fee3248e340/asset.json",
+          "bytes": 3244,
+          "sha256": "4c6ef20d5f9b2266f3c5a1d93c29bc974bd3d34039d3d76452ccc379d96355ea"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/assets/03b4123639f6fc2df8ff0edd2ec0d2da52159ca822652e50a1b13fee3248e340/atlas/pages/page-000.png",
+          "bytes": 25804,
+          "sha256": "7d338f0486a3c7d037abf5417781e9ceeab9fa71337a0514ae90c6f975011446"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/assets/03b4123639f6fc2df8ff0edd2ec0d2da52159ca822652e50a1b13fee3248e340/atlas/pages/page-001.png",
+          "bytes": 25789,
+          "sha256": "b2f55c1c30aca43c54cf17798ac7307b3178b8ef7915f70f67365109e34fd629"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/assets/03b4123639f6fc2df8ff0edd2ec0d2da52159ca822652e50a1b13fee3248e340/atlas/pages/page-002.png",
+          "bytes": 25805,
+          "sha256": "c6510e122074263c003b4baa33a2f74407c85d41cc13bec5e9db5d4e3e58f7b1"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/assets/03b4123639f6fc2df8ff0edd2ec0d2da52159ca822652e50a1b13fee3248e340/manifest.json",
+          "bytes": 4221,
+          "sha256": "a5e0f9d14e3b4fa9a88da310c7a6db9225abb74253f4ebcc12853e8b423486cf"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/assets/f8ec2f1efdaaae74e1f708a4af0a3af5cffe527d9f1ebe45bc58a7c488b1d588/asset.json",
+          "bytes": 3249,
+          "sha256": "859eb0dcddeab53a7134c40ba771f5d0d5f1adce6f97b15b59ff87f65f956662"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/assets/f8ec2f1efdaaae74e1f708a4af0a3af5cffe527d9f1ebe45bc58a7c488b1d588/atlas/pages/page-000.png",
+          "bytes": 25805,
+          "sha256": "e8bcbecd30fc4e652d6ae4bdf76546becae934e982601e86de0854e5de48be2d"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/assets/f8ec2f1efdaaae74e1f708a4af0a3af5cffe527d9f1ebe45bc58a7c488b1d588/atlas/pages/page-001.png",
+          "bytes": 25789,
+          "sha256": "b2f55c1c30aca43c54cf17798ac7307b3178b8ef7915f70f67365109e34fd629"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/assets/f8ec2f1efdaaae74e1f708a4af0a3af5cffe527d9f1ebe45bc58a7c488b1d588/atlas/pages/page-002.png",
+          "bytes": 25805,
+          "sha256": "c6510e122074263c003b4baa33a2f74407c85d41cc13bec5e9db5d4e3e58f7b1"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/assets/f8ec2f1efdaaae74e1f708a4af0a3af5cffe527d9f1ebe45bc58a7c488b1d588/manifest.json",
+          "bytes": 4226,
+          "sha256": "721a0037e920cfdea741f0270caa0cd90b29dcfde0ea02631b7e9077622c1747"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/package-manifest.json",
+          "bytes": 593,
+          "sha256": "b2f2045d91f795e8340f77c40320e6fcb75a09449f1cd83831878ce676c2ca23"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/schema/distribution-0.2.0.schema.json",
+          "bytes": 11850,
+          "sha256": "49749996574ccff8f91bfa223ab0b85966522b22dc52a5e5d9f22f48df7c16b6"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/schema/package-0.2.0.schema.json",
+          "bytes": 1025,
+          "sha256": "8d6c9a18c0498cd6eeffa05c4a7c9c5507ae48ad61b8b0d3e1cfafcd0597a864"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/helpers/distributionRuntime.js",
+          "bytes": 12102,
+          "sha256": "c11761736c72951f0fae7eb723349bc14dad246fd0829183844d323551fa913e"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/helpers/distributionCanvas.js",
+          "bytes": 620,
+          "sha256": "418f5c3e255de9981c2e5c064f756ff0a422baec7c670b6a6e0105ba8892b2f9"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/helpers/distributionPixi.js",
+          "bytes": 1704,
+          "sha256": "3b6190bce85fb73df6b003b60097f386943dd335d60d7e25f2fbbed39cc89712"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/helpers/distributionPhaser.js",
+          "bytes": 2344,
+          "sha256": "ec9abbcb19091abd5dfd213fa0760dcc95a8b5f2a16b7475af488b9246582d40"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/helpers/distributionManifestV2.js",
+          "bytes": 12549,
+          "sha256": "7d8ef4f6083f472f510ea5c732dd7834a1257ae15a0a709c5c138e726d4a9b3d"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/examples/canvas2d.html",
+          "bytes": 2900,
+          "sha256": "d857cbf43e742194b04609b601121b8c723f96f76c8d6c8132bf8b69d6e88157"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/examples/pixijs.html",
+          "bytes": 2835,
+          "sha256": "9a87102c451cb1851a3e22caf117cbd9441dc7a50ba3643ea4a924152cb6a44b"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/examples/phaser.html",
+          "bytes": 2829,
+          "sha256": "c6b28e07d702b8938d63a3ea00a3ca129d30d63aecf4b62ca981b0bda346facc"
+        },
+        {
+          "path": "public/release-fixtures/r05-3x/README.md",
+          "bytes": 598,
+          "sha256": "7c8dff991186670c940d5fcd9860388d936bf2349795c9b1f25c67b26abc1e1e"
+        }
+      ]
+    }
+  ],
+  "sourceTree": "c71f27b33ba532344ba62e68a48ce3c2cfc1243f",
+  "sourceScope": "Actual UI downloads after the HTTPS/example-label fix, before storing these generated artifacts; later fixture and guide changes do not alter the exporter runtime. Test sourceCommit records this full sourceCommit.",
+  "hostedPreviews": {
+    "root": "public/release-fixtures/",
+    "urlAfterMergeAndPagesBuild": "https://chameleonjp-lab.github.io/chameleonassetstudio/release-fixtures/index.html",
+    "transport": "HTTPS; PC localhost also supported",
+    "published": false,
+    "entriesEqualToZip": true
+  }
+}

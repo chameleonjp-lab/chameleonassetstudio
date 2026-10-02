@@ -196,3 +196,18 @@ Group 20は `G20-C1 A（RPG Maker MZ 1.10.0） + G20-C2 A + G20-C3 A` を採用�
 PCが使用できないため、MZ 1.10.0のruntime取り込み、error 0、artifact、実行画面は未確認である。公式仕様とversion告知は対象version・fixture設計の根拠であり、runtime `verified`の代わりにはならない。
 
 G20-C3 Aにより、既存PNG / sheet / sidecarと手動import notesを正本とし、plugin、addon、native project、database JSON自動生成、製品helper APIは追加しない。手動取り込みで再現できない意味が実証された場合だけ、別ADRで再検討する。
+
+## 12. R05新版の実製品出力確認（2026-10-02）
+
+D3は採用判断待ち。PR #289のdistribution/package 0.2.0試作候補を、製品画面からダウンロードしたZIPと同梱ESMで確認した。
+旧形式と上記の過去のfixture確認は維持する。
+
+| 利用先 | 固定版 | 候補版で確認した範囲 | 未確認の範囲 |
+| --- | --- | --- | --- |
+| 通常Web / Canvas 2D | CIのChromium / WebKit | 実ZIP、透明余白除去、3ページ、1/2/3倍、2同名素材、完全一致の不透明画素、原点・アンカー・判定、可変時間、反復Frame、順序付きevent、loop/stop/restart | 物理Safari、正式採用・公開 |
+| PixiJS | 8.12.0 | 上記と実PixiJSの描画・texture利用 | 他version、標準atlas完全互換、物理Safari |
+| Phaser | 4.2.0 | 上記と実Phaserの描画・frame利用 | 他version、標準atlas完全互換、物理Safari |
+
+[CI #952](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/36957625478)はhead `9c677723`の全検査で成功。
+fixture生成と期待値は`e2e/rich-distribution-engines.spec.ts`、検証境界は[D3統合記録](../D3_CONSUMER_INTEGRATION_NOTES.md)へ固定する。
+これはLinux自動確認の記録であり、D3採用やR05/R06完了の判定ではない。追加修正の最終CIと一括実機確認を別に記録する。

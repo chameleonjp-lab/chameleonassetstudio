@@ -6,7 +6,7 @@ for (const profile of ['fixed-grid', 'packed']) {
   for (const scale of [1, 2, 3]) {
     test(`legacy 0.1 UI ZIP ${profile} ${scale}x helper preserves exact opaque pixels`, async ({
       page,
-    }) => {
+    }, testInfo) => {
       await page.goto('/');
       await page.evaluate(async () => {
         const modelPath = '/src/core/model/factories.ts';
@@ -58,7 +58,13 @@ for (const profile of ['fixed-grid', 'packed']) {
       await panel.getByLabel('配布画像の倍率', { exact: true }).selectOption(String(scale));
       const downloaded = page.waitForEvent('download');
       await panel.getByRole('button', { name: '配布用ZIPをダウンロード', exact: true }).click();
-      const entries = unzipSync(await readFile((await (await downloaded).path())!));
+      const outputPath = testInfo.outputPath(`legacy-${profile}-${scale}x.zip`);
+      await (await downloaded).saveAs(outputPath);
+      await testInfo.attach(`legacy-${profile}-${scale}x.zip`, {
+        path: outputPath,
+        contentType: 'application/zip',
+      });
+      const entries = unzipSync(await readFile(outputPath));
       await page.route('**/legacy-pixels/**', async (route) => {
         const path = new URL(route.request().url()).pathname.slice('/legacy-pixels/'.length);
         if (path === 'index.html')

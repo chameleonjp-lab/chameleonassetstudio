@@ -1883,6 +1883,32 @@
   padding: 0.3rem 0.6rem;
 }
 
+.editor-export .editor-fieldset,
+.editor-export .editor-field,
+.editor-export select,
+.editor-export input {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.rich-distribution-asset {
+  flex-direction: row;
+  align-items: center;
+  min-height: 44px;
+  gap: 0.5rem;
+}
+
+.rich-distribution-asset input[type='checkbox'] {
+  flex: none;
+  width: 22px;
+  height: 22px;
+}
+
+.rich-distribution-asset span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .export-complete {
   margin: 0;
   padding: 0.6rem;
@@ -2289,6 +2315,13 @@
   .editor-mobile-nav button[aria-pressed='true'] {
     font-weight: 700;
     text-decoration: underline;
+  }
+
+  .editor-export select,
+  .editor-export input:not([type='checkbox']) {
+    min-width: 0;
+    min-height: 44px;
+    font-size: max(16px, 1rem);
   }
 
   .variant-image-comparison,

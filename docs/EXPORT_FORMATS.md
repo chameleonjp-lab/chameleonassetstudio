@@ -240,3 +240,29 @@ distribution用UI、375×667のproduct-path E2E、engine読込検証、物理iPh
 - fixtureはdistribution manifestの複数page、trim / offset、scale、origin、anchor、rect / circle collider、固定fps animationをfixture-local adapterで確認する。
 - 既存の生成sample、既存helper、標準atlas完全互換、project自動生成はこの検証に含めない。
 - 物理iPhone SafariはGroup 17の合格条件ではなく、後続Gateで扱う。
+
+## 12. R05 distribution/package 0.2.0試作候補
+
+計画書§8 D3の採用判断待ち。PR #289で、旧ZIP・Atlas/distribution 0.1.0の安全拒否を維持した別経路を検証する。
+正本のasset.json、旧helper API、.casprojコンテナの契約は維持する。
+出力設定schema 0.1.0だけに後方互換の任意`distribution`項目を加え、既存の設定保存・バックアップ経路へ接続する。
+
+| 項目 | 候補版の契約 |
+| --- | --- |
+| 外側 | `package-manifest.json`、`chameleon-package` / `0.2.0`、対象と素材一覧・hash |
+| 素材 | SHA-256のAsset ID別フォルダー。同名素材も分離。正本asset.json、manifest、PNGページ |
+| 画像の配置 | 固定格子／透明余白除去、最大4ページ、1/2/3倍、画像間の余白 |
+| コマ座標 | `rect`はページ内、`contentRect`は配置矩形内。切抜き前の位置は`contentOffset`、元サイズは`sourceSize` |
+| ゲーム情報 | 倍率変換後の原点・アンカー・解決済み判定。`visible:false`の判定も保持 |
+| 時間とイベント | 可変duration、反復Frame IDの各出現、半開区間、反復・ループごとの順序付きevent/payload |
+| 同梱物 | Canvas 2D / PixiJS 8.12.0 / Phaser 4.2.0のESM補助処理・見本・版別schema |
+| 資源の所有 | 読取側は画像を所有。adapterは自分のtextureを解放してから、読取側の画像を解放 |
+
+画面で素材・利用先・配置・倍率・余白を選び、「出力設定を保存」で明示保存する。
+「新版配布用ZIPをダウンロード」でまとめて出し、取消・選択変更・画面移動後は古い処理からダウンロードしない。
+展開したZIPをHTTPS（PC上の確認はlocalhostも可）で配信し、`examples/canvas2d.html`、`examples/pixijs.html`、`examples/phaser.html`を開く。画像のSHA-256照合にWebCryptoを使うため、iPhoneからLANの平文HTTPでは動作しない。`file://`ではfetchできない。
+PixiJS / Phaserの見本は固定版をCDNから取得する。自分のゲームでは同梱ESMへ実engineと位置を渡す。
+詳しいAPI・上限・検査結果は[D3統合記録](D3_CONSUMER_INTEGRATION_NOTES.md)と[受取API](D3_BROWSER_RUNTIME.md)を参照。
+
+CI #952では実製品ZIPをCanvas・PixiJS・Phaserへ渡し、Chromium・WebKitで各3倍率の画素・ゲーム情報・表示時間・イベント一致を確認した。
+この範囲を他engine版、標準atlas完全互換、物理iPhone Safariや正式公開の保証へ広げない。

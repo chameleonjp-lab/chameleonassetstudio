@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://chameleonjp-lab.github.io/chameleonassetstudio/schema/package-0.2.0.schema.json",
+  "type": "object",
+  "required": ["format", "version", "target", "assets"],
+  "properties": {
+    "format": {
+      "const": "chameleon-package"
+    },
+    "version": {
+      "const": "0.2.0"
+    },
+    "target": {
+      "enum": ["canvas2d", "pixijs", "phaser"]
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "manifest", "manifestHash"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "manifest": {
+            "type": "string",
+            "minLength": 1
+          },
+          "manifestHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      },
+      "minItems": 1,
+      "maxItems": 32
+    }
+  }
+}
