@@ -228,4 +228,29 @@ test.describe('小画面の描画領域', () => {
     await expectSampleInView(canvas);
     expect((await storedSample(page)).bytes).toEqual(original.bytes);
   });
+
+  test('R06: 文字を拡大した320pxタイムラインでもコマの描画操作へ到達できる', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await createSample(page);
+    await page.addStyleTag({ content: 'html { font-size: 24px; }' });
+    const nav = page.getByRole('navigation', { name: '画面切り替え' });
+    await nav.getByRole('button', { name: 'タイムライン', exact: true }).click();
+    await page.getByRole('button', { name: 'フレーム追加', exact: true }).click();
+    const draw = page.getByRole('button', { name: 'フレーム「frame_1」を描く' });
+    await draw.scrollIntoViewIfNeeded();
+    await expect(async () => {
+      expect(
+        await draw.evaluate((element) => {
+          const box = element.getBoundingClientRect();
+          const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+          return hit === element || element.contains(hit);
+        }),
+      ).toBe(true);
+    }).toPass();
+    await draw.click();
+    await nav.getByRole('button', { name: '編集', exact: true }).click();
+    await expect(page.getByRole('status', { name: 'フレームプレビューの編集制限' })).toContainText(
+      'このコマだけを描いています',
+    );
+  });
 });

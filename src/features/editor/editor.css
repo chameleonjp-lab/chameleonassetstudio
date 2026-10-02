@@ -1521,6 +1521,7 @@
 
 .timeline-panel {
   display: flex;
+  flex: none;
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 1.25rem;
@@ -1600,6 +1601,7 @@
   margin: 0;
   padding: 0;
   display: flex;
+  flex-shrink: 0;
   gap: 0.5rem;
   overflow-x: auto;
   max-width: 100%;
