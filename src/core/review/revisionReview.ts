@@ -216,7 +216,11 @@ function assetChanges(
         visit(
           Object.prototype.hasOwnProperty.call(left, key) ? left[key] : undefined,
           Object.prototype.hasOwnProperty.call(right, key) ? right[key] : undefined,
-          Array.isArray(before) ? `${path}[${key}]` : `${path}.${key}`,
+          Array.isArray(before)
+            ? `${path}[${key}]`
+            : /^[A-Za-z_][A-Za-z0-9_]*$/.test(key)
+              ? `${path}.${key}`
+              : `${path}[${JSON.stringify(key)}]`,
           field,
         );
         if (truncated) return;

@@ -455,18 +455,25 @@ export function AssetTypePanel({ asset, onCommit }: AssetTypePanelProps) {
 }
 
 interface BackgroundLayerFieldsProps {
+  disabled?: boolean;
   asset: Asset;
   layer: Layer;
   onCommit: (label: string, next: Asset) => void;
 }
 
 /** background アセットの選択中レイヤー用設定 UI（Phase 14）。 */
-export function BackgroundLayerFields({ asset, layer, onCommit }: BackgroundLayerFieldsProps) {
+export function BackgroundLayerFields({
+  asset,
+  layer,
+  onCommit,
+  disabled = false,
+}: BackgroundLayerFieldsProps) {
   const background = layer.background;
   if (!background) {
     return (
       <button
         type="button"
+        disabled={disabled}
         onClick={() =>
           onCommit('背景設定を追加', setLayerBackground(asset, layer.id, DEFAULT_BACKGROUND))
         }
@@ -476,7 +483,7 @@ export function BackgroundLayerFields({ asset, layer, onCommit }: BackgroundLaye
     );
   }
   return (
-    <fieldset className="editor-fieldset">
+    <fieldset className="editor-fieldset" disabled={disabled}>
       <legend>背景レイヤー設定</legend>
       <label className="editor-field">
         役割

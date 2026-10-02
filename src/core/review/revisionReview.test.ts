@@ -253,6 +253,16 @@ describe('revision review preserves meaning and finds real changes', () => {
     expect(result.changes).toHaveLength(200);
     expect(result.changesTruncated).toBe(true);
   });
+  it('keeps literal dotted keys distinct from nested property paths', async () => {
+    const a = bundle(),
+      b = structuredClone(a);
+    a.assets[0].gameAttributes = { 'a.b': 1, a: { b: 1 } };
+    b.assets[0].gameAttributes = { 'a.b': 2, a: { b: 2 } };
+    expect((await diff(a, b)).assets[0].changes.map((change) => change.path)).toEqual([
+      'gameAttributes.a.b',
+      'gameAttributes["a.b"]',
+    ]);
+  });
   it('distinguishes absent fields, null, zero and false', () => {
     expect(new Set([undefined, null, 0, false].map(revisionJson)).size).toBe(4);
   });

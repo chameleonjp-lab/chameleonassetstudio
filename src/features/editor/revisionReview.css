@@ -78,3 +78,9 @@
 .revision-review::backdrop {
   background: #0008;
 }
+
+.revision-review > button:first-child {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}

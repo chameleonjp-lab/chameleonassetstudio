@@ -4466,6 +4466,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 </label>
                 {selectedAsset?.assetType === 'background' && (
                   <BackgroundLayerFields
+                    disabled={persistentMutationBlocked}
                     asset={selectedAsset}
                     layer={selectedLayer}
                     onCommit={commitPanelChange}
@@ -5420,7 +5421,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
                 onSettingsSaved={() => setReviewSettingsVersion((value) => value + 1)}
               />
             ) : (
-              <p>すべての素材を削除した状態も比較できます。配布するには素材を作成してください。</p>
+              <p>アセットを選ぶと書き出せます。</p>
             )}
           </>
         ) : (

@@ -6,6 +6,7 @@ async function setup(page: Page) {
   await page.goto('/');
   await page.getByLabel('プロジェクト名').fill('Revision workflow');
   await page.getByRole('button', { name: '作成', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Revision workflow', exact: true })).toBeVisible();
   const nav = page.getByRole('navigation', { name: '画面切り替え' });
   if (await nav.isVisible()) await nav.getByRole('button', { name: 'プロパティ' }).click();
   await page.getByLabel('見本の絵を入れて始める').check();
@@ -193,15 +194,45 @@ test('desktopで設定保存と全素材削除後も基準を保ち、適切な�
     .click();
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'アセットを削除', exact: true }).click();
-  await expect(
-    page.getByText(
-      'すべての素材を削除した状態も比較できます。配布するには素材を作成してください。',
-    ),
-  ).toBeVisible();
+  await expect(page.getByText('アセットを選ぶと書き出せます。')).toBeVisible();
   await page.getByRole('button', { name: '修正と受渡しを開く' }).click();
   await panel.getByRole('button', { name: '現在の制作内容と比較' }).click();
   await expect(panel.getByLabel('制作差分の件数')).toContainText('削除 1件');
   await page.keyboard.press('Escape');
   await expect(panel).not.toBeVisible();
   await expect(page.getByRole('button', { name: '修正と受渡しを開く' })).toBeFocused();
+});
+
+test('保存中の背景設定を操作可能にせず、次の役割変更を確実に保存する', async ({ page }) => {
+  const panel = await setup(page);
+  await panel.getByRole('button', { name: '編集・書き出しへ戻る' }).click();
+  await page.getByLabel('アセット種別').selectOption('background');
+  await expect(page.getByRole('button', { name: '元に戻す', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'main', exact: true }).click();
+  await page.evaluate(async () => {
+    const path = '/src/core/storage/autosave.ts';
+    const { AutosaveQueue } = await import(path);
+    const original = AutosaveQueue.flushAll;
+    (window as typeof window & { releaseBackground?: () => void }).releaseBackground = undefined;
+    AutosaveQueue.flushAll = () =>
+      new Promise<void>((resolve, reject) => {
+        (window as typeof window & { releaseBackground?: () => void }).releaseBackground = () => {
+          AutosaveQueue.flushAll = original;
+          original.call(AutosaveQueue).then(resolve, reject);
+        };
+      });
+  });
+  await page.getByRole('button', { name: '背景設定を追加' }).click();
+  await expect(page.getByLabel('役割', { exact: true })).toBeDisabled();
+  await page.evaluate(() =>
+    (window as typeof window & { releaseBackground?: () => void }).releaseBackground?.(),
+  );
+  await expect(page.getByLabel('役割', { exact: true })).toBeEnabled();
+  await page.getByLabel('役割', { exact: true }).selectOption('far');
+  await expect(page.getByLabel('役割', { exact: true })).toHaveValue('far');
+  await expect(page.getByRole('button', { name: '元に戻す', exact: true })).toBeEnabled();
+  await page.reload();
+  await page.getByRole('button', { name: '「Revision workflow」を開く' }).click();
+  await page.getByRole('button', { name: 'main', exact: true }).click();
+  await expect(page.getByLabel('役割', { exact: true })).toHaveValue('far');
 });
