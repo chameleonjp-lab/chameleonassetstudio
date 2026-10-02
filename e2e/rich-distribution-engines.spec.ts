@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
 import { unzipSync } from 'fflate';
 import { useVerifiedEngineCache } from './engineTestHelpers';
@@ -101,8 +102,30 @@ async function seedRichProject(page: Page, scale: number) {
         payload: { value: n, inert: 'globalThis.mustNotRun = true' },
       })),
     }));
-    project.assets = [{ id: asset.id, name: asset.name, assetType: asset.assetType }];
-    await saveProjectBundle(project, [asset], blobs);
+    const copy = structuredClone(asset);
+    copy.id = asset.id + '_copy';
+    const yellow = document.createElement('canvas');
+    yellow.width = yellow.height = side + 12;
+    const yellowContext = yellow.getContext('2d')!;
+    yellowContext.fillStyle = '#ffff00';
+    yellowContext.fillRect(2, 3, side, side);
+    const yellowBlob = await new Promise<Blob>((resolve, reject) =>
+      yellow.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error('PNG encode failed'))),
+        'image/png',
+      ),
+    );
+    const copyBlobs = blobs.map((entry, index) => ({
+      key: entry.key.replace(asset.id + '/', copy.id + '/'),
+      blob: index === 0 ? yellowBlob : entry.blob,
+    }));
+    project.assets = [asset, copy].map((entry) => ({
+      id: entry.id,
+      name: entry.name,
+      displayName: entry.displayName,
+      assetType: entry.assetType,
+    }));
+    await saveProjectBundle(project, [asset, copy], [...blobs, ...copyBlobs]);
   }, scale);
   await page.reload();
   await page.getByRole('button', { name: '「Rich engine integration」を開く' }).click();
@@ -176,7 +199,15 @@ function consumer(engine: 'canvas2d' | 'pixijs' | 'phaser') {
         adapter.dispose(); adapter.dispose();
         results.push({animationId,samples,stopped,restarted});
       }
-      window.richResult = {results, manifest:source.manifest, asset:source.asset};
+      const secondary = loaded.assets[1];
+      const secondaryCanvas = document.createElement('canvas'); secondaryCanvas.width = secondaryCanvas.height = 1200;
+      const secondaryContext = secondaryCanvas.getContext('2d');
+      const secondaryPlayer = createCanvasDistribution({...secondary, context:secondaryContext, position});
+      secondaryPlayer.start();
+      const secondaryPixel = [...secondaryContext.getImageData(40,50,1,1).data];
+      secondaryPlayer.dispose();
+      window.richResult = {results, manifest:source.manifest, asset:source.asset,
+        secondaryPixel, assetIds:loaded.assets.map(entry=>entry.manifest.assetId)};
       destroy(); loaded.dispose(); loaded.dispose();
     } catch(error) { window.richError = String(error.stack || error); }
   </script></body></html>`;
@@ -186,12 +217,13 @@ for (const engine of ['canvas2d', 'pixijs', 'phaser'] as const) {
   for (const scale of [1, 2, 3]) {
     test(`UI rich ZIP → ${engine} ${scale}x: pixels, variable timing, events and frame gameplay`, async ({
       page,
-    }) => {
+    }, testInfo) => {
       test.setTimeout(90_000);
       if (engine !== 'canvas2d')
         await useVerifiedEngineCache(page, engine === 'pixijs' ? 'pixi' : 'phaser');
       await seedRichProject(page, scale);
       const panel = page.getByRole('region', { name: '新版配布用ZIP', exact: true });
+      for (const checkbox of await panel.getByRole('checkbox').all()) await checkbox.check();
       await panel.getByLabel('新版配布の利用先').selectOption(engine);
       await panel.getByLabel('新版配布画像の配置').selectOption('packed');
       await panel.getByLabel('新版配布画像の倍率').selectOption(String(scale));
@@ -202,7 +234,9 @@ for (const engine of ['canvas2d', 'pixijs', 'phaser'] as const) {
       const entries = unzipSync(await readFile((await download.path())!));
       const pkg = JSON.parse(new TextDecoder().decode(entries['package-manifest.json']));
       expect(pkg).toMatchObject({ format: 'chameleon-package', version: '0.2.0', target: engine });
-      expect(pkg.assets).toHaveLength(1);
+      expect(pkg.assets).toHaveLength(2);
+      expect(pkg.assets[0].name).toBe(pkg.assets[1].name);
+      expect(pkg.assets[0].manifest).not.toBe(pkg.assets[1].manifest);
       for (const name of ['Runtime', 'Canvas', 'Pixi', 'Phaser', 'ManifestV2'])
         expect(entries[`helpers/distribution${name}.js`]).toBeTruthy();
       // Route the actual downloaded bytes. No source-module imports or hand-built manifest
@@ -233,6 +267,8 @@ for (const engine of ['canvas2d', 'pixijs', 'phaser'] as const) {
       });
       // JSON crossing the browser boundary is checked structurally before individual values.
       const data = result as {
+        secondaryPixel: number[];
+        assetIds: string[];
         manifest: {
           scale: number;
           pages: unknown[];
@@ -263,6 +299,8 @@ for (const engine of ['canvas2d', 'pixijs', 'phaser'] as const) {
           restarted: { events: unknown[] };
         }>;
       };
+      expect(data.secondaryPixel).toEqual([255, 255, 0, 255]);
+      expect(new Set(data.assetIds).size).toBe(2);
       expect(data.manifest.scale).toBe(scale);
       expect(data.manifest.pages).toHaveLength(3);
       expect(data.manifest.frames[0].contentOffset).toEqual({ x: 2 * scale, y: 3 * scale });
@@ -317,6 +355,26 @@ for (const engine of ['canvas2d', 'pixijs', 'phaser'] as const) {
         });
       }
       expect(await page.evaluate(() => 'mustNotRun' in window)).toBe(false);
+      await testInfo.attach('rich-distribution-runtime-evidence.json', {
+        contentType: 'application/json',
+        body: JSON.stringify(
+          {
+            engine,
+            scale,
+            browser: testInfo.project.name,
+            sourceCommit: process.env.GITHUB_SHA ?? 'local-unrecorded',
+            packageHash: createHash('sha256')
+              .update(entries['package-manifest.json'])
+              .digest('hex'),
+            assets: pkg.assets,
+            pages: data.manifest.pages,
+            results: data.results,
+            realDevice: false,
+          },
+          null,
+          2,
+        ),
+      });
     });
   }
 }
