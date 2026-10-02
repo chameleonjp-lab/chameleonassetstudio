@@ -163,6 +163,7 @@ import {
   commitPersistentMutationWithHistory,
 } from './editorMutationGuard';
 import { ExportPanel } from './ExportPanel';
+import { RevisionReviewPanel } from './RevisionReviewPanel';
 import type { FrameAlignmentDraft } from './FrameAlignmentPanel';
 import { GameAttributesPanel } from './GameAttributesPanel';
 import { GameCheckMode } from './GameCheckMode';
@@ -510,6 +511,7 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
   const historyState = useSyncExternalStore(subscribeHistory, () => history.getState());
 
   const [project, setProject] = useState<Project | null>(null);
+  const [reviewSettingsVersion, setReviewSettingsVersion] = useState(0);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
@@ -5374,8 +5376,53 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         aria-label="書き出し"
       >
         <h2>書き出し</h2>
-        {selectedAsset && project ? (
-          <ExportPanel asset={selectedAsset} project={project} projectAssets={assets} />
+        {project ? (
+          <>
+            <RevisionReviewPanel
+              project={project}
+              assets={assets}
+              blocked={persistentMutationBlocked}
+              settingsVersion={reviewSettingsVersion}
+              prepare={async () => {
+                await history.waitForPending();
+                await AutosaveQueue.flushAll();
+              }}
+              onEdit={(assetId, panel) => {
+                if (!assets.some((asset) => asset.id === assetId)) return;
+                setSelectedAssetId(assetId);
+                setSelectedLayerId(null);
+                setCheckedLayerIds([]);
+                if (panel === 'timeline') {
+                  setMobileView('timeline');
+                } else {
+                  const section =
+                    panel === 'asset-type'
+                      ? 'asset'
+                      : panel === 'game-attributes'
+                        ? 'game-data'
+                        : panel;
+                  setPropertySection(section);
+                  setRightOpen(true);
+                  setMobileView('properties');
+                  requestAnimationFrame(() =>
+                    document
+                      .getElementById(`property-${section}`)
+                      ?.scrollIntoView({ block: 'start' }),
+                  );
+                }
+              }}
+            />
+            {selectedAsset ? (
+              <ExportPanel
+                asset={selectedAsset}
+                project={project}
+                projectAssets={assets}
+                onSettingsSaved={() => setReviewSettingsVersion((value) => value + 1)}
+              />
+            ) : (
+              <p>すべての素材を削除した状態も比較できます。配布するには素材を作成してください。</p>
+            )}
+          </>
         ) : (
           <p className="editor-note">アセットを選ぶと書き出せます。</p>
         )}

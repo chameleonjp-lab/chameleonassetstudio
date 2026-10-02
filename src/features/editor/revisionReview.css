@@ -1,0 +1,80 @@
+.revision-review {
+  border: 1px solid var(--border-color, #64748b);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  overflow-wrap: anywhere;
+}
+.revision-review p {
+  line-height: 1.6;
+}
+.revision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+}
+.revision-review button,
+.revision-review input {
+  min-height: 44px;
+  font-size: 16px;
+  max-width: 100%;
+}
+.revision-review input[type='file'] {
+  width: 100%;
+}
+.revision-review input[type='checkbox'] {
+  min-height: 24px;
+  width: 24px;
+  vertical-align: middle;
+}
+.revision-actions label {
+  display: grid;
+  gap: 6px;
+  max-width: 100%;
+}
+.revision-assets {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.revision-assets > li {
+  border: 1px solid var(--border-color, #64748b);
+  border-radius: 8px;
+  padding: 12px;
+}
+.revision-review details {
+  margin: 8px 0;
+}
+.revision-review summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding: 8px 0;
+}
+@media (max-width: 600px) {
+  .revision-actions {
+    display: grid;
+  }
+  .revision-review {
+    padding: 12px;
+  }
+}
+
+.revision-entry {
+  flex: 0 0 auto;
+}
+.revision-entry > button {
+  min-height: 44px;
+  font-size: 16px;
+}
+.revision-review {
+  width: min(960px, calc(100vw - 24px));
+  max-height: calc(100dvh - 32px);
+  box-sizing: border-box;
+  margin: auto;
+  overflow-y: auto;
+}
+.revision-review::backdrop {
+  background: #0008;
+}

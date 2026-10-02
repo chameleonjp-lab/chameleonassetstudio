@@ -82,7 +82,7 @@ const EXPORT_PRESETS_PATH = 'settings/export-presets.json';
 const README_PATH = 'README.md';
 const ASSET_JSON_PATTERN = /^assets\/([^/]+)\/asset\.json$/;
 
-const DEFAULT_README = [
+export const DEFAULT_CASPROJ_README = [
   '# Chameleon Asset Studio プロジェクト',
   '',
   'このファイルは Chameleon Asset Studio の `.casproj`（ZIP 形式）です。',
@@ -214,7 +214,7 @@ function migrateForImport(
   }
 }
 
-function assertBundleDocumentConsistency(project: Project, assets: Asset[]): void {
+export function assertBundleDocumentConsistency(project: Project, assets: Asset[]): void {
   const projectAssetIds = new Set<string>();
   for (const entry of project.assets) {
     if (projectAssetIds.has(entry.id)) {
@@ -329,7 +329,7 @@ export async function exportCasproj(bundle: CasprojBundle): Promise<Blob> {
 
   const entries: Zippable = {
     [PROJECT_JSON_PATH]: toJsonBytes(bundle.project),
-    [README_PATH]: strToU8(bundle.readme ?? DEFAULT_README),
+    [README_PATH]: strToU8(bundle.readme ?? DEFAULT_CASPROJ_README),
   };
   for (const asset of bundle.assets) {
     entries[`assets/${asset.id}/asset.json`] = toJsonBytes(asset);
