@@ -40,6 +40,8 @@ export default defineConfig({
         'canvas-viewport.spec.ts',
         'workspace.spec.ts',
         'onion-skin-browser.spec.ts',
+        'rich-distribution-controls.spec.ts',
+        'rich-distribution-engines.spec.ts',
       ],
       use: { ...devices['Desktop Safari'] },
     },

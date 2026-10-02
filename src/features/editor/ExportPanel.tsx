@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { RichDistributionExportPanel } from './RichDistributionExportPanel';
 import { DistributionExportPanel } from './DistributionExportPanel';
 import {
   findFixedFpsAnimationLosses,
@@ -67,7 +68,7 @@ const EXPORT_OPTIONS: Array<{
 ];
 
 /** アセットの書き出しパネル（Phase 10 / 13）。PNG / WebP / asset.json / ZIP / .casproj をダウンロードする。 */
-export function ExportPanel({ asset, project }: ExportPanelProps) {
+export function ExportPanel({ asset, project, projectAssets }: ExportPanelProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completedFileName, setCompletedFileName] = useState<string | null>(null);
@@ -138,6 +139,7 @@ export function ExportPanel({ asset, project }: ExportPanelProps) {
           <code>.casproj</code>も保存してください。
         </p>
       </div>
+      <RichDistributionExportPanel asset={asset} project={project} projectAssets={projectAssets} />
       <DistributionExportPanel asset={asset} />
       <div className="export-buttons">
         {EXPORT_OPTIONS.map((option) => (

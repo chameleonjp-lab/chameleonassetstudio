@@ -6,8 +6,13 @@
   "type": "object",
   "required": ["format", "version", "presets"],
   "properties": {
-    "format": { "const": "chameleon-export-presets" },
-    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "format": {
+      "const": "chameleon-export-presets"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
     "presets": {
       "type": "array",
       "items": {
@@ -23,17 +28,59 @@
           "scale"
         ],
         "properties": {
-          "id": { "type": "string", "minLength": 1 },
-          "name": { "type": "string", "minLength": 1 },
-          "target": { "enum": ["generic", "canvas2d", "pixijs", "phaser"] },
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target": {
+            "enum": ["generic", "canvas2d", "pixijs", "phaser"]
+          },
           "imageFormats": {
             "type": "array",
-            "items": { "enum": ["png", "webp"] }
+            "items": {
+              "enum": ["png", "webp"]
+            }
           },
-          "includeAssetJson": { "type": "boolean" },
-          "includeSpriteSheet": { "type": "boolean" },
-          "includeSampleHtml": { "type": "boolean" },
-          "scale": { "type": "number", "exclusiveMinimum": 0 }
+          "includeAssetJson": {
+            "type": "boolean"
+          },
+          "includeSpriteSheet": {
+            "type": "boolean"
+          },
+          "includeSampleHtml": {
+            "type": "boolean"
+          },
+          "scale": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "distribution": {
+            "type": "object",
+            "required": ["format", "profile", "padding", "target", "scale"],
+            "properties": {
+              "format": {
+                "const": "distribution-0.2.0"
+              },
+              "profile": {
+                "enum": ["fixed-grid", "packed"]
+              },
+              "padding": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 64
+              },
+              "target": {
+                "enum": ["canvas2d", "pixijs", "phaser"]
+              },
+              "scale": {
+                "enum": [1, 2, 3]
+              }
+            }
+          }
         }
       }
     }

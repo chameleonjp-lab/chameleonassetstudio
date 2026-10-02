@@ -102,33 +102,43 @@ async function encodeCanvas(
  * DecodedImageSource の Map（textureId → DecodedImageSource）を作る。
  * 使い終わったら呼び出し側で close() を呼ぶこと。
  */
-async function loadAssetBitmaps(
+export async function loadAssetBitmaps(
   asset: Asset,
+  signal?: AbortSignal,
 ): Promise<Map<string, DecodedImageSource & { blob: Blob }>> {
   const bitmaps = new Map<string, DecodedImageSource & { blob: Blob }>();
   const textureIds = new Set(
     asset.layers.map((layer) => layer.textureId).filter((id): id is string => Boolean(id)),
   );
-  for (const textureId of textureIds) {
-    const texture = asset.textures.find((tex) => tex.id === textureId);
-    if (!texture) {
-      // 透明な空画像を正常な書き出しとして扱わない（Phase 15.5-A）
-      throw new ExportError(
-        `画像テクスチャ定義が見つかりません: asset=${asset.id} texture=${textureId}（書き出し合成）`,
-      );
+  try {
+    for (const textureId of textureIds) {
+      signal?.throwIfAborted();
+      const texture = asset.textures.find((tex) => tex.id === textureId);
+      if (!texture) {
+        // 透明な空画像を正常な書き出しとして扱わない（Phase 15.5-A）
+        throw new ExportError(
+          `画像テクスチャ定義が見つかりません: asset=${asset.id} texture=${textureId}（書き出し合成）`,
+        );
+      }
+      if (texture.kind !== 'edit') {
+        throw new ExportError(
+          `書き出し対象レイヤーは edit テクスチャを参照する必要があります: asset=${asset.id} texture=${texture.id} kind=${texture.kind}`,
+        );
+      }
+      const blob = await loadBlob(blobKeyFor(asset.id, texture.path));
+      if (!blob) {
+        throw new ExportError(
+          `画像 Blob が見つかりません: asset=${asset.id} texture=${texture.id} path=${texture.path}（書き出し合成）`,
+        );
+      }
+      signal?.throwIfAborted();
+      const decoded = await decodeImageSource(blob);
+      bitmaps.set(textureId, { ...decoded, blob });
+      signal?.throwIfAborted();
     }
-    if (texture.kind !== 'edit') {
-      throw new ExportError(
-        `書き出し対象レイヤーは edit テクスチャを参照する必要があります: asset=${asset.id} texture=${texture.id} kind=${texture.kind}`,
-      );
-    }
-    const blob = await loadBlob(blobKeyFor(asset.id, texture.path));
-    if (!blob) {
-      throw new ExportError(
-        `画像 Blob が見つかりません: asset=${asset.id} texture=${texture.id} path=${texture.path}（書き出し合成）`,
-      );
-    }
-    bitmaps.set(textureId, { ...(await decodeImageSource(blob)), blob });
+  } catch (error) {
+    for (const decoded of bitmaps.values()) decoded.close();
+    throw error;
   }
   return bitmaps;
 }
@@ -393,7 +403,7 @@ interface DistributionRenderedFrame {
   contentRect: { x: number; y: number; width: number; height: number };
 }
 
-async function renderDistributionPages(
+export async function renderDistributionPages(
   asset: Asset,
   bitmaps: Map<string, DecodedImageSource>,
   options: DistributionExportOptions,
@@ -402,10 +412,11 @@ async function renderDistributionPages(
   const definitions = distributionFrameDefinitions(asset);
   const rendered: DistributionRenderedFrame[] = [];
   for (const definition of definitions) {
+    options.signal?.throwIfAborted();
     const frameCanvas = await compositeAssetToCanvas(
       asset,
       bitmaps,
-      definition.id === 'default' ? undefined : definition.id,
+      (asset.frames?.length ?? 0) === 0 ? undefined : definition.id,
     );
     rendered.push({
       definition,
@@ -441,9 +452,17 @@ async function renderDistributionPages(
     );
   }
 
-  const canvases = layout.pages.map(() =>
-    createCanvas(DISTRIBUTION_PAGE_SIZE, DISTRIBUTION_PAGE_SIZE),
-  );
+  if (options.compactPages) {
+    layout.pages = layout.pages.map((page, index) => {
+      const frames = layout.frames.filter((frame) => frame.page === index);
+      return {
+        ...page,
+        width: Math.max(1, ...frames.map((frame) => frame.rect.x + frame.rect.width)),
+        height: Math.max(1, ...frames.map((frame) => frame.rect.y + frame.rect.height)),
+      };
+    });
+  }
+  const canvases = layout.pages.map((page) => createCanvas(page.width, page.height));
   const contexts = canvases.map(getContext2d);
   for (const context of contexts) {
     context.imageSmoothingEnabled = false;
@@ -491,6 +510,7 @@ async function renderDistributionPages(
 
   const pages: Blob[] = [];
   for (const canvas of canvases) {
+    options.signal?.throwIfAborted();
     const page = await encodeCanvas(canvas, 'image/png');
     if (!page) {
       throw new ExportError('distribution Sprite Sheetの書き出しに失敗しました。');
@@ -640,6 +660,10 @@ export async function exportZip(asset: Asset): Promise<Blob> {
 }
 
 export interface DistributionExportOptions {
+  /** Additive cancellation for distribution preparation. */
+  signal?: AbortSignal;
+  /** Rich output only; legacy callers retain full 2048px pages. */
+  compactPages?: boolean;
   profile?: 'fixed-grid' | 'packed';
   padding?: number;
   scale?: number;
