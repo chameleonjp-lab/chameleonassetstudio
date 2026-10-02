@@ -110,7 +110,7 @@ export function ImportFrameSetPanel({
           </label>
           <p className="editor-note">
             1〜{MAX_FRAME_SET_ITEMS}
-            枚・同一寸法。ファイル名の数字を数値順に並べ、確定順をpreviewします。
+            枚・同じ大きさの画像を選んでください。ファイル名の数字順に並べて確認できます。
           </p>
           {sequenceFiles.length > 0 && (
             <ol className="import-frame-set-files" aria-label="選択中の連番画像">
@@ -142,12 +142,12 @@ export function ImportFrameSetPanel({
           </label>
           {gridFile && <p className="import-frame-set-file-name">{gridFile.name}</p>}
           <p className="editor-note">
-            uniform外周marginとcell間spacingを使い、左上から行優先で最大
-            {MAX_FRAME_SET_ITEMS}cellを切り出します。
+            外側の余白とコマの間隔を指定し、左上から横方向へ最大
+            {MAX_FRAME_SET_ITEMS}コマを取り出します。
           </p>
           <div className="import-frame-set-grid-fields">
             <label className="editor-field">
-              cell幅
+              コマの幅
               <input
                 aria-label={`${gridModeLabel} cell幅`}
                 type="number"
@@ -164,7 +164,7 @@ export function ImportFrameSetPanel({
               />
             </label>
             <label className="editor-field">
-              cell高さ
+              コマの高さ
               <input
                 aria-label={`${gridModeLabel} cell高さ`}
                 type="number"
@@ -181,7 +181,7 @@ export function ImportFrameSetPanel({
               />
             </label>
             <label className="editor-field">
-              外周margin
+              外側の余白
               <input
                 aria-label={`${gridModeLabel} 外周margin`}
                 type="number"
@@ -194,7 +194,7 @@ export function ImportFrameSetPanel({
               />
             </label>
             <label className="editor-field">
-              cell間spacing
+              コマの間隔
               <input
                 aria-label={`${gridModeLabel} cell間spacing`}
                 type="number"
@@ -212,7 +212,7 @@ export function ImportFrameSetPanel({
             <div className="import-frame-set-config" aria-label="Tileset設定">
               <div className="import-frame-set-grid-fields">
                 <label className="editor-field">
-                  tile幅
+                  タイルの幅
                   <input
                     aria-label="Tileset tile幅"
                     type="number"
@@ -225,7 +225,7 @@ export function ImportFrameSetPanel({
                   />
                 </label>
                 <label className="editor-field">
-                  tile高さ
+                  タイルの高さ
                   <input
                     aria-label="Tileset tile高さ"
                     type="number"
@@ -239,7 +239,7 @@ export function ImportFrameSetPanel({
                 </label>
               </div>
               <label className="editor-field">
-                Asset全体のcollision
+                タイル全体の衝突設定
                 <select
                   aria-label="Tileset collision"
                   value={collisionType}
@@ -262,7 +262,7 @@ export function ImportFrameSetPanel({
                 />
               </label>
               <p className="editor-note">
-                tileSizeはcellSizeと同じ値を既定にします。設定はAsset全体に適用し、colliderは自動生成しません。
+                タイルの大きさはコマと同じ値から始めます。衝突設定は全タイルに共通です。当たり判定の形は別途追加してください。
               </p>
             </div>
           )}
@@ -317,7 +317,7 @@ export function ImportFrameSetPanel({
             <p className="import-frame-set-file-name">{atlasTextureFile.name}</p>
           )}
           <label className="editor-field">
-            作成するAsset名
+            作成する素材名
             <input
               aria-label="Atlas Asset名"
               type="text"
@@ -326,7 +326,7 @@ export function ImportFrameSetPanel({
             />
           </label>
           <label className="editor-field">
-            metadataがない場合のAsset type
+            用途が記録されていない場合の設定
             <select
               aria-label="Atlas fallback Asset type"
               value={atlasFallbackType}
@@ -342,8 +342,7 @@ export function ImportFrameSetPanel({
             </select>
           </label>
           <p className="editor-note">
-            atlasにtile/effect設定がある場合は、そのtypeを優先して復元します。raw
-            JSONは保存せず、hashをprovenanceへ記録します。
+            タイルやエフェクトの設定が記録されている場合は、記録された用途で復元します。
           </p>
           <button
             type="button"

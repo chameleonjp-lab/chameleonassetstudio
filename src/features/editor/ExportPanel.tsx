@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { DistributionExportPanel } from './DistributionExportPanel';
 import {
   findFixedFpsAnimationLosses,
   formatFixedFpsAnimationLosses,
@@ -137,6 +138,7 @@ export function ExportPanel({ asset, project }: ExportPanelProps) {
           <code>.casproj</code>も保存してください。
         </p>
       </div>
+      <DistributionExportPanel asset={asset} />
       <div className="export-buttons">
         {EXPORT_OPTIONS.map((option) => (
           <article key={option.kind} className="export-option">

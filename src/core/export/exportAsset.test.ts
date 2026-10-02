@@ -3,6 +3,8 @@ import { unzipSync } from 'fflate';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Asset } from '../model';
 import { updateFrameDuration } from '../model/assetOps';
+import { inspectPngAnimation } from '../images/imageInputSafety';
+import { decodeImageSource } from '../images/decodeImageSource';
 import characterAsset from '../samples/asset.character.json';
 import {
   exportAssetJson,
@@ -108,6 +110,105 @@ describe('exportAsset texture kind boundary', () => {
   it('edit 参照の layer は export できる', async () => {
     await expect(exportImage(assetReferencing('edit'), 'image/png')).resolves.toBeInstanceOf(Blob);
     expect(loadBlobMock).toHaveBeenCalled();
+  });
+
+  it.each(['missing', 'decode', 'kind'] as const)(
+    '2枚目の画像が %s で拒否されたら、読込済みの1枚目を解放する',
+    async (failure) => {
+      const asset = assetReferencing('edit');
+      const first = asset.textures.find((texture) => texture.id === asset.layers[0].textureId)!;
+      asset.textures.push({
+        ...first,
+        id: 'tex_second_edit',
+        path: 'textures/edit/second.png',
+        mimeType: 'image/png',
+        kind: failure === 'kind' ? 'thumbnail' : 'edit',
+      });
+      asset.layers.push({
+        ...structuredClone(asset.layers[0]),
+        id: 'layer_second_edit',
+        textureId: 'tex_second_edit',
+      });
+      const close = vi.fn();
+      vi.mocked(decodeImageSource).mockResolvedValueOnce({
+        source: {} as ImageBitmap,
+        width: 1,
+        height: 1,
+        close,
+      });
+      if (failure === 'missing') {
+        loadBlobMock.mockResolvedValueOnce(new Blob()).mockResolvedValueOnce(null);
+      } else if (failure === 'decode') {
+        vi.mocked(decodeImageSource).mockRejectedValueOnce(new Error('decode failed'));
+      }
+
+      await expect(exportImage(asset, 'image/png')).rejects.toThrow(
+        failure === 'missing'
+          ? /画像 Blob/
+          : failure === 'decode'
+            ? /decode failed/
+            : /edit テクスチャ/,
+      );
+      expect(close).toHaveBeenCalledTimes(1);
+      expect(saveAssetRevision).not.toHaveBeenCalled();
+    },
+  );
+
+  it('合成不要のPNGは検証済みの編集画像を保持し、移動・不透明度・重なりは合成する', async () => {
+    const asset = assetReferencing('edit');
+    asset.layers = [asset.layers[0]];
+    asset.canvasSize = { width: 1, height: 1 };
+    asset.textures.find((texture) => texture.id === asset.layers[0].textureId)!.size = {
+      width: 1,
+      height: 1,
+    };
+    const original = new Blob(
+      [
+        Buffer.from(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==',
+          'base64',
+        ),
+      ],
+      { type: 'image/png' },
+    );
+    loadBlobMock.mockResolvedValue(original);
+    expect(await exportImage(asset, 'image/png')).toBe(original);
+
+    const moved = structuredClone(asset);
+    moved.layers[0].transform.position.x = 1;
+    const translucent = structuredClone(asset);
+    translucent.layers[0].opacity = 0.5;
+    const stacked = structuredClone(asset);
+    stacked.layers.push({ ...stacked.layers[0], id: 'layer_overlay' });
+    for (const composite of [moved, translucent, stacked]) {
+      expect(await exportImage(composite, 'image/png')).not.toBe(original);
+    }
+    expect(await exportImage(asset, 'image/webp')).not.toBe(original);
+
+    const chunk = (type: string, data: Buffer) => {
+      const bytes = Buffer.alloc(data.length + 12);
+      bytes.writeUInt32BE(data.length, 0);
+      bytes.write(type, 4, 'ascii');
+      data.copy(bytes, 8);
+      // CRC is deliberately delegated to the mocked browser decoder here.
+      return bytes;
+    };
+    const control = Buffer.alloc(8);
+    control.writeUInt32BE(1, 0);
+    const frame = Buffer.alloc(26);
+    frame.writeUInt32BE(1, 4);
+    frame.writeUInt32BE(1, 8);
+    const png = Buffer.from(await original.arrayBuffer());
+    const animatedBytes = Buffer.concat([
+      png.subarray(0, 33),
+      chunk('acTL', control),
+      chunk('fcTL', frame),
+      png.subarray(33),
+    ]);
+    expect(inspectPngAnimation(animatedBytes).animated).toBe(true);
+    const animated = new Blob([animatedBytes], { type: 'image/png' });
+    loadBlobMock.mockResolvedValue(animated);
+    expect(await exportImage(asset, 'image/png')).not.toBe(animated);
   });
 
   it('source 参照の layer は Blob を読まずに export を拒否する', async () => {

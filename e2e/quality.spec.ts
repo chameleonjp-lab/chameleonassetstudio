@@ -45,7 +45,7 @@ test.describe('Group 21C quality contracts', () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/');
 
-    const qualitySummary = page.locator('.quality-status summary');
+    const qualitySummary = page.getByRole('region', { name: '品質情報' }).locator('summary');
     await expect(qualitySummary).toBeVisible();
     await qualitySummary.focus();
     await expect(qualitySummary).toBeFocused();

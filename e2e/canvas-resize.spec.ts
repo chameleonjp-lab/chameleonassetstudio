@@ -110,8 +110,8 @@ async function readCanvasResizeState(page: Page): Promise<CanvasResizeState> {
 }
 
 async function setCanvasSize(page: Page, width: number, height: number): Promise<void> {
-  await page.getByLabel('Asset canvas幅').fill(String(width));
-  await page.getByLabel('Asset canvas高さ').fill(String(height));
+  await page.getByLabel('キャンバス幅').fill(String(width));
+  await page.getByLabel('キャンバス高さ').fill(String(height));
 }
 
 test('中央anchorの拡大を1履歴で保存し、Blobを変えずPNG / atlas寸法へ反映する', async ({ page }) => {
@@ -126,7 +126,7 @@ test('中央anchorの拡大を1履歴で保存し、Blobを変えずPNG / atlas�
   ).toBeVisible();
   await expect(page.getByRole('status', { name: 'canvas外データ件数' })).toContainText('合計 0件');
 
-  await page.getByRole('button', { name: 'Asset canvasサイズを適用' }).click();
+  await page.getByRole('button', { name: 'キャンバスサイズを適用' }).click();
   await expect
     .poll(async () => (await readCanvasResizeState(page)).canvasSize)
     .toEqual({
@@ -209,13 +209,13 @@ test('canvas外警告のある縮小は取消可能で、確認後もtexture / B
     expect(dialog.message()).toContain('clamp');
     await dialog.dismiss();
   });
-  await page.getByRole('button', { name: 'Asset canvasサイズを適用' }).click();
+  await page.getByRole('button', { name: 'キャンバスサイズを適用' }).click();
   expect((await readCanvasResizeState(page)).canvasSize).toEqual({ width: 64, height: 64 });
 
   page.once('dialog', async (dialog) => {
     await dialog.accept();
   });
-  await page.getByRole('button', { name: 'Asset canvasサイズを適用' }).click();
+  await page.getByRole('button', { name: 'キャンバスサイズを適用' }).click();
   await expect
     .poll(async () => (await readCanvasResizeState(page)).canvasSize)
     .toEqual({
@@ -254,7 +254,7 @@ test('iPhone SE級touch viewportで9点anchor・preview・適用へ到達でき�
     await expect(bottomRight).toBeChecked();
     await expect(page.getByRole('img', { name: /canvas変更前後preview/ })).toBeVisible();
 
-    const applyButton = page.getByRole('button', { name: 'Asset canvasサイズを適用' });
+    const applyButton = page.getByRole('button', { name: 'キャンバスサイズを適用' });
     const applyBox = await applyButton.boundingBox();
     expect(applyBox?.height).toBeGreaterThanOrEqual(44);
     await applyButton.tap();

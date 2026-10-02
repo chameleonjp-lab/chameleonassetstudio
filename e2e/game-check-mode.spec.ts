@@ -48,13 +48,13 @@ const NORMAL_FIXTURES: ReadonlyArray<{
     id: 'G14-P1-gimmick-normal',
     type: 'gimmick',
     typeLabel: 'ギミック',
-    detail: /movementPreset「horizontal」/,
+    detail: /移動設定「horizontal」/,
   },
   {
     id: 'G14-P1-effect-normal',
     type: 'effect',
     typeLabel: 'エフェクト',
-    detail: /duration 500ms.*blend add/,
+    detail: /長さ 500ms.*重ね方 add/,
   },
 ];
 
@@ -831,7 +831,7 @@ async function scrollToFooterInsideMode(page: Page): Promise<void> {
   expect(metrics.scrollTop).toBeGreaterThan(0);
   await expect(
     page.locator('.game-check-footer').getByRole('button', {
-      name: 'Editorへ戻る',
+      name: '編集へ戻る',
       exact: true,
     }),
   ).toBeVisible();
@@ -903,18 +903,18 @@ test.describe('Group 14 Game Check Mode', () => {
         page.getByRole('status').filter({ hasText: fixtureCase.typeLabel }),
       ).toBeVisible();
       await expect(page.getByText(fixtureCase.detail).first()).toBeVisible();
-      await expect(page.getByText(/物理演算・engine固有挙動/)).toBeVisible();
+      await expect(page.getByText(/素材の配置や再生を確認/)).toBeVisible();
       await expect(page.getByText(/画像表示不能/)).toHaveCount(0);
       await expectNoHorizontalOverflow(page);
 
       if (fixtureCase.type === 'character') {
         const entryButton = page.getByRole('button', { name: 'ゲーム確認', exact: true });
         const closeButton = page.locator('.game-check-header').getByRole('button', {
-          name: 'Editorへ戻る',
+          name: '編集へ戻る',
           exact: true,
         });
         await expect(closeButton).toBeFocused();
-        await expect(page.getByRole('checkbox', { name: '実効collider' })).toBeChecked();
+        await expect(page.getByRole('checkbox', { name: '当たり判定' })).toBeChecked();
         const playButton = page.getByRole('button', { name: '再生', exact: true });
         await playButton.click();
         await expect(page.getByRole('button', { name: '停止', exact: true })).toBeVisible();
@@ -926,7 +926,7 @@ test.describe('Group 14 Game Check Mode', () => {
         await page.keyboard.press('ArrowDown');
         await expect(frameSelect).not.toHaveValue(priorFrame);
         await frameSelect.selectOption('');
-        await expect(page.getByRole('status').filter({ hasText: 'Frame：未設定' })).toBeVisible();
+        await expect(page.getByRole('status').filter({ hasText: 'コマ：未設定' })).toBeVisible();
         await frameSelect.selectOption('frame_idle_0');
 
         const scrub = page.getByLabel('再生位置');
@@ -941,12 +941,15 @@ test.describe('Group 14 Game Check Mode', () => {
         await page.keyboard.press('ArrowLeft');
         await expect(scrub).toHaveValue('1');
 
-        const anchorToggle = page.getByRole('checkbox', { name: 'anchor', exact: true });
+        const anchorToggle = page.getByRole('checkbox', {
+          name: 'アンカー（配置点）',
+          exact: true,
+        });
         await anchorToggle.focus();
         await page.keyboard.press('Space');
         await expect(anchorToggle).not.toBeChecked();
         const colliderToggle = page.getByRole('checkbox', {
-          name: '実効collider',
+          name: '当たり判定',
           exact: true,
         });
         await colliderToggle.focus();
@@ -965,7 +968,7 @@ test.describe('Group 14 Game Check Mode', () => {
         await expect(
           page.getByText(/frameIds\[0\].*frames\[id=frame_idle_0\]/).first(),
         ).toBeVisible();
-        await expect(page.getByText(/Frame別collider/).first()).toBeVisible();
+        await expect(page.getByText(/コマ別の当たり判定/).first()).toBeVisible();
         await expect(page.getByText(/状態：/).first()).toBeVisible();
         await expect(page.getByText(/未確認：/).first()).toBeVisible();
         await expect(page.getByText(/再確認条件：/).first()).toBeVisible();
@@ -1027,7 +1030,7 @@ test.describe('Group 14 Game Check Mode', () => {
         });
         await typeOverlayToggle.uncheck();
         await expect(
-          page.getByRole('status').filter({ hasText: /非表示（UI-only）/ }),
+          page.getByRole('status').filter({ hasText: /非表示（素材は変更しません）/ }),
         ).toBeVisible();
         await expect
           .poll(async () => sha256(await tileCanvas.screenshot()))
@@ -1045,7 +1048,7 @@ test.describe('Group 14 Game Check Mode', () => {
         });
       }
       if (fixtureCase.type === 'effect') {
-        await expect(page.getByText(/Preview再生はFrame \/ Animation/)).toBeVisible();
+        await expect(page.getByText(/コマの表示時間に沿って再生します/)).toBeVisible();
         await page.getByRole('button', { name: '再生', exact: true }).click();
         await expect(page.getByRole('button', { name: '停止', exact: true })).toBeVisible();
         await page.getByRole('button', { name: '停止', exact: true }).click();
@@ -1054,7 +1057,7 @@ test.describe('Group 14 Game Check Mode', () => {
       await scrollToFooterInsideMode(page);
       await page
         .locator('.game-check-footer')
-        .getByRole('button', { name: 'Editorへ戻る', exact: true })
+        .getByRole('button', { name: '編集へ戻る', exact: true })
         .click();
       await expect(page.locator('.editor')).toBeVisible();
     }
@@ -1105,9 +1108,11 @@ test.describe('Group 14 Game Check Mode', () => {
     await expect(page.getByLabel('Preview Frame')).toHaveValue('frame_idle_0');
     await expect(page.getByLabel('再生位置')).toHaveValue('0');
     await expect(page.getByRole('button', { name: '再生', exact: true })).toBeVisible();
-    await expect(page.getByRole('checkbox', { name: 'origin・接地線' })).toBeChecked();
-    await expect(page.getByRole('checkbox', { name: 'anchor', exact: true })).toBeChecked();
-    await expect(page.getByRole('checkbox', { name: '実効collider', exact: true })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: '原点と接地線' })).toBeChecked();
+    await expect(
+      page.getByRole('checkbox', { name: 'アンカー（配置点）', exact: true }),
+    ).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: '当たり判定', exact: true })).toBeChecked();
     await expect(
       page.getByRole('checkbox', { name: '種別固有の説明表示', exact: true }),
     ).toBeChecked();
@@ -1127,7 +1132,7 @@ test.describe('Group 14 Game Check Mode', () => {
     });
     await page
       .locator('.game-check-header')
-      .getByRole('button', { name: 'Editorへ戻る', exact: true })
+      .getByRole('button', { name: '編集へ戻る', exact: true })
       .click();
     await expect(page.locator('.editor')).toBeVisible();
     const reloadExports = await captureExports(page);
@@ -1254,8 +1259,8 @@ test.describe('Group 14 Game Check Mode', () => {
             TYPE_SPECIFIC_UNSET_REASONS[assetType],
           );
         } else if (state === 'frame-override') {
-          await expect(page.getByText(/Frame別collider/).first()).toBeVisible();
-          await expect(page.getByRole('checkbox', { name: '実効collider' })).toBeChecked();
+          await expect(page.getByText(/コマ別の当たり判定/).first()).toBeVisible();
+          await expect(page.getByRole('checkbox', { name: '当たり判定' })).toBeChecked();
         } else if (state === 'dangling-invalid') {
           await expect(page.getByLabel('不足・不正・表示不能の理由')).toContainText(
             /missing-frame|missing-texture|参照/,
@@ -1281,7 +1286,7 @@ test.describe('Group 14 Game Check Mode', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/tools/game-check-e2e/index.html?fixture=G14-P1-missing-blob');
     await expect(page.getByRole('main', { name: 'ゲーム確認' })).toBeVisible();
-    await expect(page.getByText(/reduced-motion設定のため自動再生を停止/)).toBeVisible();
+    await expect(page.getByText(/「動きを減らす」設定に合わせて、自動再生を停止/)).toBeVisible();
     await expect(page.getByRole('button', { name: '再生', exact: true })).toBeDisabled();
     await expect(page.getByRole('status').filter({ hasText: '停止中' })).toBeVisible();
     await expect(page.getByLabel('不足・不正・表示不能の理由')).toContainText(/Blob/);

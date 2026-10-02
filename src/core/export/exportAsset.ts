@@ -4,6 +4,7 @@
  */
 import { strToU8, unzipSync, zip, type Zippable } from 'fflate';
 import { decodeImageSource, type DecodedImageSource } from '../images/decodeImageSource';
+import { inspectPngAnimation } from '../images/imageInputSafety';
 import { blobKeyFor } from '../images/importImage';
 import { applyFrameToAsset, type Asset } from '../model';
 import { validateAssetForPersistence } from '../schema/validate';
@@ -101,31 +102,38 @@ async function encodeCanvas(
  * DecodedImageSource の Map（textureId → DecodedImageSource）を作る。
  * 使い終わったら呼び出し側で close() を呼ぶこと。
  */
-async function loadAssetBitmaps(asset: Asset): Promise<Map<string, DecodedImageSource>> {
-  const bitmaps = new Map<string, DecodedImageSource>();
+async function loadAssetBitmaps(
+  asset: Asset,
+): Promise<Map<string, DecodedImageSource & { blob: Blob }>> {
+  const bitmaps = new Map<string, DecodedImageSource & { blob: Blob }>();
   const textureIds = new Set(
     asset.layers.map((layer) => layer.textureId).filter((id): id is string => Boolean(id)),
   );
-  for (const textureId of textureIds) {
-    const texture = asset.textures.find((tex) => tex.id === textureId);
-    if (!texture) {
-      // 透明な空画像を正常な書き出しとして扱わない（Phase 15.5-A）
-      throw new ExportError(
-        `画像テクスチャ定義が見つかりません: asset=${asset.id} texture=${textureId}（書き出し合成）`,
-      );
+  try {
+    for (const textureId of textureIds) {
+      const texture = asset.textures.find((tex) => tex.id === textureId);
+      if (!texture) {
+        // 透明な空画像を正常な書き出しとして扱わない（Phase 15.5-A）
+        throw new ExportError(
+          `画像テクスチャ定義が見つかりません: asset=${asset.id} texture=${textureId}（書き出し合成）`,
+        );
+      }
+      if (texture.kind !== 'edit') {
+        throw new ExportError(
+          `書き出し対象レイヤーは edit テクスチャを参照する必要があります: asset=${asset.id} texture=${texture.id} kind=${texture.kind}`,
+        );
+      }
+      const blob = await loadBlob(blobKeyFor(asset.id, texture.path));
+      if (!blob) {
+        throw new ExportError(
+          `画像 Blob が見つかりません: asset=${asset.id} texture=${texture.id} path=${texture.path}（書き出し合成）`,
+        );
+      }
+      bitmaps.set(textureId, { ...(await decodeImageSource(blob)), blob });
     }
-    if (texture.kind !== 'edit') {
-      throw new ExportError(
-        `書き出し対象レイヤーは edit テクスチャを参照する必要があります: asset=${asset.id} texture=${texture.id} kind=${texture.kind}`,
-      );
-    }
-    const blob = await loadBlob(blobKeyFor(asset.id, texture.path));
-    if (!blob) {
-      throw new ExportError(
-        `画像 Blob が見つかりません: asset=${asset.id} texture=${texture.id} path=${texture.path}（書き出し合成）`,
-      );
-    }
-    bitmaps.set(textureId, await decodeImageSource(blob));
+  } catch (error) {
+    for (const decoded of bitmaps.values()) decoded.close();
+    throw error;
   }
   return bitmaps;
 }
@@ -188,6 +196,36 @@ export async function exportImage(asset: Asset, type: 'image/png' | 'image/webp'
   assertValidAsset(asset);
   const bitmaps = await loadAssetBitmaps(asset);
   try {
+    // A full-size, unmodified PNG already is the composite. Re-encoding it
+    // rounds semitransparent channels in WebKit, so retain the verified bytes.
+    // Loading every referenced bitmap above preserves missing/kind/decode checks.
+    const visibleLayers = asset.layers.filter((layer) => layer.visible && layer.textureId);
+    const layer = visibleLayers.length === 1 ? visibleLayers[0] : null;
+    const texture = layer && asset.textures.find((texture) => texture.id === layer.textureId);
+    const decoded = layer?.textureId ? bitmaps.get(layer.textureId) : null;
+    if (
+      type === 'image/png' &&
+      layer?.layerType === 'image' &&
+      layer.opacity === 1 &&
+      layer.transform.position.x === 0 &&
+      layer.transform.position.y === 0 &&
+      layer.transform.rotation === 0 &&
+      layer.transform.scale.x === 1 &&
+      layer.transform.scale.y === 1 &&
+      texture?.size.width === asset.canvasSize.width &&
+      texture.size.height === asset.canvasSize.height &&
+      decoded?.width === asset.canvasSize.width &&
+      decoded.height === asset.canvasSize.height &&
+      decoded.blob.type === 'image/png'
+    ) {
+      try {
+        const png = inspectPngAnimation(new Uint8Array(await decoded.blob.arrayBuffer()));
+        if (!png.animated) return decoded.blob;
+      } catch {
+        // Decoder-compatible input with unusual chunks still uses the existing
+        // static composition path. Never return an APNG as a static PNG export.
+      }
+    }
     const canvas = await compositeAssetToCanvas(asset, bitmaps);
     const blob = await encodeCanvas(canvas, type);
     if (!blob) {

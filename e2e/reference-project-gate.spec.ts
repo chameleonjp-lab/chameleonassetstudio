@@ -310,10 +310,10 @@ async function verifyGameCheck(page: Page): Promise<void> {
   ).toBeVisible();
   await gameCheck.getByLabel('Preview Animation').selectOption('animation_ref_idle');
   await expect(gameCheck.getByLabel('Preview Frame')).toHaveValue('frame_ref_0');
-  await expect(gameCheck.getByText(/origin：配置基準/)).toBeVisible();
+  await expect(gameCheck.getByText(/原点：素材を置く基準点/)).toBeVisible();
   await gameCheck
     .locator('header')
-    .getByRole('button', { name: 'Editorへ戻る', exact: true })
+    .getByRole('button', { name: '編集へ戻る', exact: true })
     .click();
   await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
 }

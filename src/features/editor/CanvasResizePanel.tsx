@@ -52,7 +52,7 @@ function confirmationMessage(
     .join('、');
   return [
     `Asset canvasを${oldSize.width} x ${oldSize.height}から${nextSize.width} x ${nextSize.height}へ変更します。`,
-    `変更後にcanvas外へ出るデータがあります（合計${warnings.total}件: ${details}）。`,
+    `変更後にキャンバスからはみ出すデータがあります（合計${warnings.total}件: ${details}）。`,
     '座標のclamp、レイヤー画像のcrop、game dataの削除や縮小は行いません。続けますか？',
   ].join('\n');
 }
@@ -118,12 +118,12 @@ export function CanvasResizePanel({ asset, onCommit }: CanvasResizePanelProps) {
   return (
     <div className="canvas-resize-panel">
       <p className="editor-note">
-        textureやpixelは拡大縮小せず、canvas境界とcanvas座標のデータをまとめて移動します。
+        絵の大きさを保って、キャンバスを広げたり狭めたりします。基準位置を選ぶと、絵とゲーム情報を一緒に移動します。
       </p>
 
       <div className="canvas-resize-size-fields">
         <label className="editor-field">
-          Asset canvas幅
+          キャンバス幅
           <input
             type="number"
             min={1}
@@ -135,7 +135,7 @@ export function CanvasResizePanel({ asset, onCommit }: CanvasResizePanelProps) {
           />
         </label>
         <label className="editor-field">
-          Asset canvas高さ
+          キャンバス高さ
           <input
             type="number"
             min={1}
@@ -149,11 +149,11 @@ export function CanvasResizePanel({ asset, onCommit }: CanvasResizePanelProps) {
       </div>
 
       <fieldset className="canvas-resize-anchor-fieldset">
-        <legend>旧canvasの基準位置</legend>
+        <legend>元のキャンバスの基準位置</legend>
         <div
           className="canvas-resize-anchor-grid"
           role="radiogroup"
-          aria-label="旧canvasの基準位置"
+          aria-label="元のキャンバスの基準位置"
         >
           {ANCHOR_OPTIONS.map((option) => (
             <label key={option.value} title={option.label} className="canvas-resize-anchor-option">
@@ -222,7 +222,7 @@ export function CanvasResizePanel({ asset, onCommit }: CanvasResizePanelProps) {
           aria-label="canvas外データ件数"
         >
           <p>
-            変更後にcanvas外へ出るデータ: <strong>合計 {warnings.total}件</strong>
+            変更後にキャンバスからはみ出すデータ: <strong>合計 {warnings.total}件</strong>
           </p>
           <ul>
             {WARNING_LABELS.map(({ key, label }) => (
@@ -231,12 +231,14 @@ export function CanvasResizePanel({ asset, onCommit }: CanvasResizePanelProps) {
               </li>
             ))}
           </ul>
-          {warnings.total > 0 && <p>適用時に確認します。座標のclamp、crop、削除は行いません。</p>}
+          {warnings.total > 0 && (
+            <p>適用前に確認します。はみ出した部分を切り取らずに保存します。</p>
+          )}
         </div>
       )}
 
       <button type="button" disabled={!changed || validationError !== null} onClick={handleApply}>
-        Asset canvasサイズを適用
+        キャンバスサイズを適用
       </button>
     </div>
   );

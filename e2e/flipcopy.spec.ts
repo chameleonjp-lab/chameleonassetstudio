@@ -390,7 +390,7 @@ test('rig付き独立左右反転copyを保存・再読込し、copyと既存編
   await expect(page.locator('.asset-list li')).toHaveCount(2);
   await expect(page.locator('.asset-list button[aria-pressed="true"]')).toContainText('(左右反転)');
   await expect(
-    page.getByRole('region', { name: 'Family / Variant' }).getByText('standalone / 独立', {
+    page.getByRole('region', { name: '素材の関係' }).getByText('独立した素材', {
       exact: true,
     }),
   ).toBeVisible();

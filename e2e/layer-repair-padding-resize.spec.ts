@@ -159,9 +159,9 @@ test('paddingとsmooth resizeを保存し、位置補正・Undo・Redo・reload�
   await page.getByLabel('padding left').fill('5');
   await expect(page.getByLabel('padding変更後preview')).toContainText('40 x 38px');
   await expect(
-    page.getByText('変更後のLayer画像はAsset canvas外へはみ出します。canvasは自動拡張しません。'),
+    page.getByText('変更後の画像はキャンバスからはみ出します。キャンバスの大きさは変わりません。'),
   ).toBeVisible();
-  await page.getByRole('button', { name: '透明paddingを追加', exact: true }).click();
+  await page.getByRole('button', { name: '透明な余白を追加', exact: true }).click();
 
   await expect
     .poll(async () => (await readRepairState(page)).editTextureSize)
@@ -191,7 +191,7 @@ test('paddingとsmooth resizeを保存し、位置補正・Undo・Redo・reload�
   await page.getByLabel('リサイズ後の高さ').fill('19');
   await page.getByLabel('リサイズ補間方法').selectOption('smooth');
   await expect(page.getByLabel('リサイズ変更後preview')).toContainText('20 x 19px');
-  await page.getByRole('button', { name: 'Layer画像をリサイズ', exact: true }).click();
+  await page.getByRole('button', { name: '選択中の画像をリサイズ', exact: true }).click();
 
   await expect
     .poll(async () => (await readRepairState(page)).editTextureSize)

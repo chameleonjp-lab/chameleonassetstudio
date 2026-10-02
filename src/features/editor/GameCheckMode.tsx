@@ -126,10 +126,10 @@ function buildAtlasImpactItems(asset: Asset): GameImpactItem[] {
         path: `export/atlas[frameId=${loss.frameId}]`,
         confidence: '確定',
         state: '既存Atlas境界で拒否',
-        reason: `Frame別collider（${loss.colliderNames.join('、')}）はAtlas 0.1.0で失われるため、既存境界で拒否されます。`,
+        reason: `コマ別の当たり判定（${loss.colliderNames.join('、')}）はAtlas 0.1.0で失われるため、既存境界で拒否されます。`,
         checked: '既存のcollider override export検査を実行（書き出しは未実行）',
         unchecked: '実ファイルの生成、engine読込、当たり判定結果は未確認',
-        recheck: 'Frame別colliderまたはexport preset変更時に再確認',
+        recheck: 'コマ別の当たり判定や書き出し設定を変えたら再確認',
       });
     }
     if (exportItems.length > 0) {
@@ -599,11 +599,11 @@ export function GameCheckMode({
           <p className="game-check-kicker">読み取り専用モード</p>
           <h1>ゲーム確認：{asset.displayName}</h1>
           <p className="game-check-note">
-            説明用表示。物理演算・engine固有挙動・実際のexport成功は保証しません。
+            素材の配置や再生を確認します。ゲーム側の動作は、書き出した素材を使って確かめてください。
           </p>
         </div>
         <button ref={closeButtonRef} type="button" className="game-check-close" onClick={onClose}>
-          Editorへ戻る
+          編集へ戻る
         </button>
       </header>
 
@@ -613,16 +613,16 @@ export function GameCheckMode({
             <canvas ref={canvasRef} aria-label="ゲーム風プレビューキャンバス" />
           </div>
           <p className="game-check-preview-status" role="status">
-            {ASSET_TYPE_LABELS[asset.assetType]} / Frame：{projection.frame?.name ?? '未設定'} /{' '}
+            {ASSET_TYPE_LABELS[asset.assetType]} / コマ：{projection.frame?.name ?? '未設定'} /{' '}
             {isPlaying ? '再生中' : '停止中'}
           </p>
         </section>
 
         <aside className="game-check-controls" aria-label="ゲーム確認操作">
           <section className="game-check-card" aria-label="FrameとAnimation">
-            <h2>Frame / Animation</h2>
+            <h2>コマとアニメーション</h2>
             <label className="editor-field">
-              Animation
+              アニメーション
               <select
                 aria-label="Preview Animation"
                 value={animationId ?? ''}
@@ -637,7 +637,7 @@ export function GameCheckMode({
               </select>
             </label>
             <label className="editor-field">
-              Frame
+              コマ
               <select
                 aria-label="Preview Frame"
                 value={frameId ?? ''}
@@ -703,18 +703,22 @@ export function GameCheckMode({
                   setScrubOccurrenceIndex(selectedAnimation?.frameIds.length ? 0 : null);
                 }}
               >
-                先頭Frame
+                先頭のコマ
               </button>
             </div>
             {reducedMotion && (
-              <p className="editor-note">reduced-motion設定のため自動再生を停止しています。</p>
+              <p className="editor-note">
+                端末の「動きを減らす」設定に合わせて、自動再生を停止しています。
+              </p>
             )}
             {!reducedMotion && !playbackDataValid && (
               <p className="editor-note">
-                Frame参照または種別固有の再生設定が未設定・不正なため、静止表示にします。
+                コマや再生の設定を確認できないため、静止画で表示しています。
               </p>
             )}
-            {frameEventNames && <p className="editor-note">Frame開始イベント：{frameEventNames}</p>}
+            {frameEventNames && (
+              <p className="editor-note">コマ開始時のイベント：{frameEventNames}</p>
+            )}
           </section>
 
           <section className="game-check-card" aria-label="Overlay表示切替">
@@ -725,7 +729,7 @@ export function GameCheckMode({
                 checked={showOrigin}
                 onChange={(event) => setShowOrigin(event.target.checked)}
               />
-              origin・接地線
+              原点と接地線
             </label>
             <label className="game-check-checkbox">
               <input
@@ -733,7 +737,7 @@ export function GameCheckMode({
                 checked={showAnchors}
                 onChange={(event) => setShowAnchors(event.target.checked)}
               />
-              anchor
+              アンカー（配置点）
             </label>
             <label className="game-check-checkbox">
               <input
@@ -741,7 +745,7 @@ export function GameCheckMode({
                 checked={showColliders}
                 onChange={(event) => setShowColliders(event.target.checked)}
               />
-              実効collider
+              当たり判定
             </label>
             <label className="game-check-checkbox">
               <input
@@ -752,17 +756,17 @@ export function GameCheckMode({
               種別固有の説明表示
             </label>
             <p className="editor-note" role="status">
-              種別固有の説明表示：{showTypeOverlay ? '表示中' : '非表示（UI-only）'}
+              種別固有の説明表示：{showTypeOverlay ? '表示中' : '非表示（素材は変更しません）'}
             </p>
           </section>
 
           <section className="game-check-card" aria-label="ゲーム確認の凡例">
             <h2>凡例</h2>
             <ul className="game-check-legend">
-              <li>origin：配置基準。characterではY位置を接地線として表示。</li>
-              <li>anchor：名前付きの配置基準点。</li>
-              <li>実効collider：Asset共通値にFrame overrideを適用した表示値。</li>
-              <li>種別固有表示：物理演算ではなく、意味を説明するUI投影。</li>
+              <li>原点：素材を置く基準点。キャラクターでは足元の基準線も表示します。</li>
+              <li>アンカー：武器やエフェクトなどを置く位置です。</li>
+              <li>当たり判定：選択したコマの設定を使って表示します。</li>
+              <li>用途ごとの表示：タイルや背景などの設定を図で確認できます。</li>
             </ul>
           </section>
 
@@ -782,10 +786,10 @@ export function GameCheckMode({
 
           {asset.assetType === 'background' && typeDetails.background.length > 0 && (
             <section className="game-check-card" aria-label="背景parallax">
-              <h2>背景 / parallax</h2>
-              <p className="editor-note">説明用の位置変更です。Assetやカメラ設定は変更しません。</p>
+              <h2>背景の視差</h2>
+              <p className="editor-note">背景を動かして、視差による見え方を試せます。</p>
               <label className="editor-field">
-                parallax位置
+                背景の表示位置
                 <input
                   type="range"
                   aria-label="parallax位置"
@@ -841,20 +845,19 @@ export function GameCheckMode({
             {asset.assetType === 'gimmick' && (
               <p>
                 {typeDetails.gimmickPreset
-                  ? `movementPreset「${typeDetails.gimmickPreset}」の方向を表示しています。`
-                  : '未知のmovementPresetは軌跡を作らず未評価です。'}
+                  ? `移動設定「${typeDetails.gimmickPreset}」の方向を表示しています。`
+                  : 'この移動設定は表示に対応していません。'}
               </p>
             )}
             {asset.assetType === 'effect' && (
               <>
                 <p>
                   {typeDetails.effect
-                    ? `duration ${typeDetails.effect.durationMs}ms / ${typeDetails.effect.loop ? 'loop' : 'once'} / blend ${typeDetails.effect.blendMode}`
-                    : 'effect timingが未設定・不正なため静止表示にします。'}
+                    ? `長さ ${typeDetails.effect.durationMs}ms / ${typeDetails.effect.loop ? '繰り返し' : '1回'} / 重ね方 ${typeDetails.effect.blendMode}`
+                    : 'エフェクトの再生設定を確認できないため、静止画で表示します。'}
                 </p>
                 <p className="editor-note">
-                  Preview再生はFrame / Animationの実効時間を使用します。effectのduration /
-                  loopは設定値として比較表示し、不一致は既存素材検査で確認します。
+                  コマの表示時間に沿って再生します。エフェクトの長さ・繰り返しと一致しているかは、素材検査で確認してください。
                 </p>
               </>
             )}
@@ -957,12 +960,9 @@ export function GameCheckMode({
       </div>
 
       <footer className="game-check-footer">
-        <p>
-          ゲーム確認中の選択、再生、表示切替、parallax位置、Impact展開はUI-only
-          stateです。保存・History・autosave・IndexedDB・Blob・exportは実行しません。EscapeでもEditorへ戻れます。
-        </p>
+        <p>表示や再生を試しても、保存済みの素材は変わりません。Escキーでも編集画面へ戻れます。</p>
         <button type="button" onClick={onClose}>
-          Editorへ戻る
+          編集へ戻る
         </button>
       </footer>
     </main>

@@ -57,11 +57,11 @@ function membershipFor(project: Project, assetId: string | null) {
 function variantKindLabel(variant: AssetFamilyVariant): string {
   switch (variant.kind) {
     case 'linked-mirror':
-      return 'linked左右反転';
+      return '左右反転コピー';
     case 'linked-palette':
-      return 'linked palette';
+      return '色違いコピー';
     case 'manual':
-      return 'manual（自動更新なし）';
+      return '自由なコピー（自動更新なし）';
   }
 }
 
@@ -80,14 +80,14 @@ function BlobComparison({ before, after }: { before: Blob; after: Blob }) {
     return null;
   }
   return (
-    <div className="variant-image-comparison" aria-label="linked refresh画像preview">
+    <div className="variant-image-comparison" aria-label="更新する画像の比較">
       <figure>
-        <figcaption>before</figcaption>
-        <img src={urls.before} alt="refresh前のvariant画像" />
+        <figcaption>変更前</figcaption>
+        <img src={urls.before} alt="変更前のコピー画像" />
       </figure>
       <figure>
-        <figcaption>after</figcaption>
-        <img src={urls.after} alt="refresh後のvariant画像" />
+        <figcaption>変更後</figcaption>
+        <img src={urls.after} alt="変更後のコピー画像" />
       </figure>
     </div>
   );
@@ -108,13 +108,13 @@ function AssetStructureSnapshot({ asset, label }: { asset: Asset; label: string 
       <strong>{label}</strong>
       <dl>
         <div>
-          <dt>canvas</dt>
+          <dt>キャンバス</dt>
           <dd>
             {asset.canvasSize.width} × {asset.canvasSize.height}
           </dd>
         </div>
         <div>
-          <dt>origin</dt>
+          <dt>原点</dt>
           <dd>
             ({asset.origin.x}, {asset.origin.y})
           </dd>
@@ -122,7 +122,7 @@ function AssetStructureSnapshot({ asset, label }: { asset: Asset; label: string 
         <div>
           <dt>要素数</dt>
           <dd>
-            layer {asset.layers.length} / part {asset.parts.length} / frame{' '}
+            レイヤー {asset.layers.length} / パーツ {asset.parts.length} / コマ{' '}
             {asset.frames?.length ?? 0}
           </dd>
         </div>
@@ -352,10 +352,10 @@ function FamilyVariantList({
   onSelectAsset: (assetId: string) => void;
 }) {
   if (family.variants.length === 0) {
-    return <p className="editor-note">variantはまだありません。</p>;
+    return <p className="editor-note">コピーはまだありません。</p>;
   }
   return (
-    <ul className="variant-member-list" aria-label={`Family「${family.name}」のvariant一覧`}>
+    <ul className="variant-member-list" aria-label={`グループ「${family.name}」のコピー一覧`}>
       {family.variants.map((variant) => {
         const asset = assets.find((candidate) => candidate.id === variant.assetId);
         return (
@@ -369,10 +369,10 @@ function FamilyVariantList({
             )}
             <button
               type="button"
-              aria-label={`このvariant「${asset?.displayName ?? variant.assetId}」を選択`}
+              aria-label={`このコピー「${asset?.displayName ?? variant.assetId}」を選択`}
               onClick={() => onSelectAsset(variant.assetId)}
             >
-              このvariantを選択
+              このコピーを選択
             </button>
           </li>
         );
@@ -408,7 +408,7 @@ export function VariantPanel({
     () => assets.filter((asset) => !membershipByAsset.get(asset.id)),
     [assets, membershipByAsset],
   );
-  const [familyName, setFamilyName] = useState('新しいFamily');
+  const [familyName, setFamilyName] = useState('新しいグループ');
   const [familyBaseAssetId, setFamilyBaseAssetId] = useState('');
   const [manualAssetId, setManualAssetId] = useState('');
   const [paletteLayerId, setPaletteLayerId] = useState('');
@@ -475,20 +475,20 @@ export function VariantPanel({
   return (
     <section className="variant-panel" aria-labelledby="variant-panel-heading">
       <h3 id="variant-panel-heading" className="editor-subheading">
-        Family / Variant
+        素材の関係
       </h3>
       <p className="editor-note">
-        linked variantはbase保存だけでは変わりません。状態を確認し、preview後に明示refreshします。
+        元の素材から左右反転や色違いを作れます。元を編集したら、差分を確認してからコピーを更新します。
       </p>
 
       <fieldset className="editor-fieldset variant-create-family">
-        <legend>Familyを作成</legend>
+        <legend>グループを作成</legend>
         <label className="editor-field">
-          Family名
+          グループ名
           <input value={familyName} onChange={(event) => setFamilyName(event.target.value)} />
         </label>
         <label className="editor-field">
-          standalone base Asset
+          元にする独立素材
           <select
             value={familyBaseAssetId}
             onChange={(event) => setFamilyBaseAssetId(event.target.value)}
@@ -505,32 +505,47 @@ export function VariantPanel({
           disabled={busy || !familyBaseAssetId || !familyName.trim()}
           onClick={() => onCreateFamily(familyName.trim(), familyBaseAssetId)}
         >
-          Familyを作成
+          グループを作成
         </button>
         {standaloneAssets.length === 0 && (
-          <p className="editor-note">Familyへ未所属のAssetがありません。</p>
+          <p className="editor-note">グループに属していない素材がありません。</p>
         )}
       </fieldset>
 
       {!selectedAsset ? (
-        <p className="editor-note">Assetを選ぶとFamily状態を表示します。</p>
+        <p className="editor-note">素材を選ぶと、元の素材やコピーとの関係を表示します。</p>
       ) : !membership ? (
         <div className="variant-current-status">
-          <span className="variant-badge">standalone / 独立</span>
-          <p>このAssetはFamilyに所属せず、自動更新されません。</p>
+          <span className="variant-badge">独立した素材</span>
+          <p>この素材は独立して編集でき、ほかの素材の変更には追従しません。</p>
         </div>
       ) : membership.role === 'base' ? (
         <div className="variant-family-management">
           <div className="variant-current-status">
-            <span className="variant-badge">Family base</span>
+            <span className="variant-badge">元の素材</span>
             <strong>{membership.family.name}</strong>
-            <p>base Assetを削除するには、先にFamilyを解除してください。</p>
+            <p>元の素材を削除するには、先にグループを解除してください。</p>
           </div>
 
+          <div
+            className="variant-relationship"
+            role="img"
+            aria-label="元の素材から、左右反転と色違いのコピーを作り、確認後に更新する関係"
+          >
+            <span>元の素材</span>
+            <span aria-hidden="true">→</span>
+            <span>左右反転・色違い</span>
+          </div>
+          <details className="editor-note">
+            <summary>保存形式の詳細</summary>
+            <p>
+              Family / Variantとして関連を保存します。コピーの更新は内容を確認してから行います。
+            </p>
+          </details>
           <fieldset className="editor-fieldset">
-            <legend>manual variantを登録</legend>
+            <legend>自由なコピーを登録</legend>
             <label className="editor-field">
-              standalone member
+              登録する独立素材
               <select
                 value={manualAssetId}
                 onChange={(event) => setManualAssetId(event.target.value)}
@@ -547,19 +562,21 @@ export function VariantPanel({
               disabled={busy || !manualAssetId}
               onClick={() => onAddManualVariant(membership.family.id, manualAssetId)}
             >
-              manual variantとして登録
+              自由なコピーとして登録
             </button>
-            <p className="editor-note">装備差分・手修正解像度など。自動refreshは行いません。</p>
+            <p className="editor-note">
+              装備の違いや手描きの修正などを登録できます。元の素材の変更では書き換わりません。
+            </p>
           </fieldset>
 
           <fieldset className="editor-fieldset">
-            <legend>linked左右反転variant</legend>
+            <legend>左右反転コピー</legend>
             <button
               type="button"
               disabled={busy}
               onClick={() => onCreateMirrorVariant(membership.family.id)}
             >
-              linked左右反転を作成
+              左右反転コピーを作成
             </button>
             <p className="editor-note">
               リグの動きや画像の欠落がある素材は、理由を示して作成を止めます。複数レイヤー・複数コマの画像も保持します。
@@ -567,9 +584,9 @@ export function VariantPanel({
           </fieldset>
 
           <fieldset className="editor-fieldset">
-            <legend>linked palette variant</legend>
+            <legend>色違いコピー</legend>
             <label className="editor-field">
-              palette対象layer（1件）
+              色を変えるレイヤー
               <select
                 value={paletteLayerId}
                 onChange={(event) => setPaletteLayerId(event.target.value)}
@@ -600,7 +617,7 @@ export function VariantPanel({
               </label>
             </div>
             <label className="editor-field">
-              palette tolerance（0-255）
+              色の許容差（0-255）
               <input
                 type="number"
                 min={0}
@@ -623,7 +640,7 @@ export function VariantPanel({
                 })
               }
             >
-              linked paletteを作成
+              色違いコピーを作成
             </button>
           </fieldset>
 
@@ -639,7 +656,7 @@ export function VariantPanel({
             disabled={busy}
             onClick={() => onRemoveFamily(membership.family.id)}
           >
-            Familyを解除（Assetは残す）
+            グループを解除（素材は残す）
           </button>
         </div>
       ) : (
@@ -647,10 +664,10 @@ export function VariantPanel({
           <div className="variant-current-status">
             <span className="variant-badge">{variantKindLabel(membership.variant!)}</span>
             <strong>{membership.family.name}</strong>
-            <span>base: {baseAsset?.displayName ?? membership.family.baseAssetId}</span>
+            <span>元の素材: {baseAsset?.displayName ?? membership.family.baseAssetId}</span>
           </div>
           {membership.variant?.kind === 'manual' ? (
-            <p className="editor-note">manual variantは追跡だけを行い、自動refreshしません。</p>
+            <p className="editor-note">自由なコピーは、元の素材を更新しても変わりません。</p>
           ) : (
             <div className="variant-linked-refresh" aria-live="polite">
               <p className="variant-state-text" role="status" aria-live="polite">
@@ -673,38 +690,44 @@ export function VariantPanel({
                 disabled={busy || !refreshPreviewEligible}
                 onClick={() => onPreviewRefresh(membership.family.id, membership.variant!.assetId)}
               >
-                refresh前後をpreview
+                更新前後を比較
               </button>
 
               {selectedPreview && (
-                <section className="variant-refresh-preview" aria-label="linked refresh preview">
-                  <h4>refresh preview（まだ保存していません）</h4>
+                <section className="variant-refresh-preview" aria-label="コピーの更新内容">
+                  <h4>更新内容の確認（まだ保存していません）</h4>
                   <div className="variant-preview-columns">
                     <AssetStructureSnapshot asset={selectedAsset} label="before" />
                     <AssetStructureSnapshot asset={selectedPreview.afterAsset} label="after" />
                   </div>
-                  <LayerChangeDetails before={selectedAsset} after={selectedPreview.afterAsset} />
-                  <WriteSetStructuredDiff
-                    before={selectedAsset}
-                    after={selectedPreview.afterAsset}
-                    beforeWriteSet={selectedLinkedVariant!.recipe.writeSet}
-                    afterWriteSet={selectedPreview.nextVariant.recipe.writeSet}
-                  />
-                  <h5>変更対象</h5>
-                  <ul>
-                    {selectedPreview.changes.map((change) => (
-                      <li key={change}>{change}</li>
-                    ))}
-                  </ul>
-                  <h5>維持するもの</h5>
-                  <ul>
-                    {selectedPreview.preserved.map((value) => (
-                      <li key={value}>{value}</li>
-                    ))}
-                  </ul>
+                  <details className="variant-format-details">
+                    <summary>保存データの差分を詳しく見る</summary>
+                    <LayerChangeDetails before={selectedAsset} after={selectedPreview.afterAsset} />
+                    <WriteSetStructuredDiff
+                      before={selectedAsset}
+                      after={selectedPreview.afterAsset}
+                      beforeWriteSet={selectedLinkedVariant!.recipe.writeSet}
+                      afterWriteSet={selectedPreview.nextVariant.recipe.writeSet}
+                    />
+                    <h5>変更対象</h5>
+                    <ul>
+                      {selectedPreview.changes.map((change) => (
+                        <li key={change}>{change}</li>
+                      ))}
+                    </ul>
+                    <h5>維持するもの</h5>
+                    <ul>
+                      {selectedPreview.preserved.map((value) => (
+                        <li key={value}>{value}</li>
+                      ))}
+                    </ul>
+                  </details>
                   {selectedPreview.blobChanges.map((change) => (
                     <div key={change.targetPath} className="variant-blob-preview">
-                      <p>Blob: {change.targetPath}</p>
+                      <details>
+                        <summary>変更する画像の保存先</summary>
+                        <p>{change.targetPath}</p>
+                      </details>
                       <BlobComparison before={change.before} after={change.after} />
                     </div>
                   ))}
@@ -715,7 +738,7 @@ export function VariantPanel({
                         checked={manualOverwriteConfirmed}
                         onChange={(event) => setManualOverwriteConfirmed(event.target.checked)}
                       />
-                      write-set内の手動調整を上書きすることを確認しました
+                      更新対象の手動調整を上書きすることを確認しました
                     </label>
                   )}
                   <button
@@ -732,7 +755,7 @@ export function VariantPanel({
                       )
                     }
                   >
-                    このvariantを明示refresh
+                    このコピーを更新
                   </button>
                 </section>
               )}
@@ -744,7 +767,7 @@ export function VariantPanel({
               disabled={busy}
               onClick={() => onDetachVariant(membership.family.id, membership.variant!.assetId)}
             >
-              Familyから外す（Assetは残す）
+              グループから外す（素材は残す）
             </button>
             <button
               type="button"
@@ -754,7 +777,7 @@ export function VariantPanel({
                 onDeleteVariantAsset(membership.family.id, membership.variant!.assetId)
               }
             >
-              variantアセットを削除
+              コピーを削除
             </button>
           </div>
         </div>

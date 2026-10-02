@@ -48,6 +48,11 @@ import { ONION_SKIN_NEXT_COLOR, ONION_SKIN_OPACITY, ONION_SKIN_PREVIOUS_COLOR } 
 
 export const FRAME_ALIGNMENT_REFERENCE_OPACITY = 0.5;
 
+function fitCanvasView(viewport: Viewport, canvasSize: Size): ViewTransform {
+  const padding = Math.min(32, Math.min(viewport.width, viewport.height) / 8);
+  return fitView(viewport, canvasSize, padding);
+}
+
 /** 汎用font family候補（契約 §5 A: 再編集不可・可搬性のため汎用candidateのみ）。 */
 export type RasterTextFontFamily = 'sans-serif' | 'serif' | 'monospace';
 
@@ -279,6 +284,8 @@ export function CanvasEditor({
   const pastePositionRef = useRef<Vec2 | null>(null);
   const pointersRef = useRef<Map<number, Vec2>>(new Map());
   const fittedAssetRef = useRef<string | null>(null);
+  const autoFitRef = useRef(true);
+  const lastViewportRef = useRef<Viewport | null>(null);
   const bitmapsRef = useRef<Map<string, DecodedImageSource>>(new Map());
 
   const displayAsset = draftAsset ?? asset;
@@ -377,13 +384,34 @@ export function CanvasEditor({
     [],
   );
 
-  // アセットを開いた最初の描画前にfitを反映し、表示直後の入力が古いviewへ届かないようにする。
+  // 全体表示は回転やパネル開閉にも追従する。手動ズーム・パン後は倍率と中心を保つ。
   useLayoutEffect(() => {
-    if (viewport.width > 0 && viewport.height > 0 && fittedAssetRef.current !== asset.id) {
-      fittedAssetRef.current = asset.id;
-      setView(fitView(viewport, asset.canvasSize));
+    if (viewport.width <= 0 || viewport.height <= 0) {
+      return;
     }
-  }, [viewport, asset.id, asset.canvasSize]);
+    const previousViewport = lastViewportRef.current;
+    lastViewportRef.current = viewport;
+    if (fittedAssetRef.current !== asset.id) {
+      fittedAssetRef.current = asset.id;
+      autoFitRef.current = true;
+    }
+    if (autoFitRef.current) {
+      setView(
+        fitCanvasView(viewport, {
+          width: asset.canvasSize.width,
+          height: asset.canvasSize.height,
+        }),
+      );
+    } else if (previousViewport) {
+      setView((current) =>
+        panBy(
+          current,
+          (viewport.width - previousViewport.width) / 2,
+          (viewport.height - previousViewport.height) / 2,
+        ),
+      );
+    }
+  }, [viewport, asset.id, asset.canvasSize.width, asset.canvasSize.height]);
 
   // paste previewがarmされたらclipboardをImageBitmapへ変換し、初期位置を局所stateへ写す。
   // clipboardはメモリ内一時データであり、Asset / Project / Historyへは保存しない（契約 §6）。
@@ -688,6 +716,7 @@ export function CanvasEditor({
       event.preventDefault();
       const rect = canvas.getBoundingClientRect();
       const anchor = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+      autoFitRef.current = false;
       setView((current) =>
         zoomAt(current, anchor, clampZoom(current.scale * (event.deltaY < 0 ? 1.2 : 1 / 1.2))),
       );
@@ -1068,6 +1097,7 @@ export function CanvasEditor({
       }
       const distance = Math.hypot(second.x - first.x, second.y - first.y);
       const midpoint = { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
+      autoFitRef.current = false;
       setView(
         zoomAt(drag.startView, midpoint, drag.startView.scale * (distance / drag.startDistance)),
       );
@@ -1081,6 +1111,7 @@ export function CanvasEditor({
     const deltaY = point.y - drag.startScreen.y;
 
     if (drag.mode === 'pan') {
+      autoFitRef.current = false;
       setView(panBy(drag.startView, deltaX, deltaY));
       return;
     }
@@ -1469,38 +1500,41 @@ export function CanvasEditor({
 
   const zoomPercent = Math.round(view.scale * 100);
   const applyZoom = (scale: number) => {
+    autoFitRef.current = false;
     setView((current) => zoomAt(current, { x: viewport.width / 2, y: viewport.height / 2 }, scale));
   };
 
   return (
-    <div className="canvas-editor" ref={wrapperRef}>
-      <canvas
-        ref={canvasRef}
-        className="canvas-editor-canvas"
-        aria-label="アセットキャンバス"
-        aria-readonly={readOnly}
-        aria-busy={!rasterInputReady}
-        data-raster-input-ready={rasterInputReady ? 'true' : 'false'}
-        data-paste-preview-ready={
-          pastePreview ? (pasteBitmap && pastePosition ? 'true' : 'false') : 'inactive'
-        }
-        data-view-transform={JSON.stringify(view)}
-        data-onion-skin-previous={onionSkinPreviousAsset ? 'true' : 'false'}
-        data-onion-skin-next={onionSkinNextAsset ? 'true' : 'false'}
-        data-onion-skin-opacity={String(ONION_SKIN_OPACITY)}
-        data-frame-alignment-reference={alignmentReferenceAsset ? 'true' : 'false'}
-        data-frame-alignment-reference-opacity={String(FRAME_ALIGNMENT_REFERENCE_OPACITY)}
-        style={{
-          width: viewport.width,
-          height: viewport.height,
-          touchAction: 'none',
-          cursor: TOOL_CURSORS[tool],
-        }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={endPointer}
-        onPointerCancel={endPointer}
-      />
+    <div className="canvas-editor">
+      <div className="canvas-editor-surface" ref={wrapperRef}>
+        <canvas
+          ref={canvasRef}
+          className="canvas-editor-canvas"
+          aria-label="アセットキャンバス"
+          aria-readonly={readOnly}
+          aria-busy={!rasterInputReady}
+          data-raster-input-ready={rasterInputReady ? 'true' : 'false'}
+          data-paste-preview-ready={
+            pastePreview ? (pasteBitmap && pastePosition ? 'true' : 'false') : 'inactive'
+          }
+          data-view-transform={JSON.stringify(view)}
+          data-onion-skin-previous={onionSkinPreviousAsset ? 'true' : 'false'}
+          data-onion-skin-next={onionSkinNextAsset ? 'true' : 'false'}
+          data-onion-skin-opacity={String(ONION_SKIN_OPACITY)}
+          data-frame-alignment-reference={alignmentReferenceAsset ? 'true' : 'false'}
+          data-frame-alignment-reference-opacity={String(FRAME_ALIGNMENT_REFERENCE_OPACITY)}
+          style={{
+            width: viewport.width,
+            height: viewport.height,
+            touchAction: 'none',
+            cursor: TOOL_CURSORS[tool],
+          }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={endPointer}
+          onPointerCancel={endPointer}
+        />
+      </div>
       <div className="canvas-zoombar">
         {ZOOM_PRESETS.map((preset) => (
           <button
@@ -1512,7 +1546,13 @@ export function CanvasEditor({
             {Math.round(preset * 100)}%
           </button>
         ))}
-        <button type="button" onClick={() => setView(fitView(viewport, asset.canvasSize))}>
+        <button
+          type="button"
+          onClick={() => {
+            autoFitRef.current = true;
+            setView(fitCanvasView(viewport, asset.canvasSize));
+          }}
+        >
           全体表示
         </button>
         <span className="canvas-zoom-label">ズーム {zoomPercent}%</span>

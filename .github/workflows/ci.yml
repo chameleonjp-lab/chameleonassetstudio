@@ -110,6 +110,7 @@ jobs:
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run e2e
       - run: npm run e2e:webkit
+      - run: npm run e2e:quality
       - name: Upload Playwright report and Group 14 evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -120,6 +121,7 @@ jobs:
             playwright-report-webkit/
             test-results-webkit/
             test-results/
+            test-results-quality/
             !test-results/group17-pixijs-evidence.json
             !test-results/group17-phaser-evidence.json
             !test-results/group16-generic-web-evidence.json

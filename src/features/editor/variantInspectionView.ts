@@ -17,9 +17,9 @@ export function variantInspectionLabel(view: VariantInspectionView | undefined):
     case 'up-to-date':
       return '同期済み';
     case 'ready':
-      return '更新候補（stale）';
+      return '元の素材に変更あり';
     case 'manual-adjusted':
-      return view.inspection.stale ? '手動調整あり（baseにも更新候補）' : '手動調整あり';
+      return view.inspection.stale ? '手動調整あり（元の素材にも変更あり）' : '手動調整あり';
     case 'ineligible':
       return '更新不可';
   }

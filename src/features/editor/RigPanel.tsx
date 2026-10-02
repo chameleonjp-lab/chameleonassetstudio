@@ -19,6 +19,15 @@ interface RigPanelProps {
   onCommit: (label: string, next: Asset) => void;
 }
 
+const MOTION_TEMPLATE_LABELS: Record<MotionTemplateName, string> = {
+  idle_sway: '待機中のゆらぎ',
+  walk_bounce: '弾む歩行',
+  jump_squash: 'ジャンプ',
+  attack_swing: '振り下ろす攻撃',
+  damage_shake: 'ダメージの揺れ',
+  dead_collapse: '倒れる動き',
+};
+
 function replaceRig(rigs: RigAnimation[], next: RigAnimation): RigAnimation[] {
   return rigs.map((rig) => (rig.id === next.id ? next : rig));
 }
@@ -143,7 +152,7 @@ export function RigPanel({ asset, onCommit }: RigPanelProps) {
           >
             {MOTION_TEMPLATES.map((name) => (
               <option key={name} value={name}>
-                {name}
+                {MOTION_TEMPLATE_LABELS[name]}
               </option>
             ))}
           </select>
