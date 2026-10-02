@@ -226,6 +226,7 @@ test('Frame別geometry/visibleを1履歴で確定・取消・Undo/Redo・reload�
   await x.fill('5');
   await visible.focus();
   await expect(x).toHaveValue('5');
+  await expect(page.locator('.editor')).toHaveAttribute('aria-busy', 'false');
   await visible.selectOption('hide');
   await expect(page.getByText(/Frameで非表示/)).toBeVisible();
 
@@ -233,6 +234,7 @@ test('Frame別geometry/visibleを1履歴で確定・取消・Undo/Redo・reload�
   const circleVisible = page.getByLabel('Frame「frame_1」判定「pickup」の表示');
   await radius.fill('12');
   await radius.press('Enter');
+  await expect(page.locator('.editor')).toHaveAttribute('aria-busy', 'false');
   await circleVisible.selectOption('show');
   await expect(page.getByText(/Frameで表示/)).toBeVisible();
   await expect(saveStatus(page)).toHaveText('保存済み', { timeout: 10_000 });
