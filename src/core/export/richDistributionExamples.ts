@@ -11,9 +11,9 @@ export function buildRichDistributionExample(target: 'canvas2d' | 'pixijs' | 'ph
       ? `const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height; stage.append(canvas);
       const context = canvas.getContext('2d'); context.imageSmoothingEnabled = false;
       const player = createCanvasDistribution({ ...loaded, context, position });
-      let previous = performance.now(), handle;
+      let previous, handle;
       player.start();
-      const tick = (now) => { context.clearRect(0,0,width,height); player.advance(now-previous); previous=now; handle=requestAnimationFrame(tick); };
+      const tick = (now) => { const delta = previous === undefined ? 0 : now-previous; previous=now; context.clearRect(0,0,width,height); player.advance(delta); handle=requestAnimationFrame(tick); };
       handle=requestAnimationFrame(tick);
       cleanup=()=>{cancelAnimationFrame(handle);player.dispose();};`
       : target === 'pixijs'
