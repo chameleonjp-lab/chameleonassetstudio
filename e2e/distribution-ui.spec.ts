@@ -11,7 +11,7 @@ for (const profile of ['fixed-grid', 'packed']) {
       await page.getByRole('button', { name: '作成', exact: true }).click();
       await page.getByLabel('見本の絵を入れて始める').check();
       await page.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
-      const panel = page.getByRole('region', { name: '配布用ZIP' });
+      const panel = page.getByRole('region', { name: '配布用ZIP', exact: true });
       await panel.getByLabel('配布画像の配置').selectOption(profile);
       await panel.getByLabel('配布画像の倍率').selectOption(String(scale));
       await panel.getByLabel('配布画像間の余白').fill('3');
