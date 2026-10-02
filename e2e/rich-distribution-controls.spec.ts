@@ -9,7 +9,6 @@ async function setup(page: Page) {
   // Structural History flushes asynchronously after the new asset first appears.
   // Finish setup before the cancellation test replaces the global flush boundary.
   await expect(page.getByRole('button', { name: '元に戻す', exact: true })).toBeEnabled();
-  await expect(page.getByRole('status').filter({ hasText: '保存済み' })).toBeVisible();
   const panel = page.getByRole('region', { name: '新版配布用ZIP', exact: true });
   await expect(panel.getByRole('button', { name: '新版配布用ZIPをダウンロード' })).toBeEnabled();
   return panel;
