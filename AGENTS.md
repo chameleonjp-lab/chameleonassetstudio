@@ -1,5 +1,7 @@
 # Codex Instructions
 
+2026-10-03: トップ → 2D / 3D（3D は別タブ）の新しい [3D 制作要件案](docs/THREE_D_PRODUCT_REQUIREMENTS_2026-10-03.md) をレビュー中。要件 PR → 実装計画 PR → 階層・読取関係図 PR → 実装の順とする。以下の旧 3D 記述は履歴として保持し、現在の方向・未確定事項は新要件案 §1 を参照する。文書の追加だけでコード実装・依存採用・公開を完了扱いしない。
+
 最終更新日: 2026-07-10
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 用途: Codex Fallback Mode / Hybrid Roadmap Mode の実装指示書
@@ -263,3 +265,4 @@ Playwright Chromium の取得失敗など環境要因で E2E が実行できな�
 - dependency 追加が必要だが、ライセンスや商用利用条件が未確認。
 - 既存 open PR と衝突する。
 - Claude Code Primary Mode へ戻すべき方針判断が発生した。
+
