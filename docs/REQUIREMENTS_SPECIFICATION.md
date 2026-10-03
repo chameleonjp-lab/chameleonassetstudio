@@ -1,5 +1,7 @@
 # Chameleon Asset Studio 要件仕様書
 
+2026-10-03: トップ → 2D / 3D（3D は別タブ）の新しい [3D 制作要件案](THREE_D_PRODUCT_REQUIREMENTS_2026-10-03.md) をレビュー中。要件 PR → 実装計画 PR → 階層・読取関係図 PR → 実装の順とする。以下の旧 3D 記述は履歴として保持し、現在の方向・未確定事項は新要件案 §1 を参照する。文書の追加だけでコード実装・依存採用・公開を完了扱いしない。
+
 最終更新日: 2026-07-21
 対象リポジトリ: `chameleonjp-lab/chameleonassetstudio`
 文書種別: 要件仕様書
@@ -498,3 +500,4 @@ MVP は、次を満たしたら完了とする。
 - HTMLCanvasElement.toBlob: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toBlob
 - Pointer events: https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events
 - OffscreenCanvas: https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvas
+
