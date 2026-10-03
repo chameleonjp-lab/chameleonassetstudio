@@ -18,6 +18,16 @@ export default defineConfig({
   base: basePath,
   build: {
     manifest: true,
+    modulePreload: {
+      // WebKit can retain failed modulepreloads across reloads (bug 270357).
+      // Keep these fallible chunks lazy; Vite retains their CSS dependencies.
+      resolveDependencies(filename, dependencies, { hostType }) {
+        return hostType === 'js' &&
+          /(?:^|\/)(?:NativeViewportPanel|renderer)-[^/]+\.js$/.test(filename)
+          ? []
+          : dependencies;
+      },
+    },
     rollupOptions: { input: { hub: 'index.html', two: '2d/index.html', three: '3d/index.html' } },
   },
   plugins: [

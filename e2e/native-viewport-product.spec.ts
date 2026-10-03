@@ -102,26 +102,53 @@ test('offline display chunk failure preserves saving and complete native backup'
   page,
   context,
 }) => {
-  await page.goto('/3d/');
-  await page.getByLabel('新しいプロジェクト名', { exact: true }).fill('Offline native work');
-  await page.getByRole('button', { name: '新しい3Dプロジェクトを作成' }).click();
-  await expect(
-    page.getByRole('heading', { name: 'Offline native work', exact: true }),
-  ).toBeVisible();
-  await context.setOffline(true);
-  await page.getByRole('button', { name: '箱を追加', exact: true }).click();
-  await expect(
-    page.getByRole('alert').filter({ hasText: '3D表示を読み込めませんでした' }),
-  ).toBeVisible();
-  await page.getByRole('button', { name: '今すぐ保存', exact: true }).click();
-  await expect(page.getByRole('status').filter({ hasText: '保存済み · revision' })).toBeVisible();
-  const event = page.waitForEvent('download');
-  await page.getByRole('button', { name: '現在の内容をバックアップ', exact: true }).click();
-  expect((await event).suggestedFilename()).toBe('Offline native work.cas3dproj');
-  await context.setOffline(false);
-  await page.getByRole('button', { name: '保存してページを再読み込み' }).click();
-  await page.getByRole('button', { name: /Offline native work.*revision/ }).click();
-  await expect(page.getByRole('button', { name: '箱を追加', exact: true })).toBeEnabled();
-  await page.getByRole('button', { name: '3D表示を開く', exact: true }).click();
-  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  const events: unknown[] = [];
+  page.on('request', (request) => events.push({ event: 'request', url: request.url() }));
+  page.on('requestfailed', (request) =>
+    events.push({ event: 'requestfailed', url: request.url(), error: request.failure() }),
+  );
+  page.on('response', (response) =>
+    events.push({ event: 'response', url: response.url(), status: response.status() }),
+  );
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) events.push({ event: 'navigation', url: frame.url() });
+  });
+  try {
+    await page.goto('/3d/');
+    await page.getByLabel('新しいプロジェクト名', { exact: true }).fill('Offline native work');
+    await page.getByRole('button', { name: '新しい3Dプロジェクトを作成' }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Offline native work', exact: true }),
+    ).toBeVisible();
+    await context.setOffline(true);
+    await page.getByRole('button', { name: '箱を追加', exact: true }).click();
+    await expect(
+      page.getByRole('alert').filter({ hasText: '3D表示を読み込めませんでした' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: '今すぐ保存', exact: true }).click();
+    await expect(page.getByRole('status').filter({ hasText: '保存済み · revision' })).toBeVisible();
+    const event = page.waitForEvent('download');
+    await page.getByRole('button', { name: '現在の内容をバックアップ', exact: true }).click();
+    expect((await event).suggestedFilename()).toBe('Offline native work.cas3dproj');
+    events.push({
+      event: 'offline-boundary',
+      error: await page.getByTestId('viewport-load-error').textContent(),
+    });
+    await context.setOffline(false);
+    await page.getByRole('button', { name: '保存してページを再読み込み' }).click();
+    await page.getByRole('button', { name: /Offline native work.*revision/ }).click();
+    await expect(page.getByRole('button', { name: '箱を追加', exact: true })).toBeEnabled();
+    await page.getByRole('button', { name: '3D表示を開く', exact: true }).click();
+    await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  } finally {
+    const error = await page
+      .getByTestId('viewport-load-error')
+      .textContent({ timeout: 500 })
+      .catch(() => null);
+    events.push({ event: 'final-boundary', error });
+    await test.info().attach('viewport-chunk-recovery.json', {
+      body: Buffer.from(JSON.stringify(events, null, 2)),
+      contentType: 'application/json',
+    });
+  }
 });

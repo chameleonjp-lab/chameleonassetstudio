@@ -94,3 +94,10 @@ Three依存はM06予定境界の `src/adapters3d/three/renderer.ts` に置き、
 
 
 製品接続候補のローカル検査: 1178 unit tests（native adapter49件、箱/保存等を含む）、TypeScript、lint、format、app/H3/評価entry build、CI分類が成功。test-only fixtureのFast Refresh警告はcomponent exportに直し、対象lintを再確認した。build auditでhub/2DのThree/adapter到達なし、3Dのlazy closureだけにThreeがあることを確認した。最終browser判定はPRの対象head CIへ記録する。
+
+
+## 本番WebKitの通信中断復旧
+
+製品接続head `6d01be8c6e0c1c4c1c2a8c8197c658bb2c739a70` のCI984では、dev両engineと本番Chromiumは成功したが、本番WebKitだけoffline chunk失敗後の表示復旧が失敗した。保存・backup・再読込・writer再取得は成功し、失敗箇所はpanelのlazy load boundaryだった。
+
+生成bundleのmodulepreloadと[WebKit bug 270357](https://bugs.webkit.org/show_bug.cgi?id=270357)の既知挙動が一致するため、native panel/rendererだけJS先読みを抑制する。通常のdynamic importとCSS待機は維持する。Vite6実装はCSSをresolveDependenciesの前に分離して後で再追加する。原因の完全な同定とは扱わず、同じoffline失敗・保存・再読込・再表示の受入条件を維持して再検査する。error詳細とrequest/response/navigationをartifactに残し、routingによるcache無効化や期待値緩和は行わない。

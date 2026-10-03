@@ -25,12 +25,12 @@ const createNativeViewport: NativeViewportFactory = async (host, onStatus) => {
 
 class ViewportLoadBoundary extends Component<
   { children: ReactNode; onReload: () => Promise<void> },
-  { failed: boolean; busy: boolean; error: string }
+  { failed: boolean; busy: boolean; error: string; loadError: string }
 > {
-  state = { failed: false, busy: false, error: '' };
+  state = { failed: false, busy: false, error: '', loadError: '' };
   private reloading = false;
-  static getDerivedStateFromError() {
-    return { failed: true };
+  static getDerivedStateFromError(error: unknown) {
+    return { failed: true, loadError: error instanceof Error ? error.message : String(error) };
   }
   render() {
     return this.state.failed ? (
@@ -38,6 +38,10 @@ class ViewportLoadBoundary extends Component<
         <p role="alert">
           3D表示を読み込めませんでした。現在の編集内容は保持しています。通信が戻ったら、保存してページを再読み込みしてください。先にバックアップを取得することもできます。
         </p>
+        <details>
+          <summary>読み込みエラーの詳細</summary>
+          <p data-testid="viewport-load-error">{this.state.loadError}</p>
+        </details>
         <button
           type="button"
           disabled={this.state.busy}
