@@ -21,6 +21,21 @@ const evaluation = {
   get canvas() {
     return viewport.canvas;
   },
+  inspect: () => {
+    const preset = viewport.cameraPreset('top');
+    if (!preset.ok) return preset;
+    const camera = viewport.getCamera();
+    const result = viewport.setCamera({ ...camera, projection: 'orthographic', span: 3 });
+    if (!result.ok) return result;
+    return viewport.setViewOptions({
+      shading: 'wireframe',
+      background: 'light',
+      lighting: 'soft',
+      grid: true,
+      axes: true,
+      bounds: true,
+    });
+  },
   reset: () => viewport.resetCamera(),
   hidden: (hidden: boolean) => viewport.setHidden(hidden),
   frozen: (frozen: boolean) => viewport.setFrozen(frozen),

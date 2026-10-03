@@ -184,3 +184,35 @@ test('candidate dependencies stay outside product entry requests', async ({ page
     ),
   ).toEqual([]);
 });
+
+test('orthographic inspection and helper resources reconstruct after context loss', async ({
+  page,
+}) => {
+  await ready(page);
+  expect(
+    await page.evaluate(() => (window as unknown as EvaluationWindow).nativeEvaluation.inspect()),
+  ).toEqual({ ok: true });
+  const box = await page.locator('#viewport canvas').boundingBox();
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box!.x + box!.width / 2 + 60, box!.y + box!.height / 2 + 25, { steps: 4 });
+  await page.mouse.up();
+  const before = await capture(page);
+  const camera = (await diagnostics(page)).camera;
+  expect(
+    await page.evaluate(() =>
+      (window as unknown as EvaluationWindow).nativeEvaluation.contextLoss(),
+    ),
+  ).toBe(true);
+  await expect.poll(async () => (await diagnostics(page)).contextRestores).toBeGreaterThan(0);
+  await expect.poll(async () => (await diagnostics(page)).state).toBe('active');
+  expect(Buffer.from(await capture(page))).toEqual(Buffer.from(before));
+  expect((await diagnostics(page)).camera).toEqual(camera);
+  await page.evaluate(() => (window as unknown as EvaluationWindow).nativeEvaluation.dispose());
+  expect((await diagnostics(page)).renderers).toBe(0);
+  expect((await diagnostics(page)).controls).toBe(0);
+  expect((await diagnostics(page)).geometries).toBe(0);
+  expect((await diagnostics(page)).helperGeometries).toBe(0);
+  expect((await diagnostics(page)).helperMaterials).toBe(0);
+  expect((await diagnostics(page)).inspectionMaterials).toBe(0);
+});

@@ -152,3 +152,53 @@ test('offline display chunk failure preserves saving and complete native backup'
     });
   }
 });
+
+test('inspection camera and helpers preserve canonical revision and survive GPU reconstruction', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await createBox(page);
+  await page.getByRole('button', { name: '今すぐ保存', exact: true }).click();
+  const revision = page.getByRole('status').filter({ hasText: '保存済み · revision' });
+  await expect(revision).toContainText('revision 1');
+  const original = await png(page);
+  await page.getByText('カメラ・表示の詳細設定', { exact: true }).click();
+  await page.getByRole('button', { name: '正面から見る', exact: true }).click();
+  const front = await png(page);
+  expect(front.equals(original)).toBe(false);
+  await page.getByRole('button', { name: '上面から見る', exact: true }).click();
+  expect((await png(page)).equals(front)).toBe(false);
+  const objects = page.getByLabel('注目するオブジェクト', { exact: true });
+  const id = await objects.locator('option').nth(1).getAttribute('value');
+  await objects.selectOption(id!);
+  await page.getByRole('button', { name: '選択対象に合わせる', exact: true }).click();
+  await page.getByLabel('投影方式', { exact: true }).selectOption('orthographic');
+  await page.getByLabel('平行投影の高さ', { exact: true }).fill('3');
+  await page.getByRole('button', { name: '数値カメラを適用', exact: true }).click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await page.getByLabel('描画モード', { exact: true }).selectOption('wireframe');
+  await page.getByLabel('背景', { exact: true }).selectOption('light');
+  await page.getByLabel('照明', { exact: true }).selectOption('soft');
+  await page.getByLabel('グリッド', { exact: true }).check();
+  await page.getByLabel('座標軸', { exact: true }).check();
+  await page.getByLabel('全体の境界', { exact: true }).check();
+  await expect(revision).toContainText('revision 1');
+  const inspected = await png(page);
+  expect(inspected.equals(original)).toBe(false);
+  await page.getByRole('button', { name: '保存してGPU表示を休止', exact: true }).click();
+  await expect(page.locator('.native-viewport-host canvas')).toHaveCount(0);
+  await page.getByRole('button', { name: 'GPU表示を再開', exact: true }).click();
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  expect((await png(page)).equals(inspected)).toBe(true);
+  await page.getByRole('button', { name: '現在のカメラを読み取る', exact: true }).click();
+  await expect(page.getByLabel('投影方式', { exact: true })).toHaveValue('orthographic');
+  await expect(page.getByLabel('描画モード', { exact: true })).toHaveValue('wireframe');
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+  ).toBeLessThanOrEqual(0);
+  await test.info().attach('native-inspection-mobile.png', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png',
+  });
+  await test.info().attach('native-inspection.png', { body: inspected, contentType: 'image/png' });
+});

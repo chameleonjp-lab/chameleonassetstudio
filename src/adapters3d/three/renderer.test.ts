@@ -1,5 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Box3, Mesh, PerspectiveCamera, Vector3 } from 'three';
+import {
+  AmbientLight,
+  Box3,
+  Color,
+  DirectionalLight,
+  LineSegments,
+  Mesh,
+  MeshStandardMaterial,
+  OrthographicCamera,
+  PerspectiveCamera,
+  Scene,
+  Vector3,
+} from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import type { NativeCameraState, NativeViewOptions } from '../../core3d/ports/renderPort';
 import { smallProject } from '../../core3d/fixtures/project';
 import { cloneProject, identityTransform, type Project3D } from '../../core3d/model/project';
 import { transformPoint, worldMatrix } from '../../core3d/model/coordinates';
@@ -209,11 +223,16 @@ describe('camera fit math', () => {
 
 class CanvasDouble extends EventTarget {
   style: Record<string, string> = {};
+  ownerDocument!: Document;
+  clientWidth = 640;
+  clientHeight = 480;
   parent: CanvasDouble[] | null = null;
   available = true;
   loseContext = vi.fn();
   context = { getExtension: vi.fn(() => ({ loseContext: this.loseContext })) };
   captured = new Set<number>();
+  getRootNode = () => this.ownerDocument;
+  setPointerCapture = (id: number) => this.captured.add(id);
   setAttribute = vi.fn();
   getContext = vi.fn(() => (this.available ? this.context : null));
   hasPointerCapture = (id: number) => this.captured.has(id);
@@ -227,7 +246,10 @@ class CanvasDouble extends EventTarget {
   }
 }
 
-function lifecycleHarness(webgl2Available = true) {
+function lifecycleHarness(
+  webgl2Available = true,
+  createControls?: NativeViewportDependencies['createControls'],
+) {
   const pending = new Map<number, FrameRequestCallback>();
   const children: CanvasDouble[] = [];
   const allCanvases: CanvasDouble[] = [];
@@ -238,6 +260,7 @@ function lifecycleHarness(webgl2Available = true) {
     defaultView: view,
     createElement: () => {
       const canvas = new CanvasDouble();
+      canvas.ownerDocument = document as unknown as Document;
       canvas.available = webgl2Available;
       allCanvases.push(canvas);
       return canvas;
@@ -260,7 +283,7 @@ function lifecycleHarness(webgl2Available = true) {
   }[] = [];
   const controlInstances: {
     target: Vector3;
-    camera: PerspectiveCamera;
+    camera: PerspectiveCamera | OrthographicCamera;
     enabled: boolean;
     enableDamping: boolean;
     autoRotate: boolean;
@@ -281,27 +304,29 @@ function lifecycleHarness(webgl2Available = true) {
       rendererInstances.push(renderer);
       return renderer;
     }),
-    createControls: (camera) => {
-      const listeners = new Set<() => void>();
-      const controls = {
-        camera,
-        target: new Vector3(),
-        enabled: true,
-        enableDamping: false,
-        autoRotate: false,
-        update: vi.fn(),
-        dispose: vi.fn(),
-        addEventListener: (_type: 'change', listener: () => void) => {
-          listeners.add(listener);
-        },
-        removeEventListener: (_type: 'change', listener: () => void) => {
-          listeners.delete(listener);
-        },
-        change: () => listeners.forEach((listener) => listener()),
-      };
-      controlInstances.push(controls);
-      return controls;
-    },
+    createControls:
+      createControls ??
+      ((camera) => {
+        const listeners = new Set<() => void>();
+        const controls = {
+          camera,
+          target: new Vector3(),
+          enabled: true,
+          enableDamping: false,
+          autoRotate: false,
+          update: vi.fn(),
+          dispose: vi.fn(),
+          addEventListener: (_type: 'change', listener: () => void) => {
+            listeners.add(listener);
+          },
+          removeEventListener: (_type: 'change', listener: () => void) => {
+            listeners.delete(listener);
+          },
+          change: () => listeners.forEach((listener) => listener()),
+        };
+        controlInstances.push(controls);
+        return controls;
+      }),
     requestFrame: (callback) => {
       pending.set(++nextFrame, callback);
       return nextFrame;
@@ -499,7 +524,714 @@ describe('accessible native camera actions', () => {
   });
 });
 
+function expectBoundsInView(bounds: Box3, camera: PerspectiveCamera | OrthographicCamera) {
+  camera.updateMatrixWorld(true);
+  for (const x of [bounds.min.x, bounds.max.x])
+    for (const y of [bounds.min.y, bounds.max.y])
+      for (const z of [bounds.min.z, bounds.max.z]) {
+        const point = new Vector3(x, y, z).project(camera);
+        expect(Math.abs(point.x)).toBeLessThan(1);
+        expect(Math.abs(point.y)).toBeLessThan(1);
+        expect(Math.abs(point.z)).toBeLessThan(1);
+      }
+}
+
+function realControlsHarness() {
+  const controls: OrbitControls[] = [];
+  const harness = lifecycleHarness(true, (camera, canvas) => {
+    const instance = new OrbitControls(camera, canvas);
+    vi.spyOn(instance, 'dispose');
+    controls.push(instance);
+    return instance;
+  });
+  return { ...harness, controls };
+}
+
+function pointerEvent(type: string, x: number, y: number) {
+  return Object.assign(new Event(type), {
+    pointerId: 1,
+    pointerType: 'mouse',
+    button: 0,
+    clientX: x,
+    clientY: y,
+    pageX: x,
+    pageY: y,
+  });
+}
+
+describe('native screen orientation with real OrbitControls (no browser or GPU)', () => {
+  const cases = (['perspective', 'orthographic'] as const).flatMap((projection) =>
+    (['numeric apply', 'suspend', 'context restore', 'same-project rebuild'] as const).map(
+      (transition) => ({ projection, transition }),
+    ),
+  );
+
+  it.each(cases)(
+    'preserves top-view pointer orbit through $projection $transition',
+    ({ projection, transition }) => {
+      const { viewport, controls, allCanvases, document, flush } = realControlsHarness();
+      const project = nativeBox();
+      const original = cloneProject(project);
+      expect(viewport.setProject(project)).toEqual({ ok: true });
+      expect(viewport.setCamera({ ...viewport.getCamera(), projection })).toEqual({ ok: true });
+      expect(viewport.cameraPreset('top')).toEqual({ ok: true });
+      const topPosition = viewport.getCamera().position;
+      const canvas = allCanvases.at(-1)!;
+      canvas.dispatchEvent(pointerEvent('pointerdown', 100, 100));
+      document.dispatchEvent(pointerEvent('pointermove', 160, 130));
+      document.dispatchEvent(pointerEvent('pointerup', 160, 130));
+      flush();
+      expect(viewport.getCamera().position).not.toEqual(topPosition);
+      const beforeCamera = controls.at(-1)!.object;
+      beforeCamera.updateMatrixWorld(true);
+      const before = viewport.getCamera();
+      const world = beforeCamera.matrixWorld.toArray();
+      const projectionMatrix = beforeCamera.projectionMatrix.toArray();
+      const point = new Vector3(0.4, 0.2, 0.1).project(beforeCamera).toArray();
+      const listeners = viewport.diagnostics.listeners;
+      expect(before.up).toEqual([0, 0, -1]);
+
+      if (transition === 'numeric apply')
+        expect(viewport.setCamera(viewport.getCamera())).toEqual({ ok: true });
+      else if (transition === 'suspend') {
+        expect(
+          viewport.suspend({ persistedRevision: 0, currentRevision: 0, sourcesComplete: true }),
+        ).toEqual({ ok: true });
+        expect(viewport.resume()).toEqual({ ok: true });
+      } else if (transition === 'context restore') {
+        canvas.dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+        canvas.dispatchEvent(new Event('webglcontextrestored'));
+      } else {
+        const changed = cloneProject(project);
+        changed.revision++;
+        expect(viewport.setProject(changed)).toEqual({ ok: true });
+      }
+      flush();
+      const camera = controls.at(-1)!.object;
+      camera.updateMatrixWorld(true);
+      expect(viewport.getCamera()).toMatchObject({
+        up: before.up,
+        projection,
+        fov: before.fov,
+        span: before.span,
+      });
+      camera.matrixWorld
+        .toArray()
+        .forEach((value, index) => expect(value).toBeCloseTo(world[index], 12));
+      camera.projectionMatrix
+        .toArray()
+        .forEach((value, index) => expect(value).toBeCloseTo(projectionMatrix[index], 12));
+      new Vector3(0.4, 0.2, 0.1)
+        .project(camera)
+        .toArray()
+        .forEach((value, index) => expect(value).toBeCloseTo(point[index], 12));
+      expect(controls.filter((instance) => instance.enabled)).toHaveLength(1);
+      expect(viewport.diagnostics).toMatchObject({ state: 'active', controls: 1, listeners });
+      expect(project).toEqual(original);
+      viewport.dispose();
+      controls.forEach((instance) => expect(instance.dispose).toHaveBeenCalledTimes(1));
+      expect(viewport.diagnostics).toMatchObject({ controls: 0, listeners: 0, pendingFrames: 0 });
+    },
+  );
+
+  it.each(['perspective', 'orthographic'] as const)(
+    'moves each top-view keyboard orbit by fifteen degrees in the %s screen frame',
+    (projection) => {
+      const { viewport, controls } = realControlsHarness();
+      viewport.setProject(nativeBox());
+      viewport.setCamera({ ...viewport.getCamera(), projection });
+      for (const action of ['orbit-left', 'orbit-right', 'orbit-up', 'orbit-down'] as const) {
+        viewport.cameraPreset('top');
+        const start = new Vector3(...viewport.getCamera().position).normalize();
+        // The same installed OrbitControls path that pointer rotation calls, without listeners.
+        const expected = new OrbitControls(controls.at(-1)!.object.clone());
+        expected.target.fromArray(viewport.getCamera().target);
+        if (action === 'orbit-left' || action === 'orbit-right')
+          expected.rotateLeft(((action === 'orbit-left' ? 1 : -1) * Math.PI) / 12);
+        else expected.rotateUp(((action === 'orbit-up' ? 1 : -1) * Math.PI) / 12);
+        expect(viewport.cameraAction(action)).toEqual({ ok: true });
+        const direction = new Vector3(...viewport.getCamera().position).normalize();
+        expect(start.angleTo(direction)).toBeCloseTo(Math.PI / 12, 12);
+        viewport
+          .getCamera()
+          .position.forEach((value, index) =>
+            expect(value).toBeCloseTo(expected.object.position.toArray()[index], 12),
+          );
+        expect(viewport.getCamera().up).toEqual([0, 0, -1]);
+      }
+      for (const preset of ['front', 'right'] as const) {
+        viewport.cameraPreset('top');
+        expect(viewport.cameraPreset(preset)).toEqual({ ok: true });
+        expect(viewport.getCamera().up).toEqual([0, 1, 0]);
+      }
+      viewport.cameraPreset('top');
+      viewport.resetCamera();
+      expect(viewport.getCamera().up).toEqual([0, 1, 0]);
+      viewport.dispose();
+    },
+  );
+
+  it.each(
+    (['perspective', 'orthographic'] as const).flatMap((projection) =>
+      (['front', 'top'] as const).map((preset) => ({ projection, preset })),
+    ),
+  )(
+    'restores the real controls pole limit in $projection from $preset',
+    ({ projection, preset }) => {
+      const { viewport, controls, allCanvases } = realControlsHarness();
+      viewport.setProject(nativeBox());
+      viewport.setCamera({ ...viewport.getCamera(), projection });
+      viewport.cameraPreset(preset);
+      controls.at(-1)!.rotateUp(Math.PI);
+      const camera = controls.at(-1)!.object;
+      camera.updateMatrixWorld(true);
+      const world = camera.matrixWorld.toArray();
+      const up = viewport.getCamera().up;
+      expect(viewport.setCamera(viewport.getCamera())).toEqual({ ok: true });
+      expect(
+        viewport.suspend({ persistedRevision: 0, currentRevision: 0, sourcesComplete: true }),
+      ).toEqual({ ok: true });
+      expect(viewport.resume()).toEqual({ ok: true });
+      const canvas = allCanvases.at(-1)!;
+      canvas.dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+      canvas.dispatchEvent(new Event('webglcontextrestored'));
+      expect(viewport.status.state).toBe('active');
+      expect(viewport.getCamera().up).toEqual(up);
+      controls.at(-1)!.object.updateMatrixWorld(true);
+      // OrbitControls' acos/sin round trip loses about 1e-10 near its pole clamp.
+      controls
+        .at(-1)!
+        .object.matrixWorld.toArray()
+        .forEach((value, index) => expect(value).toBeCloseTo(world[index], 8));
+      viewport.dispose();
+    },
+  );
+
+  it('rejects malformed, zero and parallel up vectors without changing live controls or view', () => {
+    const { viewport, controls, flush } = realControlsHarness();
+    viewport.setProject(nativeBox());
+    viewport.cameraPreset('top');
+    flush();
+    const state = viewport.getCamera();
+    const before = viewport.diagnostics;
+    const camera = controls.at(-1)!.object;
+    const world = camera.matrixWorld.toArray();
+    const invalid = [
+      null,
+      [1, 0],
+      ['1', 0, 0],
+      [NaN, 0, 1],
+      [Infinity, 0, 1],
+      [1e40, 0, 1],
+      [0, 0, 0],
+      [0, 1, 0],
+      [0, -1, 0],
+    ];
+    for (const up of invalid) {
+      expect(viewport.setCamera({ ...state, up } as NativeCameraState).ok).toBe(false);
+      expect(viewport.diagnostics).toEqual(before);
+      expect(controls.at(-1)!.object).toBe(camera);
+      expect(camera.matrixWorld.toArray()).toEqual(world);
+      expect(controls.at(-1)!.dispose).not.toHaveBeenCalled();
+    }
+    state.up![0] = 99;
+    expect(viewport.diagnostics).toEqual(before);
+    viewport.dispose();
+  });
+
+  it('recovers a finite but unfit extreme field of view through camera reset', () => {
+    const { viewport, controls } = realControlsHarness();
+    const project = nativeBox();
+    const original = cloneProject(project);
+    viewport.setProject(project);
+    expect(
+      viewport.setCamera({
+        ...viewport.getCamera(),
+        position: [0, 0, 10],
+        target: [0, 0, 0],
+        fov: 3.4e-37,
+      }),
+    ).toEqual({ ok: true });
+    const before = viewport.getCamera();
+    expect(viewport.cameraPreset('front').ok).toBe(false);
+    expect(() => viewport.fitCamera()).toThrow();
+    expect(viewport.getCamera()).toEqual(before);
+    expect(() => viewport.resetCamera()).not.toThrow();
+    expect(viewport.getCamera()).toMatchObject({
+      projection: 'perspective',
+      fov: 45,
+      up: [0, 1, 0],
+    });
+    const graph = buildNativeGraph(project);
+    expectBoundsInView(
+      new Box3().setFromObject(graph.root),
+      controls.at(-1)!.object as PerspectiveCamera,
+    );
+    graph.dispose();
+    expect(project).toEqual(original);
+    viewport.dispose();
+  });
+
+  it.each(['perspective', 'orthographic'] as const)(
+    'pans along the actual %s screen axes at the controls pole',
+    (projection) => {
+      const { viewport, controls } = realControlsHarness();
+      viewport.setProject(nativeBox());
+      viewport.setCamera({
+        ...viewport.getCamera(),
+        position: [0, 0, 10],
+        target: [0, 0, 0],
+        projection,
+      });
+      controls.at(-1)!.rotateLeft(Math.PI / 4);
+      controls.at(-1)!.rotateUp(Math.PI);
+      for (const [action, column] of [
+        ['pan-right', 0],
+        ['pan-up', 1],
+      ] as const) {
+        const camera = controls.at(-1)!.object;
+        camera.updateMatrixWorld(true);
+        const expected = new Vector3().setFromMatrixColumn(camera.matrixWorld, column).normalize();
+        const before = new Vector3(...viewport.getCamera().target);
+        expect(viewport.cameraAction(action)).toEqual({ ok: true });
+        const movement = new Vector3(...viewport.getCamera().target).sub(before).normalize();
+        expect(movement.dot(expected)).toBeCloseTo(1, 12);
+      }
+      viewport.dispose();
+    },
+  );
+});
+
+describe('native numeric camera and inspection state', () => {
+  it('atomically validates all numeric fields and projections before touching live state', () => {
+    const { viewport, controlInstances, pending, flush } = lifecycleHarness();
+    viewport.setProject(nativeBox());
+    flush();
+    const before = viewport.diagnostics;
+    const state = viewport.getCamera();
+    const updates = controlInstances[0].update.mock.calls.length;
+    const invalid: NativeCameraState[] = [
+      { ...state, position: [NaN, 1, 2] },
+      { ...state, target: [1, Infinity, 2] },
+      { ...state, position: [1e40, 1, 2] },
+      { ...state, position: [...state.target] },
+      { ...state, position: [1, 2] as unknown as NativeCameraState['position'] },
+      { ...state, position: ['1', 2, 3] as unknown as NativeCameraState['position'] },
+      { ...state, projection: 'fisheye' as NativeCameraState['projection'] },
+      ...[NaN, 0, 180, -1].map((fov) => ({ ...state, fov })),
+      ...[0, -1, Infinity, 1e-100, 1e40].map((span) => ({
+        ...state,
+        projection: 'orthographic' as const,
+        span,
+      })),
+    ];
+    invalid.forEach((value) => expect(viewport.setCamera(value).ok).toBe(false));
+    expect(viewport.cameraPreset('invalid' as 'front').ok).toBe(false);
+    expect(viewport.focusNode('missing').ok).toBe(false);
+    viewport.resize(Infinity, 10);
+    viewport.resize(1e308, 1);
+    expect(viewport.diagnostics).toEqual(before);
+    expect(controlInstances[0].update).toHaveBeenCalledTimes(updates);
+    expect(controlInstances[0].dispose).not.toHaveBeenCalled();
+    expect(pending.size).toBe(0);
+    state.position[0] = 999;
+    state.target[0] = 999;
+    expect(viewport.diagnostics).toEqual(before);
+    viewport.dispose();
+  });
+
+  it('changes projection and controls together while retaining numeric settings and canonical data', () => {
+    const { viewport, controlInstances, pending, flush } = lifecycleHarness();
+    const project = nativeBox();
+    const original = cloneProject(project);
+    viewport.setProject(project);
+    flush();
+    const state: NativeCameraState = {
+      position: [2, 3, 8],
+      target: [0, 1, 0],
+      projection: 'perspective',
+      fov: 67,
+      span: 5,
+    };
+    expect(viewport.setCamera(state)).toEqual({ ok: true });
+    expect(viewport.getCamera()).toEqual({ ...state, up: [0, 1, 0] });
+    expect(controlInstances).toHaveLength(1);
+    expect(viewport.setCamera({ ...state, projection: 'orthographic' })).toEqual({ ok: true });
+    expect(controlInstances).toHaveLength(2);
+    expect(controlInstances[0].dispose).toHaveBeenCalledTimes(1);
+    expect(controlInstances[1].camera).toBeInstanceOf(OrthographicCamera);
+    expect(viewport.getCamera()).toEqual({ ...state, projection: 'orthographic', up: [0, 1, 0] });
+    viewport.resize(200, 800);
+    const camera = controlInstances[1].camera as OrthographicCamera;
+    expect(camera.right - camera.left).toBeCloseTo(1.25);
+    expect(camera.top - camera.bottom).toBe(5);
+    expect(pending.size).toBe(1);
+    expect(viewport.setCamera(state)).toEqual({ ok: true });
+    expect(controlInstances[2].camera).toBeInstanceOf(PerspectiveCamera);
+    expect((controlInstances[2].camera as PerspectiveCamera).fov).toBe(67);
+    expect(project).toEqual(original);
+    viewport.dispose();
+  });
+
+  it.each(['perspective', 'orthographic'] as const)(
+    'fits front/right/top and portrait bounds in %s',
+    (projection) => {
+      const { viewport, controlInstances } = lifecycleHarness();
+      const project = nativeBox();
+      project.nodes[0].transform.translation = [1e8, -3e8, 2e8];
+      project.nodes[0].transform.scale = [10, 30, 3];
+      project.nodes[0].transform.rotation = [0, 0, Math.SQRT1_2, Math.SQRT1_2];
+      viewport.setProject(project);
+      viewport.setCamera({ ...viewport.getCamera(), projection, fov: 63 });
+      const graph = buildNativeGraph(project);
+      const bounds = new Box3().setFromObject(graph.root);
+      for (const [width, height] of [
+        [200, 800],
+        [800, 200],
+      ]) {
+        viewport.resize(width, height);
+        for (const preset of ['front', 'right', 'top'] as const) {
+          expect(viewport.cameraPreset(preset)).toEqual({ ok: true });
+          const camera = controlInstances.at(-1)!.camera;
+          const direction = new Vector3(...viewport.getCamera().position)
+            .sub(new Vector3(...viewport.getCamera().target))
+            .normalize();
+          expect(direction.toArray()).toEqual(
+            preset === 'front' ? [0, 0, 1] : preset === 'right' ? [1, 0, 0] : [0, 1, 0],
+          );
+          expectBoundsInView(bounds, camera);
+          if (preset === 'top') expect(camera.up.toArray()).toEqual([0, 0, -1]);
+        }
+      }
+      graph.dispose();
+      viewport.dispose();
+    },
+  );
+
+  it.each([1e-6, 1e8])(
+    'resets tiny/large models of size %s after a numeric camera edit',
+    (scale) => {
+      const { viewport, controlInstances } = lifecycleHarness();
+      const project = nativeBox();
+      project.nodes[0].transform.scale = [scale, scale, scale];
+      project.nodes[0].transform.translation = [scale * 1000, 0, 0];
+      expect(viewport.setProject(project)).toEqual({ ok: true });
+      viewport.setCamera({ ...viewport.getCamera(), position: [3, 4, 5], target: [0, 0, 0] });
+      viewport.resetCamera();
+      const graph = buildNativeGraph(project);
+      expectBoundsInView(new Box3().setFromObject(graph.root), controlInstances.at(-1)!.camera);
+      graph.dispose();
+      viewport.dispose();
+    },
+  );
+
+  it('focuses the canonical-ID subtree, excluding unrelated nodes and every helper', () => {
+    const { viewport, controlInstances } = lifecycleHarness();
+    const project = nativeBox();
+    project.nodes[0].parentId = 'assembly';
+    project.nodes[0].transform.translation = [2, 3, 4];
+    project.nodes.push({
+      id: 'assembly',
+      name: 'Box',
+      parentId: null,
+      transform: { ...identityTransform(), translation: [1000, 0, 0] },
+    });
+    project.nodes.push({
+      id: 'other',
+      name: 'Box',
+      parentId: null,
+      meshId: 'box-mesh',
+      transform: { ...identityTransform(), translation: [-1e9, 0, 0] },
+    });
+    viewport.setProject(project);
+    viewport.setViewOptions({ ...viewport.getViewOptions(), grid: true, axes: true, bounds: true });
+    expect(viewport.focusNode('assembly')).toEqual({ ok: true });
+    expect(viewport.getCamera().target).toEqual([1002, 3, 4]);
+    const focused = viewport.getCamera();
+    expect(viewport.focusNode('Box').ok).toBe(false);
+    expect(viewport.focusNode('Inspection grid').ok).toBe(false);
+    expect(viewport.getCamera()).toEqual(focused);
+    expect(controlInstances.at(-1)!.camera.far).toBeGreaterThan(1e9);
+    viewport.setCamera({
+      ...focused,
+      position: [1002, 3, 1e10],
+      projection: 'orthographic',
+      span: 3,
+    });
+    expect(controlInstances.at(-1)!.camera.far).toBeGreaterThan(1e10);
+    viewport.focusNode('box-node');
+    expect(viewport.getCamera().span).toBeCloseTo(Math.sqrt(3) * 1.2);
+    viewport.dispose();
+  });
+
+  it('uses visible orthographic span for keyboard zoom/pan and preserves pointer zoom on resize', () => {
+    const { viewport, controlInstances } = lifecycleHarness();
+    viewport.setProject(nativeBox());
+    viewport.resize(400, 800);
+    viewport.setCamera({
+      position: [0, 0, 10],
+      target: [0, 0, 0],
+      projection: 'orthographic',
+      fov: 45,
+      span: 12,
+    });
+    viewport.cameraAction('zoom-in');
+    expect(viewport.getCamera()).toMatchObject({
+      position: [0, 0, 10],
+      target: [0, 0, 0],
+      span: 10,
+    });
+    viewport.cameraAction('pan-right');
+    expect(viewport.getCamera()).toMatchObject({ position: [0.5, 0, 10], target: [0.5, 0, 0] });
+    viewport.cameraAction('pan-up');
+    expect(viewport.getCamera()).toMatchObject({ position: [0.5, 1, 10], target: [0.5, 1, 0] });
+    const controls = controlInstances.at(-1)!;
+    controls.camera.zoom = 2;
+    controls.camera.updateProjectionMatrix();
+    controls.change();
+    expect(viewport.getCamera().span).toBe(5);
+    viewport.resize(800, 400);
+    expect(viewport.getCamera().span).toBe(5);
+    viewport.cameraAction('zoom-out');
+    expect(viewport.getCamera().span).toBe(6);
+    viewport.dispose();
+  });
+
+  it('keeps material/solid/wireframe and helpers outside the canonical graph and validates options atomically', async () => {
+    const { viewport, rendererInstances, pending, flush } = lifecycleHarness();
+    const project = nativeBox();
+    project.materials[0].baseColor[3] = 0.25;
+    project.materials[0].metallic = 0.7;
+    const original = cloneProject(project);
+    viewport.setProject(project);
+    flush();
+    const scene = rendererInstances[0].render.mock.calls[0][0] as Scene;
+    const mesh = scene.getObjectByName('Box') as Mesh;
+    const originals = mesh.material as MeshStandardMaterial[];
+    const disposeOriginal = vi.spyOn(originals[0], 'dispose');
+    const fit = viewport.getCamera();
+    const options: NativeViewOptions = {
+      shading: 'wireframe',
+      background: 'light',
+      lighting: 'soft',
+      grid: true,
+      axes: true,
+      bounds: true,
+    };
+    expect(viewport.setViewOptions(options)).toEqual({ ok: true });
+    expect(mesh.material).toMatchObject({ wireframe: true, metalness: 0, opacity: 1 });
+    expect(scene.background).toEqual(new Color(0xe8edf3));
+    expect(scene.children.find((object) => object instanceof AmbientLight)).toMatchObject({
+      intensity: 2.5,
+    });
+    expect(scene.children.find((object) => object instanceof DirectionalLight)).toMatchObject({
+      intensity: 1,
+    });
+    const helpers = scene.children.filter((object) => object instanceof LineSegments);
+    expect(helpers).toHaveLength(3);
+    helpers.forEach((helper) => expect(helper.parent).toBe(scene));
+    const helperDisposals = helpers.map((helper) => vi.spyOn(helper, 'dispose'));
+    const disposeOverride = vi.spyOn(mesh.material as MeshStandardMaterial, 'dispose');
+    viewport.fitCamera();
+    expect(viewport.getCamera()).toMatchObject({ ...fit, position: expect.any(Array) });
+    viewport
+      .getCamera()
+      .position.forEach((value, index) => expect(value).toBeCloseTo(fit.position[index], 12));
+    await viewport.capturePng();
+    expect(rendererInstances[0].render.mock.lastCall![0].children).toEqual(
+      expect.arrayContaining(helpers),
+    );
+    expect(pending.size).toBe(0);
+    const before = viewport.diagnostics;
+    for (const invalid of [
+      { shading: 'flat' },
+      { background: 'pink' },
+      { lighting: 'flat' },
+      { grid: 1 },
+      { axes: null },
+      { bounds: undefined },
+    ]) {
+      expect(viewport.setViewOptions({ ...options, ...invalid } as NativeViewOptions).ok).toBe(
+        false,
+      );
+      expect(viewport.diagnostics).toEqual(before);
+    }
+    const copy = viewport.getViewOptions();
+    copy.axes = false;
+    expect(viewport.getViewOptions()).toEqual(options);
+    viewport.setViewOptions({ ...options, shading: 'solid' });
+    expect(mesh.material).toMatchObject({ wireframe: false });
+    expect(disposeOverride).toHaveBeenCalledTimes(1);
+    helperDisposals.forEach((spy) => expect(spy).toHaveBeenCalledTimes(1));
+    viewport.setViewOptions({
+      ...options,
+      shading: 'material',
+      grid: false,
+      axes: false,
+      bounds: false,
+    });
+    expect(mesh.material).toBe(originals);
+    expect(originals[0]).toMatchObject({ opacity: 0.25, metalness: 0.7 });
+    expect(disposeOriginal).not.toHaveBeenCalled();
+    expect(project).toEqual(original);
+    viewport.dispose();
+    expect(disposeOriginal).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['hidden', 'frozen', 'suspended', 'context-lost', 'disposed'] as const)(
+    'rejects all new inspection mutations while %s',
+    (state) => {
+      const { viewport, allCanvases, pending } = lifecycleHarness();
+      viewport.setProject(nativeBox());
+      if (state === 'hidden') viewport.setHidden(true);
+      if (state === 'frozen') viewport.setFrozen(true);
+      if (state === 'suspended')
+        viewport.suspend({ persistedRevision: 0, currentRevision: 0, sourcesComplete: true });
+      if (state === 'context-lost')
+        allCanvases[0].dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+      if (state === 'disposed') viewport.dispose();
+      const before = viewport.diagnostics;
+      expect(viewport.setCamera({ ...viewport.getCamera(), projection: 'orthographic' }).ok).toBe(
+        false,
+      );
+      expect(viewport.cameraPreset('top').ok).toBe(false);
+      expect(viewport.focusNode('box-node').ok).toBe(false);
+      expect(viewport.setViewOptions({ ...viewport.getViewOptions(), axes: true }).ok).toBe(false);
+      expect(viewport.diagnostics).toEqual(before);
+      expect(pending.size).toBe(0);
+      viewport.dispose();
+    },
+  );
+});
+
 describe('native lifecycle ownership (injected renderer, not GPU evidence)', () => {
+  it.each(['suspend', 'context loss', 'hidden/frozen'] as const)(
+    'preserves orthographic projection, settings and helper owners through %s',
+    (transition) => {
+      const { viewport, controlInstances, rendererInstances, allCanvases, flush } =
+        lifecycleHarness();
+      const project = nativeBox();
+      const original = cloneProject(project);
+      viewport.setProject(project);
+      viewport.cameraPreset('top');
+      viewport.focusNode('box-node');
+      viewport.setCamera({ ...viewport.getCamera(), projection: 'orthographic', span: 3 });
+      viewport.setViewOptions({
+        shading: 'wireframe',
+        background: 'light',
+        lighting: 'soft',
+        grid: true,
+        axes: true,
+        bounds: true,
+      });
+      viewport.cameraAction('zoom-in');
+      viewport.cameraAction('pan-right');
+      flush();
+      const scene = rendererInstances[0].render.mock.lastCall![0] as Scene;
+      const oldHelpers = scene.children.filter((object) => object instanceof LineSegments);
+      const disposals = oldHelpers.map((helper) => vi.spyOn(helper, 'dispose'));
+      const before = viewport.getCamera();
+      const options = viewport.getViewOptions();
+      const camera = controlInstances.at(-1)!.camera;
+      const projection = camera.projectionMatrix.toArray();
+      const world = camera.matrixWorld.toArray();
+      const listeners = viewport.diagnostics.listeners;
+      if (transition === 'suspend') {
+        viewport.suspend({ persistedRevision: 0, currentRevision: 0, sourcesComplete: true });
+        expect(viewport.diagnostics).toMatchObject({
+          helperGeometries: 0,
+          helperMaterials: 0,
+          inspectionMaterials: 0,
+        });
+        viewport.resume();
+      } else if (transition === 'context loss') {
+        allCanvases[0].dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+        allCanvases[0].dispatchEvent(new Event('webglcontextrestored'));
+      } else {
+        viewport.setHidden(true);
+        viewport.setFrozen(true);
+        viewport.setHidden(false);
+        expect(viewport.diagnostics.pendingFrames).toBe(0);
+        viewport.setFrozen(false);
+      }
+      flush();
+      expect(viewport.getCamera()).toEqual(before);
+      expect(viewport.getViewOptions()).toEqual(options);
+      expect(controlInstances.at(-1)!.camera.projectionMatrix.toArray()).toEqual(projection);
+      expect(controlInstances.at(-1)!.camera.matrixWorld.toArray()).toEqual(world);
+      expect(viewport.diagnostics).toMatchObject({
+        helperGeometries: 3,
+        helperMaterials: 3,
+        inspectionMaterials: 1,
+        controls: 1,
+        listeners,
+        pendingFrames: 0,
+      });
+      disposals.forEach((spy) =>
+        expect(spy).toHaveBeenCalledTimes(transition === 'hidden/frozen' ? 0 : 1),
+      );
+      expect(project).toEqual(original);
+      viewport.dispose();
+      disposals.forEach((spy) => expect(spy).toHaveBeenCalledTimes(1));
+      expect(viewport.diagnostics).toMatchObject({
+        helperGeometries: 0,
+        helperMaterials: 0,
+        inspectionMaterials: 0,
+        geometries: 0,
+        materials: 0,
+        controls: 0,
+        listeners: 0,
+      });
+    },
+  );
+
+  it('retains inspection for same-project rebuilds, reclips distant edits, and resets it for a new project', () => {
+    const { viewport, controlInstances } = lifecycleHarness();
+    const project = nativeBox();
+    viewport.setProject(project);
+    viewport.setCamera({ ...viewport.getCamera(), projection: 'orthographic', fov: 71, span: 3 });
+    viewport.setViewOptions({
+      shading: 'solid',
+      background: 'light',
+      lighting: 'soft',
+      grid: true,
+      axes: true,
+      bounds: true,
+    });
+    const camera = viewport.getCamera();
+    const options = viewport.getViewOptions();
+    project.revision++;
+    project.nodes[0].transform.translation = [1e9, 0, 0];
+    viewport.setProject(project);
+    expect(viewport.getCamera()).toEqual(camera);
+    expect(viewport.getViewOptions()).toEqual(options);
+    expect(controlInstances.at(-1)!.camera.far).toBeGreaterThan(1e9);
+    viewport.suspend({ persistedRevision: 1, currentRevision: 1, sourcesComplete: true });
+    project.id = 'replacement';
+    viewport.setProject(project);
+    expect(viewport.getCamera()).toEqual(camera);
+    expect(viewport.getViewOptions()).toEqual(options);
+    viewport.resume({ persistedRevision: 1, currentRevision: 1, sourcesComplete: true });
+    expect(viewport.getCamera()).toMatchObject({
+      projection: 'perspective',
+      fov: 45,
+      target: [1e9, 0, 0],
+    });
+    expect(viewport.getViewOptions()).toEqual({
+      shading: 'material',
+      background: 'dark',
+      lighting: 'studio',
+      grid: false,
+      axes: false,
+      bounds: false,
+    });
+    expect(viewport.diagnostics).toMatchObject({
+      helperGeometries: 0,
+      helperMaterials: 0,
+      inspectionMaterials: 0,
+    });
+    viewport.dispose();
+  });
   it('coalesces requests and has no perpetual idle RAF', () => {
     const { viewport, flush, pending, controlInstances } = lifecycleHarness();
     expect(viewport.setProject(triangle())).toEqual({ ok: true });

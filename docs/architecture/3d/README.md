@@ -53,3 +53,5 @@ B01の実在fileと検査範囲は [所有台帳の実装状況](ownership.md#b0
 B02実装: [独立入口・保存shellの証拠と残項目](../../evidence/3d/B02.md)。入口の実装と、未完成の3D制作機能を区別する。
 
 B03 native表示の[限定採用・受入証拠](../../evidence/3d/B03_NATIVE_VIEWPORT.md)。GLB・skin・clipなどの未確認gateを同時に完了扱いしない。
+
+B03の[数値camera・投影・観察表示](../../evidence/3d/B03_NATIVE_INSPECTION.md)は同じnative限定gateで検査する。gizmo・GLB・制作全体の完了とは扱わない。

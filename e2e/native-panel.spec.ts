@@ -73,3 +73,37 @@ test('a newer edit during save cannot authorize disposal of an older saved revis
   await expect(page.getByRole('alert')).toBeVisible();
   expect((await state(page))[0]).toMatchObject({ disposed: false, suspends: 0, revision: 1 });
 });
+
+test('numeric camera draft rejects blanks and IME composition without mutating the port', async ({
+  page,
+}) => {
+  await page.goto('/e2e/fixtures/native-panel.html');
+  await expect(page.getByRole('button', { name: 'PNG画像を保存', exact: true })).toBeEnabled();
+  await page.getByText('カメラ・表示の詳細設定', { exact: true }).click();
+  const x = page.getByLabel('カメラ位置 X', { exact: true });
+  await expect(x).toHaveValue('3');
+  await x.fill('');
+  await page.getByRole('button', { name: '数値カメラを適用', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('空欄は適用できません');
+  expect((await state(page))[0].cameraWrites).toBe(0);
+  await x.fill('0');
+  await page.getByLabel('カメラ位置 Y', { exact: true }).fill('0');
+  await page.getByLabel('カメラ位置 Z', { exact: true }).fill('0');
+  await page.getByRole('button', { name: '数値カメラを適用', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('別の位置に');
+  expect((await state(page))[0].cameraWrites).toBe(0);
+  await x.fill('4');
+  await x.dispatchEvent('compositionstart');
+  await page.getByRole('button', { name: '数値カメラを適用', exact: true }).click();
+  expect((await state(page))[0].cameraWrites).toBe(0);
+  await x.dispatchEvent('compositionend');
+  const apply = page.getByRole('button', { name: '数値カメラを適用', exact: true });
+  await apply.focus();
+  await page.keyboard.press('Enter');
+  await expect(apply).toBeFocused();
+  await page.keyboard.press('Enter');
+  expect((await state(page))[0].cameraWrites).toBe(2);
+  await page.getByRole('button', { name: 'Switch project' }).click();
+  await page.getByText('カメラ・表示の詳細設定', { exact: true }).click();
+  await expect(x).toHaveValue('3');
+});
