@@ -63,3 +63,12 @@ test('separate WebKit configuration requires browser checks without publishing',
   assert.equal(classifyChanges(['playwright.webkit.config.ts']).e2e, true);
   assert.equal(classifyChanges(['playwright.webkit.config.ts']).publish, false);
 });
+
+test('isolated native viewport evaluation keeps browser checks without product publication', () => {
+  for (const file of [
+    'tools/3d-evaluation/nativeViewport.ts',
+    'tools/3d-evaluation/package-lock.json',
+  ]) {
+    assert.deepEqual(classifyChanges([file]), { code: true, e2e: true, publish: false, h3: false });
+  }
+});

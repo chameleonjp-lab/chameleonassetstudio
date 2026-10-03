@@ -2,6 +2,7 @@
 import { exportBackup, importBackup, BACKUP_LIMITS } from '../../core3d/backup/backup';
 import { ProjectAutosave } from '../../core3d/commands/autosave';
 import { ProjectHistory } from '../../core3d/commands/history';
+import { addBox } from '../../core3d/commands/box';
 import { cloneProject, createProject, type Project3D } from '../../core3d/model/project';
 import {
   StorageConflictError,
@@ -140,6 +141,16 @@ export class ProjectSession {
       project.name = name;
     });
     this.schedule();
+  }
+
+  addBox() {
+    this.assertEditable();
+    this.history.execute((project) => addBox(project, crypto.randomUUID()));
+    this.schedule();
+  }
+
+  get sourcesComplete() {
+    return this.history.project.blobIds.every((id) => this.blobs.has(id));
   }
 
   undo() {

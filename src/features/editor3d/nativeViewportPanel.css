@@ -1,0 +1,142 @@
+.native-viewport-panel {
+  min-width: 0;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #d8e1da;
+  overflow-wrap: anywhere;
+}
+
+.native-viewport-heading h3 {
+  margin-bottom: 0.4rem;
+}
+
+.native-viewport-heading p,
+.native-viewport-guidance {
+  font-size: 0.875rem;
+  color: #41584b;
+}
+
+.native-viewport-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
+.native-viewport-actions button,
+.native-viewport-camera-actions button {
+  min-width: 44px;
+  min-height: 44px;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.native-viewport-actions button:focus-visible,
+.native-viewport-camera-actions button:focus-visible {
+  outline: 3px solid #b45309;
+  outline-offset: 3px;
+}
+
+.native-viewport-camera-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
+.native-viewport-camera-actions fieldset {
+  flex: 1 1 14rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.5rem;
+  border: 1px solid #789183;
+  border-radius: 6px;
+}
+
+.native-viewport-camera-actions legend {
+  padding-inline: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.native-viewport-camera-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
+  gap: 0.4rem;
+}
+
+.native-viewport-camera-buttons button {
+  padding: 0.4rem 0.2rem;
+}
+
+.native-viewport-host {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  height: clamp(220px, 48vh, 480px);
+  height: clamp(220px, 48dvh, 480px);
+  overflow: hidden;
+  border: 1px solid #789183;
+  border-radius: 8px;
+  background: #18202b;
+}
+
+.native-viewport-runtime {
+  position: absolute;
+  inset: 0;
+  min-width: 0;
+}
+
+.native-viewport-runtime canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  touch-action: none;
+}
+
+.native-viewport-status {
+  margin-top: 0.8rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 6px;
+  background: #edf7ef;
+  color: #175736;
+}
+
+.native-viewport-status.is-error {
+  border: 1px solid #d4a48e;
+  color: #803315;
+  background: #fff4ed;
+}
+
+.native-viewport-status p {
+  margin: 0;
+}
+
+.native-viewport-reason {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.native-viewport-reason summary {
+  min-height: 44px;
+  padding-block: 0.5rem;
+  cursor: pointer;
+}
+
+.native-viewport-reason summary:focus-visible {
+  outline: 3px solid #b45309;
+  outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+  .native-viewport-host {
+    height: clamp(200px, 42vh, 320px);
+    height: clamp(200px, 42dvh, 320px);
+  }
+
+  .native-viewport-actions button {
+    flex: 1 1 140px;
+  }
+}

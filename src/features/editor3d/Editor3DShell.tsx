@@ -1,5 +1,7 @@
 import {
   Component,
+  lazy,
+  Suspense,
   useEffect,
   useReducer,
   useRef,
@@ -11,6 +13,57 @@ import {
 import { openProjectRepository, type ProjectRepository } from '../../core3d/storage/repository';
 import { BACKUP_LIMITS, ProjectSession, UnsavedProjectError } from './projectSession';
 import './editor3d.css';
+import type { NativeViewportFactory } from './NativeViewportPanel';
+
+const NativeViewportPanel = lazy(() =>
+  import('./NativeViewportPanel').then((module) => ({ default: module.NativeViewportPanel })),
+);
+const createNativeViewport: NativeViewportFactory = async (host, onStatus) => {
+  const { NativeViewport } = await import('../../adapters3d/three/renderer');
+  return new NativeViewport(host, { onStatus });
+};
+
+class ViewportLoadBoundary extends Component<
+  { children: ReactNode; onReload: () => Promise<void> },
+  { failed: boolean; busy: boolean; error: string; loadError: string }
+> {
+  state = { failed: false, busy: false, error: '', loadError: '' };
+  private reloading = false;
+  static getDerivedStateFromError(error: unknown) {
+    return { failed: true, loadError: error instanceof Error ? error.message : String(error) };
+  }
+  render() {
+    return this.state.failed ? (
+      <div>
+        <p role="alert">
+          3D表示を読み込めませんでした。現在の編集内容は保持しています。通信が戻ったら、保存してページを再読み込みしてください。先にバックアップを取得することもできます。
+        </p>
+        <details>
+          <summary>読み込みエラーの詳細</summary>
+          <p data-testid="viewport-load-error">{this.state.loadError}</p>
+        </details>
+        <button
+          type="button"
+          disabled={this.state.busy}
+          onClick={() => {
+            if (this.reloading) return;
+            this.reloading = true;
+            this.setState({ busy: true, error: '' });
+            void this.props.onReload().catch((error: unknown) => {
+              this.reloading = false;
+              this.setState({ busy: false, error: describeError(error) });
+            });
+          }}
+        >
+          保存してページを再読み込み
+        </button>
+        {this.state.error && <p role="alert">{this.state.error}</p>}
+      </div>
+    ) : (
+      this.props.children
+    );
+  }
+}
 
 type ProjectEntry = { id: string; name: string; revision: number };
 
@@ -134,6 +187,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
   const [repository, setRepository] = useState<ProjectRepository | null>(null);
   const [projects, setProjects] = useState<ProjectEntry[]>([]);
   const [session, setSession] = useState<ProjectSession | null>(null);
+  const [previewProjectId, setPreviewProjectId] = useState<string | null>(null);
   const [newName, setNewName] = useState('新しい3Dプロジェクト');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -332,7 +386,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
           <span className="editor3d-badge">3D制作は準備中</span>
           <h2 id="editor3d-preparation">まずは、プロジェクトの保存と再開から</h2>
           <p>
-            この画面では空の3Dプロジェクトの作成、名前の編集、自動保存、バックアップとコピー復元を試せます。造形・描画・GLBの入出力はまだ利用できません。
+            箱の追加、3D表示とカメラ操作、PNG画像の保存、自動保存、バックアップとコピー復元を利用できます。頂点・材質の編集、リグ・アニメーション編集、GLBの入出力は準備中です。
           </p>
           <p>
             作品はこのブラウザー内に保存します。大切な内容は .cas3dproj
@@ -572,6 +626,67 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                       プロジェクトを閉じる
                     </button>
                   </div>
+                  <div className="editor3d-actions" aria-label="3Dの形と表示">
+                    <button
+                      type="button"
+                      disabled={busy || state.readOnly}
+                      onClick={() =>
+                        edit(() => {
+                          session.addBox();
+                          setPreviewProjectId(project.id);
+                        })
+                      }
+                    >
+                      箱を追加
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy || previewProjectId === project.id}
+                      onClick={() => setPreviewProjectId(project.id)}
+                    >
+                      3D表示を開く
+                    </button>
+                  </div>
+                  {previewProjectId === project.id && (
+                    <ViewportLoadBoundary
+                      key={project.id}
+                      onReload={async () => {
+                        if (busyRef.current)
+                          throw new Error('別の操作が完了するまで待ってください。');
+                        busyRef.current = true;
+                        setBusy(true);
+                        try {
+                          await session.save();
+                          if (session.state.dirty) throw new UnsavedProjectError();
+                          await session.close();
+                          window.location.reload();
+                        } catch (error) {
+                          busyRef.current = false;
+                          setBusy(false);
+                          throw error;
+                        }
+                      }}
+                    >
+                      <Suspense
+                        fallback={
+                          <p role="status">
+                            3D表示を読み込み中… 保存・バックアップは引き続き利用できます。
+                          </p>
+                        }
+                      >
+                        <NativeViewportPanel
+                          project={project}
+                          factory={createNativeViewport}
+                          onSave={() => session.save()}
+                          getSuspensionContract={() => ({
+                            persistedRevision: session.state.persistedRevision,
+                            currentRevision: session.state.revision,
+                            sourcesComplete: session.sourcesComplete,
+                          })}
+                        />
+                      </Suspense>
+                    </ViewportLoadBoundary>
+                  )}
                   <div className="editor3d-backup">
                     <h3>現在の内容を残す</h3>
                     <p>
@@ -623,7 +738,9 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                     </dl>
                   </details>
                   <div className="editor3d-placeholder">
-                    <p>3Dの造形・描画・アニメーション編集は準備中です。</p>
+                    <p>
+                      現在の3D表示は三角形メッシュの静止表示です。テクスチャ・リグ・アニメーションを含む作品は保存・バックアップできますが、表示は準備中です。
+                    </p>
                   </div>
                 </>
               )}
@@ -633,10 +750,19 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
       </main>
       <footer className="editor3d-footer">
         <p>
+          <a
+            href={`${import.meta.env.BASE_URL}licenses/three-MIT.txt`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Three.js ライセンス
+          </a>
+        </p>
+        <p>
           開発版・{__APP_REVISION__.slice(0, 8)}
           {__APP_DIRTY__ ? '（ローカル変更あり）' : ''}
         </p>
-        3Dプロジェクトの保存・復元を検証する開発版です。端末やOSによる中断からの復旧は、まだ実機検証を完了していません。
+        3Dプロジェクトの保存・復元と基本表示を検証する開発版です。端末やOSによる中断からの復旧は、まだ実機検証を完了していません。
       </footer>
     </div>
   );

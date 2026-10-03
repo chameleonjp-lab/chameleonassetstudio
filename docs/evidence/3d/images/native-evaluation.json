@@ -1,0 +1,26 @@
+[
+  {
+    "file": "chromium-native-box.png",
+    "sha256": "b835a5d42a5257ff80dd40435491aa46be7eff85c7ad8dbfea28c891dcb6f2e8",
+    "sourceHead": "24015d7c43d09569ce54b61e81bbb4eb8eb95d34",
+    "runId": 37133785556
+  },
+  {
+    "file": "chromium-native-box-after-context-restore.png",
+    "sha256": "96766868bd132fba127509d0ab06c7a37a91dbc3933c91d4cbdffb85e33bd726",
+    "sourceHead": "24015d7c43d09569ce54b61e81bbb4eb8eb95d34",
+    "runId": 37133785556
+  },
+  {
+    "file": "webkit-native-box.png",
+    "sha256": "f01e9fae927aeee22088c0deb282acebd7d86993597fd0ab8de3f28e8a86a756",
+    "sourceHead": "24015d7c43d09569ce54b61e81bbb4eb8eb95d34",
+    "runId": 37133785556
+  },
+  {
+    "file": "webkit-native-box-after-context-restore.png",
+    "sha256": "c229bffee58e5a2a679d63e701a591fee5be2cf1d16e41f9743b48c22f13f0c1",
+    "sourceHead": "24015d7c43d09569ce54b61e81bbb4eb8eb95d34",
+    "runId": 37133785556
+  }
+]

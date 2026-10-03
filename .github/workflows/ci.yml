@@ -41,6 +41,8 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run build:app
+      - name: Build isolated native viewport evaluation
+        run: npx vite build --config tools/3d-evaluation/vite.config.ts
       - run: npm run test:ci-scope
       - run: npm run test
       - name: Write Group 18 evidence contract
