@@ -45,8 +45,9 @@ export function inspectDomainBundles(bundle: OutputBundle) {
     };
     visit(entry.fileName);
     const forbidden = [...modules].filter((id) => {
-      if (domain === 'hub') return /\/src\/(core|features|app|workers)|\/node_modules\//.test(id);
-      if (domain === '2d') return /\/src\/(core3d|features\/editor3d)\//.test(id);
+      if (domain === 'hub')
+        return /\/src\/(core|features|app|workers|adapters3d)|\/node_modules\//.test(id);
+      if (domain === '2d') return /\/src\/(core3d|adapters3d|features\/editor3d)\//.test(id);
       return /\/src\/(core|features\/(editor|home)|workers)\//.test(id);
     });
     if (forbidden.length)

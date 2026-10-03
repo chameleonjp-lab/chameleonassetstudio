@@ -1,4 +1,4 @@
-import { NativeViewport } from './nativeViewport';
+import { NativeViewport } from '../../src/adapters3d/three/renderer';
 import { nativeBox } from './fixtures';
 
 const host = document.getElementById('viewport')!;

@@ -22,7 +22,7 @@ flowchart TD
   EN_HUB -->|"利用者操作の別タブ"| EN_3D["E 3d/index.html"]
   EN_2D --> EN_2D_APP["E 2D Appを専用entryへ接続"]
   EN_3D --> EN_3D_SHELL["E 3D shellと救出経路"]
-  EN_3D_SHELL -->|"viewportが必要"| EN_RENDER["P renderer chunk"]
+  EN_3D_SHELL -->|"viewportが必要"| EN_RENDER["E native renderer chunk / GLB等はP"]
   EN_3D_SHELL -->|"機能を選択"| EN_TOOL["P import・rig・export chunks"]
 ```
 
@@ -56,4 +56,4 @@ flowchart TD
 
 別タブは合計memoryの削減を保証しない。両tabがactiveの場合の合計、背景停止、手動休止、復帰peakは [資源図](lifecycle.md) で別に管理する。
 
-B02の実装・検査範囲は[証拠記録](../../evidence/3d/B02.md)を参照。renderer/機能chunkはPのままであり、図の接続だけで完成扱いにしない。
+B02の実装・検査範囲は[証拠記録](../../evidence/3d/B02.md)を参照。B03のnative rendererは[限定評価・採用記録](../../evidence/3d/B03_NATIVE_VIEWPORT.md)を参照。GLB/rig等の未採用chunkはPのままであり、図の接続だけで完成扱いにしない。

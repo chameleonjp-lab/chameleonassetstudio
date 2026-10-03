@@ -26,13 +26,13 @@ PR298をユーザーがmergeしたmain `37572274d5e6f8404d2460c2e0bbd0f84f2649c3
 
 評価専用package/lockで全8 package（Threeを含む）を厳密固定。install scriptsを無効化して取得し、lockの各version/integrityが監査済みarchiveと完全一致することを確認した。型とruntimeの互換は次のコンパイル/実描画で判断する。
 
-## G03b native-render subset（未確認）
+## G03b native-render subset（評価headで確認済み）
 
-`tools/3d-evaluation/` の評価entryに限定し、トップ/2D/3D製品entryからimportしない。candidateのroot devDependency化だけで隔離したと見なさない。
+評価headでは `tools/3d-evaluation/` の評価entryに限定し、トップ/2D/3D製品entryからimportしなかった。candidateのroot devDependency化だけで隔離したと見なさない。
 
 必要証拠: 自作native box（三角形12面）の固定内容、実WebGL2画像、camera操作/reset、project swap、繰返しmount/dispose、hidden/freeze、manual GPU停止のrevision/source条件、context loss/復帰、unavailable fallback、resource/listener/RAF所有数、2D非取得。許可された既存CIで実行し、ローカルbrowserの既知sandbox拒否を再試行しない。
 
-## G03c 製品採用（未確認）
+## G03c native表示だけの限定採用（製品接続後の最終検査中）
 
 G03bのnative subsetを実証してから、その契約だけを製品へ接続する。GLB等の未検証契約を同時採用しない。接続後の最終headで2D回帰・browser・domain分離を再検査する。
 
@@ -61,3 +61,36 @@ iPhone実機、GPU/OS実メモリ、全skin/clip/export/GLB、停止中の旧GLB
 基準mainの[統合CI 37131413897](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/37131413897)も全成功を確認。
 
 候補にはnative-only `compact-evaluation-0` のnodes/depth/geometry/expanded corners/instances境界を適用する。renderer派生表現の上限でありGLB入力検査を代替しない。合計メモリの実測保証でもない。
+
+
+## G03b実測結果とG03c限定判断
+
+評価head `24015d7c43d09569ce54b61e81bbb4eb8eb95d34`、tree `b66ab845feda75a34e6c7604d5b71b99a62e6dc3` の[CI983](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/37133785556)が全成功。
+Chromium294、WebKit107、production18、H3、Pages open/closedが成功。新しいnative描画4caseは両browserで実行した。devのbuilt-manifest専用1caseはproductionの両engineで実行する既存分担を維持する。
+
+実画像を目視し、3面の形状・陰影、camera操作後の画角、context復帰後の表示を確認した。
+最初のPNGは初期camera、復帰後PNGは操作後cameraである。両PNGを直接同一画像とは扱わない。テスト内では「操作後・loss直前」のPNGと復帰後PNGが一致することを検査している。
+
+- [Chromium初期画像](images/chromium-native-box.png) / [操作後のcontext復帰画像](images/chromium-native-box-after-context-restore.png)
+- [WebKit初期画像](images/webkit-native-box.png) / [操作後のcontext復帰画像](images/webkit-native-box-after-context-restore.png)
+- [画像SHA256と対象head](images/native-evaluation.json)
+
+この結果により、Three0.186.1のcore/OrbitControlsをnative静止mesh表示・camera・resource再構築へ限定採用する。保存正本をThreeへ移さず、GLTFLoader/exporter/decoderやskin/clipを同時採用しない。rootの固定dependency/型/overridesとlockの新規7packageはG03a監査値に一致、既存lock entryは一件も変更していない（既存fflateを再利用）。runtime MIT noticeを `public/licenses/three-MIT.txt` で配布する。
+
+評価packageの独立lockは評価commitに保存済み。製品採用後はrootの固定lockへ統合し、評価入口は同じproduct adapterを継続検査する。製品入口から評価pageへ依存しない。
+
+接続で追加するcameraボタン、PNG同期・非同期factory保全、箱commandは最終headの追加unit/browser検査対象であり、評価headだけの結果で合格とはしない。VIEW-01の数値camera/正面等preset、VIEW-02/03の追加表示、GLB/skin/clip、iPhone実機は未完了。
+
+
+## 製品接続での追加是正
+
+- keyboard camera操作を追加し、同期操作ではfocused buttonを無効化しない。連続Enter操作のfocusをbrowserで検査する
+- PNGのencoding前に表示revisionを同期し、encoding後も同じproject/revisionを照合する
+- factory/port例外を局所error状態へ戻し、遅れたfactoryは切り離したhostだけを破棄する
+- lazy chunk失敗では常駐の保存/backupを維持し、成功保存・writer解放後に明示ボタンでページを再読込する。古いReact.lazyの失敗Promiseを単なる再openで直せるとは案内しない
+- 保存待ち中の新しい編集は、古い保存成功でGPU破棄を許可しない。fake-port browser fixtureで検査する
+
+Three依存はM06予定境界の `src/adapters3d/three/renderer.ts` に置き、renderer-free契約を `src/core3d/ports/renderPort.ts` へ置く。UIとadapterが別々の契約型を持たない。coreの正本とUndo/保存はThreeをimportしない。
+
+
+製品接続候補のローカル検査: 1178 unit tests（native adapter49件、箱/保存等を含む）、TypeScript、lint、format、app/H3/評価entry build、CI分類が成功。test-only fixtureのFast Refresh警告はcomponent exportに直し、対象lintを再確認した。build auditでhub/2DのThree/adapter到達なし、3Dのlazy closureだけにThreeがあることを確認した。最終browser判定はPRの対象head CIへ記録する。

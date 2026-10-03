@@ -203,3 +203,20 @@ describe('3D shell project sessions', () => {
     await copy.close();
   });
 });
+
+it('adds an editable native box, saves it and restores it through backup', async () => {
+  const session = await ProjectSession.create(repository, 'tab-box', 'Box');
+  session.addBox();
+  expect(session.project.meshes).toHaveLength(1);
+  expect(session.sourcesComplete).toBe(true);
+  const backup = await session.backup();
+  session.undo();
+  expect(session.project.meshes).toHaveLength(0);
+  session.redo();
+  await session.save();
+  const copy = await ProjectSession.restore(repository, 'copy-box', backup);
+  expect(copy.project.meshes).toEqual(session.project.meshes);
+  expect(copy.project.nodes).toEqual(session.project.nodes);
+  await copy.close();
+  await session.close();
+});

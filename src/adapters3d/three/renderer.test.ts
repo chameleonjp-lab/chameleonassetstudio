@@ -1,16 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Box3, Mesh, PerspectiveCamera, Vector3 } from 'three';
-import { smallProject } from '../../src/core3d/fixtures/project';
-import { cloneProject, identityTransform, type Project3D } from '../../src/core3d/model/project';
-import { transformPoint, worldMatrix } from '../../src/core3d/model/coordinates';
-import { nativeBox } from './fixtures';
+import { smallProject } from '../../core3d/fixtures/project';
+import { cloneProject, identityTransform, type Project3D } from '../../core3d/model/project';
+import { transformPoint, worldMatrix } from '../../core3d/model/coordinates';
+import { nativeBox } from '../../core3d/fixtures/nativeBox';
 import {
   buildNativeGraph,
   checkNativeProfile,
   fitPerspectiveBounds,
   NativeViewport,
+  type NativeCameraAction,
   type NativeViewportDependencies,
-} from './nativeViewport';
+} from './renderer';
 
 function triangle(): Project3D {
   const project = smallProject();
@@ -332,6 +333,171 @@ function lifecycleHarness(webgl2Available = true) {
     dependencies,
   };
 }
+
+describe('accessible native camera actions', () => {
+  const actions: NativeCameraAction[] = [
+    'orbit-left',
+    'orbit-right',
+    'orbit-up',
+    'orbit-down',
+    'pan-left',
+    'pan-right',
+    'pan-up',
+    'pan-down',
+    'zoom-in',
+    'zoom-out',
+  ];
+
+  it.each<{
+    action: NativeCameraAction;
+    position: [number, number, number];
+    target: [number, number, number];
+  }>([
+    { action: 'orbit-left', position: [-2.588190451, 0, 9.659258263], target: [0, 0, 0] },
+    { action: 'orbit-right', position: [2.588190451, 0, 9.659258263], target: [0, 0, 0] },
+    { action: 'orbit-up', position: [0, 2.588190451, 9.659258263], target: [0, 0, 0] },
+    { action: 'orbit-down', position: [0, -2.588190451, 9.659258263], target: [0, 0, 0] },
+    { action: 'pan-left', position: [-1, 0, 10], target: [-1, 0, 0] },
+    { action: 'pan-right', position: [1, 0, 10], target: [1, 0, 0] },
+    { action: 'pan-up', position: [0, 1, 10], target: [0, 1, 0] },
+    { action: 'pan-down', position: [0, -1, 10], target: [0, -1, 0] },
+    { action: 'zoom-in', position: [0, 0, 8.333333333], target: [0, 0, 0] },
+    { action: 'zoom-out', position: [0, 0, 12], target: [0, 0, 0] },
+  ])('$action moves only the camera and coalesces one frame', ({ action, position, target }) => {
+    const { viewport, controlInstances, pending, flush } = lifecycleHarness();
+    const project = triangle();
+    const before = cloneProject(project);
+    viewport.setProject(project);
+    const controls = controlInstances[0];
+    controls.camera.position.set(0, 0, 10);
+    controls.target.set(0, 0, 0);
+    controls.camera.lookAt(controls.target);
+    controls.change();
+    flush();
+    const listeners = viewport.diagnostics.listeners;
+    expect(viewport.cameraAction(action)).toEqual({ ok: true });
+    viewport.diagnostics.camera.position.forEach((value, index) =>
+      expect(value).toBeCloseTo(position[index], 8),
+    );
+    viewport.diagnostics.camera.target.forEach((value, index) =>
+      expect(value).toBeCloseTo(target[index], 8),
+    );
+    expect(controls.target.toArray()).toEqual(viewport.diagnostics.camera.target);
+    expect(controls).toMatchObject({ enabled: true, enableDamping: false, autoRotate: false });
+    expect(controlInstances).toHaveLength(1);
+    expect(viewport.diagnostics.listeners).toBe(listeners);
+    expect(controls.dispose).not.toHaveBeenCalled();
+    expect(pending.size).toBe(1);
+    flush();
+    flush();
+    expect(viewport.diagnostics).toMatchObject({ framesRendered: 2, pendingFrames: 0 });
+    expect(project).toEqual(before);
+    viewport.dispose();
+  });
+
+  it('pans in camera screen axes after orbit and preserves the view through resume', () => {
+    const { viewport, controlInstances } = lifecycleHarness();
+    viewport.setProject(triangle());
+    const controls = controlInstances[0];
+    controls.camera.position.set(10, 0, 0);
+    controls.target.set(0, 0, 0);
+    controls.camera.lookAt(controls.target);
+    controls.change();
+    viewport.cameraAction('pan-right');
+    expect(viewport.diagnostics.camera.position).toEqual([10, 0, -1]);
+    expect(viewport.diagnostics.camera.target).toEqual([0, 0, -1]);
+    const view = viewport.diagnostics.camera;
+    viewport.suspend({ persistedRevision: 0, currentRevision: 0, sourcesComplete: true });
+    viewport.resume();
+    expect(viewport.diagnostics.camera).toEqual(view);
+    viewport.dispose();
+  });
+
+  it('bounds repeated zoom and pole rotation while keeping every result finite', () => {
+    const { viewport, controlInstances, pending } = lifecycleHarness();
+    viewport.setProject(triangle());
+    const { camera, target } = controlInstances[0];
+    for (let index = 0; index < 200; index++) viewport.cameraAction('zoom-in');
+    expect(camera.position.distanceTo(target)).toBeCloseTo(camera.near * 2, 8);
+    for (let index = 0; index < 200; index++) viewport.cameraAction('zoom-out');
+    expect(camera.position.distanceTo(target)).toBeCloseTo(camera.far / 2, 8);
+    const distance = camera.position.distanceTo(target);
+    for (let index = 0; index < 100; index++) viewport.cameraAction('orbit-up');
+    expect(camera.position.distanceTo(target)).toBeCloseTo(distance, 8);
+    expect(camera.position.y - target.y).toBeCloseTo(distance, 5);
+    expect([...camera.position.toArray(), ...target.toArray()].every(Number.isFinite)).toBe(true);
+    expect(pending.size).toBe(1);
+    viewport.dispose();
+  });
+
+  it.each([
+    'empty',
+    'hidden',
+    'frozen',
+    'suspended',
+    'context-lost',
+    'unavailable',
+    'unsupported',
+    'error',
+    'disposed',
+  ])('rejects all camera actions in %s state without mutation or frames', (state) => {
+    const { viewport, allCanvases, rendererInstances, pending, flush } = lifecycleHarness(
+      state !== 'unavailable',
+    );
+    if (state !== 'empty') viewport.setProject(triangle());
+    if (state === 'hidden') viewport.setHidden(true);
+    if (state === 'frozen') viewport.setFrozen(true);
+    if (state === 'suspended')
+      viewport.suspend({ persistedRevision: 0, currentRevision: 0, sourcesComplete: true });
+    if (state === 'context-lost')
+      allCanvases[0].dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+    if (state === 'unsupported') viewport.setProject(smallProject());
+    if (state === 'error') {
+      rendererInstances[0].render.mockImplementationOnce(() => {
+        throw new Error('GPU error');
+      });
+      flush();
+    }
+    if (state === 'disposed') viewport.dispose();
+    const before = viewport.diagnostics;
+    expect(before.state).toBe(state);
+    actions.forEach((action) => expect(viewport.cameraAction(action).ok).toBe(false));
+    expect(viewport.diagnostics).toEqual(before);
+    expect(pending.size).toBe(0);
+    viewport.dispose();
+  });
+
+  it('rejects invalid action and nonfinite camera input before touching controls', () => {
+    const { viewport, controlInstances, pending, flush } = lifecycleHarness();
+    viewport.setProject(triangle());
+    flush();
+    const controls = controlInstances[0];
+    const before = viewport.diagnostics.camera;
+    const updates = controls.update.mock.calls.length;
+    expect(viewport.cameraAction('invalid' as NativeCameraAction).ok).toBe(false);
+    expect(viewport.diagnostics.camera).toEqual(before);
+    controls.camera.position.x = Infinity;
+    expect(viewport.cameraAction('pan-right').ok).toBe(false);
+    expect(controls.update).toHaveBeenCalledTimes(updates);
+    expect(pending.size).toBe(0);
+    viewport.dispose();
+  });
+
+  it('rejects zoom when a distant target would round the position into the target', () => {
+    const { viewport, controlInstances, flush, pending } = lifecycleHarness();
+    viewport.setProject(triangle());
+    const controls = controlInstances[0];
+    controls.camera.position.set(1e20 + 100_000, 0, 0);
+    controls.target.set(1e20, 0, 0);
+    controls.change();
+    flush();
+    const before = viewport.diagnostics.camera;
+    expect(viewport.cameraAction('zoom-in').ok).toBe(false);
+    expect(viewport.diagnostics.camera).toEqual(before);
+    expect(pending.size).toBe(0);
+    viewport.dispose();
+  });
+});
 
 describe('native lifecycle ownership (injected renderer, not GPU evidence)', () => {
   it('coalesces requests and has no perpetual idle RAF', () => {

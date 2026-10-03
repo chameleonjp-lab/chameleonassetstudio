@@ -51,3 +51,5 @@ flowchart TD
 B01の実在fileと検査範囲は [所有台帳の実装状況](ownership.md#b01で実在になった配置) と [B01記録](../../evidence/3d/B01.md) を参照。
 
 B02実装: [独立入口・保存shellの証拠と残項目](../../evidence/3d/B02.md)。入口の実装と、未完成の3D制作機能を区別する。
+
+B03 native表示の[限定採用・受入証拠](../../evidence/3d/B03_NATIVE_VIEWPORT.md)。GLB・skin・clipなどの未確認gateを同時に完了扱いしない。

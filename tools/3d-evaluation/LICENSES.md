@@ -1,6 +1,6 @@
 # Evaluation dependency licenses
 
-The isolated evaluation dependencies are not shipped by a product entry. These fixed notices accompany the evaluated copies.
+These fixed notices record the evaluated runtime and development dependencies. Only the adopted Three core/OrbitControls runtime is bundled by the 3D viewport; its MIT notice is also distributed at public/licenses/three-MIT.txt.
 
 ## three 0.186.1
 

@@ -1,4 +1,4 @@
-/** Isolated G03b candidate. Never import this evaluation adapter from a product entry. */
+/** Native-static Three adapter. Lazy product use follows the scoped G03 evidence record. */
 import {
   AmbientLight,
   Box3,
@@ -12,6 +12,7 @@ import {
   Object3D,
   PerspectiveCamera,
   Scene,
+  Spherical,
   Vector3,
   WebGLRenderer,
 } from 'three';
@@ -21,31 +22,17 @@ import {
   validateProject,
   type Project3D,
   type Vec3,
-} from '../../src/core3d/model/project';
-import { transformPoint, worldMatrix } from '../../src/core3d/model/coordinates';
+} from '../../core3d/model/project';
+import { transformPoint, worldMatrix } from '../../core3d/model/coordinates';
 
-export type ProfileResult = { ok: true } | { ok: false; reason: string };
-export type ViewportState =
-  | 'empty'
-  | 'active'
-  | 'hidden'
-  | 'frozen'
-  | 'suspended'
-  | 'context-lost'
-  | 'unavailable'
-  | 'unsupported'
-  | 'error'
-  | 'disposed';
-export interface ViewportStatus {
-  state: ViewportState;
-  reason?: string;
-}
-/** The caller supplies the storage result, not merely an optimistic save request. */
-export interface SuspensionContract {
-  persistedRevision: number | null;
-  currentRevision: number;
-  sourcesComplete: boolean;
-}
+import type {
+  NativeViewportResult as ProfileResult,
+  NativeCameraAction,
+  NativeViewportStatus as ViewportStatus,
+  NativeViewportSuspensionContract as SuspensionContract,
+} from '../../core3d/ports/renderPort';
+export type { NativeCameraAction } from '../../core3d/ports/renderPort';
+
 interface RendererPort {
   setPixelRatio(value: number): void;
   setSize(width: number, height: number, updateStyle?: boolean): void;
@@ -488,6 +475,80 @@ export class NativeViewport {
 
   resetCamera(): void {
     this.fitCamera();
+  }
+
+  /** Discrete accessible controls share the pointer camera without owning another event loop. */
+  cameraAction(action: NativeCameraAction): ProfileResult {
+    if (!this.canRender() || !this.controls?.enabled)
+      return failure('Camera actions require an active native viewport.');
+    const target = this.controls.target.clone();
+    const position = this.camera.position.clone();
+    const offset = position.clone().sub(target);
+    const distance = offset.length();
+    if (
+      ![...position.toArray(), ...target.toArray(), distance].every(float32Finite) ||
+      distance <= 0
+    )
+      return failure('The camera requires a finite position and a separate target.');
+    const angle = Math.PI / 12;
+    switch (action) {
+      case 'orbit-left':
+      case 'orbit-right':
+      case 'orbit-up':
+      case 'orbit-down': {
+        const spherical = new Spherical().setFromVector3(offset);
+        if (action === 'orbit-left') spherical.theta -= angle;
+        if (action === 'orbit-right') spherical.theta += angle;
+        if (action === 'orbit-up') spherical.phi -= angle;
+        if (action === 'orbit-down') spherical.phi += angle;
+        spherical.phi = Math.min(Math.PI - 0.0001, Math.max(0.0001, spherical.phi));
+        position.copy(target).add(new Vector3().setFromSpherical(spherical));
+        break;
+      }
+      case 'pan-left':
+      case 'pan-right':
+      case 'pan-up':
+      case 'pan-down': {
+        const direction = offset.normalize();
+        const right = new Vector3().crossVectors(this.camera.up, direction);
+        if (right.lengthSq() < 1e-12) right.set(1, 0, 0);
+        right.normalize();
+        const up = new Vector3().crossVectors(direction, right).normalize();
+        const movement = action === 'pan-left' || action === 'pan-right' ? right : up;
+        const sign = action === 'pan-left' || action === 'pan-down' ? -1 : 1;
+        movement.multiplyScalar(distance * 0.1 * sign);
+        position.add(movement);
+        target.add(movement);
+        break;
+      }
+      case 'zoom-in':
+      case 'zoom-out': {
+        const minimum = this.camera.near * 2;
+        const maximum = this.camera.far / 2;
+        if (![minimum, maximum].every(float32Finite) || minimum <= 0 || maximum < minimum)
+          return failure('The camera requires a finite zoom range.');
+        const nextDistance = Math.min(
+          maximum,
+          Math.max(minimum, distance * (action === 'zoom-in' ? 1 / 1.2 : 1.2)),
+        );
+        position.copy(target).add(offset.multiplyScalar(nextDistance / distance));
+        break;
+      }
+      default:
+        return failure('Unknown native camera action.');
+    }
+    if (
+      ![...position.toArray(), ...target.toArray()].every(float32Finite) ||
+      position.distanceToSquared(target) === 0
+    )
+      return failure('The camera action is outside the finite Float32 evaluation profile.');
+    this.camera.position.copy(position);
+    this.target.copy(target);
+    this.camera.lookAt(target);
+    this.controls.target.copy(target);
+    this.controls.update();
+    this.requestRender();
+    return { ok: true };
   }
 
   fitCamera(): void {
