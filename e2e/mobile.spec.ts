@@ -15,7 +15,7 @@ async function makePngBuffer(page: Page): Promise<Buffer> {
 }
 
 async function setupProjectWithImage(page: Page, name: string): Promise<void> {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill(name);
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await expect(page.getByRole('heading', { name })).toBeVisible();
@@ -104,7 +104,7 @@ test('スマホ縦（375x667）で下部ナビから書き出し画面へ到達�
 
 test('スマホ縦でプロジェクト名入力のフォントが 16px 以上（iOS ズーム防止）', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
-  await page.goto('/');
+  await page.goto('/2d/');
 
   const input = page.getByLabel('プロジェクト名');
   await expect(input).toBeVisible();

@@ -24,7 +24,7 @@ async function makePngBuffer(
 }
 
 async function setupProject(page: Page, name: string, png: Buffer): Promise<Locator> {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill(name);
   await page.getByRole('button', { name: '作成' }).click();
   await expect(page.getByRole('heading', { name })).toBeVisible();

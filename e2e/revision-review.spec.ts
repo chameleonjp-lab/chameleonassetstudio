@@ -5,7 +5,7 @@ import { unzipSync } from 'fflate';
 test.use({ trace: 'retain-on-failure' });
 
 async function setup(page: Page) {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill('Revision workflow');
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Revision workflow', exact: true })).toBeVisible();

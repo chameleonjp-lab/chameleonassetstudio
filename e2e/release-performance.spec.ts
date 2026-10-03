@@ -267,7 +267,7 @@ for (const layers of [1, 2]) {
     test.setTimeout(120000);
     await page.setViewportSize({ width: 1280, height: 800 });
     const initialStarted = Date.now();
-    await page.goto('/');
+    await page.goto('/2d/');
     await expect(page.getByRole('button', { name: '作成', exact: true })).toBeVisible();
     const initialHomeMs = Date.now() - initialStarted;
     const memory = [await readMemory(page, 'home')];

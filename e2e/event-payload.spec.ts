@@ -20,7 +20,7 @@ async function stored(page: Page) {
 }
 
 async function setup(page: Page) {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill('Payload authoring');
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await page.getByLabel('見本の絵を入れて始める').check();

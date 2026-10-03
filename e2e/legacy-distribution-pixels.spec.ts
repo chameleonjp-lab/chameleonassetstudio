@@ -7,7 +7,7 @@ for (const profile of ['fixed-grid', 'packed']) {
     test(`legacy 0.1 UI ZIP ${profile} ${scale}x helper preserves exact opaque pixels`, async ({
       page,
     }, testInfo) => {
-      await page.goto('/');
+      await page.goto('/2d/');
       await page.evaluate(async () => {
         const modelPath = '/src/core/model/factories.ts';
         const storagePath = '/src/core/storage/index.ts';

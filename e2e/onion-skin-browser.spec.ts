@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('高DPR・8倍表示でも前後コマの赤と青を独立した25%で合成する', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
   const pixels = await page.evaluate(async () => {
     const renderPath = '/src/renderers/canvas2d/render.ts';
     const modelPath = '/src/core/model/index.ts';

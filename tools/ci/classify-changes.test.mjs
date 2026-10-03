@@ -15,10 +15,14 @@ test('product and build inputs publish and receive browser checks', () => {
     'src/features/home/home.css',
     'public/guide/index.html',
     'index.html',
+    '2d/index.html',
+    '3d/index.html',
+    'src/entries/3d.tsx',
     'package-lock.json',
     'vite.config.ts',
     'tsconfig.json',
     'tools/pages/assemble.mjs',
+    'tools/build/domainBoundary.ts',
     '.github/workflows/h3-pages.yml',
   ]) {
     const scope = classifyChanges([file]);
@@ -41,6 +45,7 @@ test('UI-only changes avoid H3 measurement while core and publishing changes ret
     'src/core/model/asset.ts',
     'tools/h3/matrix.ts',
     'tools/pages/assemble.mjs',
+    'tools/build/domainBoundary.ts',
     '.github/workflows/ci.yml',
   ])
     assert.equal(classifyChanges([file]).h3, true, file);

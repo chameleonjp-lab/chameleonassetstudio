@@ -32,6 +32,7 @@ export default defineConfig({
       name: 'webkit-critical',
       testMatch: [
         'app.spec.ts',
+        'studio-entries.spec.ts',
         'import.spec.ts',
         'storage.spec.ts',
         'export.spec.ts',

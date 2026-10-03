@@ -7,6 +7,8 @@ const h3Target = resolve(appOutput, 'h3');
 
 for (const requiredPath of [
   resolve(appOutput, 'index.html'),
+  resolve(appOutput, '2d/index.html'),
+  resolve(appOutput, '3d/index.html'),
   resolve(h3Output, 'index.html'),
   resolve(h3Output, 'publication.json'),
 ]) {
@@ -20,6 +22,8 @@ cpSync(h3Output, h3Target, { recursive: true });
 
 for (const requiredPath of [
   resolve(appOutput, 'index.html'),
+  resolve(appOutput, '2d/index.html'),
+  resolve(appOutput, '3d/index.html'),
   resolve(h3Target, 'index.html'),
   resolve(h3Target, 'publication.json'),
 ]) {

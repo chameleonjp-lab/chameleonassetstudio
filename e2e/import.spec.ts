@@ -33,7 +33,7 @@ async function makeImageBuffer(page: Page, mimeType: string): Promise<Buffer> {
 }
 
 async function createProject(page: Page, name: string): Promise<void> {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill(name);
   await page.getByRole('button', { name: '作成' }).click();
   await expect(page.getByRole('heading', { name })).toBeVisible();

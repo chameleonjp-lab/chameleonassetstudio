@@ -48,6 +48,16 @@ test('serves the application, beginner guide, and H3 at their Pages routes', asy
   await expect(page).toHaveTitle('Chameleon Asset Studio');
   await expect(page.locator('#root')).not.toBeEmpty();
 
+  await expect(page.getByRole('link', { name: '2Dを開く', exact: true })).toBeVisible();
+  await page.goto('./2d/');
+  await expect(page.getByRole('heading', { name: 'Chameleon Asset Studio' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel('プロジェクト名')).toBeVisible();
+  await page.goto('./3d/');
+  await expect(page.getByRole('heading', { name: '3Dプロジェクト', exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '3Dプロジェクト', exact: true })).toBeVisible();
+
   await page.goto('./guide/');
   await expect(page).toHaveTitle('はじめての使い方 | Chameleon Asset Studio');
   await expect(page.getByRole('heading', { name: /まずは画像1枚.*5ステップ.*完成/ })).toBeVisible();

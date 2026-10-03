@@ -76,7 +76,7 @@ async function storedSample(page: Page) {
 }
 
 async function createSample(page: Page, type = 'character') {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill('表示確認');
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await expect(page.getByRole('heading', { name: '表示確認', exact: true })).toBeVisible();

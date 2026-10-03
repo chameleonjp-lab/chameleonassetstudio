@@ -80,7 +80,7 @@ async function setupProjectWithImage(
   width = 64,
   height = 64,
 ): Promise<Buffer> {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill(name);
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await expect(page.getByRole('heading', { name })).toBeVisible();
@@ -143,7 +143,7 @@ test('.casproj を書き出し、削除後に読み込むと画像ごと復元�
 
   // ホームへ戻り、元プロジェクトを削除して空にする
   page.on('dialog', (dialog) => void dialog.accept());
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByRole('button', { name: '「casproj-rt」を削除' }).click();
   await expect(page.getByText('保存済みのプロジェクトはありません。')).toBeVisible();
 
@@ -172,7 +172,7 @@ test('.casproj を書き出し、削除後に読み込むと画像ごと復元�
       (texture) => texture.kind === 'source' && texture.id === firstProvenance?.textureId,
     ),
   ).toBe(true);
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByRole('button', { name: '「casproj-rt」を削除' }).click();
   await page.getByLabel('.casproj を読み込む').setInputFiles({
     name: 'casproj-rt-reexport.casproj',
@@ -248,7 +248,7 @@ test('SVG / GIF sourceを実ブラウザーでdecodeし、.casproj再書き出�
     [`assets/${gifAsset.id}/source/original.gif`]: gifBytes,
   });
 
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('.casproj を読み込む').setInputFiles({
     name: 'source-contract.casproj',
     mimeType: 'application/zip',
@@ -273,7 +273,7 @@ test('SVG / GIF sourceを実ブラウザーでdecodeし、.casproj再書き出�
   expect(reexported[gifPath!]).toEqual(gifBytes);
 
   page.on('dialog', (dialog) => void dialog.accept());
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByRole('button', { name: '「source-contract-browser」を削除' }).click();
   await page.getByLabel('.casproj を読み込む').setInputFiles({
     name: 'source-contract-reexport.casproj',
@@ -286,7 +286,7 @@ test('SVG / GIF sourceを実ブラウザーでdecodeし、.casproj再書き出�
 });
 
 test('casproj ではないファイルを読み込むと理由が表示される', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('.casproj を読み込む').setInputFiles({
     name: 'not-a-casproj.casproj',
     mimeType: 'application/zip',
@@ -306,7 +306,7 @@ test('参照Assetの画像欠落は正本へ保存せず、理由とquarantine�
     [`assets/${assetId}/asset.json`]: strToU8(assetJson),
   });
 
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('.casproj を読み込む').setInputFiles({
     name: 'missing-images.casproj',
     mimeType: 'application/zip',
@@ -343,7 +343,7 @@ test('不正families付き.casprojは正本へ保存せず、理由とquarantine
     [`assets/${asset.id}/${asset.textures[0].path}`]: Buffer.from(imageBase64.trim(), 'base64'),
   });
 
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('.casproj を読み込む').setInputFiles({
     name: 'invalid-families.casproj',
     mimeType: 'application/zip',
@@ -369,7 +369,7 @@ test('future versionは理由付きで拒否し、元bytesをquarantineへ残す
   projectJson.version = '0.1.1';
   const zipped = zipSync({ 'project.json': strToU8(JSON.stringify(projectJson)) });
 
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('.casproj を読み込む').setInputFiles({
     name: 'future.casproj',
     mimeType: 'application/zip',
@@ -420,7 +420,7 @@ test('unsafe path、高圧縮entry、壊れた画像を理由付きで拒否し�
     },
   ];
 
-  await page.goto('/');
+  await page.goto('/2d/');
   for (const input of cases) {
     await page.getByLabel('.casproj を読み込む').setInputFiles({
       name: input.name,
@@ -465,7 +465,7 @@ test('未参照Assetとorphan fileは警告付きで除外し、canonical Projec
     [`assets/${unreferenced.id}/${asset.textures[0].path}`]: image,
   });
 
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('.casproj を読み込む').setInputFiles({
     name: 'legacy-extra.casproj',
     mimeType: 'application/zip',

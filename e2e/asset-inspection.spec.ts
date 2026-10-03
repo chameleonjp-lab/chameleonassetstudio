@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test('tile inspector reports missing required settings and updates after manual correction', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill('素材検査テスト');
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await expect(page.getByRole('heading', { name: '素材検査テスト' })).toBeVisible();

@@ -38,7 +38,7 @@ interface RepairState {
 }
 
 async function createBlankAsset(page: Page): Promise<void> {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill('padding resize E2E');
   await page.getByRole('button', { name: '作成', exact: true }).click();
   const properties = page.getByRole('complementary', { name: 'プロパティ' });

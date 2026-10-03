@@ -79,7 +79,7 @@ async function readProjectAssetIds(page: Page): Promise<string[]> {
 test('画像を取り込まずに新規アセットを作成すると、型と starter 当たり判定が反映され、再読込しても残る', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill('新規作成テスト');
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await expect(page.getByRole('heading', { name: '新規作成テスト' })).toBeVisible();
@@ -120,7 +120,7 @@ test('画像を取り込まずに新規アセットを作成すると、型と s
 test('item を新規作成すると当たり判定は付かない（character だけの starter テンプレート）', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill('アイテム新規作成');
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'アイテム新規作成' })).toBeVisible();
@@ -140,7 +140,7 @@ test('item を新規作成すると当たり判定は付かない（character �
 test('Asset種別をProject要約と同期し、独立copyをBlobごと追加して再読込・casproj退避できる', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill('複数アセット管理');
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await expect(page.getByRole('heading', { name: '複数アセット管理' })).toBeVisible();
@@ -193,7 +193,7 @@ test('Asset種別をProject要約と同期し、独立copyをBlobごと追加し
 });
 
 test('アセットを削除すると一覧と IndexedDB から消え、空状態が表示される', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill('アセット削除テスト');
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'アセット削除テスト' })).toBeVisible();
@@ -240,7 +240,7 @@ test('アセットを削除すると一覧と IndexedDB から消え、空状態
 test('判定の数値を編集した直後にアセットを削除しても、デバウンス保存で復活しない（autosave.flush 競合の回帰、Opus 4.8 レビュー対応）', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill('削除競合テスト');
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await expect(page.getByRole('heading', { name: '削除競合テスト' })).toBeVisible();

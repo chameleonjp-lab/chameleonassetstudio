@@ -16,7 +16,7 @@ async function makePngBuffer(page: Page, size = 64): Promise<Buffer> {
 }
 
 async function setupProjectWithImage(page: Page, name: string, imageSize = 64): Promise<void> {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill(name);
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await expect(page.getByRole('heading', { name })).toBeVisible();
@@ -1424,7 +1424,7 @@ test.describe('D4 frame alignment', () => {
     const casprojBytes = await readFile(downloadPath!);
 
     page.once('dialog', (dialog) => void dialog.accept());
-    await page.goto('/');
+    await page.goto('/2d/');
     await page.getByRole('button', { name: '「D4位置合わせ保存テスト」を削除' }).click();
     await page.getByLabel('.casproj を読み込む').setInputFiles({
       name: 'D4位置合わせ保存テスト.casproj',
@@ -1711,7 +1711,7 @@ test('T1データを保持する4形式を実出力・再読込し、情報を�
   expect(casprojBytes.byteLength).toBeGreaterThan(0);
 
   page.once('dialog', (dialog) => void dialog.accept());
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByRole('button', { name: '「イベント再生テスト」を削除' }).click();
   await expect(page.getByText('保存済みのプロジェクトはありません。')).toBeVisible();
   await page.getByLabel('.casproj を読み込む').setInputFiles({

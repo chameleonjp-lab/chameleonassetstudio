@@ -3,7 +3,7 @@ import { confirmImageImport } from './importTestHelpers';
 
 test('ホームの画像取込から編集・PNG出力・再開まで進める', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
-  await page.goto('/');
+  await page.goto('/2d/');
   const buffer = await page.evaluate(() => {
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = 32;
@@ -46,7 +46,7 @@ test('保存が正常なら容量詳細を畳み、目的別に編集項目を�
       },
     });
   });
-  await page.goto('/');
+  await page.goto('/2d/');
   await expect(page.locator('#home-storage details')).not.toHaveAttribute('open');
   await page.getByLabel('プロジェクト名').fill('見本');
   await page.getByRole('button', { name: '作成', exact: true }).click();
@@ -62,7 +62,7 @@ test('保存が正常なら容量詳細を畳み、目的別に編集項目を�
 });
 
 test('ホーム取込を取消でき、保存失敗をダイアログ内で確認して再試行できる', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
   const image = await page.evaluate(() => {
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = 8;
@@ -115,7 +115,7 @@ test('ホーム取込を取消でき、保存失敗をダイアログ内で確�
 
 for (const type of ['character', 'item', 'tile', 'effect']) {
   test(`${type} の見本は画素を持ち、空白は透明`, async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/2d/');
     await page.getByRole('button', { name: '作成', exact: true }).click();
     await page.getByLabel('新規アセットの種別').selectOption(type);
     await page.getByLabel('新規アセット名').fill('sample');

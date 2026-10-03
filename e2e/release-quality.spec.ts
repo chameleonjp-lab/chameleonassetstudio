@@ -6,7 +6,7 @@ test('初回ホーム取込は編集画面を先読みせず、320pxの確認画
   page.on('request', (request) => {
     if (/EditorScreen.*\.(js|css|tsx)/.test(request.url())) editorRequests.push(request.url());
   });
-  await page.goto('/');
+  await page.goto('/2d/');
   await expect(page.getByRole('button', { name: '作成', exact: true })).toBeVisible();
   const png = await page.evaluate(() => {
     const canvas = document.createElement('canvas');

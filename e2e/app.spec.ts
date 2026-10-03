@@ -1,14 +1,14 @@
 import { expect, test } from '@playwright/test';
 
 test('ホーム画面が表示される', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
   await expect(page).toHaveTitle(/Chameleon Asset Studio/);
   await expect(page.getByRole('heading', { name: 'Chameleon Asset Studio' })).toBeVisible();
   await expect(page.getByText('保存済みのプロジェクトはありません。')).toBeVisible();
 });
 
 test('新規プロジェクトを作成して編集画面へ移動できる', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill('E2E テスト');
   await page.getByRole('button', { name: '作成' }).click();
 
@@ -21,7 +21,7 @@ test('新規プロジェクトを作成して編集画面へ移動できる', as
 });
 
 test('プロジェクト名の変更が自動保存される', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill('自動保存テスト');
   await page.getByRole('button', { name: '作成' }).click();
   await expect(page.getByRole('heading', { name: '自動保存テスト' })).toBeVisible();
@@ -38,7 +38,7 @@ test('プロジェクト名の変更が自動保存される', async ({ page }) 
 });
 
 test('再読み込み後もプロジェクトが一覧に残る', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill('永続化テスト');
   await page.getByRole('button', { name: '作成' }).click();
   await expect(page.getByRole('heading', { name: '永続化テスト' })).toBeVisible();
@@ -50,7 +50,7 @@ test('再読み込み後もプロジェクトが一覧に残る', async ({ page 
 });
 
 test('プロジェクトを確認付きで削除できる', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill('削除テスト');
   await page.getByRole('button', { name: '作成' }).click();
   await expect(page.getByRole('heading', { name: '削除テスト' })).toBeVisible();
@@ -63,7 +63,7 @@ test('プロジェクトを確認付きで削除できる', async ({ page }) => 
 
 test('スマホ幅で横スクロールが出ない', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
-  await page.goto('/');
+  await page.goto('/2d/');
   await expect(page.getByRole('heading', { name: 'Chameleon Asset Studio' })).toBeVisible();
 
   const homeOverflow = await page.evaluate(
@@ -93,7 +93,7 @@ test('スマホ幅で横スクロールが出ない', async ({ page }) => {
 
 test('iPad 幅でキャンバス領域が確保される', async ({ page }) => {
   await page.setViewportSize({ width: 820, height: 1180 });
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill('iPad テスト');
   await page.getByRole('button', { name: '作成' }).click();
 
@@ -107,7 +107,7 @@ test('iPad 幅でキャンバス領域が確保される', async ({ page }) => {
 
 test('PC 幅で基本レイアウトが揃い、パネルを折りたためる', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill('PC テスト');
   await page.getByRole('button', { name: '作成' }).click();
 

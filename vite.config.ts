@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
+import { inspectDomainBundles } from './tools/build/domainBoundary';
 
 const configuredBasePath = process.env.APP_BASE_PATH?.trim() || '/';
 const basePath = configuredBasePath.endsWith('/') ? configuredBasePath : `${configuredBasePath}/`;
@@ -15,16 +16,31 @@ const revision =
 export default defineConfig({
   define: { __APP_REVISION__: JSON.stringify(revision), __APP_DIRTY__: JSON.stringify(dirty) },
   base: basePath,
+  build: {
+    manifest: true,
+    rollupOptions: { input: { hub: 'index.html', two: '2d/index.html', three: '3d/index.html' } },
+  },
   plugins: [
     react(),
     {
       name: 'build-information',
-      generateBundle() {
+      generateBundle(_options, bundle) {
         this.emitFile({
           type: 'asset',
-          fileName: 'build-info.json',
-          source: JSON.stringify({ revision, dirty, status: 'development', scope: '2d' }) + '\n',
+          fileName: 'domain-bundles.json',
+          source: JSON.stringify(inspectDomainBundles(bundle), null, 2) + '\n',
         });
+        for (const [fileName, scope] of [
+          ['build-info.json', 'hub'],
+          ['2d/build-info.json', '2d'],
+          ['3d/build-info.json', '3d'],
+        ]) {
+          this.emitFile({
+            type: 'asset',
+            fileName,
+            source: JSON.stringify({ revision, dirty, status: 'development', scope }) + '\n',
+          });
+        }
       },
     },
   ],

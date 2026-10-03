@@ -6,6 +6,7 @@ import { BuildInformation } from '../../app/BuildInformation';
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -1225,8 +1226,9 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
     return () => window.removeEventListener('keydown', handleEscape);
   }, []);
 
-  // アセットを切り替えたらタイムラインの選択・再生状態をリセットする
-  useEffect(() => {
+  // Reset before the new asset is painted, so an early user selection is not cleared
+  // by a later passive effect (observed in the WebKit rich-export regression).
+  useLayoutEffect(() => {
     setSelectedAnimationId(null);
     setPreviewFrameId(null);
     setEditFrameId(null);

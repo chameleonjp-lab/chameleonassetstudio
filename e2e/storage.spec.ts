@@ -25,7 +25,7 @@ async function makePngBuffer(page: Page): Promise<Buffer> {
 }
 
 async function setupProjectWithImage(page: Page, name: string): Promise<void> {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill(name);
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await expect(page.getByRole('heading', { name })).toBeVisible();
@@ -187,7 +187,7 @@ test.describe('復旧点（2D-1B-RECOVERY）', () => {
 
 test.describe('壊れた import の隔離（2D-1B-STORAGE §E）', () => {
   test('壊れた ZIP は理由付きで失敗し、隔離一覧から削除できる', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/2d/');
     await page.getByLabel('.casproj を読み込む').setInputFiles({
       name: 'broken.casproj',
       mimeType: 'application/zip',

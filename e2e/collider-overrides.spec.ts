@@ -108,7 +108,7 @@ async function reopenProject(page: Page, name: string): Promise<void> {
 }
 
 async function setupO1Project(page: Page, name: string): Promise<void> {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill(name);
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
