@@ -102,7 +102,7 @@ FLOW-02 は「既存 clip を再生した」だけでは合格しない。利用
 | ID | 優先 | 要件と受入条件 |
 | --- | --- | --- |
 | LIFE-01 | MUST | 2D と 3D の renderer、scene、render loop、workers、decode cache は独立所有。片方の停止・障害で他方の保存を壊さない |
-| LIFE-02 | MUST | 特定機能を開くまで optimizer、rig solver、export encoder、圧縮 decoder、sample を遅延読込。隠れた UI の mount だけで一式を読まない |
+| LIFE-02 | MUST | 特定機能を開くまで optimizer、rig solver、GLB 等の重い export encoder、圧縮 decoder、sample を遅延読込。隠れた UI の mount だけで一式を読まない。最小の保存/完全 backup 救出経路は例外として編集受付前に確保 |
 | LIFE-03 | MUST | `visibilitychange` 等で背景停止し、復帰時に経過時間を一気に animation へ適用しない。タブが見えることと focus の違いを扱う |
 | LIFE-04 | MUST | mount/unmount、失敗、取消、model 差替え、連続再読込で同じ資源解放保証。geometry、material、texture、render target、bitmap、object URL、listener、worker を対象にする |
 | LIFE-05 | MUST | shared resource は最後の所有者が解放。先に他の mesh の texture を壊さない。二重 dispose による例外と二重 loop がない |
@@ -323,7 +323,11 @@ SAVE-01 の競合検査には同一タブも含む。revision A の save 開始�
 
 backup と復旧候補の読込時、同じ project ID が既にあれば別 ID のコピーとして復元するか、影響と競合を説明して明示置換する。現行版や他タブを黙って巻き戻さない。backup の必要 payload は texture、geometry、skin、clip/補間、anchor/collider、来歴を含む。UI state / undo history をどこまで持ち運ぶかは明記し、保存対象外の情報を再編集保証へ含めない。
 
+未保存編集を受け付ける状態では、最小のローカル保存と完全 backup 救出経路が新しい network fetch に依存しないことを MUST とする。救出に必要な encoder 等が未取得なら編集開始前に準備するか、安全な代替 backup 経路を既に使用可能にする。GLB 等の重いゲーム用 export はこの救出経路と分ける。cold 起動→作成→初回 backup の前に offline / 未取得 chunk の 404→完全 backup→空環境で復元を AC-13 の必須 fixture とする。起動前から offline でアプリ自体が取得不能な場合の保証とは区別する。
+
 ブラウザ保存は永久保証ではない。容量見積りや persistent storage の利用可能性は端末で異なるため、[Storage quotas and eviction criteria](https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria) を根拠に外部 backup を必須導線とする。タブの強制終了では最後の入力まで完全保護できると約束せず、保存間隔・未保存範囲・復旧点を表示する。
+
+2D と 3D の DB 名・所有責務を分けても、同じ origin の保存容量が独立とは限らない。3D が容量を消費した状態の 2D autosave、2D 編集中の 3D import/backup、trash/cache/派生を含む合計容量を MUST 検査に含める。合否は常に保存できる保証ではなく、正常保存の保全、不足の事前または即時表示、他 domain の無断削除なし、network 不要の backup 救出で判断する。ブラウザ/OS の eviction、利用者による site data 削除、アプリの project 削除を区別して説明する。
 
 ## 13. 書き出し
 
@@ -352,6 +356,10 @@ backup と復旧候補の読込時、同じ project ID が既にあれば別 ID 
 | EXP-10 | MUST | 2D export ZIP と 3D export ZIP を混同しない。拡張子、manifest、種別を検査し誤った importer へ渡した際に安全拒否 |
 
 画像原本と出力画像は区別する。WebP を入力として扱うことは、標準 GLB の任意環境で WebP がそのまま読めることを意味しない。基本 GLB 出力は対応 PNG/JPEG へ変換し、WebP 等の出力は採用 extension と target profile が一致する場合のみ選べる。EXIF 等の向き、色変換、alpha、画像 dimensions を固定 fixture で検査し、変換後も原本 bytes を project に保持する。alpha を保持できない出力形式への変換は警告して選択させる。根拠: [glTF images](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#images)。
+
+基本の編集後 GLB は必要な buffer/texture を含む自己完結型とし、元ファイル位置・元 storage・network がない環境で採用 runtime が再生できることを MUST とする。GLB というコンテナ名だけで自己完結と判定せず、URI を検査する。外部参照を必要とする出力は別の bundle/profile として明示する。
+
+game metadata は**最終出力 GLB** の revision/hash と node/joint/clip の対応を識別することを MUST とする。内部の stable ID だけで最終 GLB の index を保証せず、export の並べ替え・未使用 node 除去後に mapping を再検証する。名前だけで binding しない。GLB A + sidecar B の取り違えは拒否または明示的な不整合となり、誤った部位に anchor/collider を黙って付けない。rename/reorder/prune の fixture と組合せ違いの否定 fixture を EXP-04 に含める。具体的な mapping 保存方式は契約レビューで固定する。標準の根拠: [GLB](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#glb-file-format-specification)、[indices and names](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#indices-and-names)。
 
 ## 14. 軽量化と検品
 
