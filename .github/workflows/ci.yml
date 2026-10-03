@@ -38,9 +38,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Install isolated native viewport evaluation dependencies
+        run: npm ci --prefix tools/3d-evaluation --ignore-scripts --no-audit --no-fund
       - run: npm run lint
       - run: npm run format:check
       - run: npm run build:app
+      - name: Build isolated native viewport evaluation
+        run: npx vite build --config tools/3d-evaluation/vite.config.ts
       - run: npm run test:ci-scope
       - run: npm run test
       - name: Write Group 18 evidence contract
@@ -107,6 +111,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Install isolated native viewport evaluation dependencies
+        run: npm ci --prefix tools/3d-evaluation --ignore-scripts --no-audit --no-fund
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run e2e
       - run: npm run e2e:webkit
