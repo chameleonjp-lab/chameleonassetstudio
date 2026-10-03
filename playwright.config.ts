@@ -33,6 +33,9 @@ export default defineConfig({
       testMatch: [
         'app.spec.ts',
         'studio-entries.spec.ts',
+        'native-viewport-evaluation.spec.ts',
+        'native-panel.spec.ts',
+        'native-viewport-product.spec.ts',
         'import.spec.ts',
         'storage.spec.ts',
         'export.spec.ts',
