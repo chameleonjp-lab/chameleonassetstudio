@@ -335,7 +335,7 @@ async function downloadCasproj(page: Page): Promise<Buffer> {
 }
 
 async function deleteProject(page: Page): Promise<void> {
-  await page.goto('/');
+  await page.goto('/2d/');
   page.once('dialog', (dialog) => void dialog.accept());
   await page.getByRole('button', { name: '「' + PROJECT_NAME + '」を削除' }).click();
   await expect(page.getByText('保存済みのプロジェクトはありません。')).toBeVisible();
@@ -438,7 +438,7 @@ test('代表projectのZIP拒否を画面内で修復しUndo・Redo・別session�
   browser,
 }, testInfo) => {
   await page.setViewportSize({ width: 375, height: 667 });
-  await page.goto('/');
+  await page.goto('/2d/');
   const input = await buildReferenceArchive(true);
   await importReferenceArchive(page, input, '2d-pro-reference-001.casproj');
   const original = await readStoredReference(page);
@@ -510,7 +510,7 @@ test('代表projectのZIP拒否を画面内で修復しUndo・Redo・別session�
   const restoredContext = await browser.newContext({ viewport: { width: 375, height: 667 } });
   try {
     const restoredPage = await restoredContext.newPage();
-    await restoredPage.goto(new URL('/', page.url()).href);
+    await restoredPage.goto(new URL('/2d/', page.url()).href);
     await expect(restoredPage.getByText('保存済みのプロジェクトはありません。')).toBeVisible();
     await importReferenceArchive(restoredPage, backup, '2d-pro-reference-001-repaired.casproj');
     const restored = await readStoredReference(restoredPage);
@@ -560,7 +560,7 @@ test('2D Pro代表projectを問題修正・再試行・Game Check・.casproj再�
 }, testInfo) => {
   await page.setViewportSize({ width: 375, height: 667 });
   const brokenArchive = await buildReferenceArchive(false);
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('.casproj を読み込む').setInputFiles({
     name: '2d-pro-reference-001-broken.casproj',
     mimeType: 'application/zip',

@@ -850,7 +850,7 @@ test.describe('Group 14 Game Check Mode', () => {
     page,
   }, testInfo) => {
     await installBlobUrlAudit(page);
-    await page.goto('/');
+    await page.goto('/2d/');
     const fixture = await buildFixture();
     await attachJson(testInfo, 'G14-fixture-hash.json', fixture.evidence);
     await importFixture(page, fixture);
@@ -1293,7 +1293,7 @@ test.describe('Group 14 Game Check Mode', () => {
   });
 
   test('Asset未選択時はゲーム確認へ入れず、理由を可視表示する', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/2d/');
     await page.getByLabel('プロジェクト名').fill('G14-no-asset-entry');
     await page.getByRole('button', { name: '作成', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'G14-no-asset-entry' })).toBeVisible();

@@ -51,7 +51,7 @@ async function readBlobKeys(page: Page): Promise<string[]> {
 }
 
 async function openNewProject(page: Page, name: string) {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill(name);
   await page.getByRole('button', { name: '作成', exact: true }).click();
   return page.getByRole('complementary', { name: 'プロパティ' });

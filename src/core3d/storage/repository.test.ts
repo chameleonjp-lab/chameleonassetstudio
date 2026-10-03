@@ -487,3 +487,19 @@ describe('3D reference lifetime and GC', () => {
     expect(await readRevision()).toBe(0);
   });
 });
+
+it('lists only root metadata and hides recoverable trash by default', async () => {
+  const project = createProject('project', 'Saved name');
+  await save(project, null);
+  const get = vi.spyOn(IDBObjectStore.prototype, 'get');
+  expect(await repository.listProjects()).toEqual([
+    { id: 'project', name: 'Saved name', revision: 0, trashed: false },
+  ]);
+  expect(get).not.toHaveBeenCalled();
+  get.mockRestore();
+  await repository.setTrashed(lease, 0, true);
+  expect(await repository.listProjects()).toEqual([]);
+  expect(await repository.listProjects({ includeTrashed: true })).toEqual([
+    { id: 'project', name: 'Saved name', revision: 0, trashed: true },
+  ]);
+});

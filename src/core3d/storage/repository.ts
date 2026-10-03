@@ -43,6 +43,8 @@ export interface GarbageMark {
 
 interface RootRecord {
   id: string;
+  /** Optional for roots written by the first native-storage foundation. */
+  name?: string;
   revision: number;
   snapshotId: string;
   recoverySnapshotIds: string[];
@@ -196,6 +198,24 @@ export class ProjectRepository {
     this.db.close();
   }
 
+  /** Lists root metadata without loading source bytes or GPU resources. */
+  async listProjects(
+    options: { includeTrashed?: boolean } = {},
+  ): Promise<{ id: string; name: string; revision: number; trashed: boolean }[]> {
+    return inTransaction(this.db, ['roots'], 'readonly', async (transaction) => {
+      const roots = await allRecords<RootRecord>(transaction, 'roots');
+      return roots
+        .filter((root) => options.includeTrashed || !root.trashed)
+        .map((root) => ({
+          id: root.id,
+          name: root.name ?? `3Dプロジェクト (${root.id})`,
+          revision: root.revision,
+          trashed: root.trashed,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+    });
+  }
+
   async acquireWriter(
     projectId: string,
     ownerId: string,
@@ -341,6 +361,8 @@ export class ProjectRepository {
           await writeHistory(transaction, lease, history);
         }
         if (sameRevision && root) {
+          root.name = candidate.project.name;
+          await requestResult(transaction.objectStore('roots').put(root));
           await requestResult(transaction.objectStore('staging').delete(candidate.id));
           await bumpEpoch(transaction);
           return {
@@ -359,6 +381,7 @@ export class ProjectRepository {
         );
         const nextRoot: RootRecord = {
           id: candidate.project.id,
+          name: candidate.project.name,
           revision: candidate.project.revision,
           snapshotId: candidate.id,
           recoverySnapshotIds: root ? [...root.recoverySnapshotIds, root.snapshotId] : [],

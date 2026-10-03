@@ -17,7 +17,7 @@ test('使用率80%の警告を表示し、永続保存はボタン操作まで�
     });
   });
 
-  await page.goto('/');
+  await page.goto('/2d/');
   const storage = page.getByRole('region', { name: '保存容量' });
   await expect(storage.getByText('使用量: 800 B / 1000 B（80.0%）')).toBeVisible();
   await expect(storage.getByText('警告', { exact: true })).toBeVisible();
@@ -45,7 +45,7 @@ test('storage API非対応時は空き容量を推測せずfallbackを表示す�
     Object.defineProperty(navigator, 'storage', { configurable: true, value: {} });
   });
 
-  await page.goto('/');
+  await page.goto('/2d/');
   const storage = page.getByRole('region', { name: '保存容量' });
   await expect(storage).toContainText('この環境は使用量の取得に対応していません');
   await expect(storage).toContainText('使用率を計算できません');
@@ -54,7 +54,7 @@ test('storage API非対応時は空き容量を推測せずfallbackを表示す�
 });
 
 test('容量不足で新規保存に失敗しても既存Projectを維持する', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill('容量不足前の正本');
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await expect(page.getByRole('heading', { name: '容量不足前の正本' })).toBeVisible();
@@ -100,7 +100,7 @@ test('375px幅でも容量案内による横スクロールが発生しない', 
     });
   });
 
-  await page.goto('/');
+  await page.goto('/2d/');
   await expect(page.getByRole('region', { name: '保存容量' })).toContainText('重要な警告');
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

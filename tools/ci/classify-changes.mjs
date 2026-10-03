@@ -8,20 +8,20 @@ export function classifyChanges(files) {
     if (!file || file.endsWith('.md')) continue;
     result.code = true;
     if (
-      /^(src\/|e2e\/|tools\/(game-check-e2e|h3|pages|ci)\/|public\/|index\.html$|package(-lock)?\.json$|playwright.*\.config\.|vite\.config\.|tsconfig.*\.json$|\.github\/workflows\/)/.test(
+      /^(src\/|e2e\/|tools\/(game-check-e2e|h3|pages|ci|build)\/|public\/|(?:2d\/|3d\/)?index\.html$|package(-lock)?\.json$|playwright.*\.config\.|vite\.config\.|tsconfig.*\.json$|\.github\/workflows\/)/.test(
         file,
       )
     )
       result.e2e = true;
     if (
-      /^(src\/|public\/|tools\/(h3|pages|ci)\/|index\.html$|package(-lock)?\.json$|vite\.config\.|tsconfig.*\.json$|\.github\/workflows\/h3-pages\.yml$)/.test(
+      /^(src\/|public\/|tools\/(h3|pages|ci|build)\/|(?:2d\/|3d\/)?index\.html$|package(-lock)?\.json$|vite\.config\.|tsconfig.*\.json$|\.github\/workflows\/h3-pages\.yml$)/.test(
         file,
       )
     )
       result.publish = true;
     // H3 runtime imports atlas and rig, including their transitive core/model dependencies.
     if (
-      /^(src\/core\/|tools\/(h3|pages|ci)\/|package(-lock)?\.json$|vite\.config\.|tsconfig.*\.json$|\.github\/workflows\/)/.test(
+      /^(src\/core\/|tools\/(h3|pages|ci|build)\/|package(-lock)?\.json$|vite\.config\.|tsconfig.*\.json$|\.github\/workflows\/)/.test(
         file,
       )
     )

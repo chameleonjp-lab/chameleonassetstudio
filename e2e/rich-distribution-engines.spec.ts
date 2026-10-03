@@ -6,7 +6,7 @@ import { useVerifiedEngineCache } from './engineTestHelpers';
 
 /** Only fixture creation uses app modules. Export and consumption use the public UI/ZIP. */
 async function seedRichProject(page: Page, scale: number) {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.evaluate(async (scale) => {
     const factoriesPath = '/src/core/model/factories.ts';
     const storagePath = '/src/core/storage/index.ts';
@@ -131,6 +131,10 @@ async function seedRichProject(page: Page, scale: number) {
   await page.reload();
   await page.getByRole('button', { name: `「Rich engine integration ${scale}x」を開く` }).click();
   await page.getByLabel('アニメーション選択', { exact: true }).selectOption('loop');
+  await expect(page.getByLabel('アニメーション選択', { exact: true })).toHaveValue('loop');
+  await expect(
+    page.getByRole('button', { name: 'イベント「event_0」の追加データを編集' }),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'イベント「event_0」の追加データを編集' }).click();
   await page
     .getByLabel('イベント「event_0」の追加データJSON')

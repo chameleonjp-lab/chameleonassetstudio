@@ -1,0 +1,332 @@
+.editor3d {
+  min-height: 100dvh;
+  color: #20332b;
+  background: #f1f5f2;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.editor3d *,
+.editor3d *::before,
+.editor3d *::after {
+  box-sizing: border-box;
+}
+
+.editor3d h1,
+.editor3d h2,
+.editor3d h3,
+.editor3d p {
+  margin: 0 0 0.8rem;
+}
+
+.editor3d h1 {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+}
+
+.editor3d h2 {
+  font-size: 1.15rem;
+}
+
+.editor3d h3 {
+  font-size: 1rem;
+}
+
+.editor3d a {
+  color: #155c44;
+  text-underline-offset: 0.2em;
+}
+
+.editor3d a:focus-visible,
+.editor3d button:focus-visible,
+.editor3d input:focus-visible,
+.editor3d summary:focus-visible {
+  outline: 3px solid #b45309;
+  outline-offset: 3px;
+}
+
+.editor3d-skip {
+  position: absolute;
+  top: -100px;
+  left: 1rem;
+  padding: 0.75rem;
+  z-index: 10;
+  background: white;
+}
+
+.editor3d-skip:focus {
+  top: 0;
+}
+
+.editor3d-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1.5rem max(1rem, calc((100vw - 1280px) / 2));
+  background: #fff;
+  border-bottom: 1px solid #cbdacf;
+}
+
+.editor3d-header h1 {
+  margin: 0;
+}
+
+.editor3d-eyebrow {
+  color: #41614f;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+
+.editor3d-header nav {
+  display: flex;
+  gap: 1rem;
+}
+
+.editor3d-header nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.editor3d-main {
+  max-width: 1312px;
+  margin: auto;
+  padding: 2rem 1rem;
+}
+
+.editor3d-intro {
+  max-width: 850px;
+  margin-bottom: 1.5rem;
+}
+
+.editor3d-badge {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  padding: 0.2rem 0.7rem;
+  border: 1px solid #759c83;
+  border-radius: 99px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.editor3d-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.editor3d-library {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.editor3d-card {
+  padding: 1.25rem;
+  border: 1px solid #cbdacf;
+  border-radius: 14px;
+  background: #fff;
+  min-width: 0;
+}
+
+.editor3d label {
+  display: block;
+  font-weight: 650;
+  margin-bottom: 0.4rem;
+}
+
+.editor3d input {
+  width: 100%;
+  min-height: 44px;
+  margin-bottom: 0.8rem;
+  padding: 0.55rem 0.65rem;
+  color: #20332b;
+  background: #fff;
+  border: 1px solid #789183;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.editor3d input[readonly] {
+  background: #f1f5f2;
+}
+
+.editor3d input[type='file'] {
+  font-size: 0.875rem;
+  padding: 0.45rem;
+}
+
+.editor3d button {
+  min-height: 44px;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid #779582;
+  border-radius: 7px;
+  color: #214b36;
+  background: #f1f7f3;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.editor3d button:hover:not(:disabled) {
+  background: #dfeee4;
+}
+
+.editor3d button:disabled {
+  cursor: default;
+  color: #68766e;
+  border-color: #c5d0c9;
+  background: #f1f3f2;
+}
+
+.editor3d-actions,
+.editor3d-section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.editor3d-section-heading {
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.editor3d-section-heading h2 {
+  margin: 0;
+}
+
+.editor3d-project-list {
+  display: grid;
+  gap: 0.6rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.editor3d-project-list button {
+  width: 100%;
+  text-align: left;
+}
+
+.editor3d-project-list small {
+  display: block;
+  margin-top: 0.15rem;
+  font-weight: 400;
+}
+
+.editor3d-project-list [aria-current] {
+  border-left: 4px solid #26794f;
+}
+
+.editor3d-alert,
+.editor3d-conflict {
+  color: #803315;
+  border: 1px solid #d4a48e;
+  background: #fff4ed;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.editor3d-notice,
+.editor3d-save-status {
+  color: #175736;
+  background: #edf7ef;
+  border-radius: 6px;
+  padding: 0.6rem 0.85rem;
+}
+
+.editor3d-save-status.is-dirty {
+  color: #773f0f;
+  background: #fff4de;
+}
+
+.editor3d-revision {
+  color: #53665a;
+  font-size: 0.85rem;
+}
+
+.editor3d-backup,
+.editor3d-details {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #d8e1da;
+}
+
+.editor3d-details summary {
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.editor3d-details dl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.editor3d-details dd {
+  margin: 0;
+}
+
+.editor3d-placeholder {
+  margin-top: 1.25rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  background: #f5f7f5;
+  border: 1px dashed #a8bbb0;
+  border-radius: 10px;
+  color: #53665a;
+}
+
+.editor3d-placeholder p {
+  margin: 0;
+}
+
+.editor3d-footer {
+  max-width: 1280px;
+  margin: auto;
+  padding: 0 1rem 2rem;
+  font-size: 0.85rem;
+  color: #53665a;
+}
+
+@media (max-width: 760px) {
+  .editor3d-layout {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .editor3d-library,
+  .editor3d-workspace {
+    width: 100%;
+  }
+
+  .editor3d-workspace {
+    order: -1;
+  }
+
+  .editor3d-main {
+    padding-top: 1.25rem;
+  }
+
+  .editor3d-details dl {
+    display: block;
+  }
+
+  .editor3d-details dd {
+    margin-bottom: 0.75rem;
+  }
+}

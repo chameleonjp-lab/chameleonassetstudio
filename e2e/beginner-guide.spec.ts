@@ -8,7 +8,7 @@ test('初心者向けビジュアルガイドを開ける', async ({ page }) => 
   await expect(page.getByRole('heading', { name: '最初の1作品を作る' })).toBeVisible();
   await expect(page.getByRole('link', { name: '今すぐサービスを開く' })).toHaveAttribute(
     'href',
-    '../',
+    '../2d/',
   );
   await expect(page.getByRole('link', { name: '各ボタンの説明を見る' })).toHaveAttribute(
     'href',
@@ -21,7 +21,7 @@ test('初心者向けビジュアルガイドを開ける', async ({ page }) => 
 });
 
 test('ホーム画面から初心者向けガイドを開ける', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
 
   const guideLink = page.getByRole('link', {
     name: '初心者向けの図で分かる使い方を開く',

@@ -15,7 +15,7 @@ async function makePngBuffer(page: Page): Promise<Buffer> {
 }
 
 async function setupProjectWithImage(page: Page, name: string): Promise<void> {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill(name);
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await expect(page.getByRole('heading', { name })).toBeVisible();
@@ -106,7 +106,7 @@ test('iPhone SE級の縦画面で作成から書き出し、再読み込み後�
 
 test('スマホ入力とキャンバス操作の適用範囲を分離する', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
-  await page.goto('/');
+  await page.goto('/2d/');
 
   const projectNameInput = page.getByLabel('プロジェクト名');
   const homeInputFontSize = await projectNameInput.evaluate((element) =>

@@ -3,10 +3,58 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="2D素材の制作と3D制作の準備を、それぞれ独立した画面で。" />
     <title>Chameleon Asset Studio</title>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <main id="root" class="studio-hub">
+      <p class="eyebrow">CHAMELEON ASSET STUDIO</p>
+      <h1>作りたい素材を選ぶ</h1>
+      <p class="lead">2Dと3D、それぞれの制作画面へ。</p>
+      <div class="entry-grid">
+        <section aria-labelledby="two-title">
+          <p class="entry-number">01 / 2D</p>
+          <h2 id="two-title">2D素材を作る</h2>
+          <p>画像、ドット絵、アニメーションを編集して、ゲーム向けに書き出します。</p>
+          <a class="entry-link" href="%BASE_URL%2d/">2Dを開く</a>
+          <p class="note">これまで保存した2Dプロジェクトも、こちらから開けます。</p>
+        </section>
+        <section aria-labelledby="three-title">
+          <p class="entry-number">02 / 3D</p>
+          <h2 id="three-title">3D制作の準備</h2>
+          <p>
+            プロジェクトの作成・保存・バックアップを利用できます。造形・描画・リグ・アニメーション編集は準備中です。
+          </p>
+          <a
+            id="three-entry"
+            class="entry-link"
+            href="%BASE_URL%3d/"
+            target="_blank"
+            rel="noopener noreferrer"
+            >3Dを新しいタブで開く</a
+          >
+          <p class="note">ブラウザ設定によっては別ウィンドウで開きます。</p>
+        </section>
+      </div>
+      <details>
+        <summary>3Dが開かないとき</summary>
+        <p>
+          上のリンクをもう一度選ぶか、長押し・右クリックで「新しいタブで開く」を選んでください。URLをコピーして新しいタブで開くこともできます。
+        </p>
+        <label for="three-url">3DのURL</label>
+        <input id="three-url" readonly aria-describedby="url-help" />
+        <p id="url-help">
+          URL欄を選択してコピーできます。この画面が自動で切り替わることはありません。
+        </p>
+      </details>
+      <p class="note">
+        両方の画面を開くと端末のメモリを多く使います。別タブだけで合計使用量が減るわけではありません。
+      </p>
+      <footer>
+        <a href="%BASE_URL%guide/">2Dの使い方</a>
+        <p id="build-version">開発版</p>
+      </footer>
+    </main>
+    <script type="module" src="/src/entries/hub.tsx"></script>
   </body>
 </html>

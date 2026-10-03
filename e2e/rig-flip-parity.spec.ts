@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('同じCanvas rendererで全Frameのtransform / RGBA parityを満たす', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
 
   const result = await page.evaluate(async () => {
     const rigModulePath = '/src/core/rig/rig.ts';

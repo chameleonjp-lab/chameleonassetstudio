@@ -7,7 +7,7 @@ for (const profile of ['fixed-grid', 'packed']) {
     test(`配布画面から${profile}・${scale}倍のZIPと一致する座標情報を取得する`, async ({
       page,
     }) => {
-      await page.goto('/');
+      await page.goto('/2d/');
       await page.getByRole('button', { name: '作成', exact: true }).click();
       await page.getByLabel('見本の絵を入れて始める').check();
       await page.getByRole('button', { name: '新規アセットを作成', exact: true }).click();

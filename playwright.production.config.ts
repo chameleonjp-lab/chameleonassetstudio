@@ -5,10 +5,10 @@ export default defineConfig({
   ...config,
   workers: 1,
   fullyParallel: false,
-  testMatch: ['release-quality.spec.ts', 'release-performance.spec.ts'],
+  testMatch: ['release-quality.spec.ts', 'release-performance.spec.ts', 'studio-entries.spec.ts'],
   projects: config.projects?.map((project) => ({
     ...project,
-    testMatch: ['release-quality.spec.ts', 'release-performance.spec.ts'],
+    testMatch: ['release-quality.spec.ts', 'release-performance.spec.ts', 'studio-entries.spec.ts'],
   })),
   use: { ...config.use, baseURL: 'http://localhost:4176' },
   webServer: {

@@ -70,7 +70,7 @@ async function makePngBuffer(page: Page, color = '#ff0000'): Promise<Buffer> {
 }
 
 async function createProject(page: Page, name: string): Promise<Locator> {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill(name);
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await expect(page.getByRole('heading', { name })).toBeVisible();

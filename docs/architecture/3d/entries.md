@@ -2,7 +2,7 @@
 
 [索引へ](README.md)。E/P表記は索引を参照。関連: NAV-01〜08、COMPAT-01〜06、B02、DEC-08、T00/T04/T11。
 
-## EN-01 現状の単一entry
+## EN-01 B02以前の単一entry（履歴）
 
 ```mermaid
 flowchart TD
@@ -14,14 +14,14 @@ flowchart TD
 
 文字版: index → main → App → home、editorはlazy。AppはuseStateでhome/editorを切り替え、調査したentryにquery/hash routerはない。既存rootを架空のdeep-link契約へ置き換えない。実在: [main](../../../src/main.tsx)、[App](../../../src/app/App.tsx)、[Vite](../../../vite.config.ts)。
 
-## EN-02 目標の独立entry
+## EN-02 B02の独立entryと後続runtime
 
 ```mermaid
 flowchart TD
-  EN_HUB["P 軽量トップ"] -->|"利用者が選択"| EN_2D["P 2d/index.html"]
-  EN_HUB -->|"利用者操作の別タブ"| EN_3D["P 3d/index.html"]
+  EN_HUB["E 軽量トップ"] -->|"利用者が選択"| EN_2D["E 2d/index.html"]
+  EN_HUB -->|"利用者操作の別タブ"| EN_3D["E 3d/index.html"]
   EN_2D --> EN_2D_APP["E 2D Appを専用entryへ接続"]
-  EN_3D --> EN_3D_SHELL["P 3D shellと救出経路"]
+  EN_3D --> EN_3D_SHELL["E 3D shellと救出経路"]
   EN_3D_SHELL -->|"viewportが必要"| EN_RENDER["P renderer chunk"]
   EN_3D_SHELL -->|"機能を選択"| EN_TOOL["P import・rig・export chunks"]
 ```
@@ -32,9 +32,9 @@ flowchart TD
 
 | 状態/path | 所有 | 許可する依存 | 検証 |
 | --- | --- | --- | --- |
-| E `index.html`、P `src/entries/hub.tsx` | B02 hub | 小さな入口UI、純粋なURL/表示契約 | 2D/3D editorとworker、sample、decoder取得0 |
-| P `2d/index.html`、P `src/entries/2d.tsx` | B02 2D entry | E `src/app/App.tsx` と2D domain | 3D chunk/preload/prefetch/init 0 |
-| P `3d/index.html`、P `src/entries/3d.tsx` | B02 3D entry | P shell、ready済みbackup | 2D editor/image worker取得0 |
+| E `index.html`、E `src/entries/hub.tsx` | B02 hub | 小さな入口UI、純粋なURL/表示契約 | 2D/3D editorとworker、sample、decoder取得0 |
+| E `2d/index.html`、E `src/entries/2d.tsx` | B02 2D entry | E `src/app/App.tsx` と2D domain | 3D chunk/preload/prefetch/init 0 |
+| E `3d/index.html`、E `src/entries/3d.tsx` | B02 3D entry | E shell、ready済みbackup | 2D editor/image worker取得0 |
 | E `vite.config.ts` | B02 build | entry別output、base、revision | manifestの静的/動的推移依存と実networkを両確認 |
 | E `tools/pages/assemble.mjs` | B02 配信組立 | hub/2d/3d/guide/h3成果物 | base配下direct/reload/戻る/進む、404検査 |
 | E `src/workers/imageOps.worker.ts` 等 | 2D owner | 2Dのみ | 3D shellから起動しない |
@@ -55,3 +55,5 @@ flowchart TD
 文字版: 2Dと3Dは保存・出力を独立所有する。共通origin quotaは共有し得るがDB全体を共通flush/clearしない。2D DB名/version・casproj・旧ZIP・Asset0.2.0は変更せず、3Dのproject版と混同しない。3Dから2D素材を選ぶ将来連携も明示copy/rights契約が必要で、同じmutable objectを共有しない。
 
 別タブは合計memoryの削減を保証しない。両tabがactiveの場合の合計、背景停止、手動休止、復帰peakは [資源図](lifecycle.md) で別に管理する。
+
+B02の実装・検査範囲は[証拠記録](../../evidence/3d/B02.md)を参照。renderer/機能chunkはPのままであり、図の接続だけで完成扱いにしない。

@@ -33,7 +33,7 @@ async function frameAlphas(page: Page) {
 test('2レイヤー8コマの複製だけを描き、Undo・Redo・再読込・バックアップで画素を保持する', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill('独立コマ');
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await page.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
@@ -87,7 +87,7 @@ test('2レイヤー8コマの複製だけを描き、Undo・Redo・再読込・�
 for (const count of [1, 16, 64]) {
   test(`${count}コマの連番を容量検査付きで保存する`, async ({ page }) => {
     test.setTimeout(60000);
-    await page.goto('/');
+    await page.goto('/2d/');
     await page.getByRole('button', { name: '作成', exact: true }).click();
     const png = await page.evaluate(() => {
       const canvas = document.createElement('canvas');
@@ -123,7 +123,7 @@ for (const count of [1, 16, 64]) {
 }
 
 test('連番準備の取消は画像・隔離・previewを保存しない', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByRole('button', { name: '作成', exact: true }).click();
   const png = await page.evaluate(() => {
     const canvas = document.createElement('canvas');
@@ -154,7 +154,7 @@ test('連番準備の取消は画像・隔離・previewを保存しない', asyn
 });
 
 test('コマ固有の変形はブラシで保持し、巻戻しは描画を解除する', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByRole('button', { name: '作成', exact: true }).click();
   const png = await page.evaluate(() => {
     const canvas = document.createElement('canvas');

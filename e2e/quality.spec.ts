@@ -43,7 +43,7 @@ async function expectNoHorizontalOverflow(page: import('@playwright/test').Page)
 test.describe('Group 21C quality contracts', () => {
   test('性能指標の未計測境界とキーボード・縮小動作を表示する', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/');
+    await page.goto('/2d/');
 
     const qualitySummary = page.getByRole('region', { name: '品質情報' }).locator('summary');
     await expect(qualitySummary).toBeVisible();
@@ -78,7 +78,7 @@ test.describe('Group 21C quality contracts', () => {
   });
 
   test('新規タブのリンクを分離し、利用者入力をHTMLとして解釈しない', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/2d/');
     await page.getByLabel('プロジェクト名').fill('<img src=x onerror=alert(1)>');
     await page.getByRole('button', { name: '作成', exact: true }).click();
     await expect(

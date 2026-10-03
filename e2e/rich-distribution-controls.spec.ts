@@ -42,7 +42,7 @@ test('公開用の確認素材から全倍率・全engineの実ZIP見本を直�
 });
 
 async function setup(page: Page) {
-  await page.goto('/');
+  await page.goto('/2d/');
   await page.getByLabel('プロジェクト名').fill('Rich output controls');
   await page.getByRole('button', { name: '作成', exact: true }).click();
   await expect(
@@ -180,7 +180,7 @@ test('新版設定を含む画面のバックアップを別ブラウザへ取�
   const context = await browser.newContext();
   try {
     const restored = await context.newPage();
-    await restored.goto(new URL('/', page.url()).href);
+    await restored.goto(new URL('/2d/', page.url()).href);
     await restored.getByLabel('.casproj を読み込む').setInputFiles({
       name: download.suggestedFilename(),
       mimeType: 'application/zip',
