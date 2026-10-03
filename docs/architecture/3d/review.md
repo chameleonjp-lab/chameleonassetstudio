@@ -19,8 +19,8 @@ P1は図に従うと重大な仕様違反へつながる余地、P2は配置/読
 - mainの再帰treeでE pathを照合。Pは予定と明記し未作成ファイルへのリンクなし
 - 上位対応表との169ID・優先度・主担当・fixture/test一致、Mgroup存在、相対リンク、表列数を静的検査
 - Mermaidは単純なflowchart TD、引用label、矢印の限定構文のみ。node定義/参照と構文を検査し、各図に同義の文字版を設置
-- 公式Mermaid parserの実行とGitHub側の描画はまだ未確認。ローカル静的検査を公式parser合格と呼ばない。新しい描画dependencyを製品へ追加しない
-- mobileの狭幅previewは既存Chromium起動時にsandboxの `socket() failed: Operation not permitted` で失敗し、描画画像は取得できなかった。再試行・別executorへの迂回は行わず、視覚検証は未完。全図に文字版を備えるが、これを実機表示合格としない
+- GitHub公開文書のhead `840928a882273b8eee5b21aab637185d50762033` をcloud browserで通常閲覧し、12図すべてのdiagram要素とnode labelの描画を確認。入口・保存図は画面画像も観察した。GitHub描画経路で構文が受理された証拠であり、別途公式parser CLIを実行したとは主張しない。製品への描画dependency追加なし
+- mobileの狭幅previewは既存Chromium起動時にsandboxの `socket() failed: Operation not permitted` で失敗し、描画画像は取得できなかった。再試行・別executorへの迂回は行わず、狭幅の視覚検証は未完。上記GitHub通常幅確認と区別する。全図に文字版を備えるが、これを実機表示合格としない
 - 固定headのdocs-only CI、最終remote内容一致、追加視覚確認の結果はPR本文へ記録する
 
 ## 残る実装gate
