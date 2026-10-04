@@ -110,6 +110,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium webkit
+      - name: Check native viewport WebKit acceptance before the full suite
+        run: npx playwright test e2e/native-viewport-product.spec.ts --project=webkit-critical --output=test-results-native-acceptance
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-native-acceptance
       - run: npm run e2e
       - run: npm run e2e:webkit
       - run: npm run e2e:quality
@@ -119,6 +123,8 @@ jobs:
         with:
           name: playwright-report-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
+            playwright-report-native-acceptance/
+            test-results-native-acceptance/
             playwright-report/
             playwright-report-webkit/
             playwright-report-quality/

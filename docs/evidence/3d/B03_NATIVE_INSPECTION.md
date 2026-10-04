@@ -63,3 +63,13 @@ labelの単一auto-gridをblockへ変更し、fieldsetの幅をborder-boxで明�
 ## Wireframeの視認性
 
 実Chromium PNGでlight/soft時のモデル線RGB(208,214,223)が背景(232,237,243)へ埋もれ、gridより薄くなった。VIEW-03の形状確認を妨げるため、wireframeだけ背景に応じた暗色/明色のunlit表示へ変更する。solid/materialの照明は維持し、wireframeが照明に影響されないことをUIへ明記する。派生材質の破棄・正本不変を継続検査し、両背景の実PNGと照明切替時のwireframe画像不変を確認する。
+
+
+続くWebKitの実測は文書幅476px、viewport375pxだが、viewport外へ出る要素の外枠は0件だった。fieldsetの外枠超過とは断定できないため、native form controlの内部scroll幅・option文字長を記録する。受入判定用の元の幅を保存した後だけ、test fixtureのoption/入力文字列を一時的に短縮して幅を読み、元へ戻す診断を追加する。実際の受入は変更前の幅を使う。
+
+同じ失敗を全回帰末尾まで待ってから検知しないよう、既存CIでnative productのWebKit受入を先に実行する。成功後のChromium/WebKit全回帰・本番検査は維持し、権限/secret/配信設定を追加しない。失敗時の専用reportも既存artifactへ含める。
+
+
+native optionへ長いUUIDを直接入れず、一覧内で一意な連番と最大8 code pointの短い名前を表示する。選択値は完全なcanonical IDのまま、完全な名前/IDを折返し可能な説明文へ表示しaria-describedbyで関連付ける。ID前方だけの一致で別objectを選ぶことはしない。識別可能性を維持した幅制御候補として、最終WebKit実測で判定する。
+
+長い日本語名が同一の2つの自作native nodeをbackup復元し、別々の完全IDで選択・focusできること、375pxで横幅が収まることを追加受入に含める。

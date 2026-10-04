@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import type { Project3D, Vec3 } from '../../core3d/model/project';
 import type {
   NativeCameraState,
@@ -65,6 +65,7 @@ export function NativeInspectionControls({
   run: (operation: (port: NativeViewportPort) => void) => void;
 }) {
   const [selected, setSelected] = useState('');
+  const selectionDescriptionId = useId();
   const [draft, setDraft] = useState<CameraDraft>(initialDraft);
   const [options, setOptions] = useState(defaultOptions);
   const [error, setError] = useState('');
@@ -173,18 +174,22 @@ export function NativeInspectionControls({
         <label>
           注目するオブジェクト
           <select
+            aria-describedby={selectionDescriptionId}
             value={selectedNode ? selected : ''}
             onChange={(event) => setSelected(event.target.value)}
           >
             <option value="">対象を選択</option>
-            {project.nodes.map((node) => (
+            {project.nodes.map((node, index) => (
               <option key={node.id} value={node.id}>
-                {node.name} ({node.id})
+                {index + 1}. {Array.from(node.name).slice(0, 8).join('')}
+                {Array.from(node.name).length > 8 ? '…' : ''}
               </option>
             ))}
           </select>
         </label>
-        <p>選択対象: {selectedNode?.name ?? 'なし'}</p>
+        <p id={selectionDescriptionId}>
+          選択対象: {selectedNode ? `${selectedNode.name} / ID: ${selectedNode.id}` : 'なし'}
+        </p>
         <button
           type="button"
           disabled={!selectedNode}
