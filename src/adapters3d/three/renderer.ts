@@ -12,6 +12,7 @@ import {
   GridHelper,
   Mesh,
   MeshStandardMaterial,
+  MeshBasicMaterial,
   Object3D,
   OrthographicCamera,
   PerspectiveCamera,
@@ -330,7 +331,7 @@ export class NativeViewport {
   private viewOptions = defaultViewOptions();
   private readonly ambient = new AmbientLight(0xffffff, 1.5);
   private readonly light = new DirectionalLight(0xffffff, 3);
-  private inspectionMaterial: MeshStandardMaterial | null = null;
+  private inspectionMaterial: MeshStandardMaterial | MeshBasicMaterial | null = null;
   private helpers: (GridHelper | AxesHelper | Box3Helper)[] = [];
   private disposedHelperGeometries = 0;
   private disposedHelperMaterials = 0;
@@ -1157,7 +1158,7 @@ export class NativeViewport {
 
   private applyInspection(options = this.viewOptions): void {
     const helpers: (GridHelper | AxesHelper | Box3Helper)[] = [];
-    let material: MeshStandardMaterial | null = null;
+    let material: MeshStandardMaterial | MeshBasicMaterial | null = null;
     try {
       if (this.graph) {
         const bounds = this.modelBounds();
@@ -1183,12 +1184,14 @@ export class NativeViewport {
           helpers.push(helper);
         }
         if (options.shading !== 'material')
-          material = new MeshStandardMaterial({
-            color: 0xb8bfcb,
-            roughness: 0.8,
-            metalness: 0,
-            wireframe: options.shading === 'wireframe',
-          });
+          material =
+            options.shading === 'wireframe'
+              ? new MeshBasicMaterial({
+                  color: options.background === 'light' ? 0x263449 : 0xdce5ef,
+                  wireframe: true,
+                  toneMapped: false,
+                })
+              : new MeshStandardMaterial({ color: 0xb8bfcb, roughness: 0.8, metalness: 0 });
       }
     } catch (error) {
       helpers.forEach((helper) => helper.dispose());

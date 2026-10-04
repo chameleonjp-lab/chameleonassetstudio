@@ -58,3 +58,8 @@ VIEW-01/02/03のfixtureはF01/F02/F11/F12のうち自作native mesh・別entry�
 head `7b772bc550ea2fa6602f62baf0b197861c9a42f5` ではChromium受入が成功した一方、WebKitの375px画面は詳細設定・長いIDの選択後に96px横へはみ出した。保存revision、camera設定、休止復帰のPNG完全一致は成功している。エラーsnapshotだけでは単一の原因elementを断定しない。
 
 labelの単一auto-gridをblockへ変更し、fieldsetの幅をborder-boxで明示的に親へ制限する。数値欄の2列minmax(0,1fr)とcheckboxのflex行は維持する。overflowを隠して検査を通す修正は行わない。失敗前にも実画面とelement幅の診断をartifactへ保存し、同じ横はみ出しゼロの条件で再検査する。
+
+
+## Wireframeの視認性
+
+実Chromium PNGでlight/soft時のモデル線RGB(208,214,223)が背景(232,237,243)へ埋もれ、gridより薄くなった。VIEW-03の形状確認を妨げるため、wireframeだけ背景に応じた暗色/明色のunlit表示へ変更する。solid/materialの照明は維持し、wireframeが照明に影響されないことをUIへ明記する。派生材質の破棄・正本不変を継続検査し、両背景の実PNGと照明切替時のwireframe画像不変を確認する。

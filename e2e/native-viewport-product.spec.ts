@@ -185,6 +185,16 @@ test('inspection camera and helpers preserve canonical revision and survive GPU 
   await expect(revision).toContainText('revision 1');
   const inspected = await png(page);
   expect(inspected.equals(original)).toBe(false);
+  await page.getByRole('combobox', { name: '照明', exact: true }).selectOption('studio');
+  expect((await png(page)).equals(inspected)).toBe(true);
+  await page.getByRole('combobox', { name: '背景', exact: true }).selectOption('dark');
+  const darkWireframe = await png(page);
+  expect(darkWireframe.equals(inspected)).toBe(false);
+  await test
+    .info()
+    .attach('native-inspection-dark.png', { body: darkWireframe, contentType: 'image/png' });
+  await page.getByRole('combobox', { name: '背景', exact: true }).selectOption('light');
+  await page.getByRole('combobox', { name: '照明', exact: true }).selectOption('soft');
   await page.getByRole('button', { name: '保存してGPU表示を休止', exact: true }).click();
   await expect(page.locator('.native-viewport-host canvas')).toHaveCount(0);
   await page.getByRole('button', { name: 'GPU表示を再開', exact: true }).click();

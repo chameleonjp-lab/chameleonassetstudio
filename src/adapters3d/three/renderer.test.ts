@@ -7,6 +7,7 @@ import {
   LineSegments,
   Mesh,
   MeshStandardMaterial,
+  MeshBasicMaterial,
   OrthographicCamera,
   PerspectiveCamera,
   Scene,
@@ -1019,7 +1020,9 @@ describe('native numeric camera and inspection state', () => {
       bounds: true,
     };
     expect(viewport.setViewOptions(options)).toEqual({ ok: true });
-    expect(mesh.material).toMatchObject({ wireframe: true, metalness: 0, opacity: 1 });
+    expect(mesh.material).toBeInstanceOf(MeshBasicMaterial);
+    expect(mesh.material).toMatchObject({ wireframe: true, toneMapped: false, opacity: 1 });
+    expect((mesh.material as MeshBasicMaterial).color.getHex()).toBe(0x263449);
     expect(scene.background).toEqual(new Color(0xe8edf3));
     expect(scene.children.find((object) => object instanceof AmbientLight)).toMatchObject({
       intensity: 2.5,
@@ -1031,7 +1034,7 @@ describe('native numeric camera and inspection state', () => {
     expect(helpers).toHaveLength(3);
     helpers.forEach((helper) => expect(helper.parent).toBe(scene));
     const helperDisposals = helpers.map((helper) => vi.spyOn(helper, 'dispose'));
-    const disposeOverride = vi.spyOn(mesh.material as MeshStandardMaterial, 'dispose');
+    const disposeOverride = vi.spyOn(mesh.material as MeshBasicMaterial, 'dispose');
     viewport.fitCamera();
     expect(viewport.getCamera()).toMatchObject({ ...fit, position: expect.any(Array) });
     viewport
@@ -1059,6 +1062,9 @@ describe('native numeric camera and inspection state', () => {
     const copy = viewport.getViewOptions();
     copy.axes = false;
     expect(viewport.getViewOptions()).toEqual(options);
+    viewport.setViewOptions({ ...options, background: 'dark', lighting: 'studio' });
+    expect(mesh.material).toBeInstanceOf(MeshBasicMaterial);
+    expect((mesh.material as MeshBasicMaterial).color.getHex()).toBe(0xdce5ef);
     viewport.setViewOptions({ ...options, shading: 'solid' });
     expect(mesh.material).toMatchObject({ wireframe: false });
     expect(disposeOverride).toHaveBeenCalledTimes(1);
