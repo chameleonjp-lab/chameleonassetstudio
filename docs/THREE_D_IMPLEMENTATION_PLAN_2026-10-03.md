@@ -410,6 +410,8 @@ hard limitの確定項目: compressed file bytes、expanded archive bytes、entr
 
 ## 9. 検査をbatchでまとめる運用
 
+2D/3D共通の入口は[R01の検査batch規約](R01_DEVELOPMENT_WORKFLOW.md#2d3d共通の検査batch規約)。以下の既存方針を維持し、30分の起点固定・延期条件・期限切れ/範囲拡大/失敗時の再実行と、CI分類/ローカルriskの区別は同節に従う。関連passや新commitでは起点を延長しない。
+
 1. Bxxの中の一つの機能・原因修正をbatchとし、対象path、直接/推移依存、risk、関連test、終了条件を記録する。
 2. 編集中は関連unit/画面を回し、同じ全体runを小変更ごとに繰り返さない。保存schema、untrusted asset decode、入力所有、securityの異常系は時間条件で後回しにしない。
 3. 同じbatchの全体passから30分以内でも、それだけで再実行を延期しない。累積diff、toolchain/lock/build/test/environment、関連現SHAのpass、未解消失敗、終了境界を照合する。必要なら既存検査台帳へ記録し、別帳票を乱立しない。
@@ -423,6 +425,8 @@ Studioの現行commandを正とする。コード/設定変更は `npm run lint`
 ## 10. 完了と失敗の処置
 
 ### 10.1 各工程の証拠レコード
+
+既存の工程証拠に[R01の最小台帳項目](R01_DEVELOPMENT_WORKFLOW.md#既存の検査記録への最小追記)を追記する。全体baselineのSHA/tree・終了時刻・run参照、累積diff、延期の`not_run`/理由/未検査領域/次の契機を明示する。baselineが無い/不明なら延期しない。過去のfailや未実行を消さず、最終SHA確定後のPR検査欄の結果も同batchへ結び付ける。
 
 必要項目: 要件ID、Bxx/DEC、fixture ID/hash、test ID/command、対象commit/treeとdirty有無、環境fingerprint、開始/終了、expected/actual、status、log/画像/出力hash、limitations、既知失敗、再検査理由。
 
