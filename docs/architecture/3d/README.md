@@ -55,3 +55,5 @@ B02実装: [独立入口・保存shellの証拠と残項目](../../evidence/3d/B
 B03 native表示の[限定採用・受入証拠](../../evidence/3d/B03_NATIVE_VIEWPORT.md)。GLB・skin・clipなどの未確認gateを同時に完了扱いしない。
 
 B03の[数値camera・投影・観察表示](../../evidence/3d/B03_NATIVE_INSPECTION.md)は同じnative限定gateで検査する。gizmo・GLB・制作全体の完了とは扱わない。
+
+B04の[native造形・材質の部分実装と受入境界](../../evidence/3d/B04_NATIVE_AUTHORING.md)。triangle meshの数値編集と既存factorを扱い、GLB・texture・保存contract拡張は別の未完gateとして残す。

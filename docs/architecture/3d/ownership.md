@@ -105,3 +105,13 @@ E化はファイルの存在を表す。未接続の画面・描画・GLB・実�
 - E [browser受入](../../../e2e/native-viewport-product.spec.ts) / [UI非同期契約](../../../e2e/native-panel.spec.ts) / [限定評価entry](../../../tools/3d-evaluation/main.ts)
 
 M06の所有境界は維持する。今回の小さなnative subsetではresource ownerはadapter内に同居し、別resources.tsへの未使用分割は行わない。core/model/commands/storageはThreeへ依存しない。
+
+### B04 native制作で実在になった配置
+
+- `src/core3d/commands/primitives.ts`: 五種類の直接editable triangle mesh生成、corner UV/normal
+- `src/core3d/commands/meshEditing.ts`: 安定IDの移動・単一三角面押出し/削除・法線
+- `src/core3d/commands/objectEditing.ts`: local TRS・独立部品複製・既存material factor
+- `src/features/editor3d/NativeAuthoringPanel.tsx`: 制作対象list、数値draft、明示Apply。camera観察selectionとは別
+- `ProjectSession.executeAuthoring`: candidateから一回history commit、既存autosave/backupへ接続
+
+正本schemaは既存0.1.0のまま。要件対応・未完範囲・同版検査は[B04証拠](../../evidence/3d/B04_NATIVE_AUTHORING.md)を読む。

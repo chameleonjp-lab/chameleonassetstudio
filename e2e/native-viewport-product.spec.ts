@@ -333,3 +333,153 @@ test('long duplicate object names retain complete identity without phone overflo
   });
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+test('native authoring creates, edits, undoes and restores independent mesh and material work', async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('/3d/');
+  await page.getByLabel('新しいプロジェクト名', { exact: true }).fill('Native box work');
+  await page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true }).click();
+  const panel = page.getByRole('region', { name: '3D制作', exact: true });
+  await panel.getByText('基本形を作成', { exact: true }).click();
+  await panel.getByRole('combobox', { name: '基本形', exact: true }).selectOption('plane');
+  await panel.getByLabel('分割数', { exact: true }).fill('1');
+  await panel.getByRole('button', { name: '基本形を追加', exact: true }).click();
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  const firstNode = await panel
+    .getByRole('combobox', { name: '制作オブジェクト', exact: true })
+    .inputValue();
+  await panel.getByRole('combobox', { name: '基本形', exact: true }).selectOption('sphere');
+  await panel.getByRole('button', { name: '基本形を追加', exact: true }).click();
+  await panel.getByText('部品の名前・位置・複製', { exact: true }).click();
+  await panel.getByRole('button', { name: '部品の現在値を読む', exact: true }).click();
+  await panel.getByLabel('位置 X（m）', { exact: true }).fill('1.5');
+  await panel.getByLabel('回転 Y（度）', { exact: true }).fill('30');
+  await panel.getByRole('button', { name: '部品の変形を適用', exact: true }).click();
+  await expect(panel.getByRole('button', { name: '部品の変形を適用', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: '元に戻す', exact: true }).click();
+  await expect(panel.getByRole('button', { name: '部品の変形を適用', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'やり直す', exact: true }).click();
+  await panel.getByRole('button', { name: '独立した部品を複製', exact: true }).click();
+  await page.getByRole('button', { name: '元に戻す', exact: true }).click();
+  await expect(panel.getByRole('combobox', { name: '制作オブジェクト', exact: true })).toHaveValue(
+    '',
+  );
+  await panel
+    .getByRole('combobox', { name: '制作オブジェクト', exact: true })
+    .selectOption(firstNode);
+  await expect(panel.getByRole('button', { name: '部品の変形を適用', exact: true })).toBeDisabled();
+  await panel.getByText('頂点・辺・面を編集', { exact: true }).click();
+  const selection = panel.getByRole('combobox', { name: '制作要素', exact: true });
+  await selection.selectOption({ index: 1 });
+  await panel.getByLabel('移動量 Y（m）', { exact: true }).fill('0.1');
+  await panel.getByRole('button', { name: '選択要素を移動', exact: true }).click();
+  await expect(panel.getByRole('alert')).toHaveCount(0);
+  await panel.getByRole('combobox', { name: '編集要素', exact: true }).selectOption('edge');
+  await selection.selectOption({ index: 1 });
+  await panel.getByRole('button', { name: '選択要素を移動', exact: true }).click();
+  await panel.getByRole('combobox', { name: '編集要素', exact: true }).selectOption('face');
+  await selection.selectOption({ index: 1 });
+  await panel.getByRole('button', { name: '選択面を押し出す', exact: true }).click();
+  await expect(panel.getByRole('alert')).toHaveCount(0);
+  await panel.getByRole('button', { name: '選択面を削除', exact: true }).click();
+  await page.getByRole('button', { name: '元に戻す', exact: true }).click();
+  await page.getByRole('button', { name: 'やり直す', exact: true }).click();
+  await panel.getByRole('button', { name: 'smooth法線を適用', exact: true }).click();
+  await panel.getByText('材質の色・金属・粗さ', { exact: true }).click();
+  await panel.getByRole('combobox', { name: '制作材質', exact: true }).selectOption({ index: 1 });
+  await panel.getByRole('button', { name: '材質の現在値を読む', exact: true }).click();
+  await panel.getByLabel('赤 R', { exact: true }).fill('0.85');
+  await panel.getByRole('button', { name: '材質を適用', exact: true }).click();
+  await expect(panel.getByRole('button', { name: '材質を適用', exact: true })).toBeDisabled();
+  await expect(panel.getByRole('alert')).toHaveCount(0);
+  const snapshot = async (target: Page) => {
+    const event = target.waitForEvent('download');
+    await target.getByRole('button', { name: '現在の内容をバックアップ', exact: true }).click();
+    const file = await event;
+    const bytes = await readFile((await file.path())!);
+    const { importBackup } = await import('../src/core3d/backup/backup');
+    return { bytes, project: (await importBackup(bytes)).project };
+  };
+  const before = await snapshot(page);
+  expect(before.project.nodes).toHaveLength(2);
+  expect(before.project.nodes[1].transform.translation).toEqual([1.5, 0, 0]);
+  const editedMesh = before.project.meshes.find(
+    (m) => m.id === before.project.nodes.find((n) => n.id === firstNode)!.meshId,
+  )!;
+  expect(editedMesh.faces).toHaveLength(7);
+  expect(editedMesh.faces.every((f) => f.uv?.length === 3 && f.normals?.length === 3)).toBe(true);
+  expect(before.project.materials[0].baseColor[0]).toBe(0.85);
+  await page.getByRole('button', { name: '今すぐ保存', exact: true }).click();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+  ).toBeLessThanOrEqual(0);
+  await test.info().attach('native-authoring-mobile.png', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png',
+  });
+  await page.getByRole('button', { name: 'カメラをリセット', exact: true }).click();
+  await test
+    .info()
+    .attach('native-authoring-model.png', { body: await png(page), contentType: 'image/png' });
+  const fresh = await context.browser()!.newContext({ viewport: { width: 375, height: 812 } });
+  try {
+    const restored = await fresh.newPage();
+    await restored.goto(new URL('/3d/', page.url()).href);
+    await restored.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+      name: 'native.cas3dproj',
+      mimeType: 'application/zip',
+      buffer: before.bytes,
+    });
+    await expect(
+      restored.getByRole('heading', { name: 'Native box work', exact: true }),
+    ).toBeVisible();
+    const copy = await snapshot(restored);
+    expect(copy.project.meshes).toEqual(before.project.meshes);
+    expect(copy.project.materials).toEqual(before.project.materials);
+    expect(copy.project.nodes).toEqual(before.project.nodes);
+    const authoring = restored.getByRole('region', { name: '3D制作', exact: true });
+    await authoring
+      .getByRole('combobox', { name: '制作オブジェクト', exact: true })
+      .selectOption(firstNode);
+    await authoring.getByText('頂点・辺・面を編集', { exact: true }).click();
+    await authoring
+      .getByRole('combobox', { name: '制作要素', exact: true })
+      .selectOption({ index: 1 });
+    await authoring.getByLabel('移動量 X（m）', { exact: true }).fill('0.05');
+    await authoring.getByRole('button', { name: '選択要素を移動', exact: true }).click();
+    await expect(authoring.getByRole('alert')).toHaveCount(0);
+    const continued = await snapshot(restored);
+    expect(continued.project.meshes).not.toEqual(before.project.meshes);
+    expect((await snapshot(page)).project.meshes).toEqual(before.project.meshes);
+  } finally {
+    await fresh.close();
+  }
+});
+
+test('authoring invalid drafts and composition do not change saved revision or geometry', async ({
+  page,
+}) => {
+  await createBox(page);
+  const panel = page.getByRole('region', { name: '3D制作', exact: true });
+  await panel.getByText('基本形を作成', { exact: true }).click();
+  const status = page.getByRole('status').filter({ hasText: 'revision' });
+  await page.getByRole('button', { name: '今すぐ保存', exact: true }).click();
+  await expect(status).toContainText('保存済み');
+  const before = await status.textContent();
+  const width = panel.getByLabel('幅 X（m）', { exact: true });
+  await width.fill('');
+  await panel.getByRole('button', { name: '基本形を追加', exact: true }).click();
+  await expect(panel.getByRole('alert')).toContainText('空欄');
+  expect(await status.textContent()).toBe(before);
+  await width.fill('1');
+  await width.dispatchEvent('compositionstart');
+  await panel.getByRole('button', { name: '基本形を追加', exact: true }).click();
+  expect(await status.textContent()).toBe(before);
+  await width.dispatchEvent('compositionend');
+  await panel.getByRole('button', { name: '基本形を追加', exact: true }).click();
+  await expect(panel.getByRole('alert')).toHaveCount(0);
+  expect(await status.textContent()).not.toBe(before);
+});
