@@ -361,6 +361,7 @@ test('native authoring creates, edits, undoes and restores independent mesh and 
     .getByRole('combobox', { name: '制作オブジェクト', exact: true })
     .inputValue();
   await panel.getByRole('combobox', { name: '基本形', exact: true }).selectOption('sphere');
+  await panel.getByLabel('分割数', { exact: true }).fill('4');
   await panel.getByRole('button', { name: '基本形を追加', exact: true }).click();
   await panel.getByText('部品の名前・位置・複製', { exact: true }).click();
   await panel.getByRole('button', { name: '部品の現在値を読む', exact: true }).click();
@@ -530,6 +531,7 @@ test('native scene assembly preserves world pose and restores independently assi
   await author.getByLabel('分割数', { exact: true }).fill('1');
   await author.getByRole('button', { name: '基本形を追加', exact: true }).click();
   await author.getByRole('combobox', { name: '基本形', exact: true }).selectOption('cone');
+  await author.getByLabel('分割数', { exact: true }).fill('4');
   await author.getByRole('button', { name: '基本形を追加', exact: true }).click();
   await author.getByText('部品の名前・位置・複製', { exact: true }).click();
   await author.getByRole('button', { name: '部品の現在値を読む', exact: true }).click();
@@ -602,9 +604,14 @@ test('native scene assembly preserves world pose and restores independently assi
   await author
     .getByRole('combobox', { name: '制作オブジェクト', exact: true })
     .selectOption(copy.id);
+  await author.getByRole('button', { name: '部品の現在値を読む', exact: true }).click();
+  await author.getByLabel('位置 X（m）', { exact: true }).fill('-1');
+  await author.getByRole('button', { name: '部品の変形を適用', exact: true }).click();
   await author.getByRole('combobox', { name: '制作材質', exact: true }).selectOption(palette);
   await author.getByRole('button', { name: '対象meshの全ての面へ材質を割当', exact: true }).click();
   const assigned = (await snapshot(page)).project;
+  expect(assigned.nodes.find((n) => n.id === copy.id)!.transform.translation[0]).toBe(-1);
+  samePose(pivoted, assigned, box.id);
   expect(
     assigned.meshes.find((m) => m.id === copy.meshId)!.faces.every((f) => f.materialId === palette),
   ).toBe(true);

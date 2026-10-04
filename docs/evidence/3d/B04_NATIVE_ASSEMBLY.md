@@ -73,3 +73,9 @@ session切替後の見出しfocusはpassive effectだった。編集欄が操作
 生成済みnative PNGは、別の本番caseが失敗しても保存する。専用artifactをalwaysへ変更し、画像がない場合のerror判定・保存期間・権限は維持する。取得不能な既存URLへ別経路で接続する変更ではない。
 
 同じ失敗を長い全回帰の末尾まで待たないよう、本番WebKitの引継ぎcaseを区切りCIの先頭側でも実行する。全Chromium/WebKit・本番・H3/Pagesは維持する。入力DOMだけでなく正本から表示するheadingと、保存済みrevision 1も確認する。
+
+## 実画像のfixture整理
+
+head `2fe7da2e` は先行WebKit8件、引継ぎ1件、Chromium309件、WebKit122件、本番34件、H3とPages開閉が成功した。専用画像artifactは6,187,600 bytesで取得でき、両engineのPNGと375pxの入力表示を確認した。
+
+組立fixtureでは元boxと反転コピーが同じ面を重ねており、Chromiumでdepth競合の縞が出ていた。独立コピーを数値操作で離して配置し、元部品のworld位置不変も検査する。rendererのdepth判定は変更しない。球・円錐の表示fixtureは最低分割の多面体から分割数4へ変更し、形の区別を見やすくする。最低分割のgeometry検査はunitに維持する。最終headで画像と全回帰を再確認する。
