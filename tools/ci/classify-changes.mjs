@@ -8,7 +8,7 @@ export function classifyChanges(files) {
     if (!file || file.endsWith('.md')) continue;
     result.code = true;
     if (
-      /^(src\/|e2e\/|tools\/(game-check-e2e|3d-evaluation|h3|pages|ci|build)\/|public\/|(?:2d\/|3d\/)?index\.html$|package(-lock)?\.json$|playwright.*\.config\.|vite\.config\.|tsconfig.*\.json$|\.github\/workflows\/)/.test(
+      /^(src\/|e2e\/|tools\/(game-check-e2e|3d-evaluation|3d-edit-evaluation|h3|pages|ci|build)\/|public\/|(?:2d\/|3d\/)?index\.html$|package(-lock)?\.json$|playwright.*\.config\.|vite\.config\.|tsconfig.*\.json$|\.github\/workflows\/)/.test(
         file,
       )
     )

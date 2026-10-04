@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Native transform evaluation</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        color: #e8ecf4;
+        background: #172130;
+        font:
+          16px system-ui,
+          sans-serif;
+      }
+      h1 {
+        font-size: 22px;
+      }
+      main {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 280px;
+        gap: 16px;
+      }
+      #viewport {
+        width: 100%;
+        height: 520px;
+        overflow: hidden;
+        border: 1px solid #91a3bb;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      aside,
+      .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      aside {
+        align-content: start;
+      }
+      label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      button,
+      select,
+      input {
+        min-height: 44px;
+        font: inherit;
+      }
+      button,
+      select {
+        color: #172130;
+        background: #f3f6fa;
+        border-radius: 6px;
+        border: 1px solid #91a3bb;
+        padding: 6px 10px;
+      }
+      input[type='number'] {
+        width: 90px;
+      }
+      #objects {
+        width: 100%;
+        display: grid;
+        gap: 6px;
+      }
+      #objects button[aria-pressed='true'] {
+        background: #81d6a2;
+      }
+      fieldset {
+        width: 100%;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      #status {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      @media (max-width: 720px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+        #viewport {
+          height: 360px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Native selection and transform evaluation</h1>
+    <p>
+      Isolated G03b candidate. Select a box or use the list. Shift-click selects multiple roots.
+      Active object is the pivot. No project files are loaded.
+    </p>
+    <main>
+      <div id="viewport"></div>
+      <aside aria-label="Transform controls">
+        <div id="objects" aria-label="Objects"></div>
+        <label
+          >Mode
+          <select id="mode">
+            <option value="translate">Translate (m)</option>
+            <option value="rotate">Rotate (radians)</option>
+            <option value="scale">Scale (factor)</option>
+          </select></label
+        >
+        <label
+          >Space
+          <select id="space">
+            <option value="world">World</option>
+            <option value="local">Local</option>
+          </select></label
+        >
+        <label
+          >Snap increment <input id="snap" type="number" min="0" step="0.1" value="0.5"
+        /></label>
+        <label
+          >Projection
+          <select id="projection">
+            <option value="perspective">Perspective</option>
+            <option value="orthographic">Orthographic</option>
+          </select></label
+        >
+        <label><input id="read-only" type="checkbox" /> Read only</label>
+        <label><input id="lock" type="checkbox" /> Lock active node</label>
+        <fieldset>
+          <legend>Delta from session start</legend>
+          <label>X <input id="dx" type="number" value="0.6" step="0.1" /></label>
+          <label>Y <input id="dy" type="number" value="0" step="0.1" /></label>
+          <label>Z <input id="dz" type="number" value="0" step="0.1" /></label>
+          <button id="begin">Begin numeric</button><button id="preview">Preview delta</button>
+          <button id="commit">Commit once</button><button id="cancel">Cancel transform</button>
+        </fieldset>
+        <button id="undo">Undo</button><button id="redo">Redo</button>
+        <button id="save">Save snapshot</button><button id="capture">Capture PNG</button>
+      </aside>
+    </main>
+    <p>
+      Canvas keyboard: arrow keys apply one snapped delta, Escape cancels. Numeric rotation uses XYZ
+      Euler radians; scale inputs are factors (1 = unchanged). World scaling that requires shear is
+      rejected.
+    </p>
+    <output id="status" aria-live="polite"></output>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

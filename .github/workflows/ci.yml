@@ -43,6 +43,8 @@ jobs:
       - run: npm run build:app
       - name: Build isolated native viewport evaluation
         run: npx vite build --config tools/3d-evaluation/vite.config.ts
+      - name: Build isolated native interaction evaluation
+        run: npx vite build --config tools/3d-edit-evaluation/vite.config.ts
       - run: npm run test:ci-scope
       - run: npm run test
       - name: Write Group 18 evidence contract
@@ -110,6 +112,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium webkit
+      - name: Check isolated native interaction in both browsers
+        run: npx playwright test e2e/native-transform-evaluation.spec.ts --project=chromium --project=webkit-critical --output=test-results-native-interaction
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-native-interaction
       - name: Check native viewport WebKit acceptance before the full suite
         run: npx playwright test e2e/native-viewport-product.spec.ts --project=webkit-critical --output=test-results-native-acceptance
         env:
@@ -127,12 +133,22 @@ jobs:
           path: test-results-quality/**/native-visual-*.png
           if-no-files-found: error
           retention-days: 14
+      - name: Upload isolated native interaction visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-interaction-visuals-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results-native-interaction/**/native-transform-*.png
+          if-no-files-found: error
+          retention-days: 14
       - name: Upload Playwright report and Group 14 evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
+            playwright-report-native-interaction/
+            test-results-native-interaction/
             playwright-report-native-acceptance/
             test-results-native-acceptance/
             playwright-report/

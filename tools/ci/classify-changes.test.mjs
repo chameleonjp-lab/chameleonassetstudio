@@ -68,6 +68,8 @@ test('isolated native viewport evaluation keeps browser checks without product p
   for (const file of [
     'tools/3d-evaluation/nativeViewport.ts',
     'tools/3d-evaluation/package-lock.json',
+    'tools/3d-edit-evaluation/controller.ts',
+    'tools/3d-edit-evaluation/vite.config.ts',
   ]) {
     assert.deepEqual(classifyChanges([file]), { code: true, e2e: true, publish: false, h3: false });
   }
