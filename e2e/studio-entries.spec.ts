@@ -172,8 +172,27 @@ test('a second tab explicitly takes over while the old writer retains unsaved wo
   await other.getByRole('button', { name: /二つのタブ.*revision/ }).click();
   await expect(other.getByLabel('プロジェクト名', { exact: true })).toHaveAttribute('readonly', '');
   await other.getByRole('button', { name: 'このタブで編集を引き継ぐ' }).click();
-  await other.getByLabel('プロジェクト名', { exact: true }).fill('新しい所有者');
+  const otherName = other.getByLabel('プロジェクト名', { exact: true });
+  await expect(otherName).toBeEditable();
+  await otherName.fill('新しい所有者');
+  console.log(
+    'native-takeover-input',
+    await otherName.evaluate((element: HTMLInputElement) => ({
+      value: element.value,
+      focused: document.activeElement === element,
+      readOnly: element.readOnly,
+      disabled: element.disabled,
+      visibility: document.visibilityState,
+    })),
+  );
+  await expect(otherName).toHaveValue('新しい所有者');
+  await expect(otherName).toBeFocused();
+  await expect(other.getByRole('heading', { name: '新しい所有者', exact: true })).toBeVisible();
   await other.getByRole('button', { name: '今すぐ保存' }).click();
+  await expect(otherName).toHaveValue('新しい所有者');
+  await expect(
+    other.getByRole('status').filter({ hasText: '保存済み · revision 1' }),
+  ).toBeVisible();
   await page.getByLabel('プロジェクト名', { exact: true }).fill('旧タブの大切な変更');
   await page.getByRole('button', { name: '今すぐ保存' }).click();
   await expect(page.getByRole('status').filter({ hasText: '競合・未保存' })).toBeVisible();

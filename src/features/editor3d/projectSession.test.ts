@@ -22,6 +22,21 @@ afterEach(() => {
 });
 
 describe('3D shell project sessions', () => {
+  it('rejects delayed authoring from an older rendered project before invoking the mutation', async () => {
+    const session = await ProjectSession.create(repository, 'author', 'Work');
+    const rendered = { id: session.project.id, revision: session.state.revision };
+    session.executeAuthoring((p) => addBox(p, 'first'), rendered);
+    const before = session.project;
+    const stale = vi.fn((p) => addBox(p, 'stale'));
+    expect(() => session.executeAuthoring(stale, rendered)).toThrow('作品が変わりました');
+    expect(stale).not.toHaveBeenCalled();
+    expect(session.project).toEqual(before);
+    expect(() =>
+      session.executeAuthoring(stale, { id: 'other', revision: session.state.revision }),
+    ).toThrow();
+    await session.save();
+    await session.close();
+  });
   it('commits authoring atomically, preserves it across backup, and edits an independent restore', async () => {
     const session = await ProjectSession.create(repository, 'author', 'Work');
     session.executeAuthoring((p) => addBox(p, 'shape'));
@@ -186,6 +201,8 @@ describe('3D shell project sessions', () => {
     const next = await reader.takeOver();
     expect(next.project.name).toBe('Latest');
     expect(next.state.readOnly).toBe(false);
+    next.rename('New owner');
+    await next.save();
     writer.rename('Fenced unsaved');
     await expect(writer.save()).rejects.toMatchObject({ name: 'StorageConflictError' });
     expect(writer.state).toMatchObject({ readOnly: true, dirty: true });
@@ -197,6 +214,11 @@ describe('3D shell project sessions', () => {
     expect(copy.project.id).not.toBe(writer.project.id);
     expect(copy.project.name).toBe('Fenced unsaved');
     expect(copy.state.dirty).toBe(false);
+    expect(next.project.name).toBe('New owner');
+    expect(next.state.dirty).toBe(false);
+    const durable = await repository.readSnapshot(next.project.id);
+    expect(durable.project.name).toBe('New owner');
+    await durable.release();
     await writer.close();
     await reader.close();
     await next.close();

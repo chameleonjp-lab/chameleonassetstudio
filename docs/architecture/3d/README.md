@@ -57,3 +57,5 @@ B03 native表示の[限定採用・受入証拠](../../evidence/3d/B03_NATIVE_VI
 B03の[数値camera・投影・観察表示](../../evidence/3d/B03_NATIVE_INSPECTION.md)は同じnative限定gateで検査する。gizmo・GLB・制作全体の完了とは扱わない。
 
 B04の[native造形・材質の部分実装と受入境界](../../evidence/3d/B04_NATIVE_AUTHORING.md)。triangle meshの数値編集と既存factorを扱い、GLB・texture・保存contract拡張は別の未完gateとして残す。
+
+B04の[部品組立・原点・鏡映と材質割当](../../evidence/3d/B04_NATIVE_ASSEMBLY.md)。階層のworld/local保持と、保存TRSで表現できない場合の拒否を区別する。

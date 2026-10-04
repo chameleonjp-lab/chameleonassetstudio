@@ -115,3 +115,12 @@ M06の所有境界は維持する。今回の小さなnative subsetではresourc
 - `ProjectSession.executeAuthoring`: candidateから一回history commit、既存autosave/backupへ接続
 
 正本schemaは既存0.1.0のまま。要件対応・未完範囲・同版検査は[B04証拠](../../evidence/3d/B04_NATIVE_AUTHORING.md)を読む。
+
+### B04 部品組立で実在になった配置
+
+- `src/core3d/commands/sceneAssembly.ts`: group/reparent/ungroup、原点移動、独立mirror。world/localと失敗原子性の所有
+- `src/core3d/commands/materialEditing.ts`: 未割当material作成・複製とfaceへの割当
+- `src/features/editor3d/NativeAssemblyControls.tsx`: transient複数選択とID/revision確認、明示Apply
+- `NativeAuthoringPanel`: 既存材質factorに加えて新規・複製・割当を接続
+
+[工程証拠](../../evidence/3d/B04_NATIVE_ASSEMBLY.md)と対象commandの検査を必要な範囲だけ読む。GPU representation、既存2D、保存versionの所有は移さない。

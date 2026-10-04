@@ -1,7 +1,15 @@
 import { expect, test, type Page } from '@playwright/test';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { nativeBox } from '../src/core3d/fixtures/nativeBox';
 import { exportBackup } from '../src/core3d/backup/backup';
+
+async function attachNativeVisual(name: string, body: Buffer) {
+  const path = test.info().outputPath(`native-visual-${name}`);
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, body);
+  await test.info().attach(name, { path, contentType: 'image/png' });
+}
 
 async function createBox(page: Page) {
   await page.goto('/3d/');
@@ -353,6 +361,7 @@ test('native authoring creates, edits, undoes and restores independent mesh and 
     .getByRole('combobox', { name: '制作オブジェクト', exact: true })
     .inputValue();
   await panel.getByRole('combobox', { name: '基本形', exact: true }).selectOption('sphere');
+  await panel.getByLabel('分割数', { exact: true }).fill('4');
   await panel.getByRole('button', { name: '基本形を追加', exact: true }).click();
   await panel.getByText('部品の名前・位置・複製', { exact: true }).click();
   await panel.getByRole('button', { name: '部品の現在値を読む', exact: true }).click();
@@ -417,14 +426,9 @@ test('native authoring creates, edits, undoes and restores independent mesh and 
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
   ).toBeLessThanOrEqual(0);
-  await test.info().attach('native-authoring-mobile.png', {
-    body: await page.screenshot({ fullPage: true }),
-    contentType: 'image/png',
-  });
+  await attachNativeVisual('authoring-mobile.png', await page.screenshot({ fullPage: true }));
   await page.getByRole('button', { name: 'カメラをリセット', exact: true }).click();
-  await test
-    .info()
-    .attach('native-authoring-model.png', { body: await png(page), contentType: 'image/png' });
+  await attachNativeVisual('authoring-model.png', await png(page));
   const fresh = await context.browser()!.newContext({ viewport: { width: 375, height: 812 } });
   try {
     const restored = await fresh.newPage();
@@ -483,4 +487,177 @@ test('authoring invalid drafts and composition do not change saved revision or g
   await panel.getByRole('button', { name: '基本形を追加', exact: true }).click();
   await expect(panel.getByRole('alert')).toHaveCount(0);
   expect(await status.textContent()).not.toBe(before);
+});
+
+test('native scene assembly preserves world pose and restores independently assigned materials', async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(90_000);
+  const { importBackup } = await import('../src/core3d/backup/backup');
+  const { worldMatrix, transformPoint } = await import('../src/core3d/model/coordinates');
+  type Project = Awaited<ReturnType<typeof importBackup>>['project'];
+  const snapshot = async (target: Page) => {
+    const event = target.waitForEvent('download');
+    await target.getByRole('button', { name: '現在の内容をバックアップ', exact: true }).click();
+    const bytes = await readFile((await (await event).path())!);
+    return { bytes, project: (await importBackup(bytes)).project };
+  };
+  const worldVertices = (project: Project, id: string) => {
+    const node = project.nodes.find((n) => n.id === id)!;
+    return project.meshes
+      .find((m) => m.id === node.meshId)!
+      .vertices.map((v) => transformPoint(worldMatrix(project, id), v.position));
+  };
+  const samePose = (before: Project, after: Project, id: string) => {
+    const expected = worldVertices(before, id),
+      actual = worldVertices(after, id);
+    actual.forEach((point, index) =>
+      point.forEach((value, axis) => expect(value).toBeCloseTo(expected[index][axis], 8)),
+    );
+  };
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('/3d/');
+  await page.getByLabel('新しいプロジェクト名', { exact: true }).fill('Native box work');
+  await page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true }).click();
+  const author = page.getByRole('region', { name: '3D制作', exact: true });
+  await author.getByText('材質の色・金属・粗さ', { exact: true }).click();
+  await author.getByLabel('赤 R', { exact: true }).fill('0.8');
+  await author.getByLabel('緑 G', { exact: true }).fill('0.2');
+  await author.getByRole('button', { name: '入力した値で材質を新規作成', exact: true }).click();
+  await expect(page.locator('.native-viewport-host canvas')).toHaveCount(0);
+  const palette = (await snapshot(page)).project.materials[0].id;
+  await author.getByText('基本形を作成', { exact: true }).click();
+  await author.getByLabel('分割数', { exact: true }).fill('1');
+  await author.getByRole('button', { name: '基本形を追加', exact: true }).click();
+  await author.getByRole('combobox', { name: '基本形', exact: true }).selectOption('cone');
+  await author.getByLabel('分割数', { exact: true }).fill('4');
+  await author.getByRole('button', { name: '基本形を追加', exact: true }).click();
+  await author.getByText('部品の名前・位置・複製', { exact: true }).click();
+  await author.getByRole('button', { name: '部品の現在値を読む', exact: true }).click();
+  await author.getByLabel('位置 X（m）', { exact: true }).fill('1.5');
+  await author.getByRole('button', { name: '部品の変形を適用', exact: true }).click();
+  const original = (await snapshot(page)).project;
+  const [box, cone] = original.nodes;
+  const assembly = page.getByRole('region', { name: '3D部品の組立', exact: true });
+  await expect(assembly).toHaveCount(1);
+  await assembly.getByText('部品の組立を開く', { exact: true }).click();
+  const checkbox = (node: Project['nodes'][number]) =>
+    assembly.getByRole('checkbox', { name: `組立対象 ${node.name} (${node.id})`, exact: true });
+  const clear = () =>
+    assembly.getByRole('button', { name: '組立対象の選択を解除', exact: true }).click();
+  const review = () =>
+    assembly.getByRole('button', { name: '現在の組立対象を確認', exact: true }).click();
+  await checkbox(box).check();
+  await checkbox(cone).check();
+  await assembly.getByText('グループ・親子関係', { exact: true }).click();
+  await assembly.getByLabel('新しいグループ名', { exact: true }).fill('組立');
+  await review();
+  await assembly.getByRole('button', { name: '選択部品をグループ化', exact: true }).click();
+  const grouped = (await snapshot(page)).project;
+  const group = grouped.nodes.find((n) => n.name === '組立')!;
+  expect(group).toBeTruthy();
+  samePose(original, grouped, box.id);
+  samePose(original, grouped, cone.id);
+  await author
+    .getByRole('combobox', { name: '制作オブジェクト', exact: true })
+    .selectOption(group.id);
+  await author.getByRole('button', { name: '部品の現在値を読む', exact: true }).click();
+  await author.getByLabel('位置 X（m）', { exact: true }).fill('1');
+  await author.getByLabel('回転 Y（度）', { exact: true }).fill('45');
+  await author.getByRole('button', { name: '部品の変形を適用', exact: true }).click();
+  const transformed = (await snapshot(page)).project;
+  await clear();
+  await checkbox(box).check();
+  await assembly.getByRole('combobox', { name: '新しい親', exact: true }).selectOption('');
+  await review();
+  await assembly.getByRole('button', { name: '選択部品の親を付け替え', exact: true }).click();
+  const detached = (await snapshot(page)).project;
+  expect(detached.nodes.find((n) => n.id === box.id)!.parentId).toBeNull();
+  samePose(transformed, detached, box.id);
+  await clear();
+  await checkbox(group).check();
+  await review();
+  await assembly.getByText('グループを解除', { exact: true }).click();
+  await assembly.getByRole('button', { name: '選択グループを解除', exact: true }).click();
+  const ungrouped = (await snapshot(page)).project;
+  expect(ungrouped.nodes.some((n) => n.id === group.id)).toBe(false);
+  samePose(transformed, ungrouped, cone.id);
+  await clear();
+  await checkbox(box).check();
+  await review();
+  await assembly.getByText('原点（pivot）を移す', { exact: true }).click();
+  await assembly.getByLabel('原点移動 X（m）', { exact: true }).fill('0.25');
+  await assembly.getByRole('button', { name: '原点移動を適用', exact: true }).click();
+  const pivoted = (await snapshot(page)).project;
+  samePose(ungrouped, pivoted, box.id);
+  await review();
+  await assembly.getByText('反転した部品を複製', { exact: true }).click();
+  await assembly.getByRole('button', { name: '反転した独立部品を作成', exact: true }).click();
+  const mirrored = (await snapshot(page)).project;
+  expect(mirrored.nodes).toHaveLength(3);
+  const copy = mirrored.nodes.find((n) => !pivoted.nodes.some((old) => old.id === n.id))!;
+  expect(copy.meshId).not.toBe(box.meshId);
+  expect(mirrored.meshes.find((m) => m.id === box.meshId)).toEqual(
+    pivoted.meshes.find((m) => m.id === box.meshId),
+  );
+  await author
+    .getByRole('combobox', { name: '制作オブジェクト', exact: true })
+    .selectOption(copy.id);
+  await author.getByRole('button', { name: '部品の現在値を読む', exact: true }).click();
+  await author.getByLabel('位置 X（m）', { exact: true }).fill('-1');
+  await author.getByRole('button', { name: '部品の変形を適用', exact: true }).click();
+  await author.getByRole('combobox', { name: '制作材質', exact: true }).selectOption(palette);
+  await author.getByRole('button', { name: '対象meshの全ての面へ材質を割当', exact: true }).click();
+  const assigned = (await snapshot(page)).project;
+  expect(assigned.nodes.find((n) => n.id === copy.id)!.transform.translation[0]).toBe(-1);
+  samePose(pivoted, assigned, box.id);
+  expect(
+    assigned.meshes.find((m) => m.id === copy.meshId)!.faces.every((f) => f.materialId === palette),
+  ).toBe(true);
+  await author.getByText('頂点・辺・面を編集', { exact: true }).click();
+  await author.getByRole('combobox', { name: '編集要素', exact: true }).selectOption('face');
+  await author.getByRole('combobox', { name: '制作要素', exact: true }).selectOption({ index: 1 });
+  await author.getByRole('button', { name: '選択材質の保存値を複製', exact: true }).click();
+  const accent = await author.getByRole('combobox', { name: '制作材質', exact: true }).inputValue();
+  await author.getByRole('button', { name: '材質の現在値を読む', exact: true }).click();
+  await author.getByLabel('緑 G', { exact: true }).fill('0.9');
+  await author.getByRole('button', { name: '材質を適用', exact: true }).click();
+  await author.getByRole('button', { name: '選択面へ材質を割当', exact: true }).click();
+  const accented = (await snapshot(page)).project;
+  expect(
+    accented.meshes.find((m) => m.id === copy.meshId)!.faces.filter((f) => f.materialId === accent),
+  ).toHaveLength(1);
+  expect(accented.materials.find((m) => m.id === palette)!.baseColor[1]).toBe(0.2);
+  await page.getByRole('button', { name: '元に戻す', exact: true }).click();
+  await page.getByRole('button', { name: 'やり直す', exact: true }).click();
+  await page.getByRole('button', { name: '今すぐ保存', exact: true }).click();
+  await expect(assembly.getByRole('alert')).toHaveCount(0);
+  await expect(author.getByRole('alert')).toHaveCount(0);
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+  ).toBeLessThanOrEqual(0);
+  await page.getByRole('button', { name: 'カメラをリセット', exact: true }).click();
+  await attachNativeVisual('assembly-model.png', await png(page));
+  await attachNativeVisual('assembly-mobile.png', await page.screenshot({ fullPage: true }));
+  const final = await snapshot(page);
+  const fresh = await context.browser()!.newContext({ viewport: { width: 375, height: 812 } });
+  try {
+    const restored = await fresh.newPage();
+    await restored.goto(new URL('/3d/', page.url()).href);
+    await restored.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+      name: 'assembly.cas3dproj',
+      mimeType: 'application/zip',
+      buffer: final.bytes,
+    });
+    await expect(
+      restored.getByRole('heading', { name: 'Native box work', exact: true }),
+    ).toBeVisible();
+    const recovered = (await snapshot(restored)).project;
+    expect(recovered.nodes).toEqual(final.project.nodes);
+    expect(recovered.meshes).toEqual(final.project.meshes);
+    expect(recovered.materials).toEqual(final.project.materials);
+  } finally {
+    await fresh.close();
+  }
 });
