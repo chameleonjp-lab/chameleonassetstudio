@@ -649,7 +649,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                     </button>
                   </div>
                   <NativeAuthoringPanel
-                    key={project.id}
+                    key={`authoring-${project.id}`}
                     project={project}
                     disabled={busy || state.readOnly}
                     execute={(operation) => {
@@ -664,7 +664,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                   />
                   {previewProjectId === project.id && (
                     <ViewportLoadBoundary
-                      key={project.id}
+                      key={`viewport-${project.id}`}
                       onReload={async () => {
                         if (busyRef.current)
                           throw new Error('別の操作が完了するまで待ってください。');

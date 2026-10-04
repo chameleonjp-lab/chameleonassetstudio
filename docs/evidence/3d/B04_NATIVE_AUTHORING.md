@@ -68,3 +68,7 @@ B04全体、AC-02全体、3D製品全体の完成とは呼ばない。MAT-02/04�
 ## 戻し方
 
 commandは既存Undoで戻せる。失敗candidateは正本に入らず、表示失敗時も保存/backup shellは残る。コードの回帰は作業branchで戻し、保存migration不要。作品の自動削除・履歴の無断消去を行わない。
+
+## CIで見つかったpanel重複
+
+最初のhead `eb589a6d` の先行WebKitでは、旧5caseが成功、新制作2caseが「制作パネルが2個ある」ため失敗した。新panelとviewportの兄弟elementが同じproject IDをReact keyに使っていた。role検索をfirstへ弱めず、所有別のkey prefixへ修正し、表示後の制作regionが必ず1個という回帰を追加する。初回CIのtypes/lint/format/build/unitは成功しているが、修正headでbrowserを再確認する。

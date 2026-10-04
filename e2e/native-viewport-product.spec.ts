@@ -9,6 +9,7 @@ async function createBox(page: Page) {
   await page.getByRole('button', { name: '新しい3Dプロジェクトを作成' }).click();
   await page.getByRole('button', { name: '箱を追加', exact: true }).click();
   await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: '3D制作', exact: true })).toHaveCount(1);
 }
 async function png(page: Page) {
   const event = page.waitForEvent('download');
