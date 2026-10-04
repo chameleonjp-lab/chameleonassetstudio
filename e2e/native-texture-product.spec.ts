@@ -188,11 +188,28 @@ test('image authoring respects IME, backup interruption and another tab ownershi
   context,
 }) => {
   await page.addInitScript(() => {
-    const decode = window.createImageBitmap.bind(window);
-    window.createImageBitmap = (async (...args: Parameters<typeof createImageBitmap>) => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      return Reflect.apply(decode, window, args);
-    }) as typeof createImageBitmap;
+    const encode = HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.toBlob = function (callback, type, quality) {
+      if (document.documentElement.dataset.nativeEncodeGate !== 'armed') {
+        return encode.call(this, callback, type, quality);
+      }
+      document.documentElement.dataset.nativeEncodeGate = 'held';
+      window.addEventListener(
+        'native-test-release-encode',
+        () => {
+          encode.call(
+            this,
+            (blob) => {
+              callback(blob);
+              document.documentElement.dataset.nativeEncodeGate = 'released';
+            },
+            type,
+            quality,
+          );
+        },
+        { once: true },
+      );
+    };
   });
   await open(page);
   await panel(page)
@@ -209,13 +226,32 @@ test('image authoring respects IME, backup interruption and another tab ownershi
   await expect(panel(page).getByRole('status')).toContainText('一回の操作');
   const before = await backup(page);
   await panel(page).getByLabel('彩度', { exact: true }).fill('0.5');
-  await panel(page).getByRole('button', { name: '色調を派生画像として適用', exact: true }).click();
-  await expect(
-    panel(page).getByRole('button', { name: '画像操作を取り消す', exact: true }),
-  ).toBeVisible();
-  const during = await backup(page);
-  expect(during.project).toEqual(before.project);
-  await expect(panel(page).getByRole('status')).toContainText('取り消しました');
+  await page.evaluate(() => {
+    document.documentElement.dataset.nativeEncodeGate = 'armed';
+  });
+  try {
+    await panel(page)
+      .getByRole('button', { name: '色調を派生画像として適用', exact: true })
+      .click();
+    await expect(page.locator('html')).toHaveAttribute('data-native-encode-gate', 'held');
+    await expect(
+      panel(page).getByRole('button', { name: '画像操作を取り消す', exact: true }),
+    ).toBeVisible();
+    const during = await backup(page);
+    expect(during.project).toEqual(before.project);
+    await expect(panel(page).getByRole('status')).toContainText('取り消しました');
+  } finally {
+    await page.evaluate(() => {
+      if (document.documentElement.dataset.nativeEncodeGate === 'armed') {
+        delete document.documentElement.dataset.nativeEncodeGate;
+      }
+      window.dispatchEvent(new Event('native-test-release-encode'));
+    });
+  }
+  await expect(page.locator('html')).toHaveAttribute('data-native-encode-gate', 'released');
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
   expect((await backup(page)).project).toEqual(before.project);
   await page.getByRole('button', { name: '今すぐ保存', exact: true }).click();
   const second = await context.newPage();
@@ -313,8 +349,16 @@ test('JPEG import and cancelled image preparation keep the committed project rec
       document.documentElement.dataset.nativeDecodeCalls = String(
         Number(document.documentElement.dataset.nativeDecodeCalls ?? 0) + 1,
       );
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      return Reflect.apply(decode, window, args);
+      const held = document.documentElement.dataset.nativeDecodeGate === 'armed';
+      if (held) {
+        document.documentElement.dataset.nativeDecodeGate = 'held';
+        await new Promise<void>((resolve) => {
+          window.addEventListener('native-test-release-decode', () => resolve(), { once: true });
+        });
+      }
+      const bitmap = await Reflect.apply(decode, window, args);
+      if (held) document.documentElement.dataset.nativeDecodeGate = 'released';
+      return bitmap;
     }) as typeof createImageBitmap;
   });
   await open(page);
@@ -339,8 +383,25 @@ test('JPEG import and cancelled image preparation keep the committed project rec
   await panel(page)
     .getByLabel('baseColor画像', { exact: true })
     .setInputFiles({ name: 'next.png', mimeType: 'image/png', buffer: await image(page) });
-  await panel(page).getByRole('button', { name: '画像を取り込み適用', exact: true }).click();
-  await panel(page).getByRole('button', { name: '画像操作を取り消す', exact: true }).click();
-  await expect(panel(page).getByRole('status')).toContainText('取り消しました');
+  await page.evaluate(() => {
+    document.documentElement.dataset.nativeDecodeGate = 'armed';
+  });
+  try {
+    await panel(page).getByRole('button', { name: '画像を取り込み適用', exact: true }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-native-decode-gate', 'held');
+    await panel(page).getByRole('button', { name: '画像操作を取り消す', exact: true }).click();
+    await expect(panel(page).getByRole('status')).toContainText('取り消しました');
+  } finally {
+    await page.evaluate(() => {
+      if (document.documentElement.dataset.nativeDecodeGate === 'armed') {
+        delete document.documentElement.dataset.nativeDecodeGate;
+      }
+      window.dispatchEvent(new Event('native-test-release-decode'));
+    });
+  }
+  await expect(page.locator('html')).toHaveAttribute('data-native-decode-gate', 'released');
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
   expect((await backup(page)).project).toEqual(before.project);
 });

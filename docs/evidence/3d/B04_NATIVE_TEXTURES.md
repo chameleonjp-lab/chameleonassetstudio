@@ -85,3 +85,11 @@ Three graphは使用hashごとにtextureを共有し、graph破棄時に一回di
 
 - TEX-09: 来歴selectはartifactのaccessibility treeで正しいcombobox名と選択source IDを確認した。implicit label文字列の検索を、exactなcomboboxのaccessible nameでの検索へ変更。権利/ID/hashの期待値は維持する
 - TEX-10: 正面camera操作の前に「カメラ・表示の詳細設定」を開く手順が欠けていた。既存camera受入と同じ利用者操作を加え、PNGの色位置・UV方向・休止/復帰検査を続行する。timeout延長・skip・pixel期待値緩和は行わない
+
+## 取消検査の処理順を固定する修正
+
+[CI37190568741](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/37190568741) head`99588e9`は単体/build・早期WebKit17件・Chromium337件が成功した。全体WebKitは149件成功・1件失敗（既存skip別）、productionは未実行。失敗はbackup中断検査で、300msの固定待機よりbackup操作が遅く、正常に確定済みの派生画像を中断前の正本と比較した競合だった。
+
+- TEX-11: 検査内で次のcanvas PNG encodeを明示的に保留し、保留到達を確認してからbackupによる取消を操作する。finallyで実encodeを解放し、実callback完了後の遅着でも正本が変わらないことを確認する。JPEG後の取消も同様に次の実decodeを保留・解放し、実bitmap完了後に正本を比較する。固定250/300ms待機を除き、期待値・timeout・skipを緩めない
+
+旧ローカル候補の消失により、`99588e9`の検査と本記録の2ファイルから新候補を再構成した。旧候補の完全復元や同一bytesとは扱わない。製品コード・CI設定は変更しない。新候補の独立レビューと最終headのCI結果は別途確認する。旧headの成功結果を新候補の合格として流用しない。
