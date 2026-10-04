@@ -3,7 +3,10 @@ import { exportBackup, importBackup, BACKUP_LIMITS } from '../../core3d/backup/b
 import { ProjectAutosave } from '../../core3d/commands/autosave';
 import { ProjectHistory } from '../../core3d/commands/history';
 import { addBox } from '../../core3d/commands/box';
-import { assertFiniteAuthoringCoordinates } from '../../core3d/commands/objectEditing';
+import {
+  assertFiniteAuthoringCoordinates,
+  setNodeTransform,
+} from '../../core3d/commands/objectEditing';
 import { cloneProject, createProject, type Project3D } from '../../core3d/model/project';
 import {
   StorageConflictError,
@@ -12,6 +15,8 @@ import {
   type WriterLease,
 } from '../../core3d/storage/repository';
 import { SaveQueue } from '../../core3d/storage/saveQueue';
+import type { NativeEditBinding } from '../../core3d/ports/editPort';
+import { TransformTransaction } from './transformTransaction';
 
 export { BACKUP_LIMITS };
 
@@ -25,6 +30,7 @@ export class UnsavedProjectError extends Error {
 /** One open project owns its writer, history, immutable bytes, and rescue path. */
 export class ProjectSession {
   private readonly history: ProjectHistory;
+  private readonly transforms: TransformTransaction;
   private readonly autosave: ProjectAutosave | null;
   private readonly projectId: string;
   private conflict = false;
@@ -42,6 +48,15 @@ export class ProjectSession {
   ) {
     this.projectId = project.id;
     this.history = new ProjectHistory(project, undefined, persisted);
+    this.transforms = new TransformTransaction({
+      getProject: () => this.history.project,
+      getIdentity: () => ({ id: this.projectId, revision: this.history.revision }),
+      isReadOnly: () => !this.lease || this.conflict || this.closed,
+      commit: (updates, expected) =>
+        this.executeAuthoring((candidate) => {
+          for (const { id, transform } of updates) setNodeTransform(candidate, id, transform);
+        }, expected),
+    });
     this.autosave = lease
       ? new ProjectAutosave(
           new SaveQueue(
@@ -52,7 +67,11 @@ export class ProjectSession {
                 try {
                   return await repository.commit(...args);
                 } catch (error) {
-                  if (error instanceof StorageConflictError) this.conflict = true;
+                  if (error instanceof StorageConflictError) {
+                    this.conflict = true;
+                    // Notify synchronously as soon as durable fencing establishes ownership loss.
+                    this.transforms.reconcile('writer ownership lost');
+                  }
                   throw error;
                 }
               },
@@ -113,6 +132,10 @@ export class ProjectSession {
     return this.open(repository, ownerId, id);
   }
 
+  get edit(): NativeEditBinding {
+    return this.transforms;
+  }
+
   get project() {
     return this.history.project;
   }
@@ -136,6 +159,7 @@ export class ProjectSession {
   }
 
   rename(name: string) {
+    this.transforms.cancel('rename');
     this.assertEditable();
     if (name === this.history.project.name) return;
     this.history.execute((project) => {
@@ -145,6 +169,7 @@ export class ProjectSession {
   }
 
   addBox() {
+    this.transforms.cancel('add object');
     this.assertEditable();
     this.history.execute((project) => addBox(project, crypto.randomUUID()));
     this.schedule();
@@ -155,6 +180,7 @@ export class ProjectSession {
     operation: (candidate: Project3D) => void,
     expected?: Pick<Project3D, 'id' | 'revision'>,
   ) {
+    this.transforms.cancel('authoring command');
     this.assertEditable();
     this.history.execute((candidate) => {
       if (expected && (candidate.id !== expected.id || candidate.revision !== expected.revision))
@@ -170,11 +196,13 @@ export class ProjectSession {
   }
 
   undo() {
+    this.transforms.cancel('undo');
     this.assertEditable();
     if (this.history.undo()) this.schedule();
   }
 
   redo() {
+    this.transforms.cancel('redo');
     this.assertEditable();
     if (this.history.redo()) this.schedule();
   }
@@ -185,9 +213,11 @@ export class ProjectSession {
 
   private schedule() {
     this.autosave!.schedule(this.history.project, this.blobs, this.history.historyBlobIds);
+    this.transforms.reconcile();
   }
 
   async save() {
+    this.transforms.cancel('explicit save');
     if (this.state.readOnly) {
       if (this.state.dirty) throw new UnsavedProjectError();
       return;
@@ -199,10 +229,12 @@ export class ProjectSession {
 
   /** Captures CURRENT edits and all source bytes, even after a failed save or fencing. */
   backup() {
+    this.transforms.cancel('backup');
     return exportBackup(this.history.project, this.blobs);
   }
 
   async saveCopy() {
+    this.transforms.cancel('save copy');
     if (this.closed) throw new Error('このプロジェクトは閉じられています。');
     const project = cloneProject(this.history.project);
     const id = crypto.randomUUID();
@@ -214,6 +246,7 @@ export class ProjectSession {
   }
 
   async takeOver() {
+    this.transforms.cancel('take over');
     if (this.state.dirty) throw new UnsavedProjectError();
     const id = this.projectId;
     const lease = await this.repository.acquireWriter(id, this.ownerId, { takeover: true });
@@ -221,6 +254,7 @@ export class ProjectSession {
   }
 
   async close() {
+    this.transforms.cancel('close');
     if (this.closed) return;
     if (this.state.dirty && this.preservedRevision !== this.history.revision) {
       await this.save();
@@ -244,5 +278,6 @@ export class ProjectSession {
     }
     await this.snapshot?.release();
     this.closed = true;
+    this.transforms.reconcile('closed');
   }
 }

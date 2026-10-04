@@ -37,6 +37,7 @@ export default defineConfig({
         'native-transform-evaluation.spec.ts',
         'native-panel.spec.ts',
         'native-viewport-product.spec.ts',
+        'native-editing-product.spec.ts',
         'import.spec.ts',
         'storage.spec.ts',
         'export.spec.ts',

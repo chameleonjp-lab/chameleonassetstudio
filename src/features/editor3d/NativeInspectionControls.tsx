@@ -1,5 +1,7 @@
 import { useId, useRef, useState } from 'react';
 import type { Project3D, Vec3 } from '../../core3d/model/project';
+import type { NativeEditBinding } from '../../core3d/ports/editPort';
+import { useNativeObjectSelection } from './useNativeEditState';
 import type {
   NativeCameraState,
   NativeViewOptions,
@@ -59,12 +61,15 @@ export function NativeInspectionControls({
   project,
   disabled,
   run,
+  edit,
 }: {
   project: Project3D;
   disabled: boolean;
   run: (operation: (port: NativeViewportPort) => void) => void;
+  /** Product panels share the session binding; omitted only by standalone fixtures. */
+  edit?: NativeEditBinding;
 }) {
-  const [selected, setSelected] = useState('');
+  const { activeId: selected, selectedIds, setActive } = useNativeObjectSelection(project, edit);
   const selectionDescriptionId = useId();
   const [draft, setDraft] = useState<CameraDraft>(initialDraft);
   const [options, setOptions] = useState(defaultOptions);
@@ -145,7 +150,8 @@ export function NativeInspectionControls({
     >
       <summary>カメラ・表示の詳細設定</summary>
       <p>
-        静止モデルの観察モードです。ここでの選択・表示設定は作品やUndo履歴を変更しません。再読込では初期表示に戻ります。
+        制作・組立と同じ選択を使います。「選択対象に合わせる」でアクティブな部品へカメラを移します。
+        カメラ・表示設定は作品やUndo履歴を変更しません。再読込では初期表示に戻ります。
       </p>
       <fieldset disabled={disabled}>
         <legend>見る方向と対象</legend>
@@ -175,8 +181,8 @@ export function NativeInspectionControls({
           注目するオブジェクト
           <select
             aria-describedby={selectionDescriptionId}
-            value={selectedNode ? selected : ''}
-            onChange={(event) => setSelected(event.target.value)}
+            value={selectedNode ? selected! : ''}
+            onChange={(event) => setActive(event.target.value)}
           >
             <option value="">対象を選択</option>
             {project.nodes.map((node, index) => (
@@ -188,14 +194,18 @@ export function NativeInspectionControls({
           </select>
         </label>
         <p id={selectionDescriptionId}>
-          選択対象: {selectedNode ? `${selectedNode.name} / ID: ${selectedNode.id}` : 'なし'}
+          選択中 {selectedIds.length} 個。アクティブな対象:{' '}
+          {selectedNode ? `${selectedNode.name} / ID: ${selectedNode.id}` : 'なし'}
         </p>
         <button
           type="button"
           disabled={!selectedNode}
           onClick={() =>
             operate((port) => {
-              requireSuccess(port.focusNode(selected));
+              const active = edit ? edit.state.context.activeId : selected;
+              if (!active || active !== selected)
+                throw new Error('注目する対象が変わりました。現在の対象を確認してください。');
+              requireSuccess(port.focusNode(active));
               setDraft(toDraft(port.getCamera()));
             })
           }

@@ -124,3 +124,14 @@ M06の所有境界は維持する。今回の小さなnative subsetではresourc
 - `NativeAuthoringPanel`: 既存材質factorに加えて新規・複製・割当を接続
 
 [工程証拠](../../evidence/3d/B04_NATIVE_ASSEMBLY.md)と対象commandの検査を必要な範囲だけ読む。GPU representation、既存2D、保存versionの所有は移さない。
+
+
+## B04の共有選択・変形接続（本PRの実在配置）
+
+- [editPort](../../../src/core3d/ports/editPort.ts): plain ID/TRS、token、preview envelope、capture guard。Three/DOM/historyを外へ公開しない
+- [session transaction](../../../src/features/editor3d/transformTransaction.ts) と [ProjectSession](../../../src/features/editor3d/projectSession.ts): ephemeral選択と一回の正本確定、autosave/競合/救出境界
+- [transformMath](../../../src/adapters3d/three/transformMath.ts)、[picking](../../../src/adapters3d/three/picking.ts)、[input controller](../../../src/adapters3d/three/editController.ts): 評価済み数学とrenderer側の入力所有。coreへThreeを逆流させない
+- [数値操作](../../../src/features/editor3d/NativeTransformControls.tsx) と [選択購読](../../../src/features/editor3d/useNativeEditState.ts): renderer生成を伴わないlazy数値操作、選択だけを読む重いpanelと軽いpreview statusを分離
+- [製品受入](../../../e2e/native-editing-product.spec.ts) と [panel境界受入](../../../e2e/native-panel.spec.ts): pointer/数値/保存復元、非同期PNG/休止、React再描画、binding交換
+
+状態・対応要件・採用根拠・未確認条件は [B04接続記録](../../evidence/3d/B04_NATIVE_EDITING.md) を正本とする。pathの実在を、実機・全3D完成の証拠にしない。

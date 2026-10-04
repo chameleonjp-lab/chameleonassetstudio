@@ -10,6 +10,7 @@ export default defineConfig({
     'release-performance.spec.ts',
     'studio-entries.spec.ts',
     'native-viewport-product.spec.ts',
+    'native-editing-product.spec.ts',
   ],
   projects: config.projects?.map((project) => ({
     ...project,
@@ -18,6 +19,7 @@ export default defineConfig({
       'release-performance.spec.ts',
       'studio-entries.spec.ts',
       'native-viewport-product.spec.ts',
+      'native-editing-product.spec.ts',
     ],
   })),
   use: { ...config.use, baseURL: 'http://localhost:4176' },

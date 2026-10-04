@@ -1,5 +1,6 @@
 import type { Project3D } from '../model/project';
 import type { Vec3 } from '../model/project';
+import type { NativeEditBinding } from './editPort';
 
 /** Ephemeral inspection state, never a canonical project mutation. */
 export interface NativeCameraState {
@@ -58,6 +59,8 @@ export interface NativeViewportSuspensionContract {
 export interface NativeViewportPort {
   readonly status: NativeViewportStatus;
   setProject(project: Project3D): NativeViewportResult;
+  /** Preview subscription is separate from canonical graph replacement. */
+  bindEditing?(binding: NativeEditBinding | null): void;
   resetCamera(): void;
   fitCamera(): void;
   cameraAction(action: NativeCameraAction): NativeViewportResult;

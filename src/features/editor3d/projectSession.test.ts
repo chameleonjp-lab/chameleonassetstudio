@@ -10,6 +10,8 @@ import {
 } from '../../core3d/storage/repository';
 import { ProjectSession, UnsavedProjectError } from './projectSession';
 import { addBox } from '../../core3d/commands/box';
+import type { NativeTransformEvaluator } from '../../core3d/ports/editPort';
+import type { Vec3 } from '../../core3d/model/project';
 import { setNodeTransform, updateMaterial } from '../../core3d/commands/objectEditing';
 
 let repository: ProjectRepository;
@@ -17,6 +19,7 @@ beforeEach(async () => {
   repository = await openProjectRepository({ indexedDB: new IDBFactory() });
 });
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   repository.close();
 });
@@ -304,4 +307,253 @@ it('adds an editable native box, saves it and restores it through backup', async
   expect(copy.project.nodes).toEqual(session.project.nodes);
   await copy.close();
   await session.close();
+});
+
+const plainEvaluator: NativeTransformEvaluator = {
+  selectionFrame: () => ({ position: [0, 0, 0], rotation: [0, 0, 0, 1] }),
+  evaluateDelta: (project, context, _frame, delta) => {
+    if (!delta.every(Number.isFinite)) throw new Error('Invalid sample');
+    return context.selection.map((id) => ({
+      id,
+      transform: {
+        ...structuredClone(project.nodes.find((node) => node.id === id)!.transform),
+        translation: [...delta],
+      },
+    }));
+  },
+};
+async function editableSession() {
+  const session = await ProjectSession.create(repository, 'editor', 'Transforms');
+  session.executeAuthoring((project) => addBox(project, 'shape'));
+  await session.save();
+  session.edit.setSelection(['shape-node']);
+  session.edit.setEvaluator(plainEvaluator);
+  return session;
+}
+function preview(session: ProjectSession, delta: Vec3 = [2, 0, 0]) {
+  const started = session.edit.begin();
+  if (!started.ok) throw new Error(started.reason);
+  expect(session.edit.preview(started.token, delta)).toEqual({ ok: true });
+  return started.token;
+}
+
+describe('native transform durable session integration', () => {
+  it('reports a committed transform truthfully when a view observer throws during canonical reconciliation', async () => {
+    const session = await editableSession();
+    const token = preview(session, [6, 0, 0]);
+    const broken = vi.fn().mockImplementationOnce(() => {
+      throw new Error('view reconcile failed');
+    });
+    const healthy = vi.fn();
+    session.edit.subscribe(broken);
+    session.edit.subscribe(healthy);
+    const result = session.edit.commit(token);
+    expect({
+      result,
+      revision: session.state.revision,
+      status: session.state.status,
+      active: session.edit.state.active,
+    }).toEqual({
+      result: { ok: true, changed: true },
+      revision: 2,
+      status: 'pending',
+      active: false,
+    });
+    expect(healthy).toHaveBeenCalledTimes(2);
+    expect(session.edit.state.lastReason).toBe('committed');
+    expect(session.edit.state.observerError).toBe('view reconcile failed');
+    await session.save();
+    const saved = await repository.readSnapshot(session.project.id);
+    expect(saved.project.revision).toBe(2);
+    expect(saved.project.nodes[0].transform.translation).toEqual([6, 0, 0]);
+    await saved.release();
+    await session.close();
+  });
+
+  it('accepts a lazily supplied numeric evaluator without constructing a renderer', async () => {
+    const session = await ProjectSession.create(repository, 'numeric', 'No WebGL');
+    session.executeAuthoring((project) => addBox(project, 'shape'));
+    session.edit.setSelection(['shape-node']);
+    expect(session.edit.state.evaluatorReady).toBe(false);
+    expect(session.edit.begin().ok).toBe(false);
+    session.edit.setEvaluator(plainEvaluator);
+    const token = preview(session, [1, 2, 3]);
+    expect(session.edit.commit(token)).toEqual({ ok: true, changed: true });
+    await session.save();
+    const id = session.project.id;
+    await session.close();
+    const restored = await ProjectSession.open(repository, 'reopen', id);
+    expect(restored.project.nodes[0].transform.translation).toEqual([1, 2, 3]);
+    expect(restored.edit.state).toMatchObject({
+      active: false,
+      evaluatorReady: false,
+      context: { selection: [], activeId: null },
+    });
+    await restored.close();
+  });
+
+  it('never schedules preview, cancel, invalid samples or no-ops, then debounces one real commit', async () => {
+    const session = await editableSession();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const commit = vi.spyOn(repository, 'commit');
+    preview(session);
+    await vi.advanceTimersByTimeAsync(6000);
+    expect(commit).not.toHaveBeenCalled();
+    expect(session.state).toMatchObject({ dirty: false, revision: 1, status: 'saved' });
+    session.edit.cancel();
+    const zero = preview(session, [0, 0, 0]);
+    expect(session.edit.commit(zero)).toEqual({ ok: true, changed: false });
+    const invalid = preview(session);
+    session.edit.preview(invalid, [NaN, 0, 0]);
+    expect(session.edit.commit(invalid).ok).toBe(false);
+    await vi.advanceTimersByTimeAsync(6000);
+    expect(commit).not.toHaveBeenCalled();
+    const changed = preview(session, [4, 5, 6]);
+    expect(session.edit.commit(changed)).toEqual({ ok: true, changed: true });
+    expect(session.state).toMatchObject({ dirty: true, revision: 2, status: 'pending' });
+    await vi.advanceTimersByTimeAsync(799);
+    expect(commit).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    await vi.waitFor(() => expect(session.state.status).toBe('saved'));
+    expect(commit).toHaveBeenCalledOnce();
+    expect(session.state).toMatchObject({ dirty: false, persistedRevision: 2 });
+    const saved = await repository.readSnapshot(session.project.id);
+    expect(saved.project.nodes[0].transform.translation).toEqual([4, 5, 6]);
+    await saved.release();
+    await session.close();
+  });
+
+  it('autosaves the committed snapshot while a newer same-revision preview remains active', async () => {
+    const session = await editableSession();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    session.rename('Committed rename');
+    preview(session, [20, 0, 0]);
+    await vi.advanceTimersByTimeAsync(800);
+    await vi.waitFor(() => expect(session.state.status).toBe('saved'));
+    expect(session.edit.state.active).toBe(true);
+    const saved = await repository.readSnapshot(session.project.id);
+    expect(saved.project.name).toBe('Committed rename');
+    expect(saved.project.nodes[0].transform.translation).toEqual([0, 0, 0]);
+    expect(session.edit.state.preview!.updates[0].transform.translation).toEqual([20, 0, 0]);
+    await saved.release();
+    await session.close();
+  });
+
+  it.each(['save', 'backup', 'saveCopy', 'close', 'takeOver'] as const)(
+    'cancels before explicit %s, retaining only canonical data',
+    async (operation) => {
+      const session = await editableSession();
+      const canonical = session.project;
+      const token = preview(session);
+      const result = session[operation]();
+      expect(session.edit.state).toMatchObject({ active: false, preview: null });
+      const returned = await result;
+      expect(session.project).toEqual(canonical);
+      expect(session.edit.commit(token).ok).toBe(false);
+      if (returned instanceof Uint8Array) {
+        const backup = await importBackup(returned);
+        expect(backup.project.nodes).toEqual(canonical.nodes);
+        expect(backup.project).not.toHaveProperty('selection');
+        expect(backup.project).not.toHaveProperty('preview');
+      }
+      if (returned instanceof ProjectSession) {
+        expect(returned.project.nodes).toEqual(canonical.nodes);
+        expect(returned.edit.state.context.selection).toEqual([]);
+        await returned.close();
+      }
+      await session.close();
+    },
+  );
+
+  it('cancels before ordinary commands and Undo/Redo, preserving redo on no-op and clearing it on new commit', async () => {
+    const session = await editableSession();
+    let token = preview(session);
+    session.rename('Renamed');
+    expect(session.edit.commit(token).ok).toBe(false);
+    token = preview(session);
+    session.undo();
+    expect(session.edit.commit(token).ok).toBe(false);
+    expect(session.state.canRedo).toBe(true);
+    token = preview(session, [0, 0, 0]);
+    expect(session.edit.commit(token)).toEqual({ ok: true, changed: false });
+    expect(session.state.canRedo).toBe(true);
+    token = preview(session);
+    session.redo();
+    expect(session.edit.commit(token).ok).toBe(false);
+    session.undo();
+    token = preview(session, [3, 0, 0]);
+    expect(session.edit.commit(token)).toEqual({ ok: true, changed: true });
+    expect(session.state.canRedo).toBe(false);
+    expect(session.project.nodes[0].transform.translation).toEqual([3, 0, 0]);
+    await session.close();
+  });
+
+  it('reconciles shared selection immediately when Undo removes a newly created object', async () => {
+    const session = await editableSession();
+    preview(session);
+    session.undo();
+    expect(session.edit.state).toMatchObject({
+      active: false,
+      context: { selection: [], activeId: null },
+    });
+    session.redo();
+    expect(session.edit.state.context.selection).toEqual([]);
+    expect(session.project.nodes).toHaveLength(1);
+    await session.close();
+  });
+
+  it('notifies known fencing immediately, cancels the active preview and preserves dirty rescue for an independent copy', async () => {
+    const session = await editableSession();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const other = await repository.acquireWriter(session.project.id, 'other', { takeover: true });
+    // Until a durable write checks the lease, this session cannot know ownership changed.
+    expect(session.state.readOnly).toBe(false);
+    session.rename('Dirty rescue');
+    preview(session, [9, 0, 0]);
+    const seen: { readOnly: boolean; active: boolean }[] = [];
+    const unsubscribe = session.edit.subscribe(() =>
+      seen.push({
+        readOnly: session.edit.state.context.readOnly,
+        active: session.edit.state.active,
+      }),
+    );
+    await vi.advanceTimersByTimeAsync(800);
+    await vi.waitFor(() => expect(session.state.status).toBe('error'));
+    expect(seen).toContainEqual({ readOnly: true, active: false });
+    expect(session.state).toMatchObject({ dirty: true, readOnly: true });
+    expect(session.edit.begin().ok).toBe(false);
+    const archive = await importBackup(await session.backup());
+    expect(archive.project.name).toBe('Dirty rescue');
+    expect(archive.project.nodes[0].transform.translation).toEqual([0, 0, 0]);
+    const saved = await repository.readSnapshot(session.project.id);
+    expect(saved.project.name).toBe('Transforms');
+    await saved.release();
+    const copy = await session.saveCopy();
+    expect(copy.project.name).toBe('Dirty rescue');
+    expect(copy.state.dirty).toBe(false);
+    unsubscribe();
+    await session.close();
+    await copy.close();
+    await repository.releaseWriter(other);
+  });
+
+  it('rejects stale PNG guards on canonical authoring and read-only changes, then allows numeric use after a local renderer cancellation', async () => {
+    const session = await editableSession();
+    const capture = session.edit.beginCapture();
+    expect(session.edit.begin().ok).toBe(false);
+    session.rename('Changed during encode');
+    expect(capture.isCurrent()).toBe(false);
+    capture.release();
+    preview(session);
+    session.edit.cancel('renderer unavailable');
+    const token = preview(session, [8, 0, 0]);
+    expect(session.edit.commit(token)).toEqual({ ok: true, changed: true });
+    expect(session.project.nodes[0].transform.translation).toEqual([8, 0, 0]);
+    const closingCapture = session.edit.beginCapture();
+    await session.close();
+    expect(closingCapture.isCurrent()).toBe(false);
+    closingCapture.release();
+    expect(session.edit.state.context.readOnly).toBe(true);
+    expect(session.edit.begin().ok).toBe(false);
+  });
 });

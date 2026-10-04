@@ -107,3 +107,127 @@ test('numeric camera draft rejects blanks and IME composition without mutating t
   await page.getByText('カメラ・表示の詳細設定', { exact: true }).click();
   await expect(x).toHaveValue('3');
 });
+
+test('editing preview rejects PNG without silently cancelling or encoding it', async ({ page }) => {
+  await page.goto('/e2e/fixtures/native-panel.html?editing');
+  await expect(page.getByRole('button', { name: 'PNG画像を保存', exact: true })).toBeEnabled();
+  expect(
+    await page.evaluate(() =>
+      (window as unknown as { panelHarness: PanelHarness }).panelHarness.preview(),
+    ),
+  ).toEqual({ ok: true });
+  await page.getByRole('button', { name: 'PNG画像を保存', exact: true }).click();
+  await expect(
+    page.getByRole('alert').filter({ hasText: '操作を完了できませんでした' }),
+  ).toBeVisible();
+  expect((await state(page))[0].captures).toEqual([]);
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { panelHarness: PanelHarness }).panelHarness.editing?.active,
+    ),
+  ).toBe(true);
+});
+
+test('same-revision editing changes fence a delayed PNG before download', async ({ page }) => {
+  const downloads: string[] = [];
+  page.on('download', (download) => downloads.push(download.suggestedFilename()));
+  await page.goto('/e2e/fixtures/native-panel.html?editing&capture-delay');
+  await expect(page.getByRole('button', { name: 'PNG画像を保存', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'PNG画像を保存', exact: true }).click();
+  await expect.poll(async () => (await state(page))[0].capturePending).toBe(true);
+  await page.evaluate(() => {
+    const api = (window as unknown as { panelHarness: PanelHarness }).panelHarness;
+    api.clearSelection();
+    api.finishCapture();
+  });
+  await expect(
+    page.getByRole('alert').filter({ hasText: '操作を完了できませんでした' }),
+  ).toBeVisible();
+  expect(downloads).toEqual([]);
+  expect((await state(page))[0].revision).toBe(0);
+});
+
+test('same-project binding replacement cancels the old owner without rebuilding the port', async ({
+  page,
+}) => {
+  await page.goto('/e2e/fixtures/native-panel.html?editing');
+  await expect(page.getByRole('button', { name: 'PNG画像を保存', exact: true })).toBeEnabled();
+  await page.evaluate(() => {
+    const api = (window as unknown as { panelHarness: PanelHarness }).panelHarness;
+    api.preview();
+    api.replaceBinding();
+  });
+  await expect.poll(async () => (await state(page))[0].bindings).toBe(2);
+  expect((await state(page)).length).toBe(1);
+  expect(
+    await page.evaluate(() =>
+      (window as unknown as { panelHarness: PanelHarness }).panelHarness.commitLast(),
+    ),
+  ).toMatchObject({ ok: false });
+  expect((await state(page))[0]).toMatchObject({ revision: 0, disposed: false });
+});
+
+test('GPU suspension cancels preview before delayed saving and releases the numeric block afterward', async ({
+  page,
+}) => {
+  await page.goto('/e2e/fixtures/native-panel.html?editing&save-delay');
+  await expect(
+    page.getByRole('button', { name: '保存してGPU表示を休止', exact: true }),
+  ).toBeEnabled();
+  await page.evaluate(() =>
+    (window as unknown as { panelHarness: PanelHarness }).panelHarness.preview(),
+  );
+  await page.getByRole('button', { name: '保存してGPU表示を休止', exact: true }).click();
+  await expect(
+    page.getByText('操作中です。完了するまでこのタブを開いておいてください。'),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { panelHarness: PanelHarness }).panelHarness.editing?.active,
+    ),
+  ).toBe(false);
+  expect(
+    await page.evaluate(() =>
+      (window as unknown as { panelHarness: PanelHarness }).panelHarness.preview(),
+    ),
+  ).toMatchObject({ ok: false });
+  await page.evaluate(() =>
+    (window as unknown as { panelHarness: PanelHarness }).panelHarness.finishSave(),
+  );
+  await expect(page.getByRole('button', { name: 'GPU表示を再開', exact: true })).toBeEnabled();
+  expect(
+    await page.evaluate(() =>
+      (window as unknown as { panelHarness: PanelHarness }).panelHarness.preview(),
+    ),
+  ).toEqual({ ok: true });
+});
+
+test('selection-only authoring does not rerender for invalid and valid pointer preview samples', async ({
+  page,
+}) => {
+  await page.goto('/e2e/fixtures/native-panel.html?editing');
+  await expect(page.getByRole('button', { name: 'PNG画像を保存', exact: true })).toBeEnabled();
+  const counts = await page.evaluate(async () => {
+    const api = (window as unknown as { panelHarness: PanelHarness }).panelHarness;
+    api.preview();
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const before = api.authorRenders;
+    await api.samples(25);
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    return { before, after: api.authorRenders, active: api.editing?.active };
+  });
+  expect(counts.before).toBeGreaterThan(0);
+  expect(counts.after).toBe(counts.before);
+  expect(counts.active).toBe(true);
+});
+
+test('a view-only provider cannot silently accept product editing', async ({ page }) => {
+  await page.goto('/e2e/fixtures/native-panel.html?editing&missing-binding');
+  await expect(page.getByRole('button', { name: '3D表示を再試行', exact: true })).toBeVisible();
+  expect((await state(page))[0].disposed).toBe(true);
+  expect(
+    await page.evaluate(() =>
+      (window as unknown as { panelHarness: PanelHarness }).panelHarness.preview(),
+    ),
+  ).toEqual({ ok: true });
+});

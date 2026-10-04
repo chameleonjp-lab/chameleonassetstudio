@@ -23,6 +23,9 @@ import {
   WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { NativeEditController } from './editController';
+import { nativeTransformEvaluator } from './transformMath';
+import type { NativeEditBinding, NativeEditState } from '../../core3d/ports/editPort';
 import {
   cloneProject,
   validateProject,
@@ -60,6 +63,8 @@ interface ControlsPort {
   addEventListener(type: 'change', listener: () => void): void;
   removeEventListener(type: 'change', listener: () => void): void;
   dispose(): void;
+  disconnect?(): void;
+  connect?(canvas: HTMLCanvasElement): void;
 }
 interface ResizePort {
   observe(target: Element): void;
@@ -186,6 +191,8 @@ export interface NativeGraph {
   root: Group;
   geometries: BufferGeometry[];
   materials: MeshStandardMaterial[];
+  /** The only pick/edit identity map; helpers never enter it. */
+  objects: Map<string, Object3D>;
   dispose(): void;
 }
 
@@ -196,16 +203,19 @@ export function buildNativeGraph(project: Project3D): NativeGraph {
   const root = new Group();
   const geometries: BufferGeometry[] = [];
   const materials: MeshStandardMaterial[] = [];
+  const nodes = new Map<string, Object3D>();
   let disposed = false;
   const graph: NativeGraph = {
     root,
     geometries,
     materials,
+    objects: nodes,
     dispose() {
       if (disposed) return;
       disposed = true;
       root.removeFromParent();
       root.clear();
+      nodes.clear();
       geometries.forEach((geometry) => geometry.dispose());
       materials.forEach((material) => material.dispose());
     },
@@ -262,7 +272,6 @@ export function buildNativeGraph(project: Project3D): NativeGraph {
       geometry.computeBoundingSphere();
       geometryById.set(mesh.id, geometry);
     }
-    const nodes = new Map<string, Object3D>();
     for (const node of project.nodes) {
       const object =
         node.meshId === undefined
@@ -345,7 +354,17 @@ export class NativeViewport {
   private renderer: RendererPort | null = null;
   private context: WebGL2RenderingContext | null = null;
   private controls: ControlsPort | null = null;
+  private controlsListening = false;
   private graph: NativeGraph | null = null;
+  private editBinding: NativeEditBinding | null = null;
+  private editUnsubscribe: (() => void) | null = null;
+  private editController: NativeEditController | null = null;
+  private readonly selectionHelpers = new Map<string, Box3Helper[]>();
+  private runtimeGeneration = 0;
+  private captureVersion = 0;
+  private editSequence = -1;
+  private applyingEdit = false;
+  private previewApplied = false;
   private snapshot: Project3D | null = null;
   private element: HTMLCanvasElement | null = null;
   private frame: number | null = null;
@@ -455,6 +474,14 @@ export class NativeViewport {
       disposedHelperMaterials: this.disposedHelperMaterials,
       disposedInspectionMaterials: this.disposedInspectionMaterials,
       controls: this.controls ? 1 : 0,
+      editing: this.editController?.diagnostics ?? null,
+      editSubscriptions: this.editUnsubscribe ? 1 : 0,
+      selectionHelpers: [...this.selectionHelpers.values()].reduce(
+        (sum, value) => sum + value.length,
+        0,
+      ),
+      previewApplied: this.previewApplied,
+      runtimeGeneration: this.runtimeGeneration,
       // Own listeners only. OrbitControls and WebGLRenderer internals are owned by their instances.
       listeners: this.listenerCount,
       resizeObservers: this.observer ? 1 : 0,
@@ -479,11 +506,13 @@ export class NativeViewport {
 
   setProject(project: Project3D): ProfileResult {
     if (this.disposed) return failure('Viewport is disposed.');
+    this.runtimeGeneration++;
     const profile = checkNativeProfile(project);
     const sameProject = this.snapshot?.id === project.id;
     this.cancelRender();
     this.releaseControls();
     this.releaseGraph();
+    this.editSequence = -1;
     this.fault = null;
     if (!profile.ok) {
       this.snapshot = null;
@@ -504,7 +533,192 @@ export class NativeViewport {
       if (!this.restoreView()) return failure(this.status.reason ?? 'Camera construction failed.');
     }
     this.syncActivity();
-    return { ok: true };
+    const status = this.status;
+    return status.state === 'error' || status.state === 'unavailable'
+      ? failure(status.reason ?? 'Viewport construction failed.')
+      : { ok: true };
+  }
+
+  bindEditing(binding: NativeEditBinding | null): void {
+    if (this.disposed || binding === this.editBinding) return;
+    this.editUnsubscribe?.();
+    this.editUnsubscribe = null;
+    this.releaseEditing();
+    if (this.editBinding) this.syncEditingBlocks(this.editBinding, true);
+    this.restoreCanonicalTransforms();
+    this.clearSelection();
+    this.editBinding = binding;
+    this.editSequence = -1;
+    if (binding) {
+      binding.setEvaluator(nativeTransformEvaluator);
+      this.syncEditingBlocks(binding);
+      this.editUnsubscribe = binding.subscribe(() => this.applyEditState());
+      this.applyEditState();
+      this.ensureEditing();
+    }
+    this.requestRender();
+  }
+
+  private ensureEditing(): void {
+    if (
+      this.editController ||
+      !this.editBinding ||
+      !this.controls ||
+      !this.graph ||
+      !this.element ||
+      !this.canRender()
+    )
+      return;
+    const identity = this.editBinding.state;
+    if (identity.projectId !== this.snapshot?.id || identity.revision !== this.snapshot.revision)
+      return;
+    const graph = this.graph,
+      canvas = this.element,
+      orbit = this.controls;
+    const generation = this.runtimeGeneration;
+    try {
+      this.editController = new NativeEditController({
+        canvas,
+        camera: this.camera,
+        scene: this.scene,
+        root: graph.root,
+        binding: this.editBinding,
+        orbit,
+        document: this.document,
+        window: this.document.defaultView ?? this.document,
+        changed: () => this.requestRender(),
+        isCurrent: () =>
+          !this.disposed &&
+          this.runtimeGeneration === generation &&
+          this.graph === graph &&
+          this.element === canvas &&
+          this.controls === orbit,
+        resetCameraGesture: () => {
+          orbit.disconnect?.();
+          orbit.connect?.(canvas);
+        },
+      });
+      this.applyEditState();
+    } catch (error) {
+      this.fault = {
+        state: 'error',
+        reason: `Native editing construction failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+      };
+      this.releaseRuntime();
+      this.publish();
+    }
+  }
+
+  /** Same-revision previews mutate only existing objects, never canonical data or GPU owners. */
+  private applyEditState(): void {
+    if (this.disposed || this.applyingEdit || !this.graph || !this.snapshot || !this.editBinding)
+      return;
+    const state = this.editBinding.state;
+    if (state.sequence < this.editSequence) return;
+    this.applyingEdit = true;
+    try {
+      this.restoreCanonicalTransforms();
+      const matches =
+        state.projectId === this.snapshot.id && state.revision === this.snapshot.revision;
+      const preview = state.preview;
+      if (
+        matches &&
+        preview &&
+        state.active &&
+        state.token &&
+        preview.projectId === this.snapshot.id &&
+        preview.baseRevision === this.snapshot.revision &&
+        preview.generation === state.token.generation &&
+        preview.sequence === state.sequence &&
+        state.token.projectId === this.snapshot.id &&
+        state.token.revision === this.snapshot.revision
+      ) {
+        for (const { id, transform } of preview.updates) {
+          const object = this.graph.objects.get(id);
+          if (!object) continue;
+          object.position.fromArray(transform.translation);
+          object.quaternion.fromArray(transform.rotation);
+          object.scale.fromArray(transform.scale);
+        }
+        this.previewApplied = true;
+      }
+      this.editSequence = state.sequence;
+      this.graph.root.updateMatrixWorld(true);
+      this.updateSelection(state, matches);
+      this.requestRender();
+    } finally {
+      this.applyingEdit = false;
+    }
+  }
+
+  private restoreCanonicalTransforms(): void {
+    if (!this.graph || !this.snapshot) return;
+    for (const node of this.snapshot.nodes) {
+      const object = this.graph.objects.get(node.id);
+      if (!object) continue;
+      object.position.fromArray(node.transform.translation);
+      object.quaternion.fromArray(node.transform.rotation);
+      object.scale.fromArray(node.transform.scale);
+    }
+    this.graph.root.updateMatrixWorld(true);
+    this.previewApplied = false;
+  }
+
+  private updateSelection(state: NativeEditState, matches: boolean): void {
+    const selected = new Set(matches ? state.context.selection : []);
+    for (const [id, helpers] of this.selectionHelpers) {
+      const count = id === state.context.activeId ? 2 : 1;
+      if (!selected.has(id) || helpers.length !== count) {
+        helpers.forEach((helper) => {
+          helper.removeFromParent();
+          helper.dispose();
+        });
+        this.selectionHelpers.delete(id);
+      }
+    }
+    for (const id of selected) {
+      const object = this.graph?.objects.get(id);
+      if (!object) continue;
+      const box = new Box3().setFromObject(object);
+      if (box.isEmpty()) continue;
+      let helpers = this.selectionHelpers.get(id);
+      if (!helpers) {
+        const active = id === state.context.activeId;
+        helpers = Array.from(
+          { length: active ? 2 : 1 },
+          () => new Box3Helper(box.clone(), active ? 0xffd166 : 0x91c7ff),
+        );
+        helpers.forEach((helper) => {
+          helper.name = active ? 'Active object selection' : 'Selected object';
+          for (const material of Array.isArray(helper.material)
+            ? helper.material
+            : [helper.material])
+            material.depthTest = false;
+          helper.renderOrder = 1000;
+          this.scene.add(helper);
+        });
+        this.selectionHelpers.set(id, helpers);
+      }
+      helpers.forEach((helper, index) =>
+        helper.box.copy(box).expandByScalar(index ? boundsRadius(box) * 0.04 : 0),
+      );
+    }
+  }
+
+  private clearSelection(): void {
+    for (const helpers of this.selectionHelpers.values())
+      helpers.forEach((helper) => {
+        helper.removeFromParent();
+        helper.dispose();
+      });
+    this.selectionHelpers.clear();
+  }
+
+  private releaseEditing(): void {
+    const controller = this.editController;
+    this.editController = null;
+    controller?.dispose();
+    this.restoreCanonicalTransforms();
   }
 
   resize(width?: number, height?: number, pixelRatio?: number): void {
@@ -525,6 +739,7 @@ export class NativeViewport {
       ].every(float32Finite)
     )
       return;
+    this.captureVersion++;
     this.width = widthValue;
     this.height = heightValue;
     this.pixelRatio = Math.min(2, Math.max(0.5, nextRatio));
@@ -608,6 +823,7 @@ export class NativeViewport {
       );
     }
     this.viewOptions = { ...options };
+    this.captureVersion++;
     this.requestRender();
     return { ok: true };
   }
@@ -694,6 +910,8 @@ export class NativeViewport {
       ].every(float32Finite)
     )
       return failure('Camera projection is outside the finite Float32 evaluation profile.');
+    this.captureVersion++;
+    this.editController?.cancel('camera changed');
     const replace = this.camera.constructor !== next.constructor || !this.camera.up.equals(next.up);
     if (replace) {
       this.releaseControls();
@@ -875,6 +1093,8 @@ export class NativeViewport {
   }
 
   suspend(contract: SuspensionContract): ProfileResult {
+    this.editController?.cancel('GPU pause');
+    this.editBinding?.cancel('GPU pause');
     const checked = this.checkSuspension(contract);
     if (!checked.ok) return checked;
     this.suspension = { projectId: this.snapshot!.id, contract: { ...contract } };
@@ -906,32 +1126,73 @@ export class NativeViewport {
       return failure(this.status.reason ?? 'Viewport restoration failed.');
     }
     this.syncActivity();
-    return { ok: true };
+    const status = this.status;
+    return status.state === 'error' || status.state === 'unavailable'
+      ? failure(status.reason ?? 'Viewport restoration failed.')
+      : { ok: true };
   }
 
   async capturePng(): Promise<Blob> {
     if (!this.canRender()) throw new Error('PNG capture requires an active native viewport.');
-    this.cancelRender();
-    if (!this.renderNow() || !this.element)
-      throw new Error('The native viewport could not render a PNG.');
+    if (
+      this.editBinding &&
+      (this.editBinding.state.projectId !== this.snapshot?.id ||
+        this.editBinding.state.revision !== this.snapshot?.revision)
+    )
+      throw new Error('PNG capture requires the displayed canonical revision.');
+    const guard = this.editBinding?.beginCapture();
+    const generation = this.runtimeGeneration,
+      viewVersion = this.captureVersion;
+    const projectId = this.snapshot?.id,
+      revision = this.snapshot?.revision;
     const canvas = this.element;
-    // Read in the same task as render; no permanent preserveDrawingBuffer allocation.
-    return new Promise<Blob>((resolve, reject) => {
-      try {
-        canvas.toBlob(
-          (blob) => (blob ? resolve(blob) : reject(new Error('Canvas PNG encoding failed.'))),
-          'image/png',
-        );
-      } catch (error) {
-        reject(error);
+    try {
+      this.cancelRender();
+      this.editController?.setHelpersVisible(false);
+      for (const helpers of this.selectionHelpers.values())
+        helpers.forEach((helper) => {
+          helper.visible = false;
+        });
+      if (!this.renderNow() || !canvas)
+        throw new Error('The native viewport could not render a PNG.');
+      // Read during the render task. Encoding must still belong to this canonical/runtime epoch.
+      return await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (
+            generation !== this.runtimeGeneration ||
+            viewVersion !== this.captureVersion ||
+            canvas !== this.element ||
+            !this.canRender() ||
+            projectId !== this.snapshot?.id ||
+            revision !== this.snapshot?.revision ||
+            (guard && !guard.isCurrent())
+          ) {
+            reject(new Error('PNG capture became stale during encoding.'));
+          } else if (blob) resolve(blob);
+          else reject(new Error('Canvas PNG encoding failed.'));
+        }, 'image/png');
+      });
+    } finally {
+      guard?.release();
+      if (generation === this.runtimeGeneration) {
+        this.editController?.setHelpersVisible(true);
+        for (const helpers of this.selectionHelpers.values())
+          helpers.forEach((helper) => {
+            helper.visible = true;
+          });
+        if (this.editBinding) this.requestRender();
       }
-    });
+    }
   }
 
   dispose(): void {
     if (this.disposed) return;
+    this.editUnsubscribe?.();
+    this.editUnsubscribe = null;
     this.disposed = true;
     this.releaseRuntime();
+    if (this.editBinding) this.syncEditingBlocks(this.editBinding, true);
+    this.editBinding = null;
     this.observer?.disconnect();
     this.observer = null;
     this.cleanup.splice(0).forEach((remove) => remove());
@@ -952,6 +1213,12 @@ export class NativeViewport {
       return failure(
         'GPU pause/resume requires the same persisted, current, and displayed revision.',
       );
+    if (
+      this.editBinding &&
+      (this.editBinding.state.projectId !== this.snapshot.id ||
+        this.editBinding.state.revision !== this.snapshot.revision)
+    )
+      return failure('GPU pause/resume requires the current canonical session revision.');
     if (contract.sourcesComplete !== true)
       return failure('Complete reconstruction sources must be confirmed before GPU pause/resume.');
     return { ok: true };
@@ -979,10 +1246,12 @@ export class NativeViewport {
     if (this.renderer) return true;
     const canvas = this.document.createElement('canvas');
     canvas.setAttribute('aria-label', 'Native 3D evaluation viewport');
+    canvas.tabIndex = 0;
     canvas.style.width = '100%';
     canvas.style.height = '100%';
     canvas.style.display = 'block';
     this.element = canvas;
+    this.runtimeGeneration++;
     this.host.appendChild(canvas);
     try {
       const context = canvas.getContext('webgl2', { antialias: true });
@@ -1105,20 +1374,38 @@ export class NativeViewport {
     this.requestRender();
   };
 
+  private syncEditingBlocks(binding: NativeEditBinding, clear = false): void {
+    binding.setBlocked('renderer-viewport-hidden', !clear && (this.hidden || this.documentHidden));
+    binding.setBlocked('renderer-document-frozen', !clear && this.frozen);
+    binding.setBlocked('renderer-page-hidden', !clear && this.pageHidden);
+  }
+
   private syncActivity(): void {
+    if (this.editBinding) this.syncEditingBlocks(this.editBinding);
     if (this.canRender() && this.element) {
-      if (!this.controls) {
-        this.controls = this.dependencies.createControls(this.camera, this.element);
-        this.controls.enableDamping = false;
-        this.controls.autoRotate = false;
-        this.controls.target.copy(this.target);
-        this.controls.update();
-        this.controls.addEventListener('change', this.onControlsChange);
-        this.listenerCount++;
+      try {
+        if (!this.controls) {
+          this.controls = this.dependencies.createControls(this.camera, this.element);
+          this.controls.enableDamping = false;
+          this.controls.autoRotate = false;
+          this.controls.target.copy(this.target);
+          this.controls.update();
+          this.controls.addEventListener('change', this.onControlsChange);
+          this.controlsListening = true;
+          this.listenerCount++;
+        }
+        this.ensureEditing();
+        this.requestRender();
+      } catch (error) {
+        this.fault = {
+          state: 'error',
+          reason: `Native controls construction failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+        };
+        this.releaseRuntime();
       }
-      this.requestRender();
     } else {
       this.cancelRender();
+      this.editBinding?.cancel(`viewport ${this.status.state}`);
       this.releaseControls();
     }
     this.publish();
@@ -1226,11 +1513,15 @@ export class NativeViewport {
   }
 
   private releaseControls(): void {
+    this.releaseEditing();
     if (this.controls) {
       this.target.copy(this.controls.target);
       this.controls.enabled = false;
-      this.controls.removeEventListener('change', this.onControlsChange);
-      this.listenerCount--;
+      if (this.controlsListening) {
+        this.controls.removeEventListener('change', this.onControlsChange);
+        this.listenerCount--;
+        this.controlsListening = false;
+      }
       this.controls.dispose();
       this.controls = null;
     }
@@ -1239,6 +1530,8 @@ export class NativeViewport {
     this.pointers.clear();
   }
   private releaseGraph(): void {
+    this.releaseEditing();
+    this.clearSelection();
     this.releaseInspection();
     if (!this.graph) return;
     this.disposedGeometries += this.graph.geometries.length;
@@ -1247,6 +1540,7 @@ export class NativeViewport {
     this.graph = null;
   }
   private releaseRuntime(): void {
+    this.runtimeGeneration++;
     this.cancelRender();
     this.releaseControls();
     this.releaseGraph();

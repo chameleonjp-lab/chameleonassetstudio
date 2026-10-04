@@ -5,6 +5,7 @@
   border-radius: 0.5rem;
   background: #fff;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 .native-authoring fieldset {
   border: 0;
@@ -32,6 +33,7 @@
 .native-authoring input,
 .native-authoring select {
   display: block;
+  box-sizing: border-box;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -61,10 +63,10 @@
   gap: 0.5rem;
 }
 .native-authoring-check input {
-  width: 24px;
-  min-width: 24px;
+  width: 44px;
+  min-width: 44px;
 }
-.native-authoring select:focus-visible {
+.native-authoring :is(input, select, button, summary):focus-visible {
   outline: 3px solid #b45309;
   outline-offset: 3px;
 }

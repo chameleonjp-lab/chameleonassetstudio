@@ -17,6 +17,7 @@ import './editor3d.css';
 import type { NativeViewportFactory } from './NativeViewportPanel';
 import { NativeAuthoringPanel } from './NativeAuthoringPanel';
 import { NativeAssemblyControls } from './NativeAssemblyControls';
+import { NativeTransformControls } from './NativeTransformControls';
 import type { Project3D } from '../../core3d/model/project';
 
 const NativeViewportPanel = lazy(() =>
@@ -293,9 +294,53 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
     titleRef.current?.focus();
   }, [session]);
 
+  useEffect(() => {
+    if (!session) return;
+    const binding = session.edit;
+    let revision = binding.state.revision;
+    let readOnly = binding.state.context.readOnly;
+    const unsubscribe = binding.subscribe(() => {
+      const next = binding.state;
+      // Preview samples reach the renderer directly; do not rebuild heavy form lists per sample.
+      if (next.revision === revision && next.context.readOnly === readOnly) return;
+      revision = next.revision;
+      readOnly = next.context.readOnly;
+      redraw();
+    });
+    const visibility = () => binding.setBlocked('document-hidden', document.hidden);
+    const freeze = () => binding.setBlocked('document-frozen', true);
+    const resume = () => binding.setBlocked('document-frozen', false);
+    const pageHide = () => binding.setBlocked('page-hidden', true);
+    const pageShow = () => {
+      binding.setBlocked('page-hidden', false);
+      visibility();
+    };
+    visibility();
+    document.addEventListener('visibilitychange', visibility);
+    document.addEventListener('freeze', freeze);
+    document.addEventListener('resume', resume);
+    window.addEventListener('pagehide', pageHide);
+    window.addEventListener('pageshow', pageShow);
+    return () => {
+      unsubscribe();
+      document.removeEventListener('visibilitychange', visibility);
+      document.removeEventListener('freeze', freeze);
+      document.removeEventListener('resume', resume);
+      window.removeEventListener('pagehide', pageHide);
+      window.removeEventListener('pageshow', pageShow);
+      binding.cancel('編集画面が切り替わりました。');
+    };
+  }, [session]);
+
+  useLayoutEffect(() => {
+    session?.edit.setBlocked('shell-operation', busy);
+  }, [session, busy]);
+
   async function run(operation: () => Promise<void>) {
     if (busyRef.current) return;
+    const editing = sessionRef.current?.edit;
     busyRef.current = true;
+    editing?.setBlocked('shell-operation', true);
     setBusy(true);
     setError('');
     setNotice('');
@@ -304,6 +349,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
     } catch (cause) {
       if (mounted.current) setError(describeError(cause));
     } finally {
+      editing?.setBlocked('shell-operation', false);
       busyRef.current = false;
       if (mounted.current) {
         setBusy(false);
@@ -401,7 +447,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
           <span className="editor3d-badge">3D制作は準備中</span>
           <h2 id="editor3d-preparation">まずは、プロジェクトの保存と再開から</h2>
           <p>
-            基本形の作成、数値による頂点・面・材質の編集、3D表示とカメラ操作、PNG画像の保存、自動保存、バックアップとコピー復元を利用できます。リグ・アニメーション編集、texture制作、GLBの入出力は準備中です。
+            基本形の作成、部品の選択と移動・回転・拡縮、数値による頂点・面・材質の編集、3D表示とカメラ操作、PNG画像の保存、自動保存、バックアップとコピー復元を利用できます。リグ・アニメーション編集、texture制作、GLBの入出力は準備中です。
           </p>
           <p>
             作品はこのブラウザー内に保存します。大切な内容は .cas3dproj
@@ -648,6 +694,8 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                       onClick={() =>
                         edit(() => {
                           session.addBox();
+                          const added = session.project.nodes.at(-1);
+                          if (added) session.edit.setSelection([added.id], added.id);
                           setPreviewProjectId(project.id);
                         })
                       }
@@ -657,22 +705,32 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                     <button
                       type="button"
                       disabled={busy || previewProjectId === project.id}
-                      onClick={() => setPreviewProjectId(project.id)}
+                      onClick={() => {
+                        session.edit.cancel('3D表示を開くため、変形プレビューを取り消しました。');
+                        setPreviewProjectId(project.id);
+                      }}
                     >
                       3D表示を開く
                     </button>
                   </div>
+                  <NativeTransformControls
+                    key={`transform-${project.id}`}
+                    edit={session.edit}
+                    disabled={busy || state.readOnly}
+                  />
                   <NativeAuthoringPanel
                     key={`authoring-${project.id}`}
                     project={project}
                     disabled={busy || state.readOnly}
                     execute={executeAuthoring}
+                    edit={session.edit}
                   />
                   <NativeAssemblyControls
                     key={`assembly-${project.id}`}
                     project={project}
                     disabled={busy || state.readOnly}
                     execute={executeAuthoring}
+                    edit={session.edit}
                   />
                   {previewProjectId === project.id && (
                     <ViewportLoadBoundary
@@ -681,6 +739,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                         if (busyRef.current)
                           throw new Error('別の操作が完了するまで待ってください。');
                         busyRef.current = true;
+                        session.edit.setBlocked('shell-operation', true);
                         setBusy(true);
                         try {
                           await session.save();
@@ -688,6 +747,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                           await session.close();
                           window.location.reload();
                         } catch (error) {
+                          session.edit.setBlocked('shell-operation', false);
                           busyRef.current = false;
                           setBusy(false);
                           throw error;
@@ -703,6 +763,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                       >
                         <NativeViewportPanel
                           project={project}
+                          editing={session.edit}
                           factory={createNativeViewport}
                           onSave={() => session.save()}
                           getSuspensionContract={() => ({

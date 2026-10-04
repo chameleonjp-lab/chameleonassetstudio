@@ -1,5 +1,7 @@
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { Project3D, Vec3 } from '../../core3d/model/project';
+import type { NativeEditBinding } from '../../core3d/ports/editPort';
+import { useNativeObjectSelection } from './useNativeEditState';
 import {
   addPrimitive,
   PRIMITIVE_LIMITS,
@@ -62,15 +64,24 @@ export function NativeAuthoringPanel({
   project,
   disabled,
   execute,
+  edit,
 }: {
   project: Project3D;
   disabled: boolean;
   execute: (operation: (candidate: Project3D) => void) => void;
+  /** Product panels share the session binding; omitted only by standalone fixtures. */
+  edit?: NativeEditBinding;
 }) {
   const [kind, setKind] = useState<PrimitiveKind>('box');
-  const [selected, setSelected] = useState('');
+  const {
+    activeId: selected,
+    selectedIds,
+    setActive,
+    setSelection,
+  } = useNativeObjectSelection(project, edit);
   const [mode, setMode] = useState<'vertex' | 'edge' | 'face'>('vertex');
   const [entity, setEntity] = useState('');
+  const [entityTarget, setEntityTarget] = useState('');
   const [materialId, setMaterialId] = useState('');
   const [draft, setDraft] = useState(initial);
   const [name, setName] = useState('');
@@ -83,6 +94,16 @@ export function NativeAuthoringPanel({
   const descriptionId = useId();
   const node = project.nodes.find((n) => n.id === selected);
   const mesh = project.meshes.find((m) => m.id === node?.meshId);
+  const targetKey = `${project.id}:${node?.id ?? ''}:${mesh?.id ?? ''}`;
+  useEffect(() => {
+    setEntity('');
+    setEntityTarget(targetKey);
+    setMaterialId('');
+    setLoadedNode('');
+    setLoadedMaterial('');
+    setCopyMaterial(false);
+    setNotice('');
+  }, [targetKey]);
   const edgeMap = new Map<string, string[]>();
   for (const face of mesh?.faces ?? [])
     face.vertexIds.forEach((id, index) => {
@@ -95,17 +116,27 @@ export function NativeAuthoringPanel({
       : mode === 'face'
         ? (mesh?.faces.map((f) => ({ id: f.id, vertices: f.vertexIds })) ?? [])
         : [...edgeMap].map(([id, vertices]) => ({ id, vertices }));
-  const chosen = entities.find((e) => e.id === entity);
+  const chosen = entityTarget === targetKey ? entities.find((e) => e.id === entity) : undefined;
   const material = project.materials.find((m) => m.id === materialId);
   const materialUsedHere = !!mesh?.faces.some((face) => face.materialId === materialId);
-  const nodeReady = !!node && loadedNode === `${node.id}:${project.revision}`;
-  const materialReady = !!material && loadedMaterial === `${material.id}:${project.revision}`;
+  const nodeReady = !!node && loadedNode === `${project.id}:${node.id}:${project.revision}`;
+  const materialReady =
+    !!material && loadedMaterial === `${project.id}:${material.id}:${project.revision}`;
   const uses = project.nodes.filter((n) =>
     project.meshes.find((m) => m.id === n.meshId)?.faces.some((f) => f.materialId === materialId),
   );
   function act(operation: () => void) {
     if (disabled || composing.current) return;
     try {
+      if (edit) {
+        const current = edit.state;
+        if (
+          current.projectId !== project.id ||
+          current.revision !== project.revision ||
+          current.context.activeId !== selected
+        )
+          throw new Error('制作対象や作品が変わりました。現在の対象を確認し直してください。');
+      }
       operation();
       setError('');
       setNotice('適用しました。元に戻す操作で取り消せます。');
@@ -132,7 +163,7 @@ export function NativeAuthoringPanel({
   function readNode() {
     if (!node) return;
     const rotation = rotationToDegrees(node.transform.rotation);
-    setLoadedNode(`${node.id}:${project.revision}`);
+    setLoadedNode(`${project.id}:${node.id}:${project.revision}`);
     setName(node.name);
     setDraft((d) => ({
       ...d,
@@ -149,7 +180,7 @@ export function NativeAuthoringPanel({
   }
   function readMaterial() {
     if (!material) return;
-    setLoadedMaterial(`${material.id}:${project.revision}`);
+    setLoadedMaterial(`${project.id}:${material.id}:${project.revision}`);
     setDraft((d) => ({
       ...d,
       r: String(material.baseColor[0]),
@@ -173,8 +204,15 @@ export function NativeAuthoringPanel({
     >
       <h3>形と材質を作る</h3>
       <p>
-        数値を入力して「適用」すると一回の編集になります。カメラ観察用の選択とは別の制作対象です。
+        数値を入力して「適用」すると一回の編集になります。画面・組立と同じ選択を使います。
+        複数選択中も、部品・頂点・辺・面の操作はアクティブな1個が対象です。
+        材質変更の影響範囲は材質欄で確認してください。
       </p>
+      {selectedIds.length > 1 && (
+        <p>
+          選択中 {selectedIds.length} 個。制作対象は {node?.name ?? 'なし'} です。
+        </p>
+      )}
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
       <fieldset disabled={disabled}>
@@ -220,7 +258,7 @@ export function NativeAuthoringPanel({
                     segments: numeric(draft, 'segments'),
                   });
                 });
-                setSelected(id);
+                setSelection([id], id);
                 setEntity('');
                 setMaterialId('');
               })
@@ -235,7 +273,7 @@ export function NativeAuthoringPanel({
             value={node?.id ?? ''}
             aria-describedby={`${descriptionId}-node`}
             onChange={(e) => {
-              setSelected(e.target.value);
+              setActive(e.target.value);
               setEntity('');
               setMaterialId('');
               setNotice('');
@@ -251,7 +289,7 @@ export function NativeAuthoringPanel({
         </label>
         {node ? (
           <p id={`${descriptionId}-node`}>
-            制作対象: {node.name} / {node.id}
+            制作対象（アクティブ）: {node.name} / {node.id}
           </p>
         ) : (
           <p id={`${descriptionId}-node`}>
@@ -261,7 +299,8 @@ export function NativeAuthoringPanel({
         <details>
           <summary>部品の名前・位置・複製</summary>
           <p>
-            親に対するlocal座標です。回転は度数（local XYZ順）。負の倍率は反転、0は指定できません。
+            現在値を置き換える絶対値です。親に対するlocal座標で、選択全体の差分変形とは別の操作です。
+            回転は度数（local XYZ順）。負の倍率は反転、0は指定できません。
           </p>
           <button type="button" disabled={!node} onClick={readNode}>
             部品の現在値を読む
@@ -319,7 +358,7 @@ export function NativeAuthoringPanel({
                 execute((p) => {
                   id = cloneNode(p, node!.id, crypto.randomUUID());
                 });
-                setSelected(id);
+                setSelection([id], id);
                 setEntity('');
                 setMaterialId('');
               })
@@ -350,7 +389,13 @@ export function NativeAuthoringPanel({
           </label>
           <label>
             制作要素
-            <select value={chosen?.id ?? ''} onChange={(e) => setEntity(e.target.value)}>
+            <select
+              value={chosen?.id ?? ''}
+              onChange={(e) => {
+                setEntityTarget(targetKey);
+                setEntity(e.target.value);
+              }}
+            >
               <option value="">選択してください</option>
               {entities.map((e, i) => (
                 <option key={e.id} value={e.id}>

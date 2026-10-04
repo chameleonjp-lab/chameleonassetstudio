@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { getEventListeners } from 'node:events';
 import {
   AmbientLight,
   Box3,
@@ -14,6 +15,9 @@ import {
   Vector3,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { ProjectHistory } from '../../core3d/commands/history';
+import { setNodeTransform } from '../../core3d/commands/objectEditing';
+import { TransformTransaction } from '../../features/editor3d/transformTransaction';
 import type { NativeCameraState, NativeViewOptions } from '../../core3d/ports/renderPort';
 import { smallProject } from '../../core3d/fixtures/project';
 import { cloneProject, identityTransform, type Project3D } from '../../core3d/model/project';
@@ -233,6 +237,7 @@ class CanvasDouble extends EventTarget {
   context = { getExtension: vi.fn(() => ({ loseContext: this.loseContext })) };
   captured = new Set<number>();
   getRootNode = () => this.ownerDocument;
+  getBoundingClientRect = () => ({ left: 0, top: 0, width: 640, height: 480 });
   setPointerCapture = (id: number) => this.captured.add(id);
   setAttribute = vi.fn();
   getContext = vi.fn(() => (this.available ? this.context : null));
@@ -1607,5 +1612,395 @@ describe('native lifecycle ownership (injected renderer, not GPU evidence)', () 
       renderers: 1,
     });
     viewport.dispose();
+  });
+});
+
+function editingHarness() {
+  const harness = lifecycleHarness();
+  const history = new ProjectHistory(nativeBox(), undefined, true);
+  let readOnly = false;
+  const binding = new TransformTransaction({
+    getProject: () => history.project,
+    getIdentity: () => ({ id: history.project.id, revision: history.revision }),
+    isReadOnly: () => readOnly,
+    commit: (updates, expected) => {
+      expect(expected).toEqual({ id: history.project.id, revision: history.revision });
+      history.execute((project) =>
+        updates.forEach(({ id, transform }) => setNodeTransform(project, id, transform)),
+      );
+    },
+  });
+  harness.viewport.setProject(history.project);
+  harness.viewport.bindEditing(binding);
+  binding.setSelection(['box-node']);
+  harness.flush();
+  const scene = () => harness.rendererInstances.at(-1)!.render.mock.calls.at(-1)![0] as Scene;
+  const object = () => scene().getObjectByName('Box')!;
+  const start = () => {
+    const result = binding.begin();
+    if (!result.ok) throw new Error(result.reason);
+    return result.token;
+  };
+  const readonly = () => {
+    readOnly = true;
+    binding.reconcile('read only');
+  };
+  return { ...harness, history, binding, scene, object, start, readonly };
+}
+
+describe('native editing integration (real helpers, injected GPU boundary)', () => {
+  it('applies hundreds of same-revision previews to the canonical ID map without graph, controls, or helper reconstruction', () => {
+    const f = editingHarness();
+    const before = f.history.project;
+    const object = f.object(),
+      controls = f.controlInstances[0];
+    const helpers = f.scene().children.filter((item) => /selection/.test(item.name));
+    const baseline = f.viewport.diagnostics;
+    const token = f.start();
+    for (let i = 1; i <= 200; i++) expect(f.binding.preview(token, [i / 10, 0, 0]).ok).toBe(true);
+    expect(f.object()).toBe(object);
+    expect(object.position.x).toBe(20);
+    expect(f.history.project).toEqual(before);
+    expect(f.controlInstances).toHaveLength(1);
+    expect(controls.dispose).not.toHaveBeenCalled();
+    expect(f.viewport.diagnostics).toMatchObject({
+      rebuilds: baseline.rebuilds,
+      runtimeGeneration: baseline.runtimeGeneration,
+      previewApplied: true,
+      selectionHelpers: 2,
+    });
+    expect(f.scene().children.filter((item) => /selection/.test(item.name))).toEqual(helpers);
+    expect(f.pending.size).toBe(1);
+    f.binding.cancel('test cancel');
+    expect(object.position.x).toBe(0);
+    expect(f.viewport.diagnostics.previewApplied).toBe(false);
+    f.viewport.dispose();
+  });
+
+  it('restores canonical transforms on invalid final samples and commits through the session once', () => {
+    const f = editingHarness(),
+      token = f.start();
+    f.binding.preview(token, [2, 0, 0]);
+    expect(f.object().position.x).toBe(2);
+    f.binding.preview(token, [NaN, 0, 0]);
+    expect(f.object().position.x).toBe(0);
+    expect(f.binding.commit(token).ok).toBe(false);
+    expect(f.history.revision).toBe(0);
+    const next = f.start();
+    f.binding.preview(next, [3, 0, 0]);
+    expect(f.binding.commit(next)).toEqual({ ok: true, changed: true });
+    f.viewport.setProject(f.history.project);
+    f.flush();
+    expect(f.history.revision).toBe(1);
+    expect(f.object().position.x).toBe(3);
+    expect(f.viewport.diagnostics.editing?.active).toBe(false);
+    f.history.undo();
+    f.binding.reconcile('undo');
+    f.viewport.setProject(f.history.project);
+    f.flush();
+    expect(f.object().position.x).toBe(0);
+    f.viewport.dispose();
+  });
+
+  it.each(['project', 'revision', 'generation', 'sequence'] as const)(
+    'rejects stale %s overlay metadata',
+    (kind) => {
+      const f = editingHarness(),
+        token = f.start();
+      f.binding.preview(token, [2, 0, 0]);
+      const valid = f.binding.state;
+      const bad = structuredClone(valid);
+      if (kind === 'project') bad.preview!.projectId = 'foreign';
+      if (kind === 'revision') bad.preview!.baseRevision++;
+      if (kind === 'generation') bad.preview!.generation++;
+      if (kind === 'sequence') bad.preview!.sequence--;
+      vi.spyOn(f.binding, 'state', 'get').mockReturnValue(bad);
+      // Rebinding applies this detached payload without replacing the canonical graph.
+      f.viewport.bindEditing(null);
+      f.viewport.bindEditing(f.binding);
+      expect(f.object().position.x).toBe(0);
+      expect(f.viewport.diagnostics.previewApplied).toBe(false);
+      vi.restoreAllMocks();
+      f.viewport.dispose();
+    },
+  );
+
+  it.each(['projection', 'context', 'suspend', 'hidden', 'frozen'] as const)(
+    'cancels and rebinds on %s while retaining selection and the saved graph',
+    (kind) => {
+      const f = editingHarness(),
+        token = f.start();
+      f.binding.preview(token, [2, 0, 0]);
+      const old = f.viewport.diagnostics.editing!;
+      const oldCanvas = f.viewport.canvas;
+      if (kind === 'projection')
+        f.viewport.setCamera({ ...f.viewport.getCamera(), projection: 'orthographic' });
+      if (kind === 'context') {
+        f.allCanvases[0].dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+        expect(f.binding.state.active).toBe(false);
+        f.allCanvases[0].dispatchEvent(new Event('webglcontextrestored'));
+      }
+      if (kind === 'suspend') {
+        expect(
+          f.viewport.suspend({ persistedRevision: 0, currentRevision: 0, sourcesComplete: true })
+            .ok,
+        ).toBe(true);
+        expect(f.binding.state.blocked).toEqual([]);
+        f.viewport.resume();
+      }
+      if (kind === 'hidden') {
+        f.viewport.setHidden(true);
+        f.viewport.setHidden(false);
+      }
+      if (kind === 'frozen') {
+        f.viewport.setFrozen(true);
+        f.viewport.setFrozen(false);
+      }
+      f.flush();
+      expect(f.binding.state.active).toBe(false);
+      expect(f.binding.state.context.selection).toEqual(['box-node']);
+      expect(f.viewport.diagnostics).toMatchObject({
+        state: 'active',
+        previewApplied: false,
+        selectionHelpers: 2,
+      });
+      expect(f.viewport.diagnostics.editing).toMatchObject({
+        listeners: old.listeners,
+        helperGeometries: old.helperGeometries,
+        captures: 0,
+      });
+      expect(f.object().position.x).toBe(0);
+      if (kind === 'context' || kind === 'suspend') expect(f.viewport.canvas).not.toBe(oldCanvas);
+      f.viewport.dispose();
+    },
+  );
+
+  it('keeps inspection and selection in read-only mode while session begin and captured old tokens reject', () => {
+    const f = editingHarness(),
+      token = f.start();
+    f.binding.preview(token, [2, 0, 0]);
+    f.readonly();
+    expect(f.object().position.x).toBe(0);
+    expect(f.binding.begin().ok).toBe(false);
+    expect(f.binding.preview(token, [3, 0, 0]).ok).toBe(false);
+    expect(f.binding.commit(token).ok).toBe(false);
+    expect(f.viewport.cameraAction('orbit-right').ok).toBe(true);
+    expect(f.viewport.diagnostics.selectionHelpers).toBe(2);
+    expect(f.history.revision).toBe(0);
+    f.viewport.dispose();
+  });
+
+  it('omits editing helpers from PNG but preserves requested inspection helpers', async () => {
+    const f = editingHarness();
+    f.viewport.setViewOptions({
+      ...f.viewport.getViewOptions(),
+      grid: true,
+      axes: true,
+      bounds: true,
+    });
+    f.rendererInstances[0].render.mockImplementation((scene: Scene) => {
+      if (!f.binding.state.blocked.includes('PNG capture')) return;
+      for (const child of scene.children) {
+        if (child.name.includes('selection') || child.name === 'Transform gizmo')
+          expect(child.visible).toBe(false);
+        if (child.name.startsWith('Inspection')) expect(child.visible).toBe(true);
+      }
+    });
+    await expect(f.viewport.capturePng()).resolves.toBeInstanceOf(Blob);
+    expect(f.binding.state.blocked).toEqual([]);
+    expect(
+      f
+        .scene()
+        .children.filter((item) => item.name.includes('selection'))
+        .every((item) => item.visible),
+    ).toBe(true);
+    const token = f.start();
+    f.binding.preview(token, [1, 0, 0]);
+    await expect(f.viewport.capturePng()).rejects.toThrow();
+    expect(f.binding.state.active).toBe(true);
+    f.viewport.dispose();
+  });
+
+  it('does not resurrect a gizmo after read-only or empty-selection PNG encoding', async () => {
+    const f = editingHarness();
+    const gizmo = () => f.scene().getObjectByName('Transform gizmo')!;
+    f.binding.setSelection([]);
+    expect(gizmo().visible).toBe(false);
+    await f.viewport.capturePng();
+    expect(gizmo().visible).toBe(false);
+    f.binding.setSelection(['box-node']);
+    f.readonly();
+    await f.viewport.capturePng();
+    expect(gizmo().visible).toBe(false);
+    expect(f.viewport.cameraAction('orbit-left').ok).toBe(true);
+    f.viewport.dispose();
+  });
+
+  it.each([
+    'selection',
+    'canonical',
+    'runtime',
+    'hidden',
+    'camera',
+    'inspection',
+    'resize',
+  ] as const)(
+    'rejects delayed PNG encoding after %s changes and releases the capture block',
+    async (kind) => {
+      const f = editingHarness();
+      let encode: BlobCallback | undefined;
+      f.allCanvases[0].toBlob.mockImplementation((callback) => {
+        encode = callback;
+      });
+      const result = f.viewport.capturePng();
+      const rejected = expect(result).rejects.toThrow('stale');
+      expect(f.binding.begin().ok).toBe(false);
+      if (kind === 'selection') f.binding.setSelection([]);
+      if (kind === 'canonical') {
+        f.history.execute((project) => {
+          project.name = 'Edited';
+        });
+        f.binding.reconcile();
+      }
+      if (kind === 'runtime') f.viewport.setProject(f.history.project);
+      if (kind === 'hidden') f.viewport.setHidden(true);
+      if (kind === 'camera')
+        f.viewport.setCamera({ ...f.viewport.getCamera(), projection: 'orthographic' });
+      if (kind === 'inspection')
+        f.viewport.setViewOptions({ ...f.viewport.getViewOptions(), grid: true });
+      if (kind === 'resize') f.viewport.resize(400, 600);
+      encode!(new Blob(['png']));
+      await rejected;
+      expect(f.binding.state.blocked).not.toContain('PNG capture');
+      f.viewport.dispose();
+    },
+  );
+
+  it('disposes selection geometry/material exactly once and distinguishes active multi-selection', () => {
+    const f = editingHarness();
+    f.history.execute((project) =>
+      project.nodes.push({ ...structuredClone(project.nodes[0]), id: 'second', name: 'Second' }),
+    );
+    f.binding.reconcile();
+    f.viewport.setProject(f.history.project);
+    f.binding.setSelection(['box-node', 'second'], 'second');
+    f.flush();
+    const helpers = f
+      .scene()
+      .children.filter((item) => /^(Active object selection|Selected object)$/.test(item.name));
+    expect(helpers.map((helper) => helper.name).sort()).toEqual([
+      'Active object selection',
+      'Active object selection',
+      'Selected object',
+    ]);
+    const dispose = helpers.flatMap((helper) => {
+      const drawable = helper as Mesh;
+      const materials = Array.isArray(drawable.material) ? drawable.material : [drawable.material];
+      return [
+        vi.spyOn(drawable.geometry, 'dispose'),
+        ...materials.map((material) => vi.spyOn(material, 'dispose')),
+      ];
+    });
+    f.viewport.bindEditing(null);
+    f.viewport.dispose();
+    for (const spy of dispose) expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('cleans partial edit-controller construction and retains the canonical rescue data', () => {
+    const f = editingHarness();
+    f.viewport.bindEditing(null);
+    const original = f.history.project;
+    const subscribe = f.binding.subscribe.bind(f.binding);
+    vi.spyOn(f.binding, 'subscribe')
+      .mockImplementationOnce(subscribe)
+      .mockImplementationOnce(() => {
+        throw new Error('injected subscribe failure');
+      });
+    f.viewport.bindEditing(f.binding);
+    expect(f.viewport.status).toMatchObject({
+      state: 'error',
+      reason: expect.stringContaining('injected subscribe failure'),
+    });
+    expect(f.viewport.diagnostics).toMatchObject({
+      editing: null,
+      selectionHelpers: 0,
+      contexts: 0,
+      canvases: 0,
+      renderers: 0,
+      controls: 0,
+      pendingFrames: 0,
+    });
+    expect(getEventListeners(f.allCanvases[0], 'pointerdown')).toHaveLength(0);
+    expect(f.history.project).toEqual(original);
+    f.viewport.dispose();
+  });
+
+  it('refuses pause and PNG when the displayed revision trails a newly committed session', async () => {
+    const f = editingHarness(),
+      token = f.start();
+    f.binding.preview(token, [1, 0, 0]);
+    f.binding.commit(token);
+    expect(
+      f.viewport.suspend({ persistedRevision: 0, currentRevision: 0, sourcesComplete: true }).ok,
+    ).toBe(false);
+    await expect(f.viewport.capturePng()).rejects.toThrow('displayed canonical revision');
+    expect(f.viewport.status.state).toBe('active');
+    f.viewport.dispose();
+  });
+
+  it('numeric transformations remain available without a renderer and during GPU suspension', () => {
+    const f = editingHarness();
+    f.viewport.suspend({ persistedRevision: 0, currentRevision: 0, sourcesComplete: true });
+    const token = f.start();
+    expect(f.binding.preview(token, [2, 0, 0]).ok).toBe(true);
+    expect(f.binding.commit(token)).toEqual({ ok: true, changed: true });
+    f.viewport.setProject(f.history.project);
+    expect(
+      f.viewport.resume({ persistedRevision: 1, currentRevision: 1, sourcesComplete: true }).ok,
+    ).toBe(true);
+    f.flush();
+    expect(f.object().position.x).toBe(2);
+    f.viewport.dispose();
+  });
+
+  it('repeated bindings and runtime release keep one subscription/controller and release every helper', () => {
+    const f = editingHarness();
+    const baseline = f.viewport.diagnostics.editing!;
+    const canvas = f.allCanvases[0];
+    const actualListeners = getEventListeners(canvas, 'pointerdown').length;
+    for (let i = 0; i < 12; i++) {
+      f.viewport.bindEditing(null);
+      expect(f.viewport.diagnostics).toMatchObject({
+        editing: null,
+        selectionHelpers: 0,
+        editSubscriptions: 0,
+      });
+      f.viewport.bindEditing(f.binding);
+      expect(f.viewport.diagnostics).toMatchObject({ editSubscriptions: 1, selectionHelpers: 2 });
+      expect(f.viewport.diagnostics.editing).toMatchObject({
+        helperGeometries: baseline.helperGeometries,
+        helperMaterials: baseline.helperMaterials,
+        listeners: baseline.listeners,
+      });
+      f.viewport.setProject(f.history.project);
+      f.flush();
+      expect(getEventListeners(canvas, 'pointerdown')).toHaveLength(actualListeners);
+    }
+    f.viewport.dispose();
+    expect(getEventListeners(canvas, 'pointerdown')).toHaveLength(0);
+    expect(f.viewport.diagnostics).toMatchObject({
+      editing: null,
+      editSubscriptions: 0,
+      selectionHelpers: 0,
+      geometries: 0,
+      materials: 0,
+      listeners: 0,
+      controls: 0,
+      pendingFrames: 0,
+      canvases: 0,
+    });
+    expect(f.pending.size).toBe(0);
+    expect(f.children).toHaveLength(0);
+    expect(f.binding.state.blocked).toEqual([]);
   });
 });

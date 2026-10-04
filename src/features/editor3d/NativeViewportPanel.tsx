@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { Project3D } from '../../core3d/model/project';
+import type { NativeEditBinding } from '../../core3d/ports/editPort';
 import './nativeViewportPanel.css';
 import { NativeInspectionControls } from './NativeInspectionControls';
 
@@ -33,6 +34,8 @@ export interface NativeViewportPanelProps {
   getSuspensionContract: () => NativeViewportSuspensionContract;
   /** Reject when saving fails; requesting autosave alone is not a successful save. */
   onSave: () => Promise<void>;
+  /** A view-only fixture may omit this; product editing must bind explicitly. */
+  editing?: NativeEditBinding;
 }
 
 type PanelStatus = NativeViewportStatus | { state: 'loading'; reason?: string };
@@ -43,6 +46,8 @@ type Instance = {
   revision: number | null;
   cancelled: boolean;
   busy: boolean;
+  editing: NativeEditBinding | null;
+  suspensionReason: string;
 };
 
 const statusText: Record<PanelStatus['state'], string> = {
@@ -149,7 +154,7 @@ function ViewportContent(props: NativeViewportPanelProps) {
 
   const updateProject = useCallback(
     (instance: Instance) => {
-      const current = latest.current.project;
+      const current = latest.current.editing?.getProject() ?? latest.current.project;
       if (!isCurrent(instance) || !instance.port || current.id !== instance.projectId) return;
       if (instance.revision === current.revision) return;
       const port = instance.port;
@@ -174,6 +179,33 @@ function ViewportContent(props: NativeViewportPanelProps) {
     [isCurrent],
   );
 
+  const bindEditing = useCallback(
+    (instance: Instance) => {
+      if (!isCurrent(instance) || !instance.port) return;
+      const next = latest.current.editing ?? null;
+      if (instance.editing === next) return;
+      const port = instance.port;
+      try {
+        instance.editing?.cancel('3D表示の編集接続が切り替わりました。');
+        if (next && !port.bindEditing)
+          throw new Error('この3D表示では編集操作を接続できません。数値操作と保存は利用できます。');
+        port.bindEditing?.(next);
+        instance.editing = next;
+      } catch (cause) {
+        instance.port = null;
+        instance.editing = null;
+        try {
+          port.dispose();
+        } catch {
+          // Keep the binding error and the independently owned canonical rescue data.
+        }
+        setStatus({ state: 'error', reason: errorText(cause) });
+        throw cause;
+      }
+    },
+    [isCurrent],
+  );
+
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
@@ -187,6 +219,8 @@ function ViewportContent(props: NativeViewportPanelProps) {
       revision: null,
       cancelled: false,
       busy: false,
+      editing: null,
+      suspensionReason: `viewport-suspension:${headingId}:${attempt}`,
     };
     instanceRef.current = instance;
     setStatus({ state: 'loading' });
@@ -208,6 +242,7 @@ function ViewportContent(props: NativeViewportPanelProps) {
         }
         instance.port = port;
         updateProject(instance);
+        bindEditing(instance);
       })
       .catch((cause: unknown) => {
         if (instance.cancelled) return;
@@ -225,6 +260,7 @@ function ViewportContent(props: NativeViewportPanelProps) {
       instance.cancelled = true;
       if (instanceRef.current === instance) instanceRef.current = null;
       try {
+        instance.editing?.cancel('3D表示を終了しました。');
         instance.port?.dispose();
       } catch {
         // Cleanup must not take down the shell's independently owned backup controls.
@@ -234,7 +270,22 @@ function ViewportContent(props: NativeViewportPanelProps) {
       }
     };
     // Latest committed project data is read after the factory resolves; object identity is irrelevant.
-  }, [factory, project.id, attempt, updateProject]);
+  }, [factory, project.id, attempt, updateProject, bindEditing, headingId]);
+
+  useLayoutEffect(() => {
+    const instance = instanceRef.current;
+    if (!instance?.port) return;
+    try {
+      updateProject(instance);
+      bindEditing(instance);
+    } catch (cause) {
+      setNotice({
+        error: true,
+        text: '3D表示の編集接続を更新できませんでした。',
+        detail: errorText(cause),
+      });
+    }
+  }, [props.editing, updateProject, bindEditing]);
 
   useEffect(() => {
     const instance = instanceRef.current;
@@ -287,14 +338,22 @@ function ViewportContent(props: NativeViewportPanelProps) {
   }
 
   async function pause(instance: Instance, port: NativeViewportPort) {
-    await latest.current.onSave();
-    if (!isCurrent(instance)) return;
-    updateProject(instance);
-    const contract = { ...latest.current.getSuspensionContract() };
-    const result = port.suspend(contract);
-    setStatus(port.status);
-    if (!result.ok) throw new Error(result.reason);
-    setNotice({ text: '保存済みの内容と復元に必要な素材を確認し、GPU表示を休止しました。' });
+    const editing = latest.current.editing;
+    editing?.setBlocked(instance.suspensionReason, true);
+    try {
+      await latest.current.onSave();
+      if (!isCurrent(instance)) return;
+      if (latest.current.editing !== editing || editing?.state.active)
+        throw new Error('保存中に編集対象が切り替わりました。もう一度休止してください。');
+      updateProject(instance);
+      const contract = { ...latest.current.getSuspensionContract() };
+      const result = port.suspend(contract);
+      setStatus(port.status);
+      if (!result.ok) throw new Error(result.reason);
+      setNotice({ text: '保存済みの内容と復元に必要な素材を確認し、GPU表示を休止しました。' });
+    } finally {
+      editing?.setBlocked(instance.suspensionReason, false);
+    }
   }
 
   async function resume(instance: Instance, port: NativeViewportPort) {
@@ -307,15 +366,22 @@ function ViewportContent(props: NativeViewportPanelProps) {
   }
 
   async function downloadPng(instance: Instance, port: NativeViewportPort) {
+    const editing = latest.current.editing;
+    if (editing?.state.active)
+      throw new Error('変形プレビューを確定するか取り消してからPNGを作成してください。');
     updateProject(instance);
-    const snapshot = latest.current.project;
+    const epoch = editing?.state.epoch;
+    const snapshot = editing?.getProject() ?? latest.current.project;
     if (instance.revision !== snapshot.revision || instance.projectId !== snapshot.id)
       throw new Error('最新の内容を表示できていません。表示の更新後にPNGを作成してください。');
     const blob = await port.capturePng();
     if (!isCurrent(instance)) return;
+    const current = latest.current.editing?.getProject() ?? latest.current.project;
     if (
-      latest.current.project.id !== snapshot.id ||
-      latest.current.project.revision !== snapshot.revision
+      current.id !== snapshot.id ||
+      current.revision !== snapshot.revision ||
+      latest.current.editing !== editing ||
+      (editing && (editing.state.epoch !== epoch || editing.state.active))
     )
       throw new Error('画像の作成中に内容が更新されました。もう一度PNGを作成してください。');
     const document = hostRef.current?.ownerDocument;
@@ -407,10 +473,12 @@ function ViewportContent(props: NativeViewportPanelProps) {
         ))}
       </div>
       <p id={guidanceId} className="native-viewport-guidance">
-        ドラッグ・1本指で回転、ホイール・2本指のピンチで拡大縮小、右ドラッグ・2本指の移動で平行移動します。
+        {props.editing &&
+          '部品をクリックして選択し、変形ハンドルで移動・回転・拡縮します。Shiftを押しながらのクリックで複数選択、Escapeで変形を取り消せます。ハンドル以外の'}
+        ドラッグ・1本指でカメラを回転、ホイール・2本指のピンチで拡大縮小、右ドラッグ・2本指の移動で平行移動します。
         Tabキーで操作ボタンへ移動し、Enter・スペースキーで回転・平行移動・拡大縮小できます。
         GPUの休止・再開には、現在の内容の保存が必要です。
-        PNGは背景付きの表示画像です。操作パネルや3Dの編集データは含みません。
+        PNGは背景付きの表示画像です。変形ハンドル・選択の強調表示・操作パネル・3Dの編集データは含みません。
       </p>
       <div
         ref={hostRef}
@@ -425,6 +493,7 @@ function ViewportContent(props: NativeViewportPanelProps) {
         project={project}
         disabled={busy || !active}
         run={runCamera}
+        edit={props.editing}
       />
       <div className={failed ? 'native-viewport-status is-error' : 'native-viewport-status'}>
         <p role={failed ? 'alert' : 'status'} aria-atomic="true">
