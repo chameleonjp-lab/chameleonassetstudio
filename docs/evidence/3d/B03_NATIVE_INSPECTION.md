@@ -73,3 +73,8 @@ labelの単一auto-gridをblockへ変更し、fieldsetの幅をborder-boxで明�
 native optionへ長いUUIDを直接入れず、一覧内で一意な連番と最大8 code pointの短い名前を表示する。選択値は完全なcanonical IDのまま、完全な名前/IDを折返し可能な説明文へ表示しaria-describedbyで関連付ける。ID前方だけの一致で別objectを選ぶことはしない。識別可能性を維持した幅制御候補として、最終WebKit実測で判定する。
 
 長い日本語名が同一の2つの自作native nodeをbackup復元し、別々の完全IDで選択・focusできること、375pxで横幅が収まることを追加受入に含める。
+
+
+head `8b797e3073af5ae6917ba4f48ecf952584452e80` で先行WebKit5件、Chromium306件、WebKit119件、本番28件が成功した。長い同名nodeを含む横幅ゼロと明暗両背景の線の視認性、復帰PNGの不変を確認した。
+
+後続H3は、追加した専用report/output directoryが未追跡変更となりsource SHAへ-dirtyが付くため拒否された。生成物2directoryだけをgit/format対象外へ追加し、任意の未追跡sourceやdirty SHAを許す変更はしない。H3の7〜40桁hex検証と全回帰を維持し、最終headで再確認する。
