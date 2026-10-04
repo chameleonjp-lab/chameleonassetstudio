@@ -15,6 +15,8 @@ import { BACKUP_LIMITS, ProjectSession, UnsavedProjectError } from './projectSes
 import './editor3d.css';
 import type { NativeViewportFactory } from './NativeViewportPanel';
 import { NativeAuthoringPanel } from './NativeAuthoringPanel';
+import { NativeAssemblyControls } from './NativeAssemblyControls';
+import type { Project3D } from '../../core3d/model/project';
 
 const NativeViewportPanel = lazy(() =>
   import('./NativeViewportPanel').then((module) => ({ default: module.NativeViewportPanel })),
@@ -341,6 +343,17 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
     redraw();
   }
 
+  function executeAuthoring(operation: (candidate: Project3D) => void) {
+    if (!session || !project || busyRef.current)
+      throw new Error('別の操作が完了するまで待ってください。');
+    session.executeAuthoring(operation, { id: project.id, revision: project.revision });
+    const updated = session.project;
+    if (updated.nodes.some((node) => node.meshId)) setPreviewProjectId(updated.id);
+    setError('');
+    setNotice('');
+    redraw();
+  }
+
   function navigate(event: MouseEvent<HTMLAnchorElement>) {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)
       return;
@@ -652,15 +665,13 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                     key={`authoring-${project.id}`}
                     project={project}
                     disabled={busy || state.readOnly}
-                    execute={(operation) => {
-                      if (busyRef.current)
-                        throw new Error('別の操作が完了するまで待ってください。');
-                      session.executeAuthoring(operation);
-                      setPreviewProjectId(project.id);
-                      setError('');
-                      setNotice('');
-                      redraw();
-                    }}
+                    execute={executeAuthoring}
+                  />
+                  <NativeAssemblyControls
+                    key={`assembly-${project.id}`}
+                    project={project}
+                    disabled={busy || state.readOnly}
+                    execute={executeAuthoring}
                   />
                   {previewProjectId === project.id && (
                     <ViewportLoadBoundary

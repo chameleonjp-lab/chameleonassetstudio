@@ -117,6 +117,14 @@ jobs:
       - run: npm run e2e
       - run: npm run e2e:webkit
       - run: npm run e2e:quality
+      - name: Upload native production visual evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-production-visuals-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results-quality/**/native-visual-*.png
+          if-no-files-found: error
+          retention-days: 14
       - name: Upload Playwright report and Group 14 evidence
         if: always()
         uses: actions/upload-artifact@v4

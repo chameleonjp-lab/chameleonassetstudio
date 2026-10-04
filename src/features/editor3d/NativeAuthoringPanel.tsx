@@ -19,6 +19,11 @@ import {
   rotationFromDegrees,
   rotationToDegrees,
 } from '../../core3d/commands/objectEditing';
+import {
+  addMaterial,
+  assignMaterial,
+  duplicateMaterial,
+} from '../../core3d/commands/materialEditing';
 import './nativeAuthoringPanel.css';
 
 type Draft = Record<string, string>;
@@ -91,9 +96,8 @@ export function NativeAuthoringPanel({
         ? (mesh?.faces.map((f) => ({ id: f.id, vertices: f.vertexIds })) ?? [])
         : [...edgeMap].map(([id, vertices]) => ({ id, vertices }));
   const chosen = entities.find((e) => e.id === entity);
-  const material = project.materials.find(
-    (m) => m.id === materialId && mesh?.faces.some((f) => f.materialId === m.id),
-  );
+  const material = project.materials.find((m) => m.id === materialId);
+  const materialUsedHere = !!mesh?.faces.some((face) => face.materialId === materialId);
   const nodeReady = !!node && loadedNode === `${node.id}:${project.revision}`;
   const materialReady = !!material && loadedMaterial === `${material.id}:${project.revision}`;
   const uses = project.nodes.filter((n) =>
@@ -454,15 +458,19 @@ export function NativeAuthoringPanel({
           <summary>材質の色・金属・粗さ</summary>
           <label>
             制作材質
-            <select value={material?.id ?? ''} onChange={(e) => setMaterialId(e.target.value)}>
+            <select
+              value={material?.id ?? ''}
+              onChange={(e) => {
+                setMaterialId(e.target.value);
+                setCopyMaterial(false);
+              }}
+            >
               <option value="">選択してください</option>
-              {project.materials
-                .filter((m) => mesh?.faces.some((f) => f.materialId === m.id))
-                .map((m, i) => (
-                  <option key={m.id} value={m.id}>
-                    材質 {i + 1}
-                  </option>
-                ))}
+              {project.materials.map((m, i) => (
+                <option key={m.id} value={m.id}>
+                  材質 {i + 1}
+                </option>
+              ))}
             </select>
           </label>
           {material && (
@@ -486,17 +494,88 @@ export function NativeAuthoringPanel({
             {field('metallic', '金属 metallic')}
             {field('roughness', '粗さ roughness')}
           </div>
+          <button
+            type="button"
+            onClick={() =>
+              act(() => {
+                let id = '';
+                execute((p) => {
+                  id = addMaterial(p, crypto.randomUUID(), {
+                    baseColor: ['r', 'g', 'b', 'a'].map((k) => numeric(draft, k)) as [
+                      number,
+                      number,
+                      number,
+                      number,
+                    ],
+                    metallic: numeric(draft, 'metallic'),
+                    roughness: numeric(draft, 'roughness'),
+                  });
+                });
+                setMaterialId(id);
+                setCopyMaterial(false);
+              })
+            }
+          >
+            入力した値で材質を新規作成
+          </button>
+          <button
+            type="button"
+            disabled={!material}
+            onClick={() =>
+              act(() => {
+                let id = '';
+                execute((p) => {
+                  id = duplicateMaterial(p, material!.id, crypto.randomUUID());
+                });
+                setMaterialId(id);
+                setCopyMaterial(false);
+              })
+            }
+          >
+            選択材質の保存値を複製
+          </button>
+          <p>
+            新規・複製した材質は未割当です。制作対象の面へ明示的に割り当てます。共有meshは先に部品を独立したコピーにしてください。
+          </p>
+          <button
+            type="button"
+            disabled={!material || !mesh?.faces.length}
+            onClick={() =>
+              act(() =>
+                execute((p) =>
+                  assignMaterial(
+                    p,
+                    mesh!.id,
+                    mesh!.faces.map((face) => face.id),
+                    material!.id,
+                  ),
+                ),
+              )
+            }
+          >
+            対象meshの全ての面へ材質を割当
+          </button>
+          <button
+            type="button"
+            disabled={!material || !mesh || mode !== 'face' || !chosen}
+            onClick={() =>
+              act(() => execute((p) => assignMaterial(p, mesh!.id, [chosen!.id], material!.id)))
+            }
+          >
+            選択面へ材質を割当
+          </button>
           <label className="native-authoring-check">
             <input
               type="checkbox"
               checked={copyMaterial}
+              disabled={!materialUsedHere}
               onChange={(e) => setCopyMaterial(e.target.checked)}
             />
             材質を複製し、このmeshだけに適用
           </label>
           <button
             type="button"
-            disabled={!materialReady || !mesh}
+            disabled={!materialReady || (copyMaterial && !materialUsedHere)}
             onClick={() =>
               act(() => {
                 execute((p) =>

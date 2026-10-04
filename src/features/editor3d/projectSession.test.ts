@@ -22,6 +22,21 @@ afterEach(() => {
 });
 
 describe('3D shell project sessions', () => {
+  it('rejects delayed authoring from an older rendered project before invoking the mutation', async () => {
+    const session = await ProjectSession.create(repository, 'author', 'Work');
+    const rendered = { id: session.project.id, revision: session.state.revision };
+    session.executeAuthoring((p) => addBox(p, 'first'), rendered);
+    const before = session.project;
+    const stale = vi.fn((p) => addBox(p, 'stale'));
+    expect(() => session.executeAuthoring(stale, rendered)).toThrow('作品が変わりました');
+    expect(stale).not.toHaveBeenCalled();
+    expect(session.project).toEqual(before);
+    expect(() =>
+      session.executeAuthoring(stale, { id: 'other', revision: session.state.revision }),
+    ).toThrow();
+    await session.save();
+    await session.close();
+  });
   it('commits authoring atomically, preserves it across backup, and edits an independent restore', async () => {
     const session = await ProjectSession.create(repository, 'author', 'Work');
     session.executeAuthoring((p) => addBox(p, 'shape'));

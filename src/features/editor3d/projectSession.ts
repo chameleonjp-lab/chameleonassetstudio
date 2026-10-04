@@ -151,9 +151,14 @@ export class ProjectSession {
   }
 
   /** One native authoring transaction; candidates and failed edits never reach storage. */
-  executeAuthoring(operation: (candidate: Project3D) => void) {
+  executeAuthoring(
+    operation: (candidate: Project3D) => void,
+    expected?: Pick<Project3D, 'id' | 'revision'>,
+  ) {
     this.assertEditable();
     this.history.execute((candidate) => {
+      if (expected && (candidate.id !== expected.id || candidate.revision !== expected.revision))
+        throw new Error('作品が変わりました。現在の対象と値を確認して再操作してください。');
       operation(candidate);
       assertFiniteAuthoringCoordinates(candidate);
     });

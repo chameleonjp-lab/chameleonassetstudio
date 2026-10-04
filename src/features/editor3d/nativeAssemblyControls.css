@@ -1,0 +1,112 @@
+.native-assembly {
+  min-width: 0;
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid #abc4b5;
+  border-radius: 0.5rem;
+  background: #fff;
+  overflow-wrap: anywhere;
+}
+
+.native-assembly fieldset {
+  width: 100%;
+  max-width: 100%;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.native-assembly legend {
+  max-width: 100%;
+  padding: 0;
+  font-weight: 600;
+}
+
+.native-assembly details {
+  margin-block: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #cbdacf;
+}
+
+.native-assembly summary {
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.native-assembly label {
+  display: block;
+  min-width: 0;
+  margin-block: 0.4rem;
+}
+
+.native-assembly input,
+.native-assembly select {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.4rem;
+  border: 1px solid #8ba496;
+  border-radius: 0.25rem;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+
+.native-assembly button {
+  min-width: 44px;
+  max-width: 100%;
+  min-height: 44px;
+  margin: 0.25rem 0.35rem 0.25rem 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.native-assembly-list {
+  min-width: 0;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.native-assembly-list li + li {
+  border-top: 1px solid #dce5df;
+}
+
+.native-assembly .native-assembly-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  min-height: 44px;
+  margin: 0;
+  padding-block: 0.4rem;
+  cursor: pointer;
+}
+
+.native-assembly-choice input {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+}
+
+.native-assembly-choice span,
+.native-assembly-choice strong {
+  display: block;
+  min-width: 0;
+}
+
+.native-assembly-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.native-assembly :is(input, select, button, summary):focus-visible {
+  outline: 3px solid #b45309;
+  outline-offset: 3px;
+}
