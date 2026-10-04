@@ -1,5 +1,7 @@
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { Project3D, Vec3 } from '../../core3d/model/project';
+import type { NativeEditBinding } from '../../core3d/ports/editPort';
+import { useNativeObjectSelection } from './useNativeEditState';
 import {
   groupNodes,
   reparentNodes,
@@ -32,12 +34,15 @@ export function NativeAssemblyControls({
   project,
   disabled,
   execute,
+  edit,
 }: {
   project: Project3D;
   disabled: boolean;
   execute: (operation: (candidate: Project3D) => void) => void;
+  /** Product panels share the session binding; omitted only by standalone fixtures. */
+  edit?: NativeEditBinding;
 }) {
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const { selectedIds, activeId, setSelection } = useNativeObjectSelection(project, edit);
   const [parentId, setParentId] = useState<string | null>(null);
   const [mode, setMode] = useState<ReparentMode>('keep-world');
   const [name, setName] = useState('グループ');
@@ -51,6 +56,10 @@ export function NativeAssemblyControls({
   const nodesById = new Map(project.nodes.map((node) => [node.id, node]));
   const missingIds = selectedIds.filter((id) => !nodesById.has(id));
   const selection = JSON.stringify([...selectedIds].sort());
+  useEffect(() => {
+    setReviewed(null);
+    setNotice((current) => (current.startsWith('現在の組立対象を確認') ? '' : current));
+  }, [project.id, selection]);
   const validSelection = selectedIds.length > 0 && missingIds.length === 0;
   const parent = parentId === null ? undefined : nodesById.get(parentId);
   const validParent = parentId === null || !!parent;
@@ -63,8 +72,11 @@ export function NativeAssemblyControls({
   const single = selectedIds.length === 1 ? nodesById.get(selectedIds[0]) : undefined;
   const singleIsLeaf = !!single && !project.nodes.some((node) => node.parentId === single.id);
 
-  function changeSelection(ids: string[]) {
-    setSelectedIds(ids);
+  function changeSelection(
+    ids: string[],
+    nextActiveId = ids.includes(activeId ?? '') ? activeId : (ids.at(-1) ?? null),
+  ) {
+    setSelection(ids, nextActiveId);
     setReviewed(null);
     setNotice('');
   }
@@ -81,6 +93,8 @@ export function NativeAssemblyControls({
     try {
       if (!reviewed || !targetsReady || (needsParent && !parentReady))
         throw new Error('対象や作品が変わりました。現在の組立対象を確認し直してください。');
+      if (edit && JSON.stringify([...edit.state.context.selection].sort()) !== selection)
+        throw new Error('選択が変わりました。現在の組立対象を確認し直してください。');
       const expected = reviewed;
       let nextSelection: string[] | undefined;
       execute((candidate) => {
@@ -89,7 +103,7 @@ export function NativeAssemblyControls({
         const result = operation(candidate);
         if (result) nextSelection = result;
       });
-      if (nextSelection) setSelectedIds(nextSelection);
+      if (nextSelection) setSelection(nextSelection);
       setReviewed(null);
       setError('');
       setNotice('適用しました。元に戻す操作で取り消せます。次の操作前に対象を確認してください。');
@@ -123,7 +137,8 @@ export function NativeAssemblyControls({
       <details>
         <summary>部品の組立を開く</summary>
         <p>
-          一覧で対象を選び、現在の対象を確認してから適用します。カメラ観察や形・材質の制作対象とは別の選択です。
+          一覧・画面・制作欄で同じ対象を選びます。現在の対象を確認してから適用してください。
+          複数の選択全体を組み立てます。アクティブな部品は差分変形の原点になります。
         </p>
         {error && <p role="alert">{error}</p>}
         {notice && <p role="status">{notice}</p>}
@@ -151,11 +166,13 @@ export function NativeAssemblyControls({
                             event.target.checked
                               ? [...selectedIds, node.id]
                               : selectedIds.filter((id) => id !== node.id),
+                            event.target.checked ? node.id : undefined,
                           )
                         }
                       />
                       <span>
                         <strong>{node.name}</strong>
+                        {activeId === node.id && <span>アクティブ</span>}
                         <span>ID: {node.id}</span>
                         <span>
                           親:{' '}
@@ -163,6 +180,15 @@ export function NativeAssemblyControls({
                         </span>
                       </span>
                     </label>
+                    {selectedIds.includes(node.id) && activeId !== node.id && (
+                      <button
+                        type="button"
+                        onClick={() => setSelection(selectedIds, node.id)}
+                        aria-label={`${node.name} をアクティブにする`}
+                      >
+                        この部品をアクティブにする
+                      </button>
+                    )}
                   </li>
                 );
               })}

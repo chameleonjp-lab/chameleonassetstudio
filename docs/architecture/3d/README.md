@@ -61,3 +61,5 @@ B04の[native造形・材質の部分実装と受入境界](../../evidence/3d/B0
 B04の[部品組立・原点・鏡映と材質割当](../../evidence/3d/B04_NATIVE_ASSEMBLY.md)。階層のworld/local保持と、保存TRSで表現できない場合の拒否を区別する。
 
 G03bの[native選択・変形の隔離評価](../../evidence/3d/G03_NATIVE_INTERACTION_EVALUATION.md)。製品entryには接続せず、pointerと数値操作のtransaction・取消・資源寿命を先に検証する。
+
+B04の[共有選択・gizmo/数値変形の製品接続](../../evidence/3d/B04_NATIVE_EDITING.md)。ProjectSessionの確定責務と、保存しない同revision preview、非同期PNG/休止の境界を確認する。

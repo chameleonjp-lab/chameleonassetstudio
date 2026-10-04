@@ -1,6 +1,9 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { Profiler, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createProject } from '../../src/core3d/model/project';
+import { createProject, type Project3D, type Vec3 } from '../../src/core3d/model/project';
+import { nativeBox } from '../../src/core3d/fixtures/nativeBox';
+import { TransformTransaction } from '../../src/features/editor3d/transformTransaction';
+import type { NativeEditBinding, NativeEditToken } from '../../src/core3d/ports/editPort';
 import {
   NativeViewportPanel,
   type NativeViewportFactory,
@@ -8,10 +11,14 @@ import {
   type NativeViewportStatus,
 } from '../../src/features/editor3d/NativeViewportPanel';
 
+import { NativeAuthoringPanel } from '../../src/features/editor3d/NativeAuthoringPanel';
 import type { NativeCameraState, NativeViewOptions } from '../../src/core3d/ports/renderPort';
 
 type PortLog = {
   cameraWrites: number;
+  bindings: number;
+  boundProject: string | null;
+  capturePending: boolean;
   revision: number;
   disposed: boolean;
   captures: number[];
@@ -19,13 +26,26 @@ type PortLog = {
   host: HTMLElement;
 };
 const ports: PortLog[] = [];
+let authorRenders = 0;
 let throwSync = false;
+const parameters = new URLSearchParams(location.search);
+let canonical: Project3D = parameters.has('editing')
+  ? nativeBox('panel-a')
+  : createProject('panel-a', 'Panel A');
+canonical.name = 'Panel A';
+let currentEdit: NativeEditBinding | null = null;
+let lastGesture: { edit: NativeEditBinding; token: NativeEditToken } | null = null;
+let replaceBinding: (() => void) | null = null;
+let completeCapture: (() => void) | null = null;
 let completeSave: (() => void) | null = null;
 const pending: (() => void)[] = [];
 const delay = new URLSearchParams(location.search).has('delay');
 const factory: NativeViewportFactory = async (host, onStatus) => {
   const log: PortLog = {
     cameraWrites: 0,
+    bindings: 0,
+    boundProject: null,
+    capturePending: false,
     revision: -1,
     disposed: false,
     captures: [],
@@ -50,6 +70,14 @@ const factory: NativeViewportFactory = async (host, onStatus) => {
     bounds: false,
   };
   const port: NativeViewportPort = {
+    ...(parameters.has('missing-binding')
+      ? {}
+      : {
+          bindEditing(binding: NativeEditBinding | null) {
+            log.bindings++;
+            log.boundProject = binding?.state.projectId ?? null;
+          },
+        }),
     getCamera: () => structuredClone(camera),
     setCamera(value) {
       log.cameraWrites++;
@@ -100,6 +128,13 @@ const factory: NativeViewportFactory = async (host, onStatus) => {
     },
     async capturePng() {
       log.captures.push(log.revision);
+      if (parameters.has('capture-delay')) {
+        log.capturePending = true;
+        await new Promise<void>((resolve) => {
+          completeCapture = resolve;
+        });
+        log.capturePending = false;
+      }
       return new Blob([new Uint8Array([log.revision])], { type: 'image/png' });
     },
     dispose() {
@@ -115,6 +150,39 @@ const api = {
   get ports() {
     return ports.map(({ host, ...rest }) => ({ ...rest, connected: host.isConnected }));
   },
+  get authorRenders() {
+    return authorRenders;
+  },
+  async samples(count: number) {
+    if (!lastGesture) throw new Error('Missing preview');
+    for (let i = 0; i < count; i++) {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      lastGesture.edit.preview(lastGesture.token, [NaN, 0, 0]);
+      lastGesture.edit.preview(lastGesture.token, [i + 0.25, 0, 0]);
+    }
+  },
+  get editing() {
+    return currentEdit?.state ?? null;
+  },
+  preview(delta: Vec3 = [1, 0, 0]) {
+    if (!currentEdit) throw new Error('Editing fixture not enabled');
+    const started = currentEdit.begin();
+    if (!started.ok) return started;
+    lastGesture = { edit: currentEdit, token: started.token };
+    return currentEdit.preview(started.token, delta);
+  },
+  clearSelection() {
+    currentEdit?.setSelection([]);
+  },
+  replaceBinding() {
+    replaceBinding?.();
+  },
+  commitLast() {
+    return lastGesture?.edit.commit(lastGesture.token);
+  },
+  finishCapture() {
+    completeCapture?.();
+  },
   finishSave() {
     completeSave?.();
   },
@@ -126,7 +194,49 @@ Object.assign(window, { panelHarness: api });
 export type PanelHarness = typeof api;
 
 export function Harness() {
-  const [project, setProject] = useState(() => createProject('panel-a', 'Panel A'));
+  const [project, setProject] = useState(() => canonical);
+  const [bindingVersion, setBindingVersion] = useState(0);
+  const editing = useMemo(() => {
+    if (!parameters.has('editing')) return undefined;
+    const owner = `${project.id}:${bindingVersion}`;
+    const binding = new TransformTransaction({
+      getProject: () => structuredClone(canonical),
+      getIdentity: () => ({ id: canonical.id, revision: canonical.revision }),
+      isReadOnly: () => false,
+      commit(updates) {
+        const next = structuredClone(canonical);
+        for (const update of updates)
+          next.nodes.find((node) => node.id === update.id)!.transform = structuredClone(
+            update.transform,
+          );
+        next.revision++;
+        canonical = next;
+        binding.reconcile(owner);
+        setProject(next);
+      },
+    });
+    binding.setEvaluator({
+      selectionFrame: () => ({ position: [0, 0, 0], rotation: [0, 0, 0, 1] }),
+      evaluateDelta: (source, context, _frame, delta) =>
+        context.selection.map((id) => ({
+          id,
+          transform: {
+            ...structuredClone(source.nodes.find((node) => node.id === id)!.transform),
+            translation: [...delta],
+          },
+        })),
+    });
+    binding.setSelection(canonical.nodes.map((node) => node.id));
+    return binding;
+  }, [project.id, bindingVersion]);
+  useLayoutEffect(() => {
+    currentEdit = editing ?? null;
+    replaceBinding = () => setBindingVersion((value) => value + 1);
+    return () => {
+      if (currentEdit === editing) currentEdit = null;
+      replaceBinding = null;
+    };
+  }, [editing]);
   const [failSave, setFailSave] = useState(false);
   const captureImmediately = useRef(false);
   const saved = useRef(0);
@@ -143,12 +253,20 @@ export function Harness() {
       <button
         onClick={() => {
           captureImmediately.current = true;
-          setProject((value) => ({ ...value, revision: value.revision + 1 }));
+          canonical = { ...project, revision: project.revision + 1 };
+          editing?.reconcile();
+          setProject(canonical);
         }}
       >
         Increment and capture in layout
       </button>
-      <button onClick={() => setProject(createProject('panel-b', 'Panel B'))}>
+      <button
+        onClick={() => {
+          canonical = createProject('panel-b', 'Panel B');
+          editing?.reconcile();
+          setProject(canonical);
+        }}
+      >
         Switch project
       </button>
       <button
@@ -159,8 +277,32 @@ export function Harness() {
         Toggle sync failure
       </button>
       <button onClick={() => setFailSave((value) => !value)}>Toggle save failure</button>
+      {editing && (
+        <Profiler
+          id="authoring"
+          onRender={() => {
+            authorRenders++;
+          }}
+        >
+          <NativeAuthoringPanel
+            project={project}
+            edit={editing}
+            disabled={false}
+            execute={(operation) => {
+              editing.cancel('fixture authoring');
+              const next = structuredClone(canonical);
+              operation(next);
+              next.revision++;
+              canonical = next;
+              editing.reconcile();
+              setProject(next);
+            }}
+          />
+        </Profiler>
+      )}
       <NativeViewportPanel
         project={project}
+        editing={editing}
         factory={factory}
         onSave={async () => {
           if (failSave) throw new Error('Fixture save failed');
