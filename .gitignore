@@ -18,3 +18,8 @@ dist-3d-evaluation
 # Generated reports from the early native viewport acceptance check.
 /playwright-report-native-acceptance/
 /test-results-native-acceptance/
+
+# Isolated native interaction evaluation build output.
+/dist-3d-edit-evaluation/
+/playwright-report-native-interaction/
+/test-results-native-interaction/
