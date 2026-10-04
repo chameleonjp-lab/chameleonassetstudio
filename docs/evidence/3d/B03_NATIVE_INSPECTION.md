@@ -44,3 +44,10 @@ VIEW-01/02/03のfixtureはF01/F02/F11/F12のうち自作native mesh・別entry�
 旧GLB資源レビューの不明な停止対象は再実行・別経路での再評価を行わない。この工程は採用済みnative正本の表示だけを変更する。G03の未検証GLB/decoder/skin/clip/exportは保留を維持する。
 
 問題時は当該adapter/UIの変更を作業branchで戻す。保存DB/正本schemaの移行・破壊的操作は不要。表示失敗時は既存の軽量shellで保存・backupを行える。公開はユーザーのmerge後の既存Pages運用に従う。
+
+
+## Browser受入の読取方法の是正
+
+最初のPR head `0f68d5ded87948246d1a1dd695f6ba7c19b70813` のCIでは、context復帰前後のPNG完全一致を通過した後、座標の約2e-15mの丸め差をobject全体の厳密一致が拒否した。位置/注視点だけ12桁小数精度で比較し、PNGとprojection等の設定は厳密一致を維持する。
+
+別caseでは、アクセシビリティsnapshot上に正しい名前と2つのoptionを持つcomboboxがある一方、内包label全文へのexact検索がoptionを取得できなかった。selectをrole=comboboxと正確なaccessible nameで検索する。製品code・待機時間・復旧/保存/画像/小画面の受入条件を変更しない。

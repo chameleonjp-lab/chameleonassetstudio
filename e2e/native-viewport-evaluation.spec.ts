@@ -207,7 +207,14 @@ test('orthographic inspection and helper resources reconstruct after context los
   await expect.poll(async () => (await diagnostics(page)).contextRestores).toBeGreaterThan(0);
   await expect.poll(async () => (await diagnostics(page)).state).toBe('active');
   expect(Buffer.from(await capture(page))).toEqual(Buffer.from(before));
-  expect((await diagnostics(page)).camera).toEqual(camera);
+  const recovered = (await diagnostics(page)).camera;
+  // OrbitControls reconstructs spherical coordinates; observed error is about 2e-15 m.
+  // Keep exact PNG/projection settings while comparing position/target to 12 decimal places.
+  const { position, target, ...settings } = recovered;
+  const { position: beforePosition, target: beforeTarget, ...beforeSettings } = camera;
+  expect(settings).toEqual(beforeSettings);
+  position.forEach((value, index) => expect(value).toBeCloseTo(beforePosition[index], 12));
+  target.forEach((value, index) => expect(value).toBeCloseTo(beforeTarget[index], 12));
   await page.evaluate(() => (window as unknown as EvaluationWindow).nativeEvaluation.dispose());
   expect((await diagnostics(page)).renderers).toBe(0);
   expect((await diagnostics(page)).controls).toBe(0);

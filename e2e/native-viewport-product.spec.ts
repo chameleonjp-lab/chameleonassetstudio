@@ -168,17 +168,17 @@ test('inspection camera and helpers preserve canonical revision and survive GPU 
   expect(front.equals(original)).toBe(false);
   await page.getByRole('button', { name: '上面から見る', exact: true }).click();
   expect((await png(page)).equals(front)).toBe(false);
-  const objects = page.getByLabel('注目するオブジェクト', { exact: true });
+  const objects = page.getByRole('combobox', { name: '注目するオブジェクト', exact: true });
   const id = await objects.locator('option').nth(1).getAttribute('value');
   await objects.selectOption(id!);
   await page.getByRole('button', { name: '選択対象に合わせる', exact: true }).click();
-  await page.getByLabel('投影方式', { exact: true }).selectOption('orthographic');
+  await page.getByRole('combobox', { name: '投影方式', exact: true }).selectOption('orthographic');
   await page.getByLabel('平行投影の高さ', { exact: true }).fill('3');
   await page.getByRole('button', { name: '数値カメラを適用', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveCount(0);
-  await page.getByLabel('描画モード', { exact: true }).selectOption('wireframe');
-  await page.getByLabel('背景', { exact: true }).selectOption('light');
-  await page.getByLabel('照明', { exact: true }).selectOption('soft');
+  await page.getByRole('combobox', { name: '描画モード', exact: true }).selectOption('wireframe');
+  await page.getByRole('combobox', { name: '背景', exact: true }).selectOption('light');
+  await page.getByRole('combobox', { name: '照明', exact: true }).selectOption('soft');
   await page.getByLabel('グリッド', { exact: true }).check();
   await page.getByLabel('座標軸', { exact: true }).check();
   await page.getByLabel('全体の境界', { exact: true }).check();
@@ -191,8 +191,12 @@ test('inspection camera and helpers preserve canonical revision and survive GPU 
   await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
   expect((await png(page)).equals(inspected)).toBe(true);
   await page.getByRole('button', { name: '現在のカメラを読み取る', exact: true }).click();
-  await expect(page.getByLabel('投影方式', { exact: true })).toHaveValue('orthographic');
-  await expect(page.getByLabel('描画モード', { exact: true })).toHaveValue('wireframe');
+  await expect(page.getByRole('combobox', { name: '投影方式', exact: true })).toHaveValue(
+    'orthographic',
+  );
+  await expect(page.getByRole('combobox', { name: '描画モード', exact: true })).toHaveValue(
+    'wireframe',
+  );
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
   ).toBeLessThanOrEqual(0);
