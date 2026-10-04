@@ -43,8 +43,14 @@
 }
 .native-texture-gains {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8em), 1fr));
   gap: 0.5rem;
+}
+.native-texture-gains label {
+  min-width: 0;
+}
+.native-textures label > input[type='number'] {
+  font: inherit;
 }
 .native-textures .native-texture-checkbox {
   display: flex;
