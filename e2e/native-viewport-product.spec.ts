@@ -327,11 +327,9 @@ test('long duplicate object names retain complete identity without phone overflo
   await page.getByRole('button', { name: '選択対象に合わせる', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveCount(0);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
-  await test
-    .info()
-    .attach('native-long-labels-mobile.png', {
-      body: await page.screenshot({ fullPage: true }),
-      contentType: 'image/png',
-    });
+  await test.info().attach('native-long-labels-mobile.png', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png',
+  });
   expect(overflow).toBeLessThanOrEqual(0);
 });
