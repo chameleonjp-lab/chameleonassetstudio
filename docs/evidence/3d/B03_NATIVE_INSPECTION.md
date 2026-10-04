@@ -51,3 +51,10 @@ VIEW-01/02/03のfixtureはF01/F02/F11/F12のうち自作native mesh・別entry�
 最初のPR head `0f68d5ded87948246d1a1dd695f6ba7c19b70813` のCIでは、context復帰前後のPNG完全一致を通過した後、座標の約2e-15mの丸め差をobject全体の厳密一致が拒否した。位置/注視点だけ12桁小数精度で比較し、PNGとprojection等の設定は厳密一致を維持する。
 
 別caseでは、アクセシビリティsnapshot上に正しい名前と2つのoptionを持つcomboboxがある一方、内包label全文へのexact検索がoptionを取得できなかった。selectをrole=comboboxと正確なaccessible nameで検索する。製品code・待機時間・復旧/保存/画像/小画面の受入条件を変更しない。
+
+
+## WebKitの詳細設定の横幅
+
+head `7b772bc550ea2fa6602f62baf0b197861c9a42f5` ではChromium受入が成功した一方、WebKitの375px画面は詳細設定・長いIDの選択後に96px横へはみ出した。保存revision、camera設定、休止復帰のPNG完全一致は成功している。エラーsnapshotだけでは単一の原因elementを断定しない。
+
+labelの単一auto-gridをblockへ変更し、fieldsetの幅をborder-boxで明示的に親へ制限する。数値欄の2列minmax(0,1fr)とcheckboxのflex行は維持する。overflowを隠して検査を通す修正は行わない。失敗前にも実画面とelement幅の診断をartifactへ保存し、同じ横はみ出しゼロの条件で再検査する。

@@ -197,12 +197,37 @@ test('inspection camera and helpers preserve canonical revision and survive GPU 
   await expect(page.getByRole('combobox', { name: '描画モード', exact: true })).toHaveValue(
     'wireframe',
   );
-  expect(
-    await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
-  ).toBeLessThanOrEqual(0);
+  const layout = await page.evaluate(() => ({
+    viewport: innerWidth,
+    documentWidth: document.documentElement.scrollWidth,
+    overflow: [...document.querySelectorAll('body *')].flatMap((element) => {
+      const rect = element.getBoundingClientRect();
+      if (rect.right <= innerWidth && rect.left >= 0) return [];
+      const style = getComputedStyle(element);
+      return [
+        {
+          tag: element.tagName,
+          className: element.className,
+          width: rect.width,
+          left: rect.left,
+          right: rect.right,
+          scrollWidth: element.scrollWidth,
+          display: style.display,
+          minWidth: style.minWidth,
+          maxWidth: style.maxWidth,
+          gridTemplateColumns: style.gridTemplateColumns,
+        },
+      ];
+    }),
+  }));
+  await test.info().attach('native-inspection-layout.json', {
+    body: Buffer.from(JSON.stringify(layout, null, 2)),
+    contentType: 'application/json',
+  });
   await test.info().attach('native-inspection-mobile.png', {
     body: await page.screenshot({ fullPage: true }),
     contentType: 'image/png',
   });
   await test.info().attach('native-inspection.png', { body: inspected, contentType: 'image/png' });
+  expect(layout.documentWidth - layout.viewport).toBeLessThanOrEqual(0);
 });
