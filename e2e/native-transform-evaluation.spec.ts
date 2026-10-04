@@ -27,7 +27,7 @@ for (const projection of ['perspective', 'orthographic'] as const) {
     page,
   }) => {
     await ready(page);
-    await page.getByLabel('Projection', { exact: true }).selectOption(projection);
+    await page.getByRole('combobox', { name: 'Projection', exact: true }).selectOption(projection);
     const right = await page.evaluate(() =>
       (window as unknown as EvaluationWindow).nativeTransformEvaluation.projectPoint('right-node'),
     );
@@ -106,10 +106,12 @@ for (const projection of ['perspective', 'orthographic'] as const) {
       page,
     }) => {
       await ready(page);
-      await page.getByLabel('Projection', { exact: true }).selectOption(projection);
-      await page.getByLabel('Mode', { exact: true }).selectOption(mode);
       await page
-        .getByLabel('Space', { exact: true })
+        .getByRole('combobox', { name: 'Projection', exact: true })
+        .selectOption(projection);
+      await page.getByRole('combobox', { name: 'Mode', exact: true }).selectOption(mode);
+      await page
+        .getByRole('combobox', { name: 'Space', exact: true })
         .selectOption(mode === 'rotate' ? 'local' : 'world');
       await page
         .getByLabel('Snap increment', { exact: true })
@@ -195,7 +197,7 @@ test('Escape, cancel, pointer cancellation and second touch never create a histo
     'lostpointercapture',
     'second pointer',
   ] as const) {
-    await startDrag(page);
+    const point = await startDrag(page);
     if (reason === 'Escape') await page.keyboard.press('Escape');
     else if (reason === 'explicit')
       await page.evaluate(() =>
@@ -217,7 +219,15 @@ test('Escape, cancel, pointer cancellation and second touch never create a histo
             }),
           );
       }, reason);
-    await expect.poll(async () => (await diagnostics(page)).active).toBe(false);
+    // releasePointerCapture changes the pending target; a real pointer event processes it.
+    if (reason === 'lostpointercapture') await page.mouse.move(point.x + 66, point.y - 10);
+    await expect
+      .poll(async () => (await diagnostics(page)).active, {
+        message: `${reason} should cancel before pointerup`,
+      })
+      .toBe(false);
+    if (reason === 'lostpointercapture')
+      expect((await diagnostics(page)).reason).toBe('lostpointercapture');
     await page.mouse.up();
     expect(await diagnostics(page)).toMatchObject({
       revision: 0,
@@ -316,7 +326,7 @@ test('snapshot barriers, invalid final samples, lock/read-only, keyboard and IME
   await page.getByLabel('Lock active node', { exact: true }).check();
   await page.getByRole('button', { name: 'Right box', exact: true }).click();
   await expect(page.getByLabel('Lock active node', { exact: true })).not.toBeChecked();
-  await page.getByLabel('Mode', { exact: true }).selectOption('rotate');
+  await page.getByRole('combobox', { name: 'Mode', exact: true }).selectOption('rotate');
   expect(
     await page.evaluate(
       () => (window as unknown as EvaluationWindow).nativeTransformEvaluation.settings.lockedIds,
@@ -329,7 +339,7 @@ test('snapshot barriers, invalid final samples, lock/read-only, keyboard and IME
     ),
   ).toEqual(['box-node', 'right-node']);
   await page.getByLabel('Lock active node', { exact: true }).uncheck();
-  await page.getByLabel('Mode', { exact: true }).selectOption('translate');
+  await page.getByRole('combobox', { name: 'Mode', exact: true }).selectOption('translate');
   await page.getByRole('button', { name: 'Box', exact: true }).click();
   await expect(page.getByLabel('Lock active node', { exact: true })).toBeChecked();
   await page.getByLabel('Lock active node', { exact: true }).uncheck();
@@ -395,6 +405,12 @@ test('375px numeric controls perform an edit and cancellation without a hover ta
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
+  const imagePath = test.info().outputPath('native-transform-mobile-controls.png');
+  await page.screenshot({ path: imagePath, fullPage: true });
+  await test.info().attach('native-transform-mobile-controls.png', {
+    path: imagePath,
+    contentType: 'image/png',
+  });
 });
 
 test('repeated mounts return helpers, captures, listeners, canvases and scheduled frames to baseline', async ({
@@ -429,8 +445,12 @@ test('repeated mounts return helpers, captures, listeners, canvases and schedule
     await page.evaluate(() =>
       (window as unknown as EvaluationWindow).nativeTransformEvaluation.remount(),
     );
-    await expect(page.getByLabel('Mode', { exact: true })).toHaveValue('translate');
-    await expect(page.getByLabel('Projection', { exact: true })).toHaveValue('perspective');
+    await expect(page.getByRole('combobox', { name: 'Mode', exact: true })).toHaveValue(
+      'translate',
+    );
+    await expect(page.getByRole('combobox', { name: 'Projection', exact: true })).toHaveValue(
+      'perspective',
+    );
     await expect(page.getByLabel('Read only', { exact: true })).not.toBeChecked();
     await expect(page.getByLabel('Lock active node', { exact: true })).not.toBeChecked();
     await expect.poll(async () => (await diagnostics(page)).pendingFrames).toBe(0);

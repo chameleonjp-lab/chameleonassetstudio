@@ -97,3 +97,13 @@ stock addon由来の遅いmouseUp、resetのobjectChange、Y回転のEuler branc
 - browser実行・画像・最終head全体CI: 提出後のcheck結果で確認する。ローカル実browser合格、physical iPhone、実touch複数指、実GPU/heap測定の証拠はない
 
 G03cは保留。評価entryの製品import、保存schema、正本の選択/lock contract、autosave、2D entryは変更していない。rollbackは隔離entry・関連検査/CI/indexの差分を戻す範囲に閉じ、作品dataのmigrationは伴わない。
+
+## 初回browser CIで判明した検査手順の修正
+
+[run 37180273860](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/37180273860)、head `fb949a7fe5fa79e0ab1f35f5bd0fef6b901f1578`: 単体1,451件・buildは成功、早期browser26件は8成功/18失敗。後続全体browser検査は未実行で、画像の未生成はこの失敗に伴うものだった。
+
+- INT-10: 両browserの実snapshotではcomboboxのaccessible nameは `Projection` / `Mode` / `Space` だったが、nested labelの文字列を使う `getByLabel(..., exact:true)` が一致しなかった。同じ厳密なaccessible nameを `getByRole('combobox', ...)` で検査する。操作・期待値・timeout・対象caseを削除/緩和しない
+- INT-11: 小さいreport artifact `11294573875` の実step列では、Escape/明示取消/pointercancelの3回が成功し、4回目のlostpointercaptureだけが失敗した（両browser）。`releasePointerCapture` はpending targetを変え、次のpointer eventでlostpointercaptureが処理される。[W3C release](https://www.w3.org/TR/pointerevents3/#releasing-pointer-capture) / [pending capture](https://www.w3.org/TR/pointerevents3/#process-pending-pointer-capture) に従い、解放後に実mouse moveを送ってから取消を待つ。mouse up前の取消理由も追加確認し、revision/commit/Undoが増えない期待値を維持する
+- 375px操作の画面全体PNGを同じ小さいartifactへ追加し、canvas画像だけでUIの目視合格を主張しない
+
+修正対象は検査手順・証拠のみ。candidateのcontroller/mathや製品codeをこの理由で変更しない。修正後の同一PRの実browser結果を確認するまでG03cは保留する。
