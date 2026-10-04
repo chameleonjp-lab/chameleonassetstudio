@@ -24,6 +24,14 @@ export interface NativeViewOptions {
 }
 
 export type NativeViewportResult = { ok: true } | { ok: false; reason: string };
+/** Prepared sRGB, straight-alpha RGBA8, with rows ordered top to bottom. */
+export interface NativeTextureImage {
+  width: number;
+  height: number;
+  pixels: Uint8Array;
+}
+/** Ephemeral decoded sources keyed by canonical content hash, never persisted renderer state. */
+export type NativeTextureSnapshot = ReadonlyMap<string, NativeTextureImage>;
 export type NativeCameraAction =
   | 'orbit-left'
   | 'orbit-right'
@@ -58,7 +66,8 @@ export interface NativeViewportSuspensionContract {
 /** Structural boundary only: this panel does not import or select a renderer. */
 export interface NativeViewportPort {
   readonly status: NativeViewportStatus;
-  setProject(project: Project3D): NativeViewportResult;
+  /** Synchronously copies prepared sources; loading and decoding belong to the caller. */
+  setProject(project: Project3D, textures?: NativeTextureSnapshot): NativeViewportResult;
   /** Preview subscription is separate from canonical graph replacement. */
   bindEditing?(binding: NativeEditBinding | null): void;
   resetCamera(): void;

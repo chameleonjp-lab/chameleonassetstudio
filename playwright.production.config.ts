@@ -11,6 +11,7 @@ export default defineConfig({
     'studio-entries.spec.ts',
     'native-viewport-product.spec.ts',
     'native-editing-product.spec.ts',
+    'native-texture-product.spec.ts',
   ],
   projects: config.projects?.map((project) => ({
     ...project,
@@ -20,6 +21,7 @@ export default defineConfig({
       'studio-entries.spec.ts',
       'native-viewport-product.spec.ts',
       'native-editing-product.spec.ts',
+      'native-texture-product.spec.ts',
     ],
   })),
   use: { ...config.use, baseURL: 'http://localhost:4176' },

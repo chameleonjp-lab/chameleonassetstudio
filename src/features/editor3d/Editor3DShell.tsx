@@ -2,6 +2,7 @@ import {
   Component,
   lazy,
   Suspense,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useReducer,
@@ -18,6 +19,7 @@ import type { NativeViewportFactory } from './NativeViewportPanel';
 import { NativeAuthoringPanel } from './NativeAuthoringPanel';
 import { NativeAssemblyControls } from './NativeAssemblyControls';
 import { NativeTransformControls } from './NativeTransformControls';
+import { NativeTexturePanel } from './NativeTexturePanel';
 import type { Project3D } from '../../core3d/model/project';
 
 const NativeViewportPanel = lazy(() =>
@@ -203,6 +205,13 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
   const ownerId = useRef(crypto.randomUUID());
   const mounted = useRef(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const readTextureBlob = useCallback(
+    (id: string) => {
+      if (!session) throw new Error('画像を読むプロジェクトがありません。');
+      return session.readBlob(id);
+    },
+    [session],
+  );
 
   useEffect(() => {
     mounted.current = true;
@@ -447,7 +456,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
           <span className="editor3d-badge">3D制作は準備中</span>
           <h2 id="editor3d-preparation">まずは、プロジェクトの保存と再開から</h2>
           <p>
-            基本形の作成、部品の選択と移動・回転・拡縮、数値による頂点・面・材質の編集、3D表示とカメラ操作、PNG画像の保存、自動保存、バックアップとコピー復元を利用できます。リグ・アニメーション編集、texture制作、GLBの入出力は準備中です。
+            基本形の作成、部品の選択と移動・回転・拡縮、数値による頂点・面・材質の編集、baseColor画像と色調の編集、3D表示とカメラ操作、PNG画像の保存、自動保存、バックアップとコピー復元を利用できます。リグ・アニメーション編集、高度なtexture制作、GLBの入出力は準備中です。
           </p>
           <p>
             作品はこのブラウザー内に保存します。大切な内容は .cas3dproj
@@ -712,6 +721,16 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                     >
                       3D表示を開く
                     </button>
+                    <button
+                      type="button"
+                      disabled={busy || previewProjectId !== project.id}
+                      onClick={() => {
+                        session.edit.cancel('3D表示を終了しました。');
+                        setPreviewProjectId(null);
+                      }}
+                    >
+                      3D表示を閉じる
+                    </button>
                   </div>
                   <NativeTransformControls
                     key={`transform-${project.id}`}
@@ -731,6 +750,13 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                     disabled={busy || state.readOnly}
                     execute={executeAuthoring}
                     edit={session.edit}
+                  />
+                  <NativeTexturePanel
+                    key={`texture-${project.id}`}
+                    project={project}
+                    session={session}
+                    disabled={busy || state.readOnly}
+                    onChange={redraw}
                   />
                   {previewProjectId === project.id && (
                     <ViewportLoadBoundary
@@ -764,6 +790,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                         <NativeViewportPanel
                           project={project}
                           editing={session.edit}
+                          readBlob={readTextureBlob}
                           factory={createNativeViewport}
                           onSave={() => session.save()}
                           getSuspensionContract={() => ({
@@ -827,7 +854,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                   </details>
                   <div className="editor3d-placeholder">
                     <p>
-                      現在の3D表示は三角形メッシュの静止表示です。テクスチャ・リグ・アニメーションを含む作品は保存・バックアップできますが、表示は準備中です。
+                      現在の3D表示は三角形メッシュと基本のbaseColor画像に対応しています。リグ・アニメーションを含む作品は保存・バックアップできますが、表示は準備中です。
                     </p>
                   </div>
                 </>

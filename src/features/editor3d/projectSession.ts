@@ -8,7 +8,11 @@ import {
   setNodeTransform,
 } from '../../core3d/commands/objectEditing';
 import { cloneProject, createProject, type Project3D } from '../../core3d/model/project';
+import { NATIVE_TEXTURE_PROFILE } from '../../core3d/model/textureProfile';
+import { inspectNativeImage } from '../../core3d/model/nativeImageMetadata';
+import { reserveNativeTextureBytes } from '../../core3d/model/textureResources';
 import {
+  hashBlob,
   StorageConflictError,
   type ProjectRepository,
   type SnapshotRead,
@@ -19,6 +23,13 @@ import type { NativeEditBinding } from '../../core3d/ports/editPort';
 import { TransformTransaction } from './transformTransaction';
 
 export { BACKUP_LIMITS };
+
+export interface BinaryAuthoringContext {
+  readonly id: string;
+  readonly revision: number;
+  readonly generation: number;
+  readonly editEpoch: number;
+}
 
 export class UnsavedProjectError extends Error {
   constructor() {
@@ -36,6 +47,11 @@ export class ProjectSession {
   private conflict = false;
   private closed = false;
   private preservedRevision: number | null = null;
+  /** Invalidates async binary preparation even when a boundary keeps the same revision. */
+  private binaryGeneration = 0;
+  private binaryPreparationBytes = 0;
+  private binaryStorageHighWater = 0;
+  private readonly binaryStorageReleases: (() => void)[] = [];
 
   private constructor(
     private readonly repository: ProjectRepository,
@@ -159,6 +175,7 @@ export class ProjectSession {
   }
 
   rename(name: string) {
+    this.binaryGeneration++;
     this.transforms.cancel('rename');
     this.assertEditable();
     if (name === this.history.project.name) return;
@@ -169,6 +186,7 @@ export class ProjectSession {
   }
 
   addBox() {
+    this.binaryGeneration++;
     this.transforms.cancel('add object');
     this.assertEditable();
     this.history.execute((project) => addBox(project, crypto.randomUUID()));
@@ -180,6 +198,7 @@ export class ProjectSession {
     operation: (candidate: Project3D) => void,
     expected?: Pick<Project3D, 'id' | 'revision'>,
   ) {
+    this.binaryGeneration++;
     this.transforms.cancel('authoring command');
     this.assertEditable();
     this.history.execute((candidate) => {
@@ -191,20 +210,210 @@ export class ProjectSession {
     this.schedule();
   }
 
+  /** Detached bytes: neither image decoders nor callers may mutate session-owned sources. */
+  readBlob(id: string, maxBytes = NATIVE_TEXTURE_PROFILE.maxFileBytes): Uint8Array {
+    const bytes = this.blobs.get(id);
+    if (!bytes) throw new Error('画像の原本が見つかりません。バックアップを確認してください。');
+    if (!Number.isSafeInteger(maxBytes) || maxBytes < 0)
+      throw new Error('画像読取のbyte上限が不正です。');
+    if (bytes.byteLength > maxBytes)
+      throw new Error('画像の容量が読取上限を超えます。元データはバックアップに保持しています。');
+    this.reserveRetainedBinaryStorage();
+    return new Uint8Array(bytes);
+  }
+
+  private reserveRetainedBinaryStorage() {
+    const retained = [...this.blobs.values()].reduce((sum, bytes) => sum + bytes.byteLength, 0);
+    if (
+      !Number.isSafeInteger(retained) ||
+      retained > NATIVE_TEXTURE_PROFILE.maxRetainedEncodedBytes
+    )
+      throw new Error(
+        '原本・派生画像・Undoを含む画像容量の上限を超えます。元データは保持しています。',
+      );
+    const estimate = retained * 7;
+    if (estimate > this.binaryStorageHighWater) {
+      this.binaryStorageReleases.push(
+        reserveNativeTextureBytes(
+          'native session and save pipeline',
+          estimate - this.binaryStorageHighWater,
+        ),
+      );
+      this.binaryStorageHighWater = estimate;
+    }
+  }
+
+  /** Capture before file reading/decoding, so save/cancel boundaries also invalidate that work. */
+  captureBinaryContext(): BinaryAuthoringContext {
+    this.binaryGeneration++;
+    this.transforms.cancel('prepare binary authoring');
+    this.assertEditable();
+    // UI captures this before file reading/decoding, including when no material currently
+    // displays a retained original and readBlob has never acquired the session ticket.
+    this.reserveRetainedBinaryStorage();
+    return Object.freeze({
+      id: this.projectId,
+      revision: this.history.revision,
+      generation: this.binaryGeneration,
+      editEpoch: this.transforms.state.epoch,
+    });
+  }
+
+  /** Hash outside history/storage; publish the complete model and bytes in one synchronous step. */
+  async executeBinaryAuthoring(
+    operation: (candidate: Project3D) => void,
+    incoming: ReadonlyMap<string, Uint8Array>,
+    expected: Pick<Project3D, 'id' | 'revision'> &
+      Partial<Pick<BinaryAuthoringContext, 'generation' | 'editEpoch'>>,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<void> {
+    options.signal?.throwIfAborted();
+    this.assertEditable();
+    if (
+      (expected.generation !== undefined && expected.generation !== this.binaryGeneration) ||
+      (expected.editEpoch !== undefined && expected.editEpoch !== this.transforms.state.epoch)
+    )
+      throw new Error('作品や操作対象が変わりました。現在の画像を確認して再操作してください。');
+    const generation = ++this.binaryGeneration;
+    this.transforms.cancel('binary authoring command');
+    this.assertEditable();
+    const identity = { ...expected };
+    const epoch = this.transforms.state.epoch;
+    const assertCurrent = () => {
+      options.signal?.throwIfAborted();
+      this.assertEditable();
+      if (
+        generation !== this.binaryGeneration ||
+        epoch !== this.transforms.state.epoch ||
+        identity.id !== this.projectId ||
+        identity.revision !== this.history.revision
+      )
+        throw new Error('作品や操作対象が変わりました。現在の画像を確認して再操作してください。');
+    };
+    assertCurrent();
+    // Count originals, derived bytes and all session history before making any new copies.
+    let retainedBytes = [...this.blobs.values()].reduce((sum, bytes) => sum + bytes.byteLength, 0);
+    let incomingBytes = 0;
+    for (const [id, bytes] of incoming) {
+      if (!/^[a-f0-9]{64}$/.test(id) || !(bytes instanceof Uint8Array))
+        throw new Error('画像のcontent IDまたはbyte列が不正です。');
+      incomingBytes += bytes.byteLength;
+      if (!this.blobs.has(id)) retainedBytes += bytes.byteLength;
+      if (
+        !Number.isSafeInteger(retainedBytes) ||
+        retainedBytes > NATIVE_TEXTURE_PROFILE.maxRetainedEncodedBytes ||
+        incomingBytes > NATIVE_TEXTURE_PROFILE.maxRetainedEncodedBytes ||
+        bytes.byteLength > NATIVE_TEXTURE_PROFILE.maxFileBytes
+      )
+        throw new Error(
+          '原本・派生画像・Undoを含む画像容量の上限を超えます。内容は変更していません。',
+        );
+    }
+    if (retainedBytes > NATIVE_TEXTURE_PROFILE.maxRetainedEncodedBytes)
+      throw new Error(
+        '原本・派生画像・Undoを含む画像容量の上限を超えます。内容は変更していません。',
+      );
+    if (
+      this.binaryPreparationBytes + incomingBytes >
+      NATIVE_TEXTURE_PROFILE.maxRetainedEncodedBytes
+    )
+      throw new Error('別の画像処理が終了するまで待ってから再操作してください。');
+    this.reserveRetainedBinaryStorage();
+    const releasePreparation = reserveNativeTextureBytes(
+      'native binary preparation',
+      incomingBytes * 3,
+    );
+    this.binaryPreparationBytes += incomingBytes;
+    const growth: { release: (() => void) | null } = { release: null };
+    let storageEstimate = this.binaryStorageHighWater;
+    try {
+      // Copy every input before the first await so later caller mutations cannot race hashing.
+      const copies = new Map([...incoming].map(([id, bytes]) => [id, new Uint8Array(bytes)]));
+      for (const [id, bytes] of copies) {
+        if ((await hashBlob(bytes)) !== id) throw new Error('画像のcontent hashが一致しません。');
+        assertCurrent();
+      }
+      assertCurrent();
+      this.history.execute((candidate) => {
+        operation(candidate);
+        assertCurrent();
+        assertFiniteAuthoringCoordinates(candidate);
+        if (candidate.blobIds.some((id) => !copies.has(id) && !this.blobs.has(id)))
+          throw new Error('画像の原本が不足しています。内容は変更していません。');
+        if ([...copies.keys()].some((id) => !candidate.blobIds.includes(id)))
+          throw new Error('参照されていない画像は追加できません。');
+        let totalPixels = 0;
+        const textureHashes = new Set(
+          candidate.materials.flatMap((material) =>
+            material.textureBlobId === undefined ? [] : [material.textureBlobId],
+          ),
+        );
+        for (const hash of textureHashes) {
+          const bytes = copies.get(hash) ?? this.blobs.get(hash);
+          if (!bytes) throw new Error('材質画像の原本が不足しています。');
+          const info = inspectNativeImage(bytes);
+          totalPixels += info.width * info.height;
+          if (
+            !Number.isSafeInteger(totalPixels) ||
+            totalPixels > NATIVE_TEXTURE_PROFILE.maxTotalPixels
+          )
+            throw new Error('材質画像の合計pixel数が上限を超えます。内容は変更していません。');
+        }
+        if (
+          candidate.blobIds.length + 2 > BACKUP_LIMITS.entries ||
+          new TextEncoder().encode(JSON.stringify(candidate)).byteLength > BACKUP_LIMITS.jsonBytes
+        )
+          throw new Error('完全バックアップの上限を超えます。内容は変更していません。');
+        const merged = new Map([...this.blobs, ...copies]);
+        storageEstimate =
+          [...merged.values()].reduce((sum, bytes) => sum + bytes.byteLength, 0) * 7;
+        if (storageEstimate > this.binaryStorageHighWater)
+          growth.release = reserveNativeTextureBytes(
+            'native session and save pipeline',
+            storageEstimate - this.binaryStorageHighWater,
+          );
+      });
+      for (const [id, bytes] of copies) if (!this.blobs.has(id)) this.blobs.set(id, bytes);
+      if (growth.release) {
+        this.binaryStorageReleases.push(growth.release);
+        this.binaryStorageHighWater = storageEstimate;
+        growth.release = null;
+      }
+      this.schedule();
+    } finally {
+      // A superseded/aborted browser hash still owns its copies until the promise settles.
+      this.binaryPreparationBytes -= incomingBytes;
+      releasePreparation();
+      growth.release?.();
+    }
+  }
+
   get sourcesComplete() {
     return this.history.project.blobIds.every((id) => this.blobs.has(id));
   }
 
   undo() {
+    this.binaryGeneration++;
     this.transforms.cancel('undo');
     this.assertEditable();
     if (this.history.undo()) this.schedule();
   }
 
   redo() {
+    this.binaryGeneration++;
     this.transforms.cancel('redo');
     this.assertEditable();
     if (this.history.redo()) this.schedule();
+  }
+
+  /** Explicit cleanup only; canonical originals/derivatives are never removed here. */
+  clearHistory() {
+    this.binaryGeneration++;
+    this.transforms.cancel('clear history');
+    this.assertEditable();
+    const revision = this.history.revision;
+    this.history.clearHistory();
+    if (this.history.revision !== revision) this.schedule();
   }
 
   private assertEditable() {
@@ -212,11 +421,17 @@ export class ProjectSession {
   }
 
   private schedule() {
-    this.autosave!.schedule(this.history.project, this.blobs, this.history.historyBlobIds);
+    const retained = new Set(this.history.retainedBlobIds);
+    const bytes = new Map([...this.blobs].filter(([id]) => retained.has(id)));
+    // Autosave and queued saves synchronously copy their inputs. Pruning this session map
+    // cannot alter pending saves, backup/copy jobs, or durable root/staging/pin references.
+    this.autosave!.schedule(this.history.project, bytes, this.history.historyBlobIds);
+    for (const id of this.blobs.keys()) if (!retained.has(id)) this.blobs.delete(id);
     this.transforms.reconcile();
   }
 
   async save() {
+    this.binaryGeneration++;
     this.transforms.cancel('explicit save');
     if (this.state.readOnly) {
       if (this.state.dirty) throw new UnsavedProjectError();
@@ -229,11 +444,13 @@ export class ProjectSession {
 
   /** Captures CURRENT edits and all source bytes, even after a failed save or fencing. */
   backup() {
+    this.binaryGeneration++;
     this.transforms.cancel('backup');
     return exportBackup(this.history.project, this.blobs);
   }
 
   async saveCopy() {
+    this.binaryGeneration++;
     this.transforms.cancel('save copy');
     if (this.closed) throw new Error('このプロジェクトは閉じられています。');
     const project = cloneProject(this.history.project);
@@ -246,6 +463,7 @@ export class ProjectSession {
   }
 
   async takeOver() {
+    this.binaryGeneration++;
     this.transforms.cancel('take over');
     if (this.state.dirty) throw new UnsavedProjectError();
     const id = this.projectId;
@@ -254,6 +472,7 @@ export class ProjectSession {
   }
 
   async close() {
+    this.binaryGeneration++;
     this.transforms.cancel('close');
     if (this.closed) return;
     if (this.state.dirty && this.preservedRevision !== this.history.revision) {
@@ -278,6 +497,9 @@ export class ProjectSession {
     }
     await this.snapshot?.release();
     this.closed = true;
+    this.blobs.clear();
+    this.binaryStorageReleases.splice(0).forEach((release) => release());
+    this.binaryStorageHighWater = 0;
     this.transforms.reconcile('closed');
   }
 }

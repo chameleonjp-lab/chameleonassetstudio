@@ -14,6 +14,38 @@ function fixture() {
   return p;
 }
 describe('native material creation and assignment', () => {
+  it('refuses textured assignment to missing, incomplete or non-renderable corner UVs atomically', () => {
+    const p = fixture();
+    addMaterial(p, 'textured', factors);
+    p.blobIds.push('a'.repeat(64));
+    p.materials.find((m) => m.id === 'textured')!.textureBlobId = p.blobIds[0];
+    const face = p.meshes[0].faces[0],
+      validUV = structuredClone(face.uv!);
+    for (const uv of [
+      undefined,
+      [[0, 0]],
+      [
+        [0, 0],
+        [1, Infinity],
+        [0, 1],
+      ],
+      [
+        [0, 0],
+        [1e100, 0],
+        [0, 1],
+      ],
+    ] as const) {
+      face.uv = uv ? (uv.map((value) => [...value]) as [number, number][]) : undefined;
+      const before = structuredClone(p);
+      expect(() => assignMaterial(p, 'shape-mesh', [face.id], 'textured')).toThrow('UV');
+      expect(p).toEqual(before);
+    }
+    face.uv = validUV;
+    assignMaterial(p, 'shape-mesh', [face.id], 'textured');
+    expect(p.meshes[0].faces[0].materialId).toBe('textured');
+    expect(p.meshes[0].faces[0].uv).toEqual(validUV);
+  });
+
   it('creates a distinct unused material and duplicates all source fields without aliasing', () => {
     const p = fixture();
     addMaterial(p, 'new', factors);
