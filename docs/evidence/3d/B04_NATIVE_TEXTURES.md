@@ -78,3 +78,10 @@ Three graphは使用hashごとにtextureを共有し、graph破棄時に一回di
 物理iPhone、OSによるtab破棄、実GPU/heap予算、全B04、rig/animation、GLB本出力は未完。native backupは自己完結したbytes/来歴を保持するがゲーム用配布形式ではない。
 
 この画像UI/描画接続を戻してもschema0.1.0の作品/backupは読み取れる。旧rendererはtextureを明示未対応として扱い、画像bytesを削除しない。新規箱のUVは既存schemaのoptional属性なので旧版で保持可能。破壊的migrationやデータ削除は行わない。
+
+## 初回browser受入の手順修正
+
+[CI37190170286](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/37190170286) head`ed4c713e`では単体/build成功、早期WebKit17件中15件成功。新しい画像ケースのうちJPEG/取消とIME/backup中断/他tab読み取り専用は成功した。残る2件は検査手順で停止したため、後続の全体browser/productionは未実行として扱う。
+
+- TEX-09: 来歴selectはartifactのaccessibility treeで正しいcombobox名と選択source IDを確認した。implicit label文字列の検索を、exactなcomboboxのaccessible nameでの検索へ変更。権利/ID/hashの期待値は維持する
+- TEX-10: 正面camera操作の前に「カメラ・表示の詳細設定」を開く手順が欠けていた。既存camera受入と同じ利用者操作を加え、PNGの色位置・UV方向・休止/復帰検査を続行する。timeout延長・skip・pixel期待値緩和は行わない

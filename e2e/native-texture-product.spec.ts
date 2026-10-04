@@ -131,7 +131,7 @@ test('native image and derived color retain original bytes through Undo and inde
   const originalHash = initial.project.materials[0].textureBlobId!;
   expect(Buffer.from(initial.blobs.get(originalHash)!)).toEqual(original);
   await panel(page)
-    .getByLabel('来歴の対象画像', { exact: true })
+    .getByRole('combobox', { name: '来歴の対象画像', exact: true })
     .selectOption(initial.project.sources[0].id);
   await panel(page)
     .getByLabel('画像の権利・出典', { exact: true })
@@ -142,7 +142,9 @@ test('native image and derived color retain original bytes through Undo and inde
   const newSource = replaced.project.sources.find(
     (source) => source.rights.declared === 'CC0: corrected attribution',
   )!;
-  await expect(panel(page).getByLabel('来歴の対象画像', { exact: true })).toHaveValue(newSource.id);
+  await expect(
+    panel(page).getByRole('combobox', { name: '来歴の対象画像', exact: true }),
+  ).toHaveValue(newSource.id);
   const uv = initial.project.meshes[0].faces.map((f) => f.uv);
   await panel(page).getByLabel('赤の倍率', { exact: true }).fill('0.25');
   await panel(page).getByRole('button', { name: '色調を派生画像として適用', exact: true }).click();
@@ -246,6 +248,7 @@ test('UV0 orientation and color survive native display, PNG, GPU suspension and 
   await apply(page, await image(page));
   await page.getByRole('button', { name: '3D表示を開く', exact: true }).click();
   await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  await page.getByText('カメラ・表示の詳細設定', { exact: true }).click();
   await page.getByRole('button', { name: '正面から見る', exact: true }).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'PNG画像を保存', exact: true }).click();
