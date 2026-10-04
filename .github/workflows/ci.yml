@@ -114,11 +114,13 @@ jobs:
         run: npx playwright test e2e/native-viewport-product.spec.ts --project=webkit-critical --output=test-results-native-acceptance
         env:
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-native-acceptance
+      - name: Check 3D takeover on the production WebKit build
+        run: npx playwright test e2e/studio-entries.spec.ts --config playwright.production.config.ts --project=webkit-critical --grep 'a second tab explicitly takes over'
       - run: npm run e2e
       - run: npm run e2e:webkit
       - run: npm run e2e:quality
       - name: Upload native production visual evidence
-        if: success()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: native-production-visuals-${{ github.run_id }}-${{ github.run_attempt }}

@@ -3,6 +3,7 @@ import {
   lazy,
   Suspense,
   useEffect,
+  useLayoutEffect,
   useReducer,
   useRef,
   useState,
@@ -288,7 +289,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
     };
   }, [session, repository]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     titleRef.current?.focus();
   }, [session]);
 

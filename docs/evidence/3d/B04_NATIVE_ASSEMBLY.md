@@ -63,3 +63,13 @@ Browser: 空projectで未割当材質を準備（GPU未起動）→box/cone→�
 | ASM-03 | assembly以外の古いrender handlerはUIのreadinessだけに依存していた | 共通sessionに描画時id/revisionを渡し、candidateを変更する前に照合。遅延操作ではmutation callbackを呼ばず、正本/履歴を保持 |
 
 修正後、独立した読取レビューで有限・小さい自作fixtureの再現をやり直し、全て拒否と原本不変を確認した。scene34・material4・session13の関連51件が成功。最終headの全体検査とbrowser/画像は別に確認する。
+
+## 本番WebKitの引継ぎ入力
+
+head `8f36be34` で先行native受入、Chromium全回帰、WebKit全回帰は成功した。本番受入は新制作を含む33件が成功し、既存の2タブ引継ぎ1件で新所有者名が元の名前のままという失敗が出た。一覧更新はsessionを読み替えないため、入力が新sessionへ到達する時点を重点確認する。
+
+session切替後の見出しfocusはpassive effectだった。編集欄が操作可能になってから遅れてfocusを奪う可能性を除くため、paint前のlayout effectへ移す。旧失敗の原因がこれだけだったとは断定せず、入力直後のvalue/focus/readOnly/disabled/visibilityを検査ログへ出し、保存前後にも名前を確認する。既存の競合・コピー救出・最終所有者名のassertionは維持する。
+
+生成済みnative PNGは、別の本番caseが失敗しても保存する。専用artifactをalwaysへ変更し、画像がない場合のerror判定・保存期間・権限は維持する。取得不能な既存URLへ別経路で接続する変更ではない。
+
+同じ失敗を長い全回帰の末尾まで待たないよう、本番WebKitの引継ぎcaseを区切りCIの先頭側でも実行する。全Chromium/WebKit・本番・H3/Pagesは維持する。入力DOMだけでなく正本から表示するheadingと、保存済みrevision 1も確認する。

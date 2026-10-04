@@ -201,6 +201,8 @@ describe('3D shell project sessions', () => {
     const next = await reader.takeOver();
     expect(next.project.name).toBe('Latest');
     expect(next.state.readOnly).toBe(false);
+    next.rename('New owner');
+    await next.save();
     writer.rename('Fenced unsaved');
     await expect(writer.save()).rejects.toMatchObject({ name: 'StorageConflictError' });
     expect(writer.state).toMatchObject({ readOnly: true, dirty: true });
@@ -212,6 +214,11 @@ describe('3D shell project sessions', () => {
     expect(copy.project.id).not.toBe(writer.project.id);
     expect(copy.project.name).toBe('Fenced unsaved');
     expect(copy.state.dirty).toBe(false);
+    expect(next.project.name).toBe('New owner');
+    expect(next.state.dirty).toBe(false);
+    const durable = await repository.readSnapshot(next.project.id);
+    expect(durable.project.name).toBe('New owner');
+    await durable.release();
     await writer.close();
     await reader.close();
     await next.close();
