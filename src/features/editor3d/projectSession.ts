@@ -3,6 +3,7 @@ import { exportBackup, importBackup, BACKUP_LIMITS } from '../../core3d/backup/b
 import { ProjectAutosave } from '../../core3d/commands/autosave';
 import { ProjectHistory } from '../../core3d/commands/history';
 import { addBox } from '../../core3d/commands/box';
+import { assertFiniteAuthoringCoordinates } from '../../core3d/commands/objectEditing';
 import { cloneProject, createProject, type Project3D } from '../../core3d/model/project';
 import {
   StorageConflictError,
@@ -146,6 +147,16 @@ export class ProjectSession {
   addBox() {
     this.assertEditable();
     this.history.execute((project) => addBox(project, crypto.randomUUID()));
+    this.schedule();
+  }
+
+  /** One native authoring transaction; candidates and failed edits never reach storage. */
+  executeAuthoring(operation: (candidate: Project3D) => void) {
+    this.assertEditable();
+    this.history.execute((candidate) => {
+      operation(candidate);
+      assertFiniteAuthoringCoordinates(candidate);
+    });
     this.schedule();
   }
 

@@ -14,6 +14,7 @@ import { openProjectRepository, type ProjectRepository } from '../../core3d/stor
 import { BACKUP_LIMITS, ProjectSession, UnsavedProjectError } from './projectSession';
 import './editor3d.css';
 import type { NativeViewportFactory } from './NativeViewportPanel';
+import { NativeAuthoringPanel } from './NativeAuthoringPanel';
 
 const NativeViewportPanel = lazy(() =>
   import('./NativeViewportPanel').then((module) => ({ default: module.NativeViewportPanel })),
@@ -386,7 +387,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
           <span className="editor3d-badge">3D制作は準備中</span>
           <h2 id="editor3d-preparation">まずは、プロジェクトの保存と再開から</h2>
           <p>
-            箱の追加、3D表示とカメラ操作、PNG画像の保存、自動保存、バックアップとコピー復元を利用できます。頂点・材質の編集、リグ・アニメーション編集、GLBの入出力は準備中です。
+            基本形の作成、数値による頂点・面・材質の編集、3D表示とカメラ操作、PNG画像の保存、自動保存、バックアップとコピー復元を利用できます。リグ・アニメーション編集、texture制作、GLBの入出力は準備中です。
           </p>
           <p>
             作品はこのブラウザー内に保存します。大切な内容は .cas3dproj
@@ -647,9 +648,23 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                       3D表示を開く
                     </button>
                   </div>
+                  <NativeAuthoringPanel
+                    key={`authoring-${project.id}`}
+                    project={project}
+                    disabled={busy || state.readOnly}
+                    execute={(operation) => {
+                      if (busyRef.current)
+                        throw new Error('別の操作が完了するまで待ってください。');
+                      session.executeAuthoring(operation);
+                      setPreviewProjectId(project.id);
+                      setError('');
+                      setNotice('');
+                      redraw();
+                    }}
+                  />
                   {previewProjectId === project.id && (
                     <ViewportLoadBoundary
-                      key={project.id}
+                      key={`viewport-${project.id}`}
                       onReload={async () => {
                         if (busyRef.current)
                           throw new Error('別の操作が完了するまで待ってください。');

@@ -9,6 +9,8 @@ import {
   type ProjectRepository,
 } from '../../core3d/storage/repository';
 import { ProjectSession, UnsavedProjectError } from './projectSession';
+import { addBox } from '../../core3d/commands/box';
+import { setNodeTransform, updateMaterial } from '../../core3d/commands/objectEditing';
 
 let repository: ProjectRepository;
 beforeEach(async () => {
@@ -20,6 +22,67 @@ afterEach(() => {
 });
 
 describe('3D shell project sessions', () => {
+  it('commits authoring atomically, preserves it across backup, and edits an independent restore', async () => {
+    const session = await ProjectSession.create(repository, 'author', 'Work');
+    session.executeAuthoring((p) => addBox(p, 'shape'));
+    session.executeAuthoring((p) => {
+      setNodeTransform(p, 'shape-node', {
+        translation: [2, 3, 4],
+        rotation: [0, 0, 0, 1],
+        scale: [1, 2, 1],
+      });
+      updateMaterial(p, 'shape-material', {
+        baseColor: [0.2, 0.3, 0.4, 1],
+        metallic: 0.5,
+        roughness: 0.6,
+      });
+    });
+    expect(session.state.revision).toBe(2);
+    const original = session.project;
+    expect(() =>
+      session.executeAuthoring((p) => {
+        p.name = 'must not commit';
+        setNodeTransform(p, 'missing', {
+          translation: [0, 0, 0],
+          rotation: [0, 0, 0, 1],
+          scale: [1, 1, 1],
+        });
+      }),
+    ).toThrow();
+    expect(session.project).toEqual(original);
+    session.undo();
+    expect(session.project.nodes[0].transform.translation).toEqual([0, 0, 0]);
+    session.redo();
+    await session.save();
+    const backup = await session.backup();
+    const separate = await openProjectRepository({ indexedDB: new IDBFactory() });
+    try {
+      const restored = await ProjectSession.restore(separate, 'restored', backup);
+      expect(restored.project.meshes).toEqual(original.meshes);
+      expect(restored.project.materials).toEqual(original.materials);
+      expect(restored.project.nodes).toEqual(original.nodes);
+      restored.executeAuthoring((p) =>
+        updateMaterial(p, 'shape-material', { baseColor: [1, 0, 0, 1], metallic: 0, roughness: 1 }),
+      );
+      await restored.save();
+      expect(session.project.materials).toEqual(original.materials);
+      await restored.close();
+    } finally {
+      separate.close();
+    }
+    await session.close();
+  });
+
+  it('never accepts an authoring command through a read-only writer conflict', async () => {
+    const session = await ProjectSession.create(repository, 'writer', 'Work');
+    await session.save();
+    const reader = await ProjectSession.open(repository, 'reader', session.project.id);
+    const before = reader.project;
+    expect(() => reader.executeAuthoring((p) => addBox(p, 'forbidden'))).toThrow('読み取り専用');
+    expect(reader.project).toEqual(before);
+    await reader.close();
+    await session.close();
+  });
   it('reads save status without cloning the project graph', async () => {
     const session = await ProjectSession.create(repository, 'tab-a', 'Status');
     await session.save();
