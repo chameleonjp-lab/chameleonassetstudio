@@ -405,3 +405,129 @@ test('JPEG import and cancelled image preparation keep the committed project rec
   );
   expect((await backup(page)).project).toEqual(before.project);
 });
+
+for (const [width, textScale] of [
+  [320, 1],
+  [375, 1],
+  [375, 2],
+] as const) {
+  test(`material image gains remain readable and operable at ${width}px with ${textScale * 100}% text`, async ({
+    browser,
+    baseURL,
+  }) => {
+    const context = await browser.newContext({
+      baseURL,
+      viewport: { width, height: 812 },
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      await open(page);
+      await apply(page, await image(page));
+      const original = await backup(page);
+      // Controlled text enlargement; this is not physical iPhone or browser pinch-zoom evidence.
+      await panel(page).evaluate((element, scale) => {
+        element.style.fontSize = `${parseFloat(getComputedStyle(element).fontSize) * scale}px`;
+      }, textScale);
+      const red = panel(page).getByLabel('赤の倍率', { exact: true });
+      const green = panel(page).getByLabel('緑の倍率', { exact: true });
+      const blue = panel(page).getByLabel('青の倍率', { exact: true });
+      await red.tap();
+      await expect(red).toBeFocused();
+      await page.keyboard.press('ControlOrMeta+A');
+      await page.keyboard.type('0.25');
+      await page.keyboard.press('Tab');
+      await expect(green).toBeFocused();
+      await page.keyboard.press('ControlOrMeta+A');
+      await page.keyboard.type('1.5');
+      await page.keyboard.press('Tab');
+      await expect(blue).toBeFocused();
+      await page.keyboard.press('ControlOrMeta+A');
+      await page.keyboard.type('1.25');
+      for (const [input, value] of [
+        [red, '0.25'],
+        [green, '1.5'],
+        [blue, '1.25'],
+      ] as const) {
+        await input.tap();
+        await expect(input).toBeFocused();
+        await expect(input).toHaveValue(value);
+        expect(
+          await input.evaluate((element) => {
+            const box = element.getBoundingClientRect();
+            return (
+              document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) === element
+            );
+          }),
+        ).toBe(true);
+        const metrics = await input.evaluate((element) => {
+          const style = getComputedStyle(element);
+          const canvas = document.createElement('canvas');
+          const drawing = canvas.getContext('2d')!;
+          drawing.font = style.font;
+          return {
+            width: element.clientWidth,
+            height: element.getBoundingClientRect().height,
+            fontSize: parseFloat(style.fontSize),
+            // Reserve spinner space in addition to text and both padding edges.
+            required:
+              drawing.measureText((element as HTMLInputElement).value).width +
+              parseFloat(style.paddingLeft) +
+              parseFloat(style.paddingRight) +
+              2 * parseFloat(style.fontSize),
+          };
+        });
+        expect(metrics.width).toBeGreaterThanOrEqual(metrics.required);
+        expect(metrics.height).toBeGreaterThanOrEqual(44);
+        expect(metrics.fontSize).toBeGreaterThanOrEqual(16 * textScale);
+      }
+      await page.keyboard.press('Tab');
+      await expect(panel(page).getByLabel('明るさ（線形値）', { exact: true })).toBeFocused();
+      await page.keyboard.press('ControlOrMeta+A');
+      await page.keyboard.type('-0.25');
+      await page.keyboard.press('Tab');
+      await expect(panel(page).getByLabel('彩度', { exact: true })).toBeFocused();
+      await page.keyboard.press('ControlOrMeta+A');
+      await page.keyboard.type('1.25');
+      await visual(`gains-focused-${width}-${textScale * 100}`, await panel(page).screenshot());
+      await page.keyboard.press('Tab');
+      const derive = panel(page).getByRole('button', {
+        name: '色調を派生画像として適用',
+        exact: true,
+      });
+      await expect(derive).toBeFocused();
+      const draft = await backup(page);
+      expect(draft.project).toEqual(original.project);
+      await derive.focus();
+      await page.keyboard.press('Enter');
+      await expect(panel(page).getByRole('status')).toContainText('一回の操作');
+      const changed = await backup(page);
+      expect(changed.project.revision).toBe(original.project.revision + 1);
+      const source = changed.project.sources.find(
+        (entry) => entry.blobId === changed.project.materials[0].textureBlobId,
+      )!;
+      expect(JSON.parse(source.derivedFrom!.settings)).toEqual({
+        gain: [0.25, 1.5, 1.25],
+        brightness: -0.25,
+        saturation: 1.25,
+      });
+      expect(Buffer.from(changed.blobs.get(original.project.materials[0].textureBlobId!)!)).toEqual(
+        Buffer.from(original.blobs.get(original.project.materials[0].textureBlobId!)!),
+      );
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      await visual(`gains-${width}-${textScale * 100}`, await panel(page).screenshot());
+      await page.getByRole('button', { name: '元に戻す', exact: true }).tap();
+      expect((await backup(page)).project.materials[0].textureBlobId).toBe(
+        original.project.materials[0].textureBlobId,
+      );
+      await page.getByRole('button', { name: 'やり直す', exact: true }).tap();
+      expect((await backup(page)).project.materials[0].textureBlobId).toBe(
+        changed.project.materials[0].textureBlobId,
+      );
+    } finally {
+      await context.close();
+    }
+  });
+}
