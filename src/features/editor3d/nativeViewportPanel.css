@@ -140,3 +140,67 @@
     flex: 1 1 140px;
   }
 }
+
+.native-inspection {
+  margin-top: 1rem;
+  min-width: 0;
+}
+.native-inspection summary {
+  min-height: 44px;
+  cursor: pointer;
+  padding-block: 0.5rem;
+}
+.native-inspection fieldset {
+  min-width: 0;
+  min-inline-size: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0.75rem 0;
+  border: 1px solid #789183;
+  border-radius: 6px;
+  padding: 0.65rem;
+}
+.native-inspection label {
+  display: block;
+  margin-block: 0.5rem;
+  min-width: 0;
+}
+.native-inspection input,
+.native-inspection select,
+.native-inspection button {
+  min-height: 44px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.native-inspection input,
+.native-inspection select {
+  display: block;
+  width: 100%;
+  margin-top: 0.3rem;
+}
+.native-inspection-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.native-inspection-numbers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.native-inspection .native-inspection-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+}
+.native-inspection-check input {
+  width: 24px;
+  height: 24px;
+}
+.native-inspection :focus-visible {
+  outline: 3px solid #b45309;
+  outline-offset: 3px;
+}

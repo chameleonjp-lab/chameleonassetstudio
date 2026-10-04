@@ -1,16 +1,22 @@
 /** Native-static Three adapter. Lazy product use follows the scoped G03 evidence record. */
 import {
   AmbientLight,
+  AxesHelper,
   Box3,
+  Box3Helper,
   BufferGeometry,
   Color,
   DirectionalLight,
   Float32BufferAttribute,
   Group,
+  GridHelper,
   Mesh,
   MeshStandardMaterial,
+  MeshBasicMaterial,
   Object3D,
+  OrthographicCamera,
   PerspectiveCamera,
+  Quaternion,
   Scene,
   Spherical,
   Vector3,
@@ -28,15 +34,19 @@ import { transformPoint, worldMatrix } from '../../core3d/model/coordinates';
 import type {
   NativeViewportResult as ProfileResult,
   NativeCameraAction,
+  NativeCameraState,
+  NativeCameraPreset,
+  NativeViewOptions,
   NativeViewportStatus as ViewportStatus,
   NativeViewportSuspensionContract as SuspensionContract,
 } from '../../core3d/ports/renderPort';
 export type { NativeCameraAction } from '../../core3d/ports/renderPort';
+type InspectionCamera = PerspectiveCamera | OrthographicCamera;
 
 interface RendererPort {
   setPixelRatio(value: number): void;
   setSize(width: number, height: number, updateStyle?: boolean): void;
-  render(scene: Scene, camera: PerspectiveCamera): void;
+  render(scene: Scene, camera: InspectionCamera): void;
   dispose(): void;
   forceContextLoss(): void;
   info?: { memory: { geometries: number; textures: number } };
@@ -58,7 +68,7 @@ interface ResizePort {
 /** Injectable ownership boundaries allow lifecycle tests without pretending to test a GPU. */
 export interface NativeViewportDependencies {
   createRenderer(canvas: HTMLCanvasElement, context: WebGL2RenderingContext): RendererPort;
-  createControls(camera: PerspectiveCamera, canvas: HTMLCanvasElement): ControlsPort;
+  createControls(camera: InspectionCamera, canvas: HTMLCanvasElement): ControlsPort;
   requestFrame(callback: FrameRequestCallback): number;
   cancelFrame(id: number): void;
   createResizeObserver(callback: () => void): ResizePort | null;
@@ -70,6 +80,25 @@ export interface NativeViewportOptions {
 
 const failure = (reason: string): ProfileResult => ({ ok: false, reason });
 const float32Finite = (value: number) => Number.isFinite(Math.fround(value));
+const defaultViewOptions = (): NativeViewOptions => ({
+  shading: 'material',
+  background: 'dark',
+  lighting: 'studio',
+  grid: false,
+  axes: false,
+  bounds: false,
+});
+const defaultDirection = () => new Vector3(1, 0.75, 1).normalize();
+const fallbackBounds = () => new Box3(new Vector3(-0.5, -0.5, -0.5), new Vector3(0.5, 0.5, 0.5));
+// A point far from the origin still needs a representable camera offset.
+const boundsRadius = (bounds: Box3) =>
+  Math.max(
+    0.01,
+    bounds.getSize(new Vector3()).length() / 2,
+    Math.max(...bounds.min.toArray().map(Math.abs), ...bounds.max.toArray().map(Math.abs)) *
+      Number.EPSILON *
+      64,
+  );
 
 /** Native-only subset of compact-evaluation-0; not an import/decoder security profile. */
 export const NATIVE_EVALUATION_LIMITS = Object.freeze({
@@ -273,11 +302,12 @@ export function fitPerspectiveBounds(
   const radius = Math.max(
     0.01,
     Math.hypot(...bounds.max.map((max, index) => max / 2 - bounds.min[index] / 2)),
+    Math.max(...bounds.min.map(Math.abs), ...bounds.max.map(Math.abs)) * Number.EPSILON * 64,
   );
   const halfVertical = (fovDegrees * Math.PI) / 360;
   const halfHorizontal = Math.atan(Math.tan(halfVertical) * aspect);
   const distance = (radius / Math.sin(Math.min(halfVertical, halfHorizontal))) * 1.2;
-  const direction = new Vector3(1, 0.75, 1).normalize();
+  const direction = defaultDirection();
   const fit = {
     position: direction
       .multiplyScalar(distance)
@@ -294,8 +324,18 @@ export function fitPerspectiveBounds(
 
 export class NativeViewport {
   private readonly scene = new Scene();
-  private readonly camera = new PerspectiveCamera(45, 1, 0.01, 1000);
+  private camera: InspectionCamera = new PerspectiveCamera(45, 1, 0.01, 1000);
   private readonly target = new Vector3();
+  private fov = 45;
+  private span = 4;
+  private viewOptions = defaultViewOptions();
+  private readonly ambient = new AmbientLight(0xffffff, 1.5);
+  private readonly light = new DirectionalLight(0xffffff, 3);
+  private inspectionMaterial: MeshStandardMaterial | MeshBasicMaterial | null = null;
+  private helpers: (GridHelper | AxesHelper | Box3Helper)[] = [];
+  private disposedHelperGeometries = 0;
+  private disposedHelperMaterials = 0;
+  private disposedInspectionMaterials = 0;
   private readonly dependencies: NativeViewportDependencies;
   private readonly document: Document;
   private readonly cleanup: (() => void)[] = [];
@@ -332,6 +372,8 @@ export class NativeViewport {
   private height = 1;
   private pixelRatio = 1;
   private fitPending = true;
+  private resetPending = true;
+  private clippingPending = true;
 
   constructor(
     private readonly host: HTMLElement,
@@ -350,10 +392,9 @@ export class NativeViewport {
     };
     this.documentHidden = this.document.hidden;
     this.scene.background = new Color(0x18202b);
-    this.scene.add(new AmbientLight(0xffffff, 1.5));
-    const light = new DirectionalLight(0xffffff, 3);
-    light.position.set(3, 5, 4);
-    this.scene.add(light);
+    this.scene.add(this.ambient);
+    this.light.position.set(3, 5, 4);
+    this.scene.add(this.light);
     this.listen(this.document, 'visibilitychange', () => {
       this.documentHidden = this.document.hidden;
       this.syncActivity();
@@ -407,6 +448,12 @@ export class NativeViewport {
       canvases: this.element ? 1 : 0,
       geometries: this.graph?.geometries.length ?? 0,
       materials: this.graph?.materials.length ?? 0,
+      helperGeometries: this.helpers.length,
+      helperMaterials: this.helpers.length,
+      inspectionMaterials: this.inspectionMaterial ? 1 : 0,
+      disposedHelperGeometries: this.disposedHelperGeometries,
+      disposedHelperMaterials: this.disposedHelperMaterials,
+      disposedInspectionMaterials: this.disposedInspectionMaterials,
       controls: this.controls ? 1 : 0,
       // Own listeners only. OrbitControls and WebGLRenderer internals are owned by their instances.
       listeners: this.listenerCount,
@@ -423,10 +470,10 @@ export class NativeViewport {
       gpuGeometries: this.renderer?.info?.memory.geometries ?? null,
       gpuTextures: this.renderer?.info?.memory.textures ?? null,
       camera: {
-        position: this.camera.position.toArray(),
-        target: this.target.toArray(),
-        aspect: this.camera.aspect,
+        ...this.getCamera(),
+        aspect: this.width / this.height,
       },
+      viewOptions: this.getViewOptions(),
     };
   }
 
@@ -446,7 +493,11 @@ export class NativeViewport {
       return profile;
     }
     this.snapshot = cloneProject(project);
-    if (!sameProject) this.fitPending = true;
+    this.clippingPending = true;
+    if (!sameProject) {
+      this.fitPending = true;
+      this.resetPending = true;
+    }
     if (!this.suspended && !this.contextLost) {
       if (!this.ensureRuntime() || !this.rebuild())
         return failure(this.status.reason ?? 'Viewport construction failed.');
@@ -463,18 +514,253 @@ export class NativeViewport {
     const nextHeight = height ?? bounds.height;
     const nextRatio = pixelRatio ?? this.document.defaultView?.devicePixelRatio ?? 1;
     if (![nextWidth, nextHeight, nextRatio].every(Number.isFinite)) return;
-    this.width = Math.max(1, Math.floor(nextWidth));
-    this.height = Math.max(1, Math.floor(nextHeight));
+    const widthValue = Math.max(1, Math.floor(nextWidth));
+    const heightValue = Math.max(1, Math.floor(nextHeight));
+    const projection = this.camera.clone();
+    this.updateProjection(projection, widthValue / heightValue);
+    if (
+      ![
+        ...projection.projectionMatrix.elements,
+        ...projection.projectionMatrixInverse.elements,
+      ].every(float32Finite)
+    )
+      return;
+    this.width = widthValue;
+    this.height = heightValue;
     this.pixelRatio = Math.min(2, Math.max(0.5, nextRatio));
-    this.camera.aspect = this.width / this.height;
-    this.camera.updateProjectionMatrix();
+    this.updateProjection();
     this.renderer?.setPixelRatio(this.pixelRatio);
     this.renderer?.setSize(this.width, this.height, false);
     this.requestRender();
   }
 
   resetCamera(): void {
-    this.fitCamera();
+    if (!this.graph || this.disposed) return;
+    const bounds = this.modelBounds();
+    let result = this.fitBounds(bounds, defaultDirection(), new Vector3(0, 1, 0));
+    // Recover even from an accepted but impractically narrow numeric field of view.
+    if (!result.ok) result = this.fitBounds(bounds, defaultDirection(), new Vector3(0, 1, 0), 45);
+    if (!result.ok) throw new Error(result.reason);
+  }
+
+  getCamera(): NativeCameraState {
+    return {
+      position: this.camera.position.toArray() as Vec3,
+      target: this.target.toArray() as Vec3,
+      up: this.camera.up.toArray() as Vec3,
+      projection: this.camera instanceof OrthographicCamera ? 'orthographic' : 'perspective',
+      fov: this.fov,
+      span:
+        this.camera instanceof OrthographicCamera
+          ? (this.camera.top - this.camera.bottom) / this.camera.zoom
+          : this.span,
+    };
+  }
+
+  setCamera(state: NativeCameraState): ProfileResult {
+    if (!this.canRender()) return failure('Camera edits require an active native viewport.');
+    return this.applyCamera(state);
+  }
+
+  cameraPreset(preset: NativeCameraPreset): ProfileResult {
+    if (!this.canRender()) return failure('Camera presets require an active native viewport.');
+    const directions = { front: [0, 0, 1], right: [1, 0, 0], top: [0, 1, 0] } as const;
+    if (!Object.hasOwn(directions, preset)) return failure('Unknown native camera preset.');
+    return this.fitBounds(
+      this.modelBounds(),
+      new Vector3(...directions[preset]),
+      new Vector3(0, preset === 'top' ? 0 : 1, preset === 'top' ? -1 : 0),
+    );
+  }
+
+  focusNode(nodeId: string): ProfileResult {
+    if (!this.canRender()) return failure('Focus requires an active native viewport.');
+    let selected: Object3D | undefined;
+    this.graph!.root.traverse((node) => {
+      if (node.userData.canonicalNodeId === nodeId) selected = node;
+    });
+    if (!selected) return failure('The selected canonical node is not present.');
+    const bounds = new Box3().setFromObject(selected);
+    if (bounds.isEmpty())
+      return failure('The selected node has no native geometry in its subtree.');
+    return this.fitBounds(bounds, this.viewDirection());
+  }
+
+  getViewOptions(): NativeViewOptions {
+    return { ...this.viewOptions };
+  }
+
+  setViewOptions(options: NativeViewOptions): ProfileResult {
+    if (!this.canRender()) return failure('View options require an active native viewport.');
+    if (
+      !options ||
+      !['material', 'solid', 'wireframe'].includes(options.shading) ||
+      !['dark', 'light'].includes(options.background) ||
+      !['studio', 'soft'].includes(options.lighting) ||
+      ![options.grid, options.axes, options.bounds].every((value) => typeof value === 'boolean')
+    )
+      return failure('Valid native shading, background, lighting and helper options are required.');
+    try {
+      this.applyInspection(options);
+    } catch (error) {
+      return failure(
+        `View construction failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
+    }
+    this.viewOptions = { ...options };
+    this.requestRender();
+    return { ok: true };
+  }
+
+  /** Build and validate a temporary camera before changing any live camera or controls. */
+  private applyCamera(state: NativeCameraState, preserveClipping = false): ProfileResult {
+    if (
+      !state ||
+      !Array.isArray(state.position) ||
+      !Array.isArray(state.target) ||
+      state.position.length !== 3 ||
+      state.target.length !== 3 ||
+      ![...state.position, ...state.target, state.fov, state.span].every(
+        (value) => typeof value === 'number' && float32Finite(value),
+      ) ||
+      !['perspective', 'orthographic'].includes(state.projection) ||
+      state.fov <= 0 ||
+      state.fov >= 180 ||
+      state.span <= 0
+    )
+      return failure(
+        'Finite position/target, 0 < field of view < 180, and a positive span are required.',
+      );
+    const position = new Vector3(...state.position);
+    const target = new Vector3(...state.target);
+    const direction = position.clone().sub(target);
+    if (!float32Finite(direction.length()) || direction.lengthSq() === 0)
+      return failure('The camera requires a finite position and a separate target.');
+    if (
+      state.up !== undefined &&
+      (!Array.isArray(state.up) ||
+        state.up.length !== 3 ||
+        !state.up.every((value) => typeof value === 'number' && float32Finite(value)))
+    )
+      return failure('A finite screen-up vector is required.');
+    direction.normalize();
+    const up =
+      state.up === undefined
+        ? new Vector3(
+            0,
+            Math.abs(direction.y) > 1 - 1e-12 ? 0 : 1,
+            Math.abs(direction.y) > 1 - 1e-12 ? -1 : 0,
+          )
+        : new Vector3(...state.up);
+    // OrbitControls permits polar angles of 1e-6 rad (squared sine about 1e-12).
+    if (
+      !float32Finite(up.length()) ||
+      up.lengthSq() === 0 ||
+      new Vector3().crossVectors(up.clone().normalize(), direction).lengthSq() < 1e-20
+    )
+      return failure('Screen-up must be nonzero and separate from the viewing direction.');
+    up.normalize();
+    const bounds = this.modelBounds();
+    const radius = boundsRadius(bounds);
+    const distance = position.distanceTo(bounds.getCenter(new Vector3()));
+    const near = preserveClipping
+      ? this.camera.near
+      : Math.max(0.00001, Math.min(radius / 1000, Math.max(0.00002, distance - radius) / 2));
+    const far = preserveClipping ? this.camera.far : Math.max(distance + radius * 100, near * 2);
+    const aspect = this.width / this.height;
+    if (![near, far, state.span * aspect].every(float32Finite) || near <= 0 || far <= near)
+      return failure('Camera clipping is outside the finite Float32 evaluation profile.');
+    const next: InspectionCamera =
+      state.projection === 'perspective'
+        ? new PerspectiveCamera(state.fov, aspect, near, far)
+        : new OrthographicCamera(
+            (-state.span * aspect) / 2,
+            (state.span * aspect) / 2,
+            state.span / 2,
+            -state.span / 2,
+            near,
+            far,
+          );
+    next.position.copy(position);
+    next.up.copy(up);
+    next.lookAt(target);
+    next.updateMatrixWorld(true);
+    if (
+      ![
+        ...next.projectionMatrix.elements,
+        ...next.projectionMatrixInverse.elements,
+        ...next.matrixWorld.elements,
+        ...next.matrixWorldInverse.elements,
+      ].every(float32Finite)
+    )
+      return failure('Camera projection is outside the finite Float32 evaluation profile.');
+    const replace = this.camera.constructor !== next.constructor || !this.camera.up.equals(next.up);
+    if (replace) {
+      this.releaseControls();
+      this.camera = next;
+    } else if (this.camera instanceof PerspectiveCamera && next instanceof PerspectiveCamera) {
+      this.camera.copy(next);
+    } else if (this.camera instanceof OrthographicCamera && next instanceof OrthographicCamera) {
+      this.camera.copy(next);
+    }
+    this.fov = state.fov;
+    this.span = state.span;
+    this.target.copy(target);
+    this.fitPending = false;
+    if (this.controls) {
+      this.controls.target.copy(target);
+      this.controls.update();
+    } else if (this.canRender()) this.syncActivity();
+    this.requestRender();
+    return { ok: true };
+  }
+
+  private updateProjection(camera = this.camera, aspect = this.width / this.height): void {
+    if (camera instanceof PerspectiveCamera) camera.aspect = aspect;
+    else {
+      const half = (camera.top - camera.bottom) / 2;
+      camera.left = -half * aspect;
+      camera.right = half * aspect;
+    }
+    camera.updateProjectionMatrix();
+  }
+
+  private modelBounds(): Box3 {
+    const bounds = this.graph ? new Box3().setFromObject(this.graph.root) : new Box3();
+    return bounds.isEmpty() ? fallbackBounds() : bounds;
+  }
+
+  private viewDirection(): Vector3 {
+    const direction = this.camera.position.clone().sub(this.target);
+    return direction.lengthSq() > 0 ? direction.normalize() : defaultDirection();
+  }
+
+  private fitBounds(
+    bounds: Box3,
+    direction: Vector3,
+    up = this.camera.up,
+    fov = this.fov,
+  ): ProfileResult {
+    const state = { ...this.getCamera(), fov };
+    const aspect = this.width / this.height;
+    const radius = boundsRadius(bounds);
+    const target = bounds.getCenter(new Vector3());
+    const halfVertical = (state.fov * Math.PI) / 360;
+    const halfHorizontal = Math.atan(Math.tan(halfVertical) * aspect);
+    const distance =
+      state.projection === 'perspective'
+        ? (radius / Math.sin(Math.min(halfVertical, halfHorizontal))) * 1.2
+        : radius * 3;
+    return this.applyCamera({
+      ...state,
+      position: target
+        .clone()
+        .add(direction.clone().normalize().multiplyScalar(distance))
+        .toArray() as Vec3,
+      target: target.toArray() as Vec3,
+      span: (radius * 2.4) / Math.min(1, aspect),
+      up: up.toArray() as Vec3,
+    });
   }
 
   /** Discrete accessible controls share the pointer camera without owning another event loop. */
@@ -485,6 +771,7 @@ export class NativeViewport {
     const position = this.camera.position.clone();
     const offset = position.clone().sub(target);
     const distance = offset.length();
+    let span = this.getCamera().span;
     if (
       ![...position.toArray(), ...target.toArray(), distance].every(float32Finite) ||
       distance <= 0
@@ -496,13 +783,19 @@ export class NativeViewport {
       case 'orbit-right':
       case 'orbit-up':
       case 'orbit-down': {
-        const spherical = new Spherical().setFromVector3(offset);
+        const toYUp = new Quaternion().setFromUnitVectors(
+          this.camera.up.clone().normalize(),
+          new Vector3(0, 1, 0),
+        );
+        const spherical = new Spherical().setFromVector3(offset.clone().applyQuaternion(toYUp));
         if (action === 'orbit-left') spherical.theta -= angle;
         if (action === 'orbit-right') spherical.theta += angle;
         if (action === 'orbit-up') spherical.phi -= angle;
         if (action === 'orbit-down') spherical.phi += angle;
-        spherical.phi = Math.min(Math.PI - 0.0001, Math.max(0.0001, spherical.phi));
-        position.copy(target).add(new Vector3().setFromSpherical(spherical));
+        spherical.makeSafe();
+        position
+          .copy(target)
+          .add(new Vector3().setFromSpherical(spherical).applyQuaternion(toYUp.invert()));
         break;
       }
       case 'pan-left':
@@ -511,18 +804,27 @@ export class NativeViewport {
       case 'pan-down': {
         const direction = offset.normalize();
         const right = new Vector3().crossVectors(this.camera.up, direction);
-        if (right.lengthSq() < 1e-12) right.set(1, 0, 0);
+        if (right.lengthSq() < 1e-20) right.set(1, 0, 0);
         right.normalize();
         const up = new Vector3().crossVectors(direction, right).normalize();
         const movement = action === 'pan-left' || action === 'pan-right' ? right : up;
         const sign = action === 'pan-left' || action === 'pan-down' ? -1 : 1;
-        movement.multiplyScalar(distance * 0.1 * sign);
+        const scale =
+          this.camera instanceof OrthographicCamera
+            ? span *
+              (action === 'pan-left' || action === 'pan-right' ? this.width / this.height : 1)
+            : distance;
+        movement.multiplyScalar(scale * 0.1 * sign);
         position.add(movement);
         target.add(movement);
         break;
       }
       case 'zoom-in':
       case 'zoom-out': {
+        if (this.camera instanceof OrthographicCamera) {
+          span = Math.min(1e30, Math.max(0.000001, span * (action === 'zoom-in' ? 1 / 1.2 : 1.2)));
+          break;
+        }
         const minimum = this.camera.near * 2;
         const maximum = this.camera.far / 2;
         if (![minimum, maximum].every(float32Finite) || minimum <= 0 || maximum < minimum)
@@ -542,36 +844,21 @@ export class NativeViewport {
       position.distanceToSquared(target) === 0
     )
       return failure('The camera action is outside the finite Float32 evaluation profile.');
-    this.camera.position.copy(position);
-    this.target.copy(target);
-    this.camera.lookAt(target);
-    this.controls.target.copy(target);
-    this.controls.update();
-    this.requestRender();
-    return { ok: true };
+    return this.applyCamera(
+      {
+        ...this.getCamera(),
+        position: position.toArray() as Vec3,
+        target: target.toArray() as Vec3,
+        span,
+      },
+      action === 'zoom-in' || action === 'zoom-out' || action.startsWith('orbit-'),
+    );
   }
 
   fitCamera(): void {
     if (this.disposed || !this.graph) return;
-    const bounds = new Box3().setFromObject(this.graph.root);
-    const fit = fitPerspectiveBounds(
-      bounds.isEmpty()
-        ? { min: [-0.5, -0.5, -0.5], max: [0.5, 0.5, 0.5] }
-        : { min: bounds.min.toArray() as Vec3, max: bounds.max.toArray() as Vec3 },
-      this.camera.aspect,
-    );
-    this.camera.position.fromArray(fit.position);
-    this.camera.near = fit.near;
-    this.camera.far = fit.far;
-    this.camera.updateProjectionMatrix();
-    this.target.fromArray(fit.target);
-    this.fitPending = false;
-    this.camera.lookAt(this.target);
-    if (this.controls) {
-      this.controls.target.copy(this.target);
-      this.controls.update();
-    }
-    this.requestRender();
+    const result = this.fitBounds(this.modelBounds(), this.viewDirection());
+    if (!result.ok) throw new Error(result.reason);
   }
 
   setHidden(hidden: boolean): void {
@@ -766,6 +1053,7 @@ export class NativeViewport {
     try {
       this.graph = buildNativeGraph(this.snapshot);
       this.scene.add(this.graph.root);
+      this.applyInspection();
       this.rebuildCount++;
       return true;
     } catch (error) {
@@ -781,23 +1069,22 @@ export class NativeViewport {
 
   private restoreView(): boolean {
     try {
-      if (this.fitPending) this.fitCamera();
-      else if (this.graph) {
-        const bounds = new Box3().setFromObject(this.graph.root);
-        if (!bounds.isEmpty()) {
-          const radius = Math.max(0.01, bounds.getSize(new Vector3()).length() / 2);
-          const distance = this.camera.position.distanceTo(bounds.getCenter(new Vector3()));
-          const far = distance + radius * 100;
-          if (!float32Finite(far))
-            throw new Error('Camera clipping is outside the finite Float32 evaluation profile.');
-          this.camera.near = Math.max(
-            0.00001,
-            Math.min(radius / 1000, Math.max(0.00002, distance - radius) / 2),
-          );
-          this.camera.far = far;
-          this.camera.updateProjectionMatrix();
-        }
+      if (this.resetPending) {
+        this.camera = new PerspectiveCamera(45, this.width / this.height, 0.01, 1000);
+        this.fov = 45;
+        this.span = 4;
+        this.viewOptions = defaultViewOptions();
+        this.applyInspection();
       }
+      const result = this.fitPending
+        ? this.fitBounds(
+            this.modelBounds(),
+            this.resetPending ? defaultDirection() : this.viewDirection(),
+          )
+        : this.applyCamera(this.getCamera(), !this.clippingPending);
+      if (!result.ok) throw new Error(result.reason);
+      this.resetPending = false;
+      this.clippingPending = false;
       return true;
     } catch (error) {
       this.fault = {
@@ -869,6 +1156,75 @@ export class NativeViewport {
     }
   }
 
+  private applyInspection(options = this.viewOptions): void {
+    const helpers: (GridHelper | AxesHelper | Box3Helper)[] = [];
+    let material: MeshStandardMaterial | MeshBasicMaterial | null = null;
+    try {
+      if (this.graph) {
+        const bounds = this.modelBounds();
+        const size = Math.min(1e30, Math.max(1, boundsRadius(bounds) * 4));
+        if (options.grid) {
+          const grid = new GridHelper(
+            size,
+            10,
+            0x7c8798,
+            options.background === 'dark' ? 0x465266 : 0xaeb9c8,
+          );
+          grid.name = 'Inspection grid';
+          helpers.push(grid);
+        }
+        if (options.axes) {
+          const axes = new AxesHelper(size / 2);
+          axes.name = 'Inspection axes';
+          helpers.push(axes);
+        }
+        if (options.bounds && !new Box3().setFromObject(this.graph.root).isEmpty()) {
+          const helper = new Box3Helper(bounds, 0xf4ad42);
+          helper.name = 'Inspection bounds';
+          helpers.push(helper);
+        }
+        if (options.shading !== 'material')
+          material =
+            options.shading === 'wireframe'
+              ? new MeshBasicMaterial({
+                  color: options.background === 'light' ? 0x263449 : 0xdce5ef,
+                  wireframe: true,
+                  toneMapped: false,
+                })
+              : new MeshStandardMaterial({ color: 0xb8bfcb, roughness: 0.8, metalness: 0 });
+      }
+    } catch (error) {
+      helpers.forEach((helper) => helper.dispose());
+      material?.dispose();
+      throw error;
+    }
+    this.releaseInspection();
+    this.helpers = helpers;
+    this.inspectionMaterial = material;
+    this.graph?.root.traverse((object) => {
+      if (object instanceof Mesh) object.material = material ?? this.graph!.materials;
+    });
+    helpers.forEach((helper) => this.scene.add(helper));
+    this.scene.background = new Color(options.background === 'dark' ? 0x18202b : 0xe8edf3);
+    this.ambient.intensity = options.lighting === 'studio' ? 1.5 : 2.5;
+    this.light.intensity = options.lighting === 'studio' ? 3 : 1;
+  }
+
+  private releaseInspection(): void {
+    this.disposedHelperGeometries += this.helpers.length;
+    this.disposedHelperMaterials += this.helpers.length;
+    this.helpers.forEach((helper) => {
+      helper.removeFromParent();
+      helper.dispose();
+    });
+    this.helpers = [];
+    if (this.inspectionMaterial) {
+      this.inspectionMaterial.dispose();
+      this.inspectionMaterial = null;
+      this.disposedInspectionMaterials++;
+    }
+  }
+
   private releaseControls(): void {
     if (this.controls) {
       this.target.copy(this.controls.target);
@@ -883,6 +1239,7 @@ export class NativeViewport {
     this.pointers.clear();
   }
   private releaseGraph(): void {
+    this.releaseInspection();
     if (!this.graph) return;
     this.disposedGeometries += this.graph.geometries.length;
     this.disposedMaterials += this.graph.materials.length;

@@ -10,6 +10,7 @@ import {
 } from 'react';
 import type { Project3D } from '../../core3d/model/project';
 import './nativeViewportPanel.css';
+import { NativeInspectionControls } from './NativeInspectionControls';
 
 import type {
   NativeViewportResult,
@@ -418,6 +419,12 @@ function ViewportContent(props: NativeViewportPanelProps) {
         aria-label={`${project.name}の3D表示`}
         aria-describedby={guidanceId}
         aria-busy={status.state === 'loading'}
+      />
+      <NativeInspectionControls
+        key={attempt}
+        project={project}
+        disabled={busy || !active}
+        run={runCamera}
       />
       <div className={failed ? 'native-viewport-status is-error' : 'native-viewport-status'}>
         <p role={failed ? 'alert' : 'status'} aria-atomic="true">

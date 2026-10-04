@@ -11,3 +11,7 @@ docs
 *.md
 
 dist-3d-evaluation
+
+# Generated reports from the early native viewport acceptance check.
+/playwright-report-native-acceptance/
+/test-results-native-acceptance/

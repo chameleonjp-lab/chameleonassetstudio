@@ -8,7 +8,10 @@ import {
   type NativeViewportStatus,
 } from '../../src/features/editor3d/NativeViewportPanel';
 
+import type { NativeCameraState, NativeViewOptions } from '../../src/core3d/ports/renderPort';
+
 type PortLog = {
+  cameraWrites: number;
   revision: number;
   disposed: boolean;
   captures: number[];
@@ -21,10 +24,49 @@ let completeSave: (() => void) | null = null;
 const pending: (() => void)[] = [];
 const delay = new URLSearchParams(location.search).has('delay');
 const factory: NativeViewportFactory = async (host, onStatus) => {
-  const log: PortLog = { revision: -1, disposed: false, captures: [], suspends: 0, host };
+  const log: PortLog = {
+    cameraWrites: 0,
+    revision: -1,
+    disposed: false,
+    captures: [],
+    suspends: 0,
+    host,
+  };
   ports.push(log);
   let status: NativeViewportStatus = { state: 'active' };
+  let camera: NativeCameraState = {
+    position: [3, 3, 3],
+    target: [0, 0, 0],
+    projection: 'perspective',
+    fov: 45,
+    span: 3,
+  };
+  let view: NativeViewOptions = {
+    shading: 'material',
+    background: 'dark',
+    lighting: 'studio',
+    grid: false,
+    axes: false,
+    bounds: false,
+  };
   const port: NativeViewportPort = {
+    getCamera: () => structuredClone(camera),
+    setCamera(value) {
+      log.cameraWrites++;
+      camera = structuredClone(value);
+      return { ok: true };
+    },
+    cameraPreset() {
+      return { ok: true };
+    },
+    focusNode() {
+      return { ok: true };
+    },
+    getViewOptions: () => ({ ...view }),
+    setViewOptions(value) {
+      view = { ...value };
+      return { ok: true };
+    },
     get status() {
       return status;
     },

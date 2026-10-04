@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { nativeBox } from '../src/core3d/fixtures/nativeBox';
+import { exportBackup } from '../src/core3d/backup/backup';
 
 async function createBox(page: Page) {
   await page.goto('/3d/');
@@ -151,4 +153,183 @@ test('offline display chunk failure preserves saving and complete native backup'
       contentType: 'application/json',
     });
   }
+});
+
+test('inspection camera and helpers preserve canonical revision and survive GPU reconstruction', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await createBox(page);
+  await page.getByRole('button', { name: '今すぐ保存', exact: true }).click();
+  const revision = page.getByRole('status').filter({ hasText: '保存済み · revision' });
+  await expect(revision).toContainText('revision 1');
+  const original = await png(page);
+  await page.getByText('カメラ・表示の詳細設定', { exact: true }).click();
+  await page.getByRole('button', { name: '正面から見る', exact: true }).click();
+  const front = await png(page);
+  expect(front.equals(original)).toBe(false);
+  await page.getByRole('button', { name: '上面から見る', exact: true }).click();
+  expect((await png(page)).equals(front)).toBe(false);
+  const objects = page.getByRole('combobox', { name: '注目するオブジェクト', exact: true });
+  const id = await objects.locator('option').nth(1).getAttribute('value');
+  await objects.selectOption(id!);
+  await expect(page.locator('.native-inspection p').filter({ hasText: '選択対象:' })).toContainText(
+    id!,
+  );
+  await page.getByRole('button', { name: '選択対象に合わせる', exact: true }).click();
+  await page.getByRole('combobox', { name: '投影方式', exact: true }).selectOption('orthographic');
+  await page.getByLabel('平行投影の高さ', { exact: true }).fill('3');
+  await page.getByRole('button', { name: '数値カメラを適用', exact: true }).click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await page.getByRole('combobox', { name: '描画モード', exact: true }).selectOption('wireframe');
+  await page.getByRole('combobox', { name: '背景', exact: true }).selectOption('light');
+  await page.getByRole('combobox', { name: '照明', exact: true }).selectOption('soft');
+  await page.getByLabel('グリッド', { exact: true }).check();
+  await page.getByLabel('座標軸', { exact: true }).check();
+  await page.getByLabel('全体の境界', { exact: true }).check();
+  await expect(revision).toContainText('revision 1');
+  const inspected = await png(page);
+  expect(inspected.equals(original)).toBe(false);
+  await page.getByRole('combobox', { name: '照明', exact: true }).selectOption('studio');
+  expect((await png(page)).equals(inspected)).toBe(true);
+  await page.getByRole('combobox', { name: '背景', exact: true }).selectOption('dark');
+  const darkWireframe = await png(page);
+  expect(darkWireframe.equals(inspected)).toBe(false);
+  await test
+    .info()
+    .attach('native-inspection-dark.png', { body: darkWireframe, contentType: 'image/png' });
+  await page.getByRole('combobox', { name: '背景', exact: true }).selectOption('light');
+  await page.getByRole('combobox', { name: '照明', exact: true }).selectOption('soft');
+  await page.getByRole('button', { name: '保存してGPU表示を休止', exact: true }).click();
+  await expect(page.locator('.native-viewport-host canvas')).toHaveCount(0);
+  await page.getByRole('button', { name: 'GPU表示を再開', exact: true }).click();
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  expect((await png(page)).equals(inspected)).toBe(true);
+  await page.getByRole('button', { name: '現在のカメラを読み取る', exact: true }).click();
+  await expect(page.getByRole('combobox', { name: '投影方式', exact: true })).toHaveValue(
+    'orthographic',
+  );
+  await expect(page.getByRole('combobox', { name: '描画モード', exact: true })).toHaveValue(
+    'wireframe',
+  );
+  const layout = await page.evaluate(() => ({
+    viewport: innerWidth,
+    documentWidth: document.documentElement.scrollWidth,
+    overflow: [...document.querySelectorAll('body *')].flatMap((element) => {
+      const rect = element.getBoundingClientRect();
+      if (
+        rect.right <= innerWidth &&
+        rect.left >= 0 &&
+        element.scrollWidth <= element.clientWidth &&
+        !element.matches('input,select,option,fieldset,label,details')
+      )
+        return [];
+      const style = getComputedStyle(element);
+      return [
+        {
+          tag: element.tagName,
+          className: element.className,
+          width: rect.width,
+          left: rect.left,
+          right: rect.right,
+          scrollWidth: element.scrollWidth,
+          clientWidth: element.clientWidth,
+          offsetWidth: (element as HTMLElement).offsetWidth,
+          label: (element as HTMLInputElement).labels?.[0]?.textContent?.slice(0, 100),
+          textLength: element.matches('option') ? element.textContent?.length : undefined,
+          valueLength: element.matches('input')
+            ? (element as HTMLInputElement).value.length
+            : undefined,
+          overflowX: style.overflowX,
+          font: style.font,
+          display: style.display,
+          minWidth: style.minWidth,
+          maxWidth: style.maxWidth,
+          gridTemplateColumns: style.gridTemplateColumns,
+        },
+      ];
+    }),
+  }));
+  const nativeControlProbe =
+    layout.documentWidth > layout.viewport
+      ? await page.evaluate(() => {
+          const width = () => {
+            void document.body.offsetHeight;
+            return document.documentElement.scrollWidth;
+          };
+          const before = width();
+          const options = [...document.querySelectorAll('select option')].map((option) => ({
+            option,
+            text: option.textContent,
+          }));
+          options.forEach(({ option }, index) => {
+            option.textContent = `Option ${index}`;
+          });
+          const shortOptions = width();
+          options.forEach(({ option, text }) => {
+            option.textContent = text;
+          });
+          const restoredOptions = width();
+          const inputs = [...document.querySelectorAll<HTMLInputElement>('input[type="text"]')].map(
+            (input) => ({ input, value: input.value }),
+          );
+          inputs.forEach(({ input }) => {
+            input.value = '0';
+          });
+          const shortInputs = width();
+          inputs.forEach(({ input, value }) => {
+            input.value = value;
+          });
+          return { before, shortOptions, restoredOptions, shortInputs, restoredInputs: width() };
+        })
+      : null;
+  await test.info().attach('native-inspection-layout.json', {
+    body: Buffer.from(JSON.stringify({ ...layout, nativeControlProbe }, null, 2)),
+    contentType: 'application/json',
+  });
+  await test.info().attach('native-inspection-mobile.png', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png',
+  });
+  await test.info().attach('native-inspection.png', { body: inspected, contentType: 'image/png' });
+  expect(layout.documentWidth - layout.viewport).toBeLessThanOrEqual(0);
+});
+
+test('long duplicate object names retain complete identity without phone overflow', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  const project = nativeBox('long-label-fixture');
+  project.name = 'Long labels';
+  const name = '非常に長い同じ名前のオブジェクトを識別して確認するための原本';
+  project.nodes[0].id = 'long-original-canonical-node-1111111111111111';
+  project.nodes[0].name = name;
+  const secondId = 'long-original-canonical-node-2222222222222222';
+  project.nodes.push({ ...structuredClone(project.nodes[0]), id: secondId });
+  const backup = await exportBackup(project, new Map());
+  await page.goto('/3d/');
+  await page.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+    name: 'long-labels.cas3dproj',
+    mimeType: 'application/zip',
+    buffer: Buffer.from(backup),
+  });
+  await expect(page.getByRole('heading', { name: 'Long labels', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '3D表示を開く', exact: true }).click();
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  await page.getByText('カメラ・表示の詳細設定', { exact: true }).click();
+  const select = page.getByRole('combobox', { name: '注目するオブジェクト', exact: true });
+  const labels = await select.locator('option').allTextContents();
+  expect(labels[1]).not.toBe(labels[2]);
+  await select.selectOption(secondId);
+  const description = page.locator('.native-inspection p').filter({ hasText: '選択対象:' });
+  await expect(description).toContainText(name);
+  await expect(description).toContainText(secondId);
+  await page.getByRole('button', { name: '選択対象に合わせる', exact: true }).click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  await test.info().attach('native-long-labels-mobile.png', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png',
+  });
+  expect(overflow).toBeLessThanOrEqual(0);
 });
