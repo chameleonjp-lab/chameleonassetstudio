@@ -13,6 +13,17 @@ import { addBox } from '../../core3d/commands/box';
 import type { NativeTransformEvaluator } from '../../core3d/ports/editPort';
 import type { Vec3 } from '../../core3d/model/project';
 import { setNodeTransform, updateMaterial } from '../../core3d/commands/objectEditing';
+import { addPrimitive } from '../../core3d/commands/primitives';
+import {
+  assignBaseColorTexture,
+  applyDerivedBaseColorTexture,
+  removeBaseColorTexture,
+} from '../../core3d/commands/textureEditing';
+import { NATIVE_TEXTURE_PROFILE } from '../../core3d/model/textureProfile';
+import {
+  nativeTextureReservedBytes,
+  reserveNativeTextureBytes,
+} from '../../core3d/model/textureResources';
 
 let repository: ProjectRepository;
 beforeEach(async () => {
@@ -22,6 +33,527 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
   repository.close();
+  expect(nativeTextureReservedBytes()).toBe(0);
+});
+
+/** Header-only native PNG metadata; these tests never allocate the declared pixels or decode. */
+function textureBytes(width = 2, height = 1, variant = 0): Uint8Array {
+  const bytes = new Uint8Array(58),
+    view = new DataView(bytes.buffer),
+    encode = new TextEncoder();
+  bytes.set([137, 80, 78, 71, 13, 10, 26, 10]);
+  view.setUint32(8, 13);
+  bytes.set(encode.encode('IHDR'), 12);
+  view.setUint32(16, width);
+  view.setUint32(20, height);
+  bytes[24] = 8;
+  bytes[25] = 6;
+  view.setUint32(33, 1);
+  bytes.set(encode.encode('IDAT'), 37);
+  bytes[41] = variant;
+  bytes.set(encode.encode('IEND'), 50);
+  return bytes;
+}
+
+async function imageFixture() {
+  const session = await ProjectSession.create(repository, 'image-author', 'Images');
+  session.executeAuthoring((p) =>
+    addPrimitive(p, 'shape', {
+      kind: 'plane',
+      width: 1,
+      height: 1,
+      depth: 1,
+      segments: 1,
+    }),
+  );
+  await session.save();
+  const bytes = textureBytes();
+  const hash = await hashBlob(bytes);
+  const source = {
+    id: 'image',
+    blobId: hash,
+    mimeType: 'image/png',
+    rights: { declared: 'CC0 fixture', embedded: '' },
+  };
+  return { session, bytes, hash, source };
+}
+
+describe('native binary authoring sessions', () => {
+  it('reserves reopened unassigned original sources before returning a preprocessing context', async () => {
+    const project = createProject('retained-original'),
+      bytes = textureBytes(),
+      hash = await hashBlob(bytes);
+    project.blobIds = [hash];
+    project.sources = [
+      {
+        id: 'original',
+        blobId: hash,
+        mimeType: 'image/png',
+        rights: { declared: 'CC0 fixture', embedded: '' },
+      },
+    ];
+    await repository.create(project, new Map([[hash, bytes]]), 'original-reader');
+    const session = await ProjectSession.open(repository, 'original-reader', project.id);
+    expect(nativeTextureReservedBytes()).toBe(0);
+    const release = reserveNativeTextureBytes(
+      'other live image owner',
+      NATIVE_TEXTURE_PROFILE.maxOperationBytes - bytes.byteLength * 7 + 1,
+    );
+    const baseline = nativeTextureReservedBytes(),
+      before = session.project;
+    try {
+      expect(() => session.captureBinaryContext()).toThrow('メモリ見積り');
+      expect(session.project).toEqual(before);
+      expect(nativeTextureReservedBytes()).toBe(baseline);
+    } finally {
+      release();
+    }
+    const context = session.captureBinaryContext();
+    expect(context).toMatchObject({ id: project.id, revision: project.revision });
+    expect(nativeTextureReservedBytes()).toBe(bytes.byteLength * 7);
+    await session.close();
+    expect(nativeTextureReservedBytes()).toBe(0);
+  });
+
+  it('rejects save-pipeline ledger growth before committing and releases temporary reservations', async () => {
+    const { session, bytes, hash, source } = await imageFixture(),
+      before = session.project;
+    // Numeric ledger pressure only; no large arrays, image decode, GPU or browser allocation.
+    const release = reserveNativeTextureBytes(
+      'other live image owner',
+      NATIVE_TEXTURE_PROFILE.maxOperationBytes - bytes.byteLength * 10 + 1,
+    );
+    const baseline = nativeTextureReservedBytes();
+    try {
+      await expect(
+        session.executeBinaryAuthoring(
+          (p) => assignBaseColorTexture(p, 'shape-material', source),
+          new Map([[hash, bytes]]),
+          session.captureBinaryContext(),
+        ),
+      ).rejects.toThrow('メモリ見積り');
+      expect(session.project).toEqual(before);
+      expect(() => session.readBlob(hash)).toThrow();
+      expect(nativeTextureReservedBytes()).toBe(baseline);
+    } finally {
+      release();
+      await session.close();
+    }
+  });
+
+  it('checks the default read bound before copying a restored oversized blob', async () => {
+    const project = createProject('large-restored'),
+      bytes = textureBytes(),
+      hash = await hashBlob(bytes);
+    project.blobIds.push(hash);
+    await repository.create(project, new Map([[hash, bytes]]), 'restore-reader');
+    const readSnapshot = repository.readSnapshot.bind(repository);
+    vi.spyOn(repository, 'readSnapshot').mockImplementationOnce(async (...args) => {
+      const snapshot = await readSnapshot(...args);
+      // A metadata-only stand-in for a source loaded from a 64MiB native backup.
+      Object.defineProperty(snapshot.blobs.get(hash)!, 'byteLength', {
+        value: NATIVE_TEXTURE_PROFILE.maxFileBytes + 1,
+      });
+      return snapshot;
+    });
+    const session = await ProjectSession.open(repository, 'restore-reader', project.id);
+    expect(() => session.readBlob(hash)).toThrow('読取上限');
+    expect(() => session.readBlob(hash, -1)).toThrow('上限');
+    await session.close();
+  });
+
+  it('counts unique metadata pixels before committing, including unassigned materials', async () => {
+    const { session, source } = await imageFixture();
+    const bytes = textureBytes(2048, 2048),
+      hash = await hashBlob(bytes);
+    await session.executeBinaryAuthoring(
+      (p) => assignBaseColorTexture(p, 'shape-material', { ...source, blobId: hash }),
+      new Map([[hash, bytes]]),
+      session.captureBinaryContext(),
+    );
+    session.executeAuthoring((p) => {
+      p.materials.push({ ...p.materials[0], id: 'unassigned' });
+    });
+    // Same hash on two materials counts once; a distinct second image exceeds 8m pixels.
+    await session.executeBinaryAuthoring(() => {}, new Map(), session.captureBinaryContext());
+    const other = textureBytes(2048, 2048, 1),
+      otherHash = await hashBlob(other),
+      before = session.project;
+    await expect(
+      session.executeBinaryAuthoring(
+        (p) =>
+          assignBaseColorTexture(p, 'unassigned', {
+            ...source,
+            id: 'other',
+            blobId: otherHash,
+          }),
+        new Map([[otherHash, other]]),
+        session.captureBinaryContext(),
+      ),
+    ).rejects.toThrow('合計pixel');
+    expect(session.project).toEqual(before);
+    expect(() => session.readBlob(otherHash)).toThrow();
+    await session.close();
+  });
+
+  it('rejects malformed texture metadata at the binary commit boundary without adding bytes', async () => {
+    const { session, source } = await imageFixture();
+    const bytes = new Uint8Array([2, 3, 5]),
+      hash = await hashBlob(bytes),
+      before = session.project;
+    await expect(
+      session.executeBinaryAuthoring(
+        (p) =>
+          assignBaseColorTexture(p, 'shape-material', {
+            ...source,
+            blobId: hash,
+          }),
+        new Map([[hash, bytes]]),
+        session.captureBinaryContext(),
+      ),
+    ).rejects.toThrow('3D画像');
+    expect(session.project).toEqual(before);
+    expect(() => session.readBlob(hash)).toThrow();
+    await session.close();
+  });
+
+  it('prunes an abandoned redo branch without changing an in-flight saved snapshot', async () => {
+    const { session, bytes, hash, source } = await imageFixture();
+    await session.executeBinaryAuthoring(
+      (p) => assignBaseColorTexture(p, 'shape-material', source),
+      new Map([[hash, bytes]]),
+      session.captureBinaryContext(),
+    );
+    const original = repository.importStaged.bind(repository);
+    let finish!: () => void, entered!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const ready = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    let snapshotId = '';
+    vi.spyOn(repository, 'importStaged').mockImplementationOnce(async (...args) => {
+      const stage = await original(...args);
+      snapshotId = stage.id;
+      entered();
+      await gate;
+      return stage;
+    });
+    const saving = session.save();
+    await ready;
+    session.undo();
+    expect(session.readBlob(hash)).toEqual(bytes);
+    const highWater = nativeTextureReservedBytes();
+    session.rename('New branch');
+    expect(session.state.canRedo).toBe(false);
+    expect(() => session.readBlob(hash)).toThrow();
+    expect(nativeTextureReservedBytes()).toBe(highWater);
+    finish();
+    await saving;
+    const retained = await repository.readSnapshot(session.project.id, { snapshotId });
+    expect(retained.project.materials[0].textureBlobId).toBe(hash);
+    expect(retained.blobs.get(hash)).toEqual(bytes);
+    await retained.release();
+    await session.close();
+    expect(nativeTextureReservedBytes()).toBe(0);
+  });
+
+  it('explicit history cleanup prunes only unreachable bytes and keeps canonical original sources', async () => {
+    const { session, bytes, hash, source } = await imageFixture();
+    const apply = () =>
+      session.executeBinaryAuthoring(
+        (p) => assignBaseColorTexture(p, 'shape-material', source),
+        new Map([[hash, bytes]]),
+        session.captureBinaryContext(),
+      );
+    await apply();
+    session.undo();
+    session.clearHistory();
+    expect(() => session.readBlob(hash)).toThrow();
+    expect(session.state).toMatchObject({ canUndo: false, canRedo: false });
+    await apply();
+    session.executeAuthoring((p) => removeBaseColorTexture(p, 'shape-material'));
+    session.clearHistory();
+    expect(session.readBlob(hash)).toEqual(bytes);
+    expect(session.project.sources).toEqual([source]);
+    await session.close();
+  });
+
+  it('keeps binary edits rescuable after a failed save and retains redo bytes through durable GC', async () => {
+    const { session, bytes, hash, source } = await imageFixture();
+    await session.executeBinaryAuthoring(
+      (p) => assignBaseColorTexture(p, 'shape-material', source),
+      new Map([[hash, bytes]]),
+      session.captureBinaryContext(),
+    );
+    const commit = vi
+      .spyOn(repository, 'commit')
+      .mockRejectedValue(new DOMException('Full', 'QuotaExceededError'));
+    await expect(session.save()).rejects.toMatchObject({ name: 'QuotaExceededError' });
+    expect(session.state).toMatchObject({ dirty: true, status: 'error' });
+    const held = nativeTextureReservedBytes();
+    await expect(session.close()).rejects.toMatchObject({ name: 'QuotaExceededError' });
+    expect(nativeTextureReservedBytes()).toBe(held);
+    const rescue = await importBackup(await session.backup());
+    expect(rescue.blobs.get(hash)).toEqual(bytes);
+    expect(rescue.project.materials[0].textureBlobId).toBe(hash);
+    commit.mockRestore();
+    // Undo before a successful durable commit requires staging the redo-only bytes as well.
+    session.undo();
+    await session.save();
+    const mark = await repository.markGarbage();
+    expect(mark.blobIds).not.toContain(hash);
+    await repository.collectGarbage(mark);
+    session.redo();
+    await session.save();
+    const stored = await repository.readSnapshot(session.project.id);
+    expect(stored.blobs.get(hash)).toEqual(bytes);
+    expect(stored.project.materials[0].textureBlobId).toBe(hash);
+    await stored.release();
+    await session.close();
+  });
+
+  it('commits detached immutable bytes once and retains originals and derivatives in an independent backup', async () => {
+    const { session, bytes, hash, source } = await imageFixture();
+    const before = session.state.revision;
+    const pending = session.executeBinaryAuthoring(
+      (p) => assignBaseColorTexture(p, 'shape-material', source),
+      new Map([[hash, bytes]]),
+      session.captureBinaryContext(),
+    );
+    bytes[0] = 255;
+    await pending;
+    expect(session.state.revision).toBe(before + 1);
+    expect(session.readBlob(hash)).toEqual(textureBytes());
+    const detached = session.readBlob(hash);
+    detached[1] = 255;
+    expect(session.readBlob(hash)[1]).toBe(80);
+    const derived = textureBytes(2, 1, 1),
+      derivedHash = await hashBlob(derived);
+    await session.executeBinaryAuthoring(
+      (p) =>
+        applyDerivedBaseColorTexture(p, 'shape-material', source.id, {
+          id: 'derived',
+          blobId: derivedHash,
+          operation: 'test-adjust',
+          version: '1',
+          settings: '{}',
+        }),
+      new Map([[derivedHash, derived]]),
+      session.captureBinaryContext(),
+    );
+    const project = session.project;
+    session.executeAuthoring((p) => removeBaseColorTexture(p, 'shape-material'));
+    session.undo();
+    expect(session.project.materials[0].textureBlobId).toBe(derivedHash);
+    await session.save();
+    const separate = await openProjectRepository({ indexedDB: new IDBFactory() });
+    try {
+      const restored = await ProjectSession.restore(
+        separate,
+        'restored-images',
+        await session.backup(),
+      );
+      expect(restored.project.sources).toEqual(project.sources);
+      expect(restored.project.meshes).toEqual(project.meshes);
+      expect(restored.readBlob(hash)).toEqual(textureBytes());
+      expect(restored.readBlob(derivedHash)).toEqual(derived);
+      await restored.close();
+    } finally {
+      separate.close();
+    }
+    await session.close();
+  });
+
+  it('rejects invalid hashes and failed candidate mutations without leaking bytes or creating history', async () => {
+    const { session, bytes, hash, source } = await imageFixture();
+    const before = session.project;
+    const operation = vi.fn((p) => assignBaseColorTexture(p, 'shape-material', source));
+    await expect(
+      session.executeBinaryAuthoring(
+        operation,
+        new Map([[hash, new Uint8Array([9])]]),
+        session.captureBinaryContext(),
+      ),
+    ).rejects.toThrow('hash');
+    expect(operation).not.toHaveBeenCalled();
+    await expect(
+      session.executeBinaryAuthoring(
+        (p) => {
+          operation(p);
+          throw new Error('cancel candidate');
+        },
+        new Map([[hash, bytes]]),
+        session.captureBinaryContext(),
+      ),
+    ).rejects.toThrow('cancel candidate');
+    await expect(
+      session.executeBinaryAuthoring(
+        (p) => {
+          p.name = 'unreferenced';
+        },
+        new Map([[hash, bytes]]),
+        session.captureBinaryContext(),
+      ),
+    ).rejects.toThrow('参照');
+    expect(session.project).toEqual(before);
+    expect(() => session.readBlob(hash)).toThrow();
+    await session.close();
+  });
+
+  it('copies Buffer inputs instead of retaining their shared slice view', async () => {
+    const { session, hash, source } = await imageFixture();
+    const bytes = Buffer.from(textureBytes());
+    const pending = session.executeBinaryAuthoring(
+      (p) => assignBaseColorTexture(p, 'shape-material', source),
+      new Map([[hash, bytes]]),
+      session.captureBinaryContext(),
+    );
+    bytes.fill(255);
+    await pending;
+    expect(session.readBlob(hash)).toEqual(textureBytes());
+    await session.close();
+  });
+
+  it('keeps superseded hashing reservations until it settles, using tiny byte fixtures', async () => {
+    const { session, bytes, hash, source } = await imageFixture();
+    const digest = crypto.subtle.digest.bind(crypto.subtle);
+    let finish!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    vi.spyOn(crypto.subtle, 'digest').mockImplementationOnce(async (...args) => {
+      await gate;
+      return digest(...args);
+    });
+    // Advertise the upper-bound reservation without allocating that payload.
+    Object.defineProperty(bytes, 'byteLength', {
+      value: NATIVE_TEXTURE_PROFILE.maxRetainedEncodedBytes,
+    });
+    const command = (p: ReturnType<typeof createProject>) =>
+      assignBaseColorTexture(p, 'shape-material', source);
+    const first = session.executeBinaryAuthoring(
+      command,
+      new Map([[hash, bytes]]),
+      session.captureBinaryContext(),
+    );
+    await expect(
+      session.executeBinaryAuthoring(
+        command,
+        new Map([[hash, bytes]]),
+        session.captureBinaryContext(),
+      ),
+    ).rejects.toThrow('別の画像処理');
+    finish();
+    await expect(first).rejects.toThrow('変わりました');
+    await session.executeBinaryAuthoring(
+      command,
+      new Map([[hash, bytes]]),
+      session.captureBinaryContext(),
+    );
+    expect(session.readBlob(hash)).toEqual(textureBytes());
+    await session.close();
+  });
+
+  it('invalidates preprocessing across same-revision backup, save, and no-op undo boundaries', async () => {
+    const session = await ProjectSession.create(repository, 'image-preparation', 'Unchanged');
+    await session.save();
+    for (const boundary of [() => session.backup(), () => session.save(), () => session.undo()]) {
+      const context = session.captureBinaryContext(),
+        mutate = vi.fn();
+      expect(Object.isFrozen(context)).toBe(true);
+      await boundary();
+      expect(session.state.revision).toBe(context.revision);
+      await expect(session.executeBinaryAuthoring(mutate, new Map(), context)).rejects.toThrow(
+        '変わりました',
+      );
+      expect(mutate).not.toHaveBeenCalled();
+    }
+    await session.close();
+  });
+
+  it('invalidates delayed hashing on backup and editor selection changes without committing', async () => {
+    const { session, bytes, hash, source } = await imageFixture();
+    const digest = crypto.subtle.digest.bind(crypto.subtle);
+    for (const boundary of [
+      () => session.backup(),
+      () => session.edit.setSelection(['shape-node']),
+    ]) {
+      let finish!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      const spy = vi.spyOn(crypto.subtle, 'digest').mockImplementationOnce(async (...args) => {
+        await gate;
+        return digest(...args);
+      });
+      const before = session.project;
+      const pending = session.executeBinaryAuthoring(
+        (p) => assignBaseColorTexture(p, 'shape-material', source),
+        new Map([[hash, bytes]]),
+        session.captureBinaryContext(),
+      );
+      await boundary();
+      finish();
+      await expect(pending).rejects.toThrow('変わりました');
+      expect(session.project).toEqual(before);
+      expect(() => session.readBlob(hash)).toThrow();
+      spy.mockRestore();
+    }
+    await session.close();
+  });
+
+  it('rejects an abort, a newer preparation and a closed session without accepting the supplied bytes', async () => {
+    const { session, bytes, hash, source } = await imageFixture();
+    const context = session.captureBinaryContext();
+    const controller = new AbortController();
+    controller.abort();
+    const operation = (p: ReturnType<typeof createProject>) =>
+      assignBaseColorTexture(p, 'shape-material', source);
+    await expect(
+      session.executeBinaryAuthoring(operation, new Map([[hash, bytes]]), context, {
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    session.captureBinaryContext();
+    await expect(
+      session.executeBinaryAuthoring(operation, new Map([[hash, bytes]]), context),
+    ).rejects.toThrow('変わりました');
+    const current = session.captureBinaryContext();
+    await session.close();
+    await expect(
+      session.executeBinaryAuthoring(operation, new Map([[hash, bytes]]), current),
+    ).rejects.toThrow('読み取り専用');
+    expect(() => session.readBlob(hash)).toThrow();
+  });
+
+  it('counts aggregate encoded originals and history before making copies, with tiny metadata-only fixtures', async () => {
+    const { session, bytes, hash, source } = await imageFixture();
+    await session.executeBinaryAuthoring(
+      (p) => assignBaseColorTexture(p, 'shape-material', source),
+      new Map([[hash, bytes]]),
+      session.captureBinaryContext(),
+    );
+    session.undo(); // The original remains owned by redo/history even though the current model omits it.
+    const claimed = new Uint8Array([1]);
+    Object.defineProperty(claimed, 'byteLength', {
+      value: NATIVE_TEXTURE_PROFILE.maxRetainedEncodedBytes,
+    });
+    const digest = vi.spyOn(crypto.subtle, 'digest'),
+      before = session.project;
+    await expect(
+      session.executeBinaryAuthoring(
+        () => {},
+        new Map([['f'.repeat(64), claimed]]),
+        session.captureBinaryContext(),
+      ),
+    ).rejects.toThrow('容量');
+    expect(digest).not.toHaveBeenCalled();
+    expect(session.project).toEqual(before);
+    expect(session.readBlob(hash)).toEqual(bytes);
+    await session.close();
+  });
 });
 
 describe('3D shell project sessions', () => {

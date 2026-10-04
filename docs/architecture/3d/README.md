@@ -63,3 +63,5 @@ B04の[部品組立・原点・鏡映と材質割当](../../evidence/3d/B04_NATI
 G03bの[native選択・変形の隔離評価](../../evidence/3d/G03_NATIVE_INTERACTION_EVALUATION.md)。製品entryには接続せず、pointerと数値操作のtransaction・取消・資源寿命を先に検証する。
 
 B04の[共有選択・gizmo/数値変形の製品接続](../../evidence/3d/B04_NATIVE_EDITING.md)。ProjectSessionの確定責務と、保存しない同revision preview、非同期PNG/休止の境界を確認する。
+
+B04の[baseColor画像・UV確認・派生色調](../../evidence/3d/B04_NATIVE_TEXTURES.md)。既存0.1.0の原本/派生来歴、画像の対応subset、取消と共有資源の所有を確認する。

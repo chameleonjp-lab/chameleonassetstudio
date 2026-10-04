@@ -5,11 +5,14 @@ import {
   Box3,
   Box3Helper,
   BufferGeometry,
+  ClampToEdgeWrapping,
   Color,
+  DataTexture,
   DirectionalLight,
   Float32BufferAttribute,
   Group,
   GridHelper,
+  LinearFilter,
   Mesh,
   MeshStandardMaterial,
   MeshBasicMaterial,
@@ -17,8 +20,11 @@ import {
   OrthographicCamera,
   PerspectiveCamera,
   Quaternion,
+  RGBAFormat,
   Scene,
   Spherical,
+  SRGBColorSpace,
+  UnsignedByteType,
   Vector3,
   WebGLRenderer,
 } from 'three';
@@ -33,6 +39,8 @@ import {
   type Vec3,
 } from '../../core3d/model/project';
 import { transformPoint, worldMatrix } from '../../core3d/model/coordinates';
+import { NATIVE_TEXTURE_PROFILE } from '../../core3d/model/textureProfile';
+import { reserveNativeTextureBytes } from '../../core3d/model/textureResources';
 
 import type {
   NativeViewportResult as ProfileResult,
@@ -40,6 +48,7 @@ import type {
   NativeCameraState,
   NativeCameraPreset,
   NativeViewOptions,
+  NativeTextureSnapshot,
   NativeViewportStatus as ViewportStatus,
   NativeViewportSuspensionContract as SuspensionContract,
 } from '../../core3d/ports/renderPort';
@@ -115,7 +124,10 @@ export const NATIVE_EVALUATION_LIMITS = Object.freeze({
 });
 
 /** Native contract checking only: no file loading, decoding, URL access, or import limits. */
-export function checkNativeProfile(project: Project3D): ProfileResult {
+export function checkNativeProfile(
+  project: Project3D,
+  textures?: NativeTextureSnapshot,
+): ProfileResult {
   try {
     if (project.nodes.length > NATIVE_EVALUATION_LIMITS.nodes)
       return failure('Native compact-evaluation-0 node count exceeded.');
@@ -150,20 +162,49 @@ export function checkNativeProfile(project: Project3D): ProfileResult {
   const unsupported: string[] = [];
   if (project.skins.length) unsupported.push('skins');
   if (project.clips.length) unsupported.push('animation clips');
-  if (project.materials.some((material) => material.textureBlobId !== undefined))
-    unsupported.push('textures');
   if (project.meshes.some((mesh) => mesh.faces.some((face) => face.vertexIds.length !== 3)))
     unsupported.push('non-triangle faces');
   if (unsupported.length)
     return failure(`This isolated native viewport does not support ${unsupported.join(', ')}.`);
+  // Validate every canonical reference, including unassigned materials. Never hide a missing
+  // source behind a factor-only fallback. Extra prepared entries are not retained or allocated.
+  let totalPixels = 0;
+  const textureIds = new Set(project.materials.flatMap((material) => material.textureBlobId ?? []));
+  for (const id of textureIds) {
+    const image = textures?.get(id);
+    if (!image) return failure(`Native textures require a prepared RGBA8 source for ${id}.`);
+    if (
+      !Number.isSafeInteger(image.width) ||
+      !Number.isSafeInteger(image.height) ||
+      image.width <= 0 ||
+      image.height <= 0 ||
+      image.width > NATIVE_TEXTURE_PROFILE.maxEdge ||
+      image.height > NATIVE_TEXTURE_PROFILE.maxEdge
+    )
+      return failure('Native texture dimensions are outside the prepared image profile.');
+    const pixels = image.width * image.height;
+    totalPixels += pixels;
+    if (totalPixels > NATIVE_TEXTURE_PROFILE.maxTotalPixels)
+      return failure('Native unique texture pixel count exceeded.');
+    if (!(image.pixels instanceof Uint8Array) || image.pixels.byteLength !== pixels * 4)
+      return failure('Native textures require an exact RGBA8 byte count.');
+  }
+  const texturedMaterials = new Set(
+    project.materials
+      .filter((material) => material.textureBlobId !== undefined)
+      .map(({ id }) => id),
+  );
   for (const mesh of project.meshes) {
     if (mesh.vertices.some((vertex) => !vertex.position.every(float32Finite)))
       return failure('Geometry is outside the finite Float32 evaluation profile.');
-    for (const face of mesh.faces)
+    for (const face of mesh.faces) {
+      if (face.materialId && texturedMaterials.has(face.materialId) && !face.uv)
+        return failure('Native textured faces require complete finite corner UV0 attributes.');
       if (
         [...(face.uv ?? []), ...(face.normals ?? [])].some((value) => !value.every(float32Finite))
       )
         return failure('Corner attributes are outside the finite Float32 evaluation profile.');
+    }
   }
   for (const node of project.nodes) {
     const matrix = worldMatrix(project, node.id);
@@ -191,24 +232,32 @@ export interface NativeGraph {
   root: Group;
   geometries: BufferGeometry[];
   materials: MeshStandardMaterial[];
+  /** One texture per rendered content hash, jointly owned until this graph is released. */
+  textures: DataTexture[];
   /** The only pick/edit identity map; helpers never enter it. */
   objects: Map<string, Object3D>;
   dispose(): void;
 }
 
 /** Stable IDs stay in canonical data; expanded GPU corners are disposable representations. */
-export function buildNativeGraph(project: Project3D): NativeGraph {
-  const profile = checkNativeProfile(project);
+export function buildNativeGraph(
+  project: Project3D,
+  textures?: NativeTextureSnapshot,
+): NativeGraph {
+  const profile = checkNativeProfile(project, textures);
   if (!profile.ok) throw new Error(profile.reason);
   const root = new Group();
   const geometries: BufferGeometry[] = [];
   const materials: MeshStandardMaterial[] = [];
+  const graphTextures: DataTexture[] = [];
+  const textureReservations: (() => void)[] = [];
   const nodes = new Map<string, Object3D>();
   let disposed = false;
   const graph: NativeGraph = {
     root,
     geometries,
     materials,
+    textures: graphTextures,
     objects: nodes,
     dispose() {
       if (disposed) return;
@@ -218,19 +267,70 @@ export function buildNativeGraph(project: Project3D): NativeGraph {
       nodes.clear();
       geometries.forEach((geometry) => geometry.dispose());
       materials.forEach((material) => material.dispose());
+      graphTextures.forEach((texture) => {
+        texture.dispose();
+        texture.image.data = null;
+      });
+      textureReservations.splice(0).forEach((release) => release());
     },
   };
   try {
+    const texturesById = new Map<string, { texture: DataTexture; transparent: boolean }>();
+    function textureFor(id: string) {
+      const existing = texturesById.get(id);
+      if (existing) return existing;
+      const image = textures!.get(id)!;
+      // One owned upload array plus RGBA8 GPU storage; no mip levels in this profile.
+      textureReservations.push(
+        reserveNativeTextureBytes('native graph upload and GPU', image.pixels.byteLength * 2),
+      );
+      const pixels = new Uint8Array(image.pixels.byteLength);
+      const rowBytes = image.width * 4;
+      // Canonical UV0 starts at the lower left; prepared RGBA starts at the upper left.
+      // Reverse rows in the owned copy, so raw typed-array uploads use explicit flipY=false.
+      for (let row = 0; row < image.height; row++)
+        pixels.set(
+          image.pixels.subarray(row * rowBytes, (row + 1) * rowBytes),
+          (image.height - row - 1) * rowBytes,
+        );
+      const texture = new DataTexture(
+        pixels,
+        image.width,
+        image.height,
+        RGBAFormat,
+        UnsignedByteType,
+      );
+      graphTextures.push(texture);
+      texture.colorSpace = SRGBColorSpace;
+      texture.flipY = false;
+      texture.premultiplyAlpha = false;
+      // The initial bounded profile uses bilinear sampling without mip allocation.
+      texture.minFilter = LinearFilter;
+      texture.magFilter = LinearFilter;
+      texture.generateMipmaps = false;
+      texture.wrapS = ClampToEdgeWrapping;
+      texture.wrapT = ClampToEdgeWrapping;
+      texture.unpackAlignment = 1;
+      texture.needsUpdate = true;
+      let transparent = false;
+      for (let index = 3; index < pixels.length && !transparent; index += 4)
+        transparent = pixels[index] < 255;
+      const prepared = { texture, transparent };
+      texturesById.set(id, prepared);
+      return prepared;
+    }
     const materialIndices = new Map<string | undefined, number>();
     function materialIndex(id?: string): number {
       const existing = materialIndices.get(id);
       if (existing !== undefined) return existing;
       const source = project.materials.find((material) => material.id === id);
       const color = source?.baseColor ?? [0.55, 0.65, 0.8, 1];
+      const texture = source?.textureBlobId ? textureFor(source.textureBlobId) : undefined;
       const material = new MeshStandardMaterial({
         color: new Color().setRGB(color[0], color[1], color[2]),
         opacity: color[3],
-        transparent: color[3] < 1,
+        transparent: color[3] < 1 || texture?.transparent === true,
+        map: texture?.texture ?? null,
         metalness: source?.metallic ?? 0,
         roughness: source?.roughness ?? 0.7,
       });
@@ -366,6 +466,8 @@ export class NativeViewport {
   private applyingEdit = false;
   private previewApplied = false;
   private snapshot: Project3D | null = null;
+  private textureSnapshot: NativeTextureSnapshot | undefined;
+  private releaseTextureReservation: (() => void) | null = null;
   private element: HTMLCanvasElement | null = null;
   private frame: number | null = null;
   private hidden = false;
@@ -385,6 +487,7 @@ export class NativeViewport {
   private contextRestoreCount = 0;
   private disposedGeometries = 0;
   private disposedMaterials = 0;
+  private disposedTextures = 0;
   private disposedRenderers = 0;
   private renderFailures = 0;
   private width = 1;
@@ -467,6 +570,12 @@ export class NativeViewport {
       canvases: this.element ? 1 : 0,
       geometries: this.graph?.geometries.length ?? 0,
       materials: this.graph?.materials.length ?? 0,
+      textures: this.graph?.textures.length ?? 0,
+      preparedTextures: this.textureSnapshot?.size ?? 0,
+      preparedTextureBytes: [...(this.textureSnapshot?.values() ?? [])].reduce(
+        (bytes, image) => bytes + image.pixels.byteLength,
+        0,
+      ),
       helperGeometries: this.helpers.length,
       helperMaterials: this.helpers.length,
       inspectionMaterials: this.inspectionMaterial ? 1 : 0,
@@ -492,6 +601,7 @@ export class NativeViewport {
       contextRestores: this.contextRestoreCount,
       disposedGeometries: this.disposedGeometries,
       disposedMaterials: this.disposedMaterials,
+      disposedTextures: this.disposedTextures,
       disposedRenderers: this.disposedRenderers,
       renderFailures: this.renderFailures,
       gpuGeometries: this.renderer?.info?.memory.geometries ?? null,
@@ -504,16 +614,17 @@ export class NativeViewport {
     };
   }
 
-  setProject(project: Project3D): ProfileResult {
+  setProject(project: Project3D, textures?: NativeTextureSnapshot): ProfileResult {
     if (this.disposed) return failure('Viewport is disposed.');
     this.runtimeGeneration++;
-    const profile = checkNativeProfile(project);
+    const profile = checkNativeProfile(project, textures);
     const sameProject = this.snapshot?.id === project.id;
     this.cancelRender();
     this.releaseControls();
     this.releaseGraph();
     this.editSequence = -1;
     this.fault = null;
+    this.releaseTextureSnapshot();
     if (!profile.ok) {
       this.snapshot = null;
       this.fault = { state: 'unsupported', reason: profile.reason };
@@ -521,7 +632,36 @@ export class NativeViewport {
       this.publish();
       return profile;
     }
-    this.snapshot = cloneProject(project);
+    try {
+      this.snapshot = cloneProject(project);
+      const textureIds = new Set(
+        project.materials.flatMap((material) => material.textureBlobId ?? []),
+      );
+      if (textureIds.size)
+        this.releaseTextureReservation = reserveNativeTextureBytes(
+          'native viewport retained source',
+          [...textureIds].reduce((bytes, id) => bytes + textures!.get(id)!.pixels.byteLength, 0),
+        );
+      this.textureSnapshot = new Map(
+        [...textureIds].map((id) => {
+          const image = textures!.get(id)!;
+          return [
+            id,
+            { width: image.width, height: image.height, pixels: new Uint8Array(image.pixels) },
+          ];
+        }),
+      );
+    } catch (error) {
+      this.snapshot = null;
+      this.releaseTextureSnapshot();
+      this.fault = {
+        state: 'error',
+        reason: `Native source snapshot failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+      };
+      this.releaseRuntime();
+      this.publish();
+      return failure(this.fault.reason!);
+    }
     this.clippingPending = true;
     if (!sameProject) {
       this.fitPending = true;
@@ -1198,6 +1338,7 @@ export class NativeViewport {
     this.cleanup.splice(0).forEach((remove) => remove());
     this.scene.clear();
     this.snapshot = null;
+    this.releaseTextureSnapshot();
     this.suspension = null;
     this.publish();
   }
@@ -1276,6 +1417,8 @@ export class NativeViewport {
           event.preventDefault();
           this.contextLost = true;
           this.contextLossCount++;
+          this.releaseControls();
+          this.releaseGraph();
           this.syncActivity();
         },
         true,
@@ -1320,7 +1463,7 @@ export class NativeViewport {
     this.releaseGraph();
     if (!this.snapshot) return true;
     try {
-      this.graph = buildNativeGraph(this.snapshot);
+      this.graph = buildNativeGraph(this.snapshot, this.textureSnapshot);
       this.scene.add(this.graph.root);
       this.applyInspection();
       this.rebuildCount++;
@@ -1529,6 +1672,12 @@ export class NativeViewport {
       if (this.element?.hasPointerCapture(pointer)) this.element.releasePointerCapture(pointer);
     this.pointers.clear();
   }
+  private releaseTextureSnapshot(): void {
+    this.textureSnapshot = undefined;
+    this.releaseTextureReservation?.();
+    this.releaseTextureReservation = null;
+  }
+
   private releaseGraph(): void {
     this.releaseEditing();
     this.clearSelection();
@@ -1536,6 +1685,7 @@ export class NativeViewport {
     if (!this.graph) return;
     this.disposedGeometries += this.graph.geometries.length;
     this.disposedMaterials += this.graph.materials.length;
+    this.disposedTextures += this.graph.textures.length;
     this.graph.dispose();
     this.graph = null;
   }

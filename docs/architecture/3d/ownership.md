@@ -135,3 +135,14 @@ M06の所有境界は維持する。今回の小さなnative subsetではresourc
 - [製品受入](../../../e2e/native-editing-product.spec.ts) と [panel境界受入](../../../e2e/native-panel.spec.ts): pointer/数値/保存復元、非同期PNG/休止、React再描画、binding交換
 
 状態・対応要件・採用根拠・未確認条件は [B04接続記録](../../evidence/3d/B04_NATIVE_EDITING.md) を正本とする。pathの実在を、実機・全3D完成の証拠にしない。
+
+## B04画像制作で実在になった配置
+
+- `src/core3d/commands/textureEditing.ts`: 既存schemaの原本・派生・画像参照command
+- `src/core3d/model/nativeImageMetadata.ts`, `textureProfile.ts`, `textureResources.ts`: 画像metadata、初期profile、同realmの見積り所有
+- `src/features/editor3d/nativeImage.ts`: browser codec、色調派生、取消とdecode queue
+- `NativeTexturePanel.tsx`: 共有材質/権利/来歴/UV確認、phone数値入力
+- `textureSnapshot.ts` → `NativeViewportPanel.tsx` → `src/adapters3d/three/renderer.ts`: revision固定の準備と表示資源の所有
+- `e2e/native-texture-product.spec.ts`: 両browserの画像・保存/復元・取消・read-only受入
+
+要件対応・失敗境界・残制約は[画像制作記録](../../evidence/3d/B04_NATIVE_TEXTURES.md)。この追記はGLBやB04全体の完了を意味しない。

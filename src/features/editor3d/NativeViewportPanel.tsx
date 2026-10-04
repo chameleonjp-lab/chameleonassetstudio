@@ -12,6 +12,12 @@ import type { Project3D } from '../../core3d/model/project';
 import type { NativeEditBinding } from '../../core3d/ports/editPort';
 import './nativeViewportPanel.css';
 import { NativeInspectionControls } from './NativeInspectionControls';
+import {
+  NativeTexturePreparer,
+  isTexturePreparationCancelled,
+  nativeTexturePixels,
+  type NativeBlobReader,
+} from './textureSnapshot';
 
 import type {
   NativeViewportResult,
@@ -20,6 +26,7 @@ import type {
   NativeViewportSuspensionContract,
   NativeViewportPort,
   NativeViewportFactory,
+  NativeTextureSnapshot,
 } from '../../core3d/ports/renderPort';
 export type {
   NativeViewportPort,
@@ -36,6 +43,8 @@ export interface NativeViewportPanelProps {
   onSave: () => Promise<void>;
   /** A view-only fixture may omit this; product editing must bind explicitly. */
   editing?: NativeEditBinding;
+  /** Stable session callback returning a detached copy, never a URL or remote fetch. */
+  readBlob?: NativeBlobReader;
 }
 
 type PanelStatus = NativeViewportStatus | { state: 'loading'; reason?: string };
@@ -48,6 +57,15 @@ type Instance = {
   busy: boolean;
   editing: NativeEditBinding | null;
   suspensionReason: string;
+  preparationReason: string;
+  preparer: NativeTexturePreparer;
+  pending: { revision: number; promise: Promise<void> } | null;
+  blockedEditing: NativeEditBinding | null;
+  readBlob: NativeBlobReader | undefined;
+  retainedPixels: number;
+  documentHidden: boolean;
+  frozen: boolean;
+  pageHidden: boolean;
 };
 
 const statusText: Record<PanelStatus['state'], string> = {
@@ -60,7 +78,7 @@ const statusText: Record<PanelStatus['state'], string> = {
   'context-lost': 'GPUとの接続が失われました。ブラウザーの復旧を待っています。',
   unavailable: 'この環境ではWebGL2の3D表示を利用できません。',
   unsupported:
-    'この内容の3D表示には対応していません。リグ・アニメーション・テクスチャ・三角形以外の面などは表示準備中です。',
+    'この内容の3D表示には対応していません。リグ・アニメーション・未対応の画像形式・三角形以外の面などは表示準備中です。',
   error: '3D表示を続けられませんでした。',
   disposed: '3D表示を終了しました。',
 };
@@ -152,31 +170,125 @@ function ViewportContent(props: NativeViewportPanelProps) {
     return !instance.cancelled && instanceRef.current === instance;
   }, []);
 
+  const cancelPreparation = useCallback((instance: Instance, clearCache = false) => {
+    instance.pending = null;
+    instance.preparer.cancel(clearCache);
+    instance.blockedEditing?.setBlocked(instance.preparationReason, false);
+    instance.blockedEditing = null;
+  }, []);
+
   const updateProject = useCallback(
-    (instance: Instance) => {
-      const current = latest.current.editing?.getProject() ?? latest.current.project;
+    (instance: Instance, resume = false): Promise<void> | undefined => {
+      const committed = latest.current;
+      const current = committed.editing?.getProject() ?? committed.project;
       if (!isCurrent(instance) || !instance.port || current.id !== instance.projectId) return;
-      if (instance.revision === current.revision) return;
-      const port = instance.port;
-      let result: NativeViewportResult;
-      try {
-        result = port.setProject(current);
-      } catch (cause) {
-        instance.port = null;
-        try {
-          port.dispose();
-        } catch {
-          // Preserve the original display error without propagating cleanup into the shell.
-        }
-        setStatus({ state: 'error', reason: errorText(cause) });
-        throw cause;
+      if (instance.readBlob !== committed.readBlob) {
+        cancelPreparation(instance, true);
+        instance.readBlob = committed.readBlob;
+        instance.revision = null;
       }
-      instance.revision = current.revision;
-      setStatus(port.status);
-      if (!result.ok) throw new Error(result.reason);
-      setNotice(null);
+      if (instance.revision === current.revision) return;
+      if (instance.pending?.revision === current.revision) return instance.pending.promise;
+      const port = instance.port;
+      cancelPreparation(instance);
+      const apply = (textures: NativeTextureSnapshot) => {
+        let result: NativeViewportResult;
+        try {
+          result = port.setProject(current, textures);
+        } catch (cause) {
+          instance.port = null;
+          try {
+            port.dispose();
+          } catch {
+            /* Keep the independently owned rescue UI usable. */
+          }
+          setStatus({ state: 'error', reason: errorText(cause) });
+          throw cause;
+        }
+        setStatus(port.status);
+        if (!result.ok) throw new Error(result.reason);
+        instance.revision = current.revision;
+        instance.retainedPixels = nativeTexturePixels(textures);
+        setNotice(null);
+      };
+      // Existing textureless fixtures and edits stay synchronous.
+      if (!current.materials.some((material) => material.textureBlobId !== undefined)) {
+        instance.preparer.cancel(true);
+        apply(new Map());
+        return;
+      }
+      const unavailable = ['context-lost', 'unavailable', 'error', 'disposed'].includes(
+        port.status.state,
+      );
+      if (
+        instance.documentHidden ||
+        instance.frozen ||
+        instance.pageHidden ||
+        unavailable ||
+        (!resume && port.status.state === 'suspended') ||
+        ['hidden', 'frozen'].includes(port.status.state)
+      ) {
+        cancelPreparation(instance);
+        return;
+      }
+      const editing = committed.editing;
+      instance.blockedEditing = editing ?? null;
+      editing?.setBlocked(instance.preparationReason, true);
+      setStatus({ state: 'loading', reason: '最新の編集内容に使うテクスチャを確認しています。' });
+      const pending = { revision: current.revision, promise: Promise.resolve() };
+      instance.pending = pending;
+      pending.promise = instance.preparer
+        .prepare(current, committed.readBlob, instance.retainedPixels)
+        .then((textures) => {
+          const next = latest.current;
+          const nextProject = next.editing?.getProject() ?? next.project;
+          if (
+            !isCurrent(instance) ||
+            instance.pending !== pending ||
+            instance.port !== port ||
+            next.editing !== editing ||
+            next.readBlob !== committed.readBlob ||
+            nextProject.id !== current.id ||
+            nextProject.revision !== current.revision ||
+            instance.documentHidden ||
+            instance.frozen ||
+            instance.pageHidden ||
+            ['hidden', 'frozen', 'context-lost', 'unavailable', 'error', 'disposed'].includes(
+              port.status.state,
+            )
+          )
+            return;
+          apply(textures);
+        })
+        .catch((cause: unknown) => {
+          if (
+            !isCurrent(instance) ||
+            instance.pending !== pending ||
+            isTexturePreparationCancelled(cause)
+          )
+            return;
+          // A failed preparation must never leave an old textured revision usable as fallback.
+          instance.revision = null;
+          instance.retainedPixels = 0;
+          instance.port = null;
+          instance.preparer.cancel(true);
+          try {
+            port.dispose();
+          } catch {
+            /* Source rescue remains independent of display cleanup. */
+          }
+          setStatus({ state: 'unsupported', reason: errorText(cause) });
+          throw cause;
+        })
+        .finally(() => {
+          if (instance.pending !== pending) return;
+          instance.pending = null;
+          instance.blockedEditing?.setBlocked(instance.preparationReason, false);
+          instance.blockedEditing = null;
+        });
+      return pending.promise;
     },
-    [isCurrent],
+    [isCurrent, cancelPreparation],
   );
 
   const bindEditing = useCallback(
@@ -186,6 +298,8 @@ function ViewportContent(props: NativeViewportPanelProps) {
       if (instance.editing === next) return;
       const port = instance.port;
       try {
+        cancelPreparation(instance, true);
+        instance.revision = null;
         instance.editing?.cancel('3D表示の編集接続が切り替わりました。');
         if (next && !port.bindEditing)
           throw new Error('この3D表示では編集操作を接続できません。数値操作と保存は利用できます。');
@@ -203,7 +317,7 @@ function ViewportContent(props: NativeViewportPanelProps) {
         throw cause;
       }
     },
-    [isCurrent],
+    [isCurrent, cancelPreparation],
   );
 
   useEffect(() => {
@@ -221,28 +335,102 @@ function ViewportContent(props: NativeViewportPanelProps) {
       busy: false,
       editing: null,
       suspensionReason: `viewport-suspension:${headingId}:${attempt}`,
+      preparationReason: `viewport-textures:${headingId}:${attempt}`,
+      preparer: new NativeTexturePreparer(),
+      pending: null,
+      blockedEditing: null,
+      readBlob: latest.current.readBlob,
+      retainedPixels: 0,
+      documentHidden: host.ownerDocument.hidden,
+      frozen: false,
+      pageHidden: false,
     };
     instanceRef.current = instance;
     setStatus({ state: 'loading' });
     setNotice(null);
     setBusy(false);
+    const reportUpdate = (cause: unknown) => {
+      if (!isCurrent(instance) || isTexturePreparationCancelled(cause)) return;
+      setNotice({
+        error: true,
+        text: '3D表示を更新できませんでした。現在の内容はこのタブに保持しています。',
+        detail: errorText(cause),
+      });
+    };
+    const refresh = () => {
+      try {
+        void updateProject(instance)?.catch(reportUpdate);
+      } catch (cause) {
+        reportUpdate(cause);
+      }
+    };
+    const boundary = () => {
+      if (instance.documentHidden || instance.frozen || instance.pageHidden)
+        cancelPreparation(instance);
+      else refresh();
+    };
+    const document = host.ownerDocument;
+    const view = document.defaultView;
+    const visibility = () => {
+      instance.documentHidden = document.hidden;
+      boundary();
+    };
+    const freeze = () => {
+      instance.frozen = true;
+      boundary();
+    };
+    const thaw = () => {
+      instance.frozen = false;
+      boundary();
+    };
+    const hide = () => {
+      instance.pageHidden = true;
+      boundary();
+    };
+    const show = () => {
+      instance.pageHidden = false;
+      boundary();
+    };
+    document.addEventListener('visibilitychange', visibility);
+    document.addEventListener('freeze', freeze);
+    document.addEventListener('resume', thaw);
+    view?.addEventListener('pagehide', hide);
+    view?.addEventListener('pageshow', show);
 
     void Promise.resolve()
       .then(() => {
         if (instance.cancelled) return null;
         return factory(ownedHost, (next) => {
-          if (!instance.cancelled) setStatus({ ...next });
+          if (!isCurrent(instance)) return;
+          if (
+            [
+              'hidden',
+              'frozen',
+              'context-lost',
+              'unavailable',
+              'error',
+              'disposed',
+              'suspended',
+            ].includes(next.state)
+          ) {
+            cancelPreparation(instance, next.state === 'suspended');
+            setStatus({ ...next });
+          } else {
+            if (!instance.pending) setStatus({ ...next });
+            // Context/visibility recovery may expose a newer revision after a cancelled decode.
+            queueMicrotask(refresh);
+          }
         });
       })
-      .then((port) => {
+      .then(async (port) => {
         if (!port) return;
         if (instance.cancelled) {
           port.dispose();
           return;
         }
         instance.port = port;
-        updateProject(instance);
         bindEditing(instance);
+        await updateProject(instance);
       })
       .catch((cause: unknown) => {
         if (instance.cancelled) return;
@@ -258,6 +446,12 @@ function ViewportContent(props: NativeViewportPanelProps) {
 
     return () => {
       instance.cancelled = true;
+      cancelPreparation(instance, true);
+      document.removeEventListener('visibilitychange', visibility);
+      document.removeEventListener('freeze', freeze);
+      document.removeEventListener('resume', thaw);
+      view?.removeEventListener('pagehide', hide);
+      view?.removeEventListener('pageshow', show);
       if (instanceRef.current === instance) instanceRef.current = null;
       try {
         instance.editing?.cancel('3D表示を終了しました。');
@@ -270,29 +464,22 @@ function ViewportContent(props: NativeViewportPanelProps) {
       }
     };
     // Latest committed project data is read after the factory resolves; object identity is irrelevant.
-  }, [factory, project.id, attempt, updateProject, bindEditing, headingId]);
+  }, [
+    factory,
+    project.id,
+    attempt,
+    updateProject,
+    bindEditing,
+    cancelPreparation,
+    isCurrent,
+    headingId,
+  ]);
 
   useLayoutEffect(() => {
     const instance = instanceRef.current;
     if (!instance?.port) return;
-    try {
-      updateProject(instance);
-      bindEditing(instance);
-    } catch (cause) {
-      setNotice({
-        error: true,
-        text: '3D表示の編集接続を更新できませんでした。',
-        detail: errorText(cause),
-      });
-    }
-  }, [props.editing, updateProject, bindEditing]);
-
-  useEffect(() => {
-    const instance = instanceRef.current;
-    if (!instance?.port) return;
-    try {
-      updateProject(instance);
-    } catch (cause) {
+    const report = (cause: unknown) => {
+      if (!isCurrent(instance) || isTexturePreparationCancelled(cause)) return;
       setStatus((current) =>
         isFailure(current) ? current : { state: 'error', reason: errorText(cause) },
       );
@@ -301,13 +488,39 @@ function ViewportContent(props: NativeViewportPanelProps) {
         text: '3D表示を更新できませんでした。現在の内容はこのタブに保持しています。',
         detail: errorText(cause),
       });
+    };
+    try {
+      bindEditing(instance);
+      void updateProject(instance)?.catch(report);
+    } catch (cause) {
+      report(cause);
     }
-    // Project getters may return a fresh clone on every render. Only revisions cause reconstruction.
-  }, [project.id, project.revision, updateProject]);
+    // Read only committed sources; a replacement session invalidates equal-numbered revisions too.
+  }, [
+    project.id,
+    project.revision,
+    props.editing,
+    props.readBlob,
+    updateProject,
+    bindEditing,
+    isCurrent,
+  ]);
+
+  function displayedCurrent(instance: Instance) {
+    const current = latest.current.editing?.getProject() ?? latest.current.project;
+    return (
+      !instance.pending &&
+      instance.projectId === current.id &&
+      instance.revision === current.revision &&
+      instance.editing === (latest.current.editing ?? null) &&
+      instance.readBlob === latest.current.readBlob
+    );
+  }
 
   function runCamera(operation: (port: NativeViewportPort) => void) {
     const instance = instanceRef.current;
-    if (!instance?.port || instance.busy || instance.cancelled) return;
+    if (!instance?.port || instance.busy || instance.cancelled || !displayedCurrent(instance))
+      return;
     setNotice(null);
     try {
       operation(instance.port);
@@ -318,7 +531,7 @@ function ViewportContent(props: NativeViewportPanelProps) {
 
   async function run(operation: (instance: Instance, port: NativeViewportPort) => Promise<void>) {
     const instance = instanceRef.current;
-    if (!instance?.port || instance.busy || instance.cancelled) return;
+    if (!instance?.port || instance.busy || instance.cancelled || instance.pending) return;
     instance.busy = true;
     setBusy(true);
     setNotice(null);
@@ -345,7 +558,9 @@ function ViewportContent(props: NativeViewportPanelProps) {
       if (!isCurrent(instance)) return;
       if (latest.current.editing !== editing || editing?.state.active)
         throw new Error('保存中に編集対象が切り替わりました。もう一度休止してください。');
-      updateProject(instance);
+      await updateProject(instance);
+      if (!isCurrent(instance) || instance.port !== port || !displayedCurrent(instance))
+        throw new Error('最新の内容を表示できていません。表示の更新後に休止してください。');
       const contract = { ...latest.current.getSuspensionContract() };
       const result = port.suspend(contract);
       setStatus(port.status);
@@ -357,7 +572,9 @@ function ViewportContent(props: NativeViewportPanelProps) {
   }
 
   async function resume(instance: Instance, port: NativeViewportPort) {
-    updateProject(instance);
+    await updateProject(instance, true);
+    if (!isCurrent(instance) || instance.port !== port || !displayedCurrent(instance))
+      throw new Error('最新の内容を準備できていません。表示の更新後に再開してください。');
     const contract = { ...latest.current.getSuspensionContract() };
     const result = port.resume(contract);
     setStatus(port.status);
@@ -369,7 +586,9 @@ function ViewportContent(props: NativeViewportPanelProps) {
     const editing = latest.current.editing;
     if (editing?.state.active)
       throw new Error('変形プレビューを確定するか取り消してからPNGを作成してください。');
-    updateProject(instance);
+    await updateProject(instance);
+    if (!isCurrent(instance) || instance.port !== port || !displayedCurrent(instance))
+      throw new Error('最新の内容を表示できていません。表示の更新後にPNGを作成してください。');
     const epoch = editing?.state.epoch;
     const snapshot = editing?.getProject() ?? latest.current.project;
     if (instance.revision !== snapshot.revision || instance.projectId !== snapshot.id)

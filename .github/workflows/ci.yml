@@ -117,7 +117,7 @@ jobs:
         env:
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-native-interaction
       - name: Check native 3D product WebKit acceptance before the full suite
-        run: npx playwright test e2e/native-viewport-product.spec.ts e2e/native-editing-product.spec.ts --project=webkit-critical --output=test-results-native-acceptance
+        run: npx playwright test e2e/native-viewport-product.spec.ts e2e/native-editing-product.spec.ts e2e/native-texture-product.spec.ts --project=webkit-critical --output=test-results-native-acceptance
         env:
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-native-acceptance
       - name: Check 3D takeover on the production WebKit build

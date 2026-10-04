@@ -3,24 +3,41 @@ import { getEventListeners } from 'node:events';
 import {
   AmbientLight,
   Box3,
+  BufferGeometry,
+  ClampToEdgeWrapping,
   Color,
+  DataTexture,
   DirectionalLight,
   LineSegments,
+  LinearFilter,
   Mesh,
   MeshStandardMaterial,
   MeshBasicMaterial,
   OrthographicCamera,
   PerspectiveCamera,
+  RGBAFormat,
   Scene,
+  SRGBColorSpace,
+  UnsignedByteType,
   Vector3,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { ProjectHistory } from '../../core3d/commands/history';
 import { setNodeTransform } from '../../core3d/commands/objectEditing';
 import { TransformTransaction } from '../../features/editor3d/transformTransaction';
-import type { NativeCameraState, NativeViewOptions } from '../../core3d/ports/renderPort';
+import type {
+  NativeCameraState,
+  NativeTextureImage,
+  NativeTextureSnapshot,
+  NativeViewOptions,
+} from '../../core3d/ports/renderPort';
 import { smallProject } from '../../core3d/fixtures/project';
 import { cloneProject, identityTransform, type Project3D } from '../../core3d/model/project';
+import { NATIVE_TEXTURE_PROFILE } from '../../core3d/model/textureProfile';
+import {
+  nativeTextureReservedBytes,
+  reserveNativeTextureBytes,
+} from '../../core3d/model/textureResources';
 import { transformPoint, worldMatrix } from '../../core3d/model/coordinates';
 import { nativeBox } from '../../core3d/fixtures/nativeBox';
 import {
@@ -37,6 +54,22 @@ function triangle(): Project3D {
   project.skins = [];
   project.clips = [];
   return project;
+}
+
+function texturedTriangle() {
+  const project = triangle();
+  const hash = 'a'.repeat(64);
+  project.blobIds = [hash];
+  project.materials[0].textureBlobId = hash;
+  // Top-left red, top-right green; bottom-left blue, bottom-right translucent white.
+  const image: NativeTextureImage = {
+    width: 2,
+    height: 2,
+    pixels: new Uint8Array([255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 128]),
+  };
+  const textures = new Map([[hash, image]]);
+  const bottomUp = [0, 0, 255, 255, 255, 255, 255, 128, 255, 0, 0, 255, 0, 255, 0, 255];
+  return { project, hash, image, textures, bottomUp };
 }
 
 describe('isolated native conversion (no WebGL)', () => {
@@ -191,6 +224,220 @@ describe('isolated native conversion (no WebGL)', () => {
       ok: false,
       reason: expect.stringContaining('depth'),
     });
+  });
+});
+
+describe('prepared native texture conversion (no WebGL)', () => {
+  it('owns bottom-up RGBA bytes, preserves UV0, and explicitly applies sRGB and alpha sampling', () => {
+    const { project, image, textures, bottomUp } = texturedTriangle();
+    const before = cloneProject(project);
+    const pixelsBefore = [...image.pixels];
+    const graph = buildNativeGraph(project, textures);
+    expect(graph.textures).toHaveLength(1);
+    const texture = graph.textures[0];
+    expect(graph.materials[0].map).toBe(texture);
+    expect(texture).toMatchObject({
+      isDataTexture: true,
+      format: RGBAFormat,
+      type: UnsignedByteType,
+      colorSpace: SRGBColorSpace,
+      flipY: false,
+      premultiplyAlpha: false,
+      minFilter: LinearFilter,
+      magFilter: LinearFilter,
+      generateMipmaps: false,
+      wrapS: ClampToEdgeWrapping,
+      wrapT: ClampToEdgeWrapping,
+      unpackAlignment: 1,
+    });
+    expect(texture.version).toBe(1);
+    expect(texture.image).toMatchObject({ width: 2, height: 2 });
+    expect(Array.from(texture.image.data!)).toEqual(bottomUp);
+    expect(texture.image.data!.buffer).not.toBe(image.pixels.buffer);
+    expect(Array.from(graph.geometries[0].getAttribute('uv').array)).toEqual([0, 0, 1, 0, 0, 1]);
+    expect(graph.materials[0].color.toArray()).toEqual([0.2, 0.4, 0.6]);
+    expect(graph.materials[0]).toMatchObject({ opacity: 1, transparent: true });
+    expect([...image.pixels]).toEqual(pixelsBefore);
+    image.pixels.fill(0);
+    textures.clear();
+    expect(Array.from(texture.image.data!)).toEqual(bottomUp);
+    expect(project).toEqual(before);
+    graph.dispose();
+  });
+
+  it('keeps opaque images opaque and multiplies texture alpha by the canonical base-color alpha', () => {
+    const { project, image, textures } = texturedTriangle();
+    image.pixels[15] = 255;
+    const opaque = buildNativeGraph(project, textures);
+    expect(opaque.materials[0].transparent).toBe(false);
+    opaque.dispose();
+    project.materials[0].baseColor[3] = 0.25;
+    const translucent = buildNativeGraph(project, textures);
+    expect(translucent.materials[0]).toMatchObject({ opacity: 0.25, transparent: true });
+    translucent.dispose();
+  });
+
+  it('shares one texture across materials and instances and disposes it exactly once per graph', () => {
+    const baseline = nativeTextureReservedBytes();
+    const { project, textures } = texturedTriangle();
+    project.materials.push({ ...project.materials[0], id: 'another-material' });
+    project.meshes[0].faces.push({
+      ...structuredClone(project.meshes[0].faces[0]),
+      id: 'another-face',
+      materialId: 'another-material',
+    });
+    project.nodes.push({ ...structuredClone(project.nodes[0]), id: 'another-node' });
+    const graph = buildNativeGraph(project, textures);
+    expect(graph.geometries).toHaveLength(1);
+    expect(graph.materials).toHaveLength(2);
+    expect(graph.textures).toHaveLength(1);
+    expect(nativeTextureReservedBytes()).toBe(baseline + 32);
+    expect(graph.materials[0].map).toBe(graph.materials[1].map);
+    const released = vi.spyOn(graph.textures[0], 'dispose');
+    graph.root.children[0].removeFromParent();
+    expect(released).not.toHaveBeenCalled();
+    expect(nativeTextureReservedBytes()).toBe(baseline + 32);
+    graph.dispose();
+    graph.dispose();
+    expect(released).toHaveBeenCalledTimes(1);
+    expect(graph.textures[0].image.data).toBeNull();
+    expect(nativeTextureReservedBytes()).toBe(baseline);
+  });
+
+  it('requires prepared sources for unassigned materials without allocating unused GPU textures', () => {
+    const { project, textures } = texturedTriangle();
+    delete project.meshes[0].faces[0].materialId;
+    expect(checkNativeProfile(project).ok).toBe(false);
+    expect(checkNativeProfile(project, textures)).toEqual({ ok: true });
+    const graph = buildNativeGraph(project, textures);
+    expect(graph.textures).toHaveLength(0);
+    expect(graph.materials[0].map).toBeNull();
+    graph.dispose();
+  });
+
+  it.each(['missing', 'foreign', 'short', 'long', 'wrong type', 'fractional', 'zero', 'oversized'])(
+    'rejects %s prepared data before allocating geometry, materials, or textures',
+    (kind) => {
+      const { project, image, textures, hash } = texturedTriangle();
+      if (kind === 'missing') textures.clear();
+      if (kind === 'foreign') {
+        textures.delete(hash);
+        textures.set('b'.repeat(64), image);
+      }
+      if (kind === 'short') image.pixels = new Uint8Array(15);
+      if (kind === 'long') image.pixels = new Uint8Array(17);
+      if (kind === 'wrong type') image.pixels = new Uint16Array(16) as unknown as Uint8Array;
+      if (kind === 'fractional') image.width = 1.5;
+      if (kind === 'zero') image.height = 0;
+      if (kind === 'oversized') image.width = 2049;
+      expect(checkNativeProfile(project, textures).ok).toBe(false);
+      expect(() => buildNativeGraph(project, textures)).toThrow(/texture/i);
+    },
+  );
+
+  it.each(['missing', 'short', 'nonfinite', 'float32 overflow'])(
+    'rejects %s textured corner UV0 without silently using zero UV coordinates',
+    (kind) => {
+      const { project, textures } = texturedTriangle();
+      const face = project.meshes[0].faces[0];
+      if (kind === 'missing') delete face.uv;
+      if (kind === 'short') face.uv!.pop();
+      if (kind === 'nonfinite') face.uv![0][0] = NaN;
+      if (kind === 'float32 overflow') face.uv![0][0] = 1e40;
+      expect(checkNativeProfile(project, textures).ok).toBe(false);
+      expect(() => buildNativeGraph(project, textures)).toThrow();
+    },
+  );
+
+  it('counts unique references at edge and total pixel limits, ignoring unrelated prepared entries', () => {
+    const { project, image, textures, hash } = texturedTriangle();
+    image.width = 2048;
+    image.height = 1;
+    image.pixels = new Uint8Array(2048 * 4);
+    textures.set('unreferenced', { width: -1, height: 0, pixels: new Uint8Array() });
+    expect(checkNativeProfile(project, textures)).toEqual({ ok: true });
+    image.width = 2000;
+    image.height = 2000;
+    image.pixels = new Uint8Array(2000 * 2000 * 4);
+    project.materials.push({ ...project.materials[0], id: 'same-image' });
+    project.materials.push({
+      ...project.materials[0],
+      id: 'second-image',
+      textureBlobId: 'b'.repeat(64),
+    });
+    project.blobIds.push('b'.repeat(64));
+    textures.set('b'.repeat(64), image);
+    expect(checkNativeProfile(project, textures)).toEqual({ ok: true });
+    project.materials.push({
+      ...project.materials[0],
+      id: 'third-image',
+      textureBlobId: 'c'.repeat(64),
+    });
+    project.blobIds.push('c'.repeat(64));
+    textures.set('c'.repeat(64), { width: 1, height: 1, pixels: new Uint8Array(4) });
+    expect(checkNativeProfile(project, textures)).toMatchObject({
+      ok: false,
+      reason: expect.stringContaining('unique texture pixel count'),
+    });
+    expect(textures.get(hash)).toBe(image);
+  });
+
+  it('cleans all partially constructed resources when geometry conversion fails after texture creation', () => {
+    const baseline = nativeTextureReservedBytes();
+    const { project, textures } = texturedTriangle();
+    const geometry = vi.spyOn(BufferGeometry.prototype, 'dispose');
+    const material = vi.spyOn(MeshStandardMaterial.prototype, 'dispose');
+    const texture = vi.spyOn(DataTexture.prototype, 'dispose');
+    const attribute = vi
+      .spyOn(BufferGeometry.prototype, 'setAttribute')
+      .mockImplementationOnce(() => {
+        throw new Error('injected attribute failure');
+      });
+    try {
+      expect(() => buildNativeGraph(project, textures)).toThrow('injected attribute failure');
+      expect(geometry).toHaveBeenCalledTimes(1);
+      expect(material).toHaveBeenCalledTimes(1);
+      expect(texture).toHaveBeenCalledTimes(1);
+      expect(nativeTextureReservedBytes()).toBe(baseline);
+    } finally {
+      attribute.mockRestore();
+      geometry.mockRestore();
+      material.mockRestore();
+      texture.mockRestore();
+    }
+  });
+
+  it('releases the first texture when the shared ledger rejects a later unique image', () => {
+    const baseline = nativeTextureReservedBytes();
+    const { project, textures, image } = texturedTriangle();
+    const secondHash = 'b'.repeat(64);
+    project.blobIds.push(secondHash);
+    project.materials.push({
+      ...project.materials[0],
+      id: 'second-material',
+      textureBlobId: secondHash,
+    });
+    project.meshes[0].faces.push({
+      ...structuredClone(project.meshes[0].faces[0]),
+      id: 'second-face',
+      materialId: 'second-material',
+    });
+    textures.set(secondHash, image);
+    const releaseOtherOwner = reserveNativeTextureBytes(
+      'test active codec metadata',
+      NATIVE_TEXTURE_PROFILE.maxOperationBytes - baseline - 63,
+    );
+    const blockedBytes = nativeTextureReservedBytes();
+    const texture = vi.spyOn(DataTexture.prototype, 'dispose');
+    try {
+      expect(() => buildNativeGraph(project, textures)).toThrow('上限');
+      expect(texture).toHaveBeenCalledTimes(1);
+      expect(nativeTextureReservedBytes()).toBe(blockedBytes);
+    } finally {
+      texture.mockRestore();
+      releaseOtherOwner();
+    }
+    expect(nativeTextureReservedBytes()).toBe(baseline);
   });
 });
 
@@ -364,6 +611,251 @@ function lifecycleHarness(
     dependencies,
   };
 }
+
+describe('native prepared texture lifetime (injected GPU boundary)', () => {
+  function displayedTexture(harness: ReturnType<typeof lifecycleHarness>): DataTexture {
+    const scene = harness.rendererInstances.at(-1)!.render.mock.calls.at(-1)![0] as Scene;
+    const object = scene.getObjectByName('Triangle') as Mesh;
+    const material = (object.material as MeshStandardMaterial[])[0];
+    return material.map as DataTexture;
+  }
+
+  it.each([
+    { available: 15, retained: 0 },
+    { available: 47, retained: 16 },
+  ])(
+    'refuses construction with only $available bytes free without leaking partial reservations',
+    ({ available, retained }) => {
+      const baseline = nativeTextureReservedBytes();
+      const releaseOtherOwner = reserveNativeTextureBytes(
+        'test active image operation metadata',
+        NATIVE_TEXTURE_PROFILE.maxOperationBytes - baseline - available,
+      );
+      const blockedBytes = nativeTextureReservedBytes();
+      const f = lifecycleHarness();
+      const { project, textures } = texturedTriangle();
+      try {
+        expect(f.viewport.setProject(project, textures)).toMatchObject({
+          ok: false,
+          reason: expect.stringContaining('上限'),
+        });
+        expect(f.viewport.diagnostics).toMatchObject({
+          state: 'error',
+          textures: 0,
+          preparedTextureBytes: retained,
+          pendingFrames: 0,
+          canvases: 0,
+        });
+        // A successfully copied canonical source remains a real owner even when GPU creation fails.
+        expect(nativeTextureReservedBytes()).toBe(blockedBytes + retained);
+        f.viewport.dispose();
+        f.viewport.dispose();
+        expect(nativeTextureReservedBytes()).toBe(blockedBytes);
+      } finally {
+        f.viewport.dispose();
+        releaseOtherOwner();
+      }
+      expect(nativeTextureReservedBytes()).toBe(baseline);
+    },
+  );
+
+  it('replaces old owners before copying a new synchronous snapshot at the exact aggregate budget', () => {
+    const baseline = nativeTextureReservedBytes();
+    const releaseOtherOwner = reserveNativeTextureBytes(
+      'test retained sources metadata',
+      NATIVE_TEXTURE_PROFILE.maxOperationBytes - baseline - 48,
+    );
+    const f = lifecycleHarness();
+    const { project, textures } = texturedTriangle();
+    try {
+      expect(f.viewport.setProject(project, textures).ok).toBe(true);
+      expect(nativeTextureReservedBytes()).toBe(NATIVE_TEXTURE_PROFILE.maxOperationBytes);
+      expect(f.viewport.setProject(project, textures).ok).toBe(true);
+      expect(nativeTextureReservedBytes()).toBe(NATIVE_TEXTURE_PROFILE.maxOperationBytes);
+      expect(f.viewport.setProject(project).ok).toBe(false);
+      expect(nativeTextureReservedBytes()).toBe(NATIVE_TEXTURE_PROFILE.maxOperationBytes - 48);
+    } finally {
+      f.viewport.dispose();
+      releaseOtherOwner();
+    }
+    expect(nativeTextureReservedBytes()).toBe(baseline);
+  });
+
+  it.each(['suspend', 'context loss'] as const)(
+    'retains a detached prepared source through %s and rebuilds each GPU texture once',
+    (event) => {
+      const baseline = nativeTextureReservedBytes();
+      const f = lifecycleHarness();
+      const { project, textures, image, bottomUp } = texturedTriangle();
+      // Buffer is a Uint8Array subclass whose slice() aliases the caller's backing memory.
+      image.pixels = Buffer.from(image.pixels);
+      expect(f.viewport.setProject(project, textures)).toEqual({ ok: true });
+      image.pixels.fill(0);
+      textures.clear();
+      f.flush();
+      const texture = displayedTexture(f);
+      const dispose = vi.spyOn(texture, 'dispose');
+      expect([...texture.image.data!]).toEqual(bottomUp);
+      expect(nativeTextureReservedBytes()).toBe(baseline + 48);
+      expect(f.viewport.diagnostics).toMatchObject({
+        textures: 1,
+        preparedTextures: 1,
+        preparedTextureBytes: 16,
+      });
+      if (event === 'suspend') {
+        expect(
+          f.viewport.suspend({ persistedRevision: 0, currentRevision: 0, sourcesComplete: true })
+            .ok,
+        ).toBe(true);
+        expect(f.viewport.diagnostics).toMatchObject({
+          textures: 0,
+          preparedTextures: 1,
+          preparedTextureBytes: 16,
+          disposedTextures: 1,
+        });
+        expect(dispose).toHaveBeenCalledTimes(1);
+        expect(nativeTextureReservedBytes()).toBe(baseline + 16);
+        expect(f.viewport.resume().ok).toBe(true);
+      } else {
+        f.allCanvases[0].dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+        expect(f.viewport.status.state).toBe('context-lost');
+        expect(f.pending.size).toBe(0);
+        expect(f.viewport.diagnostics).toMatchObject({ textures: 0, preparedTextures: 1 });
+        expect(nativeTextureReservedBytes()).toBe(baseline + 16);
+        expect(dispose).toHaveBeenCalledTimes(1);
+        f.allCanvases[0].dispatchEvent(new Event('webglcontextrestored'));
+      }
+      f.flush();
+      const restored = displayedTexture(f);
+      expect(restored).not.toBe(texture);
+      expect([...restored.image.data!]).toEqual(bottomUp);
+      expect(nativeTextureReservedBytes()).toBe(baseline + 48);
+      expect(dispose).toHaveBeenCalledTimes(1);
+      const restoredDispose = vi.spyOn(restored, 'dispose');
+      f.viewport.dispose();
+      f.viewport.dispose();
+      expect(restoredDispose).toHaveBeenCalledTimes(1);
+      expect(nativeTextureReservedBytes()).toBe(baseline);
+      expect(f.viewport.diagnostics).toMatchObject({
+        textures: 0,
+        preparedTextures: 0,
+        preparedTextureBytes: 0,
+        disposedTextures: 2,
+        pendingFrames: 0,
+        canvases: 0,
+      });
+    },
+  );
+
+  it('owns new prepared sources supplied while suspended and resumes only their matching revision', () => {
+    const f = lifecycleHarness();
+    const first = texturedTriangle();
+    f.viewport.setProject(first.project, first.textures);
+    f.viewport.suspend({ persistedRevision: 0, currentRevision: 0, sourcesComplete: true });
+    const second = texturedTriangle();
+    second.project.revision = 1;
+    second.image.pixels.fill(77);
+    expect(f.viewport.setProject(second.project, second.textures).ok).toBe(true);
+    second.image.pixels.fill(0);
+    expect(f.viewport.resume().ok).toBe(false);
+    expect(
+      f.viewport.resume({ persistedRevision: 1, currentRevision: 1, sourcesComplete: true }).ok,
+    ).toBe(true);
+    f.flush();
+    expect([...displayedTexture(f).image.data!]).toEqual(Array(16).fill(77));
+    f.viewport.dispose();
+  });
+
+  it('repeated replacement and inspection shading release each unique texture only with its graph', () => {
+    const f = lifecycleHarness();
+    const { project, textures } = texturedTriangle();
+    const dispose: ReturnType<typeof vi.spyOn>[] = [];
+    for (let index = 0; index < 12; index++) {
+      expect(f.viewport.setProject(project, textures).ok).toBe(true);
+      f.flush();
+      const texture = displayedTexture(f);
+      dispose.push(vi.spyOn(texture, 'dispose'));
+      f.viewport.setViewOptions({ ...f.viewport.getViewOptions(), shading: 'solid' });
+      f.viewport.setViewOptions({ ...f.viewport.getViewOptions(), shading: 'material' });
+      f.flush();
+      expect(displayedTexture(f)).toBe(texture);
+      expect(dispose[index]).not.toHaveBeenCalled();
+      expect(f.viewport.diagnostics).toMatchObject({
+        textures: 1,
+        preparedTextures: 1,
+        disposedTextures: index,
+      });
+    }
+    f.viewport.dispose();
+    for (const released of dispose) expect(released).toHaveBeenCalledTimes(1);
+    expect(f.viewport.diagnostics).toMatchObject({
+      textures: 0,
+      disposedTextures: 12,
+      preparedTextures: 0,
+    });
+  });
+
+  it('rejects an absent or mismatched snapshot and clears the previous graph without a color fallback', () => {
+    const f = lifecycleHarness();
+    const { project, textures, image } = texturedTriangle();
+    f.viewport.setProject(project, textures);
+    f.flush();
+    const dispose = vi.spyOn(displayedTexture(f), 'dispose');
+    expect(f.viewport.setProject(project)).toMatchObject({
+      ok: false,
+      reason: expect.stringContaining('prepared'),
+    });
+    expect(dispose).toHaveBeenCalledTimes(1);
+    expect(f.viewport.diagnostics).toMatchObject({
+      state: 'unsupported',
+      textures: 0,
+      preparedTextures: 0,
+      renderers: 0,
+      canvases: 0,
+      pendingFrames: 0,
+    });
+    const foreign: NativeTextureSnapshot = new Map([['b'.repeat(64), image]]);
+    expect(f.viewport.setProject(project, foreign).ok).toBe(false);
+    expect(f.viewport.setProject(project, textures).ok).toBe(true);
+    f.viewport.dispose();
+  });
+
+  it('does not retain extra prepared hashes and releases prepared sources with an untextured replacement', () => {
+    const f = lifecycleHarness();
+    const { project, textures, image } = texturedTriangle();
+    textures.set('unreferenced', image);
+    f.viewport.setProject(project, textures);
+    expect(f.viewport.diagnostics).toMatchObject({ preparedTextures: 1, preparedTextureBytes: 16 });
+    f.viewport.setProject(triangle());
+    expect(f.viewport.diagnostics).toMatchObject({
+      textures: 0,
+      preparedTextures: 0,
+      preparedTextureBytes: 0,
+    });
+    f.viewport.dispose();
+  });
+
+  it('captures the textured frame and rejects delayed PNG after prepared sources are replaced', async () => {
+    const f = lifecycleHarness();
+    const { project, textures, image } = texturedTriangle();
+    f.viewport.setProject(project, textures);
+    await expect(f.viewport.capturePng()).resolves.toBeInstanceOf(Blob);
+    expect(displayedTexture(f)).toBeInstanceOf(DataTexture);
+    let encode: BlobCallback | undefined;
+    f.allCanvases[0].toBlob.mockImplementation((callback) => {
+      encode = callback;
+    });
+    const capture = f.viewport.capturePng();
+    const rejected = expect(capture).rejects.toThrow('stale');
+    image.pixels.fill(123);
+    f.viewport.setProject(project, textures);
+    encode!(new Blob(['old pixels']));
+    await rejected;
+    f.flush();
+    expect([...displayedTexture(f).image.data!]).toEqual(Array(16).fill(123));
+    f.viewport.dispose();
+  });
+});
 
 describe('accessible native camera actions', () => {
   const actions: NativeCameraAction[] = [

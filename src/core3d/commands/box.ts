@@ -47,6 +47,29 @@ export function addBox(project: Project3D, id: string): void {
     faces: faces.map((indices, index) => ({
       id: `${id}-f${index}`,
       vertexIds: indices.map((vertex) => `${id}-v${vertex}`),
+      uv: (index === 0
+        ? [
+            [1, 0],
+            [0, 1],
+            [0, 0],
+          ]
+        : index === 1
+          ? [
+              [1, 0],
+              [1, 1],
+              [0, 1],
+            ]
+          : index % 2 === 0
+            ? [
+                [0, 0],
+                [1, 0],
+                [1, 1],
+              ]
+            : [
+                [0, 0],
+                [1, 1],
+                [0, 1],
+              ]) as [number, number][],
       materialId,
     })),
   });
