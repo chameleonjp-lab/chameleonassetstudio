@@ -4,6 +4,8 @@ import { dirname } from 'node:path';
 import { nativeBox } from '../src/core3d/fixtures/nativeBox';
 import { exportBackup } from '../src/core3d/backup/backup';
 
+const literalPattern = (value: string) => new RegExp(value.replace(/[.*+?^$(){}|[\]\\]/g, '\\$&'));
+
 async function attachNativeVisual(name: string, body: Buffer) {
   const path = test.info().outputPath(`native-visual-${name}`);
   await mkdir(dirname(path), { recursive: true });
@@ -182,9 +184,7 @@ test('inspection camera and helpers preserve canonical revision and survive GPU 
   const objects = page.getByRole('combobox', { name: '注目するオブジェクト', exact: true });
   const id = await objects.locator('option').nth(1).getAttribute('value');
   await objects.selectOption(id!);
-  await expect(page.locator('.native-inspection p').filter({ hasText: '選択対象:' })).toContainText(
-    id!,
-  );
+  await expect(objects).toHaveAccessibleDescription(literalPattern(id!));
   await page.getByRole('button', { name: '選択対象に合わせる', exact: true }).click();
   await page.getByRole('combobox', { name: '投影方式', exact: true }).selectOption('orthographic');
   await page.getByLabel('平行投影の高さ', { exact: true }).fill('3');
@@ -330,9 +330,8 @@ test('long duplicate object names retain complete identity without phone overflo
   const labels = await select.locator('option').allTextContents();
   expect(labels[1]).not.toBe(labels[2]);
   await select.selectOption(secondId);
-  const description = page.locator('.native-inspection p').filter({ hasText: '選択対象:' });
-  await expect(description).toContainText(name);
-  await expect(description).toContainText(secondId);
+  await expect(select).toHaveAccessibleDescription(literalPattern(name));
+  await expect(select).toHaveAccessibleDescription(literalPattern(secondId));
   await page.getByRole('button', { name: '選択対象に合わせる', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveCount(0);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);

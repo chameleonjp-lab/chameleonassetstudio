@@ -87,3 +87,9 @@ viewportまでの差はraw75,874 / gzip20,364bytes。数値変形の初回利用
 ## 互換性と戻し方
 
 2D source、従来ZIP/Web/Pixi/Phaserと0.2出力、native schema/package lockは変更しない。新しい選択/preview/診断はsession内だけで、backupへ保存しない。rollbackは本接続のUI/port/adapter/session追加を戻し、既存native作品をそのまま読む。保存済みdataのmigrationや削除は伴わない。
+
+## 初回製品CIで確認した継続互換性
+
+[CI 37185766155](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/37185766155)（head `78fe5fc1af7b6e739092f7b71dce48c837e325cc`）では全体1,584件/123filesとbuild・静的検査が成功した。早期WebKitは13件中11件成功で、新しい製品操作5件はすべて成功した。既存2件は選択説明の旧文言prefix「選択対象:」へのlocatorが、新しい共有選択の説明「選択中…アクティブな対象:」に一致せず停止した。後続の全体browser/production検査は未実行であり、合格とは扱わない。
+
+PROD-06: 説明には完全な名前とcanonical IDが残り、selectの`aria-describedby`へ接続されていることを失敗artifactで確認した。検査を実際のaccessible descriptionへ向け、完全な名前/IDを正規表現escapeして照合する。focus・revision・GPU再構築・同名対象・375px overflow・画像の既存assertionは維持した。独立レビューで限定修正を確認済み。修正後の最終headで全CIを再実行する。
