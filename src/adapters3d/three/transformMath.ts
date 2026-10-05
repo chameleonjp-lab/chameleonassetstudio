@@ -1,3 +1,4 @@
+import { isNodeVisible } from '../../core3d/model/editability';
 /** Native transform mathematics adopted from the independently evaluated r186 candidate. */
 import { Euler, Matrix4, Quaternion, Vector3 } from 'three';
 import { worldMatrix } from '../../core3d/model/coordinates';
@@ -79,6 +80,8 @@ export function selectionFrame(project: Project3D, context: NativeEditContext): 
   )
     throw new Error('Invalid transform options');
   for (const id of selection) {
+    if (!isNodeVisible(project, id))
+      throw new Error('Hidden objects cannot start viewport transforms');
     const ancestors = ancestry(project, id);
     if (ancestors.slice(1).some((parent) => selection.includes(parent)))
       throw new Error('Parent and descendant selection is ambiguous');

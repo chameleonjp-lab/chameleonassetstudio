@@ -1,3 +1,4 @@
+import { isNodeVisible } from '../../core3d/model/editability';
 /** Native-static Three adapter. Lazy product use follows the scoped G03 evidence record. */
 import {
   AmbientLight,
@@ -15,6 +16,8 @@ import {
   LinearFilter,
   Mesh,
   MeshStandardMaterial,
+  DoubleSide,
+  FrontSide,
   MeshBasicMaterial,
   Object3D,
   OrthographicCamera,
@@ -326,10 +329,17 @@ export function buildNativeGraph(
       const source = project.materials.find((material) => material.id === id);
       const color = source?.baseColor ?? [0.55, 0.65, 0.8, 1];
       const texture = source?.textureBlobId ? textureFor(source.textureBlobId) : undefined;
+      const alphaMode = source?.alphaMode ?? 'LEGACY_AUTO';
+      const emissive = source?.emissiveColor ?? [0, 0, 0];
       const material = new MeshStandardMaterial({
         color: new Color().setRGB(color[0], color[1], color[2]),
-        opacity: color[3],
-        transparent: color[3] < 1 || texture?.transparent === true,
+        opacity: alphaMode === 'OPAQUE' ? 1 : color[3],
+        transparent:
+          alphaMode === 'BLEND' ||
+          (alphaMode === 'LEGACY_AUTO' && (color[3] < 1 || texture?.transparent === true)),
+        alphaTest: alphaMode === 'MASK' ? (source?.alphaCutoff ?? 0.5) : 0,
+        side: source?.doubleSided ? DoubleSide : FrontSide,
+        emissive: new Color().setRGB(...emissive),
         map: texture?.texture ?? null,
         metalness: source?.metallic ?? 0,
         roughness: source?.roughness ?? 0.7,
@@ -378,6 +388,7 @@ export function buildNativeGraph(
           ? new Group()
           : new Mesh(geometryById.get(node.meshId)!, materials);
       object.name = node.name;
+      object.visible = node.visible !== false;
       object.userData = { canonicalNodeId: node.id };
       object.position.fromArray(node.transform.translation);
       object.quaternion.fromArray(node.transform.rotation);
@@ -805,7 +816,11 @@ export class NativeViewport {
   }
 
   private updateSelection(state: NativeEditState, matches: boolean): void {
-    const selected = new Set(matches ? state.context.selection : []);
+    const selected = new Set(
+      matches && this.snapshot
+        ? state.context.selection.filter((id) => isNodeVisible(this.snapshot!, id))
+        : [],
+    );
     for (const [id, helpers] of this.selectionHelpers) {
       const count = id === state.context.activeId ? 2 : 1;
       if (!selected.has(id) || helpers.length !== count) {
@@ -819,7 +834,7 @@ export class NativeViewport {
     for (const id of selected) {
       const object = this.graph?.objects.get(id);
       if (!object) continue;
-      const box = new Box3().setFromObject(object);
+      const box = visibleBounds(object);
       if (box.isEmpty()) continue;
       let helpers = this.selectionHelpers.get(id);
       if (!helpers) {
@@ -934,8 +949,10 @@ export class NativeViewport {
     this.graph!.root.traverse((node) => {
       if (node.userData.canonicalNodeId === nodeId) selected = node;
     });
+    if (this.snapshot && !isNodeVisible(this.snapshot, nodeId))
+      return failure('The selected node is hidden.');
     if (!selected) return failure('The selected canonical node is not present.');
-    const bounds = new Box3().setFromObject(selected);
+    const bounds = visibleBounds(selected);
     if (bounds.isEmpty())
       return failure('The selected node has no native geometry in its subtree.');
     return this.fitBounds(bounds, this.viewDirection());
@@ -1084,7 +1101,7 @@ export class NativeViewport {
   }
 
   private modelBounds(): Box3 {
-    const bounds = this.graph ? new Box3().setFromObject(this.graph.root) : new Box3();
+    const bounds = this.graph ? visibleBounds(this.graph.root) : new Box3();
     return bounds.isEmpty() ? fallbackBounds() : bounds;
   }
 
@@ -1706,4 +1723,17 @@ export class NativeViewport {
     this.element?.remove();
     this.element = null;
   }
+}
+
+function visibleBounds(root: Object3D): Box3 {
+  const bounds = new Box3();
+  root.updateWorldMatrix(true, true);
+  root.traverseVisible((object) => {
+    if (object instanceof Mesh) {
+      object.geometry.computeBoundingBox();
+      if (object.geometry.boundingBox)
+        bounds.union(object.geometry.boundingBox.clone().applyMatrix4(object.matrixWorld));
+    }
+  });
+  return bounds;
 }

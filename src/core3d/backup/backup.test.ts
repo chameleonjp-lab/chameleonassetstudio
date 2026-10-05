@@ -59,3 +59,36 @@ describe('resident native backup', () => {
     expect(p).toEqual(before);
   });
 });
+
+describe('versioned backup rejection and original retention', () => {
+  it.each(['future', 'legacy-new-field', 'version-mismatch', 'invalid-alpha', 'unknown-manifest'])(
+    'rejects %s without mutating archive bytes',
+    async (kind) => {
+      const { unzipSync, zipSync, strFromU8, strToU8 } = await import('fflate');
+      const { hashBlob } = await import('../storage/repository');
+      const { p, hash, bytes } = await fixture();
+      const files = unzipSync(await exportBackup(p, new Map([[hash, bytes]])));
+      const project = JSON.parse(strFromU8(files['project.json']));
+      const manifest = JSON.parse(strFromU8(files['manifest.json']));
+      if (kind === 'future') {
+        project.schemaVersion = '0.3.0';
+        manifest.version = '0.3.0';
+      }
+      if (kind === 'legacy-new-field') {
+        project.schemaVersion = '0.1.0';
+        manifest.version = '0.1.0';
+        project.nodes[0].locked = false;
+      }
+      if (kind === 'version-mismatch') manifest.version = '0.1.0';
+      if (kind === 'invalid-alpha') project.materials[0].alphaMode = 'AUTO';
+      if (kind === 'unknown-manifest') manifest.extra = true;
+      files['project.json'] = strToU8(JSON.stringify(project));
+      manifest.projectHash = await hashBlob(files['project.json']);
+      files['manifest.json'] = strToU8(JSON.stringify(manifest));
+      const archive = zipSync(files, { level: 0 });
+      const before = archive.slice();
+      await expect(importBackup(archive)).rejects.toThrow();
+      expect(archive).toEqual(before);
+    },
+  );
+});

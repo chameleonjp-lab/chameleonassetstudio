@@ -1,3 +1,4 @@
+import { materialDefaults } from '../model/project';
 import { identityTransform, type Mesh3D, type Project3D, type Vec3 } from '../model/project';
 
 export type PrimitiveKind = 'box' | 'plane' | 'sphere' | 'cylinder' | 'cone';
@@ -267,6 +268,7 @@ export function addPrimitive(project: Project3D, id: string, options: PrimitiveO
   else roundColumn(builder, options);
 
   project.materials.push({
+    ...materialDefaults(),
     id: materialId,
     baseColor: [0.15, 0.7, 0.35, 1],
     metallic: 0,
@@ -274,6 +276,8 @@ export function addPrimitive(project: Project3D, id: string, options: PrimitiveO
   });
   project.meshes.push(builder.mesh);
   project.nodes.push({
+    visible: true,
+    locked: false,
     id: nodeId,
     name: names[options.kind],
     parentId: null,

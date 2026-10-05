@@ -1,4 +1,10 @@
-import { validateProject, type Material3D, type Project3D } from '../model/project';
+import { assertMeshEditable } from '../model/editability';
+import {
+  materialDefaults,
+  validateProject,
+  type Material3D,
+  type Project3D,
+} from '../model/project';
 
 function publishMaterial(project: Project3D, material: Material3D): string {
   const candidate = structuredClone(project);
@@ -12,9 +18,18 @@ function publishMaterial(project: Project3D, material: Material3D): string {
 export function addMaterial(
   project: Project3D,
   id: string,
-  factors: Pick<Material3D, 'baseColor' | 'metallic' | 'roughness'>,
+  factors: Pick<
+    Material3D,
+    | 'baseColor'
+    | 'metallic'
+    | 'roughness'
+    | 'emissiveColor'
+    | 'alphaMode'
+    | 'alphaCutoff'
+    | 'doubleSided'
+  >,
 ): string {
-  return publishMaterial(project, { id, ...structuredClone(factors) });
+  return publishMaterial(project, { id, ...materialDefaults(), ...structuredClone(factors) });
 }
 
 export function duplicateMaterial(project: Project3D, materialId: string, newId: string): string {
@@ -30,6 +45,7 @@ export function assignMaterial(
   faceIds: readonly string[],
   materialId: string,
 ): void {
+  assertMeshEditable(project, meshId);
   const mesh = project.meshes.find((item) => item.id === meshId);
   const material = project.materials.find((item) => item.id === materialId);
   if (!mesh || !material) throw new Error('割当先のmeshと材質を選択してください。');

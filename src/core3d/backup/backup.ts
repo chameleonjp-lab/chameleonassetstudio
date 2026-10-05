@@ -1,5 +1,10 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
-import { cloneProject, validateProject, type Project3D } from '../model/project';
+import {
+  validateStoredProject,
+  upgradeLegacyProject,
+  type Project3D,
+  type StoredProject3D,
+} from '../model/project';
 
 export const BACKUP_EXTENSION = '.cas3dproj';
 /** Initial native-backup profile, not a mobile memory guarantee. */
@@ -11,10 +16,12 @@ export const BACKUP_LIMITS = {
 export interface ProjectBackup {
   project: Project3D;
   blobs: Map<string, Uint8Array>;
+  /** Exact old archive retained before conversion for a separate recovery path. */
+  legacyBackup?: Uint8Array;
 }
 interface Manifest {
   format: 'chameleon-backup-3d';
-  version: '0.1.0';
+  version: '0.1.0' | '0.2.0';
   projectHash: string;
   blobs: { hash: string; bytes: number }[];
 }
@@ -27,11 +34,11 @@ function assert(condition: unknown, message: string): asserts condition {
 }
 /** Resident, renderer/network-free rescue encoder; callers retain the original on every failure. */
 export async function exportBackup(
-  project: Project3D,
+  project: StoredProject3D,
   source: ReadonlyMap<string, Uint8Array>,
 ): Promise<Uint8Array> {
-  validateProject(project);
-  const snapshot = cloneProject(project);
+  validateStoredProject(project);
+  const snapshot = structuredClone(project);
   // Copy all input bytes before the first await; callers may keep editing afterwards.
   const blobs = new Map(
     snapshot.blobIds.map((id) => {
@@ -56,7 +63,7 @@ export async function exportBackup(
   }
   const manifest: Manifest = {
     format: 'chameleon-backup-3d',
-    version: '0.1.0',
+    version: snapshot.schemaVersion,
     projectHash: await digest(projectBytes),
     blobs: records,
   };
@@ -106,7 +113,7 @@ export async function importBackup(input: Uint8Array): Promise<ProjectBackup> {
     manifest &&
       typeof manifest === 'object' &&
       manifest.format === 'chameleon-backup-3d' &&
-      manifest.version === '0.1.0',
+      (manifest.version === '0.1.0' || manifest.version === '0.2.0'),
     'Unsupported backup format/version',
   );
   assert(
@@ -116,7 +123,8 @@ export async function importBackup(input: Uint8Array): Promise<ProjectBackup> {
   assert(Array.isArray(manifest.blobs), 'Invalid blob manifest');
   assert((await digest(files['project.json'])) === manifest.projectHash, 'Project hash mismatch');
   const project: unknown = JSON.parse(strFromU8(files['project.json']));
-  validateProject(project);
+  validateStoredProject(project);
+  assert(manifest.version === project.schemaVersion, 'Backup/project version mismatch');
   const blobs = new Map<string, Uint8Array>();
   for (const entry of manifest.blobs) {
     assert(
@@ -140,5 +148,7 @@ export async function importBackup(input: Uint8Array): Promise<ProjectBackup> {
     'Backup reference mismatch',
   );
   assert(names.size === blobs.size + 2, 'Unreferenced backup entry');
-  return { project, blobs };
+  return project.schemaVersion === '0.1.0'
+    ? { project: upgradeLegacyProject(project), blobs, legacyBackup: bytes }
+    : { project, blobs };
 }

@@ -1,3 +1,4 @@
+import { isNodeLocked } from '../../core3d/model/editability';
 import { setNodeTransform } from '../../core3d/commands/objectEditing';
 import { composeTransform } from '../../core3d/model/coordinates';
 import { cloneProject, type Project3D, type Vec3 } from '../../core3d/model/project';
@@ -49,6 +50,7 @@ export class TransformTransaction implements NativeEditBinding {
   private epoch = 0;
   private lastReason = 'idle';
   private observerError: string | null = null;
+  private lockCache: { id: string; revision: number; ids: string[] } | null = null;
   private readonly listeners = new Set<() => void>();
   private readonly blocked = new Set<string>();
   private readonly captures = new Set<symbol>();
@@ -56,12 +58,20 @@ export class TransformTransaction implements NativeEditBinding {
   constructor(private readonly authority: TransformAuthority) {}
 
   private get context(): NativeEditContext {
+    const identity = this.authority.getIdentity();
+    if (this.lockCache?.id !== identity.id || this.lockCache?.revision !== identity.revision) {
+      const project = this.getProject();
+      this.lockCache = {
+        ...identity,
+        ids: project.nodes.filter((node) => isNodeLocked(project, node.id)).map((node) => node.id),
+      };
+    }
     return {
       selection: [...this.selection],
       activeId: this.activeId,
       options: { ...this.options },
       readOnly: this.authority.isReadOnly(),
-      lockedIds: [],
+      lockedIds: [...this.lockCache.ids],
     };
   }
   get state(): NativeEditState {

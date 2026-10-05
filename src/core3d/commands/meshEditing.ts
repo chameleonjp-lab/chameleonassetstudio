@@ -1,3 +1,4 @@
+import { assertMeshEditable } from '../model/editability';
 import type { Mesh3D, Project3D, Vec3 } from '../model/project';
 
 type Face = Mesh3D['faces'][number];
@@ -56,6 +57,7 @@ function requireTriangles(mesh: Mesh3D): void {
 }
 
 function editableMesh(project: Project3D, meshId: string, changesShape: boolean): Mesh3D {
+  assertMeshEditable(project, meshId);
   const mesh = project.meshes.find((item) => item.id === meshId);
   if (!mesh) throw new Error('編集するメッシュが見つかりません。');
   if (project.nodes.filter((node) => node.meshId === meshId).length > 1)

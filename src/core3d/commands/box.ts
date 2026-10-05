@@ -1,3 +1,4 @@
+import { materialDefaults } from '../model/project';
 import { identityTransform, type Project3D, type Vec3 } from '../model/project';
 
 /** One editable native primitive. The caller commits this mutation through ProjectHistory. */
@@ -36,6 +37,7 @@ export function addBox(project: Project3D, id: string): void {
     [0, 5, 4],
   ];
   project.materials.push({
+    ...materialDefaults(),
     id: materialId,
     baseColor: [0.15, 0.7, 0.35, 1],
     metallic: 0,
@@ -74,6 +76,8 @@ export function addBox(project: Project3D, id: string): void {
     })),
   });
   project.nodes.push({
+    visible: true,
+    locked: false,
     id: nodeId,
     name: '箱',
     parentId: null,

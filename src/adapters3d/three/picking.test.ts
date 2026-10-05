@@ -193,3 +193,39 @@ describe('canonical native raycasting (real Three math, no WebGL)', () => {
     expect(raycast).not.toHaveBeenCalled();
   });
 });
+
+describe('persisted visibility picking', () => {
+  it.each(['self', 'ancestor'] as const)(
+    'ignores a canonical hidden %s and picks again after a rebuild',
+    (scope) => {
+      const project = editFixture();
+      const node = project.nodes.find((item) => item.id === 'box-node')!;
+      if (scope === 'ancestor') {
+        project.nodes.push({
+          id: 'visibility-parent',
+          name: 'Visibility parent',
+          parentId: null,
+          transform: { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+        });
+        node.parentId = 'visibility-parent';
+      }
+      const target =
+        scope === 'ancestor' ? project.nodes.find((item) => item.id === node.parentId)! : node;
+      expect(target).toBeDefined();
+      target.visible = false;
+      const view = camera('perspective');
+      const [x, y] = clientPoint([-1.25, 0, 0], view);
+      const ids = new Set(project.nodes.map((item) => item.id));
+      let graph = buildNativeGraph(project);
+      expect(pickNative(graph.root, view, ids, x, y, rect)).toBeNull();
+      graph.dispose();
+      target.visible = true;
+      graph = buildNativeGraph(project);
+      try {
+        expect(pickNative(graph.root, view, ids, x, y, rect)).toBe('box-node');
+      } finally {
+        graph.dispose();
+      }
+    },
+  );
+});

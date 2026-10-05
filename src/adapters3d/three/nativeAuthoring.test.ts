@@ -28,6 +28,7 @@ describe('authored native data reaches renderer without changing its ownership',
       baseColor: [0.2, 0.3, 0.4, 0.5],
       metallic: 0.6,
       roughness: 0.7,
+      alphaMode: 'BLEND',
     });
     expect(checkNativeProfile(p).ok).toBe(true);
     const before = structuredClone(p),

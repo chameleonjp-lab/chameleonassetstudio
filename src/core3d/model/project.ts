@@ -12,6 +12,10 @@ export interface Node3D {
   parentId: string | null;
   transform: Transform3D;
   meshId?: string;
+  /** Defaults to true when omitted in 0.2.0. Inherited through the hierarchy. */
+  visible?: boolean;
+  /** Defaults to false; a locked ancestor also prevents descendant editing. */
+  locked?: boolean;
 }
 export interface Mesh3D {
   id: string;
@@ -25,12 +29,19 @@ export interface Mesh3D {
     materialId?: string;
   }[];
 }
+export type AlphaMode3D = 'OPAQUE' | 'MASK' | 'BLEND' | 'LEGACY_AUTO';
 export interface Material3D {
   id: string;
   baseColor: [number, number, number, number];
   metallic: number;
   roughness: number;
   textureBlobId?: string;
+  /** Linear RGB, defaults to black. */
+  emissiveColor?: Vec3;
+  /** Omitted values retain the explicit LEGACY_AUTO compatibility semantics. */
+  alphaMode?: AlphaMode3D;
+  alphaCutoff?: number;
+  doubleSided?: boolean;
 }
 export interface Source3D {
   id: string;
@@ -65,7 +76,7 @@ export interface Clip3D {
 }
 export interface Project3D {
   format: 'chameleon-project-3d';
-  schemaVersion: '0.1.0';
+  schemaVersion: '0.2.0';
   id: string;
   name: string;
   /** Monotonic editor revision, including Undo/Redo. Never a wall-clock value. */
@@ -79,6 +90,19 @@ export interface Project3D {
   clips: Clip3D[];
   blobIds: string[];
 }
+/** Frozen 0.1.0 shape: new fields must never be accepted by its parser. */
+export type LegacyProject3D = Omit<Project3D, 'schemaVersion' | 'nodes' | 'materials'> & {
+  schemaVersion: '0.1.0';
+  nodes: Omit<Node3D, 'visible' | 'locked'>[];
+  materials: Omit<Material3D, 'emissiveColor' | 'alphaMode' | 'alphaCutoff' | 'doubleSided'>[];
+};
+export type StoredProject3D = Project3D | LegacyProject3D;
+export const materialDefaults = () => ({
+  emissiveColor: [0, 0, 0] as Vec3,
+  alphaMode: 'OPAQUE' as AlphaMode3D,
+  alphaCutoff: 0.5,
+  doubleSided: false,
+});
 export class ProjectValidationError extends Error {
   constructor(message: string) {
     super(message);
@@ -93,7 +117,7 @@ export const identityTransform = (): Transform3D => ({
 export function createProject(id: string, name = '新しい3Dプロジェクト'): Project3D {
   const project: Project3D = {
     format: 'chameleon-project-3d',
-    schemaVersion: '0.1.0',
+    schemaVersion: '0.2.0',
     id,
     name,
     revision: 0,
@@ -161,6 +185,34 @@ function hash(v: unknown): asserts v is string {
 }
 /** Validates the native contract only. This is not a GLB loader or decoder. */
 export function validateProject(value: unknown): asserts value is Project3D {
+  validateNativeProject(value, '0.2.0');
+}
+export function validateLegacyProject(value: unknown): asserts value is LegacyProject3D {
+  validateNativeProject(value, '0.1.0');
+}
+export function validateStoredProject(value: unknown): asserts value is StoredProject3D {
+  const version = record(value, 'project').schemaVersion;
+  if (version === '0.1.0') validateLegacyProject(value);
+  else validateProject(value);
+}
+/** Detached conversion only; callers persist to a separate identity/namespace. */
+export function upgradeLegacyProject(value: LegacyProject3D): Project3D {
+  validateLegacyProject(value);
+  const original = structuredClone(value);
+  const project: Project3D = {
+    ...original,
+    schemaVersion: '0.2.0',
+    nodes: original.nodes.map((node) => ({ ...node, visible: true, locked: false })),
+    materials: original.materials.map((material) => ({
+      ...material,
+      ...materialDefaults(),
+      alphaMode: 'LEGACY_AUTO',
+    })),
+  };
+  validateProject(project);
+  return project;
+}
+function validateNativeProject(value: unknown, version: StoredProject3D['schemaVersion']) {
   const p = record(value, 'project');
   keys(p, [
     'format',
@@ -177,7 +229,7 @@ export function validateProject(value: unknown): asserts value is Project3D {
     'clips',
     'blobIds',
   ]);
-  if (p.format !== 'chameleon-project-3d' || p.schemaVersion !== '0.1.0')
+  if (p.format !== 'chameleon-project-3d' || p.schemaVersion !== version)
     fail('Unsupported project format/version');
   if (p.coordinates !== 'right-handed-meter-y-up-positive-z-forward')
     fail('Unsupported coordinate contract');
@@ -198,7 +250,13 @@ export function validateProject(value: unknown): asserts value is Project3D {
   if (blobs.size !== project.blobIds.length) fail('Duplicate blob reference');
   for (const node of project.nodes) {
     const n = record(node, 'node');
-    keys(n, ['id', 'name', 'parentId', 'transform'], ['meshId']);
+    keys(
+      n,
+      ['id', 'name', 'parentId', 'transform'],
+      version === '0.1.0' ? ['meshId'] : ['meshId', 'visible', 'locked'],
+    );
+    for (const field of ['visible', 'locked'] as const)
+      if (node[field] !== undefined && typeof node[field] !== 'boolean') fail('Invalid node flag');
     string(node.name);
     if (node.parentId !== null) has(nodes, node.parentId);
     if (node.meshId !== undefined) has(meshes, node.meshId);
@@ -248,8 +306,26 @@ export function validateProject(value: unknown): asserts value is Project3D {
     keys(
       record(material, 'material'),
       ['id', 'baseColor', 'metallic', 'roughness'],
-      ['textureBlobId'],
+      version === '0.1.0'
+        ? ['textureBlobId']
+        : ['textureBlobId', 'emissiveColor', 'alphaMode', 'alphaCutoff', 'doubleSided'],
     );
+    if (material.emissiveColor !== undefined) {
+      vector(material.emissiveColor, 3);
+      if (material.emissiveColor.some((value) => value < 0 || value > 1))
+        fail('Emissive factor out of range');
+    }
+    if (
+      material.alphaMode !== undefined &&
+      !['OPAQUE', 'MASK', 'BLEND', 'LEGACY_AUTO'].includes(material.alphaMode)
+    )
+      fail('Invalid alpha mode');
+    if (material.alphaCutoff !== undefined) {
+      number(material.alphaCutoff);
+      if (material.alphaCutoff < 0 || material.alphaCutoff > 1) fail('Invalid alpha cutoff');
+    }
+    if (material.doubleSided !== undefined && typeof material.doubleSided !== 'boolean')
+      fail('Invalid double-sided flag');
     vector(material.baseColor, 4);
     number(material.metallic);
     number(material.roughness);

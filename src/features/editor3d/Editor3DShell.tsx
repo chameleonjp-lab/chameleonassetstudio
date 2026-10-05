@@ -12,6 +12,11 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
+import {
+  copyLegacyProject,
+  listLegacyProjects,
+  type LegacyProjectEntry,
+} from '../../core3d/storage/legacyMigration';
 import { openProjectRepository, type ProjectRepository } from '../../core3d/storage/repository';
 import { BACKUP_LIMITS, ProjectSession, UnsavedProjectError } from './projectSession';
 import './editor3d.css';
@@ -177,10 +182,14 @@ function Editor3DRescue({ sessionRef }: { sessionRef: RefObject<ProjectSession |
 async function downloadSessionBackup(session: ProjectSession) {
   const project = session.project;
   const bytes = await session.backup();
+  downloadArchive(bytes, project.name);
+}
+
+function downloadArchive(bytes: Uint8Array, name: string) {
   const url = URL.createObjectURL(new Blob([bytes.slice().buffer], { type: 'application/zip' }));
   const anchor = document.createElement('a');
   anchor.href = url;
-  anchor.download = `${(project.name || '3d-project').replace(/[\\/:*?"<>|\p{Cc}]/gu, '_').slice(0, 100)}.cas3dproj`;
+  anchor.download = `${(name || '3d-project').replace(/[\\/:*?"<>|\p{Cc}]/gu, '_').slice(0, 100)}.cas3dproj`;
   document.body.append(anchor);
   try {
     anchor.click();
@@ -193,6 +202,10 @@ async function downloadSessionBackup(session: ProjectSession) {
 function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession | null> }) {
   const [repository, setRepository] = useState<ProjectRepository | null>(null);
   const [projects, setProjects] = useState<ProjectEntry[]>([]);
+  const [legacyProjects, setLegacyProjects] = useState<LegacyProjectEntry[] | null>(null);
+  const [legacyTarget, setLegacyTarget] = useState<LegacyProjectEntry | null>(null);
+  const [hasLegacyBackup, setHasLegacyBackup] = useState(false);
+  const migration = useRef<AbortController | null>(null);
   const [session, setSession] = useState<ProjectSession | null>(null);
   const [previewProjectId, setPreviewProjectId] = useState<string | null>(null);
   const [newName, setNewName] = useState('新しい3Dプロジェクト');
@@ -235,6 +248,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
       });
     return () => {
       mounted.current = false;
+      migration.current?.abort();
       cancelled = true;
       const current = sessionRef.current;
       if (current) {
@@ -298,6 +312,23 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
       document.removeEventListener('visibilitychange', observeVisibility);
     };
   }, [session, repository]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setHasLegacyBackup(false);
+    if (repository && session)
+      void repository
+        .hasLegacyBackup(session.project.id)
+        .then((found) => {
+          if (!cancelled) setHasLegacyBackup(found);
+        })
+        .catch((cause: unknown) => {
+          if (!cancelled) setError(describeError(cause));
+        });
+    return () => {
+      cancelled = true;
+    };
+  }, [repository, session]);
 
   useLayoutEffect(() => {
     titleRef.current?.focus();
@@ -560,9 +591,98 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                   </ul>
                 )}
               </section>
+              <section className="editor3d-card" aria-labelledby="editor3d-legacy-heading">
+                <h2 id="editor3d-legacy-heading">旧形式の作品（0.1.0）</h2>
+                <p>
+                  旧保存領域の原本を残し、新しい保存領域へコピーして編集します。復元用の控えも保存するため端末の使用容量が増えます。
+                </p>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    void run(async () => setLegacyProjects(await listLegacyProjects()))
+                  }
+                >
+                  旧作品の一覧を読む
+                </button>
+                {legacyProjects?.length === 0 && <p>旧保存領域に作品はありません。</p>}
+                {legacyProjects && (
+                  <ul className="editor3d-project-list">
+                    {legacyProjects.map((entry) => (
+                      <li key={entry.id}>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => setLegacyTarget(entry)}
+                        >
+                          {entry.name} をコピーして編集
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {legacyTarget && (
+                  <div role="group" aria-label="旧作品のコピー確認">
+                    <p>
+                      対象: {legacyTarget.name}
+                      。旧作品と旧保存領域は変更せず、新しいIDの作品と0.1.0復元控えを保存します。
+                    </p>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        void run(async () => {
+                          const controller = new AbortController();
+                          migration.current = controller;
+                          try {
+                            await sessionRef.current?.save();
+                            controller.signal.throwIfAborted();
+                            const result = await copyLegacyProject(
+                              repository,
+                              legacyTarget.id,
+                              ownerId.current,
+                              { signal: controller.signal },
+                            );
+                            // Once committed, a late cancel cannot delete the complete saved copy.
+                            migration.current = null;
+                            await replaceSession(
+                              await ProjectSession.open(
+                                repository,
+                                ownerId.current,
+                                result.projectId,
+                              ),
+                            );
+                            setLegacyTarget(null);
+                            setNotice(
+                              '旧作品を残してコピーを開きました。0.1.0の復元控えも保存済みです。',
+                            );
+                          } finally {
+                            migration.current = null;
+                          }
+                        })
+                      }
+                    >
+                      容量増加を確認してコピーを作成
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy && !migration.current}
+                      onClick={() => {
+                        migration.current?.abort();
+                        setLegacyTarget(null);
+                      }}
+                    >
+                      コピーを取り消す
+                    </button>
+                  </div>
+                )}
+              </section>
               <section className="editor3d-card" aria-labelledby="editor3d-restore-heading">
                 <h2 id="editor3d-restore-heading">バックアップから再開</h2>
-                <p>元のプロジェクトを上書きせず、新しいIDのコピーとして復元します。</p>
+                <p>
+                  0.1.0 /
+                  0.2.0に対応し、新しいIDのコピーとして復元します。旧形式は復元控えも保存するため使用容量が増えます。
+                </p>
                 <label htmlFor="editor3d-restore">.cas3dproj を選んでコピー復元</label>
                 <input
                   id="editor3d-restore"
@@ -659,6 +779,24 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                     disabled={busy}
                     onChange={(event) => edit(() => session.rename(event.target.value))}
                   />
+                  {hasLegacyBackup && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        void run(async () => {
+                          const bytes = await repository.readLegacyBackup(project.id);
+                          if (!bytes) throw new Error('旧形式の復元控えが見つかりません。');
+                          downloadArchive(bytes, `${project.name}-original-0.1.0`);
+                          setNotice(
+                            '旧形式の復元控えをダウンロードしました。端末でファイルを確認してください。',
+                          );
+                        })
+                      }
+                    >
+                      移行前0.1.0の復元控えを取得
+                    </button>
+                  )}
                   <div className="editor3d-actions" aria-label="編集履歴と保存">
                     <button
                       type="button"
