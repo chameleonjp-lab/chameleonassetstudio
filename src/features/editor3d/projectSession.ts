@@ -144,7 +144,9 @@ export class ProjectSession {
   static async restore(repository: ProjectRepository, ownerId: string, bytes: Uint8Array) {
     const backup = await importBackup(bytes);
     const id = crypto.randomUUID();
-    await repository.restoreCopy(backup.project, backup.blobs, id, ownerId);
+    await repository.restoreCopy(backup.project, backup.blobs, id, ownerId, {
+      legacyBackup: backup.legacyBackup,
+    });
     return this.open(repository, ownerId, id);
   }
 

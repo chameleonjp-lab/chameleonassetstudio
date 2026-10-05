@@ -2496,3 +2496,97 @@ describe('native editing integration (real helpers, injected GPU boundary)', () 
     expect(f.binding.state.blocked).toEqual([]);
   });
 });
+
+describe('0.2.0 material and visibility rendering', () => {
+  it.each(['OPAQUE', 'MASK', 'BLEND', 'LEGACY_AUTO'] as const)(
+    'applies %s explicitly with transparent texture, cutoff, emission and sidedness',
+    (alphaMode) => {
+      const { project, textures } = texturedTriangle();
+      Object.assign(project.materials[0], {
+        alphaMode,
+        alphaCutoff: 0.4,
+        doubleSided: true,
+        emissiveColor: [0.1, 0.25, 0.75],
+      });
+      project.materials[0].baseColor[3] = 0.6;
+      const before = structuredClone(project);
+      const graph = buildNativeGraph(project, textures);
+      try {
+        const material = graph.materials[0];
+        expect(material.emissive.toArray()).toEqual([0.1, 0.25, 0.75]);
+        expect(material.side).toBe(2);
+        expect(material.alphaTest).toBe(alphaMode === 'MASK' ? 0.4 : 0);
+        expect(material.transparent).toBe(alphaMode === 'BLEND' || alphaMode === 'LEGACY_AUTO');
+        expect(material.opacity).toBe(alphaMode === 'OPAQUE' ? 1 : 0.6);
+        expect(material.map).not.toBeNull();
+        expect(project).toEqual(before);
+      } finally {
+        graph.dispose();
+      }
+    },
+  );
+  it('LEGACY_AUTO also detects texture alpha at opaque factor, while MASK and OPAQUE stay non-blending', () => {
+    const { project, textures } = texturedTriangle();
+    for (const alphaMode of ['LEGACY_AUTO', 'OPAQUE', 'MASK'] as const) {
+      project.materials[0].alphaMode = alphaMode;
+      const graph = buildNativeGraph(project, textures);
+      expect(graph.materials[0].transparent).toBe(alphaMode === 'LEGACY_AUTO');
+      expect(graph.materials[0].opacity).toBe(1);
+      expect(graph.materials[0].side).toBe(0);
+      graph.dispose();
+    }
+  });
+  it('rebuilds material flags and hidden hierarchy after context restoration', () => {
+    const f = lifecycleHarness();
+    const p = nativeBox();
+    p.nodes.push({
+      id: 'parent',
+      name: 'Hidden parent',
+      parentId: null,
+      transform: identityTransform(),
+      visible: false,
+      locked: true,
+    });
+    p.nodes[0].parentId = 'parent';
+    Object.assign(p.materials[0], {
+      emissiveColor: [0.3, 0.2, 0.1],
+      alphaMode: 'MASK',
+      alphaCutoff: 0.3,
+      doubleSided: true,
+    });
+    expect(f.viewport.setProject(p).ok).toBe(true);
+    f.flush();
+    f.allCanvases[0].dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+    f.allCanvases[0].dispatchEvent(new Event('webglcontextrestored'));
+    f.flush();
+    const scene = f.rendererInstances.at(-1)!.render.mock.calls.at(-1)![0] as Scene;
+    const object = scene.getObjectByName('Box') as Mesh;
+    expect(object.parent!.visible).toBe(false);
+    const material = (object.material as MeshStandardMaterial[])[0];
+    expect(material.emissive.toArray()).toEqual([0.3, 0.2, 0.1]);
+    expect(material).toMatchObject({ alphaTest: 0.3, transparent: false, side: 2 });
+    expect(f.viewport.focusNode('box-node').ok).toBe(false);
+    f.viewport.dispose();
+  });
+  it('removes hidden selection helpers and refuses hidden gizmos while preserving list selection', () => {
+    const f = editingHarness();
+    expect(f.viewport.diagnostics.selectionHelpers).toBe(2);
+    f.history.execute((p) => {
+      p.nodes[0].visible = false;
+    });
+    f.binding.reconcile();
+    f.viewport.setProject(f.history.project);
+    f.flush();
+    expect(f.binding.state.context.selection).toEqual(['box-node']);
+    expect(f.binding.begin().ok).toBe(false);
+    expect(f.viewport.diagnostics.selectionHelpers).toBe(0);
+    expect(f.viewport.focusNode('box-node').ok).toBe(false);
+    f.history.undo();
+    f.binding.reconcile();
+    f.viewport.setProject(f.history.project);
+    f.flush();
+    expect(f.viewport.diagnostics.selectionHelpers).toBe(2);
+    expect(f.binding.begin().ok).toBe(true);
+    f.viewport.dispose();
+  });
+});

@@ -1,3 +1,4 @@
+import { assertLocksPreserved } from '../model/editability';
 import { validateProject, type Project3D, type Source3D } from '../model/project';
 
 export interface DerivedBaseColorSource {
@@ -42,6 +43,7 @@ function publish(project: Project3D, edit: (candidate: Project3D) => void) {
   const candidate = structuredClone(project);
   edit(candidate);
   validateProject(candidate);
+  assertLocksPreserved(project, candidate);
   project.materials = candidate.materials;
   project.sources = candidate.sources;
   project.blobIds = candidate.blobIds;

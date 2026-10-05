@@ -20,5 +20,7 @@ export async function restoreBackupCopy(
   ownerId: string,
 ): Promise<CommitResult> {
   const restored = await importBackup(bytes);
-  return repository.restoreCopy(restored.project, restored.blobs, newProjectId, ownerId);
+  return repository.restoreCopy(restored.project, restored.blobs, newProjectId, ownerId, {
+    legacyBackup: restored.legacyBackup,
+  });
 }

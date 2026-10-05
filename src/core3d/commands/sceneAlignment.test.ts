@@ -393,6 +393,6 @@ describe('native world-axis object alignment', () => {
     const recovered = new ProjectHistory(restored.project);
     recovered.execute((project) => alignNodes(project, ['a-node', 'b-node'], 'b-node', 'x', 'min'));
     expect(recovered.revision).toBe(history.revision + 1);
-    expect(recovered.project.schemaVersion).toBe('0.1.0');
+    expect(recovered.project.schemaVersion).toBe('0.2.0');
   });
 });

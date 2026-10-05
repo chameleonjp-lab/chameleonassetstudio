@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import type { Project3D, Vec3 } from '../../core3d/model/project';
+import { setNodeFlags } from '../../core3d/commands/nodeFlags';
+import { isNodeLocked, isNodeVisible } from '../../core3d/model/editability';
+import type { Project3D, Vec3, AlphaMode3D } from '../../core3d/model/project';
 import type { NativeEditBinding } from '../../core3d/ports/editPort';
 import { useNativeObjectSelection } from './useNativeEditState';
 import {
@@ -53,6 +55,10 @@ const initial: Draft = {
   a: '1',
   metallic: '0',
   roughness: '0.65',
+  er: '0',
+  eg: '0',
+  eb: '0',
+  cutoff: '0.5',
 };
 function numeric(draft: Draft, key: string) {
   if (!draft[key].trim() || !Number.isFinite(Number(draft[key])))
@@ -84,6 +90,8 @@ export function NativeAuthoringPanel({
   const [entityTarget, setEntityTarget] = useState('');
   const [materialId, setMaterialId] = useState('');
   const [draft, setDraft] = useState(initial);
+  const [alphaMode, setAlphaMode] = useState<AlphaMode3D>('OPAQUE');
+  const [doubleSided, setDoubleSided] = useState(false);
   const [name, setName] = useState('');
   const [copyMaterial, setCopyMaterial] = useState(false);
   const [loadedNode, setLoadedNode] = useState('');
@@ -181,6 +189,8 @@ export function NativeAuthoringPanel({
   function readMaterial() {
     if (!material) return;
     setLoadedMaterial(`${project.id}:${material.id}:${project.revision}`);
+    setAlphaMode(material.alphaMode ?? 'LEGACY_AUTO');
+    setDoubleSided(material.doubleSided ?? false);
     setDraft((d) => ({
       ...d,
       r: String(material.baseColor[0]),
@@ -189,6 +199,10 @@ export function NativeAuthoringPanel({
       a: String(material.baseColor[3]),
       metallic: String(material.metallic),
       roughness: String(material.roughness),
+      er: String(material.emissiveColor?.[0] ?? 0),
+      eg: String(material.emissiveColor?.[1] ?? 0),
+      eb: String(material.emissiveColor?.[2] ?? 0),
+      cutoff: String(material.alphaCutoff ?? 0.5),
     }));
   }
   return (
@@ -298,6 +312,42 @@ export function NativeAuthoringPanel({
         )}
         <details>
           <summary>部品の名前・位置・複製</summary>
+          {node && (
+            <div>
+              <p>
+                表示・編集ロックは作品に保存され、親の設定は子にも適用されます。ロック中は解除以外の編集を止めます。
+              </p>
+              <p>
+                部品の状態:{' '}
+                {node.visible === false
+                  ? '非表示'
+                  : isNodeVisible(project, node.id)
+                    ? '表示'
+                    : '親の設定で非表示'}{' '}
+                / {isNodeLocked(project, node.id) ? '編集ロック中' : '編集可能'}
+              </p>
+              <button
+                type="button"
+                disabled={isNodeLocked(project, node.id)}
+                onClick={() =>
+                  act(() =>
+                    execute((p) => setNodeFlags(p, node.id, { visible: node.visible === false })),
+                  )
+                }
+              >
+                {node.visible === false ? '部品を表示' : '部品を非表示'}
+              </button>
+              <button
+                type="button"
+                disabled={node.parentId !== null && isNodeLocked(project, node.parentId)}
+                onClick={() =>
+                  act(() => execute((p) => setNodeFlags(p, node.id, { locked: !node.locked })))
+                }
+              >
+                {node.locked ? '部品の編集ロックを解除' : '部品を編集ロック'}
+              </button>
+            </div>
+          )}
           <p>
             現在値を置き換える絶対値です。親に対するlocal座標で、選択全体の差分変形とは別の操作です。
             回転は度数（local XYZ順）。負の倍率は反転、0は指定できません。
@@ -538,7 +588,34 @@ export function NativeAuthoringPanel({
             {field('a', '不透明度 A')}
             {field('metallic', '金属 metallic')}
             {field('roughness', '粗さ roughness')}
+            {field('er', '発光色 R')}
+            {field('eg', '発光色 G')}
+            {field('eb', '発光色 B')}
+            {field('cutoff', '透過しきい値 alphaCutoff')}
+            <label>
+              透過モード
+              <select
+                value={alphaMode}
+                onChange={(e) => setAlphaMode(e.target.value as AlphaMode3D)}
+              >
+                <option value="OPAQUE">OPAQUE（不透明）</option>
+                <option value="MASK">MASK（しきい値で切抜き）</option>
+                <option value="BLEND">BLEND（半透明）</option>
+                <option value="LEGACY_AUTO">LEGACY_AUTO（旧表示互換）</option>
+              </select>
+            </label>
+            <label className="native-authoring-check">
+              <input
+                type="checkbox"
+                checked={doubleSided}
+                onChange={(e) => setDoubleSided(e.target.checked)}
+              />
+              両面を表示
+            </label>
           </div>
+          <p>
+            発光RGBはlinearの0〜1。しきい値はMASKのみで使います。OPAQUEは不透明度と画像のalphaを無視します。LEGACY_AUTOは旧作品と同じ自動判定です。
+          </p>
           <button
             type="button"
             onClick={() =>
@@ -554,6 +631,10 @@ export function NativeAuthoringPanel({
                     ],
                     metallic: numeric(draft, 'metallic'),
                     roughness: numeric(draft, 'roughness'),
+                    emissiveColor: vector(['er', 'eg', 'eb']),
+                    alphaMode,
+                    alphaCutoff: numeric(draft, 'cutoff'),
+                    doubleSided,
                   });
                 });
                 setMaterialId(id);
@@ -636,6 +717,10 @@ export function NativeAuthoringPanel({
                       ],
                       metallic: numeric(draft, 'metallic'),
                       roughness: numeric(draft, 'roughness'),
+                      emissiveColor: vector(['er', 'eg', 'eb']),
+                      alphaMode,
+                      alphaCutoff: numeric(draft, 'cutoff'),
+                      doubleSided,
                     },
                     copyMaterial ? mesh!.id : undefined,
                   ),

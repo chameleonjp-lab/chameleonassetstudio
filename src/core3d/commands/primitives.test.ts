@@ -55,7 +55,7 @@ describe('native primitive generation', () => {
       const { project, mesh, nodeId } = make(kind);
       expect(nodeId).toBe('shape-node');
       expect(() => validateProject(project)).not.toThrow();
-      expect(project.schemaVersion).toBe('0.1.0');
+      expect(project.schemaVersion).toBe('0.2.0');
       expect(project.nodes[0].meshId).toBe('shape-mesh');
       expect(project.nodes[0].transform).toEqual({
         translation: [0, 0, 0],
@@ -199,10 +199,12 @@ describe('native primitive generation', () => {
       expect(Object.keys(mesh).sort()).toEqual(['faces', 'id', 'vertices']);
       expect(Object.keys(project.nodes[0]).sort()).toEqual([
         'id',
+        'locked',
         'meshId',
         'name',
         'parentId',
         'transform',
+        'visible',
       ]);
       expect(new Set(mesh.vertices.map((v) => v.id)).size).toBe(mesh.vertices.length);
       expect(new Set(mesh.faces.map((f) => f.id)).size).toBe(mesh.faces.length);

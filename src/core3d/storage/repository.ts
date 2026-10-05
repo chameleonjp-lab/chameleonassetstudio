@@ -1,4 +1,9 @@
-import { cloneProject, validateProject, type Project3D } from '../model/project';
+import {
+  cloneProject,
+  validateProject,
+  type Project3D,
+  type StoredProject3D,
+} from '../model/project';
 import { inTransaction, openStorageDatabase, requestResult, STORAGE_STORES } from './db';
 
 export type BlobBytes = ReadonlyMap<string, Uint8Array>;
@@ -150,7 +155,7 @@ function copyHistory(history: HistoryReferences): HistoryReferences {
   };
 }
 
-function hashProject(project: Project3D): Promise<string> {
+export function hashProject(project: StoredProject3D): Promise<string> {
   const json = JSON.stringify(project, (_key, value: unknown) => {
     if (value && typeof value === 'object' && !Array.isArray(value)) {
       const record = value as Record<string, unknown>;
@@ -412,17 +417,117 @@ export class ProjectRepository {
     }
   }
 
+  /** A copy, its source bytes and an optional original archive publish in ONE transaction. */
   async restoreCopy(
     project: Project3D,
     blobs: BlobBytes,
     newProjectId: string,
     ownerId: string,
+    options: { legacyBackup?: Uint8Array; signal?: AbortSignal } = {},
   ): Promise<CommitResult> {
     if (project.id === newProjectId) throw new StorageConflictError('exists');
     const copy = cloneProject(project);
     copy.id = newProjectId;
     copy.revision = 0;
-    return this.create(copy, blobs, ownerId);
+    validateProject(copy);
+    const original = options.legacyBackup && new Uint8Array(options.legacyBackup);
+    const bytes = copy.blobIds.map((id) => {
+      const source = blobs.get(id);
+      if (!source) throw new StorageIntegrityError(`Missing copy blob: ${id}`);
+      return { id, bytes: new Uint8Array(source) };
+    });
+    options.signal?.throwIfAborted();
+    for (const blob of bytes)
+      if ((await hashBlob(blob.bytes)) !== blob.id)
+        throw new StorageIntegrityError(`Copy blob hash mismatch: ${blob.id}`);
+    const snapshot = {
+      id: crypto.randomUUID(),
+      project: copy,
+      contentHash: await hashProject(copy),
+    };
+    const recovery = original && {
+      id: newProjectId,
+      bytes: original,
+      hash: await hashBlob(original),
+    };
+    return inTransaction(
+      this.db,
+      STORAGE_STORES,
+      'readwrite',
+      async (transaction) => {
+        if (await getRecord(transaction, 'roots', newProjectId))
+          throw new StorageConflictError('exists');
+        const oldLease = await getRecord<LeaseRecord>(transaction, 'leases', newProjectId);
+        if (oldLease?.active) throw new StorageConflictError('writer');
+        for (const blob of bytes) {
+          const existing = await getRecord<BlobRecord>(transaction, 'blobs', blob.id);
+          if (
+            existing &&
+            (existing.bytes.length !== blob.bytes.length ||
+              existing.bytes.some((v, i) => v !== blob.bytes[i]))
+          )
+            throw new StorageIntegrityError(`Stored copy blob mismatch: ${blob.id}`);
+          if (!existing) await requestResult(transaction.objectStore('blobs').add(blob));
+        }
+        if (recovery) await requestResult(transaction.objectStore('legacyBackups').add(recovery));
+        await requestResult(transaction.objectStore('snapshots').add(snapshot));
+        await requestResult(
+          transaction.objectStore('roots').add({
+            id: copy.id,
+            name: copy.name,
+            revision: 0,
+            snapshotId: snapshot.id,
+            recoverySnapshotIds: [],
+            trashed: false,
+          }),
+        );
+        const token = (oldLease?.token ?? 0) + 1;
+        if (!Number.isSafeInteger(token)) throw new Error('Writer token exhausted');
+        await requestResult(
+          transaction.objectStore('leases').put({
+            id: copy.id,
+            projectId: copy.id,
+            ownerId,
+            token,
+            active: true,
+          }),
+        );
+        await bumpEpoch(transaction);
+        return {
+          projectId: copy.id,
+          revision: 0,
+          snapshotId: snapshot.id,
+          validation: { valid: true },
+        };
+      },
+      options.signal,
+    );
+  }
+
+  async hasLegacyBackup(projectId: string): Promise<boolean> {
+    return inTransaction(
+      this.db,
+      ['legacyBackups'],
+      'readonly',
+      async (transaction) =>
+        (await requestResult(transaction.objectStore('legacyBackups').getKey(projectId))) !==
+        undefined,
+    );
+  }
+
+  /** Detached and verified archive; never consumes or prunes the recovery record. */
+  async readLegacyBackup(projectId: string): Promise<Uint8Array | null> {
+    const record = await inTransaction(this.db, ['legacyBackups'], 'readonly', (transaction) =>
+      getRecord<{ id: string; bytes: Uint8Array; hash: string }>(
+        transaction,
+        'legacyBackups',
+        projectId,
+      ),
+    );
+    if (!record) return null;
+    if ((await hashBlob(record.bytes)) !== record.hash)
+      throw new StorageIntegrityError('Original backup hash mismatch');
+    return new Uint8Array(record.bytes);
   }
 
   async readSnapshot(

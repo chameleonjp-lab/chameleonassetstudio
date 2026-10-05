@@ -1,3 +1,4 @@
+import { assertLocksPreserved } from '../model/editability';
 import { cloneProject, validateProject, type Project3D } from '../model/project';
 export class HistoryBudgetError extends Error {
   constructor() {
@@ -115,6 +116,7 @@ export class ProjectHistory {
         throw new Error('Source bytes are immutable; create a derived source');
     }
     validateProject(candidate);
+    assertLocksPreserved(this.current, candidate);
     return cloneProject(candidate);
   }
   private nextRevision(project: Project3D) {

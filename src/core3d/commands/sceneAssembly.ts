@@ -1,3 +1,4 @@
+import { assertLocksPreserved } from '../model/editability';
 import {
   cloneProject,
   identityTransform,
@@ -95,6 +96,7 @@ function transaction<T>(project: Project3D, edit: (candidate: Project3D) => T): 
   const result = edit(candidate);
   validateProject(candidate);
   assertFiniteAuthoringCoordinates(candidate);
+  assertLocksPreserved(project, candidate);
   project.nodes = candidate.nodes;
   project.meshes = candidate.meshes;
   project.materials = candidate.materials;

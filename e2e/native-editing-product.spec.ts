@@ -513,3 +513,207 @@ test('world alignment keeps a selected reference fixed through touch, Undo and i
     await context.close();
   }
 });
+
+test('native 0.2.0 six attributes survive Undo, save and independent backup restoration', async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 375, height: 812 });
+  await createBox(page);
+  const panel = page.getByRole('region', { name: '3D制作', exact: true });
+  const start = (await snapshot(page)).project;
+  await panel
+    .getByRole('combobox', { name: '制作オブジェクト', exact: true })
+    .selectOption(start.nodes[0].id);
+  await panel.getByText('材質の色・金属・粗さ', { exact: true }).click();
+  await panel
+    .getByRole('combobox', { name: '制作材質', exact: true })
+    .selectOption(start.materials[0].id);
+  await panel.getByRole('button', { name: '材質の現在値を読む', exact: true }).click();
+  for (const [name, value] of [
+    ['発光色 R', '0.2'],
+    ['発光色 G', '0.3'],
+    ['発光色 B', '0.4'],
+    ['透過しきい値 alphaCutoff', '0.25'],
+  ] as const)
+    await panel.getByLabel(name, { exact: true }).fill(value);
+  await panel.getByRole('combobox', { name: '透過モード', exact: true }).selectOption('MASK');
+  await panel.getByRole('checkbox', { name: '両面を表示', exact: true }).check();
+  await panel.getByRole('button', { name: '材質を適用', exact: true }).click();
+  let saved = (await snapshot(page)).project;
+  expect(saved.materials[0]).toMatchObject({
+    emissiveColor: [0.2, 0.3, 0.4],
+    alphaMode: 'MASK',
+    alphaCutoff: 0.25,
+    doubleSided: true,
+  });
+  await page.getByRole('button', { name: '元に戻す', exact: true }).click();
+  expect((await snapshot(page)).project.materials).toEqual(start.materials);
+  await page.getByRole('button', { name: 'やり直す', exact: true }).click();
+  await panel.getByText('部品の名前・位置・複製', { exact: true }).click();
+  await panel.getByRole('button', { name: '部品を非表示', exact: true }).click();
+  await panel.getByRole('button', { name: '部品を編集ロック', exact: true }).click();
+  saved = (await snapshot(page)).project;
+  expect(saved.nodes[0]).toMatchObject({ visible: false, locked: true });
+  expect(saved.schemaVersion).toBe('0.2.0');
+  await panel.getByRole('button', { name: '部品の現在値を読む', exact: true }).click();
+  await panel.getByLabel('部品名', { exact: true }).fill('Blocked name');
+  const lockedRevision = await revision(page);
+  await panel.getByRole('button', { name: '部品名を適用', exact: true }).click();
+  await expect(panel.getByRole('alert')).toContainText('ロック');
+  expect(await revision(page)).toBe(lockedRevision);
+  await page.getByRole('button', { name: '今すぐ保存', exact: true }).click();
+  const archive = (await snapshot(page)).bytes;
+  await page.reload();
+  await page.getByRole('button', { name: /Native editing work.*revision/ }).click();
+  expect((await snapshot(page)).project.nodes).toEqual(saved.nodes);
+  expect((await snapshot(page)).project.materials).toEqual(saved.materials);
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
+  ).toBeLessThanOrEqual(1);
+  const context = await browser.newContext({ baseURL, viewport: { width: 375, height: 812 } });
+  try {
+    const restored = await context.newPage();
+    await restored.goto('/3d/');
+    await restored
+      .getByLabel('.cas3dproj を選んでコピー復元', { exact: true })
+      .setInputFiles({ name: 'six.cas3dproj', mimeType: 'application/zip', buffer: archive });
+    await expect(
+      restored.getByRole('heading', { name: 'Native editing work', exact: true }),
+    ).toBeVisible();
+    const result = (await snapshot(restored)).project;
+    expect(result.id).not.toBe(saved.id);
+    expect(result.nodes).toEqual(saved.nodes);
+    expect(result.materials).toEqual(saved.materials);
+    const form = restored.getByRole('region', { name: '3D制作', exact: true });
+    await form
+      .getByRole('combobox', { name: '制作オブジェクト', exact: true })
+      .selectOption(saved.nodes[0].id);
+    await form.getByText('部品の名前・位置・複製', { exact: true }).click();
+    await form.getByRole('button', { name: '部品の編集ロックを解除', exact: true }).click();
+    await form.getByRole('button', { name: '部品を表示', exact: true }).click();
+    await expect(restored.getByText('3D表示中', { exact: true })).toBeVisible();
+    await form.getByRole('button', { name: '部品の現在値を読む', exact: true }).click();
+    await form.getByLabel('部品名', { exact: true }).fill('Re-edited copy');
+    await form.getByRole('button', { name: '部品名を適用', exact: true }).click();
+    expect((await snapshot(restored)).project.nodes[0].name).toBe('Re-edited copy');
+  } finally {
+    await context.close();
+  }
+});
+
+test('legacy copy confirmation, cancellation, quota retry and original recovery download preserve old storage', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  const { hashProject } = await import('../src/core3d/storage/repository');
+  const { STORAGE_STORES, LEGACY_PROJECT_3D_DB_NAME, PROJECT_3D_DB_NAME } =
+    await import('../src/core3d/storage/db');
+  const old = {
+    ...nativeBox('legacy-browser'),
+    schemaVersion: '0.1.0' as const,
+    name: 'Legacy retained',
+  };
+  const contentHash = await hashProject(old);
+  await page.goto('/3d/');
+  await page.getByRole('button', { name: '旧作品の一覧を読む', exact: true }).click();
+  await expect(page.getByText('旧保存領域に作品はありません。', { exact: true })).toBeVisible();
+  await page.evaluate(
+    async ({ old, contentHash, stores, legacyName, currentName }) => {
+      const open = indexedDB.open(legacyName, 1);
+      open.onupgradeneeded = () =>
+        stores.forEach((name) => open.result.createObjectStore(name, { keyPath: 'id' }));
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        open.onsuccess = () => resolve(open.result);
+        open.onerror = () => reject(open.error);
+      });
+      const tx = db.transaction(['roots', 'snapshots'], 'readwrite');
+      tx.objectStore('roots').add({
+        id: old.id,
+        name: old.name,
+        revision: 0,
+        snapshotId: 'old',
+        recoverySnapshotIds: [],
+        trashed: false,
+      });
+      tx.objectStore('snapshots').add({ id: 'old', project: old, contentHash });
+      await new Promise<void>((resolve, reject) => {
+        tx.oncomplete = () => resolve();
+        tx.onabort = () => reject(tx.error);
+      });
+      db.close();
+      const add = IDBObjectStore.prototype.add;
+      Object.assign(window, { failLegacyCopy: true });
+      IDBObjectStore.prototype.add = function (...args) {
+        if (
+          (window as unknown as { failLegacyCopy: boolean }).failLegacyCopy &&
+          this.transaction.db.name === currentName &&
+          this.name === 'legacyBackups'
+        )
+          throw new DOMException('Test copy quota', 'QuotaExceededError');
+        return add.apply(this, args);
+      };
+    },
+    {
+      old,
+      contentHash,
+      stores: STORAGE_STORES.filter((store) => store !== 'legacyBackups'),
+      legacyName: LEGACY_PROJECT_3D_DB_NAME,
+      currentName: PROJECT_3D_DB_NAME,
+    },
+  );
+  await page.getByRole('button', { name: '旧作品の一覧を読む', exact: true }).click();
+  const choose = page.getByRole('button', {
+    name: 'Legacy retained をコピーして編集',
+    exact: true,
+  });
+  await choose.click();
+  await page.getByRole('button', { name: 'コピーを取り消す', exact: true }).click();
+  await expect(page.getByRole('group', { name: '旧作品のコピー確認', exact: true })).toHaveCount(0);
+  await choose.click();
+  await page.getByRole('button', { name: '容量増加を確認してコピーを作成', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('保存容量');
+  await expect(page.getByRole('heading', { name: 'Legacy retained', exact: true })).toHaveCount(0);
+  await page.evaluate(() => Object.assign(window, { failLegacyCopy: false }));
+  await page.getByRole('button', { name: '容量増加を確認してコピーを作成', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Legacy retained', exact: true })).toBeVisible();
+  const copy = (await snapshot(page)).project;
+  expect(copy.id).not.toBe(old.id);
+  expect(copy.materials[0].alphaMode).toBe('LEGACY_AUTO');
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: '移行前0.1.0の復元控えを取得', exact: true }).click();
+  const originalBytes = await readFile((await (await download).path())!);
+  const { unzipSync, strFromU8 } = await import('fflate');
+  expect(JSON.parse(strFromU8(unzipSync(originalBytes)['project.json']))).toEqual(old);
+  const stored = await page.evaluate(async (name) => {
+    const open = indexedDB.open(name);
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      open.onsuccess = () => resolve(open.result);
+      open.onerror = () => reject(open.error);
+    });
+    const tx = db.transaction(['snapshots', 'roots'], 'readonly');
+    const snapshots = tx.objectStore('snapshots').getAll();
+    const roots = tx.objectStore('roots').getAll();
+    const result = await new Promise<{ snapshots: unknown[]; roots: unknown[] }>(
+      (resolve, reject) => {
+        tx.oncomplete = () => resolve({ snapshots: snapshots.result, roots: roots.result });
+        tx.onabort = () => reject(tx.error);
+      },
+    );
+    db.close();
+    return result;
+  }, LEGACY_PROJECT_3D_DB_NAME);
+  expect(stored.snapshots).toEqual([{ id: 'old', project: old, contentHash }]);
+  expect(stored.roots).toEqual([
+    {
+      id: old.id,
+      name: old.name,
+      revision: 0,
+      snapshotId: 'old',
+      recoverySnapshotIds: [],
+      trashed: false,
+    },
+  ]);
+});

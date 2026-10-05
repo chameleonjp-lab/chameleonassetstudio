@@ -1,4 +1,9 @@
 import {
+  assertNodeEditable,
+  assertMeshEditable,
+  assertMaterialEditable,
+} from '../model/editability';
+import {
   cloneProject,
   validateProject,
   type Project3D,
@@ -70,6 +75,7 @@ function assertStatic(project: Project3D, nodeId: string) {
 /** Local TRS only. Candidate is committed once by ProjectHistory. */
 export function setNodeTransform(project: Project3D, nodeId: string, transform: Transform3D) {
   node(project, nodeId);
+  assertNodeEditable(project, nodeId, true);
   assertStatic(project, nodeId);
   if (
     transform.scale.some(
@@ -131,6 +137,7 @@ export function assertFiniteAuthoringCoordinates(project: Project3D) {
 }
 
 export function renameNode(project: Project3D, nodeId: string, name: string) {
+  assertNodeEditable(project, nodeId);
   if (!name.trim() || name.length > 4096) throw new Error('名前は1〜4096文字で入力してください。');
   node(project, nodeId).name = name;
 }
@@ -185,7 +192,16 @@ export function cloneNode(project: Project3D, nodeId: string, prefix: string): s
   return copy.id;
 }
 
-type Factors = Pick<Material3D, 'baseColor' | 'metallic' | 'roughness'>;
+type Factors = Pick<
+  Material3D,
+  | 'baseColor'
+  | 'metallic'
+  | 'roughness'
+  | 'emissiveColor'
+  | 'alphaMode'
+  | 'alphaCutoff'
+  | 'doubleSided'
+>;
 /** Updating a shared material is explicit in the UI. Optional copy affects one mesh. */
 export function updateMaterial(
   project: Project3D,
@@ -202,7 +218,14 @@ export function updateMaterial(
     factors.baseColor.length !== 4
   )
     throw new Error('材質の数値は0〜1で入力してください。');
+  const checked = cloneProject(project);
+  Object.assign(
+    checked.materials.find((item) => item.id === materialId)!,
+    structuredClone(factors),
+  );
+  validateProject(checked);
   if (copyForMeshId) {
+    assertMeshEditable(project, copyForMeshId);
     const mesh = project.meshes.find((item) => item.id === copyForMeshId);
     if (!mesh || !mesh.faces.some((face) => face.materialId === materialId))
       throw new Error('対象の面に材質がありません。');
@@ -213,5 +236,8 @@ export function updateMaterial(
     mesh.faces.forEach((face) => {
       if (face.materialId === materialId) face.materialId = id;
     });
-  } else Object.assign(material, structuredClone(factors));
+  } else {
+    assertMaterialEditable(project, materialId);
+    Object.assign(material, structuredClone(factors));
+  }
 }
