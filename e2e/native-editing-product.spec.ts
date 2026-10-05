@@ -412,11 +412,14 @@ test('world alignment keeps a selected reference fixed through touch, Undo and i
       if (!(await selected.isChecked())) await selected.tap();
     }
     await assembly.getByText('部品をworld軸に整列', { exact: true }).tap();
-    const reference = assembly.getByLabel('整列の基準部品（移動しない）', { exact: true });
+    const reference = assembly.getByRole('combobox', {
+      name: '整列の基準部品（移動しない）',
+      exact: true,
+    });
     const apply = assembly.getByRole('button', { name: 'world軸の整列を適用', exact: true });
     await expect(apply).toBeDisabled();
     await reference.selectOption('box-node');
-    await assembly.getByLabel('揃える位置', { exact: true }).selectOption('max');
+    await assembly.getByRole('combobox', { name: '揃える位置', exact: true }).selectOption('max');
     await assembly.getByRole('button', { name: '現在の組立対象を確認', exact: true }).tap();
     await expect(apply).toBeEnabled();
     await reference.selectOption('moving-box');

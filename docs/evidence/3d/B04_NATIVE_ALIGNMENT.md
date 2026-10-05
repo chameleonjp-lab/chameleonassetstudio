@@ -39,3 +39,7 @@ schema0.1.0、保存・backup形式、2D形式は不変。操作はUndoで戻せ
 - ALIGN-03: 回転・非均一/負scale親の下で再整列すると丸め誤差だけのrevisionが増えた。完了/no-opへ同じcomponent別machine-roundoff判定を使用し、軸とanchorの繰返し・小さい有意変位・他軸巨大offsetを回帰。独立レビューで再整列の完全不変と薄い三角形の途中拒否が原本を保持することを再確認した
 
 独立domain再レビューは35件の整列検査に加え、1e-30/1e-16/1e-12の有限小変位、先行targetの後で薄い面/短辺が失敗するfixtureを確認した。独立UI再レビューで修正必須事項は残っていない。最終browser/画像はこのNode証拠と別に検証する。
+
+## 再開後のbrowser検査
+
+PR #308の初回CI（run 37292936497、head a8981902）はbuild/unit成功、WebKitの新規整列例だけ失敗、同段階の既存20件は成功した。reportのstep記録では最初の基準selectの`getByLabel(..., exact: true)`で停止し、画面snapshotには基準のcomboboxとbox-node optionが存在していた。既存native受入と同じaccessible role/nameの`getByRole('combobox', ...)`へ、基準とanchorの2つのselect locatorを修正する。制限時間・期待値・操作・否定検査は維持し、最終headのCIで再確認する。失敗runを成功へ読み替えない。
