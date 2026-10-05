@@ -8,6 +8,8 @@ import {
   ungroupNode,
   relocatePivot,
   mirrorNode,
+  alignNodes,
+  type AlignmentAnchor,
   type ReparentMode,
   type MirrorAxis,
 } from '../../core3d/commands/sceneAssembly';
@@ -48,6 +50,9 @@ export function NativeAssemblyControls({
   const [name, setName] = useState('グループ');
   const [offset, setOffset] = useState<OffsetDraft>({ x: '0', y: '0', z: '0' });
   const [axis, setAxis] = useState<MirrorAxis>('x');
+  const [alignmentAxis, setAlignmentAxis] = useState<MirrorAxis>('x');
+  const [alignmentAnchor, setAlignmentAnchor] = useState<AlignmentAnchor>('origin');
+  const [alignmentReference, setAlignmentReference] = useState('');
   const [reviewed, setReviewed] = useState<ReviewedTargets | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -128,7 +133,9 @@ export function NativeAssemblyControls({
           event.key === 'Enter' &&
           (composing.current || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229)
         ) {
-          // Let the input commit its composition; there is no implicit form submission.
+          // Text inputs may finish composition, but an action button must not activate.
+          if (event.target instanceof Element && event.target.closest('button'))
+            event.preventDefault();
           event.stopPropagation();
         }
       }}
@@ -315,6 +322,82 @@ export function NativeAssemblyControls({
               onClick={() => apply((candidate) => ungroupNode(candidate, single!.id, mode))}
             >
               選択グループを解除
+            </button>
+          </details>
+          <details>
+            <summary>部品をworld軸に整列</summary>
+            <p>
+              2個以上の部品を選び、動かさない基準部品を指定します。選んだworld軸だけを平行移動し、
+              他の軸・回転・倍率は保持します。端・中心は子を含む面のworld範囲です。原点とは異なります。
+              親子を同時選択した場合や、リグ・アニメーションに影響する整列は適用しません。
+            </p>
+            <label>
+              整列の基準部品（移動しない）
+              <select
+                value={alignmentReference}
+                onChange={(event) => {
+                  setAlignmentReference(event.target.value);
+                  setReviewed(null);
+                }}
+              >
+                <option value="">基準部品を選択してください</option>
+                {alignmentReference && !selectedIds.includes(alignmentReference) && (
+                  <option value={alignmentReference}>基準部品を選び直してください</option>
+                )}
+                {selectedIds
+                  .filter((id) => nodesById.has(id))
+                  .map((id) => (
+                    <option key={id} value={id}>
+                      {nodesById.get(id)!.name} ({id})
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <label>
+              整列するworld軸
+              <select
+                value={alignmentAxis}
+                onChange={(event) => setAlignmentAxis(event.target.value as MirrorAxis)}
+              >
+                <option value="x">world X</option>
+                <option value="y">world Y</option>
+                <option value="z">world Z</option>
+              </select>
+            </label>
+            <label>
+              揃える位置
+              <select
+                value={alignmentAnchor}
+                onChange={(event) => setAlignmentAnchor(event.target.value as AlignmentAnchor)}
+              >
+                <option value="origin">部品の原点</option>
+                <option value="min">形の最小側</option>
+                <option value="center">形の中心</option>
+                <option value="max">形の最大側</option>
+              </select>
+            </label>
+            <p>
+              基準部品: {nodesById.get(alignmentReference)?.name ?? '未選択'}
+              。形のない部品は原点整列を使ってください。
+            </p>
+            <button
+              type="button"
+              disabled={
+                !targetsReady || selectedIds.length < 2 || !selectedIds.includes(alignmentReference)
+              }
+              onClick={() =>
+                apply((candidate) =>
+                  alignNodes(
+                    candidate,
+                    selectedIds,
+                    alignmentReference,
+                    alignmentAxis,
+                    alignmentAnchor,
+                  ),
+                )
+              }
+            >
+              world軸の整列を適用
             </button>
           </details>
           <details>

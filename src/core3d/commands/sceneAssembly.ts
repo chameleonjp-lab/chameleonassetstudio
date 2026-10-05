@@ -19,6 +19,7 @@ import { assertFiniteAuthoringCoordinates, cloneNode } from './objectEditing';
 
 export type ReparentMode = 'keep-world' | 'keep-local';
 export type MirrorAxis = 'x' | 'y' | 'z';
+export type AlignmentAnchor = 'origin' | 'min' | 'center' | 'max';
 
 // Relative tolerance for floating-point matrix arithmetic, not permission to bake shear.
 const TRS_EPSILON = 1e-10;
@@ -311,10 +312,15 @@ export function ungroupNode(project: Project3D, groupId: string, mode: ReparentM
   });
 }
 
-function assertPivotDisplayGeometry(mesh: Mesh3D, previous: Vec3[], offset: Vec3): void {
+function assertPivotDisplayGeometry(
+  mesh: Mesh3D,
+  previous: Vec3[],
+  offset: Vec3,
+  message = 'pivot差分が大きすぎて表示精度で形状を保持できません。変更していません。',
+): void {
   if (!previous.length) return;
   const fail = () => {
-    throw new Error('pivot差分が大きすぎて表示精度で形状を保持できません。変更していません。');
+    throw new Error(message);
   };
   const bounds = previous.reduce(
     (result, position) => {
@@ -384,6 +390,179 @@ function assertPivotDisplayGeometry(mesh: Mesh3D, previous: Vec3[], offset: Vec3
       );
     }
   }
+}
+
+/** Only face-referenced vertices contribute to drawable world bounds or precision checks. */
+function alignmentGeometry(project: Project3D, ids: Set<string>) {
+  return project.nodes
+    .filter((item) => ids.has(item.id))
+    .flatMap((item) => {
+      const mesh = project.meshes.find((entry) => entry.id === item.meshId);
+      if (!mesh?.faces.length) return [];
+      const referenced = new Set(mesh.faces.flatMap((face) => face.vertexIds));
+      const matrix = worldMatrix(project, item.id);
+      return [
+        {
+          nodeId: item.id,
+          mesh: {
+            ...mesh,
+            vertices: mesh.vertices
+              .filter((vertex) => referenced.has(vertex.id))
+              .map((vertex) => ({
+                ...vertex,
+                position: transformPoint(matrix, vertex.position),
+              })),
+          },
+        },
+      ];
+    });
+}
+
+function alignmentValue(
+  project: Project3D,
+  id: string,
+  component: number,
+  anchor: AlignmentAnchor,
+): { value: number; roundoff: number } {
+  // Absolute matrix products bound cancellation in this particular world component.
+  // No unit-sized floor: genuinely small coordinates still retain small differences.
+  const magnitudeMatrix = (nodeId: string): number[] => {
+    const item = node(project, nodeId);
+    const local = composeTransform(item.transform).map(Math.abs);
+    return item.parentId === null ? local : multiplyMatrices(magnitudeMatrix(item.parentId), local);
+  };
+  const roundoff = (nodeId: string, position: Vec3): number => {
+    const magnitude = transformPoint(magnitudeMatrix(nodeId), position.map(Math.abs) as Vec3)[
+      component
+    ];
+    return 8 * Number.EPSILON * ancestors(project, nodeId).size * magnitude;
+  };
+  if (anchor === 'origin')
+    return {
+      value: worldMatrix(project, id)[12 + component],
+      roundoff: roundoff(id, [0, 0, 0]),
+    };
+  let min = Infinity,
+    max = -Infinity;
+  let minRoundoff = 0,
+    maxRoundoff = 0;
+  for (const { nodeId, mesh } of alignmentGeometry(project, descendants(project, [id]))) {
+    const localMesh = project.meshes.find((entry) => entry.id === mesh.id)!;
+    const localVertices = new Map(localMesh.vertices.map((vertex) => [vertex.id, vertex.position]));
+    for (const vertex of mesh.vertices) {
+      const value = vertex.position[component];
+      if (value < min) {
+        min = value;
+        minRoundoff = roundoff(nodeId, localVertices.get(vertex.id)!);
+      }
+      if (value > max) {
+        max = value;
+        maxRoundoff = roundoff(nodeId, localVertices.get(vertex.id)!);
+      }
+    }
+  }
+  if (!Number.isFinite(min) || !Number.isFinite(max))
+    throw new Error('整列する各オブジェクトには表示できる面が必要です。');
+  return anchor === 'min'
+    ? { value: min, roundoff: minRoundoff }
+    : anchor === 'max'
+      ? { value: max, roundoff: maxRoundoff }
+      : { value: min / 2 + max / 2, roundoff: minRoundoff / 2 + maxRoundoff / 2 };
+}
+
+function alignmentComplete(
+  actual: ReturnType<typeof alignmentValue>,
+  target: ReturnType<typeof alignmentValue>,
+): boolean {
+  // The same narrow machine-roundoff criterion governs success and repeated no-ops.
+  // The broader world invariant tolerance must never swallow small deliberate moves.
+  const tolerance = Math.min(
+    actual.roundoff + target.roundoff,
+    TRS_EPSILON * Math.max(1, Math.abs(target.value)),
+  );
+  return Number.isFinite(actual.value) && Math.abs(actual.value - target.value) <= tolerance;
+}
+
+/** World-axis alignment of disjoint static subtrees. The selected reference stays fixed.
+ * An entirely aligned selection throws, preventing an empty ProjectHistory revision.
+ */
+export function alignNodes(
+  project: Project3D,
+  selectedIds: readonly string[],
+  referenceId: string,
+  axis: MirrorAxis,
+  anchor: AlignmentAnchor,
+): void {
+  transaction(project, (candidate) => {
+    if (!['x', 'y', 'z'].includes(axis) || !['origin', 'min', 'center', 'max'].includes(anchor))
+      throw new Error('整列するworld軸と基準点を選択してください。');
+    const selected = selection(candidate, selectedIds);
+    if (selected.length < 2 || !selectedIds.includes(referenceId))
+      throw new Error('基準を含む2つ以上のオブジェクトを選択してください。');
+    assertStatic(candidate, selectedIds, null);
+    const component = { x: 0, y: 1, z: 2 }[axis];
+    const target = alignmentValue(candidate, referenceId, component, anchor);
+    // Plan every move from the same unchanged snapshot.
+    const moves = selected
+      .filter((item) => item.id !== referenceId)
+      .map((item) => {
+        const current = alignmentValue(candidate, item.id, component, anchor);
+        return {
+          item,
+          delta: alignmentComplete(current, target) ? 0 : target.value - current.value,
+          scope: descendants(candidate, [item.id]),
+          inverse: inverseAffine(
+            item.parentId === null ? identityMatrix() : worldMatrix(candidate, item.parentId),
+          ),
+        };
+      });
+    if (moves.every(({ delta }) => delta === 0))
+      throw new Error('選択したオブジェクトはすでに整列しています。変更していません。');
+    const fail = () => {
+      throw new Error('数値精度の範囲で整列と形状を保持できません。変更していません。');
+    };
+    for (const { item, delta, scope, inverse } of moves) {
+      if (!Number.isFinite(delta)) fail();
+      if (delta === 0) continue;
+      const before = new Map([...scope].map((id) => [id, worldMatrix(candidate, id)]));
+      const geometry = alignmentGeometry(candidate, scope);
+      // Transform a vector, never subtract two transformed points with large translations.
+      item.transform.translation = item.transform.translation.map(
+        (value, index) => value + inverse[component * 4 + index] * delta,
+      ) as Vec3;
+      for (const [id, matrix] of before) {
+        const after = worldMatrix(candidate, id);
+        for (let index = 0; index < 16; index++) {
+          const shift = index === 12 + component ? delta : 0;
+          const expected = matrix[index] + shift;
+          if (
+            !Number.isFinite(after[index]) ||
+            Math.abs(after[index] - expected) > TRS_EPSILON * Math.max(1, Math.abs(expected))
+          )
+            fail();
+          // A large absolute coordinate must not conceal a requested movement being lost.
+          if (
+            shift !== 0 &&
+            Math.abs(after[index] - matrix[index] - shift) > TRS_EPSILON * Math.abs(shift)
+          )
+            fail();
+        }
+      }
+      const actual = alignmentValue(candidate, item.id, component, anchor);
+      if (!alignmentComplete(actual, target)) fail();
+      const offset = [0, 0, 0] as Vec3;
+      offset[component] = -delta;
+      for (const { nodeId, mesh } of geometry) {
+        const after = alignmentGeometry(candidate, new Set([nodeId]))[0].mesh;
+        assertPivotDisplayGeometry(
+          after,
+          mesh.vertices.map((vertex) => vertex.position),
+          offset,
+          '整列先では表示精度で形状を保持できません。変更していません。',
+        );
+      }
+    }
+  });
 }
 
 /** Offset from the current local origin; geometry and descendants retain their world pose. */
