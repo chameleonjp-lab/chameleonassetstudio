@@ -370,3 +370,146 @@ test('real context loss cancels preview, permits numeric edits and binds the res
     await owner.dispose();
   }
 });
+
+test('world alignment keeps a selected reference fixed through touch, Undo and independent recovery', async ({
+  browser,
+  baseURL,
+}) => {
+  test.setTimeout(60_000);
+  const context = await browser.newContext({
+    baseURL,
+    viewport: { width: 375, height: 812 },
+    hasTouch: true,
+  });
+  const project = nativeBox('alignment-fixture');
+  project.name = 'Alignment fixture';
+  project.nodes[0].transform.translation = [2, 1, 0];
+  const moving = structuredClone(project.nodes[0]);
+  moving.id = 'moving-box';
+  moving.name = 'Moving box';
+  moving.transform.translation = [-2, -1, 0];
+  moving.transform.scale = [2, 1, 1];
+  project.nodes.push(moving);
+  const bytes = await exportBackup(project, new Map());
+  try {
+    const page = await context.newPage();
+    await page.goto('/3d/');
+    await page.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+      name: 'alignment.cas3dproj',
+      mimeType: 'application/zip',
+      buffer: Buffer.from(bytes),
+    });
+    await expect(
+      page.getByRole('heading', { name: 'Alignment fixture', exact: true }),
+    ).toBeVisible();
+    await page.getByText('部品の組立を開く', { exact: true }).tap();
+    const assembly = page.getByRole('region', { name: '3D部品の組立', exact: true });
+    for (const node of project.nodes) {
+      const selected = assembly.getByRole('checkbox', {
+        name: `組立対象 ${node.name} (${node.id})`,
+        exact: true,
+      });
+      if (!(await selected.isChecked())) await selected.tap();
+    }
+    await assembly.getByText('部品をworld軸に整列', { exact: true }).tap();
+    const reference = assembly.getByRole('combobox', {
+      name: '整列の基準部品（移動しない）',
+      exact: true,
+    });
+    const apply = assembly.getByRole('button', { name: 'world軸の整列を適用', exact: true });
+    await expect(apply).toBeDisabled();
+    await reference.selectOption('box-node');
+    await assembly.getByRole('combobox', { name: '揃える位置', exact: true }).selectOption('max');
+    await assembly.getByRole('button', { name: '現在の組立対象を確認', exact: true }).tap();
+    await expect(apply).toBeEnabled();
+    await reference.selectOption('moving-box');
+    await expect(apply).toBeDisabled();
+    await reference.selectOption('box-node');
+    await assembly.getByRole('button', { name: '現在の組立対象を確認', exact: true }).tap();
+    const referenceSelection = assembly.getByRole('checkbox', {
+      name: '組立対象 Box (box-node)',
+      exact: true,
+    });
+    await referenceSelection.tap();
+    await expect(apply).toBeDisabled();
+    await referenceSelection.tap();
+    await expect(apply).toBeDisabled();
+    await assembly.getByRole('button', { name: '現在の組立対象を確認', exact: true }).tap();
+    const before = await snapshot(page);
+    await reference.dispatchEvent('compositionstart');
+    await apply.tap();
+    expect((await snapshot(page)).project).toEqual(before.project);
+    await reference.dispatchEvent('compositionend');
+    for (const mode of ['composing', 'legacy'] as const) {
+      expect(
+        await apply.evaluate(
+          (button, kind) =>
+            !button.dispatchEvent(
+              new KeyboardEvent('keydown', {
+                key: 'Enter',
+                bubbles: true,
+                cancelable: true,
+                isComposing: kind === 'composing',
+                keyCode: kind === 'legacy' ? 229 : 13,
+              }),
+            ),
+          mode,
+        ),
+      ).toBe(true);
+      expect((await snapshot(page)).project).toEqual(before.project);
+    }
+    await apply.focus();
+    await page.keyboard.press('Enter');
+    const aligned = await snapshot(page);
+    expect(aligned.project.revision).toBe(before.project.revision + 1);
+    expect(aligned.project.nodes[0]).toEqual(before.project.nodes[0]);
+    expect(aligned.project.nodes[1].transform).toEqual({
+      ...moving.transform,
+      translation: [1.5, -1, 0],
+    });
+    expect(aligned.project.meshes).toEqual(before.project.meshes);
+    expect(aligned.project.materials).toEqual(before.project.materials);
+    await expect(apply).toBeDisabled();
+    await page.getByRole('button', { name: '元に戻す', exact: true }).tap();
+    expect((await snapshot(page)).project.nodes).toEqual(before.project.nodes);
+    await expect(apply).toBeDisabled();
+    await page.getByRole('button', { name: 'やり直す', exact: true }).tap();
+    const beforeNoop = await snapshot(page);
+    expect(beforeNoop.project.nodes).toEqual(aligned.project.nodes);
+    await assembly.getByRole('button', { name: '現在の組立対象を確認', exact: true }).tap();
+    await apply.tap();
+    await expect(assembly.getByRole('alert')).toBeVisible();
+    expect((await snapshot(page)).project).toEqual(beforeNoop.project);
+    await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+    await attachImage(
+      'alignment-canvas',
+      await page.locator('.native-viewport-host canvas').screenshot(),
+    );
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await attachImage('alignment-controls', await assembly.screenshot());
+    const independent = await browser.newContext({
+      baseURL,
+      viewport: { width: 375, height: 812 },
+    });
+    try {
+      const restored = await independent.newPage();
+      await restored.goto('/3d/');
+      await restored.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+        name: 'aligned.cas3dproj',
+        mimeType: 'application/zip',
+        buffer: Buffer.from(aligned.bytes),
+      });
+      await expect(
+        restored.getByRole('heading', { name: 'Alignment fixture', exact: true }),
+      ).toBeVisible();
+      expect((await snapshot(restored)).project.nodes).toEqual(aligned.project.nodes);
+      expect((await snapshot(restored)).project.meshes).toEqual(aligned.project.meshes);
+    } finally {
+      await independent.close();
+    }
+  } finally {
+    await context.close();
+  }
+});
