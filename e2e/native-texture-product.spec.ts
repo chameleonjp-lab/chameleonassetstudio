@@ -491,6 +491,49 @@ test('invalid derived color settings keep the project, history and original byte
   expect(Buffer.from(restored.blobs.get(originalHash)!)).toEqual(originalBytes);
 });
 
+test('brightness -0.123 remains valid and precise after backup restoration', async ({
+  page,
+  context,
+}) => {
+  await open(page);
+  await apply(page, await image(page));
+  const before = await backup(page);
+  const originalHash = before.project.materials[0].textureBlobId!;
+  const originalBytes = Buffer.from(before.blobs.get(originalHash)!);
+  const brightness = panel(page).getByLabel('明るさ（線形値）', { exact: true });
+  await brightness.fill('-0.123');
+  await expect(brightness).toHaveValue('-0.123');
+  await expectValidNumberInput(brightness);
+
+  await panel(page).getByRole('button', { name: '色調を派生画像として適用', exact: true }).click();
+  await expect(panel(page).getByRole('status')).toContainText('一回の操作');
+  const derived = await backup(page);
+  const derivedHash = derived.project.materials[0].textureBlobId!;
+  expect(derivedHash).not.toBe(originalHash);
+  expect(derived.project.revision).toBe(before.project.revision + 1);
+  const settings = { gain: [1, 1, 1], brightness: -0.123, saturation: 1 };
+  const source = derived.project.sources.find((entry) => entry.blobId === derivedHash)!;
+  expect(JSON.parse(source.derivedFrom!.settings)).toEqual(settings);
+  expect(Buffer.from(derived.blobs.get(originalHash)!)).toEqual(originalBytes);
+
+  const independent = await context
+    .browser()!
+    .newContext({ baseURL: new URL(page.url()).origin, viewport: { width: 375, height: 812 } });
+  try {
+    const restored = await independent.newPage();
+    await open(restored, derived.bytes);
+    const recovered = await backup(restored);
+    const recoveredHash = recovered.project.materials[0].textureBlobId!;
+    const recoveredSource = recovered.project.sources.find(
+      (entry) => entry.blobId === recoveredHash,
+    )!;
+    expect(JSON.parse(recoveredSource.derivedFrom!.settings)).toEqual(settings);
+    expect(Buffer.from(recovered.blobs.get(originalHash)!)).toEqual(originalBytes);
+  } finally {
+    await independent.close();
+  }
+});
+
 for (const [width, textScale] of [
   [320, 1],
   [375, 1],
