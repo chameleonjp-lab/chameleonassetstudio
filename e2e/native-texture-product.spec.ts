@@ -1,10 +1,17 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { createProject, identityTransform } from '../src/core3d/model/project';
 import { exportBackup, importBackup } from '../src/core3d/backup/backup';
 
 const panel = (page: Page) => page.getByRole('region', { name: '画像とUVを編集', exact: true });
+async function expectValidNumberInput(input: Locator) {
+  const validity = await input.evaluate((element) => {
+    const field = element as HTMLInputElement;
+    return { valid: field.checkValidity(), stepMismatch: field.validity.stepMismatch };
+  });
+  expect(validity).toEqual({ valid: true, stepMismatch: false });
+}
 async function fixture() {
   const p = createProject('texture-fixture', 'Texture fixture');
   p.nodes = [
@@ -406,6 +413,84 @@ test('JPEG import and cancelled image preparation keep the committed project rec
   expect((await backup(page)).project).toEqual(before.project);
 });
 
+test('invalid derived color settings keep the project, history and original bytes unchanged', async ({
+  page,
+}) => {
+  await open(page);
+  await apply(page, await image(page));
+  const imported = await backup(page);
+  const originalHash = imported.project.materials[0].textureBlobId!;
+  const originalBytes = Buffer.from(imported.blobs.get(originalHash)!);
+  const red = panel(page).getByLabel('赤の倍率', { exact: true });
+  const green = panel(page).getByLabel('緑の倍率', { exact: true });
+  const blue = panel(page).getByLabel('青の倍率', { exact: true });
+  const brightness = panel(page).getByLabel('明るさ（線形値）', { exact: true });
+  const saturation = panel(page).getByLabel('彩度', { exact: true });
+  const derive = panel(page).getByRole('button', {
+    name: '色調を派生画像として適用',
+    exact: true,
+  });
+  const undo = page.getByRole('button', { name: '元に戻す', exact: true });
+  const redo = page.getByRole('button', { name: 'やり直す', exact: true });
+
+  // Establish a real redo entry before invalid attempts, so they must preserve
+  // existing history rather than merely avoid creating a no-op entry.
+  await red.fill('0.5');
+  await derive.click();
+  await expect(panel(page).getByRole('status')).toContainText('一回の操作');
+  const derived = await backup(page);
+  const derivedHash = derived.project.materials[0].textureBlobId!;
+  expect(derivedHash).not.toBe(originalHash);
+  const derivedSource = derived.project.sources.find((source) => source.blobId === derivedHash)!;
+  expect(JSON.parse(derivedSource.derivedFrom!.settings)).toEqual({
+    gain: [0.5, 1, 1],
+    brightness: 0,
+    saturation: 1,
+  });
+  expect(Buffer.from(derived.blobs.get(originalHash)!)).toEqual(originalBytes);
+  await undo.click();
+  const before = await backup(page);
+  expect(before.project).toEqual({
+    ...imported.project,
+    revision: derived.project.revision + 1,
+  });
+  expect(Buffer.from(before.blobs.get(originalHash)!)).toEqual(originalBytes);
+  expect(await undo.isEnabled()).toBe(true);
+  expect(await redo.isEnabled()).toBe(true);
+
+  for (const [input, value, failure] of [
+    [red, '', '色調の数値を全て入力してください'],
+    [red, '4.01', '色調補正の設定範囲が不正です'],
+    [brightness, '-1.01', '色調補正の設定範囲が不正です'],
+    [saturation, '2.01', '色調補正の設定範囲が不正です'],
+  ] as const) {
+    await red.fill('1');
+    await green.fill('1');
+    await blue.fill('1');
+    await brightness.fill('0');
+    await saturation.fill('1');
+    await input.fill(value);
+    await derive.click();
+    await expect(panel(page).getByRole('alert')).toContainText(failure);
+
+    const after = await backup(page);
+    expect(after.project).toEqual(before.project);
+    expect(Buffer.from(after.blobs.get(originalHash)!)).toEqual(originalBytes);
+    expect(await undo.isEnabled()).toBe(true);
+    expect(await redo.isEnabled()).toBe(true);
+  }
+
+  // The pre-existing redo entry must still restore the one valid derivation.
+  await redo.click();
+  const restored = await backup(page);
+  expect(restored.project.materials[0].textureBlobId).toBe(derivedHash);
+  expect(restored.project).toEqual({
+    ...derived.project,
+    revision: before.project.revision + 1,
+  });
+  expect(Buffer.from(restored.blobs.get(originalHash)!)).toEqual(originalBytes);
+});
+
 for (const [width, textScale] of [
   [320, 1],
   [375, 1],
@@ -452,6 +537,7 @@ for (const [width, textScale] of [
         await input.tap();
         await expect(input).toBeFocused();
         await expect(input).toHaveValue(value);
+        await expectValidNumberInput(input);
         expect(
           await input.evaluate((element) => {
             const box = element.getBoundingClientRect();
@@ -481,14 +567,18 @@ for (const [width, textScale] of [
         expect(metrics.height).toBeGreaterThanOrEqual(44);
         expect(metrics.fontSize).toBeGreaterThanOrEqual(16 * textScale);
       }
+      const brightness = panel(page).getByLabel('明るさ（線形値）', { exact: true });
       await page.keyboard.press('Tab');
-      await expect(panel(page).getByLabel('明るさ（線形値）', { exact: true })).toBeFocused();
+      await expect(brightness).toBeFocused();
       await page.keyboard.press('ControlOrMeta+A');
       await page.keyboard.type('-0.25');
+      await expectValidNumberInput(brightness);
+      const saturation = panel(page).getByLabel('彩度', { exact: true });
       await page.keyboard.press('Tab');
-      await expect(panel(page).getByLabel('彩度', { exact: true })).toBeFocused();
+      await expect(saturation).toBeFocused();
       await page.keyboard.press('ControlOrMeta+A');
       await page.keyboard.type('1.25');
+      await expectValidNumberInput(saturation);
       await visual(`gains-focused-${width}-${textScale * 100}`, await panel(page).screenshot());
       await page.keyboard.press('Tab');
       const derive = panel(page).getByRole('button', {
