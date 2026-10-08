@@ -418,7 +418,7 @@ export function NativeTexturePanel({ project, session, disabled, onChange }: Pro
                   type="number"
                   min="0"
                   max="4"
-                  step="0.1"
+                  step="any"
                   value={gain[i]}
                   onChange={(e) => setGain(gain.map((v, j) => (j === i ? e.target.value : v)))}
                 />
@@ -431,7 +431,7 @@ export function NativeTexturePanel({ project, session, disabled, onChange }: Pro
               type="number"
               min="-1"
               max="1"
-              step="0.05"
+              step="any"
               value={brightness}
               onChange={(e) => setBrightness(e.target.value)}
             />
@@ -442,7 +442,7 @@ export function NativeTexturePanel({ project, session, disabled, onChange }: Pro
               type="number"
               min="0"
               max="2"
-              step="0.1"
+              step="any"
               value={saturation}
               onChange={(e) => setSaturation(e.target.value)}
             />
