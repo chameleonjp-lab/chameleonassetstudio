@@ -27,3 +27,11 @@ CSSを前のgridへ戻すだけで旧表示へ復帰できる。データmigrati
 ## 検査記録
 
 独立読取レビューで固定3列によるglyph clippingと既存E2Eの値/横溢れ検査だけでは不足する点を確認した。独立再レビューでblocking issueはなく、関連lint・型・整形を確認した。最終headのCI・画像確認は実施結果をPRへ追記する。未実行を成功としない。
+
+## 2026-10-08 補足: native色調入力の刻み判定
+
+基準mainは `a2c7b9175ce1c38de6adffb88bf84dcca0e74e28`。既存 `nativeImage.ts` の `validateSettings` は有限値を確認し、RGB倍率を0〜4、明るさを-1〜1、彩度を0〜2に制限する。この契約を保ち、`NativeTexturePanel.tsx` のRGB倍率・明るさ・彩度の数値入力を `step="any"` にする。最小値・最大値は残し、入力値を丸めない。
+
+既存 `e2e/native-texture-product.spec.ts` の320px、375px、375px・200%文字の入力検査に、5項目それぞれの `checkValidity()` と `validity.stepMismatch` の確認を追加する。既存の0.25 / 1.5 / 1.25、明るさ-0.25、彩度1.25の保存値、Tab/Enter、44px領域、画面画像、適用前の正本不変、1 revision、原画像bytes、Undo/Redoの受入を保つ。空欄およびRGB・明るさ・彩度の範囲外値では、正本・revision・履歴・原画像bytesが変わらないことを確認する。
+
+この追補は旧「別の入力仕様課題」という記録に対する後続実装であり、旧本文はその時点の記録として残す。codec、schema、保存形式、CI設定、画像処理は変更しない。物理iPhone、実機keyboard、pinch zoomは従来どおり未確認。
