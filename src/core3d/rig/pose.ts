@@ -34,6 +34,37 @@ function checkedVector(
   }
   return { precise, rounded };
 }
+function normalWorldMatrix(world: number[]): number[] {
+  const inverse = inverseAffineMatrix(world);
+  return [
+    inverse[0],
+    inverse[4],
+    inverse[8],
+    0,
+    inverse[1],
+    inverse[5],
+    inverse[9],
+    0,
+    inverse[2],
+    inverse[6],
+    inverse[10],
+    0,
+    0,
+    0,
+    0,
+    1,
+  ];
+}
+function checkedWorldNormal(matrix: number[], value: DualVector) {
+  const result = checkedVector(matrix, value);
+  // Camera view rotation is orthonormal; this sum bounds all of its three-term intermediates.
+  if (
+    ![result.precise, result.rounded].every((entries) =>
+      finite(entries.slice(0, 3).reduce((sum, item) => sum + Math.abs(item), 0)),
+    )
+  )
+    throw new Error('World normal exceeds Float32 view range');
+}
 function inputVector(values: number[]): DualVector {
   return { precise: values, rounded: values.map(Math.fround) };
 }
@@ -63,6 +94,20 @@ function multiplyShaderMatrices(left: DualVector, right: DualVector): DualVector
 
 /** Returns a detached posed scene, never a replacement for the stored rest project. */
 export function evaluateRigPose(project: Project3D, updates: readonly RigPoseUpdate[]): Project3D {
+  return evaluatePose(project, updates, true);
+}
+/** Display-only object/bone animation; locks protect authoring, not viewing existing clips. */
+export function evaluateTransformPose(
+  project: Project3D,
+  updates: readonly RigPoseUpdate[],
+): Project3D {
+  return evaluatePose(project, updates, false);
+}
+function evaluatePose(
+  project: Project3D,
+  updates: readonly RigPoseUpdate[],
+  manual: boolean,
+): Project3D {
   validateProject(project);
   const posed = cloneProject(project);
   const ids = new Set<string>();
@@ -70,10 +115,14 @@ export function evaluateRigPose(project: Project3D, updates: readonly RigPoseUpd
     project.skins.flatMap((skin) => skin.joints.map((joint) => joint.nodeId)),
   );
   for (const update of updates) {
-    if (ids.has(update.nodeId) || !jointIds.has(update.nodeId))
+    if (
+      ids.has(update.nodeId) ||
+      !project.nodes.some((node) => node.id === update.nodeId) ||
+      (manual && !jointIds.has(update.nodeId))
+    )
       throw new Error('Pose target must be a unique bound joint');
     ids.add(update.nodeId);
-    assertNodeEditable(project, update.nodeId, true);
+    if (manual) assertNodeEditable(project, update.nodeId, true);
     posed.nodes.find((node) => node.id === update.nodeId)!.transform = structuredClone(
       update.transform,
     );
@@ -89,6 +138,22 @@ export function evaluateRigPose(project: Project3D, updates: readonly RigPoseUpd
     const mesh = posed.meshes.find((value) => value.id === instance.meshId)!;
     for (const vertex of mesh.vertices)
       checkedVector(posedWorld.get(instance.id)!, inputVector([...vertex.position, 1]));
+    const matrix = normalWorldMatrix(posedWorld.get(instance.id)!);
+    const positions = new Map(mesh.vertices.map((vertex) => [vertex.id, vertex.position]));
+    for (const face of mesh.faces) {
+      const [a, b, c] = face.vertexIds.slice(0, 3).map((id) => positions.get(id)!);
+      const u = b.map((value, axis) => value - a[axis]),
+        v = c.map((value, axis) => value - a[axis]);
+      const cross = [
+        u[1] * v[2] - u[2] * v[1],
+        u[2] * v[0] - u[0] * v[2],
+        u[0] * v[1] - u[1] * v[0],
+      ];
+      const length = Math.hypot(...cross),
+        normal = length ? cross.map((value) => value / length) : [0, 0, 0];
+      for (const value of face.normals ?? [normal])
+        checkedWorldNormal(matrix, inputVector([...value, 0]));
+    }
   }
   for (const skin of project.skins) {
     const mesh = project.meshes.find((item) => item.id === skin.meshId)!;
@@ -102,8 +167,9 @@ export function evaluateRigPose(project: Project3D, updates: readonly RigPoseUpd
       return false;
     };
     if (
-      skin.joints.some((joint) => affected(joint.nodeId)) ||
-      project.nodes.some((node) => node.meshId === skin.meshId && affected(node.id))
+      manual &&
+      (skin.joints.some((joint) => affected(joint.nodeId)) ||
+        project.nodes.some((node) => node.meshId === skin.meshId && affected(node.id)))
     )
       assertMeshEditable(project, skin.meshId);
     for (const instance of project.nodes.filter((node) => node.meshId === mesh.id)) {
@@ -178,7 +244,10 @@ export function evaluateRigPose(project: Project3D, updates: readonly RigPoseUpd
           normalMatrices.set(normalKey, normalMatrix);
         }
         for (const normal of normalsByVertex.get(assignment.vertexId) ?? [])
-          checkedVector(normalMatrix.precise, inputVector([...normal, 0]), normalMatrix.rounded);
+          checkedWorldNormal(
+            normalWorldMatrix(posedWorld.get(instance.id)!),
+            checkedVector(normalMatrix.precise, inputVector([...normal, 0]), normalMatrix.rounded),
+          );
         const local = checkedVector(inverseMesh, mixed);
         checkedVector(posedWorld.get(instance.id)!, {
           precise: [...local.precise.slice(0, 3), 1],
@@ -188,4 +257,137 @@ export function evaluateRigPose(project: Project3D, updates: readonly RigPoseUpd
     }
   }
   return posed;
+}
+
+/**
+ * Revision-owned immutable rest data. Ordinary samples use deliberately loose absolute
+ * bounds at EVERY shader stage, including all four padded slots and normal matrices.
+ * A 1e30 ceiling leaves orders of magnitude of Float32 rounding headroom. Anything near
+ * that ceiling falls back to the original per-vertex ordered checks; corner sampling
+ * alone is never used as a proof for a rounded, multistage shader pipeline.
+ */
+export function prepareTransformPose(
+  project: Project3D,
+): (updates: readonly RigPoseUpdate[]) => void {
+  validateProject(project);
+  const source = cloneProject(project);
+  const restWorld = new Map(source.nodes.map((node) => [node.id, worldMatrix(source, node.id)]));
+  const maximum = (values: readonly number[]) =>
+    values.reduce((result, value) => Math.max(result, Math.abs(value)), 0);
+  const positions = new Map(
+    source.meshes.map((mesh) => [
+      mesh.id,
+      mesh.vertices.reduce((value, vertex) => Math.max(value, maximum(vertex.position)), 1),
+    ]),
+  );
+  const normals = new Map(
+    source.meshes.map((mesh) => [
+      mesh.id,
+      mesh.faces.reduce((value, face) => Math.max(value, ...(face.normals ?? []).map(maximum)), 1),
+    ]),
+  );
+  const boundNodes = new Set<string>();
+  const include = (id: string) => {
+    let node = source.nodes.find((value) => value.id === id);
+    while (node) {
+      boundNodes.add(node.id);
+      node = source.nodes.find((value) => value.id === node!.parentId);
+    }
+  };
+  for (const skin of source.skins) {
+    validateSkinProfile(
+      skin,
+      source.meshes.find((mesh) => mesh.id === skin.meshId),
+      source.nodes,
+    );
+    skin.joints.forEach((joint) => include(joint.nodeId));
+    source.nodes.filter((node) => node.meshId === skin.meshId).forEach((node) => include(node.id));
+  }
+  // Matrix-vector and matrix-matrix bounds include four terms and generous outward slack.
+  const product = (a: number, b: number) => 4 * a * b * 1.00001;
+  return (updates) => {
+    const byId = new Map<string, RigPoseUpdate>();
+    for (const update of updates) {
+      if (byId.has(update.nodeId) || !restWorld.has(update.nodeId))
+        throw new Error('Animation target must be a unique node');
+      const t = update.transform;
+      if (
+        !t ||
+        !Array.isArray(t.translation) ||
+        !Array.isArray(t.rotation) ||
+        !Array.isArray(t.scale) ||
+        t.translation.length !== 3 ||
+        t.rotation.length !== 4 ||
+        t.scale.length !== 3 ||
+        ![...t.translation, ...t.rotation, ...t.scale].every(
+          (value) => typeof value === 'number' && Number.isFinite(value),
+        ) ||
+        Math.abs(Math.hypot(...t.rotation) - 1) > 1e-5 ||
+        (boundNodes.has(update.nodeId) && t.scale.some((value) => value <= 0))
+      )
+        throw new Error('Invalid animation TRS');
+      byId.set(update.nodeId, update);
+    }
+    const posed = {
+      ...source,
+      nodes: source.nodes.map((node) => ({
+        ...node,
+        transform: byId.get(node.id)?.transform ?? node.transform,
+      })),
+    };
+    const world = new Map(posed.nodes.map((node) => [node.id, worldMatrix(posed, node.id)]));
+    const inverses = new Map([...world].map(([id, matrix]) => [id, inverseAffineMatrix(matrix)]));
+    let safe = true;
+    const bounded = (...values: number[]) => {
+      if (values.some((value) => !Number.isFinite(value) || value > 1e30)) safe = false;
+    };
+    for (const node of posed.nodes) {
+      if (!node.meshId) continue;
+      const meshMax = positions.get(node.meshId)!;
+      const skin = source.skins.find((value) => value.meshId === node.meshId);
+      const poseMax = maximum(world.get(node.id)!);
+      const inverseMax = maximum(inverses.get(node.id)!);
+      if (!skin) {
+        bounded(product(poseMax, meshMax), product(inverseMax, normals.get(node.meshId)!));
+        continue;
+      }
+      const restMax = maximum(restWorld.get(node.id)!);
+      let paletteMax = 0;
+      for (const joint of skin.joints)
+        paletteMax = Math.max(
+          paletteMax,
+          maximum(checkedProduct(world.get(joint.nodeId)!, joint.inverseBind)),
+        );
+      const weightsMax =
+        skin.weights.reduce(
+          (result, weight) =>
+            Math.max(
+              result,
+              weight.values.reduce((sum, value) => sum + Math.abs(value), 0),
+            ),
+          0,
+        ) * 1.00001;
+      const restPosition = product(restMax, meshMax);
+      const bonePosition = product(paletteMax, restPosition);
+      const mixed = bonePosition * weightsMax * 1.00001;
+      const local = product(inverseMax, mixed);
+      const position = product(poseMax, Math.max(local, 1));
+      const weightedMatrix = paletteMax * weightsMax * 1.00001;
+      const normalFirst = product(inverseMax, weightedMatrix);
+      const normalMatrix = product(normalFirst, restMax);
+      bounded(
+        restPosition,
+        bonePosition,
+        mixed,
+        local,
+        position,
+        weightedMatrix,
+        normalFirst,
+        normalMatrix,
+        product(normalMatrix, normals.get(node.meshId)!),
+        product(inverseMax, product(normalMatrix, normals.get(node.meshId)!)) * 3,
+      );
+    }
+    if (!safe) evaluateTransformPose(source, updates);
+  };
 }

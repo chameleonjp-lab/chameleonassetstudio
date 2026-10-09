@@ -40,6 +40,7 @@ export default defineConfig({
         'native-editing-product.spec.ts',
         'native-texture-product.spec.ts',
         'native-rig-product.spec.ts',
+        'native-animation-product.spec.ts',
         'import.spec.ts',
         'storage.spec.ts',
         'export.spec.ts',

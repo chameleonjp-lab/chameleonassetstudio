@@ -1,3 +1,4 @@
+import type { AnimationBinding } from '../../core3d/ports/animationPort';
 import type { RigPoseBinding } from '../../core3d/ports/rigPosePort';
 import {
   Component,
@@ -45,6 +46,7 @@ export interface NativeViewportPanelProps {
   /** A view-only fixture may omit this; product editing must bind explicitly. */
   editing?: NativeEditBinding;
   rigPose?: RigPoseBinding;
+  animation?: AnimationBinding;
   /** Stable session callback returning a detached copy, never a URL or remote fetch. */
   readBlob?: NativeBlobReader;
 }
@@ -59,6 +61,7 @@ type Instance = {
   busy: boolean;
   editing: NativeEditBinding | null;
   rigPose: RigPoseBinding | null;
+  animation: AnimationBinding | null;
   suspensionReason: string;
   preparationReason: string;
   preparer: NativeTexturePreparer;
@@ -81,7 +84,7 @@ const statusText: Record<PanelStatus['state'], string> = {
   'context-lost': 'GPUとの接続が失われました。ブラウザーの復旧を待っています。',
   unavailable: 'この環境ではWebGL2の3D表示を利用できません。',
   unsupported:
-    'この内容の3D表示には対応していません。アニメーション・未対応のrig構造・画像形式・三角形以外の面などは表示準備中です。',
+    'この内容の3D表示には対応していません。未対応のrig構造・画像形式・三角形以外の面などは表示準備中です。',
   error: '3D表示を続けられませんでした。',
   disposed: '3D表示を終了しました。',
 };
@@ -299,8 +302,16 @@ function ViewportContent(props: NativeViewportPanelProps) {
       if (!isCurrent(instance) || !instance.port) return;
       const next = latest.current.editing ?? null;
       const pose = latest.current.rigPose ?? null;
+      const animation = latest.current.animation ?? null;
       const port = instance.port;
       try {
+        if (instance.animation !== animation) {
+          instance.animation?.cancel('再生表示接続が切り替わりました。');
+          if (animation && !port.bindAnimation)
+            throw new Error('表示providerがanimationに対応していません。');
+          port.bindAnimation?.(animation);
+          instance.animation = animation;
+        }
         if (instance.rigPose !== pose) {
           instance.rigPose?.cancel('pose接続が切り替わりました。');
           if (pose && !port.bindRigPose) throw new Error('表示providerがposeに対応していません。');
@@ -345,6 +356,7 @@ function ViewportContent(props: NativeViewportPanelProps) {
       busy: false,
       editing: null,
       rigPose: null,
+      animation: null,
       suspensionReason: `viewport-suspension:${headingId}:${attempt}`,
       preparationReason: `viewport-textures:${headingId}:${attempt}`,
       preparer: new NativeTexturePreparer(),
@@ -465,6 +477,7 @@ function ViewportContent(props: NativeViewportPanelProps) {
       view?.removeEventListener('pageshow', show);
       if (instanceRef.current === instance) instanceRef.current = null;
       try {
+        instance.animation?.cancel('3D表示を終了しました。');
         instance.rigPose?.cancel('3D表示を終了しました。');
         instance.editing?.cancel('3D表示を終了しました。');
         instance.port?.dispose();
@@ -513,6 +526,7 @@ function ViewportContent(props: NativeViewportPanelProps) {
     project.revision,
     props.editing,
     props.rigPose,
+    props.animation,
     props.readBlob,
     updateProject,
     bindEditing,
@@ -596,6 +610,7 @@ function ViewportContent(props: NativeViewportPanelProps) {
   }
 
   async function downloadPng(instance: Instance, port: NativeViewportPort) {
+    latest.current.animation?.cancel('PNGはrestを取得します。');
     latest.current.rigPose?.cancel('PNGはrestを取得します。');
     const editing = latest.current.editing;
     if (editing?.state.active)
@@ -609,7 +624,10 @@ function ViewportContent(props: NativeViewportPanelProps) {
       throw new Error('最新の内容を表示できていません。表示の更新後にPNGを作成してください。');
     const pose = latest.current.rigPose;
     const poseGuard = pose?.beginCapture();
+    const animation = latest.current.animation;
+    let animationGuard: ReturnType<AnimationBinding['beginCapture']> | undefined;
     try {
+      animationGuard = animation?.beginCapture();
       const blob = await port.capturePng();
       if (!isCurrent(instance)) return;
       const current = latest.current.editing?.getProject() ?? latest.current.project;
@@ -618,6 +636,8 @@ function ViewportContent(props: NativeViewportPanelProps) {
         current.revision !== snapshot.revision ||
         latest.current.editing !== editing ||
         latest.current.rigPose !== pose ||
+        latest.current.animation !== animation ||
+        (animationGuard && !animationGuard.isCurrent()) ||
         (poseGuard && !poseGuard.isCurrent()) ||
         (editing && (editing.state.epoch !== epoch || editing.state.active))
       )
@@ -645,6 +665,7 @@ function ViewportContent(props: NativeViewportPanelProps) {
         text: 'PNG画像のダウンロードを開始しました。編集用バックアップではありません。',
       });
     } finally {
+      animationGuard?.release();
       poseGuard?.release();
     }
   }

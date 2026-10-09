@@ -1,3 +1,5 @@
+import { AnimationTransaction } from './animationTransaction';
+import type { AnimationBinding } from '../../core3d/ports/animationPort';
 // Keep the complete rescue encoder in the shell graph before any edit is accepted.
 import { exportBackup, importBackup, BACKUP_LIMITS } from '../../core3d/backup/backup';
 import { ProjectAutosave } from '../../core3d/commands/autosave';
@@ -45,6 +47,7 @@ export class ProjectSession {
   private readonly history: ProjectHistory;
   private readonly transforms: TransformTransaction;
   private readonly poses: RigPoseTransaction;
+  private readonly animations: AnimationTransaction;
   private readonly autosave: ProjectAutosave | null;
   private readonly projectId: string;
   private conflict = false;
@@ -80,6 +83,13 @@ export class ProjectSession {
       getProject: () => this.history.project,
       isReadOnly: () => !this.lease || this.conflict || this.closed,
       editing: this.transforms,
+    });
+    this.animations = new AnimationTransaction({
+      getProject: () => this.history.project,
+      getRevision: () => this.history.revision,
+      isReadOnly: () => !this.lease || this.conflict || this.closed,
+      editing: this.transforms,
+      rig: this.poses,
     });
     this.autosave = lease
       ? new ProjectAutosave(
@@ -158,6 +168,10 @@ export class ProjectSession {
     return this.open(repository, ownerId, id);
   }
 
+  get animation(): AnimationBinding {
+    return this.animations;
+  }
+
   get rigPose(): RigPoseBinding {
     return this.poses;
   }
@@ -190,6 +204,7 @@ export class ProjectSession {
 
   rename(name: string) {
     this.binaryGeneration++;
+    this.animations.cancel('session boundary');
     this.poses.cancel('session boundary');
     this.transforms.cancel('rename');
     this.assertEditable();
@@ -202,6 +217,7 @@ export class ProjectSession {
 
   addBox() {
     this.binaryGeneration++;
+    this.animations.cancel('session boundary');
     this.poses.cancel('session boundary');
     this.transforms.cancel('add object');
     this.assertEditable();
@@ -215,6 +231,7 @@ export class ProjectSession {
     expected?: Pick<Project3D, 'id' | 'revision'>,
   ) {
     this.binaryGeneration++;
+    this.animations.cancel('session boundary');
     this.poses.cancel('session boundary');
     this.transforms.cancel('authoring command');
     this.assertEditable();
@@ -263,6 +280,7 @@ export class ProjectSession {
   /** Capture before file reading/decoding, so save/cancel boundaries also invalidate that work. */
   captureBinaryContext(): BinaryAuthoringContext {
     this.binaryGeneration++;
+    this.animations.cancel('session boundary');
     this.poses.cancel('session boundary');
     this.transforms.cancel('prepare binary authoring');
     this.assertEditable();
@@ -293,6 +311,7 @@ export class ProjectSession {
     )
       throw new Error('作品や操作対象が変わりました。現在の画像を確認して再操作してください。');
     const generation = ++this.binaryGeneration;
+    this.animations.cancel('session boundary');
     this.poses.cancel('session boundary');
     this.transforms.cancel('binary authoring command');
     this.assertEditable();
@@ -413,6 +432,7 @@ export class ProjectSession {
 
   undo() {
     this.binaryGeneration++;
+    this.animations.cancel('session boundary');
     this.poses.cancel('session boundary');
     this.transforms.cancel('undo');
     this.assertEditable();
@@ -421,6 +441,7 @@ export class ProjectSession {
 
   redo() {
     this.binaryGeneration++;
+    this.animations.cancel('session boundary');
     this.poses.cancel('session boundary');
     this.transforms.cancel('redo');
     this.assertEditable();
@@ -430,6 +451,7 @@ export class ProjectSession {
   /** Explicit cleanup only; canonical originals/derivatives are never removed here. */
   clearHistory() {
     this.binaryGeneration++;
+    this.animations.cancel('session boundary');
     this.poses.cancel('session boundary');
     this.transforms.cancel('clear history');
     this.assertEditable();
@@ -454,6 +476,7 @@ export class ProjectSession {
 
   async save() {
     this.binaryGeneration++;
+    this.animations.cancel('session boundary');
     this.poses.cancel('session boundary');
     this.transforms.cancel('explicit save');
     if (this.state.readOnly) {
@@ -468,6 +491,7 @@ export class ProjectSession {
   /** Captures CURRENT edits and all source bytes, even after a failed save or fencing. */
   backup() {
     this.binaryGeneration++;
+    this.animations.cancel('session boundary');
     this.poses.cancel('session boundary');
     this.transforms.cancel('backup');
     return exportBackup(this.history.project, this.blobs);
@@ -475,6 +499,7 @@ export class ProjectSession {
 
   async saveCopy() {
     this.binaryGeneration++;
+    this.animations.cancel('session boundary');
     this.poses.cancel('session boundary');
     this.transforms.cancel('save copy');
     if (this.closed) throw new Error('このプロジェクトは閉じられています。');
@@ -489,6 +514,7 @@ export class ProjectSession {
 
   async takeOver() {
     this.binaryGeneration++;
+    this.animations.cancel('session boundary');
     this.poses.cancel('session boundary');
     this.transforms.cancel('take over');
     if (this.state.dirty) throw new UnsavedProjectError();
@@ -499,6 +525,7 @@ export class ProjectSession {
 
   async close() {
     this.binaryGeneration++;
+    this.animations.cancel('session boundary');
     this.poses.cancel('session boundary');
     this.transforms.cancel('close');
     if (this.closed) return;
@@ -523,6 +550,7 @@ export class ProjectSession {
       }
     }
     await this.snapshot?.release();
+    this.animations.dispose();
     this.poses.dispose();
     this.closed = true;
     this.blobs.clear();

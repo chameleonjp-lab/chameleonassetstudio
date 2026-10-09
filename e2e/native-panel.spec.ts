@@ -269,3 +269,41 @@ test('rig pose binding replacement cancels the old preview and PNG blocks new po
     ),
   ).toMatchObject({ ok: true });
 });
+
+test('animation binding and delayed PNG preserve canonical captures and reject intervening previews', async ({
+  page,
+}) => {
+  await page.goto('/e2e/fixtures/native-panel.html?editing&animation&capture-delay');
+  await expect(page.getByRole('button', { name: 'PNG画像を保存', exact: true })).toBeEnabled();
+  const animation = () =>
+    page.evaluate(
+      () => (window as unknown as { panelHarness: PanelHarness }).panelHarness.animation,
+    );
+  expect(
+    await page.evaluate(() =>
+      (window as unknown as { panelHarness: PanelHarness }).panelHarness.previewAnimation(),
+    ),
+  ).toMatchObject({ ok: true });
+  expect((await animation())!.active).toBe(true);
+  await page.evaluate(() =>
+    (window as unknown as { panelHarness: PanelHarness }).panelHarness.replaceBinding(),
+  );
+  await expect.poll(async () => (await animation())?.active).toBe(false);
+  await page.getByRole('button', { name: 'PNG画像を保存', exact: true }).click();
+  await expect.poll(async () => (await state(page))[0].capturePending).toBe(true);
+  expect(
+    await page.evaluate(() =>
+      (window as unknown as { panelHarness: PanelHarness }).panelHarness.previewAnimation(),
+    ),
+  ).toMatchObject({ ok: false });
+  const download = page.waitForEvent('download');
+  await page.evaluate(() =>
+    (window as unknown as { panelHarness: PanelHarness }).panelHarness.finishCapture(),
+  );
+  await download;
+  expect(
+    await page.evaluate(() =>
+      (window as unknown as { panelHarness: PanelHarness }).panelHarness.previewAnimation(),
+    ),
+  ).toMatchObject({ ok: true });
+});

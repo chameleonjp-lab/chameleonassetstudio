@@ -13,6 +13,7 @@ export default defineConfig({
     'native-editing-product.spec.ts',
     'native-texture-product.spec.ts',
     'native-rig-product.spec.ts',
+    'native-animation-product.spec.ts',
   ],
   projects: config.projects?.map((project) => ({
     ...project,
@@ -24,6 +25,7 @@ export default defineConfig({
       'native-editing-product.spec.ts',
       'native-texture-product.spec.ts',
       'native-rig-product.spec.ts',
+      'native-animation-product.spec.ts',
     ],
   })),
   use: { ...config.use, baseURL: 'http://localhost:4176' },

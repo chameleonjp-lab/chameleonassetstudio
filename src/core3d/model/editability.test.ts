@@ -1,6 +1,7 @@
+import { createClip, addKey } from '../animation/authoring';
 import { describe, it, expect } from 'vitest';
 import { smallProject } from '../fixtures/project';
-import { cloneProject } from './project';
+import { cloneProject, createProject, identityTransform } from './project';
 import { assertLocksPreserved } from './editability';
 describe('skin lock transaction boundary', () => {
   it.each(['mesh', 'joint'])('protects %s against raw skin changes and removal', (target) => {
@@ -39,4 +40,28 @@ describe('skin lock transaction boundary', () => {
     after.skins[0].meshId = copied.id;
     expect(() => assertLocksPreserved(before, after)).toThrow();
   });
+});
+
+it('rejects new and retargeted animation tracks that affect a locked descendant', () => {
+  const before = createProject('locked-animation');
+  before.nodes.push(
+    { id: 'parent', name: 'Parent', parentId: null, transform: identityTransform() },
+    {
+      id: 'child',
+      name: 'Child',
+      parentId: 'parent',
+      locked: true,
+      transform: identityTransform(),
+    },
+  );
+  createClip(before, 'clip', 'Move');
+  expect(() => addKey(before, 'clip', 'parent', 'translation', 'LINEAR', 0, [1, 0, 0])).toThrow();
+  const after = structuredClone(before);
+  after.clips[0].tracks.push({
+    nodeId: 'child',
+    property: 'translation',
+    interpolation: 'STEP',
+    keys: [{ time: 0, value: [1, 0, 0] }],
+  });
+  expect(() => assertLocksPreserved(before, after)).toThrow();
 });

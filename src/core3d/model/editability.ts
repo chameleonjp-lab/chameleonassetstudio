@@ -49,6 +49,29 @@ export function assertMaterialEditable(project: Project3D, materialId: string) {
 /** Final transaction guard: commands cannot bypass locks via shared resources or parent edits. */
 export function assertLocksPreserved(before: Project3D, after: Project3D) {
   const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+  const protectedTargets = new Set<string>();
+  const protectAncestors = (id: string) => {
+    let node = before.nodes.find((item) => item.id === id);
+    while (node) {
+      protectedTargets.add(node.id);
+      node = before.nodes.find((item) => item.id === node!.parentId);
+    }
+  };
+  for (const node of before.nodes) if (isNodeLocked(before, node.id)) protectAncestors(node.id);
+  for (const skin of before.skins)
+    if (before.nodes.some((node) => node.meshId === skin.meshId && isNodeLocked(before, node.id)))
+      skin.joints.forEach((joint) => protectAncestors(joint.nodeId));
+  for (const id of new Set([...before.clips, ...after.clips].map((clip) => clip.id))) {
+    const old = before.clips.find((clip) => clip.id === id);
+    const next = after.clips.find((clip) => clip.id === id);
+    if (
+      !equal(old, next) &&
+      [...(old?.tracks ?? []), ...(next?.tracks ?? [])].some((track) =>
+        protectedTargets.has(track.nodeId),
+      )
+    )
+      throw lockedError();
+  }
   for (const skin of before.skins) {
     const protectedSkin =
       before.nodes.some((node) => node.meshId === skin.meshId && isNodeLocked(before, node.id)) ||

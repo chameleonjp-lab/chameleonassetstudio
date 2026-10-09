@@ -1,3 +1,4 @@
+import { createClip, addKey, editKey } from '../../core3d/animation/authoring';
 import { addRigJoint, bindSkin } from '../../core3d/rig/authoring';
 import { identityTransform } from '../../core3d/model/project';
 import { IDBFactory } from 'fake-indexeddb';
@@ -1133,4 +1134,48 @@ describe('session rig pose boundaries', () => {
     expect(session.rigPose.state.active).toBe(false);
     expect(() => session.rigPose.begin()).toThrow();
   });
+});
+
+describe('native clip persistence and history', () => {
+  it('saves rest and editable clips, cancels preview on boundaries, restores and branches history', async () => {
+    const session = await ProjectSession.create(repository, 'animation-tab', 'Animation');
+    session.addBox();
+    const nodeId = session.project.nodes[0].id;
+    session.executeAuthoring((p) => {
+      createClip(p, 'clip', 'Move');
+      addKey(p, 'clip', nodeId, 'translation', 'LINEAR', 0, [0, 0, 0]);
+      addKey(p, 'clip', nodeId, 'translation', 'LINEAR', 1, [1, 0, 0]);
+    });
+    session.animation.select('clip');
+    session.animation.seek(0.5);
+    const bytes = await session.backup();
+    expect(session.animation.state.active).toBe(false);
+    const backup = await importBackup(bytes);
+    expect(backup.project.nodes[0].transform.translation).toEqual([0, 0, 0]);
+    expect(backup.project.clips[0].tracks[0].keys[1].value).toEqual([1, 0, 0]);
+    const restored = await ProjectSession.restore(repository, 'restored-animation', bytes);
+    restored.executeAuthoring((p) => editKey(p, 'clip', nodeId, 'translation', 1, 1, [2, 0, 0]));
+    restored.undo();
+    expect(restored.project.clips[0].tracks[0].keys[1].value).toEqual([1, 0, 0]);
+    restored.executeAuthoring((p) => editKey(p, 'clip', nodeId, 'translation', 1, 1, [3, 0, 0]));
+    restored.redo();
+    expect(restored.project.clips[0].tracks[0].keys[1].value).toEqual([3, 0, 0]);
+    restored.animation.select('clip');
+    restored.animation.play();
+    await restored.save();
+    expect(restored.animation.state.playing).toBe(false);
+    await restored.close();
+    await session.close();
+  });
+});
+
+it('opens and backs up schema-valid unsupported animation sources without compiling a native preview', async () => {
+  const source = smallProject();
+  source.skins[0].joints[0].inverseBind[3] = 0.1;
+  const bytes = await exportBackup(source, new Map());
+  const session = await ProjectSession.restore(repository, 'unsupported-animation', bytes);
+  expect(session.animation.select('clip').ok).toBe(false);
+  const saved = await importBackup(await session.backup());
+  expect(saved.project.skins[0].joints[0].inverseBind[3]).toBe(0.1);
+  await session.close();
 });
