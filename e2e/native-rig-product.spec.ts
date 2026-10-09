@@ -57,6 +57,11 @@ test('authors mixed skin, previews deformation, preserves rest backup and re-edi
   await expect.poll(async () => (await canvas.screenshot()).equals(rest)).toBe(false);
   await visual(page, 'mixed-pose');
   await page.getByText('骨と重みの編集を開く', { exact: true }).click();
+  await expect(
+    page
+      .locator('section[aria-label="3D骨と重み"] [role="status"]')
+      .filter({ hasText: 'rest表示' }),
+  ).toHaveCount(1);
   await page.getByText('骨と重みの編集を開く', { exact: true }).click();
   await expect(rig.getByRole('status').filter({ hasText: 'rest表示' })).toBeVisible();
   await rig.getByRole('button', { name: 'poseで変形を確認', exact: true }).click();
@@ -77,7 +82,7 @@ test('authors mixed skin, previews deformation, preserves rest backup and re-edi
       (entry) => entry.values[0] === 0.25 && entry.values[1] === 0.75,
     ),
   ).toBe(true);
-  const fresh = await browser.newContext();
+  const fresh = await browser.newContext({ baseURL: new URL(page.url()).origin });
   try {
     const restored = await fresh.newPage();
     await restored.goto('/3d/');
