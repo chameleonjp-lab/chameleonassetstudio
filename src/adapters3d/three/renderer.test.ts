@@ -1,3 +1,6 @@
+import { addRigJoint, bindSkin } from '../../core3d/rig/authoring';
+import { skinVertexToMeshLocal } from '../../core3d/rig/math';
+import { RigPoseTransaction } from '../../features/editor3d/rigPoseTransaction';
 import { describe, expect, it, vi } from 'vitest';
 import { getEventListeners } from 'node:events';
 import {
@@ -166,7 +169,7 @@ describe('isolated native conversion (no WebGL)', () => {
     const animated = smallProject();
     expect(checkNativeProfile(animated)).toMatchObject({
       ok: false,
-      reason: expect.stringContaining('skins, animation clips'),
+      reason: expect.stringContaining('animation clips'),
     });
     const textured = triangle();
     textured.blobIds = ['a'.repeat(64)];
@@ -2588,5 +2591,165 @@ describe('0.2.0 material and visibility rendering', () => {
     expect(f.viewport.diagnostics.selectionHelpers).toBe(2);
     expect(f.binding.begin().ok).toBe(true);
     f.viewport.dispose();
+  });
+});
+
+describe('native smooth skin product graph', () => {
+  function rigged() {
+    const p = nativeBox('rig-render');
+    addRigJoint(p, 'root-rig', 'Root rig', null, {
+      ...identityTransform(),
+      translation: [2, -1, 3],
+      scale: [2, 1, 3],
+      rotation: [0, 0, Math.sin(0.2), Math.cos(0.2)],
+    });
+    addRigJoint(p, 'tip-rig', 'Tip rig', 'root-rig', {
+      ...identityTransform(),
+      translation: [0, 1, 0],
+    });
+    p.nodes.find((node) => node.meshId)!.transform = {
+      ...identityTransform(),
+      translation: [-1, 2, 0],
+      scale: [0.5, 2, 1],
+    };
+    bindSkin(
+      p,
+      'rig-skin',
+      p.meshes[0].id,
+      ['root-rig', 'tip-rig'],
+      p.meshes[0].vertices.map((v) => ({
+        vertexId: v.id,
+        jointIds: ['root-rig', 'tip-rig'],
+        values: [0.25, 0.75],
+      })),
+    );
+    return p;
+  }
+  it('expands stable vertex weights per corner and matches the CPU oracle under transformed parents and mesh instances', () => {
+    const p = rigged();
+    const before = cloneProject(p);
+    const instance = structuredClone(p.nodes.find((node) => node.meshId)!);
+    instance.id = 'second-instance';
+    instance.transform.translation = [4, 0, 1];
+    p.nodes.push(instance);
+    const graph = buildNativeGraph(p);
+    expect(graph.skinnedMeshes).toHaveLength(2);
+    const posed = cloneProject(p);
+    posed.nodes.find((node) => node.id === 'tip-rig')!.transform.translation[0] = 0.75;
+    graph.objects.get('tip-rig')!.position.x = 0.75;
+    graph.root.updateMatrixWorld(true);
+    graph.skeletons.forEach((skeleton) => skeleton.update());
+    for (const [index, mesh] of graph.skinnedMeshes.entries()) {
+      const node = index === 0 ? p.nodes.find((n) => n.meshId)! : instance;
+      const corner = p.meshes[0].faces[0].vertexIds[0];
+      const position = p.meshes[0].vertices.find((v) => v.id === corner)!.position;
+      const actual = mesh.applyBoneTransform(0, new Vector3(...position));
+      const expected = skinVertexToMeshLocal({
+        position,
+        restMeshWorld: worldMatrix(p, node.id),
+        currentMeshWorld: worldMatrix(posed, node.id),
+        joints: p.skins[0].joints.map((joint) => ({
+          nodeId: joint.nodeId,
+          restWorld: worldMatrix(p, joint.nodeId),
+          posedWorld: worldMatrix(posed, joint.nodeId),
+        })),
+        influences: [
+          { jointId: 'root-rig', weight: 0.25 },
+          { jointId: 'tip-rig', weight: 0.75 },
+        ],
+      });
+      actual.toArray().forEach((value, axis) => expect(value).toBeCloseTo(expected[axis], 6));
+      expect(Array.from(mesh.geometry.getAttribute('skinWeight').array).slice(0, 4)).toEqual([
+        0.25, 0.75, 0, 0,
+      ]);
+    }
+    expect(p.skins).toEqual(before.skins);
+    const disposals = graph.skeletons.map((skeleton) => vi.spyOn(skeleton, 'dispose'));
+    graph.dispose();
+    graph.dispose();
+    disposals.forEach((dispose) => expect(dispose).toHaveBeenCalledTimes(1));
+  });
+  it('applies transient poses without rebuilding geometry and cancels at PNG, hidden, suspend and disposal boundaries', async () => {
+    const p = rigged();
+    const h = lifecycleHarness();
+    const editing = new TransformTransaction({
+      getProject: () => cloneProject(p),
+      getIdentity: () => ({ id: p.id, revision: p.revision }),
+      isReadOnly: () => false,
+      commit: () => {
+        throw new Error('no commit');
+      },
+    });
+    const pose = new RigPoseTransaction({
+      getProject: () => cloneProject(p),
+      isReadOnly: () => false,
+      editing,
+    });
+    expect(h.viewport.setProject(p).ok).toBe(true);
+    h.viewport.bindEditing(editing);
+    h.viewport.bindRigPose(pose);
+    h.flush();
+    const baseline = h.viewport.diagnostics;
+    const apply = () =>
+      pose.preview(pose.begin(), [
+        { nodeId: 'tip-rig', transform: { ...identityTransform(), translation: [1, 1, 0] } },
+      ]);
+    expect(apply().ok).toBe(true);
+    h.flush();
+    expect(h.viewport.diagnostics.rebuilds).toBe(baseline.rebuilds);
+    const scene = h.rendererInstances[0].render.mock.calls.at(-1)![0] as Scene;
+    expect(scene.getObjectByName('Tip rig')!.position.x).toBe(1);
+    const meshNode = p.nodes.find((node) => node.meshId)!;
+    const meshObject = scene.getObjectByName(meshNode.name)!;
+    const expectedCenter = new Box3().setFromObject(meshObject).getCenter(new Vector3());
+    expect(h.viewport.focusNode(meshNode.id).ok).toBe(true);
+    h.viewport
+      .getCamera()
+      .target.forEach((value, axis) =>
+        expect(value).toBeCloseTo(expectedCenter.toArray()[axis], 6),
+      );
+    expect(
+      pose.preview(pose.begin(), [
+        { nodeId: 'tip-rig', transform: { ...identityTransform(), translation: [2, 1, 0] } },
+      ]).ok,
+    ).toBe(true);
+    h.flush();
+    const nextCenter = new Box3().setFromObject(meshObject).getCenter(new Vector3());
+    h.viewport.fitCamera();
+    h.viewport
+      .getCamera()
+      .target.forEach((value, axis) => expect(value).toBeCloseTo(nextCenter.toArray()[axis], 6));
+
+    await h.viewport.capturePng();
+    expect(pose.state.active).toBe(false);
+    const outerCapture = pose.beginCapture();
+    await expect(h.viewport.capturePng()).resolves.toBeInstanceOf(Blob);
+    expect(outerCapture.isCurrent()).toBe(true);
+    outerCapture.release();
+    expect(scene.getObjectByName('Tip rig')!.position.x).toBe(0);
+    expect(apply().ok).toBe(true);
+    h.document.hidden = true;
+    h.document.dispatchEvent(new Event('visibilitychange'));
+    expect(pose.state.active).toBe(false);
+    h.document.hidden = false;
+    h.document.dispatchEvent(new Event('visibilitychange'));
+    expect(apply().ok).toBe(true);
+    expect(
+      h.viewport.suspend({
+        persistedRevision: p.revision,
+        currentRevision: p.revision,
+        sourcesComplete: true,
+      }).ok,
+    ).toBe(true);
+    expect(pose.state.active).toBe(false);
+    h.viewport.resume({
+      persistedRevision: p.revision,
+      currentRevision: p.revision,
+      sourcesComplete: true,
+    });
+    expect(apply().ok).toBe(true);
+    h.viewport.dispose();
+    expect(pose.state.active).toBe(false);
+    pose.dispose();
   });
 });

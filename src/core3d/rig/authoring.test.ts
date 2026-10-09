@@ -10,6 +10,9 @@ import { exportStoredBackup, restoreBackupCopy } from '../backup/repositoryBacku
 import { skinVertexToMeshLocal, inverseAffineMatrix } from './math';
 import { validateSkinProfile } from './profile';
 import {
+  addHumanoidRig,
+  extendSkinJoints,
+  removeUnusedRigJoint,
   addRigJoint,
   bindSkin,
   setSkinWeights,
@@ -45,6 +48,32 @@ function unchanged(p: Project3D, operation: () => void) {
 }
 
 describe('native rig authoring commands', () => {
+  it('creates a self-authored guide without binding and removes only unreferenced joints', () => {
+    const p = fixture();
+    const ids = addHumanoidRig(p, 'guide');
+    expect(ids).toHaveLength(7);
+    expect(p.skins).toHaveLength(0);
+    unchanged(p, () => removeUnusedRigJoint(p, 'guide-hips'));
+    removeUnusedRigJoint(p, 'guide-head');
+    expect(p.nodes.some((node) => node.id === 'guide-head')).toBe(false);
+    const boundProject = bound();
+    unchanged(boundProject, () => removeUnusedRigJoint(boundProject, 'tip'));
+  });
+  it('supports more than four palette joints while retaining the four-influence per-vertex limit', () => {
+    const p = bound();
+    const guide = addHumanoidRig(p, 'guide');
+    const before = structuredClone(p.skins[0]);
+    extendSkinJoints(p, 'skin', guide);
+    expect(p.skins[0].joints).toHaveLength(9);
+    expect(p.skins[0].weights).toEqual(before.weights);
+    expect(p.skins[0].joints.slice(0, 2)).toEqual(before.joints);
+    setSkinWeights(p, 'skin', [
+      { vertexId: p.meshes[0].vertices[0].id, jointIds: [guide[6]], values: [1] },
+    ]);
+    expect(p.skins[0].weights[0].jointIds).toEqual([guide[6]]);
+    p.nodes.find((node) => node.id === guide[5])!.locked = true;
+    unchanged(p, () => extendSkinJoints(p, 'skin', [guide[5]]));
+  });
   it('authors connected joints and a continuous mixed-weight mesh in the existing schema', () => {
     const p = bound();
     expect(p.schemaVersion).toBe('0.2.0');

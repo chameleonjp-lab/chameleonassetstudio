@@ -146,3 +146,14 @@ M06の所有境界は維持する。今回の小さなnative subsetではresourc
 - `e2e/native-texture-product.spec.ts`: 両browserの画像・保存/復元・取消・read-only受入
 
 要件対応・失敗境界・残制約は[画像制作記録](../../evidence/3d/B04_NATIVE_TEXTURES.md)。この追記はGLBやB04全体の完了を意味しない。
+
+## B05 手動rigとposeの製品接続
+
+- `src/core3d/rig/authoring.ts`: joint/rest/reparent、manual bind/weight/rebind、少数自作template、参照付きjoint削除の拒否。一回のhistory commandへ接続
+- `src/core3d/rig/pose.ts`: canonical restを変更しないpose候補と、固定GPU shader順のFloat32境界検査
+- `src/core3d/ports/rigPosePort.ts` → `src/features/editor3d/rigPoseTransaction.ts`: 非保存TRS、世代token、取消、PNG capture guard。ProjectSessionが所有し、保存・編集権・終了境界を共有
+- `src/features/editor3d/NativeRigPanel.tsx`: list/数値/IME、restとposeの明示区別、手動weight、独立Undo/保存導線
+- `src/adapters3d/three/renderer.ts`: corner skin属性、Bone/Skeleton/SkinnedMesh、複数instanceのbind、pose後boundsと資源解放。Threeはadapter内に限定
+- `e2e/native-rig-product.spec.ts`: 制作・mixed pose・native backupの別context復元、phone操作を同版で受入
+
+証拠・未検証範囲は [B05記録](../../evidence/3d/B05_NATIVE_RIG.md) を参照。保存0.2.0の項目は追加せず、poseをnodesへ保存しない。配置の実在は、GLB/consumer/実機・全工程完了の証拠ではない。

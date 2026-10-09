@@ -1,3 +1,4 @@
+import type { RigPoseBinding } from '../../core3d/ports/rigPosePort';
 import {
   Component,
   useCallback,
@@ -43,6 +44,7 @@ export interface NativeViewportPanelProps {
   onSave: () => Promise<void>;
   /** A view-only fixture may omit this; product editing must bind explicitly. */
   editing?: NativeEditBinding;
+  rigPose?: RigPoseBinding;
   /** Stable session callback returning a detached copy, never a URL or remote fetch. */
   readBlob?: NativeBlobReader;
 }
@@ -56,6 +58,7 @@ type Instance = {
   cancelled: boolean;
   busy: boolean;
   editing: NativeEditBinding | null;
+  rigPose: RigPoseBinding | null;
   suspensionReason: string;
   preparationReason: string;
   preparer: NativeTexturePreparer;
@@ -78,7 +81,7 @@ const statusText: Record<PanelStatus['state'], string> = {
   'context-lost': 'GPUとの接続が失われました。ブラウザーの復旧を待っています。',
   unavailable: 'この環境ではWebGL2の3D表示を利用できません。',
   unsupported:
-    'この内容の3D表示には対応していません。リグ・アニメーション・未対応の画像形式・三角形以外の面などは表示準備中です。',
+    'この内容の3D表示には対応していません。アニメーション・未対応のrig構造・画像形式・三角形以外の面などは表示準備中です。',
   error: '3D表示を続けられませんでした。',
   disposed: '3D表示を終了しました。',
 };
@@ -295,9 +298,16 @@ function ViewportContent(props: NativeViewportPanelProps) {
     (instance: Instance) => {
       if (!isCurrent(instance) || !instance.port) return;
       const next = latest.current.editing ?? null;
-      if (instance.editing === next) return;
+      const pose = latest.current.rigPose ?? null;
       const port = instance.port;
       try {
+        if (instance.rigPose !== pose) {
+          instance.rigPose?.cancel('pose接続が切り替わりました。');
+          if (pose && !port.bindRigPose) throw new Error('表示providerがposeに対応していません。');
+          port.bindRigPose?.(pose);
+          instance.rigPose = pose;
+        }
+        if (instance.editing === next) return;
         cancelPreparation(instance, true);
         instance.revision = null;
         instance.editing?.cancel('3D表示の編集接続が切り替わりました。');
@@ -334,6 +344,7 @@ function ViewportContent(props: NativeViewportPanelProps) {
       cancelled: false,
       busy: false,
       editing: null,
+      rigPose: null,
       suspensionReason: `viewport-suspension:${headingId}:${attempt}`,
       preparationReason: `viewport-textures:${headingId}:${attempt}`,
       preparer: new NativeTexturePreparer(),
@@ -454,6 +465,7 @@ function ViewportContent(props: NativeViewportPanelProps) {
       view?.removeEventListener('pageshow', show);
       if (instanceRef.current === instance) instanceRef.current = null;
       try {
+        instance.rigPose?.cancel('3D表示を終了しました。');
         instance.editing?.cancel('3D表示を終了しました。');
         instance.port?.dispose();
       } catch {
@@ -500,6 +512,7 @@ function ViewportContent(props: NativeViewportPanelProps) {
     project.id,
     project.revision,
     props.editing,
+    props.rigPose,
     props.readBlob,
     updateProject,
     bindEditing,
@@ -583,6 +596,7 @@ function ViewportContent(props: NativeViewportPanelProps) {
   }
 
   async function downloadPng(instance: Instance, port: NativeViewportPort) {
+    latest.current.rigPose?.cancel('PNGはrestを取得します。');
     const editing = latest.current.editing;
     if (editing?.state.active)
       throw new Error('変形プレビューを確定するか取り消してからPNGを作成してください。');
@@ -593,36 +607,46 @@ function ViewportContent(props: NativeViewportPanelProps) {
     const snapshot = editing?.getProject() ?? latest.current.project;
     if (instance.revision !== snapshot.revision || instance.projectId !== snapshot.id)
       throw new Error('最新の内容を表示できていません。表示の更新後にPNGを作成してください。');
-    const blob = await port.capturePng();
-    if (!isCurrent(instance)) return;
-    const current = latest.current.editing?.getProject() ?? latest.current.project;
-    if (
-      current.id !== snapshot.id ||
-      current.revision !== snapshot.revision ||
-      latest.current.editing !== editing ||
-      (editing && (editing.state.epoch !== epoch || editing.state.active))
-    )
-      throw new Error('画像の作成中に内容が更新されました。もう一度PNGを作成してください。');
-    const document = hostRef.current?.ownerDocument;
-    if (!document) return;
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    const filename = Array.from(snapshot.name, (character) =>
-      character.charCodeAt(0) < 32 ? '_' : character,
-    )
-      .join('')
-      .replace(/[\\/:*?"<>|]/g, '_');
-    anchor.download = `${filename || '3d-view'}.png`;
-    document.body.appendChild(anchor);
+    const pose = latest.current.rigPose;
+    const poseGuard = pose?.beginCapture();
     try {
-      anchor.click();
+      const blob = await port.capturePng();
+      if (!isCurrent(instance)) return;
+      const current = latest.current.editing?.getProject() ?? latest.current.project;
+      if (
+        current.id !== snapshot.id ||
+        current.revision !== snapshot.revision ||
+        latest.current.editing !== editing ||
+        latest.current.rigPose !== pose ||
+        (poseGuard && !poseGuard.isCurrent()) ||
+        (editing && (editing.state.epoch !== epoch || editing.state.active))
+      )
+        throw new Error('画像の作成中に内容が更新されました。もう一度PNGを作成してください。');
+      const document = hostRef.current?.ownerDocument;
+      if (!document) return;
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      const filename = Array.from(snapshot.name, (character) =>
+        character.charCodeAt(0) < 32 ? '_' : character,
+      )
+        .join('')
+        .replace(/[\\/:*?"<>|]/g, '_');
+      anchor.download = `${filename || '3d-view'}.png`;
+      document.body.appendChild(anchor);
+      try {
+        anchor.click();
+      } finally {
+        anchor.remove();
+        // Keep the URL valid for the browser's download task; this timer owns no controller or project.
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      setNotice({
+        text: 'PNG画像のダウンロードを開始しました。編集用バックアップではありません。',
+      });
     } finally {
-      anchor.remove();
-      // Keep the URL valid for the browser's download task; this timer owns no controller or project.
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      poseGuard?.release();
     }
-    setNotice({ text: 'PNG画像のダウンロードを開始しました。編集用バックアップではありません。' });
   }
 
   const active = status.state === 'active';

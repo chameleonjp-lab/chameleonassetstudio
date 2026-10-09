@@ -1,3 +1,4 @@
+import { NativeRigPanel } from './NativeRigPanel';
 import {
   Component,
   lazy,
@@ -863,6 +864,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                       type="button"
                       disabled={busy || previewProjectId !== project.id}
                       onClick={() => {
+                        session.rigPose.cancel('3D表示を終了しました。');
                         session.edit.cancel('3D表示を終了しました。');
                         setPreviewProjectId(null);
                       }}
@@ -881,6 +883,13 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                     disabled={busy || state.readOnly}
                     execute={executeAuthoring}
                     edit={session.edit}
+                  />
+                  <NativeRigPanel
+                    key={`rig-${project.id}`}
+                    project={project}
+                    session={session}
+                    disabled={busy || state.readOnly}
+                    onChange={redraw}
                   />
                   <NativeAssemblyControls
                     key={`assembly-${project.id}`}
@@ -928,6 +937,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                         <NativeViewportPanel
                           project={project}
                           editing={session.edit}
+                          rigPose={session.rigPose}
                           readBlob={readTextureBlob}
                           factory={createNativeViewport}
                           onSave={() => session.save()}
@@ -992,7 +1002,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                   </details>
                   <div className="editor3d-placeholder">
                     <p>
-                      現在の3D表示は三角形メッシュと基本のbaseColor画像に対応しています。リグ・アニメーションを含む作品は保存・バックアップできますが、表示は準備中です。
+                      現在の3D表示は三角形メッシュと基本のbaseColor画像に対応しています。手動rigとpose確認に対応します。アニメーションclipを含む作品の表示は準備中です。
                     </p>
                   </div>
                 </>

@@ -227,3 +227,72 @@ export function reparentRigJoint(
     target.transform = structuredClone(localRest);
   });
 }
+
+/** Small self-authored guide skeleton. It never binds or estimates weights automatically. */
+export function addHumanoidRig(project: Project3D, prefix: string): string[] {
+  const result: string[] = [];
+  atomic(project, (candidate) => {
+    const definitions: [string, string | null, [number, number, number]][] = [
+      ['hips', null, [0, 0, 0]],
+      ['spine', 'hips', [0, 0.5, 0]],
+      ['head', 'spine', [0, 0.5, 0]],
+      ['left-arm', 'spine', [-0.4, 0.2, 0]],
+      ['right-arm', 'spine', [0.4, 0.2, 0]],
+      ['left-leg', 'hips', [-0.15, -0.5, 0]],
+      ['right-leg', 'hips', [0.15, -0.5, 0]],
+    ];
+    for (const [name, parent, translation] of definitions) {
+      const id = `${prefix}-${name}`;
+      candidate.nodes.push({
+        id,
+        name,
+        parentId: parent === null ? null : `${prefix}-${parent}`,
+        transform: { translation, rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      });
+      result.push(id);
+    }
+    return [];
+  });
+  return result;
+}
+
+/** Joint removal is allowed only when it cannot orphan hierarchy, skin or clip references. */
+export function removeUnusedRigJoint(project: Project3D, jointId: string) {
+  atomic(project, (candidate) => {
+    const target = node(candidate, jointId);
+    assertNodeEditable(candidate, jointId);
+    if (
+      target.meshId !== undefined ||
+      candidate.nodes.some((item) => item.parentId === jointId) ||
+      candidate.skins.some((value) => value.joints.some((joint) => joint.nodeId === jointId)) ||
+      candidate.clips.some((clip) => clip.tracks.some((track) => track.nodeId === jointId))
+    )
+      throw new Error(
+        'Referenced joints cannot be removed. Keep the skin, clips and children intact.',
+      );
+    candidate.nodes = candidate.nodes.filter((item) => item.id !== jointId);
+    return [];
+  });
+}
+
+/** Explicitly extend the skin palette without changing any existing vertex weights or binds. */
+export function extendSkinJoints(project: Project3D, skinId: string, jointIds: readonly string[]) {
+  atomic(project, (candidate) => {
+    const value = skin(candidate, skinId);
+    assertSkinEditable(candidate, value);
+    if (!jointIds.length || new Set(jointIds).size !== jointIds.length)
+      throw new Error('Select unique palette joints');
+    for (const nodeId of jointIds) {
+      node(candidate, nodeId);
+      assertNodeEditable(candidate, nodeId);
+      if (!value.joints.some((joint) => joint.nodeId === nodeId))
+        value.joints.push({
+          nodeId,
+          inverseBind: inverseAffineMatrix(worldMatrix(candidate, nodeId)).map((entry) =>
+            entry === 0 ? 0 : entry,
+          ),
+        });
+    }
+    return [skinId];
+  });
+}

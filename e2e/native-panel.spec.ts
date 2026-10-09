@@ -231,3 +231,41 @@ test('a view-only provider cannot silently accept product editing', async ({ pag
     ),
   ).toEqual({ ok: true });
 });
+
+test('rig pose binding replacement cancels the old preview and PNG blocks new poses until encoding ends', async ({
+  page,
+}) => {
+  await page.goto('/e2e/fixtures/native-panel.html?editing&rig-pose&capture-delay');
+  await expect(page.getByRole('button', { name: 'PNG画像を保存', exact: true })).toBeEnabled();
+  const rigState = () =>
+    page.evaluate(() => (window as unknown as { panelHarness: PanelHarness }).panelHarness.rigPose);
+  await page.evaluate(() =>
+    (window as unknown as { panelHarness: PanelHarness }).panelHarness.previewRig(),
+  );
+  expect((await rigState())!.active).toBe(true);
+  await page.evaluate(() =>
+    (window as unknown as { panelHarness: PanelHarness }).panelHarness.replaceBinding(),
+  );
+  await expect.poll(async () => (await rigState())?.active).toBe(false);
+  await page.getByRole('button', { name: 'PNG画像を保存', exact: true }).click();
+  await expect.poll(async () => (await state(page))[0].capturePending).toBe(true);
+  const result = await page.evaluate(() => {
+    try {
+      (window as unknown as { panelHarness: PanelHarness }).panelHarness.previewRig();
+      return 'accepted';
+    } catch {
+      return 'blocked';
+    }
+  });
+  expect(result).toBe('blocked');
+  const download = page.waitForEvent('download');
+  await page.evaluate(() =>
+    (window as unknown as { panelHarness: PanelHarness }).panelHarness.finishCapture(),
+  );
+  await download;
+  expect(
+    await page.evaluate(() =>
+      (window as unknown as { panelHarness: PanelHarness }).panelHarness.previewRig(),
+    ),
+  ).toMatchObject({ ok: true });
+});

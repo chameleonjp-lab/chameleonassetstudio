@@ -1,3 +1,4 @@
+import type { RigPoseBinding } from './rigPosePort';
 import type { Project3D } from '../model/project';
 import type { Vec3 } from '../model/project';
 import type { NativeEditBinding } from './editPort';
@@ -70,6 +71,7 @@ export interface NativeViewportPort {
   setProject(project: Project3D, textures?: NativeTextureSnapshot): NativeViewportResult;
   /** Preview subscription is separate from canonical graph replacement. */
   bindEditing?(binding: NativeEditBinding | null): void;
+  bindRigPose?(binding: RigPoseBinding | null): void;
   resetCamera(): void;
   fitCamera(): void;
   cameraAction(action: NativeCameraAction): NativeViewportResult;

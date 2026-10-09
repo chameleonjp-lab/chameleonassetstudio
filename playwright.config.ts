@@ -39,6 +39,7 @@ export default defineConfig({
         'native-viewport-product.spec.ts',
         'native-editing-product.spec.ts',
         'native-texture-product.spec.ts',
+        'native-rig-product.spec.ts',
         'import.spec.ts',
         'storage.spec.ts',
         'export.spec.ts',

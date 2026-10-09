@@ -1,6 +1,14 @@
+import type { RigPoseBinding } from '../../core3d/ports/rigPosePort';
+import { evaluateRigPose } from '../../core3d/rig/pose';
+import { validateSkinProfile } from '../../core3d/rig/profile';
 import { isNodeVisible } from '../../core3d/model/editability';
 /** Native-static Three adapter. Lazy product use follows the scoped G03 evidence record. */
 import {
+  Bone,
+  Skeleton,
+  SkinnedMesh,
+  Matrix4,
+  Uint16BufferAttribute,
   AmbientLight,
   AxesHelper,
   Box3,
@@ -163,7 +171,30 @@ export function checkNativeProfile(
     );
   }
   const unsupported: string[] = [];
-  if (project.skins.length) unsupported.push('skins');
+  try {
+    const meshIds = new Set<string>();
+    for (const skin of project.skins) {
+      if (meshIds.has(skin.meshId)) return failure('Multiple skins on one mesh are unsupported.');
+      meshIds.add(skin.meshId);
+      validateSkinProfile(
+        skin,
+        project.meshes.find((mesh) => mesh.id === skin.meshId),
+        project.nodes,
+      );
+      if (skin.joints.length > 65535) return failure('Skin joint count exceeds Uint16 indices.');
+      if (
+        skin.joints.some(
+          (joint) => project.nodes.find((node) => node.id === joint.nodeId)?.meshId !== undefined,
+        )
+      )
+        return failure('A joint with its own mesh needs an explicit joint-only conversion.');
+    }
+    if (project.skins.length) evaluateRigPose(project, []);
+  } catch (error) {
+    return failure(
+      `Invalid native skin: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
   if (project.clips.length) unsupported.push('animation clips');
   if (project.meshes.some((mesh) => mesh.faces.some((face) => face.vertexIds.length !== 3)))
     unsupported.push('non-triangle faces');
@@ -239,6 +270,8 @@ export interface NativeGraph {
   textures: DataTexture[];
   /** The only pick/edit identity map; helpers never enter it. */
   objects: Map<string, Object3D>;
+  skinnedMeshes: SkinnedMesh[];
+  skeletons: Skeleton[];
   dispose(): void;
 }
 
@@ -255,6 +288,8 @@ export function buildNativeGraph(
   const graphTextures: DataTexture[] = [];
   const textureReservations: (() => void)[] = [];
   const nodes = new Map<string, Object3D>();
+  const skeletons: Skeleton[] = [];
+  const skinnedMeshes: SkinnedMesh[] = [];
   let disposed = false;
   const graph: NativeGraph = {
     root,
@@ -262,12 +297,17 @@ export function buildNativeGraph(
     materials,
     textures: graphTextures,
     objects: nodes,
+    skeletons,
+    skinnedMeshes,
     dispose() {
       if (disposed) return;
       disposed = true;
       root.removeFromParent();
       root.clear();
       nodes.clear();
+      skeletons.forEach((skeleton) => skeleton.dispose());
+      skeletons.length = 0;
+      skinnedMeshes.length = 0;
       geometries.forEach((geometry) => geometry.dispose());
       materials.forEach((material) => material.dispose());
       graphTextures.forEach((texture) => {
@@ -356,6 +396,11 @@ export function buildNativeGraph(
       const geometry = new BufferGeometry();
       geometries.push(geometry);
       const vertices = new Map(mesh.vertices.map((vertex) => [vertex.id, vertex.position]));
+      const skin = project.skins.find((value) => value.meshId === mesh.id);
+      const weights = new Map(skin?.weights.map((value) => [value.vertexId, value]));
+      const jointIndices = new Map(skin?.joints.map((joint, index) => [joint.nodeId, index]));
+      const skinIndices: number[] = [],
+        skinWeights: number[] = [];
       const positions: number[] = [],
         normals: number[] = [],
         uvs: number[] = [];
@@ -371,9 +416,24 @@ export function buildNativeGraph(
         else geometry.addGroup(positions.length / 3, 3, index);
         corners.forEach((corner, index) => {
           positions.push(...corner);
+          if (skin) {
+            const assignment = weights.get(face.vertexIds[index])!;
+            for (let influence = 0; influence < 4; influence++) {
+              skinIndices.push(
+                influence < assignment.jointIds.length
+                  ? jointIndices.get(assignment.jointIds[influence])!
+                  : 0,
+              );
+              skinWeights.push(assignment.values[influence] ?? 0);
+            }
+          }
           normals.push(...(face.normals?.[index] ?? normal.toArray()));
           uvs.push(...(face.uv?.[index] ?? [0, 0]));
         });
+      }
+      if (skin) {
+        geometry.setAttribute('skinIndex', new Uint16BufferAttribute(skinIndices, 4));
+        geometry.setAttribute('skinWeight', new Float32BufferAttribute(skinWeights, 4));
       }
       geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
       geometry.setAttribute('normal', new Float32BufferAttribute(normals, 3));
@@ -382,11 +442,18 @@ export function buildNativeGraph(
       geometry.computeBoundingSphere();
       geometryById.set(mesh.id, geometry);
     }
+    const jointIds = new Set(
+      project.skins.flatMap((skin) => skin.joints.map((joint) => joint.nodeId)),
+    );
     for (const node of project.nodes) {
-      const object =
-        node.meshId === undefined
+      const skin = project.skins.find((value) => value.meshId === node.meshId);
+      const object = jointIds.has(node.id)
+        ? new Bone()
+        : node.meshId === undefined
           ? new Group()
-          : new Mesh(geometryById.get(node.meshId)!, materials);
+          : skin
+            ? new SkinnedMesh(geometryById.get(node.meshId)!, materials)
+            : new Mesh(geometryById.get(node.meshId)!, materials);
       object.name = node.name;
       object.visible = node.visible !== false;
       object.userData = { canonicalNodeId: node.id };
@@ -398,6 +465,21 @@ export function buildNativeGraph(
     for (const node of project.nodes)
       (node.parentId === null ? root : nodes.get(node.parentId)!).add(nodes.get(node.id)!);
     root.updateMatrixWorld(true);
+    for (const node of project.nodes) {
+      const skin = project.skins.find((value) => value.meshId === node.meshId);
+      if (!skin) continue;
+      const object = nodes.get(node.id) as SkinnedMesh;
+      const skeleton = new Skeleton(
+        skin.joints.map((joint) => nodes.get(joint.nodeId) as Bone),
+        skin.joints.map((joint) => new Matrix4().fromArray(joint.inverseBind)),
+      );
+      skeletons.push(skeleton);
+      skinnedMeshes.push(object);
+      object.bind(skeleton, object.matrixWorld);
+      skeleton.update();
+      object.computeBoundingBox();
+      object.computeBoundingSphere();
+    }
     return graph;
   } catch (error) {
     graph.dispose();
@@ -443,6 +525,8 @@ export function fitPerspectiveBounds(
 }
 
 export class NativeViewport {
+  private rigPose: RigPoseBinding | null = null;
+  private poseUnsubscribe: (() => void) | null = null;
   private readonly scene = new Scene();
   private camera: InspectionCamera = new PerspectiveCamera(45, 1, 0.01, 1000);
   private readonly target = new Vector3();
@@ -690,6 +774,49 @@ export class NativeViewport {
       : { ok: true };
   }
 
+  bindRigPose(binding: RigPoseBinding | null): void {
+    if (this.disposed || this.rigPose === binding) return;
+    this.poseUnsubscribe?.();
+    this.rigPose?.cancel('pose表示接続が変わりました。');
+    this.rigPose = binding;
+    this.poseUnsubscribe = binding?.subscribe(() => this.applyRigPose()) ?? null;
+    this.applyRigPose();
+  }
+  private applyRigPose(): void {
+    if (!this.graph || !this.snapshot || this.disposed) return;
+    this.restoreCanonicalTransforms();
+    const state = this.rigPose?.state;
+    if (
+      state?.active &&
+      state.projectId === this.snapshot.id &&
+      state.revision === this.snapshot.revision
+    ) {
+      for (const { nodeId, transform } of state.updates) {
+        const object = this.graph.objects.get(nodeId);
+        if (!object) continue;
+        object.position.fromArray(transform.translation);
+        object.quaternion.fromArray(transform.rotation);
+        object.scale.fromArray(transform.scale);
+      }
+    }
+    this.graph.root.updateMatrixWorld(true);
+    this.graph.skeletons.forEach((skeleton) => skeleton.update());
+    this.graph.skinnedMeshes.forEach((mesh) => {
+      mesh.computeBoundingBox();
+      mesh.computeBoundingSphere();
+    });
+    for (const helper of this.helpers)
+      if (helper instanceof Box3Helper) helper.box.copy(this.modelBounds());
+    if (this.editBinding)
+      this.updateSelection(
+        this.editBinding.state,
+        this.editBinding.state.projectId === this.snapshot.id &&
+          this.editBinding.state.revision === this.snapshot.revision,
+      );
+    this.captureVersion++;
+    this.requestRender();
+  }
+
   bindEditing(binding: NativeEditBinding | null): void {
     if (this.disposed || binding === this.editBinding) return;
     this.editUnsubscribe?.();
@@ -795,6 +922,7 @@ export class NativeViewport {
       }
       this.editSequence = state.sequence;
       this.graph.root.updateMatrixWorld(true);
+      if (this.rigPose?.state.active) this.applyRigPose();
       this.updateSelection(state, matches);
       this.requestRender();
     } finally {
@@ -1297,13 +1425,16 @@ export class NativeViewport {
         this.editBinding.state.revision !== this.snapshot?.revision)
     )
       throw new Error('PNG capture requires the displayed canonical revision.');
+    if (this.rigPose?.state.active) this.rigPose.cancel('PNGは保存正本のrestから取得します。');
     const guard = this.editBinding?.beginCapture();
+    let poseGuard: ReturnType<RigPoseBinding['beginCapture']> | undefined;
     const generation = this.runtimeGeneration,
       viewVersion = this.captureVersion;
     const projectId = this.snapshot?.id,
       revision = this.snapshot?.revision;
     const canvas = this.element;
     try {
+      poseGuard = this.rigPose?.beginCapture();
       this.cancelRender();
       this.editController?.setHelpersVisible(false);
       for (const helpers of this.selectionHelpers.values())
@@ -1322,7 +1453,8 @@ export class NativeViewport {
             !this.canRender() ||
             projectId !== this.snapshot?.id ||
             revision !== this.snapshot?.revision ||
-            (guard && !guard.isCurrent())
+            (guard && !guard.isCurrent()) ||
+            (poseGuard && !poseGuard.isCurrent())
           ) {
             reject(new Error('PNG capture became stale during encoding.'));
           } else if (blob) resolve(blob);
@@ -1331,6 +1463,7 @@ export class NativeViewport {
       });
     } finally {
       guard?.release();
+      poseGuard?.release();
       if (generation === this.runtimeGeneration) {
         this.editController?.setHelpersVisible(true);
         for (const helpers of this.selectionHelpers.values())
@@ -1344,6 +1477,10 @@ export class NativeViewport {
 
   dispose(): void {
     if (this.disposed) return;
+    this.poseUnsubscribe?.();
+    this.poseUnsubscribe = null;
+    this.rigPose?.cancel('3D表示を終了しました。');
+    this.rigPose = null;
     this.editUnsubscribe?.();
     this.editUnsubscribe = null;
     this.disposed = true;
@@ -1483,6 +1620,7 @@ export class NativeViewport {
       this.graph = buildNativeGraph(this.snapshot, this.textureSnapshot);
       this.scene.add(this.graph.root);
       this.applyInspection();
+      this.applyRigPose();
       this.rebuildCount++;
       return true;
     } catch (error) {
@@ -1541,6 +1679,7 @@ export class NativeViewport {
   }
 
   private syncActivity(): void {
+    if (!this.canRender()) this.rigPose?.cancel('表示が中断したためrestに戻しました。');
     if (this.editBinding) this.syncEditingBlocks(this.editBinding);
     if (this.canRender() && this.element) {
       try {
@@ -1707,6 +1846,7 @@ export class NativeViewport {
     this.graph = null;
   }
   private releaseRuntime(): void {
+    this.rigPose?.cancel('表示資源を解放したためrestに戻しました。');
     this.runtimeGeneration++;
     this.cancelRender();
     this.releaseControls();
@@ -1730,9 +1870,15 @@ function visibleBounds(root: Object3D): Box3 {
   root.updateWorldMatrix(true, true);
   root.traverseVisible((object) => {
     if (object instanceof Mesh) {
-      object.geometry.computeBoundingBox();
-      if (object.geometry.boundingBox)
-        bounds.union(object.geometry.boundingBox.clone().applyMatrix4(object.matrixWorld));
+      if (object instanceof SkinnedMesh) {
+        object.computeBoundingBox();
+        if (object.boundingBox)
+          bounds.union(object.boundingBox.clone().applyMatrix4(object.matrixWorld));
+      } else {
+        object.geometry.computeBoundingBox();
+        if (object.geometry.boundingBox)
+          bounds.union(object.geometry.boundingBox.clone().applyMatrix4(object.matrixWorld));
+      }
     }
   });
   return bounds;
