@@ -1,3 +1,4 @@
+import { NativeAnimationPanel } from './NativeAnimationPanel';
 import { NativeRigPanel } from './NativeRigPanel';
 import {
   Component,
@@ -864,6 +865,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                       type="button"
                       disabled={busy || previewProjectId !== project.id}
                       onClick={() => {
+                        session.animation.cancel('3D表示を終了しました。');
                         session.rigPose.cancel('3D表示を終了しました。');
                         session.edit.cancel('3D表示を終了しました。');
                         setPreviewProjectId(null);
@@ -894,6 +896,22 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                     <summary>骨と重みの編集を開く</summary>
                     <NativeRigPanel
                       key={`rig-${project.id}`}
+                      project={project}
+                      session={session}
+                      disabled={busy || state.readOnly}
+                      onChange={redraw}
+                    />
+                  </details>
+                  <details
+                    className="editor3d-details"
+                    onToggle={(event) => {
+                      if (!event.currentTarget.open)
+                        session.animation.cancel('アニメーション編集を閉じました。');
+                    }}
+                  >
+                    <summary>アニメーション編集を開く</summary>
+                    <NativeAnimationPanel
+                      key={`animation-${project.id}`}
                       project={project}
                       session={session}
                       disabled={busy || state.readOnly}
@@ -947,6 +965,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                           project={project}
                           editing={session.edit}
                           rigPose={session.rigPose}
+                          animation={session.animation}
                           readBlob={readTextureBlob}
                           factory={createNativeViewport}
                           onSave={() => session.save()}
@@ -1011,7 +1030,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                   </details>
                   <div className="editor3d-placeholder">
                     <p>
-                      現在の3D表示は三角形メッシュと基本のbaseColor画像に対応しています。手動rigとpose確認に対応します。アニメーションclipを含む作品の表示は準備中です。
+                      現在の3D表示は三角形メッシュと基本のbaseColor画像に対応しています。手動rigとpose確認に対応します。objectと骨のclip制作・再生確認に対応します。GLB出力は準備中です。
                     </p>
                   </div>
                 </>

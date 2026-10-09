@@ -1,3 +1,6 @@
+import { AnimationTransaction } from '../../src/features/editor3d/animationTransaction';
+import type { AnimationBinding } from '../../src/core3d/ports/animationPort';
+import { createClip, addKey } from '../../src/core3d/animation/authoring';
 import { RigPoseTransaction } from '../../src/features/editor3d/rigPoseTransaction';
 import { addRigJoint, bindSkin } from '../../src/core3d/rig/authoring';
 import { identityTransform } from '../../src/core3d/model/project';
@@ -20,6 +23,7 @@ import type { NativeCameraState, NativeViewOptions } from '../../src/core3d/port
 
 type PortLog = {
   poseBindings: number;
+  animationBindings: number;
   cameraWrites: number;
   bindings: number;
   boundProject: string | null;
@@ -52,6 +56,12 @@ if (parameters.has('rig-pose')) {
     })),
   );
 }
+if (parameters.has('animation')) {
+  createClip(canonical, 'animation-clip', 'Move');
+  addKey(canonical, 'animation-clip', canonical.nodes[0].id, 'translation', 'LINEAR', 0, [0, 0, 0]);
+  addKey(canonical, 'animation-clip', canonical.nodes[0].id, 'translation', 'LINEAR', 1, [1, 0, 0]);
+}
+let currentAnimation: AnimationBinding | null = null;
 let currentPose: RigPoseBinding | null = null;
 let currentEdit: NativeEditBinding | null = null;
 let lastGesture: { edit: NativeEditBinding; token: NativeEditToken } | null = null;
@@ -63,6 +73,7 @@ const delay = new URLSearchParams(location.search).has('delay');
 const factory: NativeViewportFactory = async (host, onStatus) => {
   const log: PortLog = {
     poseBindings: 0,
+    animationBindings: 0,
     cameraWrites: 0,
     bindings: 0,
     boundProject: null,
@@ -99,6 +110,10 @@ const factory: NativeViewportFactory = async (host, onStatus) => {
             log.boundProject = binding?.state.projectId ?? null;
           },
         }),
+    bindAnimation(binding) {
+      log.animationBindings++;
+      binding?.setAvailable(true);
+    },
     bindRigPose() {
       log.poseBindings++;
     },
@@ -171,6 +186,14 @@ const factory: NativeViewportFactory = async (host, onStatus) => {
   return port;
 };
 const api = {
+  get animation() {
+    return currentAnimation?.state ?? null;
+  },
+  previewAnimation() {
+    if (!currentAnimation) throw new Error('No animation');
+    const selected = currentAnimation.select('animation-clip');
+    return selected.ok ? currentAnimation.seek(0.5) : selected;
+  },
   get rigPose() {
     return currentPose?.state ?? null;
   },
@@ -264,7 +287,7 @@ export function Harness() {
   }, [project.id, bindingVersion]);
   const rigPose = useMemo(
     () =>
-      parameters.has('rig-pose') && editing
+      (parameters.has('rig-pose') || parameters.has('animation')) && editing
         ? new RigPoseTransaction({
             getProject: () => structuredClone(canonical),
             isReadOnly: () => false,
@@ -273,6 +296,25 @@ export function Harness() {
         : undefined,
     [editing],
   );
+  const animation = useMemo(
+    () =>
+      parameters.has('animation') && editing && rigPose
+        ? new AnimationTransaction({
+            getProject: () => structuredClone(canonical),
+            editing,
+            rig: rigPose,
+            isReadOnly: () => false,
+          })
+        : undefined,
+    [editing, rigPose],
+  );
+  useLayoutEffect(() => {
+    currentAnimation = animation ?? null;
+    return () => {
+      if (currentAnimation === animation) currentAnimation = null;
+      animation?.dispose();
+    };
+  }, [animation]);
   useLayoutEffect(() => {
     currentPose = rigPose ?? null;
     return () => {
@@ -355,6 +397,7 @@ export function Harness() {
         project={project}
         editing={editing}
         rigPose={rigPose}
+        animation={animation}
         factory={factory}
         onSave={async () => {
           if (failSave) throw new Error('Fixture save failed');

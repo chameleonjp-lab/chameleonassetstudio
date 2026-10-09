@@ -1,3 +1,4 @@
+import type { AnimationBinding } from '../../core3d/ports/animationPort';
 import type { RigPoseBinding } from '../../core3d/ports/rigPosePort';
 import { evaluateRigPose } from '../../core3d/rig/pose';
 import { validateSkinProfile } from '../../core3d/rig/profile';
@@ -195,7 +196,7 @@ export function checkNativeProfile(
       `Invalid native skin: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
-  if (project.clips.length) unsupported.push('animation clips');
+
   if (project.meshes.some((mesh) => mesh.faces.some((face) => face.vertexIds.length !== 3)))
     unsupported.push('non-triangle faces');
   if (unsupported.length)
@@ -525,6 +526,8 @@ export function fitPerspectiveBounds(
 }
 
 export class NativeViewport {
+  private animation: AnimationBinding | null = null;
+  private animationUnsubscribe: (() => void) | null = null;
   private rigPose: RigPoseBinding | null = null;
   private poseUnsubscribe: (() => void) | null = null;
   private readonly scene = new Scene();
@@ -774,6 +777,16 @@ export class NativeViewport {
       : { ok: true };
   }
 
+  bindAnimation(binding: AnimationBinding | null): void {
+    if (this.disposed || this.animation === binding) return;
+    this.animationUnsubscribe?.();
+    this.animation?.cancel('再生表示接続が変わりました。');
+    this.animation?.setAvailable(false);
+    this.animation = binding;
+    this.animation?.setAvailable(this.canRender());
+    this.animationUnsubscribe = binding?.subscribe(() => this.applyRigPose()) ?? null;
+    this.applyRigPose();
+  }
   bindRigPose(binding: RigPoseBinding | null): void {
     if (this.disposed || this.rigPose === binding) return;
     this.poseUnsubscribe?.();
@@ -785,7 +798,7 @@ export class NativeViewport {
   private applyRigPose(): void {
     if (!this.graph || !this.snapshot || this.disposed) return;
     this.restoreCanonicalTransforms();
-    const state = this.rigPose?.state;
+    const state = this.animation?.state.active ? this.animation.state : this.rigPose?.state;
     if (
       state?.active &&
       state.projectId === this.snapshot.id &&
@@ -922,7 +935,7 @@ export class NativeViewport {
       }
       this.editSequence = state.sequence;
       this.graph.root.updateMatrixWorld(true);
-      if (this.rigPose?.state.active) this.applyRigPose();
+      if (this.rigPose?.state.active || this.animation?.state.active) this.applyRigPose();
       this.updateSelection(state, matches);
       this.requestRender();
     } finally {
@@ -1425,9 +1438,11 @@ export class NativeViewport {
         this.editBinding.state.revision !== this.snapshot?.revision)
     )
       throw new Error('PNG capture requires the displayed canonical revision.');
+    if (this.animation?.state.active) this.animation.cancel('PNGは保存正本のrestから取得します。');
     if (this.rigPose?.state.active) this.rigPose.cancel('PNGは保存正本のrestから取得します。');
     const guard = this.editBinding?.beginCapture();
     let poseGuard: ReturnType<RigPoseBinding['beginCapture']> | undefined;
+    let animationGuard: ReturnType<AnimationBinding['beginCapture']> | undefined;
     const generation = this.runtimeGeneration,
       viewVersion = this.captureVersion;
     const projectId = this.snapshot?.id,
@@ -1435,6 +1450,7 @@ export class NativeViewport {
     const canvas = this.element;
     try {
       poseGuard = this.rigPose?.beginCapture();
+      animationGuard = this.animation?.beginCapture();
       this.cancelRender();
       this.editController?.setHelpersVisible(false);
       for (const helpers of this.selectionHelpers.values())
@@ -1454,7 +1470,8 @@ export class NativeViewport {
             projectId !== this.snapshot?.id ||
             revision !== this.snapshot?.revision ||
             (guard && !guard.isCurrent()) ||
-            (poseGuard && !poseGuard.isCurrent())
+            (poseGuard && !poseGuard.isCurrent()) ||
+            (animationGuard && !animationGuard.isCurrent())
           ) {
             reject(new Error('PNG capture became stale during encoding.'));
           } else if (blob) resolve(blob);
@@ -1464,6 +1481,7 @@ export class NativeViewport {
     } finally {
       guard?.release();
       poseGuard?.release();
+      animationGuard?.release();
       if (generation === this.runtimeGeneration) {
         this.editController?.setHelpersVisible(true);
         for (const helpers of this.selectionHelpers.values())
@@ -1477,6 +1495,11 @@ export class NativeViewport {
 
   dispose(): void {
     if (this.disposed) return;
+    this.animationUnsubscribe?.();
+    this.animationUnsubscribe = null;
+    this.animation?.setAvailable(false);
+    this.animation?.cancel('3D表示を終了しました。');
+    this.animation = null;
     this.poseUnsubscribe?.();
     this.poseUnsubscribe = null;
     this.rigPose?.cancel('3D表示を終了しました。');
@@ -1679,6 +1702,8 @@ export class NativeViewport {
   }
 
   private syncActivity(): void {
+    this.animation?.setAvailable(this.canRender());
+    if (!this.canRender()) this.animation?.pause('表示中断で再生を停止しました。');
     if (!this.canRender()) this.rigPose?.cancel('表示が中断したためrestに戻しました。');
     if (this.editBinding) this.syncEditingBlocks(this.editBinding);
     if (this.canRender() && this.element) {
@@ -1712,9 +1737,11 @@ export class NativeViewport {
 
   private requestRender(): void {
     if (!this.canRender() || this.frame !== null) return;
-    this.frame = this.dependencies.requestFrame(() => {
+    this.frame = this.dependencies.requestFrame((timestamp) => {
       this.frame = null;
+      this.animation?.advance(timestamp);
       this.renderNow();
+      if (this.animation?.state.playing) this.requestRender();
     });
   }
   private cancelRender(): void {
@@ -1846,6 +1873,8 @@ export class NativeViewport {
     this.graph = null;
   }
   private releaseRuntime(): void {
+    this.animation?.cancel('表示資源を解放したため再生を解除しました。');
+    this.animation?.setAvailable(false);
     this.rigPose?.cancel('表示資源を解放したためrestに戻しました。');
     this.runtimeGeneration++;
     this.cancelRender();

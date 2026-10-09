@@ -157,3 +157,17 @@ M06の所有境界は維持する。今回の小さなnative subsetではresourc
 - `e2e/native-rig-product.spec.ts`: 制作・mixed pose・native backupの別context復元、phone操作を同版で受入
 
 証拠・未検証範囲は [B05記録](../../evidence/3d/B05_NATIVE_RIG.md) を参照。保存0.2.0の項目は追加せず、poseをnodesへ保存しない。配置の実在は、GLB/consumer/実機・全工程完了の証拠ではない。
+
+## B06 native animation ownership
+
+| Owner | Lifetime / contract |
+| --- | --- |
+| `core3d/animation/authoring.ts` | Detached atomic clip/key candidates; caller owns one history transaction. Duplicate times and destructive duration truncation reject. Lock checks cover affected descendants and bound meshes. |
+| `core3d/animation/evaluation.ts` | Seconds-based STEP/LINEAR and shortest-arc quaternion sampling from canonical rest. Revision-owned immutable prepared sources; no renderer or persisted preview. |
+| `core3d/rig/pose.ts` | Shared display numeric safety without relaxing manual rig authorization. Prepared animation uses stage-wise absolute bounds with large Float32 headroom; near limits fall back to ordered per-vertex checks. |
+| `animationTransaction.ts` | Session owns selected clip/time/play state, lazy evaluation, observer isolation, capture leases and cancellation. Read-only playback is allowed; implicit auto-key is not. Unsupported native data can still open/save/backup. |
+| Three adapter | Owns the single RAF chain, renderer availability, shared transform overlay, skeleton/bounds refresh and disposal. Hidden/frozen/lost/suspended display cannot keep advancing or catch up background time. |
+| `NativeAnimationPanel.tsx` | Numeric/key-list and bounded zoomed timeline UI, IME boundary, explicit key operations and revision-bound key drafts. Full keys remain reachable through pagination. |
+| Native viewport panel | Binding replacement and outer PNG capture lease; PNG always returns canonical rest, not a scrub/play pose. |
+
+Preview order is canonical rest, then one current-revision overlay. Transform gestures, manual rig preview and animation preview are mutually exclusive. Animation and rig bindings are not persisted and cannot add history records. Save/backup/copy/Undo/Redo/ownership/close cancel previews. GLB clip bytes and consumer loop policy remain B07/B08.

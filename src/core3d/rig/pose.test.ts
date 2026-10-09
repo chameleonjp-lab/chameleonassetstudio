@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createProject, identityTransform, cloneProject } from '../model/project';
 import { addBox } from '../commands/box';
 import { addRigJoint, bindSkin } from './authoring';
-import { evaluateRigPose } from './pose';
+import { evaluateRigPose, evaluateTransformPose, prepareTransformPose } from './pose';
 function fixture() {
   const p = createProject('pose');
   addBox(p, 'box');
@@ -140,4 +140,64 @@ describe('rig pose evaluation', () => {
       ]),
     ).toThrow();
   });
+});
+
+it('allows display-only object and locked bone animation while retaining strict manual rig authorization', () => {
+  const p = fixture();
+  p.nodes.find((node) => node.id === 'b')!.locked = true;
+  const joint = {
+    nodeId: 'b',
+    transform: { ...identityTransform(), translation: [1, 1, 0] as [number, number, number] },
+  };
+  expect(() => evaluateRigPose(p, [joint])).toThrow();
+  expect(
+    evaluateTransformPose(p, [joint]).nodes.find((node) => node.id === 'b')!.transform.translation,
+  ).toEqual([1, 1, 0]);
+  const object = {
+    nodeId: p.nodes.find((node) => node.meshId)!.id,
+    transform: identityTransform(),
+  };
+  expect(() => evaluateRigPose(p, [object])).toThrow();
+  expect(() => evaluateTransformPose(p, [object])).not.toThrow();
+});
+
+it('prepared animation falls back near Float32 limits instead of trusting source AABB corners', () => {
+  const p = fixture();
+  p.clips = [];
+  p.nodes.find((node) => node.id === 'b')!.transform = identityTransform();
+  p.meshes[0].faces = [];
+  p.meshes[0].vertices = [
+    [0, 1, 0],
+    [0.125, 1, 0],
+    [0.0075, 1, 0],
+  ].map((position, index) => ({ id: 'v' + index, position: position as [number, number, number] }));
+  const shape = p.nodes.find((node) => node.meshId)!;
+  shape.transform.rotation = [0, 0, Math.sin(Math.PI / 12), Math.cos(Math.PI / 12)];
+  p.skins[0].joints = [p.skins[0].joints[0]];
+  p.skins[0].weights = p.meshes[0].vertices.map((vertex) => ({
+    vertexId: vertex.id,
+    jointIds: ['a'],
+    values: [1],
+  }));
+  const updates = [
+    {
+      nodeId: 'a',
+      transform: {
+        translation: [0, 0, 0] as [number, number, number],
+        rotation: [0, 0, -Math.sin(Math.PI / 12), Math.cos(Math.PI / 12)] as [
+          number,
+          number,
+          number,
+          number,
+        ],
+        scale: [3.4028234663852886e38, 3.4028234663852886e38, 3.4028234663852886e38] as [
+          number,
+          number,
+          number,
+        ],
+      },
+    },
+  ];
+  expect(() => evaluateTransformPose(p, updates)).toThrow('Float32');
+  expect(() => prepareTransformPose(p)(updates)).toThrow('Float32');
 });

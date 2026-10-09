@@ -1,3 +1,4 @@
+import { AnimationTransaction } from '../../features/editor3d/animationTransaction';
 import { addRigJoint, bindSkin } from '../../core3d/rig/authoring';
 import { skinVertexToMeshLocal } from '../../core3d/rig/math';
 import { RigPoseTransaction } from '../../features/editor3d/rigPoseTransaction';
@@ -167,10 +168,7 @@ describe('isolated native conversion (no WebGL)', () => {
 
   it('rejects all unsupported features explicitly rather than displaying a silent subset', () => {
     const animated = smallProject();
-    expect(checkNativeProfile(animated)).toMatchObject({
-      ok: false,
-      reason: expect.stringContaining('animation clips'),
-    });
+    expect(checkNativeProfile(animated)).toEqual({ ok: true });
     const textured = triangle();
     textured.blobIds = ['a'.repeat(64)];
     textured.materials[0].textureBlobId = textured.blobIds[0];
@@ -500,6 +498,12 @@ class CanvasDouble extends EventTarget {
     if (this.parent) this.parent.splice(this.parent.indexOf(this), 1);
     this.parent = null;
   }
+}
+
+function unsupportedJointMesh() {
+  const project = smallProject();
+  project.nodes.find((node) => node.id === 'joint-a')!.meshId = 'mesh-one';
+  return project;
 }
 
 function lifecycleHarness(
@@ -977,7 +981,7 @@ describe('accessible native camera actions', () => {
       viewport.suspend({ persistedRevision: 0, currentRevision: 0, sourcesComplete: true });
     if (state === 'context-lost')
       allCanvases[0].dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
-    if (state === 'unsupported') viewport.setProject(smallProject());
+    if (state === 'unsupported') viewport.setProject(unsupportedJointMesh());
     if (state === 'error') {
       rendererInstances[0].render.mockImplementationOnce(() => {
         throw new Error('GPU error');
@@ -2031,7 +2035,7 @@ describe('native lifecycle ownership (injected renderer, not GPU evidence)', () 
   it('removes the previous view when an unsupported project replaces it', () => {
     const { viewport } = lifecycleHarness();
     viewport.setProject(triangle());
-    expect(viewport.setProject(smallProject()).ok).toBe(false);
+    expect(viewport.setProject(unsupportedJointMesh()).ok).toBe(false);
     expect(viewport.diagnostics).toMatchObject({
       state: 'unsupported',
       renderers: 0,
@@ -2046,7 +2050,7 @@ describe('native lifecycle ownership (injected renderer, not GPU evidence)', () 
     const { viewport, allCanvases } = lifecycleHarness();
     viewport.setProject(triangle());
     allCanvases[0].dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
-    viewport.setProject(smallProject());
+    viewport.setProject(unsupportedJointMesh());
     expect(viewport.setProject(triangle())).toEqual({ ok: true });
     expect(viewport.diagnostics).toMatchObject({
       state: 'active',
@@ -2751,5 +2755,138 @@ describe('native smooth skin product graph', () => {
     h.viewport.dispose();
     expect(pose.state.active).toBe(false);
     pose.dispose();
+  });
+});
+
+describe('native animation renderer ownership', () => {
+  function animated() {
+    const p = smallProject();
+    const h = lifecycleHarness();
+    const edit = new TransformTransaction({
+      getProject: () => cloneProject(p),
+      getIdentity: () => ({ id: p.id, revision: p.revision }),
+      isReadOnly: () => false,
+      commit: () => {
+        throw new Error('preview cannot commit');
+      },
+    });
+    const rig = new RigPoseTransaction({
+      getProject: () => cloneProject(p),
+      isReadOnly: () => false,
+      editing: edit,
+    });
+    const animation = new AnimationTransaction({
+      getProject: () => cloneProject(p),
+      isReadOnly: () => false,
+      editing: edit,
+      rig,
+    });
+    h.viewport.setProject(p);
+    h.viewport.bindEditing(edit);
+    h.viewport.bindRigPose(rig);
+    h.viewport.bindAnimation(animation);
+    h.flush();
+    const frame = (time: number) => {
+      const callbacks = [...h.pending.values()];
+      h.pending.clear();
+      callbacks.forEach((callback) => callback(time));
+    };
+    return { p, h, edit, rig, animation, frame };
+  }
+  it('uses one RAF chain and updates bones without canonical graph rebuilds', () => {
+    const { p, h, animation, frame } = animated();
+    const before = cloneProject(p),
+      initial = h.viewport.diagnostics;
+    animation.select('clip');
+    animation.play();
+    expect(h.pending.size).toBe(1);
+    frame(1000);
+    frame(1500);
+    expect(animation.state.time).toBe(0.5);
+    expect(h.pending.size).toBe(1);
+    const scene = h.rendererInstances[0].render.mock.calls.at(-1)![0] as Scene;
+    expect(scene.getObjectByName('B')!.position.y).toBe(0.5);
+    expect(h.viewport.diagnostics.rebuilds).toBe(initial.rebuilds);
+    animation.pause();
+    frame(2000);
+    expect(h.pending.size).toBe(0);
+    expect(p).toEqual(before);
+    h.viewport.dispose();
+    animation.dispose();
+  });
+  it('pauses hidden playback, drops background time and cancels disposal without leaked frames', () => {
+    const { h, animation, frame } = animated();
+    animation.select('clip');
+    animation.play();
+    frame(0);
+    frame(250);
+    h.document.hidden = true;
+    h.document.dispatchEvent(new Event('visibilitychange'));
+    expect(animation.state.playing).toBe(false);
+    expect(animation.state.time).toBe(0.25);
+    expect(h.pending.size).toBe(0);
+    h.document.hidden = false;
+    h.document.dispatchEvent(new Event('visibilitychange'));
+    animation.play();
+    frame(100000);
+    frame(100100);
+    expect(animation.state.time).toBeCloseTo(0.35);
+    h.viewport.dispose();
+    expect(animation.state.active).toBe(false);
+    expect(h.pending.size).toBe(0);
+    animation.dispose();
+  });
+  it('preserves nested PNG guards, resets to rest, and refuses stale binding captures', async () => {
+    const { h, animation } = animated();
+    animation.select('clip');
+    animation.seek(0.7);
+    await expect(h.viewport.capturePng()).resolves.toBeInstanceOf(Blob);
+    expect(animation.state.active).toBe(false);
+    const outer = animation.beginCapture();
+    await expect(h.viewport.capturePng()).resolves.toBeInstanceOf(Blob);
+    expect(outer.isCurrent()).toBe(true);
+    outer.release();
+    let encode: BlobCallback | undefined;
+    h.allCanvases[0].toBlob.mockImplementation((callback) => {
+      encode = callback;
+    });
+    const pending = h.viewport.capturePng();
+    const rejected = expect(pending).rejects.toThrow('stale');
+    h.viewport.bindAnimation(null);
+    encode!(new Blob(['stale']));
+    await rejected;
+    h.viewport.dispose();
+    animation.dispose();
+  });
+  it('refuses play after context loss or suspension but permits explicit playback after recovery', () => {
+    const { h, animation, frame, p } = animated();
+    animation.select('clip');
+    animation.play();
+    frame(0);
+    h.allCanvases[0].dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+    expect(animation.state.playing).toBe(false);
+    expect(animation.play().ok).toBe(false);
+    expect(h.pending.size).toBe(0);
+    h.allCanvases[0].dispatchEvent(new Event('webglcontextrestored'));
+    expect(animation.state.playing).toBe(false);
+    expect(animation.play().ok).toBe(true);
+    expect(
+      h.viewport.suspend({
+        persistedRevision: p.revision,
+        currentRevision: p.revision,
+        sourcesComplete: true,
+      }).ok,
+    ).toBe(true);
+    expect(animation.play().ok).toBe(false);
+    expect(
+      h.viewport.resume({
+        persistedRevision: p.revision,
+        currentRevision: p.revision,
+        sourcesComplete: true,
+      }).ok,
+    ).toBe(true);
+    expect(animation.play().ok).toBe(true);
+    h.viewport.dispose();
+    animation.dispose();
   });
 });
