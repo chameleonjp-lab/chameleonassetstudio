@@ -56,6 +56,14 @@ test('authors mixed skin, previews deformation, preserves rest backup and re-edi
   await expect(rig.getByRole('status').filter({ hasText: 'pose確認中' })).toBeVisible();
   await expect.poll(async () => (await canvas.screenshot()).equals(rest)).toBe(false);
   await visual(page, 'mixed-pose');
+  const beforeFit = await canvas.screenshot();
+  await page.getByRole('button', { name: '全体を表示', exact: true }).click();
+  await expect(rig.getByRole('status').filter({ hasText: 'pose確認中' })).toBeVisible();
+  await expect.poll(async () => (await canvas.screenshot()).equals(beforeFit)).toBe(false);
+  await visual(page, 'mixed-pose-fit');
+  const fittedPath = test.info().outputPath('native-visual-rig-pose-fit-canvas.png');
+  await writeFile(fittedPath, await canvas.screenshot());
+  await test.info().attach('pose-fit-canvas', { path: fittedPath, contentType: 'image/png' });
   await page.getByText('骨と重みの編集を開く', { exact: true }).click();
   await expect(
     page
