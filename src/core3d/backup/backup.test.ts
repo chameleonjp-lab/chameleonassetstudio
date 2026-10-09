@@ -19,6 +19,38 @@ async function fixture() {
   ];
   return { p, bytes, hash };
 }
+function expectZipEntriesAtEpoch(archive: Uint8Array) {
+  const view = new DataView(archive.buffer, archive.byteOffset, archive.byteLength);
+  const localSignature = 0x04034b50;
+  const centralSignature = 0x02014b50;
+  const endSignature = 0x06054b50;
+  let offset = 0;
+  let localEntries = 0;
+  while (offset + 30 <= view.byteLength && view.getUint32(offset, true) === localSignature) {
+    expect(view.getUint16(offset + 10, true)).toBe(0);
+    expect(view.getUint16(offset + 12, true)).toBe(0x21);
+    const compressedBytes = view.getUint32(offset + 18, true);
+    const filenameBytes = view.getUint16(offset + 26, true);
+    const extraBytes = view.getUint16(offset + 28, true);
+    offset += 30 + filenameBytes + extraBytes + compressedBytes;
+    localEntries += 1;
+  }
+  expect(localEntries).toBeGreaterThan(0);
+
+  let centralEntries = 0;
+  while (offset + 46 <= view.byteLength && view.getUint32(offset, true) === centralSignature) {
+    expect(view.getUint16(offset + 12, true)).toBe(0);
+    expect(view.getUint16(offset + 14, true)).toBe(0x21);
+    const filenameBytes = view.getUint16(offset + 28, true);
+    const extraBytes = view.getUint16(offset + 30, true);
+    const commentBytes = view.getUint16(offset + 32, true);
+    offset += 46 + filenameBytes + extraBytes + commentBytes;
+    centralEntries += 1;
+  }
+  expect(centralEntries).toBe(localEntries);
+  expect(view.getUint32(offset, true)).toBe(endSignature);
+}
+
 describe('resident native backup', () => {
   it('restores mesh, source bytes, mixed skin and keys without renderer, network, or original storage', async () => {
     const { p, bytes, hash } = await fixture();
@@ -39,6 +71,10 @@ describe('resident native backup', () => {
     } finally {
       fetchSpy.mockRestore();
     }
+  });
+  it('writes the DOS ZIP epoch consistently in local and central directory headers', async () => {
+    const { p, bytes, hash } = await fixture();
+    expectZipEntriesAtEpoch(await exportBackup(p, new Map([[hash, bytes]])));
   });
   it('captures data before awaiting and does not export later caller mutations', async () => {
     const { p, bytes, hash } = await fixture();

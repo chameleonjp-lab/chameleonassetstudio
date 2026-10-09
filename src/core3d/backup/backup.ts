@@ -73,7 +73,8 @@ export async function exportBackup(
   };
   for (const [hash, bytes] of blobs) files[`blobs/${hash}`] = bytes;
   // Stored ZIP entries avoid a decoder dependency and preserve original binary bytes.
-  const output = zipSync(files, { level: 0, mtime: new Date('1980-01-01T00:00:00Z') });
+  // fflate reads local Date fields for DOS ZIP timestamps, so use local midnight for the epoch.
+  const output = zipSync(files, { level: 0, mtime: new Date(1980, 0, 1) });
   assert(output.length <= BACKUP_LIMITS.archiveBytes, 'Backup exceeds archive profile');
   return output;
 }
