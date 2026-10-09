@@ -1,0 +1,46 @@
+.native-rig {
+  border: 1px solid #64748b;
+  border-radius: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  min-width: 0;
+  max-height: min(42rem, 70vh);
+  overflow: auto;
+}
+.native-rig fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.native-rig label {
+  display: flex;
+  flex-direction: column;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  margin: 0.5rem 0;
+}
+.native-rig input,
+.native-rig select,
+.native-rig button {
+  min-height: 44px;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-size: 1rem;
+}
+.native-rig select {
+  width: 100%;
+}
+.native-rig button {
+  margin: 0.25rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.native-rig p {
+  overflow-wrap: anywhere;
+}
+.native-rig-fields,
+.native-rig-influences {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: 0.5rem;
+}

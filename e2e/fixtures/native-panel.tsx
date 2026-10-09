@@ -1,3 +1,7 @@
+import { RigPoseTransaction } from '../../src/features/editor3d/rigPoseTransaction';
+import { addRigJoint, bindSkin } from '../../src/core3d/rig/authoring';
+import { identityTransform } from '../../src/core3d/model/project';
+import type { RigPoseBinding } from '../../src/core3d/ports/rigPosePort';
 import { Profiler, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createProject, type Project3D, type Vec3 } from '../../src/core3d/model/project';
@@ -15,6 +19,7 @@ import { NativeAuthoringPanel } from '../../src/features/editor3d/NativeAuthorin
 import type { NativeCameraState, NativeViewOptions } from '../../src/core3d/ports/renderPort';
 
 type PortLog = {
+  poseBindings: number;
   cameraWrites: number;
   bindings: number;
   boundProject: string | null;
@@ -33,6 +38,21 @@ let canonical: Project3D = parameters.has('editing')
   ? nativeBox('panel-a')
   : createProject('panel-a', 'Panel A');
 canonical.name = 'Panel A';
+if (parameters.has('rig-pose')) {
+  addRigJoint(canonical, 'pose-joint', 'Pose joint', null, identityTransform());
+  bindSkin(
+    canonical,
+    'pose-skin',
+    canonical.meshes[0].id,
+    ['pose-joint'],
+    canonical.meshes[0].vertices.map((v) => ({
+      vertexId: v.id,
+      jointIds: ['pose-joint'],
+      values: [1],
+    })),
+  );
+}
+let currentPose: RigPoseBinding | null = null;
 let currentEdit: NativeEditBinding | null = null;
 let lastGesture: { edit: NativeEditBinding; token: NativeEditToken } | null = null;
 let replaceBinding: (() => void) | null = null;
@@ -42,6 +62,7 @@ const pending: (() => void)[] = [];
 const delay = new URLSearchParams(location.search).has('delay');
 const factory: NativeViewportFactory = async (host, onStatus) => {
   const log: PortLog = {
+    poseBindings: 0,
     cameraWrites: 0,
     bindings: 0,
     boundProject: null,
@@ -78,6 +99,9 @@ const factory: NativeViewportFactory = async (host, onStatus) => {
             log.boundProject = binding?.state.projectId ?? null;
           },
         }),
+    bindRigPose() {
+      log.poseBindings++;
+    },
     getCamera: () => structuredClone(camera),
     setCamera(value) {
       log.cameraWrites++;
@@ -147,6 +171,15 @@ const factory: NativeViewportFactory = async (host, onStatus) => {
   return port;
 };
 const api = {
+  get rigPose() {
+    return currentPose?.state ?? null;
+  },
+  previewRig() {
+    if (!currentPose) throw new Error('No rig pose');
+    return currentPose.preview(currentPose.begin(), [
+      { nodeId: 'pose-joint', transform: { ...identityTransform(), translation: [1, 0, 0] } },
+    ]);
+  },
   get ports() {
     return ports.map(({ host, ...rest }) => ({ ...rest, connected: host.isConnected }));
   },
@@ -229,6 +262,24 @@ export function Harness() {
     binding.setSelection(canonical.nodes.map((node) => node.id));
     return binding;
   }, [project.id, bindingVersion]);
+  const rigPose = useMemo(
+    () =>
+      parameters.has('rig-pose') && editing
+        ? new RigPoseTransaction({
+            getProject: () => structuredClone(canonical),
+            isReadOnly: () => false,
+            editing,
+          })
+        : undefined,
+    [editing],
+  );
+  useLayoutEffect(() => {
+    currentPose = rigPose ?? null;
+    return () => {
+      if (currentPose === rigPose) currentPose = null;
+      rigPose?.dispose();
+    };
+  }, [rigPose]);
   useLayoutEffect(() => {
     currentEdit = editing ?? null;
     replaceBinding = () => setBindingVersion((value) => value + 1);
@@ -303,6 +354,7 @@ export function Harness() {
       <NativeViewportPanel
         project={project}
         editing={editing}
+        rigPose={rigPose}
         factory={factory}
         onSave={async () => {
           if (failSave) throw new Error('Fixture save failed');

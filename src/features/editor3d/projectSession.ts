@@ -21,6 +21,8 @@ import {
 import { SaveQueue } from '../../core3d/storage/saveQueue';
 import type { NativeEditBinding } from '../../core3d/ports/editPort';
 import { TransformTransaction } from './transformTransaction';
+import { RigPoseTransaction } from './rigPoseTransaction';
+import type { RigPoseBinding } from '../../core3d/ports/rigPosePort';
 
 export { BACKUP_LIMITS };
 
@@ -42,6 +44,7 @@ export class UnsavedProjectError extends Error {
 export class ProjectSession {
   private readonly history: ProjectHistory;
   private readonly transforms: TransformTransaction;
+  private readonly poses: RigPoseTransaction;
   private readonly autosave: ProjectAutosave | null;
   private readonly projectId: string;
   private conflict = false;
@@ -72,6 +75,11 @@ export class ProjectSession {
         this.executeAuthoring((candidate) => {
           for (const { id, transform } of updates) setNodeTransform(candidate, id, transform);
         }, expected),
+    });
+    this.poses = new RigPoseTransaction({
+      getProject: () => this.history.project,
+      isReadOnly: () => !this.lease || this.conflict || this.closed,
+      editing: this.transforms,
     });
     this.autosave = lease
       ? new ProjectAutosave(
@@ -150,6 +158,10 @@ export class ProjectSession {
     return this.open(repository, ownerId, id);
   }
 
+  get rigPose(): RigPoseBinding {
+    return this.poses;
+  }
+
   get edit(): NativeEditBinding {
     return this.transforms;
   }
@@ -178,6 +190,7 @@ export class ProjectSession {
 
   rename(name: string) {
     this.binaryGeneration++;
+    this.poses.cancel('session boundary');
     this.transforms.cancel('rename');
     this.assertEditable();
     if (name === this.history.project.name) return;
@@ -189,6 +202,7 @@ export class ProjectSession {
 
   addBox() {
     this.binaryGeneration++;
+    this.poses.cancel('session boundary');
     this.transforms.cancel('add object');
     this.assertEditable();
     this.history.execute((project) => addBox(project, crypto.randomUUID()));
@@ -201,6 +215,7 @@ export class ProjectSession {
     expected?: Pick<Project3D, 'id' | 'revision'>,
   ) {
     this.binaryGeneration++;
+    this.poses.cancel('session boundary');
     this.transforms.cancel('authoring command');
     this.assertEditable();
     this.history.execute((candidate) => {
@@ -248,6 +263,7 @@ export class ProjectSession {
   /** Capture before file reading/decoding, so save/cancel boundaries also invalidate that work. */
   captureBinaryContext(): BinaryAuthoringContext {
     this.binaryGeneration++;
+    this.poses.cancel('session boundary');
     this.transforms.cancel('prepare binary authoring');
     this.assertEditable();
     // UI captures this before file reading/decoding, including when no material currently
@@ -277,6 +293,7 @@ export class ProjectSession {
     )
       throw new Error('作品や操作対象が変わりました。現在の画像を確認して再操作してください。');
     const generation = ++this.binaryGeneration;
+    this.poses.cancel('session boundary');
     this.transforms.cancel('binary authoring command');
     this.assertEditable();
     const identity = { ...expected };
@@ -396,6 +413,7 @@ export class ProjectSession {
 
   undo() {
     this.binaryGeneration++;
+    this.poses.cancel('session boundary');
     this.transforms.cancel('undo');
     this.assertEditable();
     if (this.history.undo()) this.schedule();
@@ -403,6 +421,7 @@ export class ProjectSession {
 
   redo() {
     this.binaryGeneration++;
+    this.poses.cancel('session boundary');
     this.transforms.cancel('redo');
     this.assertEditable();
     if (this.history.redo()) this.schedule();
@@ -411,6 +430,7 @@ export class ProjectSession {
   /** Explicit cleanup only; canonical originals/derivatives are never removed here. */
   clearHistory() {
     this.binaryGeneration++;
+    this.poses.cancel('session boundary');
     this.transforms.cancel('clear history');
     this.assertEditable();
     const revision = this.history.revision;
@@ -434,6 +454,7 @@ export class ProjectSession {
 
   async save() {
     this.binaryGeneration++;
+    this.poses.cancel('session boundary');
     this.transforms.cancel('explicit save');
     if (this.state.readOnly) {
       if (this.state.dirty) throw new UnsavedProjectError();
@@ -447,12 +468,14 @@ export class ProjectSession {
   /** Captures CURRENT edits and all source bytes, even after a failed save or fencing. */
   backup() {
     this.binaryGeneration++;
+    this.poses.cancel('session boundary');
     this.transforms.cancel('backup');
     return exportBackup(this.history.project, this.blobs);
   }
 
   async saveCopy() {
     this.binaryGeneration++;
+    this.poses.cancel('session boundary');
     this.transforms.cancel('save copy');
     if (this.closed) throw new Error('このプロジェクトは閉じられています。');
     const project = cloneProject(this.history.project);
@@ -466,6 +489,7 @@ export class ProjectSession {
 
   async takeOver() {
     this.binaryGeneration++;
+    this.poses.cancel('session boundary');
     this.transforms.cancel('take over');
     if (this.state.dirty) throw new UnsavedProjectError();
     const id = this.projectId;
@@ -475,6 +499,7 @@ export class ProjectSession {
 
   async close() {
     this.binaryGeneration++;
+    this.poses.cancel('session boundary');
     this.transforms.cancel('close');
     if (this.closed) return;
     if (this.state.dirty && this.preservedRevision !== this.history.revision) {
@@ -498,6 +523,7 @@ export class ProjectSession {
       }
     }
     await this.snapshot?.release();
+    this.poses.dispose();
     this.closed = true;
     this.blobs.clear();
     this.binaryStorageReleases.splice(0).forEach((release) => release());

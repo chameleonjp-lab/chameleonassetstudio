@@ -1,3 +1,5 @@
+import { addRigJoint, bindSkin } from '../../core3d/rig/authoring';
+import { identityTransform } from '../../core3d/model/project';
 import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { exportBackup, importBackup } from '../../core3d/backup/backup';
@@ -1087,5 +1089,48 @@ describe('native transform durable session integration', () => {
     closingCapture.release();
     expect(session.edit.state.context.readOnly).toBe(true);
     expect(session.edit.begin().ok).toBe(false);
+  });
+});
+
+describe('session rig pose boundaries', () => {
+  it('never saves preview transforms and clears pose for save/backup/undo/close', async () => {
+    const session = await ProjectSession.create(repository, 'rig-tab', 'Rig');
+    session.addBox();
+    session.executeAuthoring((p) => {
+      addRigJoint(p, 'joint', 'Joint', null, identityTransform());
+      bindSkin(
+        p,
+        'skin',
+        p.meshes[0].id,
+        ['joint'],
+        p.meshes[0].vertices.map((v) => ({ vertexId: v.id, jointIds: ['joint'], values: [1] })),
+      );
+    });
+    const apply = () =>
+      session.rigPose.preview(session.rigPose.begin(), [
+        { nodeId: 'joint', transform: { ...identityTransform(), translation: [1, 0, 0] } },
+      ]);
+    expect(apply().ok).toBe(true);
+    await session.save();
+    expect(session.rigPose.state.active).toBe(false);
+    const snapshot = await repository.readSnapshot(session.project.id);
+    expect(snapshot.project.nodes.find((n) => n.id === 'joint')!.transform.translation).toEqual([
+      0, 0, 0,
+    ]);
+    await snapshot.release();
+    expect(apply().ok).toBe(true);
+    const backup = await importBackup(await session.backup());
+    expect(session.rigPose.state.active).toBe(false);
+    expect(backup.project.nodes.find((n) => n.id === 'joint')!.transform.translation).toEqual([
+      0, 0, 0,
+    ]);
+    expect(apply().ok).toBe(true);
+    session.undo();
+    expect(session.rigPose.state.active).toBe(false);
+    session.redo();
+    expect(apply().ok).toBe(true);
+    await session.close();
+    expect(session.rigPose.state.active).toBe(false);
+    expect(() => session.rigPose.begin()).toThrow();
   });
 });

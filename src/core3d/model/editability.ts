@@ -49,6 +49,30 @@ export function assertMaterialEditable(project: Project3D, materialId: string) {
 /** Final transaction guard: commands cannot bypass locks via shared resources or parent edits. */
 export function assertLocksPreserved(before: Project3D, after: Project3D) {
   const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+  for (const skin of before.skins) {
+    const protectedSkin =
+      before.nodes.some((node) => node.meshId === skin.meshId && isNodeLocked(before, node.id)) ||
+      skin.joints.some((joint) => isNodeLocked(before, joint.nodeId));
+    if (
+      protectedSkin &&
+      !equal(
+        skin,
+        after.skins.find((item) => item.id === skin.id),
+      )
+    )
+      throw lockedError();
+  }
+  for (const skin of after.skins) {
+    if (
+      !equal(
+        before.skins.find((item) => item.id === skin.id),
+        skin,
+      ) &&
+      (before.nodes.some((node) => node.meshId === skin.meshId && isNodeLocked(before, node.id)) ||
+        skin.joints.some((joint) => isNodeLocked(before, joint.nodeId)))
+    )
+      throw lockedError();
+  }
   for (const node of before.nodes) {
     if (!isNodeLocked(before, node.id)) continue;
     const next = after.nodes.find((item) => item.id === node.id);
