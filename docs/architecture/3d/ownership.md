@@ -181,3 +181,7 @@ Preview order is canonical rest, then one current-revision overlay. Transform ge
 - core3d/export/snapshot.ts fixes canonical revision/bytes; mapping.ts checks final encoded IDs/hash and emits sidecar/manifest/ZIP. Prior source claims remain unverified provenance.
 - NativeAssetIoPanel owns file reads, operation generation, progress, cancellation, result storage and temporary download URLs. Shell owns atomic new-copy persistence; explicit list opening avoids an asynchronous import replacing the current session.
 - Product acceptance is e2e/native-asset-io-product.spec.ts; independent validator adoption is S04_GLTF_ADOPTION.md. Runtime and physical-device claims remain B08/B09.
+
+## B08 candidate: consumer and inspection
+
+Renderer-free inspection is owned by core3d/inspection; the editor quality panel owns only temporary report/cancellation/navigation state. The shared asset worker owns bounded execution. tools/3d-consumer is a development-only independent Babylon entry excluded from app bundles. See [B08 evidence](../../evidence/3d/B08_CONSUMER_INSPECTION.md). Browser and physical acceptance remain separately recorded.

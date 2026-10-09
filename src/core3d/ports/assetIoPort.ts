@@ -1,4 +1,5 @@
 import type { AssetSnapshot } from '../export/snapshot';
+import type { InspectionReport, InspectionSnapshot } from '../inspection/report';
 import type { Project3D } from '../model/project';
 export interface AssetImport {
   project: Project3D;
@@ -15,6 +16,7 @@ export interface AssetExport {
   warnings: string[];
 }
 export type AssetIoRequest =
+  | { kind: 'inspect'; snapshot: InspectionSnapshot }
   | { kind: 'export'; snapshot: AssetSnapshot }
   | {
       kind: 'import';
@@ -23,7 +25,7 @@ export type AssetIoRequest =
       allowLoss: boolean;
       sidecar?: Uint8Array;
     };
-export type AssetIoResult = AssetImport | AssetExport;
+export type AssetIoResult = AssetImport | AssetExport | InspectionReport;
 export interface AssetIoProgress {
   phase: string;
   fraction: number;

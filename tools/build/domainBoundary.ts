@@ -45,6 +45,7 @@ export function inspectDomainBundles(bundle: OutputBundle) {
     };
     visit(entry.fileName);
     const forbidden = [...modules].filter((id) => {
+      if (/\/node_modules\/(@babylonjs|babylonjs-gltf2interface)\//.test(id)) return true;
       if (domain === 'hub')
         return /\/src\/(core|features|app|workers|adapters3d)|\/node_modules\//.test(id);
       if (domain === '2d') return /\/src\/(core3d|adapters3d|features\/editor3d)\//.test(id);

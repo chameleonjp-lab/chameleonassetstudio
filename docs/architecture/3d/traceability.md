@@ -208,3 +208,7 @@ FLOW-01〜06・AC-01〜15の最終閉鎖は上位表末尾と計画B10へ戻る�
 GAME-01–04 connect to core3d/game, NativeGamePanel and Three game helpers. EXP-01–06 and the basic AC-02/03/04 file portion connect to core3d/import, core3d/export, adapters3d/gltf, NativeAssetIoPanel and native-asset-io-product.spec.ts. DATA/COMPAT migration evidence includes strict 0.1/0.2 parsing and independent 0.3 copies.
 
 [S04 adoption](../../evidence/3d/S04_GLTF_ADOPTION.md) records the independent validator, format/codec policy and remaining browser gate. [B07 candidate](../../evidence/3d/B07_ASSET_IO.md) records ownership, recovery and test coverage. ANIM-06 independent runtime behavior is still B08; physical acceptance and final resource budgets remain B09/B10. Path existence and unit success do not update those gates to verified.
+
+## B08 candidate: consumer and inspection
+
+Renderer-free inspection is owned by core3d/inspection; the editor quality panel owns only temporary report/cancellation/navigation state. The shared asset worker owns bounded execution. tools/3d-consumer is a development-only independent Babylon entry excluded from app bundles. See [B08 evidence](../../evidence/3d/B08_CONSUMER_INSPECTION.md). Browser and physical acceptance remain separately recorded.

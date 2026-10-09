@@ -23,3 +23,6 @@ dist-3d-evaluation
 /dist-3d-edit-evaluation/
 /playwright-report-native-interaction/
 /test-results-native-interaction/
+
+# Isolated external consumer test build
+dist-3d-consumer/

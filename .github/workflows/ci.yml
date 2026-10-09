@@ -41,6 +41,7 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run build:app
+      - run: npm run consumer:build
       - name: Build isolated native viewport evaluation
         run: npx vite build --config tools/3d-evaluation/vite.config.ts
       - name: Build isolated native interaction evaluation

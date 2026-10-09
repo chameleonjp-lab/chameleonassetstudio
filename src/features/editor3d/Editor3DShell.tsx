@@ -1,3 +1,4 @@
+import { NativeQualityPanel } from './NativeQualityPanel';
 import { NativeGamePanel } from './NativeGamePanel';
 import { NativeAnimationPanel } from './NativeAnimationPanel';
 import { NativeRigPanel } from './NativeRigPanel';
@@ -210,6 +211,9 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
   const [projects, setProjects] = useState<ProjectEntry[]>([]);
   const [gamePreview, setGamePreview] = useState(false);
   const [assetIoOpen, setAssetIoOpen] = useState(false);
+  const [qualityOpen, setQualityOpen] = useState(false);
+  const inspectionRoot = useRef<HTMLDivElement>(null);
+  const [inspectionTarget, setInspectionTarget] = useState('');
   const [legacyProjects, setLegacyProjects] = useState<LegacyProjectEntry[] | null>(null);
   const [legacyTarget, setLegacyTarget] = useState<LegacyProjectEntry | null>(null);
   const [hasLegacyBackup, setHasLegacyBackup] = useState(false);
@@ -470,6 +474,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
 
   const state = session?.state;
   const project = session?.project;
+  useEffect(() => setInspectionTarget(''), [project?.id, project?.revision]);
 
   return (
     <div className="editor3d">
@@ -885,129 +890,195 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                     edit={session.edit}
                     disabled={busy || state.readOnly}
                   />
-                  <NativeAuthoringPanel
-                    key={`authoring-${project.id}`}
-                    project={project}
-                    disabled={busy || state.readOnly}
-                    execute={executeAuthoring}
-                    edit={session.edit}
-                  />
-                  <details
-                    className="editor3d-details"
-                    onToggle={(event) => {
-                      if (!event.currentTarget.open)
-                        session.rigPose.cancel('骨の編集を閉じたためrestへ戻しました。');
-                    }}
-                  >
-                    <summary>骨と重みの編集を開く</summary>
-                    <NativeRigPanel
-                      key={`rig-${project.id}`}
-                      project={project}
-                      session={session}
-                      disabled={busy || state.readOnly}
-                      onChange={redraw}
-                    />
-                  </details>
-                  <details
-                    className="editor3d-details"
-                    onToggle={(event) => {
-                      if (!event.currentTarget.open)
-                        session.animation.cancel('アニメーション編集を閉じました。');
-                    }}
-                  >
-                    <summary>アニメーション編集を開く</summary>
-                    <NativeAnimationPanel
-                      key={`animation-${project.id}`}
-                      project={project}
-                      session={session}
-                      disabled={busy || state.readOnly}
-                      onChange={redraw}
-                    />
-                  </details>
-                  <details className="editor3d-details">
-                    <summary>ゲーム向け情報を編集</summary>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={gamePreview}
-                        onChange={(event) => setGamePreview(event.target.checked)}
-                      />
-                      anchor・collider・原点をプレビュー
-                    </label>
-                    <NativeGamePanel
-                      key={'game-' + project.id}
-                      session={session}
-                      onChange={redraw}
-                    />
-                  </details>
-                  <details
-                    className="editor3d-details"
-                    onToggle={(event) => setAssetIoOpen(event.currentTarget.open)}
-                  >
-                    <summary>GLB読込・配布ファイル出力</summary>
-                    {assetIoOpen && (
-                      <Suspense fallback={<p role="status">GLB入出力を読み込み中…</p>}>
-                        <NativeAssetIoPanel
-                          key={'io-' + project.id}
+                  <div ref={inspectionRoot}>
+                    <details
+                      className="editor3d-details"
+                      onToggle={(event) => setQualityOpen(event.currentTarget.open)}
+                    >
+                      <summary>作品の品質検査を開く</summary>
+                      {qualityOpen && (
+                        <NativeQualityPanel
                           session={session}
-                          onImport={async (result, signal) => {
-                            const owner = sessionRef.current;
-                            if (owner !== session || owner.state.readOnly)
-                              throw new Error('現在の編集作品を確認してください。');
-                            const revision = owner.project.revision;
-                            await owner.save();
-                            signal.throwIfAborted();
-                            if (sessionRef.current !== owner || owner.project.revision !== revision)
-                              throw new Error('作品が変わったため取込を中止しました。');
-                            const copyId = crypto.randomUUID();
-                            await repository.restoreCopy(
-                              result.project,
-                              result.blobs,
-                              copyId,
-                              ownerId.current,
-                              { signal },
+                          onNavigate={(target, revision) => {
+                            if (busyRef.current || session.state.revision !== revision) return;
+                            const section =
+                              target.kind === 'skin'
+                                ? 'rig'
+                                : target.kind === 'clip'
+                                  ? 'animation'
+                                  : target.kind === 'game'
+                                    ? 'game'
+                                    : target.kind === 'material' && target.section === 'texture'
+                                      ? 'texture'
+                                      : 'authoring';
+                            const element = inspectionRoot.current?.querySelector<HTMLElement>(
+                              `[data-inspection="${section}"]`,
                             );
-                            // Commit is atomic. A late cancellation keeps the saved copy, never deletes it.
-                            if (
-                              signal.aborted ||
-                              sessionRef.current !== owner ||
-                              owner.project.revision !== revision
-                            ) {
-                              setNotice(
-                                'GLBコピーは保存済みです。一覧から開けます。現在の画面は切り替えていません。',
-                              );
-                              return;
+                            if (!element) return;
+                            let destination: HTMLDetailsElement | null =
+                              element instanceof HTMLDetailsElement ? element : null;
+                            if (!destination) {
+                              const label =
+                                section === 'texture'
+                                  ? '画像とUVを開く'
+                                  : target.kind === 'material'
+                                    ? '材質の色・金属・粗さ'
+                                    : target.kind === 'mesh'
+                                      ? '頂点・辺・面を編集'
+                                      : '部品の名前・位置・複製';
+                              destination =
+                                [...element.querySelectorAll('details')].find(
+                                  (details) =>
+                                    details.querySelector('summary')?.textContent === label,
+                                ) ?? null;
                             }
-                            const entries = await repository.listProjects();
-                            if (
-                              signal.aborted ||
-                              sessionRef.current !== owner ||
-                              owner.project.revision !== revision
-                            )
-                              return;
-                            setProjects(entries);
-                            setNotice(
-                              'GLBコピーを保存しました。保存したプロジェクトの Imported GLB から開けます。現在の作品は変更していません。',
+                            if (!destination) return;
+                            destination.open = true;
+                            setInspectionTarget(
+                              `確認する対象: ${JSON.stringify(target)}。未確定入力は保持しています。編集先の既存コントロールで対象を選択してください。`,
                             );
+                            destination.scrollIntoView({ block: 'nearest' });
+                            destination
+                              .querySelector<HTMLElement>('summary')
+                              ?.focus({ preventScroll: true });
                           }}
                         />
-                      </Suspense>
-                    )}
-                  </details>
-                  <NativeAssemblyControls
-                    key={`assembly-${project.id}`}
-                    project={project}
-                    disabled={busy || state.readOnly}
-                    execute={executeAuthoring}
-                    edit={session.edit}
-                  />
-                  <NativeTexturePanel
-                    key={`texture-${project.id}`}
-                    project={project}
-                    session={session}
-                    disabled={busy || state.readOnly}
-                    onChange={redraw}
-                  />
+                      )}
+                    </details>
+                    {inspectionTarget && <p role="status">{inspectionTarget}</p>}
+                    <div data-inspection="authoring">
+                      <NativeAuthoringPanel
+                        key={`authoring-${project.id}`}
+                        project={project}
+                        disabled={busy || state.readOnly}
+                        execute={executeAuthoring}
+                        edit={session.edit}
+                      />
+                    </div>
+                    <details
+                      data-inspection="rig"
+                      className="editor3d-details"
+                      onToggle={(event) => {
+                        if (!event.currentTarget.open)
+                          session.rigPose.cancel('骨の編集を閉じたためrestへ戻しました。');
+                      }}
+                    >
+                      <summary>骨と重みの編集を開く</summary>
+                      <NativeRigPanel
+                        key={`rig-${project.id}`}
+                        project={project}
+                        session={session}
+                        disabled={busy || state.readOnly}
+                        onChange={redraw}
+                      />
+                    </details>
+                    <details
+                      data-inspection="animation"
+                      className="editor3d-details"
+                      onToggle={(event) => {
+                        if (!event.currentTarget.open)
+                          session.animation.cancel('アニメーション編集を閉じました。');
+                      }}
+                    >
+                      <summary>アニメーション編集を開く</summary>
+                      <NativeAnimationPanel
+                        key={`animation-${project.id}`}
+                        project={project}
+                        session={session}
+                        disabled={busy || state.readOnly}
+                        onChange={redraw}
+                      />
+                    </details>
+                    <details data-inspection="game" className="editor3d-details">
+                      <summary>ゲーム向け情報を編集</summary>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={gamePreview}
+                          onChange={(event) => setGamePreview(event.target.checked)}
+                        />
+                        anchor・collider・原点をプレビュー
+                      </label>
+                      <NativeGamePanel
+                        key={'game-' + project.id}
+                        session={session}
+                        onChange={redraw}
+                      />
+                    </details>
+                    <details
+                      className="editor3d-details"
+                      onToggle={(event) => setAssetIoOpen(event.currentTarget.open)}
+                    >
+                      <summary>GLB読込・配布ファイル出力</summary>
+                      {assetIoOpen && (
+                        <Suspense fallback={<p role="status">GLB入出力を読み込み中…</p>}>
+                          <NativeAssetIoPanel
+                            key={'io-' + project.id}
+                            session={session}
+                            onImport={async (result, signal) => {
+                              const owner = sessionRef.current;
+                              if (owner !== session || owner.state.readOnly)
+                                throw new Error('現在の編集作品を確認してください。');
+                              const revision = owner.project.revision;
+                              await owner.save();
+                              signal.throwIfAborted();
+                              if (
+                                sessionRef.current !== owner ||
+                                owner.project.revision !== revision
+                              )
+                                throw new Error('作品が変わったため取込を中止しました。');
+                              const copyId = crypto.randomUUID();
+                              await repository.restoreCopy(
+                                result.project,
+                                result.blobs,
+                                copyId,
+                                ownerId.current,
+                                { signal },
+                              );
+                              // Commit is atomic. A late cancellation keeps the saved copy, never deletes it.
+                              if (
+                                signal.aborted ||
+                                sessionRef.current !== owner ||
+                                owner.project.revision !== revision
+                              ) {
+                                setNotice(
+                                  'GLBコピーは保存済みです。一覧から開けます。現在の画面は切り替えていません。',
+                                );
+                                return;
+                              }
+                              const entries = await repository.listProjects();
+                              if (
+                                signal.aborted ||
+                                sessionRef.current !== owner ||
+                                owner.project.revision !== revision
+                              )
+                                return;
+                              setProjects(entries);
+                              setNotice(
+                                'GLBコピーを保存しました。保存したプロジェクトの Imported GLB から開けます。現在の作品は変更していません。',
+                              );
+                            }}
+                          />
+                        </Suspense>
+                      )}
+                    </details>
+                    <NativeAssemblyControls
+                      key={`assembly-${project.id}`}
+                      project={project}
+                      disabled={busy || state.readOnly}
+                      execute={executeAuthoring}
+                      edit={session.edit}
+                    />
+                    <div data-inspection="texture">
+                      <NativeTexturePanel
+                        key={`texture-${project.id}`}
+                        project={project}
+                        session={session}
+                        disabled={busy || state.readOnly}
+                        onChange={redraw}
+                      />
+                    </div>
+                  </div>
                   {previewProjectId === project.id && (
                     <ViewportLoadBoundary
                       key={`viewport-${project.id}`}

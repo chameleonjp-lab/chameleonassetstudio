@@ -42,6 +42,8 @@ export default defineConfig({
         'native-rig-product.spec.ts',
         'native-animation-product.spec.ts',
         'native-asset-io-product.spec.ts',
+        'native-quality-product.spec.ts',
+        'native-consumer.spec.ts',
         'import.spec.ts',
         'storage.spec.ts',
         'export.spec.ts',
@@ -59,9 +61,16 @@ export default defineConfig({
       use: { ...devices['Desktop Safari'] },
     },
   ],
-  webServer: {
-    command: 'npm run dev -- --port 5173 --strictPort',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: [
+    {
+      command: 'npm run dev -- --port 5173 --strictPort',
+      url: 'http://localhost:5173',
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: 'npm run consumer:serve',
+      url: 'http://localhost:4177',
+      reuseExistingServer: !process.env.CI,
+    },
+  ],
 });

@@ -91,3 +91,7 @@ Canonical revision plus detached blobs → shared memory reservation → worker 
 Old 0.1/0.2 DB readonly capture → exact immediate-version archive → validated detached upgrade → new v3 DB/new ID. Old namespaces and archives remain. Reverting application code does not downgrade new-format data.
 
 B07 adoption evidence is [S04](../../evidence/3d/S04_GLTF_ADOPTION.md) and [B07](../../evidence/3d/B07_ASSET_IO.md). The original planned diagrams above remain responsibility maps, not claims of consumer/physical-device verification.
+
+## B08 candidate: consumer and inspection
+
+Renderer-free inspection is owned by core3d/inspection; the editor quality panel owns only temporary report/cancellation/navigation state. The shared asset worker owns bounded execution. tools/3d-consumer is a development-only independent Babylon entry excluded from app bundles. See [B08 evidence](../../evidence/3d/B08_CONSUMER_INSPECTION.md). Browser and physical acceptance remain separately recorded.
