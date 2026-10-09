@@ -204,6 +204,7 @@ function GameSettings({
         <label>
           受渡し前方向
           <select
+            aria-label="受渡し前方向"
             value={draft.forward}
             onChange={(event) => change({ forward: event.target.value as Game3D['forward'] })}
           >
@@ -217,6 +218,7 @@ function GameSettings({
         <label>
           原点の決め方
           <select
+            aria-label="原点の決め方"
             value={draft.originMode}
             onChange={(event) => change({ originMode: event.target.value as Game3D['originMode'] })}
           >
@@ -400,7 +402,11 @@ function AttachmentEditor({
       </h4>
       <label>
         {label}を選択
-        <select value={id} onChange={(event) => read(event.target.value)}>
+        <select
+          aria-label={`${label}を選択`}
+          value={id}
+          onChange={(event) => read(event.target.value)}
+        >
           <option value="">新しい{label}</option>
           {id && !selected && <option value={id}>削除済みの{label}</option>}
           {items.map((item) => (
@@ -438,7 +444,11 @@ function AttachmentEditor({
         </label>
         <label>
           {label}追従先（node / bone）
-          <select value={draft.nodeId} onChange={(event) => change({ nodeId: event.target.value })}>
+          <select
+            aria-label={`${label}追従先（node / bone）`}
+            value={draft.nodeId}
+            onChange={(event) => change({ nodeId: event.target.value })}
+          >
             <option value="">なし（world）</option>
             {draft.nodeId && !project.nodes.some((node) => node.id === draft.nodeId) && (
               <option value={draft.nodeId}>存在しない追従先</option>
@@ -474,6 +484,7 @@ function AttachmentEditor({
             <label>
               collider形状
               <select
+                aria-label="collider形状"
                 value={draft.shape}
                 onChange={(event) => change({ shape: event.target.value as Collider['shape'] })}
               >

@@ -139,6 +139,8 @@ test('imports actual mixed-skin textured animation bytes in an independent conte
     mimeType: 'application/json',
     buffer: Buffer.from(pkg.sidecar),
   });
+  await expect(panel.getByText(/^原本: model\.glb/)).toBeVisible();
+  await expect(panel.getByText('付属情報: game.json', { exact: true })).toBeVisible();
   await panel
     .getByRole('button', { name: 'GLBを検査して新しいコピーへ取り込む', exact: true })
     .click();

@@ -139,6 +139,7 @@ export function NativeAssetIoPanel({
   const mounted = useRef(false);
   const composing = useRef(false);
   const latestSession = useRef(session);
+  const initializedSession = useRef(session);
   const available = useRef(!document.hidden);
   const currentExport = useRef<ExportRecord | null>(null);
   const downloads = useRef(new Map<string, Download>());
@@ -184,18 +185,21 @@ export function NativeAssetIoPanel({
     }
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     mounted.current = true;
-    setFile(null);
-    setSidecar(null);
-    setFileKey((value) => value + 1);
-    setAllowLoss(false);
-    setLosses([]);
-    setSourceHash('');
-    setProgress(null);
-    setFailure('');
-    setNotice('');
-    clearExport();
+    if (initializedSession.current !== session) {
+      initializedSession.current = session;
+      setFile(null);
+      setSidecar(null);
+      setFileKey((value) => value + 1);
+      setAllowLoss(false);
+      setLosses([]);
+      setSourceHash('');
+      setProgress(null);
+      setFailure('');
+      setNotice('');
+      clearExport();
+    }
     const unsubscribe = session.edit.subscribe(() => {
       const running = active.current;
       if (
