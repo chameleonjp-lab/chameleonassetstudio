@@ -1,5 +1,4 @@
 import { NativeGamePanel } from './NativeGamePanel';
-import { NativeAssetIoPanel } from './NativeAssetIoPanel';
 import { NativeAnimationPanel } from './NativeAnimationPanel';
 import { NativeRigPanel } from './NativeRigPanel';
 import {
@@ -31,6 +30,9 @@ import { NativeTransformControls } from './NativeTransformControls';
 import { NativeTexturePanel } from './NativeTexturePanel';
 import type { Project3D } from '../../core3d/model/project';
 
+const NativeAssetIoPanel = lazy(() =>
+  import('./NativeAssetIoPanel').then((module) => ({ default: module.NativeAssetIoPanel })),
+);
 const NativeViewportPanel = lazy(() =>
   import('./NativeViewportPanel').then((module) => ({ default: module.NativeViewportPanel })),
 );
@@ -800,7 +802,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                         })
                       }
                     >
-                      移行前移行前の復元控えを取得
+                      移行前の復元控えを取得
                     </button>
                   )}
                   <div className="editor3d-actions" aria-label="編集履歴と保存">
@@ -944,50 +946,52 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                   >
                     <summary>GLB読込・配布ファイル出力</summary>
                     {assetIoOpen && (
-                      <NativeAssetIoPanel
-                        key={'io-' + project.id}
-                        session={session}
-                        onImport={async (result, signal) => {
-                          const owner = sessionRef.current;
-                          if (owner !== session || owner.state.readOnly)
-                            throw new Error('現在の編集作品を確認してください。');
-                          const revision = owner.project.revision;
-                          await owner.save();
-                          signal.throwIfAborted();
-                          if (sessionRef.current !== owner || owner.project.revision !== revision)
-                            throw new Error('作品が変わったため取込を中止しました。');
-                          const copyId = crypto.randomUUID();
-                          await repository.restoreCopy(
-                            result.project,
-                            result.blobs,
-                            copyId,
-                            ownerId.current,
-                            { signal },
-                          );
-                          // Commit is atomic. A late cancellation keeps the saved copy, never deletes it.
-                          if (
-                            signal.aborted ||
-                            sessionRef.current !== owner ||
-                            owner.project.revision !== revision
-                          ) {
-                            setNotice(
-                              'GLBコピーは保存済みです。一覧から開けます。現在の画面は切り替えていません。',
+                      <Suspense fallback={<p role="status">GLB入出力を読み込み中…</p>}>
+                        <NativeAssetIoPanel
+                          key={'io-' + project.id}
+                          session={session}
+                          onImport={async (result, signal) => {
+                            const owner = sessionRef.current;
+                            if (owner !== session || owner.state.readOnly)
+                              throw new Error('現在の編集作品を確認してください。');
+                            const revision = owner.project.revision;
+                            await owner.save();
+                            signal.throwIfAborted();
+                            if (sessionRef.current !== owner || owner.project.revision !== revision)
+                              throw new Error('作品が変わったため取込を中止しました。');
+                            const copyId = crypto.randomUUID();
+                            await repository.restoreCopy(
+                              result.project,
+                              result.blobs,
+                              copyId,
+                              ownerId.current,
+                              { signal },
                             );
-                            return;
-                          }
-                          const entries = await repository.listProjects();
-                          if (
-                            signal.aborted ||
-                            sessionRef.current !== owner ||
-                            owner.project.revision !== revision
-                          )
-                            return;
-                          setProjects(entries);
-                          setNotice(
-                            'GLBコピーを保存しました。保存したプロジェクトの Imported GLB から開けます。現在の作品は変更していません。',
-                          );
-                        }}
-                      />
+                            // Commit is atomic. A late cancellation keeps the saved copy, never deletes it.
+                            if (
+                              signal.aborted ||
+                              sessionRef.current !== owner ||
+                              owner.project.revision !== revision
+                            ) {
+                              setNotice(
+                                'GLBコピーは保存済みです。一覧から開けます。現在の画面は切り替えていません。',
+                              );
+                              return;
+                            }
+                            const entries = await repository.listProjects();
+                            if (
+                              signal.aborted ||
+                              sessionRef.current !== owner ||
+                              owner.project.revision !== revision
+                            )
+                              return;
+                            setProjects(entries);
+                            setNotice(
+                              'GLBコピーを保存しました。保存したプロジェクトの Imported GLB から開けます。現在の作品は変更していません。',
+                            );
+                          }}
+                        />
+                      </Suspense>
                     )}
                   </details>
                   <NativeAssemblyControls
