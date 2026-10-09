@@ -13,17 +13,17 @@ async function setup(page: Page) {
   const rig = panel(page);
   await rig.getByLabel('骨の名前', { exact: true }).fill('Root');
   await rig.getByRole('button', { name: '骨を追加', exact: true }).click();
-  const root = await rig.getByLabel('骨を選択', { exact: true }).inputValue();
-  await rig.getByLabel('親の骨', { exact: true }).selectOption(root);
+  const root = await rig.getByRole('combobox', { name: '骨を選択', exact: true }).inputValue();
+  await rig.getByRole('combobox', { name: '親の骨', exact: true }).selectOption(root);
   await rig.getByLabel('骨の名前', { exact: true }).fill('Tip');
   await rig.getByRole('button', { name: '骨を追加', exact: true }).click();
-  const tip = await rig.getByLabel('骨を選択', { exact: true }).inputValue();
+  const tip = await rig.getByRole('combobox', { name: '骨を選択', exact: true }).inputValue();
   await rig.getByRole('button', { name: '骨の現在値を読む' }).click();
   await rig.getByLabel('骨位置 Y', { exact: true }).fill('1');
   await rig.getByRole('button', { name: 'restを適用して再bind', exact: true }).click();
-  await rig.getByLabel('影響 1 の骨', { exact: true }).selectOption(root);
+  await rig.getByRole('combobox', { name: '影響 1 の骨', exact: true }).selectOption(root);
   await rig.getByLabel('影響 1 の重み', { exact: true }).fill('0.25');
-  await rig.getByLabel('影響 2 の骨', { exact: true }).selectOption(tip);
+  await rig.getByRole('combobox', { name: '影響 2 の骨', exact: true }).selectOption(tip);
   await rig.getByLabel('影響 2 の重み', { exact: true }).fill('0.75');
   await rig.getByRole('button', { name: '全頂点へ明示weightをbind', exact: true }).click();
   await expect(rig.getByText(/bind済み/)).toBeVisible();
@@ -90,10 +90,10 @@ test('authors mixed skin, previews deformation, preserves rest backup and re-edi
     await restored.getByText('骨と重みの編集を開く', { exact: true }).click();
     const rp = panel(restored);
     await rp
-      .getByLabel('重み対象の部品', { exact: true })
+      .getByRole('combobox', { name: '重み対象の部品', exact: true })
       .selectOption(saved.project.nodes.find((node) => node.meshId)!.id);
     await rp
-      .getByLabel('編集する頂点', { exact: true })
+      .getByRole('combobox', { name: '編集する頂点', exact: true })
       .selectOption(saved.project.meshes[0].vertices[0].id);
     await rp.getByRole('button', { name: '頂点の現在weightを読む' }).click();
     await rp.getByLabel('影響 1 の重み', { exact: true }).fill('0.5');
@@ -150,7 +150,9 @@ test('extends a skin palette beyond four joints without replacing existing weigh
 }) => {
   const { rig } = await setup(page);
   await rig.getByRole('button', { name: '人型の骨ガイドを追加', exact: true }).click();
-  const extraJoint = await rig.getByLabel('骨を選択', { exact: true }).inputValue();
+  const extraJoint = await rig
+    .getByRole('combobox', { name: '骨を選択', exact: true })
+    .inputValue();
   await rig.getByText('bindに含める骨を選ぶ', { exact: true }).click();
   const candidates = rig.getByRole('group', { name: 'skinに含める骨の候補' }).getByRole('checkbox');
   for (let i = 2; i < 7; i++) await candidates.nth(i).check();
@@ -159,11 +161,11 @@ test('extends a skin palette beyond four joints without replacing existing weigh
   const before = await importBackup(new Uint8Array(await backup(page)));
   expect(before.project.skins[0].weights[0].values).toEqual([0.25, 0.75]);
   await rig
-    .getByLabel('編集する頂点', { exact: true })
+    .getByRole('combobox', { name: '編集する頂点', exact: true })
     .selectOption(before.project.meshes[0].vertices[0].id);
-  await rig.getByLabel('影響 1 の骨', { exact: true }).selectOption(extraJoint);
+  await rig.getByRole('combobox', { name: '影響 1 の骨', exact: true }).selectOption(extraJoint);
   await rig.getByLabel('影響 1 の重み', { exact: true }).fill('1');
-  await rig.getByLabel('影響 2 の骨', { exact: true }).selectOption('');
+  await rig.getByRole('combobox', { name: '影響 2 の骨', exact: true }).selectOption('');
   await rig.getByRole('button', { name: '選択頂点のweightを適用', exact: true }).click();
   const after = await importBackup(new Uint8Array(await backup(page)));
   expect(after.project.skins[0].joints).toHaveLength(7);
