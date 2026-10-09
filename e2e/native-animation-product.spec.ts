@@ -178,6 +178,7 @@ test('phone timeline supports IME, duplicate-time rejection and explicit resume 
     await animation.getByRole('button', { name: 'clipを再生', exact: true }).tap();
     await expect(animation.getByRole('status')).toContainText('アニメーション再生中');
     await animation.getByRole('button', { name: 'clipを停止', exact: true }).tap();
+    await page.getByRole('button', { name: '全体を表示', exact: true }).tap();
     await visual(page, 'phone-timeline');
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
