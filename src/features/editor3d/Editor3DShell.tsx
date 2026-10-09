@@ -1,3 +1,5 @@
+import { NativeGamePanel } from './NativeGamePanel';
+import { NativeAssetIoPanel } from './NativeAssetIoPanel';
 import { NativeAnimationPanel } from './NativeAnimationPanel';
 import { NativeRigPanel } from './NativeRigPanel';
 import {
@@ -204,6 +206,8 @@ function downloadArchive(bytes: Uint8Array, name: string) {
 function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession | null> }) {
   const [repository, setRepository] = useState<ProjectRepository | null>(null);
   const [projects, setProjects] = useState<ProjectEntry[]>([]);
+  const [gamePreview, setGamePreview] = useState(false);
+  const [assetIoOpen, setAssetIoOpen] = useState(false);
   const [legacyProjects, setLegacyProjects] = useState<LegacyProjectEntry[] | null>(null);
   const [legacyTarget, setLegacyTarget] = useState<LegacyProjectEntry | null>(null);
   const [hasLegacyBackup, setHasLegacyBackup] = useState(false);
@@ -594,7 +598,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                 )}
               </section>
               <section className="editor3d-card" aria-labelledby="editor3d-legacy-heading">
-                <h2 id="editor3d-legacy-heading">旧形式の作品（0.1.0）</h2>
+                <h2 id="editor3d-legacy-heading">旧形式の作品（0.1.0 / 0.2.0）</h2>
                 <p>
                   旧保存領域の原本を残し、新しい保存領域へコピーして編集します。復元用の控えも保存するため端末の使用容量が増えます。
                 </p>
@@ -611,7 +615,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                 {legacyProjects && (
                   <ul className="editor3d-project-list">
                     {legacyProjects.map((entry) => (
-                      <li key={entry.id}>
+                      <li key={entry.namespace + entry.id}>
                         <button
                           type="button"
                           disabled={busy}
@@ -627,7 +631,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                   <div role="group" aria-label="旧作品のコピー確認">
                     <p>
                       対象: {legacyTarget.name}
-                      。旧作品と旧保存領域は変更せず、新しいIDの作品と0.1.0復元控えを保存します。
+                      。旧作品と旧保存領域は変更せず、新しいIDの作品と移行前の復元控えを保存します。
                     </p>
                     <button
                       type="button"
@@ -643,7 +647,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                               repository,
                               legacyTarget.id,
                               ownerId.current,
-                              { signal: controller.signal },
+                              { signal: controller.signal, name: legacyTarget.namespace },
                             );
                             // Once committed, a late cancel cannot delete the complete saved copy.
                             migration.current = null;
@@ -656,7 +660,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                             );
                             setLegacyTarget(null);
                             setNotice(
-                              '旧作品を残してコピーを開きました。0.1.0の復元控えも保存済みです。',
+                              '旧作品を残してコピーを開きました。移行前の復元控えも保存済みです。',
                             );
                           } finally {
                             migration.current = null;
@@ -682,8 +686,8 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
               <section className="editor3d-card" aria-labelledby="editor3d-restore-heading">
                 <h2 id="editor3d-restore-heading">バックアップから再開</h2>
                 <p>
-                  0.1.0 /
-                  0.2.0に対応し、新しいIDのコピーとして復元します。旧形式は復元控えも保存するため使用容量が増えます。
+                  0.1.0 / 0.2.0 /
+                  0.3.0に対応し、新しいIDのコピーとして復元します。旧形式は復元控えも保存するため使用容量が増えます。
                 </p>
                 <label htmlFor="editor3d-restore">.cas3dproj を選んでコピー復元</label>
                 <input
@@ -789,14 +793,14 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                         void run(async () => {
                           const bytes = await repository.readLegacyBackup(project.id);
                           if (!bytes) throw new Error('旧形式の復元控えが見つかりません。');
-                          downloadArchive(bytes, `${project.name}-original-0.1.0`);
+                          downloadArchive(bytes, `${project.name}-original-version`);
                           setNotice(
                             '旧形式の復元控えをダウンロードしました。端末でファイルを確認してください。',
                           );
                         })
                       }
                     >
-                      移行前0.1.0の復元控えを取得
+                      移行前移行前の復元控えを取得
                     </button>
                   )}
                   <div className="editor3d-actions" aria-label="編集履歴と保存">
@@ -918,6 +922,74 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                       onChange={redraw}
                     />
                   </details>
+                  <details className="editor3d-details">
+                    <summary>ゲーム向け情報を編集</summary>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={gamePreview}
+                        onChange={(event) => setGamePreview(event.target.checked)}
+                      />
+                      anchor・collider・原点をプレビュー
+                    </label>
+                    <NativeGamePanel
+                      key={'game-' + project.id}
+                      session={session}
+                      onChange={redraw}
+                    />
+                  </details>
+                  <details
+                    className="editor3d-details"
+                    onToggle={(event) => setAssetIoOpen(event.currentTarget.open)}
+                  >
+                    <summary>GLB読込・配布ファイル出力</summary>
+                    {assetIoOpen && (
+                      <NativeAssetIoPanel
+                        key={'io-' + project.id}
+                        session={session}
+                        onImport={async (result, signal) => {
+                          const owner = sessionRef.current;
+                          if (owner !== session || owner.state.readOnly)
+                            throw new Error('現在の編集作品を確認してください。');
+                          const revision = owner.project.revision;
+                          await owner.save();
+                          signal.throwIfAborted();
+                          if (sessionRef.current !== owner || owner.project.revision !== revision)
+                            throw new Error('作品が変わったため取込を中止しました。');
+                          const copyId = crypto.randomUUID();
+                          await repository.restoreCopy(
+                            result.project,
+                            result.blobs,
+                            copyId,
+                            ownerId.current,
+                            { signal },
+                          );
+                          // Commit is atomic. A late cancellation keeps the saved copy, never deletes it.
+                          if (
+                            signal.aborted ||
+                            sessionRef.current !== owner ||
+                            owner.project.revision !== revision
+                          ) {
+                            setNotice(
+                              'GLBコピーは保存済みです。一覧から開けます。現在の画面は切り替えていません。',
+                            );
+                            return;
+                          }
+                          const entries = await repository.listProjects();
+                          if (
+                            signal.aborted ||
+                            sessionRef.current !== owner ||
+                            owner.project.revision !== revision
+                          )
+                            return;
+                          setProjects(entries);
+                          setNotice(
+                            'GLBコピーを保存しました。保存したプロジェクトの Imported GLB から開けます。現在の作品は変更していません。',
+                          );
+                        }}
+                      />
+                    )}
+                  </details>
                   <NativeAssemblyControls
                     key={`assembly-${project.id}`}
                     project={project}
@@ -966,6 +1038,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                           editing={session.edit}
                           rigPose={session.rigPose}
                           animation={session.animation}
+                          gamePreview={gamePreview}
                           readBlob={readTextureBlob}
                           factory={createNativeViewport}
                           onSave={() => session.save()}

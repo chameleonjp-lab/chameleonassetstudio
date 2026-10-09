@@ -1,3 +1,4 @@
+import { ASSET_IO_PROFILE, reserveAssetIoBytes } from '../../core3d/profile/assetIoProfile';
 import { AnimationTransaction } from './animationTransaction';
 import type { AnimationBinding } from '../../core3d/ports/animationPort';
 // Keep the complete rescue encoder in the shell graph before any edit is accepted.
@@ -256,8 +257,30 @@ export class ProjectSession {
     return new Uint8Array(bytes);
   }
 
+  private sourceStorageHighWater = 0;
+  private sourceStorageReleases: (() => void)[] = [];
   private reserveRetainedBinaryStorage() {
-    const retained = [...this.blobs.values()].reduce((sum, bytes) => sum + bytes.byteLength, 0);
+    const glbIds = new Set(
+      this.history.project.sources
+        .filter((s) => s.mimeType === 'model/gltf-binary' || s.mimeType === 'application/json')
+        .map((s) => s.blobId),
+    );
+    const sourceBytes = [...this.blobs].reduce(
+      (sum, [id, bytes]) => sum + (glbIds.has(id) ? bytes.byteLength : 0),
+      0,
+    );
+    const retained = [...this.blobs].reduce(
+      (sum, [id, bytes]) => sum + (glbIds.has(id) ? 0 : bytes.byteLength),
+      0,
+    );
+    if (sourceBytes + retained > ASSET_IO_PROFILE.totalBlobBytes)
+      throw new Error('Source and texture total exceeds asset profile');
+    if (sourceBytes * 2 > this.sourceStorageHighWater) {
+      this.sourceStorageReleases.push(
+        reserveAssetIoBytes(sourceBytes * 2 - this.sourceStorageHighWater),
+      );
+      this.sourceStorageHighWater = sourceBytes * 2;
+    }
     if (
       !Number.isSafeInteger(retained) ||
       retained > NATIVE_TEXTURE_PROFILE.maxRetainedEncodedBytes
@@ -330,7 +353,15 @@ export class ProjectSession {
     };
     assertCurrent();
     // Count originals, derived bytes and all session history before making any new copies.
-    let retainedBytes = [...this.blobs.values()].reduce((sum, bytes) => sum + bytes.byteLength, 0);
+    const glbIds = new Set(
+      this.history.project.sources
+        .filter((s) => s.mimeType === 'model/gltf-binary' || s.mimeType === 'application/json')
+        .map((s) => s.blobId),
+    );
+    let retainedBytes = [...this.blobs].reduce(
+      (sum, [id, bytes]) => sum + (glbIds.has(id) ? 0 : bytes.byteLength),
+      0,
+    );
     let incomingBytes = 0;
     for (const [id, bytes] of incoming) {
       if (!/^[a-f0-9]{64}$/.test(id) || !(bytes instanceof Uint8Array))
@@ -404,7 +435,10 @@ export class ProjectSession {
           throw new Error('完全バックアップの上限を超えます。内容は変更していません。');
         const merged = new Map([...this.blobs, ...copies]);
         storageEstimate =
-          [...merged.values()].reduce((sum, bytes) => sum + bytes.byteLength, 0) * 7;
+          [...merged].reduce(
+            (sum, [id, bytes]) => sum + (glbIds.has(id) ? 0 : bytes.byteLength),
+            0,
+          ) * 7;
         if (storageEstimate > this.binaryStorageHighWater)
           growth.release = reserveNativeTextureBytes(
             'native session and save pipeline',
@@ -554,6 +588,8 @@ export class ProjectSession {
     this.poses.dispose();
     this.closed = true;
     this.blobs.clear();
+    this.sourceStorageReleases.splice(0).forEach((release) => release());
+    this.sourceStorageHighWater = 0;
     this.binaryStorageReleases.splice(0).forEach((release) => release());
     this.binaryStorageHighWater = 0;
     this.transforms.reconcile('closed');

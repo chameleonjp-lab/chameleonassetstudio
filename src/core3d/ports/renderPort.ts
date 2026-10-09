@@ -74,6 +74,7 @@ export interface NativeViewportPort {
   bindEditing?(binding: NativeEditBinding | null): void;
   bindRigPose?(binding: RigPoseBinding | null): void;
   bindAnimation?(binding: AnimationBinding | null): void;
+  setGamePreview?(visible: boolean): NativeViewportResult;
   resetCamera(): void;
   fitCamera(): void;
   cameraAction(action: NativeCameraAction): NativeViewportResult;

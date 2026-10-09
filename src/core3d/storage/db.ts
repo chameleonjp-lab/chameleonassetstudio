@@ -1,6 +1,7 @@
 /** This database is deliberately independent of the existing 2D database. */
 export const LEGACY_PROJECT_3D_DB_NAME = 'chameleon-asset-studio-3d';
-export const PROJECT_3D_DB_NAME = 'chameleon-asset-studio-3d-v2';
+export const PREVIOUS_PROJECT_3D_DB_NAME = 'chameleon-asset-studio-3d-v2';
+export const PROJECT_3D_DB_NAME = 'chameleon-asset-studio-3d-v3';
 export const PROJECT_3D_DB_VERSION = 1;
 
 export const STORAGE_STORES = [
@@ -69,9 +70,9 @@ export function openStorageDatabase(
     name?: string;
   } = {},
 ): Promise<IDBDatabase> {
-  if (options.name === LEGACY_PROJECT_3D_DB_NAME)
+  if (options.name === LEGACY_PROJECT_3D_DB_NAME || options.name === PREVIOUS_PROJECT_3D_DB_NAME)
     return Promise.reject(
-      new Error('The legacy 0.1.0 namespace is read-only; use copy migration.'),
+      new Error('The legacy 0.1.0/0.2.0 namespace is read-only; use copy migration.'),
     );
   const factory = options.indexedDB ?? globalThis.indexedDB;
   if (!factory) return Promise.reject(new Error('IndexedDB is unavailable'));

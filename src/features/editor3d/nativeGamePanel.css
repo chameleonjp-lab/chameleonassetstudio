@@ -1,0 +1,75 @@
+.native-game {
+  box-sizing: border-box;
+  border: 1px solid #64748b;
+  border-radius: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  min-width: 0;
+  max-width: 100%;
+  max-height: min(48rem, 75vh);
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+
+.native-game section {
+  min-width: 0;
+  border-top: 1px solid #64748b;
+  margin-top: 1rem;
+}
+
+.native-game fieldset {
+  min-width: 0;
+  margin: 0.5rem 0;
+  padding: 0;
+  border: 0;
+}
+
+.native-game legend {
+  max-width: 100%;
+  padding: 0;
+  overflow-wrap: anywhere;
+}
+
+.native-game label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0.5rem 0;
+}
+
+.native-game input,
+.native-game select,
+.native-game button {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 44px;
+  max-width: 100%;
+  font-size: 1rem;
+}
+
+.native-game input,
+.native-game select {
+  width: 100%;
+}
+
+.native-game button {
+  margin: 0.25rem 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.native-game-values {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+  gap: 0.5rem;
+}
+
+.native-game-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.native-game-id {
+  font-size: 0.875rem;
+}

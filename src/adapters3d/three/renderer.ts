@@ -1,3 +1,4 @@
+import type { NativeViewportResult } from '../../core3d/ports/renderPort';
 import type { AnimationBinding } from '../../core3d/ports/animationPort';
 import type { RigPoseBinding } from '../../core3d/ports/rigPosePort';
 import { evaluateRigPose } from '../../core3d/rig/pose';
@@ -5,6 +6,9 @@ import { validateSkinProfile } from '../../core3d/rig/profile';
 import { isNodeVisible } from '../../core3d/model/editability';
 /** Native-static Three adapter. Lazy product use follows the scoped G03 evidence record. */
 import {
+  BoxGeometry,
+  SphereGeometry,
+  CapsuleGeometry,
   Bone,
   Skeleton,
   SkinnedMesh,
@@ -795,6 +799,128 @@ export class NativeViewport {
     this.poseUnsubscribe = binding?.subscribe(() => this.applyRigPose()) ?? null;
     this.applyRigPose();
   }
+
+  private gamePreviewEnabled = false;
+  private gamePreviewError: string | null = null;
+  private gameHelpers: {
+    object: Object3D;
+    nodeId: string | null;
+    local: Matrix4;
+    extent: number;
+    dispose: () => void;
+  }[] = [];
+  setGamePreview(visible: boolean): NativeViewportResult {
+    if (this.disposed) return { ok: false, reason: 'Viewport disposed' };
+    if (visible === this.gamePreviewEnabled) return { ok: true };
+    this.gamePreviewEnabled = visible;
+    this.gamePreviewError = null;
+    try {
+      this.rebuildGamePreview();
+      this.requestRender();
+      return { ok: true };
+    } catch (error) {
+      this.gamePreviewEnabled = false;
+      this.gamePreviewError = String(error);
+      this.clearGamePreview();
+      return { ok: false, reason: String(error) };
+    }
+  }
+  private clearGamePreview() {
+    for (const entry of this.gameHelpers) {
+      entry.object.removeFromParent();
+      entry.dispose();
+    }
+    this.gameHelpers = [];
+  }
+  private rebuildGamePreview() {
+    this.clearGamePreview();
+    if (!this.gamePreviewEnabled || !this.graph || !this.snapshot) return;
+    const add = (
+      object: Object3D,
+      nodeId: string | null,
+      transform: Project3D['nodes'][number]['transform'],
+      dispose: () => void,
+    ) => {
+      object.matrixAutoUpdate = false;
+      const local = new Matrix4().compose(
+        new Vector3(...transform.translation),
+        new Quaternion(...transform.rotation),
+        new Vector3(...transform.scale),
+      );
+      if (!local.elements.every(float32Finite)) {
+        dispose();
+        throw new Error('Game preview exceeds Float32 range');
+      }
+      let extent = 0.5;
+      if (object instanceof Mesh) {
+        const array = object.geometry.getAttribute('position').array;
+        for (const value of array) {
+          if (!Number.isFinite(value)) {
+            dispose();
+            throw new Error('Game helper geometry exceeds Float32 range');
+          }
+          extent = Math.max(extent, Math.abs(value));
+        }
+      }
+      this.gameHelpers.push({ object, nodeId, local, extent, dispose });
+      this.scene.add(object);
+    };
+    for (const anchor of this.snapshot.game.anchors) {
+      const axes = new AxesHelper(0.3);
+      axes.name = 'Game anchor ' + anchor.id;
+      add(axes, anchor.nodeId, anchor.transform, () => axes.dispose());
+    }
+    for (const collider of this.snapshot.game.colliders) {
+      if ([...collider.size, collider.radius, collider.height].some((x) => !float32Finite(x)))
+        throw new Error('Collider exceeds Float32 range');
+      const geometry =
+        collider.shape === 'box'
+          ? new BoxGeometry(...collider.size)
+          : collider.shape === 'sphere'
+            ? new SphereGeometry(collider.radius, 12, 8)
+            : new CapsuleGeometry(collider.radius, collider.height, 4, 8);
+      const material = new MeshBasicMaterial({
+        color: 0xffa500,
+        wireframe: true,
+        depthTest: false,
+      });
+      const object = new Mesh(geometry, material);
+      object.name = 'Game collider ' + collider.id;
+      add(object, collider.nodeId, collider.transform, () => {
+        geometry.dispose();
+        material.dispose();
+      });
+    }
+    const origin = new AxesHelper(0.5);
+    origin.name = 'Game origin';
+    add(
+      origin,
+      null,
+      { translation: this.snapshot.game.origin, rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      () => origin.dispose(),
+    );
+    this.updateGamePreview();
+    if (this.gamePreviewError) throw new Error(this.gamePreviewError);
+  }
+  private updateGamePreview() {
+    for (const entry of this.gameHelpers) {
+      const parent = entry.nodeId ? this.graph?.objects.get(entry.nodeId) : undefined;
+      entry.object.matrix.copy(parent ? parent.matrixWorld : new Matrix4()).multiply(entry.local);
+      if (
+        !entry.object.matrix.elements.every(float32Finite) ||
+        Math.max(...entry.object.matrix.elements.map(Math.abs)) * (entry.extent * 3 + 1) > 1e30
+      ) {
+        this.gamePreviewError = 'Game world transform exceeds Float32 range';
+        this.gamePreviewEnabled = false;
+        this.clearGamePreview();
+        return;
+      }
+      entry.object.visible =
+        !entry.nodeId || (!!this.snapshot && isNodeVisible(this.snapshot, entry.nodeId));
+      entry.object.updateMatrixWorld(true);
+    }
+  }
+
   private applyRigPose(): void {
     if (!this.graph || !this.snapshot || this.disposed) return;
     this.restoreCanonicalTransforms();
@@ -813,6 +939,7 @@ export class NativeViewport {
       }
     }
     this.graph.root.updateMatrixWorld(true);
+    this.updateGamePreview();
     this.graph.skeletons.forEach((skeleton) => skeleton.update());
     this.graph.skinnedMeshes.forEach((mesh) => {
       mesh.computeBoundingBox();
@@ -935,6 +1062,7 @@ export class NativeViewport {
       }
       this.editSequence = state.sequence;
       this.graph.root.updateMatrixWorld(true);
+      this.updateGamePreview();
       if (this.rigPose?.state.active || this.animation?.state.active) this.applyRigPose();
       this.updateSelection(state, matches);
       this.requestRender();
@@ -953,6 +1081,7 @@ export class NativeViewport {
       object.scale.fromArray(node.transform.scale);
     }
     this.graph.root.updateMatrixWorld(true);
+    this.updateGamePreview();
     this.previewApplied = false;
   }
 
@@ -1453,6 +1582,9 @@ export class NativeViewport {
       animationGuard = this.animation?.beginCapture();
       this.cancelRender();
       this.editController?.setHelpersVisible(false);
+      this.gameHelpers.forEach((entry) => {
+        entry.object.visible = false;
+      });
       for (const helpers of this.selectionHelpers.values())
         helpers.forEach((helper) => {
           helper.visible = false;
@@ -1484,6 +1616,7 @@ export class NativeViewport {
       animationGuard?.release();
       if (generation === this.runtimeGeneration) {
         this.editController?.setHelpersVisible(true);
+        this.updateGamePreview();
         for (const helpers of this.selectionHelpers.values())
           helpers.forEach((helper) => {
             helper.visible = true;
@@ -1643,6 +1776,13 @@ export class NativeViewport {
       this.graph = buildNativeGraph(this.snapshot, this.textureSnapshot);
       this.scene.add(this.graph.root);
       this.applyInspection();
+      try {
+        this.rebuildGamePreview();
+      } catch (error) {
+        this.gamePreviewEnabled = false;
+        this.gamePreviewError = String(error);
+        this.clearGamePreview();
+      }
       this.applyRigPose();
       this.rebuildCount++;
       return true;
@@ -1865,6 +2005,7 @@ export class NativeViewport {
     this.releaseEditing();
     this.clearSelection();
     this.releaseInspection();
+    this.clearGamePreview();
     if (!this.graph) return;
     this.disposedGeometries += this.graph.geometries.length;
     this.disposedMaterials += this.graph.materials.length;

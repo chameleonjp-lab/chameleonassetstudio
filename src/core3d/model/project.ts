@@ -74,9 +74,43 @@ export interface Clip3D {
     keys: { time: number; value: number[] }[];
   }[];
 }
+export interface GameAttachment3D {
+  id: string;
+  purpose: string;
+  name: string;
+  nodeId: string | null;
+  transform: Transform3D;
+}
+export interface Game3D {
+  assetId: string;
+  assetKind: string;
+  originMode: 'feet' | 'center' | 'custom';
+  /** Canonical geometry remains meters/+Y-up/+Z-forward; these are delivery metadata. */
+  unitMeters: number;
+  forward: '+Z' | '-Z' | '+X' | '-X';
+  origin: Vec3;
+  anchors: GameAttachment3D[];
+  colliders: (GameAttachment3D & {
+    shape: 'box' | 'sphere' | 'capsule';
+    size: Vec3;
+    radius: number;
+    height: number;
+  })[];
+}
+export const gameDefaults = (assetId: string): Game3D => ({
+  assetId,
+  assetKind: 'prop',
+  originMode: 'custom',
+  unitMeters: 1,
+  forward: '+Z',
+  origin: [0, 0, 0],
+  anchors: [],
+  colliders: [],
+});
 export interface Project3D {
   format: 'chameleon-project-3d';
-  schemaVersion: '0.2.0';
+  schemaVersion: '0.3.0';
+  game: Game3D;
   id: string;
   name: string;
   /** Monotonic editor revision, including Undo/Redo. Never a wall-clock value. */
@@ -91,12 +125,15 @@ export interface Project3D {
   blobIds: string[];
 }
 /** Frozen 0.1.0 shape: new fields must never be accepted by its parser. */
-export type LegacyProject3D = Omit<Project3D, 'schemaVersion' | 'nodes' | 'materials'> & {
+export type LegacyProject3D = Omit<Project3D, 'schemaVersion' | 'nodes' | 'materials' | 'game'> & {
   schemaVersion: '0.1.0';
   nodes: Omit<Node3D, 'visible' | 'locked'>[];
   materials: Omit<Material3D, 'emissiveColor' | 'alphaMode' | 'alphaCutoff' | 'doubleSided'>[];
 };
-export type StoredProject3D = Project3D | LegacyProject3D;
+export type PreviousProject3D = Omit<Project3D, 'schemaVersion' | 'game'> & {
+  schemaVersion: '0.2.0';
+};
+export type StoredProject3D = Project3D | LegacyProject3D | PreviousProject3D;
 export const materialDefaults = () => ({
   emissiveColor: [0, 0, 0] as Vec3,
   alphaMode: 'OPAQUE' as AlphaMode3D,
@@ -117,7 +154,8 @@ export const identityTransform = (): Transform3D => ({
 export function createProject(id: string, name = '新しい3Dプロジェクト'): Project3D {
   const project: Project3D = {
     format: 'chameleon-project-3d',
-    schemaVersion: '0.2.0',
+    schemaVersion: '0.3.0',
+    game: gameDefaults(id),
     id,
     name,
     revision: 0,
@@ -185,35 +223,49 @@ function hash(v: unknown): asserts v is string {
 }
 /** Validates the native contract only. This is not a GLB loader or decoder. */
 export function validateProject(value: unknown): asserts value is Project3D {
-  validateNativeProject(value, '0.2.0');
+  validateNativeProject(value, '0.3.0');
 }
 export function validateLegacyProject(value: unknown): asserts value is LegacyProject3D {
   validateNativeProject(value, '0.1.0');
 }
+export function validatePreviousProject(value: unknown): asserts value is PreviousProject3D {
+  validateNativeProject(value, '0.2.0');
+}
 export function validateStoredProject(value: unknown): asserts value is StoredProject3D {
   const version = record(value, 'project').schemaVersion;
   if (version === '0.1.0') validateLegacyProject(value);
+  else if (version === '0.2.0') validatePreviousProject(value);
   else validateProject(value);
 }
 /** Detached conversion only; callers persist to a separate identity/namespace. */
-export function upgradeLegacyProject(value: LegacyProject3D): Project3D {
-  validateLegacyProject(value);
+export function upgradeLegacyProject(value: LegacyProject3D | PreviousProject3D): Project3D {
+  if (value.schemaVersion === '0.1.0') validateLegacyProject(value);
+  else validatePreviousProject(value);
   const original = structuredClone(value);
   const project: Project3D = {
     ...original,
-    schemaVersion: '0.2.0',
-    nodes: original.nodes.map((node) => ({ ...node, visible: true, locked: false })),
-    materials: original.materials.map((material) => ({
-      ...material,
-      ...materialDefaults(),
-      alphaMode: 'LEGACY_AUTO',
-    })),
+    schemaVersion: '0.3.0',
+    game: gameDefaults(original.id),
+    nodes:
+      original.schemaVersion === '0.2.0'
+        ? original.nodes
+        : original.nodes.map((node) => ({ ...node, visible: true, locked: false })),
+    materials:
+      original.schemaVersion === '0.2.0'
+        ? original.materials
+        : original.materials.map((material) => ({
+            ...material,
+            ...materialDefaults(),
+            alphaMode: 'LEGACY_AUTO',
+          })),
   };
   validateProject(project);
   return project;
 }
 function validateNativeProject(value: unknown, version: StoredProject3D['schemaVersion']) {
   const p = record(value, 'project');
+  if (p.format !== 'chameleon-project-3d' || p.schemaVersion !== version)
+    fail('Unsupported project format/version');
   keys(p, [
     'format',
     'schemaVersion',
@@ -228,6 +280,7 @@ function validateNativeProject(value: unknown, version: StoredProject3D['schemaV
     'skins',
     'clips',
     'blobIds',
+    ...(version === '0.3.0' ? ['game'] : []),
   ]);
   if (p.format !== 'chameleon-project-3d' || p.schemaVersion !== version)
     fail('Unsupported project format/version');
@@ -429,6 +482,67 @@ function validateNativeProject(value: unknown, version: StoredProject3D['schemaV
           fail('Unnormalized key quaternion');
       }
     }
+  }
+
+  if (version === '0.3.0') {
+    const game = record(project.game, 'game');
+    keys(game, [
+      'assetId',
+      'assetKind',
+      'originMode',
+      'unitMeters',
+      'forward',
+      'origin',
+      'anchors',
+      'colliders',
+    ]);
+    id(game.assetId);
+    string(game.assetKind);
+    if (!['feet', 'center', 'custom'].includes(game.originMode as string))
+      fail('Invalid origin mode');
+    number(game.unitMeters);
+    if (game.unitMeters <= 0 || !['+Z', '-Z', '+X', '-X'].includes(game.forward as string))
+      fail('Invalid game coordinates');
+    vector(game.origin, 3);
+    array(game.anchors);
+    array(game.colliders);
+    if (game.anchors.length > 256 || game.colliders.length > 256)
+      fail('Game attachment count exceeds profile');
+    uniqueIds([...game.anchors, ...game.colliders]);
+    for (const [items, collider] of [
+      [game.anchors, false],
+      [game.colliders, true],
+    ] as const)
+      for (const value of items) {
+        const item = record(value, 'attachment');
+        keys(item, [
+          'id',
+          'name',
+          'purpose',
+          'nodeId',
+          'transform',
+          ...(collider ? ['shape', 'size', 'radius', 'height'] : []),
+        ]);
+        string(item.name);
+        string(item.purpose);
+        if (item.nodeId !== null) has(nodes, item.nodeId);
+        const t = record(item.transform, 'attachment transform');
+        keys(t, ['translation', 'rotation', 'scale']);
+        vector(t.translation, 3);
+        vector(t.rotation, 4);
+        vector(t.scale, 3);
+        if (Math.abs(Math.hypot(...t.rotation) - 1) > 1e-5 || t.scale.some((v) => v <= 0))
+          fail('Invalid attachment transform');
+        if (collider) {
+          if (!['box', 'sphere', 'capsule'].includes(item.shape as string))
+            fail('Invalid collider shape');
+          vector(item.size, 3);
+          number(item.radius);
+          number(item.height);
+          if (item.size.some((v) => v <= 0) || item.radius <= 0 || item.height < 0)
+            fail('Invalid collider dimensions');
+        }
+      }
   }
   const boundNodes = new Set<string>();
   function includeAncestors(nodeId: string) {

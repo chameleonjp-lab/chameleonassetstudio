@@ -21,7 +21,7 @@ export interface ProjectBackup {
 }
 interface Manifest {
   format: 'chameleon-backup-3d';
-  version: '0.1.0' | '0.2.0';
+  version: '0.1.0' | '0.2.0' | '0.3.0';
   projectHash: string;
   blobs: { hash: string; bytes: number }[];
 }
@@ -114,7 +114,7 @@ export async function importBackup(input: Uint8Array): Promise<ProjectBackup> {
     manifest &&
       typeof manifest === 'object' &&
       manifest.format === 'chameleon-backup-3d' &&
-      (manifest.version === '0.1.0' || manifest.version === '0.2.0'),
+      ['0.1.0', '0.2.0', '0.3.0'].includes(manifest.version),
     'Unsupported backup format/version',
   );
   assert(
@@ -149,7 +149,7 @@ export async function importBackup(input: Uint8Array): Promise<ProjectBackup> {
     'Backup reference mismatch',
   );
   assert(names.size === blobs.size + 2, 'Unreferenced backup entry');
-  return project.schemaVersion === '0.1.0'
+  return project.schemaVersion !== '0.3.0'
     ? { project: upgradeLegacyProject(project), blobs, legacyBackup: bytes }
     : { project, blobs };
 }

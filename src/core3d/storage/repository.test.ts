@@ -503,3 +503,10 @@ it('lists only root metadata and hides recoverable trash by default', async () =
     { id: 'project', name: 'Saved name', revision: 0, trashed: true },
   ]);
 });
+
+it('refuses write access to both preserved pre-0.3 namespaces', async () => {
+  const { LEGACY_PROJECT_3D_DB_NAME, PREVIOUS_PROJECT_3D_DB_NAME, openStorageDatabase } =
+    await import('./db');
+  for (const name of [LEGACY_PROJECT_3D_DB_NAME, PREVIOUS_PROJECT_3D_DB_NAME])
+    await expect(openStorageDatabase({ name })).rejects.toThrow('read-only');
+});

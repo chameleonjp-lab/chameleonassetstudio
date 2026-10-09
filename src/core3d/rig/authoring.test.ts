@@ -76,7 +76,7 @@ describe('native rig authoring commands', () => {
   });
   it('authors connected joints and a continuous mixed-weight mesh in the existing schema', () => {
     const p = bound();
-    expect(p.schemaVersion).toBe('0.2.0');
+    expect(p.schemaVersion).toBe('0.3.0');
     expect(p.nodes.find((n) => n.id === 'tip')!.parentId).toBe('root');
     expect(() => validateSkinProfile(p.skins[0], p.meshes[0], p.nodes)).not.toThrow();
     const posed = cloneProject(p);

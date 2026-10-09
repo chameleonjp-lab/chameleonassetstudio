@@ -65,3 +65,22 @@ it('rejects new and retargeted animation tracks that affect a locked descendant'
   });
   expect(() => assertLocksPreserved(before, after)).toThrow();
 });
+
+it('protects game attachments bound to locked nodes through the final transaction guard', async () => {
+  const { nativeBox } = await import('../fixtures/nativeBox');
+  const { identityTransform } = await import('./project');
+  const p = nativeBox();
+  p.game.anchors = [
+    {
+      id: 'a',
+      name: 'A',
+      purpose: 'socket',
+      nodeId: p.nodes[0].id,
+      transform: identityTransform(),
+    },
+  ];
+  p.nodes[0].locked = true;
+  const q = structuredClone(p);
+  q.game.anchors[0].name = 'changed';
+  expect(() => assertLocksPreserved(p, q)).toThrow();
+});

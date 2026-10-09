@@ -30,6 +30,7 @@ export default defineConfig({
     },
     rollupOptions: { input: { hub: 'index.html', two: '2d/index.html', three: '3d/index.html' } },
   },
+  worker: { format: 'es' },
   plugins: [
     react(),
     {

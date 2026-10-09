@@ -1,10 +1,11 @@
 import { BACKUP_LIMITS, exportBackup } from '../backup/backup';
 import {
   upgradeLegacyProject,
-  validateLegacyProject,
+  validateStoredProject,
   type LegacyProject3D,
+  type PreviousProject3D,
 } from '../model/project';
-import { LEGACY_PROJECT_3D_DB_NAME, requestResult } from './db';
+import { LEGACY_PROJECT_3D_DB_NAME, PREVIOUS_PROJECT_3D_DB_NAME, requestResult } from './db';
 import { hashProject, StorageIntegrityError, type ProjectRepository } from './repository';
 
 /** Existing DB only: aborting the upgrade also avoids creating an empty legacy database. */
@@ -39,7 +40,7 @@ interface LegacyRoot {
   snapshotId: string;
   trashed: boolean;
 }
-export type LegacyProjectEntry = { id: string; name: string; revision: number };
+export type LegacyProjectEntry = { id: string; name: string; revision: number; namespace: string };
 export interface LegacyOptions {
   indexedDB?: IDBFactory;
   name?: string;
@@ -62,7 +63,14 @@ async function readLegacy<T>(
     db.close();
   }
 }
-export function listLegacyProjects(options: LegacyOptions = {}): Promise<LegacyProjectEntry[]> {
+export async function listLegacyProjects(
+  options: LegacyOptions = {},
+): Promise<LegacyProjectEntry[]> {
+  if (!options.name)
+    return [
+      ...(await listLegacyProjects({ ...options, name: LEGACY_PROJECT_3D_DB_NAME })),
+      ...(await listLegacyProjects({ ...options, name: PREVIOUS_PROJECT_3D_DB_NAME })),
+    ];
   return readLegacy(
     options,
     async (db) => {
@@ -74,6 +82,7 @@ export function listLegacyProjects(options: LegacyOptions = {}): Promise<LegacyP
           id: root.id,
           name: root.name ?? `旧作品 (${root.id})`,
           revision: root.revision,
+          namespace: options.name!,
         }));
     },
     [],
@@ -89,14 +98,17 @@ export async function readLegacyProject(projectId: string, options: LegacyOption
         LegacyRoot | undefined;
       if (!root || root.trashed) throw new StorageIntegrityError('旧作品が見つかりません。');
       const snapshot = (await requestResult(tx.objectStore('snapshots').get(root.snapshotId))) as
-        { id: string; project: LegacyProject3D; contentHash: string } | undefined;
+        | { id: string; project: LegacyProject3D | PreviousProject3D; contentHash: string }
+        | undefined;
       if (
         !snapshot ||
         snapshot.project.id !== root.id ||
         snapshot.project.revision !== root.revision
       )
         throw new StorageIntegrityError('旧作品のsnapshotが一致しません。');
-      validateLegacyProject(snapshot.project);
+      validateStoredProject(snapshot.project);
+      if (snapshot.project.schemaVersion !== '0.1.0' && snapshot.project.schemaVersion !== '0.2.0')
+        throw new StorageIntegrityError('Unsupported legacy project version');
       const jsonBytes = new TextEncoder().encode(JSON.stringify(snapshot.project)).byteLength;
       if (
         jsonBytes > BACKUP_LIMITS.jsonBytes ||
