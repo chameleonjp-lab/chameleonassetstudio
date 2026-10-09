@@ -9,6 +9,7 @@ async function setup(page: Page) {
   await page.getByRole('button', { name: '新しい3Dプロジェクトを作成' }).click();
   await page.getByRole('button', { name: '箱を追加', exact: true }).click();
   await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  await page.getByText('骨と重みの編集を開く', { exact: true }).click();
   const rig = panel(page);
   await rig.getByLabel('骨の名前', { exact: true }).fill('Root');
   await rig.getByRole('button', { name: '骨を追加', exact: true }).click();
@@ -55,6 +56,10 @@ test('authors mixed skin, previews deformation, preserves rest backup and re-edi
   await expect(rig.getByRole('status').filter({ hasText: 'pose確認中' })).toBeVisible();
   await expect.poll(async () => (await canvas.screenshot()).equals(rest)).toBe(false);
   await visual(page, 'mixed-pose');
+  await page.getByText('骨と重みの編集を開く', { exact: true }).click();
+  await page.getByText('骨と重みの編集を開く', { exact: true }).click();
+  await expect(rig.getByRole('status').filter({ hasText: 'rest表示' })).toBeVisible();
+  await rig.getByRole('button', { name: 'poseで変形を確認', exact: true }).click();
   const pngDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'PNG画像を保存', exact: true }).click();
   const png = await readFile((await (await pngDownload).path())!);
@@ -82,6 +87,7 @@ test('authors mixed skin, previews deformation, preserves rest backup and re-edi
       buffer: bytes,
     });
     await expect(restored.getByRole('heading', { name: 'Rig work', exact: true })).toBeVisible();
+    await restored.getByText('骨と重みの編集を開く', { exact: true }).click();
     const rp = panel(restored);
     await rp
       .getByLabel('重み対象の部品', { exact: true })

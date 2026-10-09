@@ -4,6 +4,8 @@
   margin-top: 1rem;
   padding: 0.75rem;
   min-width: 0;
+  max-height: min(42rem, 70vh);
+  overflow: auto;
 }
 .native-rig fieldset {
   border: 0;

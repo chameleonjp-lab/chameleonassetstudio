@@ -884,13 +884,22 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                     execute={executeAuthoring}
                     edit={session.edit}
                   />
-                  <NativeRigPanel
-                    key={`rig-${project.id}`}
-                    project={project}
-                    session={session}
-                    disabled={busy || state.readOnly}
-                    onChange={redraw}
-                  />
+                  <details
+                    className="editor3d-details"
+                    onToggle={(event) => {
+                      if (!event.currentTarget.open)
+                        session.rigPose.cancel('骨の編集を閉じたためrestへ戻しました。');
+                    }}
+                  >
+                    <summary>骨と重みの編集を開く</summary>
+                    <NativeRigPanel
+                      key={`rig-${project.id}`}
+                      project={project}
+                      session={session}
+                      disabled={busy || state.readOnly}
+                      onChange={redraw}
+                    />
+                  </details>
                   <NativeAssemblyControls
                     key={`assembly-${project.id}`}
                     project={project}

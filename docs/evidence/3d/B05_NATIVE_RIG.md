@@ -92,3 +92,8 @@ B06 animation, B07 GLB/sidecar, B08 independent consumer, B09 physical-device/re
 - The final palette browser regression and label wrapping were added during the full pipeline; their explicit formatting and Playwright discovery checks passed afterward. They do not change runtime TypeScript or unit-test source. Six rig browser cases are discovered across Chromium and WebKit; discovery is not execution.
 - Independent read-only review verified cancellation/capture, shader-order and padded-slot safety, locked-skin retarget protection and posed bounds. The last palette regression passed 47 focused tests, including seven-joint rendering with index 6 and atomic invalid-extension rejection. No source blockers remain from that review.
 - Current main and submitted B05a head have identical trees (`57dfacd5acea5f5cf7f1d29c0904e28394f08a5c`). This candidate therefore adds no duplicate B05a commit content to main. The Draft PR records the exact submitted head and separate browser-CI outcome.
+
+
+### First submitted-head CI correction
+
+CI 37925292425 passed build/unit and 26 isolated browser cases, then passed 24/25 existing WebKit product cases. The assembly phone full-page screenshot exceeded WebKit's 32,767-pixel limit after the new always-expanded rig controls increased page height. The product now exposes rig editing through an explicit disclosure and a bounded internal scrolling region. Rig product cases explicitly open that disclosure. No existing test, screenshot limit or CI workflow is weakened; the corrected head must be rerun before browser acceptance is claimed.
