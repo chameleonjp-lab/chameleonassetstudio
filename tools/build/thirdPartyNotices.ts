@@ -33,7 +33,7 @@ export const runtimeNoticePackages: readonly DependencyNotice[] = [
   // BSD-3-Clause, including its complete additional copyright/attribution text.
   licensePackage(
     'fast-uri',
-    '3.1.3',
+    '3.1.8',
     'b010b0dfdfdb23d7396e03b82cd4621fc9bb8f95d6b0aea70b9c24e12074c786',
   ),
   licensePackage(
