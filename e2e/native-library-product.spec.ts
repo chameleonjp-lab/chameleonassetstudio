@@ -274,8 +274,11 @@ test('hierarchy clone refuses a skinned part without its joints and preserves th
 
 async function createThumbnail(page: Page) {
   const open = page.getByRole('button', { name: '3D表示を開く', exact: true });
+  const active = page.getByText('3D表示中', { exact: true });
+  // Restore can expose the editor heading before its busy state clears.
+  await expect.poll(async () => (await open.isEnabled()) || (await active.isVisible())).toBe(true);
   if (await open.isEnabled()) await open.click();
-  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  await expect(active).toBeVisible();
   const button = page.getByRole('button', { name: '保存してサムネイルを作成', exact: true });
   await button.click();
   await expect(

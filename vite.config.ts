@@ -52,6 +52,20 @@ export default defineConfig({
   plugins: [
     react(),
     {
+      // Vite's public-file lookup is exact; directory URLs otherwise reach the hub fallback.
+      name: 'public-guide-directory-index',
+      configureServer(server) {
+        server.middlewares.use((request, _response, next) => {
+          if (request.url) {
+            const [pathname, ...query] = request.url.split('?');
+            if ([`${basePath}guide/`, `${basePath}guide/3d/`].includes(pathname))
+              request.url = `${pathname}index.html${query.length ? '?' + query.join('?') : ''}`;
+          }
+          next();
+        });
+      },
+    },
+    {
       name: 'local-build-information',
       configureServer(server) {
         server.middlewares.use((request, response, next) => {

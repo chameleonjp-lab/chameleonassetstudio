@@ -75,3 +75,52 @@ it('emits distinct native update metadata without replacing the three legacy bui
     expect(Object.keys(legacy).sort()).toEqual(['dirty', 'revision', 'scope', 'status']);
   }
 });
+
+it('resolves public guide directory requests before the hub fallback without opening a server', async () => {
+  const { resolveConfig } = await import('vite');
+  for (const base of ['/', '/chameleonassetstudio/']) {
+    const previous = process.env.APP_BASE_PATH;
+    process.env.APP_BASE_PATH = base;
+    try {
+      const config = await resolveConfig({ configFile: 'vite.config.ts' }, 'serve');
+      const plugin = config.plugins.find(
+        (candidate) => candidate.name === 'public-guide-directory-index',
+      )!;
+      const hook = plugin.configureServer!;
+      const handler = typeof hook === 'function' ? hook : hook.handler;
+      let middleware!: (request: { url?: string }, response: object, next: () => void) => void;
+      const invoke = handler as unknown as (server: {
+        middlewares: { use: (value: typeof middleware) => void };
+      }) => void;
+      invoke({
+        middlewares: {
+          use: (value) => {
+            middleware = value;
+          },
+        },
+      });
+      for (const suffix of ['guide/', 'guide/3d/', 'guide/3d/?lang=ja?retained']) {
+        const request = { url: base + suffix };
+        let next = 0;
+        middleware(request, {}, () => {
+          next++;
+        });
+        expect(request.url).toBe(base + suffix.replace(/\/(\?|$)/, '/index.html$1'));
+        expect(next).toBe(1);
+      }
+      for (const url of [
+        undefined,
+        base + '3d/',
+        base + 'guide/3d/index.html',
+        base + 'guide/other/',
+      ]) {
+        const request = { url };
+        middleware(request, {}, () => {});
+        expect(request.url).toBe(url);
+      }
+    } finally {
+      if (previous === undefined) delete process.env.APP_BASE_PATH;
+      else process.env.APP_BASE_PATH = previous;
+    }
+  }
+});

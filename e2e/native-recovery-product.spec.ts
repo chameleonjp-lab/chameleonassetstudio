@@ -98,7 +98,8 @@ test('a real editor render failure retains resident image/GLB bytes for rescue a
   expect(injected).toBeGreaterThan(0);
   await page.getByText('ゲーム向け情報を編集', { exact: true }).click();
   await page.evaluate(() => Object.assign(globalThis, { __nativeRescueFault: true }));
-  await page.getByLabel('anchor・collider・原点をプレビュー', { exact: true }).check();
+  // The fault intentionally removes this input; assert the rescue screen rather than checked state.
+  await page.getByLabel('anchor・collider・原点をプレビュー', { exact: true }).click();
   await expect(
     page.getByRole('heading', { name: '3D画面の表示を続けられませんでした', exact: true }),
   ).toBeVisible();
