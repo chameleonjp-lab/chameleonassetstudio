@@ -84,7 +84,7 @@ async function quota(page: Page, enabled: boolean) {
   }, enabled);
 }
 
-test('same-origin 2D and 3D keep independent durable data and recover pending edits across either quota failure', async ({
+test('same-origin 2D rollback and 3D resident recovery preserve independent durable data across either quota failure', async ({
   page,
   context,
 }) => {
@@ -152,12 +152,24 @@ test('same-origin 2D and 3D keep independent durable data and recover pending ed
   await page.getByRole('button', { name: '.casproj をダウンロード', exact: true }).click();
   await expect(page.getByRole('alert').filter({ hasText: '書き出しに失敗しました' })).toBeVisible();
   expect(downloads).toEqual([]);
-  await expect(page.getByLabel('原点 X', { exact: true })).toHaveValue('13');
+  // Existing 2D History rolls failed commits back; 3D resident rescue has a different contract.
+  await expect(page.getByLabel('原点 X', { exact: true })).toHaveValue('12');
+  expect(await stored(page, 'chameleon-asset-studio', ['projects', 'assets', 'blobs'])).toBe(
+    before2d,
+  );
   expect(
     (await importBackup(await download(native, '現在の内容をバックアップ'))).project.name,
   ).toBe('3D healthy during 2D failure');
   await quota(page, false);
   await page.getByRole('button', { name: '保存を再試行', exact: true }).click();
+  await expect(page.locator('.editor-save-status')).toHaveText('保存済み');
+  await expect(page.getByLabel('原点 X', { exact: true })).toHaveValue('12');
+  const rolledBack2d = await download(page, '.casproj をダウンロード');
+  expect(assetFromBackup(rolledBack2d).origin.x).toBe(12);
+  // Capacity recovery retries the rolled-back value; the user can then explicitly reapply the edit.
+  await page.getByLabel('原点 X', { exact: true }).fill('13');
+  await page.getByLabel('原点 X', { exact: true }).blur();
+  await expect(page.getByLabel('原点 X', { exact: true })).toHaveValue('13');
   await expect(page.locator('.editor-save-status')).toHaveText('保存済み');
   const final2d = await download(page, '.casproj をダウンロード');
   expect(assetFromBackup(final2d).origin.x).toBe(13);
@@ -173,6 +185,8 @@ test('same-origin 2D and 3D keep independent durable data and recover pending ed
         directions: ['3D-failed-2D-saved', '2D-failed-3D-saved'],
         nativeResidentBackup: true,
         twoDimensionalStaleBackupRejected: true,
+        twoDimensionalFailedEditRolledBack: true,
+        twoDimensionalReeditAfterRecoverySaved: true,
         finalRetriesSaved: true,
       }),
     ),
