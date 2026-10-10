@@ -107,8 +107,8 @@ describe('versioned backup rejection and original retention', () => {
       const project = JSON.parse(strFromU8(files['project.json']));
       const manifest = JSON.parse(strFromU8(files['manifest.json']));
       if (kind === 'future') {
-        project.schemaVersion = '0.3.0';
-        manifest.version = '0.3.0';
+        project.schemaVersion = '0.4.0';
+        manifest.version = '0.4.0';
       }
       if (kind === 'legacy-new-field') {
         project.schemaVersion = '0.1.0';
@@ -127,4 +127,20 @@ describe('versioned backup rejection and original retention', () => {
       expect(archive).toEqual(before);
     },
   );
+});
+
+it('retains the exact 0.2 archive and upgrades without resetting visibility or material values', async () => {
+  const { nativeBox } = await import('../fixtures/nativeBox');
+  const { game: _game, ...base } = nativeBox('v2');
+  void _game;
+  const old = { ...base, schemaVersion: '0.2.0' as const };
+  old.nodes[0].visible = false;
+  old.nodes[0].locked = true;
+  old.materials[0].alphaMode = 'BLEND';
+  const archive = await exportBackup(old, new Map());
+  const restored = await importBackup(archive);
+  expect(restored.legacyBackup).toEqual(archive);
+  expect(restored.project.schemaVersion).toBe('0.3.0');
+  expect(restored.project.nodes).toEqual(old.nodes);
+  expect(restored.project.materials).toEqual(old.materials);
 });

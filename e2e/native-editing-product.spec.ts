@@ -557,7 +557,7 @@ test('native 0.2.0 six attributes survive Undo, save and independent backup rest
   await panel.getByRole('button', { name: '部品を編集ロック', exact: true }).click();
   saved = (await snapshot(page)).project;
   expect(saved.nodes[0]).toMatchObject({ visible: false, locked: true });
-  expect(saved.schemaVersion).toBe('0.2.0');
+  expect(saved.schemaVersion).toBe('0.3.0');
   await panel.getByRole('button', { name: '部品の現在値を読む', exact: true }).click();
   await panel.getByLabel('部品名', { exact: true }).fill('Blocked name');
   const lockedRevision = await revision(page);
@@ -611,8 +611,10 @@ test('legacy copy confirmation, cancellation, quota retry and original recovery 
   const { hashProject } = await import('../src/core3d/storage/repository');
   const { STORAGE_STORES, LEGACY_PROJECT_3D_DB_NAME, PROJECT_3D_DB_NAME } =
     await import('../src/core3d/storage/db');
+  const { game: _game, ...legacyBase } = nativeBox('legacy-browser');
+  void _game;
   const old = {
-    ...nativeBox('legacy-browser'),
+    ...legacyBase,
     schemaVersion: '0.1.0' as const,
     name: 'Legacy retained',
   };
@@ -683,7 +685,7 @@ test('legacy copy confirmation, cancellation, quota retry and original recovery 
   expect(copy.id).not.toBe(old.id);
   expect(copy.materials[0].alphaMode).toBe('LEGACY_AUTO');
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: '移行前0.1.0の復元控えを取得', exact: true }).click();
+  await page.getByRole('button', { name: '移行前の復元控えを取得', exact: true }).click();
   const originalBytes = await readFile((await (await download).path())!);
   const { unzipSync, strFromU8 } = await import('fflate');
   expect(JSON.parse(strFromU8(unzipSync(originalBytes)['project.json']))).toEqual(old);

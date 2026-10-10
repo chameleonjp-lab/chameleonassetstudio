@@ -112,6 +112,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium webkit
+      - name: Check native GLB product flow in both browsers
+        run: npx playwright test e2e/native-asset-io-product.spec.ts --project=chromium --project=webkit-critical --output=test-results-native-asset-io
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-native-asset-io
       - name: Check isolated native interaction in both browsers
         run: npx playwright test e2e/native-transform-evaluation.spec.ts --project=chromium --project=webkit-critical --output=test-results-native-interaction
         env:
@@ -147,6 +151,8 @@ jobs:
         with:
           name: playwright-report-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
+            playwright-report-native-asset-io/
+            test-results-native-asset-io/
             playwright-report-native-interaction/
             test-results-native-interaction/
             playwright-report-native-acceptance/

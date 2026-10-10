@@ -17,7 +17,9 @@ afterEach(() => {
 async function seed(factory: IDBFactory) {
   const bytes = new Uint8Array([2, 3, 5, 7]);
   const hash = await hashBlob(bytes);
-  const p: LegacyProject3D = { ...nativeBox('old-project'), schemaVersion: '0.1.0', revision: 7 };
+  const { game: _game, ...old } = nativeBox('old-project');
+  void _game;
+  const p: LegacyProject3D = { ...old, schemaVersion: '0.1.0', revision: 7 };
   p.blobIds = [hash];
   p.sources = [
     {
@@ -92,7 +94,12 @@ describe('readonly legacy migration and atomic new namespace copy', () => {
   it('keeps all original stores unchanged, retains exact legacy values and reopens an independent editable copy', async () => {
     const { indexedDB, repository, original, originalContents } = await setup();
     expect(await listLegacyProjects({ indexedDB })).toEqual([
-      { id: original.project.id, name: original.project.name, revision: 7 },
+      {
+        id: original.project.id,
+        name: original.project.name,
+        revision: 7,
+        namespace: LEGACY_PROJECT_3D_DB_NAME,
+      },
     ]);
     const copied = await copyLegacyProject(repository, original.project.id, 'new-tab', {
       indexedDB,
@@ -100,7 +107,7 @@ describe('readonly legacy migration and atomic new namespace copy', () => {
     });
     expect(copied.projectId).toBe('copy');
     const snapshot = await repository.readSnapshot('copy');
-    expect(snapshot.project).toMatchObject({ schemaVersion: '0.2.0', id: 'copy', revision: 0 });
+    expect(snapshot.project).toMatchObject({ schemaVersion: '0.3.0', id: 'copy', revision: 0 });
     expect(snapshot.project.materials[0].alphaMode).toBe('LEGACY_AUTO');
     expect(snapshot.blobs.get(original.hash)).toEqual(original.bytes);
     await snapshot.release();
@@ -237,7 +244,7 @@ describe('readonly legacy migration and atomic new namespace copy', () => {
     const currentArchive = await session.backup();
     const current = await importBackup(currentArchive);
     expect(current.legacyBackup).toBeUndefined();
-    expect(current.project.schemaVersion).toBe('0.2.0');
+    expect(current.project.schemaVersion).toBe('0.3.0');
     await session.close();
   });
   it('captures legacy root and bytes without touching a writer lease or pins', async () => {
@@ -295,4 +302,49 @@ describe('namespace and last-write protection', () => {
     expect(await dump(db)).toEqual(before);
     db.close();
   });
+});
+
+it('lists same-ID projects from both old namespaces and copies 0.2 without resetting its authored attributes', async () => {
+  const { PREVIOUS_PROJECT_3D_DB_NAME } = await import('./db');
+  const indexedDB = new IDBFactory(),
+    v1 = await seed(indexedDB);
+  const { game: _game, ...base } = nativeBox('old-project');
+  void _game;
+  const v2 = { ...base, schemaVersion: '0.2.0' as const, revision: 4 };
+  v2.nodes[0].visible = false;
+  v2.nodes[0].locked = true;
+  v2.materials[0].alphaMode = 'BLEND';
+  const request = indexedDB.open(PREVIOUS_PROJECT_3D_DB_NAME, 1);
+  request.onupgradeneeded = () =>
+    STORAGE_STORES.forEach((name) => request.result.createObjectStore(name, { keyPath: 'id' }));
+  const db = await requestResult(request);
+  cleanups.push(() => db.close());
+  const contentHash = await hashProject(v2),
+    tx = db.transaction(['roots', 'snapshots'], 'readwrite');
+  await requestResult(
+    tx
+      .objectStore('roots')
+      .add({ id: v2.id, name: 'Version two', revision: 4, snapshotId: 'v2-root', trashed: false }),
+  );
+  await requestResult(tx.objectStore('snapshots').add({ id: 'v2-root', project: v2, contentHash }));
+  const beforeV1 = await dump(v1.db),
+    beforeV2 = await dump(db),
+    repo = await openProjectRepository({ indexedDB });
+  cleanups.push(() => repo.close());
+  const entries = await listLegacyProjects({ indexedDB });
+  expect(entries).toHaveLength(2);
+  expect(new Set(entries.map((x) => x.namespace)).size).toBe(2);
+  await copyLegacyProject(repo, v2.id, 'owner', {
+    indexedDB,
+    name: PREVIOUS_PROJECT_3D_DB_NAME,
+    newProjectId: 'v2-copy',
+  });
+  const snap = await repo.readSnapshot('v2-copy');
+  expect(snap.project.nodes).toEqual(v2.nodes);
+  expect(snap.project.materials).toEqual(v2.materials);
+  await snap.release();
+  expect(await dump(v1.db)).toEqual(beforeV1);
+  expect(await dump(db)).toEqual(beforeV2);
+  const archived = unzipSync((await repo.readLegacyBackup('v2-copy'))!);
+  expect(JSON.parse(strFromU8(archived['project.json']))).toEqual(v2);
 });

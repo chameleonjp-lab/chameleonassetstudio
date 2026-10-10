@@ -61,6 +61,16 @@ export function assertLocksPreserved(before: Project3D, after: Project3D) {
   for (const skin of before.skins)
     if (before.nodes.some((node) => node.meshId === skin.meshId && isNodeLocked(before, node.id)))
       skin.joints.forEach((joint) => protectAncestors(joint.nodeId));
+  for (const kind of ['anchors', 'colliders'] as const)
+    for (const id of new Set([...before.game[kind], ...after.game[kind]].map((x) => x.id))) {
+      const old = before.game[kind].find((x) => x.id === id),
+        next = after.game[kind].find((x) => x.id === id);
+      if (
+        !equal(old, next) &&
+        [old?.nodeId, next?.nodeId].some((target) => target && protectedTargets.has(target))
+      )
+        throw lockedError();
+    }
   for (const id of new Set([...before.clips, ...after.clips].map((clip) => clip.id))) {
     const old = before.clips.find((clip) => clip.id === id);
     const next = after.clips.find((clip) => clip.id === id);

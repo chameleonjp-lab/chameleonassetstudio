@@ -553,7 +553,7 @@ describe('scene assembly reference and transaction safety', () => {
       groupNodes(p, ['a-node', 'mirror-node'], 'restored-group', null, 'keep-world'),
     );
     expect(recovered.project.nodes.some((item) => item.id === 'restored-group')).toBe(true);
-    expect(recovered.project.schemaVersion).toBe('0.2.0');
+    expect(recovered.project.schemaVersion).toBe('0.3.0');
     close(
       composeTransform(recovered.project.nodes.at(-1)!.transform),
       composeTransform(identityTransform()),

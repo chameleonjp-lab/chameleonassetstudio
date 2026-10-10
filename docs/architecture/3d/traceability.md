@@ -202,3 +202,9 @@
 - 更新/rollback/diagnostic privacyはLC-03、M16、F10/F11、T11/T12
 
 FLOW-01〜06・AC-01〜15の最終閉鎖は上位表末尾と計画B10へ戻る。図があること、Mgroupを割り当てたこと、docs CI成功をruntime合格へ変換しない。
+
+## B07 candidate evidence paths
+
+GAME-01–04 connect to core3d/game, NativeGamePanel and Three game helpers. EXP-01–06 and the basic AC-02/03/04 file portion connect to core3d/import, core3d/export, adapters3d/gltf, NativeAssetIoPanel and native-asset-io-product.spec.ts. DATA/COMPAT migration evidence includes strict 0.1/0.2 parsing and independent 0.3 copies.
+
+[S04 adoption](../../evidence/3d/S04_GLTF_ADOPTION.md) records the independent validator, format/codec policy and remaining browser gate. [B07 candidate](../../evidence/3d/B07_ASSET_IO.md) records ownership, recovery and test coverage. ANIM-06 independent runtime behavior is still B08; physical acceptance and final resource budgets remain B09/B10. Path existence and unit success do not update those gates to verified.

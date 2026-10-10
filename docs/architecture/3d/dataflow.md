@@ -81,3 +81,13 @@ flowchart TD
 | 検品結果 | M12、入力revision/hashに従属 | staleなら再検査、古いverifiedを使わない |
 
 空→primitive→mesh編集→smooth skin混合weight→key/clip→backup→独立復元→GLB/sidecar→独立consumerがFLOW-01〜04の実証経路。各工程のviewer表示だけを完了証拠にしない。
+
+## B07 candidate: implemented flow
+
+File selection → bounded raw GLB preflight → isolated worker candidate → optional loss confirmation → hash-checked GLB/sidecar source retention → atomic new 0.3 copy → explicit project-list open. Import never silently replaces the current project.
+
+Canonical revision plus detached blobs → shared memory reservation → worker direct encoder → final GLB reparse and ID/channel validation → SHA-256 sidecar and manifest → distinct distribution ZIP → user download. Editing after capture does not change that output. Closing, backgrounding or cancelling terminates the worker and discards unpublished results.
+
+Old 0.1/0.2 DB readonly capture → exact immediate-version archive → validated detached upgrade → new v3 DB/new ID. Old namespaces and archives remain. Reverting application code does not downgrade new-format data.
+
+B07 adoption evidence is [S04](../../evidence/3d/S04_GLTF_ADOPTION.md) and [B07](../../evidence/3d/B07_ASSET_IO.md). The original planned diagrams above remain responsibility maps, not claims of consumer/physical-device verification.

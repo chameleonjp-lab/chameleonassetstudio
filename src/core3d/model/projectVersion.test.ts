@@ -3,12 +3,15 @@ import { nativeBox } from '../fixtures/nativeBox';
 import {
   upgradeLegacyProject,
   validateLegacyProject,
+  validatePreviousProject,
   validateProject,
   type LegacyProject3D,
 } from './project';
 
 export function legacyFixture(): LegacyProject3D {
-  return { ...nativeBox('old-project'), schemaVersion: '0.1.0' };
+  const { game: _game, ...old } = nativeBox('old-project');
+  void _game;
+  return { ...old, schemaVersion: '0.1.0' };
 }
 describe('versioned native material and node contract', () => {
   it('upgrades a detached copy with explicit compatibility defaults, preserving original values', () => {
@@ -16,7 +19,7 @@ describe('versioned native material and node contract', () => {
     old.materials[0].baseColor[3] = 0.4;
     const before = structuredClone(old);
     const next = upgradeLegacyProject(old);
-    expect(next.schemaVersion).toBe('0.2.0');
+    expect(next.schemaVersion).toBe('0.3.0');
     expect(next.materials[0]).toMatchObject({
       emissiveColor: [0, 0, 0],
       alphaMode: 'LEGACY_AUTO',
@@ -43,7 +46,7 @@ describe('versioned native material and node contract', () => {
     expect(() => upgradeLegacyProject(old)).toThrow('field');
     expect(old).toEqual(before);
   });
-  it.each(['0.0.1', '0.3.0', '1.0.0'])(
+  it.each(['0.0.1', '0.4.0', '1.0.0'])(
     'rejects unsupported %s before migration',
     (schemaVersion) => {
       expect(() => validateProject({ ...nativeBox(), schemaVersion })).toThrow('version');
@@ -86,4 +89,27 @@ describe('versioned native material and node contract', () => {
     expect(() => validateProject({ ...p, privateUnknown: true })).toThrow('field');
     expect(() => validateProject(legacyFixture())).toThrow('version');
   });
+});
+
+it('freezes 0.2 parsing and preserves all existing authored attributes during 0.3 copy', async () => {
+  const { game: _game, ...base } = nativeBox('previous');
+  void _game;
+  const old = { ...base, schemaVersion: '0.2.0' as const };
+  old.nodes[0].visible = false;
+  old.nodes[0].locked = true;
+  Object.assign(old.materials[0], {
+    emissiveColor: [0.2, 0.3, 0.4],
+    alphaMode: 'BLEND',
+    alphaCutoff: 0.2,
+    doubleSided: true,
+  });
+  const before = structuredClone(old);
+  validatePreviousProject(old);
+  const next = upgradeLegacyProject(old);
+  expect(next.schemaVersion).toBe('0.3.0');
+  expect(next.nodes).toEqual(old.nodes);
+  expect(next.materials).toEqual(old.materials);
+  expect(next.game.assetId).toBe('previous');
+  expect(old).toEqual(before);
+  expect(() => validatePreviousProject({ ...old, game: next.game })).toThrow('field');
 });

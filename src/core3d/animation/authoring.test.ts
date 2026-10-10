@@ -89,7 +89,7 @@ describe('atomic native animation authoring', () => {
       nodes = structuredClone(p.nodes);
     addKey(p, 'clip', 'box-node', 'scale', 'LINEAR', 0, [2, 2, 2]);
     expect(p.nodes).toEqual(nodes);
-    expect(p.schemaVersion).toBe('0.2.0');
+    expect(p.schemaVersion).toBe('0.3.0');
     expect(p.revision).toBe(0);
   });
 });

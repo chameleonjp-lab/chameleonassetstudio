@@ -41,6 +41,7 @@ export default defineConfig({
         'native-texture-product.spec.ts',
         'native-rig-product.spec.ts',
         'native-animation-product.spec.ts',
+        'native-asset-io-product.spec.ts',
         'import.spec.ts',
         'storage.spec.ts',
         'export.spec.ts',

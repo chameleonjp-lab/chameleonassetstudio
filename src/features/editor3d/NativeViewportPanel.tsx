@@ -47,6 +47,7 @@ export interface NativeViewportPanelProps {
   editing?: NativeEditBinding;
   rigPose?: RigPoseBinding;
   animation?: AnimationBinding;
+  gamePreview?: boolean;
   /** Stable session callback returning a detached copy, never a URL or remote fetch. */
   readBlob?: NativeBlobReader;
 }
@@ -170,6 +171,17 @@ function ViewportContent(props: NativeViewportPanelProps) {
   // Only committed props may be observed by a save completion or a late factory.
   useLayoutEffect(() => {
     latest.current = props;
+    const gameResult = instanceRef.current?.port?.setGamePreview?.(props.gamePreview ?? false);
+    if (gameResult && !gameResult.ok)
+      setNotice((previous) =>
+        previous?.detail === gameResult.reason
+          ? previous
+          : {
+              error: true,
+              text: 'ゲーム情報のプレビューを停止しました。作品の表示と保存は続けられます。',
+              detail: gameResult.reason,
+            },
+      );
   });
 
   const isCurrent = useCallback((instance: Instance) => {
@@ -305,6 +317,17 @@ function ViewportContent(props: NativeViewportPanelProps) {
       const animation = latest.current.animation ?? null;
       const port = instance.port;
       try {
+        const gameResult = port.setGamePreview?.(latest.current.gamePreview ?? false);
+        if (gameResult && !gameResult.ok)
+          setNotice((previous) =>
+            previous?.detail === gameResult.reason
+              ? previous
+              : {
+                  error: true,
+                  text: 'ゲーム情報のプレビューを停止しました。作品の表示と保存は続けられます。',
+                  detail: gameResult.reason,
+                },
+          );
         if (instance.animation !== animation) {
           instance.animation?.cancel('再生表示接続が切り替わりました。');
           if (animation && !port.bindAnimation)

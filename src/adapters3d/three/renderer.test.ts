@@ -2890,3 +2890,70 @@ describe('native animation renderer ownership', () => {
     animation.dispose();
   });
 });
+
+it('previews game attachments at their node transform, excludes PNG helpers and disposes them', async () => {
+  const f = lifecycleHarness(),
+    p = nativeBox();
+  p.nodes[0].transform.translation = [2, 0, 0];
+  p.game.anchors = [
+    {
+      id: 'a',
+      name: 'A',
+      purpose: 'socket',
+      nodeId: p.nodes[0].id,
+      transform: { ...identityTransform(), translation: [0, 1, 0] },
+    },
+  ];
+  p.game.colliders = [
+    {
+      id: 'c',
+      name: 'C',
+      purpose: 'hit',
+      nodeId: p.nodes[0].id,
+      transform: identityTransform(),
+      shape: 'box',
+      size: [1, 2, 3],
+      radius: 1,
+      height: 1,
+    },
+  ];
+  const before = structuredClone(p);
+  expect(f.viewport.setProject(p).ok).toBe(true);
+  expect(f.viewport.setGamePreview(true).ok).toBe(true);
+  f.flush();
+  const scene = f.rendererInstances[0].render.mock.calls.at(-1)![0] as Scene,
+    anchor = scene.getObjectByName('Game anchor a')!,
+    collider = scene.getObjectByName('Game collider c') as Mesh;
+  expect(new Vector3().setFromMatrixPosition(anchor.matrixWorld).toArray()).toEqual([2, 1, 0]);
+  const dispose = vi.spyOn(collider.geometry, 'dispose');
+  let captureHidden = false;
+  f.rendererInstances[0].render.mockImplementation(() => {
+    captureHidden = !collider.visible;
+  });
+  await f.viewport.capturePng();
+  expect(captureHidden).toBe(true);
+  expect(collider.visible).toBe(true);
+  f.viewport.setGamePreview(false);
+  expect(dispose).toHaveBeenCalledTimes(1);
+  expect(scene.getObjectByName('Game collider c')).toBeUndefined();
+  f.viewport.dispose();
+  expect(p).toEqual(before);
+});
+
+it('isolates invalid game previews from the canonical model and rolls failed enable back', () => {
+  const f = lifecycleHarness(),
+    p = nativeBox();
+  p.game.origin = [1e40, 0, 0];
+  expect(f.viewport.setProject(p).ok).toBe(true);
+  expect(f.viewport.setGamePreview(true).ok).toBe(false);
+  expect(f.viewport.setGamePreview(true).ok).toBe(false);
+  expect(f.viewport.status.state).toBe('active');
+  p.revision++;
+  expect(f.viewport.setProject(p).ok).toBe(true);
+  expect(f.viewport.status.state).toBe('active');
+  p.game.origin = [0, 0, 0];
+  p.revision++;
+  expect(f.viewport.setProject(p).ok).toBe(true);
+  expect(f.viewport.setGamePreview(true).ok).toBe(true);
+  f.viewport.dispose();
+});

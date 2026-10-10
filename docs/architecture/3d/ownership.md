@@ -171,3 +171,13 @@ M06の所有境界は維持する。今回の小さなnative subsetではresourc
 | Native viewport panel | Binding replacement and outer PNG capture lease; PNG always returns canonical rest, not a scrub/play pose. |
 
 Preview order is canonical rest, then one current-revision overlay. Transform gestures, manual rig preview and animation preview are mutually exclusive. Animation and rig bindings are not persisted and cannot add history records. Save/backup/copy/Undo/Redo/ownership/close cancel previews. GLB clip bytes and consumer loop policy remain B07/B08.
+
+## B07 native asset I/O ownership
+
+- core3d/model/project.ts owns strict 0.3 game data and frozen old parsers; storage/legacyMigration.ts owns read-only old snapshots and separate-identity copies.
+- core3d/game/authoring.ts owns atomic metadata commands. NativeGamePanel owns numeric drafts; Three owns temporary game helpers and disposal, never export data.
+- core3d/profile/assetIoProfile.ts and model/textureResources.ts share estimated peak reservations. Expanded import geometry, source bytes and images are distinct budgets.
+- core3d/import/preflight.ts rejects unsafe GLB before constructing an editable candidate. adapters3d/gltf owns the direct profile parser/encoder, bounded image conversion and a separately terminated worker.
+- core3d/export/snapshot.ts fixes canonical revision/bytes; mapping.ts checks final encoded IDs/hash and emits sidecar/manifest/ZIP. Prior source claims remain unverified provenance.
+- NativeAssetIoPanel owns file reads, operation generation, progress, cancellation, result storage and temporary download URLs. Shell owns atomic new-copy persistence; explicit list opening avoids an asynchronous import replacing the current session.
+- Product acceptance is e2e/native-asset-io-product.spec.ts; independent validator adoption is S04_GLTF_ADOPTION.md. Runtime and physical-device claims remain B08/B09.

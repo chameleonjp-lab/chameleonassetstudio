@@ -1179,3 +1179,26 @@ it('opens and backs up schema-valid unsupported animation sources without compil
   expect(saved.project.skins[0].joints[0].inverseBind[3]).toBe(0.1);
   await session.close();
 });
+
+it('keeps large GLB source bytes separate from the image budget and releases source reservations', async () => {
+  const { assetIoReservedBytes } = await import('../../core3d/profile/assetIoProfile');
+  const bytes = new Uint8Array(17 * 1024 * 1024),
+    hash = await hashBlob(bytes),
+    project = createProject('glb-source');
+  project.blobIds = [hash];
+  project.sources = [
+    {
+      id: 'source',
+      blobId: hash,
+      mimeType: 'model/gltf-binary',
+      rights: { declared: '', embedded: '' },
+    },
+  ];
+  await repository.restoreCopy(project, new Map([[hash, bytes]]), 'copy', 'seed');
+  const session = await ProjectSession.open(repository, 'reader', 'copy');
+  expect(() => session.readBlob(hash)).toThrow('上限');
+  expect(session.readBlob(hash, 32 * 1024 * 1024).length).toBe(bytes.length);
+  expect(assetIoReservedBytes()).toBe(bytes.length * 2);
+  await session.close();
+  expect(assetIoReservedBytes()).toBe(0);
+});

@@ -55,7 +55,7 @@ describe('native primitive generation', () => {
       const { project, mesh, nodeId } = make(kind);
       expect(nodeId).toBe('shape-node');
       expect(() => validateProject(project)).not.toThrow();
-      expect(project.schemaVersion).toBe('0.2.0');
+      expect(project.schemaVersion).toBe('0.3.0');
       expect(project.nodes[0].meshId).toBe('shape-mesh');
       expect(project.nodes[0].transform).toEqual({
         translation: [0, 0, 0],

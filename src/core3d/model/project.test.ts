@@ -26,7 +26,7 @@ describe('native 3D project contract', () => {
     expect(p.meshes[0].vertices[0].position[0]).toBe(0);
   });
   it('rejects future versions and wrong domains before normalization', () => {
-    expect(() => validateProject({ ...smallProject(), schemaVersion: '0.3.0' })).toThrow(
+    expect(() => validateProject({ ...smallProject(), schemaVersion: '0.4.0' })).toThrow(
       'format/version',
     );
     expect(() => validateProject({ ...smallProject(), format: 'chameleon-project' })).toThrow(

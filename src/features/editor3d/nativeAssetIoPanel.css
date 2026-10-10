@@ -1,0 +1,92 @@
+.native-asset-io {
+  box-sizing: border-box;
+  border: 1px solid #64748b;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  margin-top: 1rem;
+  min-width: 0;
+  max-width: 100%;
+  max-height: min(48rem, 75vh);
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+
+.native-asset-io fieldset,
+.native-asset-io section {
+  min-width: 0;
+  border: 0;
+  border-top: 1px solid #64748b;
+  padding: 0.75rem 0;
+  margin: 0.75rem 0;
+}
+
+.native-asset-io legend {
+  max-width: 100%;
+  padding: 0;
+  overflow-wrap: anywhere;
+}
+
+.native-asset-io label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0.5rem 0;
+}
+
+.native-asset-io input,
+.native-asset-io button {
+  box-sizing: border-box;
+  min-height: 44px;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 1rem;
+}
+
+.native-asset-io input[type='file'] {
+  width: 100%;
+}
+
+.native-asset-io input[type='file']::file-selector-button {
+  min-height: 44px;
+  max-width: 100%;
+  font-size: 1rem;
+}
+
+.native-asset-io button {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  margin: 0.25rem 0;
+}
+
+.native-asset-io .native-asset-io-checkbox {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.native-asset-io-checkbox input {
+  width: 44px;
+  height: 44px;
+  margin: 0;
+}
+
+.native-asset-io-downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.native-asset-io progress {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+.native-asset-io ul {
+  padding-left: 1.5rem;
+}
+
+.native-asset-io-hash {
+  font-size: 0.875rem;
+}
