@@ -155,7 +155,11 @@ test('phone timeline supports IME, duplicate-time rejection and explicit resume 
       await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
     ).toBeLessThanOrEqual(0);
     await animation.getByRole('button', { name: 'キーを追加', exact: true }).click();
-    await expect(animation.getByRole('alert')).toContainText('Invalid key time');
+    await expect(animation.getByRole('alert')).toContainText('[EDIT_ANIMATION_TIME]');
+    await expect(animation.getByRole('alert')).toContainText(
+      'キー時刻は0秒〜クリップの長さの範囲内で、同じ対象・属性の他のキーと重複しない値にしてください。',
+    );
+    await expect(animation.getByRole('alert')).not.toContainText('Invalid key time');
     await animation.getByLabel('指定時刻（秒）', { exact: true }).fill('0.5');
     await animation.getByLabel('指定時刻（秒）', { exact: true }).dispatchEvent('compositionstart');
     await animation.getByRole('button', { name: '指定時刻を表示', exact: true }).click();
@@ -208,4 +212,51 @@ test('a clip with an undisplayable key stays selectable for repair', async ({ pa
   await animation.getByRole('button', { name: '選択キーの時刻と値を適用', exact: true }).click();
   await seek(page, '0');
   await expect(animation.getByRole('alert')).toHaveCount(0);
+});
+
+test('reduced motion changes pause preview without changing clips and still allow explicit playback', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  const animation = await setup(page);
+  await animation.getByLabel('clipをloop再生する', { exact: true }).check();
+  await animation.getByRole('button', { name: 'clip設定を適用', exact: true }).click();
+  const before = (await importBackup(new Uint8Array(await backup(page)))).project;
+  await animation.getByRole('button', { name: 'clipを再生', exact: true }).click();
+  await expect(animation.getByRole('status')).toContainText('アニメーション再生中');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(animation.getByTestId('native-motion-preference')).toContainText('設定を検出');
+  await expect(animation.getByRole('status')).toContainText('アニメーション停止pose');
+  expect((await importBackup(new Uint8Array(await backup(page)))).project).toEqual(before);
+  await animation.getByRole('button', { name: 'clipを再生', exact: true }).click();
+  await expect(animation.getByRole('status')).toContainText('アニメーション再生中');
+  await animation.getByRole('button', { name: 'clipを停止', exact: true }).click();
+  await expect(animation.getByRole('status')).toContainText('アニメーション停止pose');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await expect(animation.getByTestId('native-motion-preference')).toContainText(
+    '動き低減指定はありません',
+  );
+  await expect(animation.getByRole('status')).toContainText('アニメーション停止pose');
+  expect((await importBackup(new Uint8Array(await backup(page)))).project).toEqual(before);
+});
+
+test('duplicate and out-of-range key times retain the clip with Japanese corrective guidance', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  const animation = await setup(page);
+  const before = await importBackup(await backup(page));
+  await expect(animation.getByRole('status')).toContainText('編集や保存の操作に合わせて');
+  await expect(animation.getByRole('status')).not.toContainText('session boundary');
+  for (const time of ['0', '-1', '2']) {
+    await animation.getByLabel('キー時刻（秒）', { exact: true }).fill(time);
+    await animation.getByRole('button', { name: 'キーを追加', exact: true }).click();
+    const alert = animation.getByRole('alert');
+    await expect(alert).toContainText('[EDIT_ANIMATION_TIME]');
+    await expect(alert).toContainText('アニメーションの編集');
+    await expect(alert).toContainText('0秒〜クリップの長さ');
+    await expect(alert).toContainText('重複しない値');
+    await expect(alert).not.toContainText('Invalid key time');
+    expect((await importBackup(await backup(page))).project).toEqual(before.project);
+  }
 });

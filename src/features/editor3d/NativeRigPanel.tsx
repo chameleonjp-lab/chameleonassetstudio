@@ -1,3 +1,5 @@
+import { formatNativeEditingFailure, formatNativeMotionStatusReason } from './editingFailure';
+import { guardNativeCompositionKey } from './keyboardSafety';
 import { useEffect, useRef, useState } from 'react';
 import type { Project3D, Transform3D } from '../../core3d/model/project';
 import { identityTransform } from '../../core3d/model/project';
@@ -16,6 +18,8 @@ import { rotationFromDegrees, rotationToDegrees } from '../../core3d/commands/ob
 import type { ProjectSession } from './projectSession';
 import { useNativeObjectSelection } from './useNativeEditState';
 import './nativeRigPanel.css';
+import { NativeRigidAttachmentPanel } from './NativeRigidAttachmentPanel';
+import { rigPoseTargetIds } from '../../core3d/rig/pose';
 
 type Draft = Record<string, string>;
 const initial: Draft = {
@@ -95,7 +99,7 @@ export function NativeRigPanel({
       setError('');
       onChange();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(formatNativeEditingFailure(cause, 'rig'));
       setNotice('');
     }
   }
@@ -136,6 +140,9 @@ export function NativeRigPanel({
       onCompositionEnd={() => {
         composing.current = false;
       }}
+      onKeyDownCapture={(event) => {
+        guardNativeCompositionKey(event, composing.current);
+      }}
     >
       <h3>骨と重みを作る</h3>
       <p>
@@ -144,7 +151,8 @@ export function NativeRigPanel({
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
       <p role="status">
-        {pose.active ? 'pose確認中（未保存）' : 'rest表示'}。{pose.reason}
+        {pose.active ? 'pose確認中（未保存）' : 'rest表示'}。
+        {formatNativeMotionStatusReason(pose.reason, 'rig')}
       </p>
       <fieldset disabled={disabled}>
         <button
@@ -259,11 +267,7 @@ export function NativeRigPanel({
         </button>
         <button
           type="button"
-          disabled={
-            !joint ||
-            loaded !== identity ||
-            !project.skins.some((value) => value.joints.some((j) => j.nodeId === jointId))
-          }
+          disabled={!joint || loaded !== identity || !rigPoseTargetIds(project).has(jointId)}
           onClick={() =>
             act(() => {
               const token = session.rigPose.begin();
@@ -293,6 +297,12 @@ export function NativeRigPanel({
           未使用の骨を削除
         </button>
         <p>skin・clip・子を参照している骨は削除しません。</p>
+        <NativeRigidAttachmentPanel
+          project={project}
+          session={session}
+          disabled={disabled}
+          onChange={onChange}
+        />
         <label>
           重み対象の部品
           <select

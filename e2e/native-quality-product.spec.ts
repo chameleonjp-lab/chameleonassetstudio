@@ -1,3 +1,7 @@
+import { readFile } from 'node:fs/promises';
+import { exportBackup, importBackup } from '../src/core3d/backup/backup';
+import { assetIoFixture, assetIoPng } from '../src/core3d/fixtures/assetIo';
+import { sha256 } from '../src/core3d/export/snapshot';
 import { test, expect, type Page, type Route } from '@playwright/test';
 async function setup(page: Page) {
   await page.goto(
@@ -81,9 +85,9 @@ test('a warning opens the correct material section without overwriting an unsave
 }) => {
   const panel = await setup(page);
   await page.getByText('材質の色・金属・粗さ', { exact: true }).click();
-  await page.getByLabel('制作材質', { exact: true }).selectOption({ index: 1 });
+  await page.getByLabel(/^制作材質/).selectOption({ index: 1 });
   await page.getByRole('button', { name: '材質の現在値を読む', exact: true }).click();
-  await page.getByLabel('透過モード', { exact: true }).selectOption('LEGACY_AUTO');
+  await page.getByLabel(/^透過モード/).selectOption('LEGACY_AUTO');
   await page.getByRole('button', { name: '材質を適用', exact: true }).click();
   await panel.getByRole('button', { name: '現在の版を検査', exact: true }).click();
   await expect(panel.getByText('検査結果を取得しました。', { exact: true })).toBeVisible();
@@ -97,4 +101,68 @@ test('a warning opens the correct material section without overwriting an unsave
   await expect(
     panel.getByRole('button', { name: '編集先を確認', exact: true }).first(),
   ).toBeDisabled();
+});
+
+test('inspection worker startup failure gives safe guidance and leaves the project recoverable', async ({
+  page,
+}) => {
+  const project = assetIoFixture();
+  project.name = 'Inspection source preservation';
+  const sourceBytes = await assetIoPng(),
+    sourceHash = await sha256(sourceBytes);
+  project.blobIds = [sourceHash];
+  project.materials[0].textureBlobId = sourceHash;
+  project.sources = [
+    {
+      id: 'inspection-original',
+      blobId: sourceHash,
+      mimeType: 'image/png',
+      rights: { declared: 'original fixture', embedded: '' },
+    },
+  ];
+  const archive = await exportBackup(project, new Map([[sourceHash, sourceBytes]]));
+  await page.goto('/3d/');
+  await page.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+    name: 'inspection-source.cas3dproj',
+    mimeType: 'application/zip',
+    buffer: Buffer.from(archive),
+  });
+  await expect(page.getByRole('heading', { name: project.name, exact: true })).toBeVisible();
+  await page.getByText('作品の品質検査を開く', { exact: true }).click();
+  const panel = page.getByRole('region', { name: '作品の品質検査', exact: true });
+  const backup = async () => {
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: '現在の内容をバックアップ', exact: true }).click();
+    return importBackup(new Uint8Array(await readFile((await (await download).path())!)));
+  };
+  const before = await backup();
+  expect(before.blobs.size).toBe(1);
+  expect(before.blobs.get(sourceHash)).toEqual(sourceBytes);
+  expect(await sha256(before.blobs.get(sourceHash)!)).toBe(sourceHash);
+  await page.evaluate(() => {
+    const NativeWorker = window.Worker;
+    let failOnce = true;
+    window.Worker = class extends NativeWorker {
+      constructor(url: string | URL, options?: WorkerOptions) {
+        if (failOnce && String(url).includes('assetIo.worker')) {
+          failOnce = false;
+          throw new Error('PRIVATE-WORKER file:///private/user/model.glb');
+        }
+        super(url, options);
+      }
+    };
+  });
+  await panel.getByRole('button', { name: '現在の版を検査', exact: true }).click();
+  await expect(panel.getByRole('status')).toContainText('[EDIT_UNKNOWN]');
+  await expect(panel.getByRole('status')).toContainText('原因を特定できず');
+  await expect(panel.getByRole('status')).not.toContainText('PRIVATE-WORKER');
+  await expect(panel.getByRole('status')).not.toContainText('/private/');
+  await expect(panel.getByText('検査版:', { exact: false })).toHaveCount(0);
+  const after = await backup();
+  expect(after.project).toEqual(before.project);
+  expect([...after.blobs]).toEqual([...before.blobs]);
+  expect(after.blobs.get(sourceHash)).toEqual(sourceBytes);
+  await panel.getByRole('button', { name: '現在の版を検査', exact: true }).click();
+  await expect(panel.getByText('検査結果を取得しました。', { exact: true })).toBeVisible();
+  expect((await backup()).project).toEqual(before.project);
 });

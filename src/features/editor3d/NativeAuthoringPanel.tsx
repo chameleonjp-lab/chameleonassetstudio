@@ -1,3 +1,5 @@
+import { formatNativeEditingFailure } from './editingFailure';
+import { guardNativeCompositionKey } from './keyboardSafety';
 import { useEffect, useId, useRef, useState } from 'react';
 import { setNodeFlags } from '../../core3d/commands/nodeFlags';
 import { isNodeLocked, isNodeVisible } from '../../core3d/model/editability';
@@ -16,7 +18,6 @@ import {
   recalculateNormals,
 } from '../../core3d/commands/meshEditing';
 import {
-  cloneNode,
   renameNode,
   setNodeTransform,
   updateMaterial,
@@ -29,6 +30,8 @@ import {
   duplicateMaterial,
 } from '../../core3d/commands/materialEditing';
 import './nativeAuthoringPanel.css';
+import { NativeObjectDeletionPanel } from './NativeObjectDeletionPanel';
+import { NativeHierarchyClonePanel } from './NativeHierarchyClonePanel';
 
 type Draft = Record<string, string>;
 const initial: Draft = {
@@ -149,7 +152,7 @@ export function NativeAuthoringPanel({
       setError('');
       setNotice('適用しました。元に戻す操作で取り消せます。');
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(formatNativeEditingFailure(cause, 'authoring'));
       setNotice('');
     }
   }
@@ -215,11 +218,14 @@ export function NativeAuthoringPanel({
       onCompositionEnd={() => {
         composing.current = false;
       }}
+      onKeyDownCapture={(event) => {
+        guardNativeCompositionKey(event, composing.current);
+      }}
     >
       <h3>形と材質を作る</h3>
       <p>
         数値を入力して「適用」すると一回の編集になります。画面・組立と同じ選択を使います。
-        複数選択中も、部品・頂点・辺・面の操作はアクティブな1個が対象です。
+        通常の部品・頂点・辺・面の操作はアクティブな1個が対象です。部品削除では複数選択した対象を確認します。
         材質変更の影響範囲は材質欄で確認してください。
       </p>
       {selectedIds.length > 1 && (
@@ -398,23 +404,6 @@ export function NativeAuthoringPanel({
             }
           >
             部品の変形を適用
-          </button>
-          <button
-            type="button"
-            disabled={!node}
-            onClick={() =>
-              act(() => {
-                let id = '';
-                execute((p) => {
-                  id = cloneNode(p, node!.id, crypto.randomUUID());
-                });
-                setSelection([id], id);
-                setEntity('');
-                setMaterialId('');
-              })
-            }
-          >
-            独立した部品を複製
           </button>
         </details>
         <details>
@@ -732,6 +721,25 @@ export function NativeAuthoringPanel({
             材質を適用
           </button>
         </details>
+        <NativeHierarchyClonePanel
+          project={project}
+          selectedIds={selectedIds}
+          disabled={disabled}
+          execute={execute}
+          edit={edit}
+          onSelect={(id) => {
+            setSelection([id], id);
+            setEntity('');
+            setMaterialId('');
+          }}
+        />
+        <NativeObjectDeletionPanel
+          project={project}
+          selectedIds={selectedIds}
+          disabled={disabled}
+          execute={execute}
+          edit={edit}
+        />
       </fieldset>
     </section>
   );

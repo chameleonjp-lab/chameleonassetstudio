@@ -1,3 +1,5 @@
+import { formatNativeEditingFailure, formatNativeMotionStatusReason } from './editingFailure';
+import { guardNativeCompositionKey } from './keyboardSafety';
 import { useEffect, useRef, useState } from 'react';
 import type { Project3D } from '../../core3d/model/project';
 import {
@@ -15,6 +17,7 @@ import {
 } from '../../core3d/animation/authoring';
 import type { ProjectSession } from './projectSession';
 import './nativeAnimationPanel.css';
+import { watchNativeMotionPreference, type NativeMotionPreference } from './motionPreference';
 
 function number(value: string) {
   if (!value.trim() || !Number.isFinite(Number(value)))
@@ -34,6 +37,18 @@ export function NativeAnimationPanel({
 }) {
   const [, redraw] = useState(0);
   useEffect(() => session.animation.subscribe(() => redraw((value) => value + 1)), [session]);
+  const [motionPreference, setMotionPreference] = useState<NativeMotionPreference>('unavailable');
+  useEffect(
+    () =>
+      watchNativeMotionPreference(
+        typeof window === 'undefined' ? undefined : window,
+        (preference) => {
+          setMotionPreference(preference);
+          if (preference === 'reduce') session.animation.pause();
+        },
+      ),
+    [session],
+  );
   const state = session.animation.state;
   const [clipId, setClipId] = useState('');
   const clip = project.clips.find((value) => value.id === clipId);
@@ -72,7 +87,7 @@ export function NativeAnimationPanel({
       operation();
       setError('');
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(formatNativeEditingFailure(cause, 'animation'));
     } finally {
       onChange();
     }
@@ -129,6 +144,9 @@ export function NativeAnimationPanel({
       onCompositionEnd={() => {
         composing.current = false;
       }}
+      onKeyDownCapture={(event) => {
+        guardNativeCompositionKey(event, composing.current);
+      }}
     >
       <h3>キーとclipを作る</h3>
       <p>
@@ -142,7 +160,7 @@ export function NativeAnimationPanel({
           : state.active
             ? 'アニメーション停止pose'
             : 'アニメーションrest表示'}{' '}
-        · {state.time.toFixed(3)}秒。{state.reason}
+        · {state.time.toFixed(3)}秒。{formatNativeMotionStatusReason(state.reason, 'animation')}
       </p>
       <label>
         clipを選択
@@ -232,6 +250,13 @@ export function NativeAnimationPanel({
       <fieldset disabled={!clip}>
         <legend>再生確認（保存しない）</legend>
         <p>読むだけの作品も再生できます。背景化・GPU休止後の再開は明示操作です。</p>
+        <p data-testid="native-motion-preference">
+          {motionPreference === 'reduce'
+            ? 'OSの「動きを減らす」設定を検出しました。設定を有効にした時点で再生を停止します。確認のための再生は下のボタンで明示的に開始でき、いつでも停止できます。'
+            : motionPreference === 'no-preference'
+              ? 'OSの動き低減指定はありません。自動再生はせず、下のボタンで開始・停止します。'
+              : 'OSの動き低減設定を読み取れません。自動再生はせず、下のボタンで開始・停止します。'}
+        </p>
         <button
           type="button"
           onClick={() =>

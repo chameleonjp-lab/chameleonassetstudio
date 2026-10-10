@@ -1,3 +1,4 @@
+import { formatNativeEditingFailure } from './editingFailure';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   captureInspectionSnapshot,
@@ -109,8 +110,7 @@ export function NativeQualityPanel({
       setReport(result);
       setNotice('検査結果を取得しました。');
     } catch (error) {
-      if (token === generation.current)
-        setNotice(error instanceof Error ? error.message : String(error));
+      if (token === generation.current) setNotice(formatNativeEditingFailure(error, 'quality'));
     } finally {
       releaseCapture?.();
       if (token === generation.current) {

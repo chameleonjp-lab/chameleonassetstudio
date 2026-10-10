@@ -1,5 +1,29 @@
 # 入口・bundle・2D互換の関係
 
+
+## 現在のsource入口 local candidate
+
+対象は索引のローカル基点。下のEN-01〜03は旧段階の履歴であり、Pと書かれたGLB/rig/3D DBが今も未実装という意味ではない。
+
+```mermaid
+flowchart TD
+  EN_NOW_HTML["L 3d/index.html"] --> EN_NOW_ENTRY["L src/entries/3d.tsx"]
+  EN_NOW_ENTRY -->|"lazy"| EN_NOW_SHELL["L Editor3DShell"]
+  EN_NOW_ENTRY --> EN_NOW_RESCUE["L EntryBoundary と最小診断"]
+  EN_NOW_SHELL --> EN_NOW_UI["L 造形・rig・animation・game UI"]
+  EN_NOW_SHELL -->|"lazy"| EN_NOW_IO["L NativeAssetIoPanel"]
+  EN_NOW_SHELL -->|"lazy"| EN_NOW_VIEW["L NativeViewportPanel"]
+  EN_NOW_VIEW --> EN_NOW_PORT["L 注入されたrender port"]
+  EN_NOW_IO --> EN_NOW_JOB["L assetIoClient"]
+  EN_NOW_JOB -->|"操作時に生成"| EN_NOW_WORKER["L assetIo.worker"]
+```
+
+文字版: [3D entry](../../../src/entries/3d.tsx)からshellをlazyで取得し、entryの境界/診断は先に準備する。[shell](../../../src/features/editor3d/Editor3DShell.tsx)は造形・rig・animation・game等を通常importし、GLB入出力とviewport UIをlazyで取得する。Three rendererのfactoryはshellおよび保存前プレビューで必要時に取得・構築する。[assetIoClient](../../../src/adapters3d/gltf/assetIoClient.ts)のworker URL参照と、実際のWorker生成は別時点である。図は全chunkの初回通信ゼロや実networkを証明しない。
+
+hubの[実リンク](../../../index.html)と[小entry](../../../src/entries/hub.tsx)、[2D entry](../../../src/entries/2d.tsx)は製品3D moduleをimportしない。別tab/noopenerはnavigationの契約でありimport edgeではない。[build所有検査](../../../tools/build/domainBoundary.ts)は実Rollup出力の静的/動的descendantとworker asset参照を検査する。source AST監査はそれを置き換えない。
+
+製品workerの実在先は `src/adapters3d/gltf/assetIo.worker.ts`。初期候補 `src/core3d/workers/` や `e2e/three-d/` を現在の実在pathとして読まない。独立consumerは [tools/3d-consumer](../../../tools/3d-consumer/index.html) にあり、製品entryの依存外を維持する。
+
 [索引へ](README.md)。E/P表記は索引を参照。関連: NAV-01〜08、COMPAT-01〜06、B02、DEC-08、T00/T04/T11。
 
 ## EN-01 B02以前の単一entry（履歴）
@@ -14,7 +38,7 @@ flowchart TD
 
 文字版: index → main → App → home、editorはlazy。AppはuseStateでhome/editorを切り替え、調査したentryにquery/hash routerはない。既存rootを架空のdeep-link契約へ置き換えない。実在: [main](../../../src/main.tsx)、[App](../../../src/app/App.tsx)、[Vite](../../../vite.config.ts)。
 
-## EN-02 B02の独立entryと後続runtime
+## EN-02 B02時点の独立entryと後続runtime（履歴）
 
 ```mermaid
 flowchart TD
@@ -42,7 +66,7 @@ flowchart TD
 
 React等の小shared chunkは内容と到達元を説明する。共有barrelから両editorをexportしない。CSS・asset URL・modulepreloadも依存監査に含む。code splittingという名前だけでは合格しない。
 
-## EN-03 互換境界
+## EN-03 初期の互換境界（履歴）
 
 ```mermaid
 flowchart TD
@@ -56,4 +80,4 @@ flowchart TD
 
 別タブは合計memoryの削減を保証しない。両tabがactiveの場合の合計、背景停止、手動休止、復帰peakは [資源図](lifecycle.md) で別に管理する。
 
-B02の実装・検査範囲は[証拠記録](../../evidence/3d/B02.md)を参照。B03のnative rendererは[限定評価・採用記録](../../evidence/3d/B03_NATIVE_VIEWPORT.md)を参照。GLB/rig等の未採用chunkはPのままであり、図の接続だけで完成扱いにしない。
+B02の実装・検査範囲は[証拠記録](../../evidence/3d/B02.md)を参照。B03のnative rendererは[限定評価・採用記録](../../evidence/3d/B03_NATIVE_VIEWPORT.md)を参照。このB03時点の記録ではGLB/rig等の未採用chunkをPとしていた。現在の配置は上のL対応を参照し、図の接続だけで完成扱いにしない。

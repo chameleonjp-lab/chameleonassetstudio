@@ -1,3 +1,15 @@
+import { formatNativeEditingFailure } from './editingFailure';
+import { guardNativeCompositionKey } from './keyboardSafety';
+import { NativeProjectLibraryPanel } from './NativeProjectLibraryPanel';
+import { openRecoveryCopy } from './projectLibrary';
+import { NativeDiagnosticsPanel } from './NativeDiagnosticsPanel';
+import { NativeBuildStatus } from './NativeBuildStatus';
+import { exportStoredBackup } from '../../core3d/backup/repositoryBackup';
+import {
+  adoptEditorSession,
+  preserveSessionForRescue,
+  releaseEditorResources,
+} from './sessionLifetime';
 import { NativeQualityPanel } from './NativeQualityPanel';
 import { NativeGamePanel } from './NativeGamePanel';
 import { NativeAnimationPanel } from './NativeAnimationPanel';
@@ -24,7 +36,8 @@ import {
 import { openProjectRepository, type ProjectRepository } from '../../core3d/storage/repository';
 import { BACKUP_LIMITS, ProjectSession, UnsavedProjectError } from './projectSession';
 import './editor3d.css';
-import type { NativeViewportFactory } from './NativeViewportPanel';
+import type { NativeViewportFactory, NativeThumbnailCapture } from './NativeViewportPanel';
+import { NativeThumbnailCachePanel } from './NativeThumbnailCachePanel';
 import { NativeAuthoringPanel } from './NativeAuthoringPanel';
 import { NativeAssemblyControls } from './NativeAssemblyControls';
 import { NativeTransformControls } from './NativeTransformControls';
@@ -49,7 +62,7 @@ class ViewportLoadBoundary extends Component<
   state = { failed: false, busy: false, error: '', loadError: '' };
   private reloading = false;
   static getDerivedStateFromError(error: unknown) {
-    return { failed: true, loadError: error instanceof Error ? error.message : String(error) };
+    return { failed: true, loadError: formatNativeEditingFailure(error, 'viewport') };
   }
   render() {
     return this.state.failed ? (
@@ -77,6 +90,14 @@ class ViewportLoadBoundary extends Component<
           保存してページを再読み込み
         </button>
         {this.state.error && <p role="alert">{this.state.error}</p>}
+        <NativeDiagnosticsPanel
+          appVersion={__APP_VERSION__}
+          sourceRevision={__APP_REVISION__}
+          sourceDirty={__APP_DIRTY__}
+          schemaVersion="0.3.0"
+          errorId="viewport-load-failed"
+          feature="viewport"
+        />
       </div>
     ) : (
       this.props.children
@@ -87,10 +108,7 @@ class ViewportLoadBoundary extends Component<
 type ProjectEntry = { id: string; name: string; revision: number };
 
 function describeError(error: unknown) {
-  if (error instanceof UnsavedProjectError) return error.message;
-  if (error instanceof DOMException && error.name === 'QuotaExceededError')
-    return 'ブラウザーの保存容量が不足しています。現在の変更はこのタブに保持しています。バックアップを取得してから容量を確保し、保存を再試行してください。';
-  return `操作を完了できませんでした。現在の内容を保持しています。${error instanceof Error ? error.message : String(error)}`;
+  return formatNativeEditingFailure(error, 'storage');
 }
 
 function saveLabel(session: ProjectSession) {
@@ -106,7 +124,10 @@ function saveLabel(session: ProjectSession) {
 export function Editor3DShell() {
   // Outside the fallible editor subtree: a render error keeps the same resident rescue bytes.
   const sessionRef = useRef<ProjectSession | null>(null);
+  const repositoryOwners = useRef(new Set<ProjectRepository>());
   useEffect(() => {
+    const ownedRepositories = repositoryOwners.current;
+    const releaseOwned = () => releaseEditorResources(sessionRef.current, ownedRepositories);
     const beforeUnload = (event: BeforeUnloadEvent) => {
       if (sessionRef.current?.state.dirty) {
         event.preventDefault();
@@ -114,11 +135,14 @@ export function Editor3DShell() {
       }
     };
     window.addEventListener('beforeunload', beforeUnload);
-    return () => window.removeEventListener('beforeunload', beforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', beforeUnload);
+      void releaseOwned().catch(() => undefined);
+    };
   }, []);
   return (
     <Editor3DBoundary sessionRef={sessionRef}>
-      <Editor3DContent sessionRef={sessionRef} />
+      <Editor3DContent sessionRef={sessionRef} repositoryOwners={repositoryOwners} />
     </Editor3DBoundary>
   );
 }
@@ -177,6 +201,14 @@ function Editor3DRescue({ sessionRef }: { sessionRef: RefObject<ProjectSession |
             トップを別タブで開く
           </a>
         </p>
+        <NativeDiagnosticsPanel
+          appVersion={__APP_VERSION__}
+          sourceRevision={__APP_REVISION__}
+          sourceDirty={__APP_DIRTY__}
+          schemaVersion="0.3.0"
+          errorId="editor-render-failed"
+          feature="editor"
+        />
         <p>
           開発版・{__APP_REVISION__.slice(0, 8)}
           {__APP_DIRTY__ ? '（ローカル変更あり）' : ''}
@@ -206,7 +238,13 @@ function downloadArchive(bytes: Uint8Array, name: string) {
   }
 }
 
-function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession | null> }) {
+function Editor3DContent({
+  sessionRef,
+  repositoryOwners,
+}: {
+  sessionRef: RefObject<ProjectSession | null>;
+  repositoryOwners: RefObject<Set<ProjectRepository>>;
+}) {
   const [repository, setRepository] = useState<ProjectRepository | null>(null);
   const [projects, setProjects] = useState<ProjectEntry[]>([]);
   const [gamePreview, setGamePreview] = useState(false);
@@ -221,6 +259,8 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
   const [session, setSession] = useState<ProjectSession | null>(null);
   const [previewProjectId, setPreviewProjectId] = useState<string | null>(null);
   const [newName, setNewName] = useState('新しい3Dプロジェクト');
+  const [thumbnailGeneration, setThumbnailGeneration] = useState(0);
+  const newNameComposing = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -229,6 +269,8 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
   const busyRef = useRef(false);
   const ownerId = useRef(crypto.randomUUID());
   const mounted = useRef(false);
+  const ownerEpoch = useRef(0);
+  const operationEpoch = useRef(0);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const readTextureBlob = useCallback(
     (id: string) => {
@@ -240,6 +282,9 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
 
   useEffect(() => {
     mounted.current = true;
+    const epoch = ownerEpoch.current + 1;
+    ownerEpoch.current = epoch;
+    const ownedRepositories = repositoryOwners.current;
     let cancelled = false;
     let opened: ProjectRepository | null = null;
     void openProjectRepository()
@@ -250,6 +295,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
           value.close();
           return;
         }
+        ownedRepositories.add(value);
         setRepository(value);
         setProjects(entries);
         setError('');
@@ -260,20 +306,19 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
       });
     return () => {
       mounted.current = false;
+      ownerEpoch.current = epoch + 1;
       migration.current?.abort();
       cancelled = true;
       const current = sessionRef.current;
       if (current) {
-        // This is only a best-effort unmount flush. The unload guard is the warning path.
-        void current
-          .close()
-          .then(() => opened?.close())
-          .catch(() => undefined);
+        // Error-boundary child teardown must leave originals resident for the surviving rescue UI.
+        void preserveSessionForRescue(current).catch(() => undefined);
       } else {
         opened?.close();
+        if (opened) ownedRepositories.delete(opened);
       }
     };
-  }, [connectionAttempt, sessionRef]);
+  }, [connectionAttempt, sessionRef, repositoryOwners]);
 
   useEffect(() => {
     const flushWhenHidden = () => {
@@ -392,6 +437,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
     if (busyRef.current) return;
     const editing = sessionRef.current?.edit;
     busyRef.current = true;
+    operationEpoch.current = ownerEpoch.current;
     editing?.setBlocked('shell-operation', true);
     setBusy(true);
     setError('');
@@ -411,15 +457,13 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
   }
 
   async function replaceSession(next: ProjectSession) {
-    const previous = sessionRef.current;
-    try {
-      await previous?.close();
-    } catch (cause) {
-      // The caller keeps the previous tab content visible when it could not be closed.
-      await next.close().catch(() => undefined);
-      throw cause;
-    }
-    sessionRef.current = next;
+    const epoch = operationEpoch.current;
+    const adopted = await adoptEditorSession(
+      sessionRef,
+      next,
+      () => mounted.current && epoch === ownerEpoch.current,
+    );
+    if (!adopted || !mounted.current) return;
     setSession(next);
     if (repository) setProjects(await repository.listProjects());
   }
@@ -459,9 +503,93 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
     event.preventDefault();
     const href = event.currentTarget.href;
     void run(async () => {
-      await sessionRef.current?.close();
-      window.location.assign(href);
+      const valid = () => mounted.current && operationEpoch.current === ownerEpoch.current;
+      if (!valid()) return;
+      const current = sessionRef.current;
+      if (current) {
+        await current.close(valid, () => window.location.assign(href));
+      } else if (valid()) {
+        window.location.assign(href);
+      }
     });
+  }
+
+  async function reloadCurrent() {
+    if (busyRef.current) throw new Error('別の操作が完了するまで待ってください。');
+    const current = sessionRef.current,
+      epoch = ownerEpoch.current;
+    const valid = () =>
+      mounted.current && ownerEpoch.current === epoch && sessionRef.current === current;
+    busyRef.current = true;
+    operationEpoch.current = epoch;
+    current?.edit.setBlocked('shell-operation', true);
+    setBusy(true);
+    try {
+      await current?.save();
+      if (current?.state.dirty) throw new UnsavedProjectError();
+      if (!valid()) throw new Error('編集画面が切り替わりました。');
+      if (current) {
+        const closed = await current.close(valid, () => window.location.reload());
+        if (!closed) throw new Error('編集画面が切り替わりました。');
+      } else window.location.reload();
+    } catch (error) {
+      current?.edit.setBlocked('shell-operation', false);
+      busyRef.current = false;
+      if (mounted.current) setBusy(false);
+      throw error;
+    }
+  }
+
+  async function saveThumbnail(request: NativeThumbnailCapture) {
+    const sourceRepository = repository;
+    if (!sourceRepository) throw new Error('保存領域を確認してから作成してください。');
+    const owner = sessionRef.current;
+    const current = () =>
+      !!owner &&
+      sessionRef.current === owner &&
+      !owner.state.closed &&
+      !owner.state.dirty &&
+      owner.project.id === request.projectId &&
+      owner.project.revision === request.revision &&
+      request.isCurrent();
+    if (!current()) throw new Error('サムネイルの保存対象が変わりました。');
+    const [{ openThumbnailCache }, { createNativeThumbnail }] = await Promise.all([
+      import('../../core3d/storage/thumbnailCache'),
+      import('./thumbnailImage'),
+    ]);
+    if (!current()) throw new Error('サムネイルの保存対象が変わりました。');
+    const cache = await openThumbnailCache();
+    try {
+      const metadata = await cache.listMetadata();
+      const expectedToken =
+        metadata.find((entry) => entry.projectId === request.projectId)?.token ?? null;
+      if (!current()) throw new Error('サムネイルの保存対象が変わりました。');
+      const source = await request.capture();
+      const image = await createNativeThumbnail(source, { signal: request.signal });
+      try {
+        if (!current()) throw new Error('サムネイルの保存対象が変わりました。');
+        await cache.put(
+          {
+            projectId: request.projectId,
+            revision: request.revision,
+            width: image.width,
+            height: image.height,
+            bytes: image.bytes,
+          },
+          { expectedToken, latestRevision: owner!.project.revision, canCommit: current },
+        );
+        // A completed cache write is retained after a late cancellation; never remove a newer entry.
+        const savedEntries = await sourceRepository.listProjects();
+        if (mounted.current) {
+          setProjects(savedEntries);
+          setThumbnailGeneration((value) => value + 1);
+        }
+      } finally {
+        image.dispose();
+      }
+    } finally {
+      cache.close();
+    }
   }
 
   async function downloadBackup() {
@@ -473,7 +601,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
   }
 
   const state = session?.state;
-  const project = session?.project;
+  const project = state?.closed ? undefined : session?.project;
   useEffect(() => setInspectionTarget(''), [project?.id, project?.revision]);
 
   return (
@@ -497,10 +625,10 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
       </header>
       <main id="editor3d-main" className="editor3d-main">
         <section className="editor3d-intro" aria-labelledby="editor3d-preparation">
-          <span className="editor3d-badge">3D制作は準備中</span>
+          <span className="editor3d-badge">3D制作・開発版</span>
           <h2 id="editor3d-preparation">まずは、プロジェクトの保存と再開から</h2>
           <p>
-            基本形の作成、部品の選択と移動・回転・拡縮、数値による頂点・面・材質の編集、baseColor画像と色調の編集、3D表示とカメラ操作、PNG画像の保存、自動保存、バックアップとコピー復元を利用できます。リグ・アニメーション編集、高度なtexture制作、GLBの入出力は準備中です。
+            基本形の作成、部品の選択と移動・回転・拡縮、数値による頂点・面・材質の編集、baseColor画像と色調の編集、3D表示とカメラ操作、PNG画像の保存、自動保存、バックアップとコピー復元を利用できます。骨と重み、アニメーション、ゲーム情報、GLB入出力と品質検査も利用できます。高度なtexture制作と実機での統合受入は未完了です。
           </p>
           <p>
             作品はこのブラウザー内に保存します。大切な内容は .cas3dproj
@@ -539,8 +667,18 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
               <section className="editor3d-card" aria-labelledby="editor3d-create-heading">
                 <h2 id="editor3d-create-heading">新しく作る</h2>
                 <form
+                  onCompositionStart={() => {
+                    newNameComposing.current = true;
+                  }}
+                  onCompositionEnd={() => {
+                    newNameComposing.current = false;
+                  }}
+                  onKeyDownCapture={(event) => {
+                    guardNativeCompositionKey(event, newNameComposing.current, true);
+                  }}
                   onSubmit={(event) => {
                     event.preventDefault();
+                    if (newNameComposing.current) return;
                     void run(async () => {
                       await sessionRef.current?.save();
                       const next = await ProjectSession.create(
@@ -599,11 +737,62 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                             {entry.id === project?.id ? ' · 開いています' : ''}
                           </small>
                         </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          aria-label={`保存済みの版をバックアップ: ${entry.name || '名称未設定'}`}
+                          onClick={() =>
+                            void run(async () => {
+                              const bytes = await exportStoredBackup(repository, entry.id);
+                              downloadArchive(bytes, `${entry.name || '3d-project'}-saved`);
+                              setNotice(
+                                '保存済みの版をバックアップしました。未保存の編集は含まれません。保存領域への書込みはしていません。',
+                              );
+                            })
+                          }
+                        >
+                          保存済みの版をバックアップ
+                        </button>
                       </li>
                     ))}
                   </ul>
                 )}
               </section>
+              <NativeThumbnailCachePanel
+                projects={projects}
+                refreshGeneration={thumbnailGeneration}
+              />
+              <NativeProjectLibraryPanel
+                repository={repository}
+                currentProjectId={project?.id}
+                disabled={busy}
+                run={run}
+                onChanged={async () => {
+                  const epoch = ownerEpoch.current;
+                  const entries = await repository.listProjects();
+                  if (mounted.current && ownerEpoch.current === epoch) setProjects(entries);
+                }}
+                onRecover={async (entry, snapshot) => {
+                  const current = sessionRef.current;
+                  await current?.save();
+                  if (current?.state.dirty) throw new UnsavedProjectError();
+                  if (
+                    !mounted.current ||
+                    operationEpoch.current !== ownerEpoch.current ||
+                    sessionRef.current !== current
+                  )
+                    throw new Error('編集画面が切り替わりました。');
+                  try {
+                    await replaceSession(
+                      await openRecoveryCopy(repository, ownerId.current, entry.id, snapshot),
+                    );
+                  } finally {
+                    const epoch = ownerEpoch.current;
+                    const entries = await repository.listProjects();
+                    if (mounted.current && ownerEpoch.current === epoch) setProjects(entries);
+                  }
+                }}
+              />
               <section className="editor3d-card" aria-labelledby="editor3d-legacy-heading">
                 <h2 id="editor3d-legacy-heading">旧形式の作品（0.1.0 / 0.2.0）</h2>
                 <p>
@@ -810,6 +999,34 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                       移行前の復元控えを取得
                     </button>
                   )}
+                  <details aria-label="このタブのUndo履歴と予算">
+                    <summary>Undo履歴と予算を確認</summary>
+                    <p>
+                      元に戻せる操作: {state.history.undoCount} 件 / やり直せる操作:{' '}
+                      {state.history.redoCount} 件。
+                      {state.history.hasPreview ? '履歴内に未確定の編集を保持しています。' : ''}
+                    </p>
+                    <p>
+                      編集受入判定の履歴上限:{' '}
+                      {state.history.serializedCommitBudgetBytes / (1024 * 1024)} MiB。
+                      新しい編集を受け入れる際のUndo・現在・候補のJSON量で判定します。
+                      残り操作回数や端末の空き容量ではありません。
+                    </p>
+                    <p>
+                      この作品の履歴所有見積り（現在・Undo・Redo・プレビュー）:{' '}
+                      {state.history.ownershipEstimateBytes === null
+                        ? '計測対象外'
+                        : `${state.history.ownershipEstimateBytes.toLocaleString('ja-JP')} bytes`}
+                      。 こちらは構造の所有見積りで、上のJSON上限とは別の値です。
+                      表示だけの変形・poseは別管理です。素材の実バイナリやブラウザーの実メモリは含みません。
+                    </p>
+                    <p>
+                      上限で操作できない場合も、現在の作品と履歴は自動で整理しません。
+                      「現在の内容をバックアップ」は現在の作品と必要な素材を保存しますが、
+                      Undo・Redo履歴は含みません。履歴を残したい間はこのタブの作品を閉じず、
+                      必要な各状態を個別にバックアップしてください。
+                    </p>
+                  </details>
                   <div className="editor3d-actions" aria-label="編集履歴と保存">
                     <button
                       type="button"
@@ -837,10 +1054,18 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                       disabled={busy}
                       onClick={() =>
                         void run(async () => {
-                          await session.close();
-                          sessionRef.current = null;
+                          const epoch = operationEpoch.current;
+                          const valid = () =>
+                            mounted.current &&
+                            epoch === ownerEpoch.current &&
+                            sessionRef.current === session;
+                          const closed = await session.close(valid, () => {
+                            sessionRef.current = null;
+                          });
+                          if (!closed || !mounted.current) return;
                           setSession(null);
-                          setProjects(await repository.listProjects());
+                          const entries = await repository.listProjects();
+                          if (mounted.current && epoch === ownerEpoch.current) setProjects(entries);
                         })
                       }
                     >
@@ -1080,27 +1305,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                     </div>
                   </div>
                   {previewProjectId === project.id && (
-                    <ViewportLoadBoundary
-                      key={`viewport-${project.id}`}
-                      onReload={async () => {
-                        if (busyRef.current)
-                          throw new Error('別の操作が完了するまで待ってください。');
-                        busyRef.current = true;
-                        session.edit.setBlocked('shell-operation', true);
-                        setBusy(true);
-                        try {
-                          await session.save();
-                          if (session.state.dirty) throw new UnsavedProjectError();
-                          await session.close();
-                          window.location.reload();
-                        } catch (error) {
-                          session.edit.setBlocked('shell-operation', false);
-                          busyRef.current = false;
-                          setBusy(false);
-                          throw error;
-                        }
-                      }}
-                    >
+                    <ViewportLoadBoundary key={`viewport-${project.id}`} onReload={reloadCurrent}>
                       <Suspense
                         fallback={
                           <p role="status">
@@ -1117,6 +1322,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                           readBlob={readTextureBlob}
                           factory={createNativeViewport}
                           onSave={() => session.save()}
+                          onThumbnail={saveThumbnail}
                           getSuspensionContract={() => ({
                             persistedRevision: session.state.persistedRevision,
                             currentRevision: session.state.revision,
@@ -1178,7 +1384,7 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
                   </details>
                   <div className="editor3d-placeholder">
                     <p>
-                      現在の3D表示は三角形メッシュと基本のbaseColor画像に対応しています。手動rigとpose確認に対応します。objectと骨のclip制作・再生確認に対応します。GLB出力は準備中です。
+                      現在の3D表示は三角形メッシュと基本のbaseColor画像に対応しています。手動rigとpose確認に対応します。objectと骨のclip制作・再生確認に対応します。GLBの読込・書出しと配布用ZIPに対応する開発版です。外部runtimeと実機の対応状況は、品質検査とガイドで別に確認してください。
                     </p>
                   </div>
                 </>
@@ -1188,6 +1394,15 @@ function Editor3DContent({ sessionRef }: { sessionRef: RefObject<ProjectSession 
         )}
       </main>
       <footer className="editor3d-footer">
+        <NativeBuildStatus disabled={busy} onReload={reloadCurrent} />
+        <NativeDiagnosticsPanel
+          appVersion={__APP_VERSION__}
+          sourceRevision={__APP_REVISION__}
+          sourceDirty={__APP_DIRTY__}
+          schemaVersion={project?.schemaVersion ?? '0.3.0'}
+          errorId={error ? 'operation-failed' : 'none'}
+          feature="editor"
+        />
         <p>
           <a
             href={`${import.meta.env.BASE_URL}licenses/three-MIT.txt`}

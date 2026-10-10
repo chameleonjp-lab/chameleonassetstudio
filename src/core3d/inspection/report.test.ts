@@ -71,3 +71,23 @@ it('bounds warning generation and explicitly reports omitted issue counts', asyn
   expect(report.issues.at(-1)?.message).toContain('89');
   expect(exportInspectionWarnings(report)[0]).toContain('materialId');
 });
+
+it('distinguishes display quantity guards from source admission without deleting instances', async () => {
+  const p = nativeBox('render-limit');
+  p.nodes = Array.from({ length: 1001 }, (_, i) => ({
+    ...structuredClone(p.nodes[0]),
+    id: 'instance-' + i,
+  }));
+  const before = JSON.stringify(p);
+  const report = await buildInspectionReport(captureInspectionSnapshot(p, () => new Uint8Array()));
+  const issue = report.issues.find((issue) => issue.code === 'render-budget-profile');
+  expect(issue).toMatchObject({
+    severity: 'warning',
+    exportRelevant: false,
+    target: { kind: 'project' },
+  });
+  expect(exportInspectionWarnings(report).some((w) => w.includes('render-budget-profile'))).toBe(
+    false,
+  );
+  expect(JSON.stringify(p)).toBe(before);
+});

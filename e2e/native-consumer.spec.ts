@@ -276,6 +276,9 @@ test('a project authored and exported in the product opens in a separate consume
   await page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true }).click();
   await page.getByRole('button', { name: '箱を追加', exact: true }).click();
   await page.getByText('GLB読込・配布ファイル出力', { exact: true }).click();
+  await page
+    .getByLabel('固定revisionの出力範囲と変換・損失の注意を確認しました', { exact: true })
+    .check();
   await page.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }).click();
   await expect(page.getByRole('button', { name: 'GLBを保存', exact: true })).toBeVisible();
   const read = async (name: string) => {
@@ -303,5 +306,212 @@ test('a project authored and exported in the product opens in a separate consume
     });
   } finally {
     await context.close();
+  }
+});
+
+test('edited textured mixed skin and two clips survive backup, re-edit and actual independent delivery', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(180000);
+  const { readFile } = await import('node:fs/promises');
+  const { importBackup } = await import('../src/core3d/backup/backup');
+  const { assetIoPng } = await import('../src/core3d/fixtures/assetIo');
+  const { createRequire } = await import('node:module');
+  const validator = createRequire(import.meta.url)('gltf-validator') as {
+    validateBytes: (
+      bytes: Uint8Array,
+      options: Record<string, unknown>,
+    ) => Promise<{
+      issues: { numErrors: number; truncated: boolean; messages: unknown[] };
+    }>;
+  };
+  const download = async (target: Page, name: string) => {
+    const event = target.waitForEvent('download');
+    await target.getByRole('button', { name, exact: true }).click();
+    return new Uint8Array(await readFile((await (await event).path())!));
+  };
+  await page.goto('/3d/');
+  await page.getByLabel('新しいプロジェクト名', { exact: true }).fill('Full native handoff');
+  await page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true }).click();
+  await page.getByRole('button', { name: '箱を追加', exact: true }).click();
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  const author = page.getByRole('region', { name: '3D制作', exact: true });
+  await author.getByText('頂点・辺・面を編集', { exact: true }).click();
+  await author.getByRole('combobox', { name: '制作要素', exact: true }).selectOption({ index: 1 });
+  await author.getByLabel('移動量 X（m）', { exact: true }).fill('0.1');
+  await author.getByRole('button', { name: '選択要素を移動', exact: true }).click();
+  await expect(author.getByRole('alert')).toHaveCount(0);
+  const texture = page.getByRole('region', { name: '画像とUVを編集', exact: true });
+  await texture.getByText('画像とUVを開く', { exact: true }).click();
+  const png = await assetIoPng();
+  await texture
+    .getByLabel('baseColor画像', { exact: true })
+    .setInputFiles({ name: 'original.png', mimeType: 'image/png', buffer: Buffer.from(png) });
+  await texture
+    .getByLabel('画像の権利・出典', { exact: true })
+    .fill('Original integration fixture CC0');
+  await texture.getByRole('button', { name: '画像を取り込み適用', exact: true }).click();
+  await expect(texture.getByRole('status')).toContainText('一回の操作');
+  await page.getByText('骨と重みの編集を開く', { exact: true }).click();
+  const rig = page.getByRole('region', { name: '3D骨と重み', exact: true });
+  await rig.getByLabel('骨の名前', { exact: true }).fill('Root');
+  await rig.getByRole('button', { name: '骨を追加', exact: true }).click();
+  const root = await rig.getByRole('combobox', { name: '骨を選択', exact: true }).inputValue();
+  await rig.getByRole('combobox', { name: '親の骨', exact: true }).selectOption(root);
+  await rig.getByLabel('骨の名前', { exact: true }).fill('Tip');
+  await rig.getByRole('button', { name: '骨を追加', exact: true }).click();
+  const tip = await rig.getByRole('combobox', { name: '骨を選択', exact: true }).inputValue();
+  await rig.getByRole('button', { name: '骨の現在値を読む', exact: true }).click();
+  await rig.getByLabel('骨位置 Y', { exact: true }).fill('1');
+  await rig.getByRole('button', { name: 'restを適用して再bind', exact: true }).click();
+  await rig.getByRole('combobox', { name: '影響 1 の骨', exact: true }).selectOption(root);
+  await rig.getByLabel('影響 1 の重み', { exact: true }).fill('0.25');
+  await rig.getByRole('combobox', { name: '影響 2 の骨', exact: true }).selectOption(tip);
+  await rig.getByLabel('影響 2 の重み', { exact: true }).fill('0.75');
+  await rig.getByRole('button', { name: '全頂点へ明示weightをbind', exact: true }).click();
+  await expect(rig.getByText(/bind済み/)).toBeVisible();
+  await page.getByText('アニメーション編集を開く', { exact: true }).click();
+  const animation = page.getByRole('region', { name: '3Dアニメーション', exact: true });
+  const clipIds: string[] = [];
+  for (const [name, end] of [
+    ['Small', '1'],
+    ['Large', '2'],
+  ]) {
+    await animation.getByLabel('clip名', { exact: true }).fill(name);
+    await animation.getByLabel('clipの長さ（秒）', { exact: true }).fill('1');
+    await animation.getByLabel('clipをloop再生する', { exact: true }).uncheck();
+    await animation.getByRole('button', { name: '新しいclipを作成', exact: true }).click();
+    clipIds.push(
+      await animation.getByRole('combobox', { name: 'clipを選択', exact: true }).inputValue(),
+    );
+    await animation.getByRole('combobox', { name: 'キー対象', exact: true }).selectOption(tip);
+    await animation.getByRole('button', { name: '表示中のTRSを読む', exact: true }).click();
+    await animation.getByLabel('キー時刻（秒）', { exact: true }).fill('0');
+    await animation.getByLabel('キー値 X', { exact: true }).fill('0');
+    await animation.getByRole('button', { name: 'キーを追加', exact: true }).click();
+    await animation.getByLabel('キー時刻（秒）', { exact: true }).fill('1');
+    await animation.getByLabel('キー値 X', { exact: true }).fill(end);
+    await animation.getByRole('button', { name: 'キーを追加', exact: true }).click();
+  }
+  await page.getByRole('button', { name: '今すぐ保存', exact: true }).click();
+  const archive = await download(page, '現在の内容をバックアップ');
+  const saved = await importBackup(archive);
+  expect(saved.project.clips).toHaveLength(2);
+  expect(saved.project.meshes[0].vertices[0].position[0]).toBeCloseTo(-0.4, 8);
+  expect(saved.project.meshes[0].vertices[0].position.slice(1)).toEqual([-0.5, -0.5]);
+  expect(
+    saved.project.skins[0].weights.every(
+      (entry) => entry.values[0] === 0.25 && entry.values[1] === 0.75,
+    ),
+  ).toBe(true);
+  expect(saved.blobs.get(await sha256(png))).toEqual(png);
+  const restoredContext = await browser.newContext({ baseURL: new URL(page.url()).origin });
+  const consumerContext = await browser.newContext();
+  try {
+    const restored = await restoredContext.newPage();
+    await restored.goto('/3d/');
+    await restored.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+      name: 'complete.cas3dproj',
+      mimeType: 'application/zip',
+      buffer: Buffer.from(archive),
+    });
+    await expect(
+      restored.getByRole('heading', { name: 'Full native handoff', exact: true }),
+    ).toBeVisible();
+    await restored.getByText('アニメーション編集を開く', { exact: true }).click();
+    const edited = restored.getByRole('region', { name: '3Dアニメーション', exact: true });
+    await edited
+      .getByRole('combobox', { name: 'clipを選択', exact: true })
+      .selectOption(clipIds[1]);
+    await edited.getByRole('combobox', { name: 'キー対象', exact: true }).selectOption(tip);
+    await edited.getByRole('button', { name: 'キー 1秒: 2, 1, 0', exact: true }).click();
+    await edited.getByLabel('キー値 X', { exact: true }).fill('2.5');
+    await edited.getByRole('button', { name: '選択キーの時刻と値を適用', exact: true }).click();
+    const revised = await importBackup(await download(restored, '現在の内容をバックアップ'));
+    expect(revised.project.meshes).toEqual(saved.project.meshes);
+    expect(revised.project.skins).toEqual(saved.project.skins);
+    expect(revised.blobs.get(await sha256(png))).toEqual(png);
+    expect(revised.project.clips[1].tracks[0].keys[1].value).toEqual([2.5, 1, 0]);
+    await restored.getByText('GLB読込・配布ファイル出力', { exact: true }).click();
+    await restored
+      .getByLabel('固定revisionの出力範囲と変換・損失の注意を確認しました', { exact: true })
+      .check();
+    await restored.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }).click();
+    await expect(restored.getByRole('button', { name: 'GLBを保存', exact: true })).toBeVisible();
+    const glb = await download(restored, 'GLBを保存'),
+      sidecar = await download(restored, 'game.jsonを保存');
+    const validation = await validator.validateBytes(glb, { maxIssues: 1000 });
+    expect(validation.issues.numErrors, JSON.stringify(validation.issues)).toBe(0);
+    expect(validation.issues.truncated).toBe(false);
+    const consumer = await consumerContext.newPage();
+    const external = await open(consumer);
+    const rest = await consumer.evaluate(
+      ({ glb, sidecar }) => window.__assetConsumer.load(glb, sidecar),
+      { glb: Array.from(glb), sidecar: Array.from(sidecar) },
+    );
+    expect(rest.hash).toBe(await sha256(glb));
+    const editedVertexReachedConsumer = rest.meshes.some((mesh) =>
+      mesh.positions.some(
+        (value, index, positions) =>
+          index % 3 === 0 &&
+          Math.abs(value + 0.4) < 1e-6 &&
+          Math.abs(positions[index + 1] + 0.5) < 1e-6 &&
+          Math.abs(positions[index + 2] + 0.5) < 1e-6,
+      ),
+    );
+    expect(editedVertexReachedConsumer).toBe(true);
+    expect(rest.resources.skeletons).toBe(1);
+    expect(rest.resources.animations).toBe(2);
+    expect(
+      rest.materials.some((material) => material.loaded && material.textureSize !== null),
+    ).toBe(true);
+    for (const [clipId, x] of [
+      [clipIds[0], 0.75],
+      [clipIds[1], 1.875],
+    ] as const) {
+      const pose = await consumer.evaluate((id) => window.__assetConsumer.sample(id, 1), clipId);
+      expect(pose.oracle.positionPass).toBe(true);
+      expect(pose.oracle.nodePass).toBe(true);
+      expect(pose.meshes.length).toBe(rest.meshes.length);
+      pose.meshes.forEach((mesh, m) =>
+        mesh.positions.forEach((value, i) => {
+          expect(value).toBeCloseTo(rest.meshes[m].positions[i] + (i % 3 === 0 ? x : 0), 5);
+        }),
+      );
+    }
+    await consumer.evaluate((id) => window.__assetConsumer.play(id, 20), clipIds[1]);
+    await expect
+      .poll(() => consumer.evaluate(() => window.__assetConsumer.snapshot().playback.ends))
+      .toBe(1);
+    expect(external).toEqual([]);
+    await test.info().attach('full-native-delivery-evidence', {
+      body: Buffer.from(
+        JSON.stringify(
+          {
+            kind: 'ui-authored-fixture',
+            sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+            browser: test.info().project.name,
+            modelHash: await sha256(glb),
+            sidecarHash: await sha256(sidecar),
+            backupHash: await sha256(archive),
+            runtime: rest.engine,
+            runtimeVersion: rest.version,
+            validator: validation.issues,
+            clipIds,
+          },
+          null,
+          2,
+        ),
+      ),
+      contentType: 'application/json',
+    });
+    await test.info().attach('native-visual-consumer-full-workflow', {
+      body: await consumer.screenshot(),
+      contentType: 'image/png',
+    });
+  } finally {
+    await restoredContext.close();
+    await consumerContext.close();
   }
 });

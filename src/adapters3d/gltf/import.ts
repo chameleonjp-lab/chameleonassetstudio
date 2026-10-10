@@ -37,7 +37,9 @@ export async function importGlb(
     f = preflightGlb(source),
     g = f.json;
   if (f.losses.length && !allowLoss)
-    throw new Error('Source-only features require explicit loss approval: ' + f.losses.join(', '));
+    throw new Error(
+      'Source-only features require explicit loss approval: ' + JSON.stringify(f.losses),
+    );
   const p = createProject(projectId, 'Imported GLB'),
     sourceHash = await sha256(source),
     blobs = new Map<string, Uint8Array>([[sourceHash, source]]);

@@ -26,3 +26,11 @@ dist-3d-evaluation
 
 # Isolated external consumer test build
 dist-3d-consumer/
+
+# Generated early native acceptance reports.
+/playwright-report-native-asset-io/
+/test-results-native-asset-io/
+/playwright-report-native-consumer/
+/test-results-native-consumer/
+/playwright-report-native-recovery/
+/test-results-native-recovery/

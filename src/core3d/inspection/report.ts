@@ -1,3 +1,4 @@
+import { NATIVE_RENDER_PROFILE as R } from '../profile/renderProfile';
 import { validateProject, type Project3D } from '../model/project';
 import { inspectNativeImage } from '../model/nativeImageMetadata';
 import { ASSET_IO_PROFILE as P, assertIoBudget } from '../profile/assetIoProfile';
@@ -95,6 +96,18 @@ export async function buildInspectionReport(
       issues.push({ code, severity, target, message, impact, remedy, exportRelevant });
     else omittedIssues++;
   };
+  const vertices = p.meshes.reduce((n, mesh) => n + mesh.vertices.length, 0);
+  const faces = p.meshes.reduce((n, mesh) => n + mesh.faces.length, 0);
+  if (p.nodes.length > R.nodes || vertices > R.vertices || faces > R.triangles)
+    add(
+      'render-budget-profile',
+      'warning',
+      { kind: 'project' },
+      '現在の表示用プロファイルの数量上限を超えています。',
+      'GLB原本の保持・入出力上限と表示・編集の数量上限は異なります。現在の3D表示は保証されません。',
+      '原本と編集用バックアップを保持してください。数量を調整する場合は別コピーを作り、元作品を自動削減しないでください。',
+      false,
+    );
   for (const { blobId, reason } of snapshot.unavailableBlobs)
     add(
       'missing-blob',

@@ -1,3 +1,4 @@
+import { describeNativeEditingFailure, formatNativeDisplayReason } from './editingFailure';
 import type { AnimationBinding } from '../../core3d/ports/animationPort';
 import type { RigPoseBinding } from '../../core3d/ports/rigPosePort';
 import {
@@ -36,6 +37,14 @@ export type {
   NativeViewportFactory,
 } from '../../core3d/ports/renderPort';
 
+export interface NativeThumbnailCapture {
+  projectId: string;
+  revision: number;
+  signal: AbortSignal;
+  isCurrent(): boolean;
+  capture(): Promise<Blob>;
+}
+
 export interface NativeViewportPanelProps {
   project: Project3D;
   factory: NativeViewportFactory;
@@ -43,6 +52,7 @@ export interface NativeViewportPanelProps {
   getSuspensionContract: () => NativeViewportSuspensionContract;
   /** Reject when saving fails; requesting autosave alone is not a successful save. */
   onSave: () => Promise<void>;
+  onThumbnail?: (request: NativeThumbnailCapture) => Promise<void>;
   /** A view-only fixture may omit this; product editing must bind explicitly. */
   editing?: NativeEditBinding;
   rigPose?: RigPoseBinding;
@@ -122,7 +132,7 @@ const cameraActionGroups: {
 ];
 
 function errorText(cause: unknown) {
-  return cause instanceof Error ? cause.message : String(cause);
+  return describeNativeEditingFailure(cause, 'viewport').reason;
 }
 
 function isFailure(status: PanelStatus) {
@@ -167,6 +177,19 @@ function ViewportContent(props: NativeViewportPanelProps) {
   const [status, setStatus] = useState<PanelStatus>({ state: 'loading' });
   const [notice, setNotice] = useState<Notice>(null);
   const [busy, setBusy] = useState(false);
+  const [thumbnailBusy, setThumbnailBusy] = useState(false);
+  const thumbnailAbort = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const document = hostRef.current?.ownerDocument;
+    const hidden = () => {
+      if (document?.visibilityState === 'hidden') thumbnailAbort.current?.abort();
+    };
+    document?.addEventListener('visibilitychange', hidden);
+    return () => {
+      document?.removeEventListener('visibilitychange', hidden);
+      thumbnailAbort.current?.abort();
+    };
+  }, []);
 
   // Only committed props may be observed by a save completion or a late factory.
   useLayoutEffect(() => {
@@ -197,9 +220,10 @@ function ViewportContent(props: NativeViewportPanelProps) {
 
   const updateProject = useCallback(
     (instance: Instance, resume = false): Promise<void> | undefined => {
+      if (!isCurrent(instance) || !instance.port) return;
       const committed = latest.current;
       const current = committed.editing?.getProject() ?? committed.project;
-      if (!isCurrent(instance) || !instance.port || current.id !== instance.projectId) return;
+      if (current.id !== instance.projectId) return;
       if (instance.readBlob !== committed.readBlob) {
         cancelPreparation(instance, true);
         instance.readBlob = committed.readBlob;
@@ -258,6 +282,7 @@ function ViewportContent(props: NativeViewportPanelProps) {
       pending.promise = instance.preparer
         .prepare(current, committed.readBlob, instance.retainedPixels)
         .then((textures) => {
+          if (!isCurrent(instance)) return;
           const next = latest.current;
           const nextProject = next.editing?.getProject() ?? next.project;
           if (
@@ -557,14 +582,19 @@ function ViewportContent(props: NativeViewportPanelProps) {
   ]);
 
   function displayedCurrent(instance: Instance) {
-    const current = latest.current.editing?.getProject() ?? latest.current.project;
-    return (
-      !instance.pending &&
-      instance.projectId === current.id &&
-      instance.revision === current.revision &&
-      instance.editing === (latest.current.editing ?? null) &&
-      instance.readBlob === latest.current.readBlob
-    );
+    if (!isCurrent(instance)) return false;
+    try {
+      const current = latest.current.editing?.getProject() ?? latest.current.project;
+      return (
+        !instance.pending &&
+        instance.projectId === current.id &&
+        instance.revision === current.revision &&
+        instance.editing === (latest.current.editing ?? null) &&
+        instance.readBlob === latest.current.readBlob
+      );
+    } catch {
+      return false;
+    }
   }
 
   function runCamera(operation: (port: NativeViewportPort) => void) {
@@ -589,11 +619,15 @@ function ViewportContent(props: NativeViewportPanelProps) {
       await operation(instance, instance.port);
     } catch (cause) {
       if (isCurrent(instance))
-        setNotice({
-          error: true,
-          text: '操作を完了できませんでした。現在の編集内容はこのタブに保持しています。',
-          detail: errorText(cause),
-        });
+        setNotice(
+          cause instanceof DOMException && cause.name === 'AbortError'
+            ? { text: '操作を中止しました。現在の編集内容は保持しています。' }
+            : {
+                error: true,
+                text: '操作を完了できませんでした。現在の編集内容はこのタブに保持しています。',
+                detail: errorText(cause),
+              },
+        );
     } finally {
       instance.busy = false;
       if (isCurrent(instance)) setBusy(false);
@@ -632,7 +666,72 @@ function ViewportContent(props: NativeViewportPanelProps) {
     setNotice({ text: '保存済みの内容からGPU表示を再開しました。' });
   }
 
-  async function downloadPng(instance: Instance, port: NativeViewportPort) {
+  async function saveThumbnail(instance: Instance, port: NativeViewportPort) {
+    const operation = new AbortController();
+    thumbnailAbort.current = operation;
+    setThumbnailBusy(true);
+    try {
+      await latest.current.onSave();
+      await updateProject(instance);
+      const editing = latest.current.editing;
+      const source = editing?.getProject() ?? latest.current.project;
+      const projectId = source.id,
+        revision = source.revision;
+      const current = () => {
+        const project = latest.current.editing?.getProject() ?? latest.current.project;
+        const contract = latest.current.getSuspensionContract();
+        return (
+          !operation.signal.aborted &&
+          isCurrent(instance) &&
+          instance.port === port &&
+          port.status.state === 'active' &&
+          displayedCurrent(instance) &&
+          hostRef.current?.ownerDocument.visibilityState !== 'hidden' &&
+          editing === latest.current.editing &&
+          !editing?.state.active &&
+          !editing?.state.context.readOnly &&
+          project.id === projectId &&
+          project.revision === revision &&
+          contract.persistedRevision === revision
+        );
+      };
+      const callback = latest.current.onThumbnail;
+      if (!callback || !current())
+        throw new Error('保存済みの同じ内容を表示してからサムネイルを作成してください。');
+      await callback({
+        projectId,
+        revision,
+        signal: operation.signal,
+        isCurrent: current,
+        capture: async () => {
+          if (!current()) throw new Error('サムネイルの作成対象が変わりました。');
+          let captured: Blob | undefined;
+          await downloadPng(instance, port, (blob) => {
+            captured = blob;
+          });
+          if (!captured || !current()) throw new Error('サムネイルの作成対象が変わりました。');
+          return captured;
+        },
+      });
+      if (current())
+        setNotice({
+          text: '保存済みのrest表示から派生サムネイルを作成しました。編集用バックアップには含みません。',
+        });
+    } catch (cause) {
+      if (operation.signal.aborted)
+        throw new DOMException('サムネイル作成を中止しました。', 'AbortError');
+      throw cause;
+    } finally {
+      if (thumbnailAbort.current === operation) thumbnailAbort.current = null;
+      if (isCurrent(instance)) setThumbnailBusy(false);
+    }
+  }
+
+  async function downloadPng(
+    instance: Instance,
+    port: NativeViewportPort,
+    consume?: (blob: Blob) => void,
+  ) {
     latest.current.animation?.cancel('PNGはrestを取得します。');
     latest.current.rigPose?.cancel('PNGはrestを取得します。');
     const editing = latest.current.editing;
@@ -665,6 +764,10 @@ function ViewportContent(props: NativeViewportPanelProps) {
         (editing && (editing.state.epoch !== epoch || editing.state.active))
       )
         throw new Error('画像の作成中に内容が更新されました。もう一度PNGを作成してください。');
+      if (consume) {
+        consume(blob);
+        return;
+      }
       const document = hostRef.current?.ownerDocument;
       if (!document) return;
       const url = URL.createObjectURL(blob);
@@ -729,6 +832,16 @@ function ViewportContent(props: NativeViewportPanelProps) {
         <button type="button" disabled={busy || !active} onClick={() => void run(downloadPng)}>
           PNG画像を保存
         </button>
+        {props.onThumbnail && (
+          <button type="button" disabled={busy || !active} onClick={() => void run(saveThumbnail)}>
+            保存してサムネイルを作成
+          </button>
+        )}
+        {thumbnailBusy && (
+          <button type="button" onClick={() => thumbnailAbort.current?.abort()}>
+            サムネイル作成を中止
+          </button>
+        )}
         {failed && (
           <button type="button" disabled={busy} onClick={() => setAttempt((value) => value + 1)}>
             3D表示を再試行
@@ -790,7 +903,7 @@ function ViewportContent(props: NativeViewportPanelProps) {
         {status.reason && (
           <details className="native-viewport-reason">
             <summary>表示状態の詳細</summary>
-            <p>{status.reason}</p>
+            <p>{formatNativeDisplayReason(status.reason, 'viewport')}</p>
           </details>
         )}
       </div>
@@ -799,7 +912,7 @@ function ViewportContent(props: NativeViewportPanelProps) {
       {notice?.detail && notice.detail !== status.reason && (
         <details className="native-viewport-reason">
           <summary>操作結果の詳細</summary>
-          <p>{notice.detail}</p>
+          <p>{formatNativeDisplayReason(notice.detail, 'viewport')}</p>
         </details>
       )}
     </section>

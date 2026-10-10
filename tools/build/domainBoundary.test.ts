@@ -31,3 +31,47 @@ describe('isolated consumer dependency ownership', () => {
       expect(() => inspectDomainBundles(bundle(path))).toThrow('imports another domain');
   });
 });
+
+it('uses a distinct dependency optimizer cache for simultaneous app and consumer servers', async () => {
+  const { resolveConfig } = await import('vite');
+  const app = await resolveConfig({ configFile: 'vite.config.ts' }, 'serve');
+  const consumer = await resolveConfig({ configFile: 'tools/3d-consumer/vite.config.ts' }, 'serve');
+  expect(consumer.cacheDir).not.toBe(app.cacheDir);
+  expect(consumer.optimizeDeps.entries).toEqual(['index.html']);
+});
+
+it('emits distinct native update metadata without replacing the three legacy build contracts', async () => {
+  const { resolveConfig } = await import('vite');
+  const { parseBuildInformation } = await import('../../src/core3d/diagnostics/buildInfo');
+  const config = await resolveConfig({ configFile: 'vite.config.ts' }, 'build');
+  const assets: { fileName: string; source: string }[] = [];
+  for (const name of ['local-build-information', 'build-information']) {
+    const plugin = config.plugins.find((candidate) => candidate.name === name);
+    expect(plugin).toBeDefined();
+    const hook = plugin!.generateBundle;
+    const handler = typeof hook === 'function' ? hook : hook!.handler;
+    const invoke = handler as unknown as (
+      this: { emitFile: (asset: { fileName: string; source: string }) => void },
+      options: object,
+      output: OutputBundle,
+    ) => void;
+    invoke.call(
+      {
+        emitFile: (asset) => {
+          assets.push(asset);
+        },
+      },
+      {},
+      bundle('/repo/src/core3d/model/project.ts'),
+    );
+  }
+  expect(new Set(assets.map((asset) => asset.fileName)).size).toBe(assets.length);
+  const native = assets.find((asset) => asset.fileName === 'native-build-info.json');
+  expect(parseBuildInformation(JSON.parse(native!.source)).nativeSchemaVersion).toBe('0.3.0');
+  for (const scope of ['hub', '2d', '3d']) {
+    const path = scope === 'hub' ? 'build-info.json' : `${scope}/build-info.json`;
+    const legacy = JSON.parse(assets.find((asset) => asset.fileName === path)!.source);
+    expect(legacy).toMatchObject({ scope, status: 'development' });
+    expect(Object.keys(legacy).sort()).toEqual(['dirty', 'revision', 'scope', 'status']);
+  }
+});

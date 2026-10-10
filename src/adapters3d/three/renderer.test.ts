@@ -1,5 +1,12 @@
+import {
+  reserveResourceBytes,
+  resourceLedgerSnapshot,
+  RESOURCE_ESTIMATE_CAP_BYTES,
+} from '../../core3d/profile/resourceLedger';
+import { NATIVE_RENDER_PROFILE } from '../../core3d/profile/renderProfile';
 import { AnimationTransaction } from '../../features/editor3d/animationTransaction';
-import { addRigJoint, bindSkin } from '../../core3d/rig/authoring';
+import { addRigJoint, bindSkin, assignRigidPartToJoint } from '../../core3d/rig/authoring';
+import { addBox } from '../../core3d/commands/box';
 import { skinVertexToMeshLocal } from '../../core3d/rig/math';
 import { RigPoseTransaction } from '../../features/editor3d/rigPoseTransaction';
 import { describe, expect, it, vi } from 'vitest';
@@ -12,6 +19,7 @@ import {
   Color,
   DataTexture,
   DirectionalLight,
+  DoubleSide,
   LineSegments,
   LinearFilter,
   Mesh,
@@ -44,6 +52,8 @@ import {
 } from '../../core3d/model/textureResources';
 import { transformPoint, worldMatrix } from '../../core3d/model/coordinates';
 import { nativeBox } from '../../core3d/fixtures/nativeBox';
+import { captureAssetSnapshot } from '../../core3d/export/snapshot';
+import { exportGlb } from '../gltf/export';
 import {
   buildNativeGraph,
   checkNativeProfile,
@@ -1449,12 +1459,19 @@ describe('native numeric camera and inspection state', () => {
       transform: { ...identityTransform(), translation: [-1e9, 0, 0] },
     });
     viewport.setProject(project);
-    viewport.setViewOptions({ ...viewport.getViewOptions(), grid: true, axes: true, bounds: true });
+    viewport.setViewOptions({
+      ...viewport.getViewOptions(),
+      grid: true,
+      ground: true,
+      axes: true,
+      bounds: true,
+    });
     expect(viewport.focusNode('assembly')).toEqual({ ok: true });
     expect(viewport.getCamera().target).toEqual([1002, 3, 4]);
     const focused = viewport.getCamera();
     expect(viewport.focusNode('Box').ok).toBe(false);
     expect(viewport.focusNode('Inspection grid').ok).toBe(false);
+    expect(viewport.focusNode('Inspection ground').ok).toBe(false);
     expect(viewport.getCamera()).toEqual(focused);
     expect(controlInstances.at(-1)!.camera.far).toBeGreaterThan(1e9);
     viewport.setCamera({
@@ -1555,6 +1572,9 @@ describe('native numeric camera and inspection state', () => {
       { background: 'pink' },
       { lighting: 'flat' },
       { grid: 1 },
+      { ground: null },
+      { ground: 1 },
+      { ground: 'true' },
       { axes: null },
       { bounds: undefined },
     ]) {
@@ -1565,7 +1585,7 @@ describe('native numeric camera and inspection state', () => {
     }
     const copy = viewport.getViewOptions();
     copy.axes = false;
-    expect(viewport.getViewOptions()).toEqual(options);
+    expect(viewport.getViewOptions()).toEqual({ ...options, ground: false });
     viewport.setViewOptions({ ...options, background: 'dark', lighting: 'studio' });
     expect(mesh.material).toBeInstanceOf(MeshBasicMaterial);
     expect((mesh.material as MeshBasicMaterial).color.getHex()).toBe(0xdce5ef);
@@ -1606,7 +1626,9 @@ describe('native numeric camera and inspection state', () => {
       );
       expect(viewport.cameraPreset('top').ok).toBe(false);
       expect(viewport.focusNode('box-node').ok).toBe(false);
-      expect(viewport.setViewOptions({ ...viewport.getViewOptions(), axes: true }).ok).toBe(false);
+      expect(
+        viewport.setViewOptions({ ...viewport.getViewOptions(), axes: true, ground: true }).ok,
+      ).toBe(false);
       expect(viewport.diagnostics).toEqual(before);
       expect(pending.size).toBe(0);
       viewport.dispose();
@@ -1614,10 +1636,310 @@ describe('native numeric camera and inspection state', () => {
   );
 });
 
+describe('display-only inspection ground (injected renderer, not GPU evidence)', () => {
+  function groundIn(scene: Scene) {
+    return scene.getObjectByName('Inspection ground') as
+      Mesh<BufferGeometry, MeshBasicMaterial> | undefined;
+  }
+
+  it('defaults off, normalizes omitted legacy options, and switches independently of grid/axes', () => {
+    const f = lifecycleHarness();
+    f.viewport.setProject(nativeBox());
+    f.flush();
+    const scene = f.rendererInstances[0].render.mock.lastCall![0] as Scene;
+    expect(f.viewport.getViewOptions().ground).toBe(false);
+    expect(groundIn(scene)).toBeUndefined();
+    for (const ground of [true, false])
+      for (const grid of [true, false])
+        for (const axes of [true, false]) {
+          expect(
+            f.viewport.setViewOptions({ ...f.viewport.getViewOptions(), ground, grid, axes }),
+          ).toEqual({ ok: true });
+          expect(Boolean(groundIn(scene))).toBe(ground);
+          expect(Boolean(scene.getObjectByName('Inspection grid'))).toBe(grid);
+          expect(Boolean(scene.getObjectByName('Inspection axes'))).toBe(axes);
+          expect(f.viewport.diagnostics).toMatchObject({
+            helperGeometries: Number(ground) + Number(grid) + Number(axes),
+            helperMaterials: Number(ground) + Number(grid) + Number(axes),
+          });
+        }
+    const legacy: NativeViewOptions = {
+      shading: 'material',
+      background: 'dark',
+      lighting: 'studio',
+      grid: false,
+      axes: false,
+      bounds: false,
+    };
+    for (const options of [legacy, { ...legacy, ground: undefined }]) {
+      f.viewport.setViewOptions({ ...legacy, ground: true });
+      const ground = groundIn(scene)!;
+      const geometry = vi.spyOn(ground.geometry, 'dispose');
+      const material = vi.spyOn(ground.material, 'dispose');
+      expect(f.viewport.setViewOptions(options)).toEqual({ ok: true });
+      expect(f.viewport.getViewOptions()).toEqual({ ...legacy, ground: false });
+      expect(groundIn(scene)).toBeUndefined();
+      expect(geometry).toHaveBeenCalledTimes(1);
+      expect(material).toHaveBeenCalledTimes(1);
+    }
+    f.viewport.dispose();
+  });
+
+  it('uses a translucent unlit Y=0 plane outside the graph, preserving canonical data and GLB bytes', async () => {
+    const f = lifecycleHarness();
+    const project = nativeBox();
+    project.nodes[0].transform.translation = [0, 2, 0];
+    project.materials[0].alphaMode = 'BLEND';
+    project.materials[0].baseColor[3] = 0.25;
+    const before = cloneProject(project);
+    const beforeGlb = await exportGlb(captureAssetSnapshot(project, () => new Uint8Array()));
+    f.viewport.setProject(project);
+    f.flush();
+    const scene = f.rendererInstances[0].render.mock.lastCall![0] as Scene;
+    const model = scene.getObjectByName('Box') as Mesh;
+    const originalGeometry = model.geometry;
+    const originalMaterials = model.material;
+    const fit = f.viewport.getCamera();
+    for (const shading of ['material', 'solid', 'wireframe'] as const)
+      for (const background of ['dark', 'light'] as const)
+        for (const lighting of ['studio', 'soft'] as const) {
+          expect(
+            f.viewport.setViewOptions({
+              ...f.viewport.getViewOptions(),
+              ground: true,
+              shading,
+              background,
+              lighting,
+            }),
+          ).toEqual({ ok: true });
+          const ground = groundIn(scene)!;
+          expect(ground.parent).toBe(scene);
+          expect(model.parent!.getObjectByName(ground.name)).toBeUndefined();
+          expect(ground.userData.canonicalNodeId).toBeUndefined();
+          expect(ground.position.toArray()).toEqual([0, 0, 0]);
+          expect(ground.rotation.toArray().slice(0, 3)).toEqual([0, 0, 0]);
+          expect(ground.material).toBeInstanceOf(MeshBasicMaterial);
+          expect(ground.material).toMatchObject({
+            transparent: true,
+            opacity: 0.22,
+            wireframe: false,
+            depthWrite: false,
+            depthTest: true,
+            side: DoubleSide,
+            forceSinglePass: true,
+            toneMapped: false,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1,
+          });
+          expect(ground.material.color.getHex()).toBe(background === 'dark' ? 0x8593a8 : 0x66758a);
+          expect(ground.renderOrder).toBeLessThan(model.renderOrder);
+          expect(model.geometry).toBe(originalGeometry);
+          expect(f.viewport.diagnostics.geometries).toBe(1);
+          f.viewport.fitCamera();
+          expect(f.viewport.getCamera().target).toEqual(fit.target);
+          f.viewport
+            .getCamera()
+            .position.forEach((value, index) => expect(value).toBeCloseTo(fit.position[index], 12));
+        }
+    f.viewport.setViewOptions({ ...f.viewport.getViewOptions(), shading: 'material' });
+    expect(model.material).toBe(originalMaterials);
+    expect((model.material as MeshStandardMaterial[])[0]).toMatchObject({
+      opacity: 0.25,
+      transparent: true,
+    });
+    expect(project).toEqual(before);
+    const afterGlb = await exportGlb(captureAssetSnapshot(project, () => new Uint8Array()));
+    expect(afterGlb.bytes).toEqual(beforeGlb.bytes);
+    expect(afterGlb.warnings).toEqual(beforeGlb.warnings);
+    f.viewport.dispose();
+  });
+
+  it.each([1e-12, 1, 1e30])(
+    'keeps exactly four finite ground vertices and two triangles at model scale %s',
+    (scale) => {
+      const f = lifecycleHarness();
+      const project = nativeBox();
+      project.nodes[0].transform.scale = [scale, scale, scale];
+      expect(f.viewport.setProject(project)).toEqual({ ok: true });
+      expect(f.viewport.setViewOptions({ ...f.viewport.getViewOptions(), ground: true })).toEqual({
+        ok: true,
+      });
+      f.flush();
+      const scene = f.rendererInstances[0].render.mock.lastCall![0] as Scene;
+      const geometry = groundIn(scene)!.geometry;
+      const position = geometry.getAttribute('position');
+      expect(position.count).toBe(4);
+      expect(geometry.getIndex()!.count).toBe(6);
+      expect(Array.from(position.array).every(Number.isFinite)).toBe(true);
+      for (let index = 0; index < position.count; index++) expect(position.getY(index)).toBe(0);
+      geometry.computeBoundingBox();
+      const size = geometry.boundingBox!.getSize(new Vector3());
+      expect(size.y).toBe(0);
+      expect(size.x).toBeGreaterThanOrEqual(1);
+      expect(size.x).toBeLessThanOrEqual(Math.fround(1e30));
+      expect(size.z).toBe(size.x);
+      f.viewport.dispose();
+    },
+  );
+
+  it.each([false, true])(
+    'preserves existing owners and view state on ground budget rejection (already visible: %s)',
+    (alreadyVisible) => {
+      const baseline = resourceLedgerSnapshot();
+      const f = lifecycleHarness();
+      f.viewport.setProject(nativeBox());
+      f.viewport.setViewOptions({ ...f.viewport.getViewOptions(), ground: alreadyVisible });
+      f.flush();
+      const scene = f.rendererInstances[0].render.mock.lastCall![0] as Scene;
+      const ground = groundIn(scene);
+      const children = [...scene.children];
+      const releaseOther = reserveResourceBytes(
+        'asset-io',
+        RESOURCE_ESTIMATE_CAP_BYTES - resourceLedgerSnapshot().totalBytes,
+      );
+      try {
+        const before = f.viewport.diagnostics;
+        expect(
+          f.viewport.setViewOptions({
+            ...f.viewport.getViewOptions(),
+            ground: true,
+            background: 'light',
+            shading: 'solid',
+          }),
+        ).toMatchObject({ ok: false, reason: expect.stringContaining('256 MiB') });
+        expect(f.viewport.diagnostics).toEqual(before);
+        expect(scene.children).toEqual(children);
+        expect(groundIn(scene)).toBe(ground);
+      } finally {
+        releaseOther();
+        f.viewport.dispose();
+      }
+      expect(resourceLedgerSnapshot()).toEqual(baseline);
+    },
+  );
+
+  it('releases partial ground allocation on construction failure without changing the current scene', () => {
+    const f = lifecycleHarness();
+    f.viewport.setProject(nativeBox());
+    f.flush();
+    const scene = f.rendererInstances[0].render.mock.lastCall![0] as Scene;
+    const children = [...scene.children];
+    const before = f.viewport.diagnostics;
+    const disposed = vi.spyOn(BufferGeometry.prototype, 'dispose');
+    const setIndex = vi.spyOn(BufferGeometry.prototype, 'setIndex').mockImplementationOnce(() => {
+      throw new Error('Test ground construction failure');
+    });
+    try {
+      expect(f.viewport.setViewOptions({ ...f.viewport.getViewOptions(), ground: true })).toEqual({
+        ok: false,
+        reason: 'View construction failed: Test ground construction failure',
+      });
+      expect(disposed).toHaveBeenCalledTimes(1);
+      expect(f.viewport.diagnostics).toEqual(before);
+      expect(scene.children).toEqual(children);
+    } finally {
+      setIndex.mockRestore();
+      disposed.mockRestore();
+      f.viewport.dispose();
+    }
+  });
+
+  it('releases completed ground resources when a later inspection material fails to construct', () => {
+    const f = lifecycleHarness();
+    f.viewport.setProject(nativeBox());
+    f.flush();
+    const scene = f.rendererInstances[0].render.mock.lastCall![0] as Scene;
+    const children = [...scene.children];
+    const before = f.viewport.diagnostics;
+    const geometry = vi.spyOn(BufferGeometry.prototype, 'dispose');
+    const material = vi.spyOn(MeshBasicMaterial.prototype, 'dispose');
+    const setValues = vi
+      .spyOn(MeshStandardMaterial.prototype, 'setValues')
+      .mockImplementationOnce(() => {
+        throw new Error('Test shading construction failure');
+      });
+    try {
+      expect(
+        f.viewport.setViewOptions({
+          ...f.viewport.getViewOptions(),
+          ground: true,
+          shading: 'solid',
+        }),
+      ).toEqual({
+        ok: false,
+        reason: 'View construction failed: Test shading construction failure',
+      });
+      expect(geometry).toHaveBeenCalledTimes(1);
+      expect(material).toHaveBeenCalledTimes(1);
+      expect(f.viewport.diagnostics).toEqual(before);
+      expect(scene.children).toEqual(children);
+    } finally {
+      setValues.mockRestore();
+      geometry.mockRestore();
+      material.mockRestore();
+      f.viewport.dispose();
+    }
+  });
+
+  it('resets ground before admitting a new project instead of charging for the previous view', () => {
+    const baseline = resourceLedgerSnapshot();
+    const f = lifecycleHarness();
+    const project = nativeBox();
+    f.viewport.setProject(project);
+    const withoutGround = resourceLedgerSnapshot().totalBytes;
+    f.viewport.setViewOptions({ ...f.viewport.getViewOptions(), ground: true });
+    f.viewport.suspend({ persistedRevision: 0, currentRevision: 0, sourcesComplete: true });
+    project.id = 'replacement-without-ground';
+    f.viewport.setProject(project);
+    const releaseOther = reserveResourceBytes(
+      'asset-io',
+      RESOURCE_ESTIMATE_CAP_BYTES - withoutGround,
+    );
+    try {
+      expect(
+        f.viewport.resume({ persistedRevision: 0, currentRevision: 0, sourcesComplete: true }),
+      ).toEqual({ ok: true });
+      expect(f.viewport.getViewOptions().ground).toBe(false);
+      expect(f.viewport.diagnostics.helperGeometries).toBe(0);
+    } finally {
+      releaseOther();
+      f.viewport.dispose();
+    }
+    expect(resourceLedgerSnapshot()).toEqual(baseline);
+  });
+
+  it('repeated replacement, disable and dispose free every ground geometry/material and estimate once', () => {
+    const baseline = resourceLedgerSnapshot();
+    const f = lifecycleHarness();
+    const project = nativeBox();
+    f.viewport.setProject(project);
+    f.flush();
+    const scene = f.rendererInstances[0].render.mock.lastCall![0] as Scene;
+    const withoutGround = resourceLedgerSnapshot().byCategory.geometry;
+    const disposals: ReturnType<typeof vi.spyOn>[] = [];
+    for (let cycle = 0; cycle < 20; cycle++) {
+      f.viewport.setViewOptions({ ...f.viewport.getViewOptions(), ground: true });
+      const ground = groundIn(scene)!;
+      disposals.push(vi.spyOn(ground.geometry, 'dispose'), vi.spyOn(ground.material, 'dispose'));
+      expect(resourceLedgerSnapshot().byCategory.geometry).toBe(withoutGround + 16 * 1024);
+      expect(f.viewport.diagnostics).toMatchObject({ helperGeometries: 1, helperMaterials: 1 });
+      if (cycle % 2) f.viewport.setViewOptions({ ...f.viewport.getViewOptions(), ground: false });
+      else f.viewport.setProject(project);
+      expect(ground.parent).toBeNull();
+    }
+    f.viewport.dispose();
+    f.viewport.dispose();
+    disposals.forEach((dispose) => expect(dispose).toHaveBeenCalledTimes(1));
+    expect(resourceLedgerSnapshot()).toEqual(baseline);
+  });
+});
+
 describe('native lifecycle ownership (injected renderer, not GPU evidence)', () => {
   it.each(['suspend', 'context loss', 'hidden/frozen'] as const)(
     'preserves orthographic projection, settings and helper owners through %s',
     (transition) => {
+      const ledgerBefore = resourceLedgerSnapshot();
       const { viewport, controlInstances, rendererInstances, allCanvases, flush } =
         lifecycleHarness();
       const project = nativeBox();
@@ -1631,6 +1953,7 @@ describe('native lifecycle ownership (injected renderer, not GPU evidence)', () 
         background: 'light',
         lighting: 'soft',
         grid: true,
+        ground: true,
         axes: true,
         bounds: true,
       });
@@ -1638,8 +1961,16 @@ describe('native lifecycle ownership (injected renderer, not GPU evidence)', () 
       viewport.cameraAction('pan-right');
       flush();
       const scene = rendererInstances[0].render.mock.lastCall![0] as Scene;
-      const oldHelpers = scene.children.filter((object) => object instanceof LineSegments);
+      const oldHelpers = scene.children.filter((object) => object.name.startsWith('Inspection'));
       const disposals = oldHelpers.map((helper) => vi.spyOn(helper, 'dispose'));
+      const ground = scene.getObjectByName('Inspection ground') as Mesh<
+        BufferGeometry,
+        MeshBasicMaterial
+      >;
+      const groundDisposals = [
+        vi.spyOn(ground.geometry, 'dispose'),
+        vi.spyOn(ground.material, 'dispose'),
+      ];
       const before = viewport.getCamera();
       const options = viewport.getViewOptions();
       const camera = controlInstances.at(-1)!.camera;
@@ -1670,8 +2001,8 @@ describe('native lifecycle ownership (injected renderer, not GPU evidence)', () 
       expect(controlInstances.at(-1)!.camera.projectionMatrix.toArray()).toEqual(projection);
       expect(controlInstances.at(-1)!.camera.matrixWorld.toArray()).toEqual(world);
       expect(viewport.diagnostics).toMatchObject({
-        helperGeometries: 3,
-        helperMaterials: 3,
+        helperGeometries: 4,
+        helperMaterials: 4,
         inspectionMaterials: 1,
         controls: 1,
         listeners,
@@ -1680,9 +2011,14 @@ describe('native lifecycle ownership (injected renderer, not GPU evidence)', () 
       disposals.forEach((spy) =>
         expect(spy).toHaveBeenCalledTimes(transition === 'hidden/frozen' ? 0 : 1),
       );
+      groundDisposals.forEach((spy) =>
+        expect(spy).toHaveBeenCalledTimes(transition === 'hidden/frozen' ? 0 : 1),
+      );
       expect(project).toEqual(original);
       viewport.dispose();
       disposals.forEach((spy) => expect(spy).toHaveBeenCalledTimes(1));
+      groundDisposals.forEach((spy) => expect(spy).toHaveBeenCalledTimes(1));
+      expect(resourceLedgerSnapshot()).toEqual(ledgerBefore);
       expect(viewport.diagnostics).toMatchObject({
         helperGeometries: 0,
         helperMaterials: 0,
@@ -1705,6 +2041,7 @@ describe('native lifecycle ownership (injected renderer, not GPU evidence)', () 
       background: 'light',
       lighting: 'soft',
       grid: true,
+      ground: true,
       axes: true,
       bounds: true,
     });
@@ -1732,6 +2069,7 @@ describe('native lifecycle ownership (injected renderer, not GPU evidence)', () 
       background: 'dark',
       lighting: 'studio',
       grid: false,
+      ground: false,
       axes: false,
       bounds: false,
     });
@@ -2294,6 +2632,7 @@ describe('native editing integration (real helpers, injected GPU boundary)', () 
     f.viewport.setViewOptions({
       ...f.viewport.getViewOptions(),
       grid: true,
+      ground: true,
       axes: true,
       bounds: true,
     });
@@ -2342,6 +2681,7 @@ describe('native editing integration (real helpers, injected GPU boundary)', () 
     'hidden',
     'camera',
     'inspection',
+    'ground',
     'resize',
   ] as const)(
     'rejects delayed PNG encoding after %s changes and releases the capture block',
@@ -2367,6 +2707,8 @@ describe('native editing integration (real helpers, injected GPU boundary)', () 
         f.viewport.setCamera({ ...f.viewport.getCamera(), projection: 'orthographic' });
       if (kind === 'inspection')
         f.viewport.setViewOptions({ ...f.viewport.getViewOptions(), grid: true });
+      if (kind === 'ground')
+        f.viewport.setViewOptions({ ...f.viewport.getViewOptions(), ground: true });
       if (kind === 'resize') f.viewport.resize(400, 600);
       encode!(new Blob(['png']));
       await rejected;
@@ -2956,4 +3298,185 @@ it('isolates invalid game previews from the canonical model and rolls failed ena
   expect(f.viewport.setProject(p).ok).toBe(true);
   expect(f.viewport.setGamePreview(true).ok).toBe(true);
   f.viewport.dispose();
+});
+
+describe('shared geometry and framebuffer ownership estimates', () => {
+  it('releases all declared geometry/framebuffer ownership over twenty create/resize/dispose cycles', () => {
+    const baseline = resourceLedgerSnapshot();
+    for (let i = 0; i < 20; i++) {
+      const h = lifecycleHarness();
+      const project = nativeBox(),
+        before = cloneProject(project);
+      expect(h.viewport.setProject(project).ok).toBe(true);
+      expect(resourceLedgerSnapshot().byCategory.geometry).toBeGreaterThan(
+        baseline.byCategory.geometry,
+      );
+      h.viewport.resize(4000, 4000, 4);
+      expect(h.viewport.diagnostics.framebufferEstimateBytes).toBeLessThanOrEqual(
+        NATIVE_RENDER_PROFILE.maxBufferPixels * 32,
+      );
+      expect(h.viewport.diagnostics.drawingPixelRatio).toBe(0.5);
+      // An unchanged ResizeObserver delivery must not re-admit an identical large target.
+      h.viewport.resize(4000, 4000, 4);
+      expect(h.viewport.status.state).toBe('active');
+      expect(project).toEqual(before);
+      h.viewport.dispose();
+      h.viewport.dispose();
+      expect(resourceLedgerSnapshot()).toEqual(baseline);
+    }
+  });
+  it('rejects graph allocation against concurrent owners without touching canonical bytes', () => {
+    const project = nativeBox(),
+      before = cloneProject(project);
+    const baseline = resourceLedgerSnapshot();
+    const release = reserveResourceBytes(
+      'storage',
+      RESOURCE_ESTIMATE_CAP_BYTES - baseline.totalBytes - 1,
+    );
+    try {
+      expect(() => buildNativeGraph(project)).toThrow();
+      expect(project).toEqual(before);
+    } finally {
+      release();
+    }
+    expect(resourceLedgerSnapshot()).toEqual(baseline);
+  });
+  it('keeps a previous target on resize denial and resumes after a smaller admitted resize', () => {
+    const baseline = resourceLedgerSnapshot();
+    const h = lifecycleHarness();
+    h.viewport.setProject(nativeBox());
+    const previous = h.viewport.diagnostics.framebufferEstimateBytes;
+    const release = reserveResourceBytes(
+      'storage',
+      RESOURCE_ESTIMATE_CAP_BYTES - resourceLedgerSnapshot().totalBytes - 1024,
+    );
+    h.viewport.resize(1000, 1000, 2);
+    expect(h.viewport.status.state).toBe('error');
+    expect(h.viewport.diagnostics.framebufferEstimateBytes).toBe(previous);
+    release();
+    h.viewport.resize(640, 480, 1);
+    expect(h.viewport.status.state).toBe('active');
+    h.viewport.dispose();
+    expect(resourceLedgerSnapshot()).toEqual(baseline);
+  });
+});
+
+it.each([false, true])(
+  'rigid mesh follows manual pose of a group/bone without rebuilding geometry (skin palette=%s)',
+  (palette) => {
+    const project = nativeBox('rigid-render');
+    const part = project.nodes[0];
+    part.name = 'Rigid part';
+    addRigJoint(project, 'rigid-guide', 'Rigid guide', null, {
+      ...identityTransform(),
+      translation: [0, 1, 0],
+    });
+    if (palette) {
+      addBox(project, 'smooth-part');
+      const mesh = project.meshes.find((value) => value.id === 'smooth-part-mesh')!;
+      bindSkin(
+        project,
+        'smooth-skin',
+        mesh.id,
+        ['rigid-guide'],
+        mesh.vertices.map((vertex) => ({
+          vertexId: vertex.id,
+          jointIds: ['rigid-guide'],
+          values: [1],
+        })),
+      );
+    }
+    assignRigidPartToJoint(project, part.id, 'rigid-guide', 'keep-world');
+    const before = cloneProject(project),
+      h = lifecycleHarness();
+    const editing = new TransformTransaction({
+      getProject: () => cloneProject(project),
+      getIdentity: () => ({ id: project.id, revision: project.revision }),
+      isReadOnly: () => false,
+      commit: () => {
+        throw new Error('No commit');
+      },
+    });
+    const pose = new RigPoseTransaction({
+      getProject: () => cloneProject(project),
+      isReadOnly: () => false,
+      editing,
+    });
+    try {
+      expect(h.viewport.setProject(project).ok).toBe(true);
+      h.viewport.bindEditing(editing);
+      h.viewport.bindRigPose(pose);
+      h.flush();
+      const scene = h.rendererInstances[0].render.mock.calls.at(-1)![0] as Scene;
+      const mesh = scene.getObjectByName('Rigid part') as Mesh;
+      const geometry = mesh.geometry,
+        positions = Array.from(geometry.getAttribute('position').array),
+        rebuilds = h.viewport.diagnostics.rebuilds;
+      expect(
+        pose.preview(pose.begin(), [
+          { nodeId: 'rigid-guide', transform: { ...identityTransform(), translation: [3, 2, 0] } },
+        ]).ok,
+      ).toBe(true);
+      h.flush();
+      expect(mesh.getWorldPosition(new Vector3()).toArray()).toEqual([3, 1, 0]);
+      expect(mesh.geometry).toBe(geometry);
+      expect(Array.from(geometry.getAttribute('position').array)).toEqual(positions);
+      expect(h.viewport.diagnostics.rebuilds).toBe(rebuilds);
+      expect(project).toEqual(before);
+      pose.cancel('test rest');
+      h.flush();
+      expect(mesh.getWorldPosition(new Vector3()).toArray()).toEqual([0, 0, 0]);
+    } finally {
+      h.viewport.dispose();
+      pose.dispose();
+      editing.cancel('test complete');
+    }
+  },
+);
+
+describe('explicit inspection draw boundary', () => {
+  it('submits the fitted frame synchronously without waiting for RAF or changing canonical content', () => {
+    const h = lifecycleHarness();
+    const project = nativeBox();
+    const before = cloneProject(project);
+    h.viewport.setProject(project);
+    h.viewport.fitCamera();
+    expect(h.viewport.diagnostics.framesRendered).toBe(0);
+    expect(h.viewport.renderInspectionFrame()).toEqual({ ok: true });
+    expect(h.viewport.diagnostics.framesRendered).toBe(1);
+    expect(h.rendererInstances[0].render).toHaveBeenCalledOnce();
+    expect(project).toEqual(before);
+    h.viewport.dispose();
+  });
+  it.each(['throw', 'context-loss', 'replacement'] as const)(
+    'rejects %s during the draw',
+    (mode) => {
+      const h = lifecycleHarness();
+      h.viewport.setProject(nativeBox());
+      h.rendererInstances[0].render.mockImplementationOnce(() => {
+        if (mode === 'throw') throw new Error('draw failed');
+        if (mode === 'context-loss')
+          h.children[0].dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+        if (mode === 'replacement') h.viewport.setProject(nativeBox('replacement'));
+      });
+      expect(h.viewport.renderInspectionFrame().ok).toBe(false);
+      h.viewport.dispose();
+      expect(h.viewport.diagnostics.pendingFrames).toBe(0);
+    },
+  );
+  it('never draws hidden, frozen, empty or disposed viewports', () => {
+    const h = lifecycleHarness();
+    expect(h.viewport.renderInspectionFrame().ok).toBe(false);
+    h.viewport.setProject(nativeBox());
+    h.viewport.setHidden(true);
+    expect(h.viewport.renderInspectionFrame().ok).toBe(false);
+    h.viewport.setHidden(false);
+    h.viewport.setFrozen(true);
+    expect(h.viewport.renderInspectionFrame().ok).toBe(false);
+    h.viewport.dispose();
+    expect(h.viewport.renderInspectionFrame().ok).toBe(false);
+    expect(h.rendererInstances.every((renderer) => renderer.render.mock.calls.length === 0)).toBe(
+      true,
+    );
+  });
 });
