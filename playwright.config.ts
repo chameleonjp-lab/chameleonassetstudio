@@ -47,6 +47,7 @@ export default defineConfig({
         'native-recovery-product.spec.ts',
         'native-cross-domain-recovery.spec.ts',
         'native-library-product.spec.ts',
+        'native-legacy-backup-product.spec.ts',
         'native-diagnostics-product.spec.ts',
         'native-consumer.spec.ts',
         'import.spec.ts',
