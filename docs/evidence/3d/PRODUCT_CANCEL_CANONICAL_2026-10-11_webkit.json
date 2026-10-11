@@ -1,0 +1,216 @@
+{
+  "evidenceScope": "native-product-ui-headless",
+  "executionMode": "vite-production-preview",
+  "cancelBoundary": "from the capture-phase click on 数値変形を取り消す to the product cancellation notice; the canonical revision is checked unchanged at each completion, then a decoded product backup is compared with the full pre-draft canonical project object outside the timed interval",
+  "productCancelMeasured": true,
+  "canonicalBackupEqualityChecks": 20,
+  "physicalAcceptance": false,
+  "requestedRuns": 20,
+  "record": {
+    "schemaVersion": "native-performance-v1",
+    "source": {
+      "commitSha": "e975f76c02088ab5fb5738c9d782e51a7b4bca3e",
+      "dirty": true
+    },
+    "fixture": {
+      "id": "F01",
+      "sha256": "376f93781c0e1e6f023cf4e73132ce456863383c5f234377fbf825aaeac75172"
+    },
+    "environment": {
+      "browser": {
+        "family": "webkit",
+        "version": "26.5"
+      },
+      "os": {
+        "family": "linux",
+        "version": null
+      },
+      "device": {
+        "realDevice": "headless",
+        "category": "desktop",
+        "model": "unrecorded",
+        "thermalState": "unknown"
+      },
+      "viewport": {
+        "widthCssPx": 1280,
+        "heightCssPx": 720,
+        "devicePixelRatio": 2
+      }
+    },
+    "cacheState": "warm",
+    "startedAt": "2026-10-11T03:34:44.260Z",
+    "measurements": [
+      {
+        "metric": "input",
+        "operation": "numeric-commit",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "animation-frame",
+        "operation": "active-playback",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "long-task",
+        "operation": "main-thread",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "import-first-draw",
+        "operation": "import-to-first-draw",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "cancel",
+        "operation": "cancel-to-canonical-unchanged",
+        "status": "measured",
+        "window": {
+          "startMs": 0,
+          "endMs": 10435,
+          "visibility": "foreground",
+          "freeze": "unknown"
+        },
+        "samples": [
+          {
+            "startMs": 350,
+            "durationMs": 8
+          },
+          {
+            "startMs": 931,
+            "durationMs": 7
+          },
+          {
+            "startMs": 1459,
+            "durationMs": 6
+          },
+          {
+            "startMs": 2080,
+            "durationMs": 6
+          },
+          {
+            "startMs": 2638,
+            "durationMs": 7
+          },
+          {
+            "startMs": 3195,
+            "durationMs": 13
+          },
+          {
+            "startMs": 3727,
+            "durationMs": 7
+          },
+          {
+            "startMs": 4279,
+            "durationMs": 6
+          },
+          {
+            "startMs": 4819,
+            "durationMs": 7
+          },
+          {
+            "startMs": 5312,
+            "durationMs": 10
+          },
+          {
+            "startMs": 5814,
+            "durationMs": 6
+          },
+          {
+            "startMs": 6280,
+            "durationMs": 9
+          },
+          {
+            "startMs": 6765,
+            "durationMs": 11
+          },
+          {
+            "startMs": 7283,
+            "durationMs": 7
+          },
+          {
+            "startMs": 7774,
+            "durationMs": 16
+          },
+          {
+            "startMs": 8247,
+            "durationMs": 12
+          },
+          {
+            "startMs": 8756,
+            "durationMs": 7
+          },
+          {
+            "startMs": 9235,
+            "durationMs": 14
+          },
+          {
+            "startMs": 9773,
+            "durationMs": 6
+          },
+          {
+            "startMs": 10257,
+            "durationMs": 8
+          }
+        ],
+        "summary": {
+          "n": 20,
+          "medianMs": 7,
+          "maxMs": 16,
+          "p95Ms": null,
+          "p95Reason": "insufficient-samples",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "autosave-window",
+        "operation": "first-dirty-to-persisted",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      }
+    ]
+  }
+}
