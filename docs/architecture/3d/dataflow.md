@@ -1,6 +1,38 @@
 # 正本・保存・入出力の関係
 
-[索引へ](README.md)。全図はP設計。group所有は [所有台帳](ownership.md)、要件詳細は [169ID対応](traceability.md)。矢印はデータ/処理の順序であり、静的importを許可する図ではない。
+
+## 現在の入出力 local candidate
+
+索引のローカル基点で確認した経路。DF-01〜05の旧P設計とB07/B08当時のcheckpointは下に保持する。現在の製品importは独自のbounded preflight/decoderであり、GLTFLoaderに渡す処理ではない。
+
+```mermaid
+flowchart TD
+  DF_NOW_FILE["選択GLB と任意game.json"] --> DF_NOW_WORKER["preflight とasset worker"]
+  DF_NOW_WORKER --> DF_NOW_REVIEW["未保存candidate と原本hash"]
+  DF_NOW_REVIEW --> DF_NOW_VIEW["readonly rest表示とloss説明"]
+  DF_NOW_VIEW -->|"ready と同期確認gate"| DF_NOW_COPY["現在作品を保存後に別copyをatomic保存"]
+  DF_NOW_REVIEW -->|"取消・変更・表示不可"| DF_NOW_HOLD["元作品と選択原本を保持"]
+```
+
+文字版: [preflight](../../../src/core3d/import/preflight.ts)と[worker](../../../src/adapters3d/gltf/assetIo.worker.ts)の成功結果を、[候補owner](../../../src/features/editor3d/importReview.ts)が未保存で保持する。[保存前view](../../../src/features/editor3d/importPreview.ts)のactive状態と同期確認gateがそろって初めて[shell](../../../src/features/editor3d/Editor3DShell.tsx)の別copy保存へ進む。最初の検査成功だけでは一覧へ作品を増やさない。現在作品のrevision・owner・編集権限やファイル変更で確認は失効する。保存開始後の取消では、すでにatomic commitしたcopyを消さない。
+
+```mermaid
+flowchart TD
+  DF_NOW_REV["現在のcanonical revision"] --> DF_NOW_LOSS["保持範囲・変換・損失の事前確認"]
+  DF_NOW_LOSS -->|"同revisionで確認"| DF_NOW_SNAP["detached snapshot とblob"]
+  DF_NOW_SNAP --> DF_NOW_ENCODE["workerで編集後GLBをencode"]
+  DF_NOW_ENCODE --> DF_NOW_HASH["最終bytes検査とhash"]
+  DF_NOW_HASH --> DF_NOW_PACKAGE["game.json・manifest・ZIP"]
+  DF_NOW_PACKAGE --> DF_NOW_DOWNLOAD["明示download と別consumer検査"]
+```
+
+文字版: [事前確認](../../../src/core3d/export/review.ts)はmetadata上の保持/損失と既知blockerを示す。確認後にrevisionが変われば再確認する。[snapshot](../../../src/core3d/export/snapshot.ts)、[encoder](../../../src/adapters3d/gltf/export.ts)、[mapping](../../../src/core3d/export/mapping.ts)が固定内容を処理する。表示だけのgrid/ground/poseは保存正本へ混ぜない。生成中に編集を続けても生成物は固定revisionのまま、旧出力には旧revisionを表示する。事前確認はhash実検証やconsumer成功の代用ではない。
+
+保存は [repository](../../../src/core3d/storage/repository.ts)と[saveQueue](../../../src/core3d/storage/saveQueue.ts)のCAS/fencingと参照保護を維持する。[復旧候補](../../../src/features/editor3d/projectLibrary.ts)は元の正常版/保持版から別IDへコピーし、[ごみ箱一覧](../../../src/features/editor3d/NativeProjectLibraryPanel.tsx)は原本と復旧版を残す。schema 0.3の保存先と0.1/0.2の旧領域は[legacyMigration](../../../src/core3d/storage/legacyMigration.ts)で分離し、旧appへの無損失downgradeを保証しない。
+
+[階層複製](../../../src/core3d/commands/hierarchyClone.ts)と[部品削除](../../../src/core3d/commands/objectDeletion.ts)は依存影響を確認して1回のHistoryへ適用する。複製は新IDで参照を組み直し、削除は残るskinが使うjointを拒否する。どちらも原本Blobの削除やGCを直接実行しない。
+
+[索引へ](README.md)。以下のDF-01〜05は初期P設計の履歴。group所有は [所有台帳](ownership.md)、要件詳細は [169ID対応](traceability.md)。矢印はデータ/処理の順序であり、静的importを許可する図ではない。
 
 ## DF-01 制作とUndo
 
@@ -82,7 +114,7 @@ flowchart TD
 
 空→primitive→mesh編集→smooth skin混合weight→key/clip→backup→独立復元→GLB/sidecar→独立consumerがFLOW-01〜04の実証経路。各工程のviewer表示だけを完了証拠にしない。
 
-## B07 candidate: implemented flow
+## B07時点のcandidate flow（履歴）
 
 File selection → bounded raw GLB preflight → isolated worker candidate → optional loss confirmation → hash-checked GLB/sidecar source retention → atomic new 0.3 copy → explicit project-list open. Import never silently replaces the current project.
 
@@ -91,3 +123,7 @@ Canonical revision plus detached blobs → shared memory reservation → worker 
 Old 0.1/0.2 DB readonly capture → exact immediate-version archive → validated detached upgrade → new v3 DB/new ID. Old namespaces and archives remain. Reverting application code does not downgrade new-format data.
 
 B07 adoption evidence is [S04](../../evidence/3d/S04_GLTF_ADOPTION.md) and [B07](../../evidence/3d/B07_ASSET_IO.md). The original planned diagrams above remain responsibility maps, not claims of consumer/physical-device verification.
+
+## B08 candidate: consumer and inspection
+
+Renderer-free inspection is owned by core3d/inspection; the editor quality panel owns only temporary report/cancellation/navigation state. The shared asset worker owns bounded execution. tools/3d-consumer is a development-only independent Babylon entry excluded from app bundles. See [B08 evidence](../../evidence/3d/B08_CONSUMER_INSPECTION.md). Browser and physical acceptance remain separately recorded.

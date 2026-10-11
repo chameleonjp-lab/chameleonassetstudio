@@ -1,4 +1,4 @@
-import { nativeTextureReservedBytes } from '../model/textureResources';
+import { reserveResourceBytes, resourceLedgerSnapshot } from './resourceLedger';
 /** Versioned, conservative I/O admission limits; not physical-device performance certification. */
 export const ASSET_IO_PROFILE = {
   id: 'cas3d-basic-gltf2-v1',
@@ -9,6 +9,9 @@ export const ASSET_IO_PROFILE = {
   estimatedPeakBytes: 256 * 1024 * 1024,
   jsonDepth: 64,
   jsonValues: 250_000,
+  // Engineering admission caps, not glTF schema limits; names use UTF-16 code units.
+  extensionDeclarations: 64,
+  extensionNameChars: 128,
   hierarchyDepth: 256,
   decodedAccessorValues: 6_000_000,
   nodes: 4096,
@@ -25,21 +28,10 @@ export function assertIoBudget(bytes: number, limit: number, label: string): voi
     throw new Error(label + ' exceeds ' + ASSET_IO_PROFILE.id);
 }
 
-const reservations = new Map<symbol, number>();
 export function reserveAssetIoBytes(bytes: number): () => void {
   assertIoBudget(bytes, ASSET_IO_PROFILE.estimatedPeakBytes, 'Asset I/O reservation');
-  assertIoBudget(
-    bytes + assetIoReservedBytes() + nativeTextureReservedBytes(),
-    ASSET_IO_PROFILE.estimatedPeakBytes,
-    'Concurrent asset I/O estimate',
-  );
-  const token = Symbol();
-  reservations.set(token, bytes);
-  return () => {
-    reservations.delete(token);
-  };
+  return reserveResourceBytes('asset-io', bytes);
 }
-
 export function assetIoReservedBytes(): number {
-  return [...reservations.values()].reduce((n, v) => n + v, 0);
+  return resourceLedgerSnapshot().byCategory['asset-io'];
 }

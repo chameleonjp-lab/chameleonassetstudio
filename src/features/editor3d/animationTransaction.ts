@@ -11,7 +11,7 @@ import { clipTime, prepareClipEvaluation } from '../../core3d/animation/evaluati
 /** Session-owned clock/preview only; explicit authoring commands alone can record keys. */
 export class AnimationTransaction implements AnimationBinding {
   private evaluator: ReturnType<typeof prepareClipEvaluation> | null = null;
-  private cachedProject: Project3D;
+  private cachedProject: Project3D | null;
   private identity: { id: string; revision: number };
   private clipId: string | null = null;
   private time = 0;
@@ -98,7 +98,8 @@ export class AnimationTransaction implements AnimationBinding {
       this.listeners.delete(listener);
     };
   }
-  private currentProject() {
+  private currentProject(): Project3D {
+    if (this.disposed || !this.cachedProject) throw new Error('Animation preview is disposed');
     const revision = this.options.getRevision?.();
     if (revision !== undefined && revision === this.cachedProject.revision)
       return this.cachedProject;
@@ -114,8 +115,8 @@ export class AnimationTransaction implements AnimationBinding {
     return this.cachedProject;
   }
   private evaluate(id: string, time: number) {
-    this.currentProject();
-    this.evaluator ??= prepareClipEvaluation(this.cachedProject);
+    const project = this.currentProject();
+    this.evaluator ??= prepareClipEvaluation(project);
     return this.evaluator(id, time);
   }
   private command(operation: () => void): NativeEditResult {
@@ -191,6 +192,7 @@ export class AnimationTransaction implements AnimationBinding {
     }
   }
   cancel(reason = 'rest表示') {
+    if (this.disposed) return;
     const p = this.currentProject();
     const changed =
       this.active ||
@@ -276,6 +278,8 @@ export class AnimationTransaction implements AnimationBinding {
     this.disposed = true;
     this.unsubscribe();
     this.listeners.clear();
+    this.cachedProject = null;
+    this.evaluator = null;
   }
   private publish() {
     this.sequence++;

@@ -1,3 +1,5 @@
+import { formatNativeEditingFailure } from './editingFailure';
+import { guardNativeCompositionKey } from './keyboardSafety';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Vec3 } from '../../core3d/model/project';
 import type {
@@ -12,16 +14,7 @@ type NumberDraft = [string, string, string];
 const neutral = (mode: NativeEditOptions['mode']): NumberDraft =>
   mode === 'scale' ? ['1', '1', '1'] : ['0', '0', '0'];
 function describeError(cause: unknown) {
-  const text = cause instanceof Error ? cause.message : String(cause);
-  if (/shear/i.test(text))
-    return 'この変形にはせん断が必要です。向きや倍率、world/localの設定を見直してください。';
-  if (/singular|non-finite|finite three/i.test(text))
-    return '有限の数値を入力してください。倍率0や極端に小さい値は適用できません。';
-  if (/parent and descendant/i.test(text))
-    return '親とその子孫を同時に変形できません。選択を見直してください。';
-  if (/unique selection|missing selected/i.test(text))
-    return '変形する部品とアクティブな部品を選択してください。';
-  return text;
+  return formatNativeEditingFailure(cause, 'transform');
 }
 
 /** Numeric gestures use exactly the same delta evaluator and token authority as the viewport. */
@@ -197,6 +190,7 @@ export function NativeTransformControls({
         composing.current = false;
       }}
       onKeyDownCapture={(event) => {
+        if (guardNativeCompositionKey(event, composing.current)) return;
         if (event.key === 'Enter') event.stopPropagation();
         if (
           event.key === 'Escape' &&

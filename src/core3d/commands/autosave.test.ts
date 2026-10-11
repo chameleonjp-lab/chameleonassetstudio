@@ -1,3 +1,8 @@
+import {
+  resourceLedgerSnapshot,
+  reserveResourceBytes,
+  RESOURCE_ESTIMATE_CAP_BYTES,
+} from '../profile/resourceLedger';
 import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { createProject } from '../model/project';
@@ -106,4 +111,51 @@ describe('project-local autosave', () => {
       repo.close();
     }
   });
+});
+
+it('retains failed owned copies until exact saved-copy proof or a successful retry', async () => {
+  const repo = await openProjectRepository({ indexedDB: new IDBFactory() });
+  const baseline = resourceLedgerSnapshot();
+  const p = createProject('owned');
+  await repo.create(p, new Map(), 'owner');
+  const lease = await repo.acquireWriter('owned', 'owner');
+  const queue = new SaveQueue(repo, lease, 0),
+    autosave = new ProjectAutosave(queue);
+  p.revision = 1;
+  const fail = vi.spyOn(repo, 'commit').mockRejectedValue(new Error('quota'));
+  autosave.schedule(p, new Map());
+  const captured = resourceLedgerSnapshot().byCategory.storage;
+  expect(captured).toBeGreaterThan(baseline.byCategory.storage);
+  await expect(autosave.flush()).rejects.toThrow('quota');
+  expect(resourceLedgerSnapshot().byCategory.storage).toBe(captured);
+  expect(() => autosave.releaseAfterClose(null)).toThrow('unpreserved');
+  expect(() => autosave.releaseAfterClose(0)).toThrow('unpreserved');
+  fail.mockRestore();
+  await autosave.retry();
+  autosave.releaseAfterClose(null);
+  expect(resourceLedgerSnapshot()).toEqual(baseline);
+  repo.close();
+});
+it('rejects replacement before cloning, preserves an older pending owner, and flags explicit retry capture', async () => {
+  const repo = await openProjectRepository({ indexedDB: new IDBFactory() });
+  const baseline = resourceLedgerSnapshot();
+  const p = createProject('reschedule');
+  await repo.create(p, new Map(), 'owner');
+  const lease = await repo.acquireWriter(p.id, 'owner');
+  const autosave = new ProjectAutosave(new SaveQueue(repo, lease, 0));
+  p.revision = 1;
+  autosave.schedule(p, new Map());
+  const before = resourceLedgerSnapshot();
+  const release = reserveResourceBytes('geometry', RESOURCE_ESTIMATE_CAP_BYTES - before.totalBytes);
+  p.revision = 2;
+  expect(() => autosave.schedule(p, new Map())).toThrow();
+  expect(autosave.state).toMatchObject({ dirty: true, needsReschedule: true });
+  expect(resourceLedgerSnapshot().byCategory.storage).toBe(before.byCategory.storage);
+  release();
+  autosave.schedule(p, new Map());
+  expect(autosave.state.needsReschedule).toBe(false);
+  await autosave.flush();
+  expect(autosave.state.persistedRevision).toBe(2);
+  expect(resourceLedgerSnapshot()).toEqual(baseline);
+  repo.close();
 });

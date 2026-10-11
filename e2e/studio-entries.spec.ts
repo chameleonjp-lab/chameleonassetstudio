@@ -153,7 +153,13 @@ test('3D current backup works on the first offline attempt and restores as an ed
       restored.getByRole('status').filter({ hasText: '保存済み · revision' }),
     ).toBeVisible();
     await restored.reload();
-    await expect(restored.getByRole('button', { name: /復元後も編集/ })).toBeVisible();
+    const savedProjects = restored.getByRole('region', {
+      name: '保存したプロジェクト',
+      exact: true,
+    });
+    await expect(
+      savedProjects.getByRole('button', { name: /^復元後も編集 revision \d+$/ }),
+    ).toBeVisible();
   } finally {
     await fresh.close();
   }

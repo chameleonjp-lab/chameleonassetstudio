@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { parseBuildInformation } from './src/core3d/diagnostics/buildInfo';
 import { execFileSync } from 'node:child_process';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
@@ -13,8 +15,24 @@ const dirty =
 const revision =
   process.env.APP_SOURCE_COMMIT?.trim() ||
   execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+const appVersion = (
+  JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
+    version: string;
+  }
+).version;
+const buildInformation = parseBuildInformation({
+  format: 'chameleon-build-info-1',
+  appVersion,
+  sourceRevision: revision,
+  sourceDirty: dirty,
+  nativeSchemaVersion: '0.3.0',
+});
 export default defineConfig({
-  define: { __APP_REVISION__: JSON.stringify(revision), __APP_DIRTY__: JSON.stringify(dirty) },
+  define: {
+    __APP_REVISION__: JSON.stringify(revision),
+    __APP_DIRTY__: JSON.stringify(dirty),
+    __APP_VERSION__: JSON.stringify(appVersion),
+  },
   base: basePath,
   build: {
     manifest: true,
@@ -33,6 +51,42 @@ export default defineConfig({
   worker: { format: 'es' },
   plugins: [
     react(),
+    {
+      // Vite's public-file lookup is exact; directory URLs otherwise reach the hub fallback.
+      name: 'public-guide-directory-index',
+      configureServer(server) {
+        server.middlewares.use((request, _response, next) => {
+          if (request.url) {
+            const [pathname, ...query] = request.url.split('?');
+            if ([`${basePath}guide/`, `${basePath}guide/3d/`].includes(pathname))
+              request.url = `${pathname}index.html${query.length ? '?' + query.join('?') : ''}`;
+          }
+          next();
+        });
+      },
+    },
+    {
+      name: 'local-build-information',
+      configureServer(server) {
+        server.middlewares.use((request, response, next) => {
+          if (
+            request.url?.split('?')[0] !== `${basePath}native-build-info.json` &&
+            request.url?.split('?')[0] !== '/native-build-info.json'
+          )
+            return next();
+          response.setHeader('Content-Type', 'application/json');
+          response.setHeader('Cache-Control', 'no-store');
+          response.end(JSON.stringify(buildInformation));
+        });
+      },
+      generateBundle() {
+        this.emitFile({
+          type: 'asset',
+          fileName: 'native-build-info.json',
+          source: JSON.stringify(buildInformation, null, 2) + '\n',
+        });
+      },
+    },
     {
       name: 'build-information',
       generateBundle(_options, bundle) {

@@ -21,6 +21,8 @@ export interface NativeViewOptions {
   background: 'dark' | 'light';
   lighting: 'studio' | 'soft';
   grid: boolean;
+  /** Display-only world Y=0 plane. Omitted legacy callers mean false. */
+  ground?: boolean;
   axes: boolean;
   bounds: boolean;
 }
@@ -77,6 +79,8 @@ export interface NativeViewportPort {
   setGamePreview?(visible: boolean): NativeViewportResult;
   resetCamera(): void;
   fitCamera(): void;
+  /** Synchronous draw submission for explicit inspection; not GPU completion or physical display. */
+  renderInspectionFrame?(): NativeViewportResult;
   cameraAction(action: NativeCameraAction): NativeViewportResult;
   getCamera(): NativeCameraState;
   setCamera(state: NativeCameraState): NativeViewportResult;

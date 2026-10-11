@@ -1,3 +1,9 @@
+import { createProject, identityTransform } from '../model/project';
+import {
+  resourceLedgerSnapshot,
+  reserveResourceBytes,
+  RESOURCE_ESTIMATE_CAP_BYTES,
+} from '../profile/resourceLedger';
 import { describe, it, expect, vi } from 'vitest';
 import { smallProject } from '../fixtures/project';
 import { ProjectHistory } from '../commands/history';
@@ -143,4 +149,80 @@ it('retains the exact 0.2 archive and upgrades without resetting visibility or m
   expect(restored.project.schemaVersion).toBe('0.3.0');
   expect(restored.project.nodes).toEqual(old.nodes);
   expect(restored.project.materials).toEqual(old.materials);
+});
+
+it('backup resource admission rejects without mutation and releases all temporary estimates', async () => {
+  const { p, bytes, hash } = await fixture(),
+    source = new Map([[hash, bytes]]);
+  const original = structuredClone(p),
+    before = resourceLedgerSnapshot();
+  const hold = reserveResourceBytes(
+    'geometry',
+    RESOURCE_ESTIMATE_CAP_BYTES - before.totalBytes - 1,
+  );
+  await expect(exportBackup(p, source)).rejects.toThrow();
+  expect(p).toEqual(original);
+  expect(source.get(hash)).toEqual(bytes);
+  hold();
+  const archive = await exportBackup(p, source);
+  expect(resourceLedgerSnapshot()).toEqual(before);
+  const imported = await importBackup(archive);
+  expect(imported.blobs.get(hash)).toEqual(bytes);
+  expect(resourceLedgerSnapshot()).toEqual(before);
+  await expect(importBackup(new Uint8Array([1, 2, 3]))).rejects.toThrow();
+  expect(resourceLedgerSnapshot()).toEqual(before);
+});
+
+it('round-trips UTF-8-heavy exporter-accepted projects under an otherwise empty shared budget', async () => {
+  const p = smallProject();
+  p.blobIds = [];
+  p.sources = [];
+  p.meshes = [];
+  p.materials = [];
+  p.skins = [];
+  p.clips = [];
+  p.nodes = Array.from({ length: 1000 }, (_, i) => ({
+    id: 'node-' + i,
+    name: '日'.repeat(2000),
+    parentId: null,
+    transform: {
+      translation: [0, 0, 0] as [number, number, number],
+      rotation: [0, 0, 0, 1] as [number, number, number, number],
+      scale: [1, 1, 1] as [number, number, number],
+    },
+    visible: true,
+    locked: false,
+  }));
+  const baseline = resourceLedgerSnapshot();
+  const archive = await exportBackup(p, new Map());
+  const restored = await importBackup(archive);
+  expect(restored.project).toEqual(p);
+  expect(resourceLedgerSnapshot()).toEqual(baseline);
+});
+
+it('round-trips an accepted large native mesh across semantic-value and JSON-key token accounting', async () => {
+  const p = createProject('token-roundtrip');
+  p.nodes = [
+    { id: 'node', name: 'Mesh', parentId: null, meshId: 'mesh', transform: identityTransform() },
+  ];
+  p.meshes = [
+    {
+      id: 'mesh',
+      vertices: Array.from({ length: 62500 }, (_, i) => ({
+        id: 'v' + i,
+        position: [0, i % 2, Math.floor(i / 2)] as [number, number, number],
+      })),
+      faces: Array.from({ length: 62500 }, (_, i) => ({
+        id: 'f' + i,
+        vertexIds: ['v0', 'v1', 'v2'],
+      })),
+    },
+  ];
+  const baseline = resourceLedgerSnapshot();
+  const archive = await exportBackup(p, new Map());
+  const restored = await importBackup(archive);
+  expect(restored.project.meshes[0].vertices).toHaveLength(62500);
+  expect(restored.project.meshes[0].faces).toHaveLength(62500);
+  expect(restored.project).toEqual(p);
+  expect(resourceLedgerSnapshot()).toEqual(baseline);
 });

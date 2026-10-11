@@ -133,3 +133,11 @@ describe('rig preview ownership', () => {
     expect(listener).toHaveBeenCalledTimes(count);
   });
 });
+
+it('disposed rig accepts delayed viewport cancellation without reopening canonical state', () => {
+  const f = fixture();
+  f.pose.dispose();
+  expect(() => f.pose.cancel()).not.toThrow();
+  expect(() => f.pose.dispose()).not.toThrow();
+  expect(f.pose.state.updates).toEqual([]);
+});

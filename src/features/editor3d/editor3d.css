@@ -330,3 +330,15 @@
     margin-bottom: 0.75rem;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .editor3d,
+  .editor3d *,
+  .editor3d *::before,
+  .editor3d *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

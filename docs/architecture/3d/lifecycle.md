@@ -1,6 +1,37 @@
 # 資源寿命・背景・更新復旧
 
-[索引へ](README.md)。P状態設計、M06/M13/M15/M16所有。LIFE/PERF/SAVE/UX/OPSとB03/B09/B10、DEC-05/09を接続する。browserのfreeze/OS kill通知は保証されない。
+
+## 現在の資源所有 local candidate
+
+以下の現在表は索引のローカル基点を対象とする。LC-01〜03と旧設計表は履歴として残す。特に旧表の「snapshot exportは継続可能」は許容案であり、現在のNativeAssetIoPanelはhidden/freeze/pagehideで処理・未保存候補を取り消す。
+
+| owner | 実在する主担当 | 保持と解放の境界 |
+| --- | --- | --- |
+| canonical/history/current binary | [ProjectSession](../../../src/features/editor3d/projectSession.ts)、[history](../../../src/core3d/commands/history.ts)、[sessionLifetime](../../../src/features/editor3d/sessionLifetime.ts) | child view例外で唯一のCPU原本を捨てず救出へ。保存失敗ではdirtyを保持 |
+| durable roots/recovery/trash/pins/staging/history refs | [repository](../../../src/core3d/storage/repository.ts) | GCはwrite transaction内で再照合。自動的な旧版/ごみ箱永久消去ではない |
+| GPU/framebuffer/geometry/helper | [renderer](../../../src/adapters3d/three/renderer.ts)、[render profile](../../../src/core3d/profile/renderProfile.ts) | project/context/view寿命を分離。groundは表示専用でexport対象外 |
+| encoded input/decoded texture cache | [nativeImage](../../../src/features/editor3d/nativeImage.ts)、[textureSnapshot](../../../src/features/editor3d/textureSnapshot.ts) | abort要求だけで解放済みとせず、遅延decodeの実終了までowner保持 |
+| asset worker/output/download URL | [assetIoClient](../../../src/adapters3d/gltf/assetIoClient.ts)、[NativeAssetIoPanel](../../../src/features/editor3d/NativeAssetIoPanel.tsx) | worker取消とowner解放、URL期限/閉じる/pagehideでrevoke。download開始は外部保存完了でない |
+| 未保存GLB候補/preview/save borrow | [importReview](../../../src/features/editor3d/importReview.ts)、[importPreview](../../../src/features/editor3d/importPreview.ts) | disposeは新借用を即拒否し、最後のdecoder/view/save borrowerの終了まで予約保持 |
+| 同一realm内の共通見積り | [resourceLedger](../../../src/core3d/profile/resourceLedger.ts) | 6categoryの256MiB見積り上限。別tab/workerの合算、実heap、GPU空き容量を測定した値ではない |
+| motion/更新/診断 | [motionPreference](../../../src/features/editor3d/motionPreference.ts)、[updateInformation](../../../src/features/editor3d/updateInformation.ts)、[診断UI](../../../src/features/editor3d/NativeDiagnosticsPanel.tsx) | OS reduced-motion変更で再生停止、勝手に再開しない。更新は明示確認、診断は自動送信しない |
+
+```mermaid
+flowchart TD
+  LC_NOW_OWNER["未保存candidateの初期owner"] --> LC_NOW_VIEW["view借用"]
+  LC_NOW_OWNER --> LC_NOW_SAVE["save借用"]
+  LC_NOW_CANCEL["取消・revision変更・閉じる"] --> LC_NOW_RETIRED["新借用と確認を即失効"]
+  LC_NOW_RETIRED --> LC_NOW_WAIT["遅延factory・decode・saveの終了待ち"]
+  LC_NOW_VIEW --> LC_NOW_WAIT
+  LC_NOW_SAVE --> LC_NOW_WAIT
+  LC_NOW_WAIT --> LC_NOW_RELEASE["最後の参照が終わって予約解放"]
+```
+
+文字版: 未保存候補の初期ownerから表示と保存が借用する。取消で新借用と同期確認gateを即失効させるが、実際に終わっていないdecoderや保存が使う元bufferは保持する。renderer readinessのReact表示更新だけに保存権限を委ねない。遅れて完成したfactoryは破棄し、新しい候補のhostを乗っ取らない。
+
+原本保持/履歴予算/候補borrowのunit成功は物理RAMやGPU解放の実測ではない。[受入境界](../../evidence/3d/ACCEPTANCE_GAPS_2026-10-10.md)と[固定台帳](../../evidence/3d/ACCEPTANCE_STATUS_2026-10-10.md)を読み、OS kill/実BFCache/同時tab/実機計測の未確認を残す。
+
+[索引へ](README.md)。以下のLC-01〜03は初期P状態設計の履歴。M06/M13/M15/M16所有。LIFE/PERF/SAVE/UX/OPSとB03/B09/B10、DEC-05/09を接続する。browserのfreeze/OS kill通知は保証されない。
 
 ## LC-01 表示状態とdurable dataを分ける
 

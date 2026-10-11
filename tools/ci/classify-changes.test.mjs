@@ -74,3 +74,12 @@ test('isolated native viewport evaluation keeps browser checks without product p
     assert.deepEqual(classifyChanges([file]), { code: true, e2e: true, publish: false, h3: false });
   }
 });
+
+test('isolated 3D consumer receives browser checks without publishing the harness', () => {
+  assert.deepEqual(classifyChanges(['tools/3d-consumer/main.ts']), {
+    code: true,
+    e2e: true,
+    publish: false,
+    h3: false,
+  });
+});

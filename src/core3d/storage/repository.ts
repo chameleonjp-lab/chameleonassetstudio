@@ -5,6 +5,7 @@ import {
   type StoredProject3D,
 } from '../model/project';
 import { inTransaction, openStorageDatabase, requestResult, STORAGE_STORES } from './db';
+import { BACKUP_LIMITS } from '../backup/backup';
 
 export type BlobBytes = ReadonlyMap<string, Uint8Array>;
 export type PinKind = 'read' | 'backup' | 'export' | 'undo' | 'redo';
@@ -36,6 +37,11 @@ export interface SnapshotRead extends CommitResult {
   blobs: Map<string, Uint8Array>;
   release(): Promise<void>;
 }
+/** All bytes are detached before the read transaction ends; no database pin is owned. */
+export interface DetachedBackupSnapshot extends CommitResult {
+  project: Project3D;
+  blobs: Map<string, Uint8Array>;
+}
 export interface ReferencePin {
   id: string;
   release(): Promise<void>;
@@ -46,6 +52,83 @@ export interface GarbageMark {
   snapshotIds: string[];
 }
 
+export interface ProjectLibraryEntry {
+  id: string;
+  name: string;
+  revision: number;
+  snapshotId: string;
+  trashed: boolean;
+  savedAt: number | null;
+  trashedAt: number | null;
+  recoveryCount: number;
+}
+export interface RecoverySnapshotSummary {
+  snapshotId: string;
+  kind: 'latest' | 'recovery';
+  available: boolean;
+  revision: number | null;
+  savedAt: number | null;
+  name: string;
+  contentHash: string | null;
+  counts: Record<'nodes' | 'meshes' | 'materials' | 'skins' | 'clips' | 'sources', number> | null;
+  difference: {
+    contentChanged: boolean;
+    renamed: boolean;
+    counts: RecoverySnapshotSummary['counts'];
+  } | null;
+}
+function knownTime(value: unknown): number | null {
+  return typeof value === 'number' &&
+    Number.isSafeInteger(value) &&
+    value >= 0 &&
+    value <= 8640000000000000
+    ? value
+    : null;
+}
+function snapshotSummary(
+  snapshot: SnapshotRecord | undefined,
+  snapshotId: string,
+  projectId: string,
+  latest: boolean,
+): RecoverySnapshotSummary {
+  const unavailable: RecoverySnapshotSummary = {
+    snapshotId,
+    kind: latest ? 'latest' : 'recovery',
+    available: false,
+    revision: null,
+    savedAt: null,
+    name: '',
+    contentHash: null,
+    counts: null,
+    difference: null,
+  };
+  if (
+    !snapshot ||
+    snapshot.id !== snapshotId ||
+    snapshot.project?.id !== projectId ||
+    snapshot.project.schemaVersion !== '0.3.0' ||
+    !Number.isSafeInteger(snapshot.project.revision) ||
+    snapshot.project.revision < 0 ||
+    typeof snapshot.contentHash !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(snapshot.contentHash)
+  )
+    return unavailable;
+  const keys = ['nodes', 'meshes', 'materials', 'skins', 'clips', 'sources'] as const;
+  if (keys.some((key) => !Array.isArray(snapshot.project[key]))) return unavailable;
+  const counts = Object.fromEntries(
+    keys.map((key) => [key, snapshot.project[key].length]),
+  ) as NonNullable<RecoverySnapshotSummary['counts']>;
+  return {
+    ...unavailable,
+    available: true,
+    revision: snapshot.project.revision,
+    savedAt: knownTime(snapshot.savedAt),
+    name: typeof snapshot.project.name === 'string' ? snapshot.project.name.slice(0, 4096) : '',
+    contentHash: snapshot.contentHash,
+    counts,
+  };
+}
+
 interface RootRecord {
   id: string;
   /** Optional for roots written by the first native-storage foundation. */
@@ -54,11 +137,14 @@ interface RootRecord {
   snapshotId: string;
   recoverySnapshotIds: string[];
   trashed: boolean;
+  savedAt?: number;
+  trashedAt?: number;
 }
 interface SnapshotRecord {
   id: string;
   project: Project3D;
   contentHash: string;
+  savedAt?: number;
 }
 interface StageRecord extends SnapshotRecord {
   /** Also protects newly supplied bytes needed by an uncommitted history entry. */
@@ -221,6 +307,119 @@ export class ProjectRepository {
     });
   }
 
+  /** Read-only project metadata; does not load binary sources or create writer leases. */
+  async libraryEntries(): Promise<ProjectLibraryEntry[]> {
+    return inTransaction(this.db, ['roots'], 'readonly', async (transaction) => {
+      const roots = await allRecords<RootRecord>(transaction, 'roots');
+      return roots
+        .map((root) => ({
+          id: root.id,
+          name: root.name ?? `3Dプロジェクト (${root.id})`,
+          revision: root.revision,
+          snapshotId: root.snapshotId,
+          trashed: root.trashed,
+          savedAt: knownTime(root.savedAt),
+          trashedAt: knownTime(root.trashedAt),
+          recoveryCount: root.recoverySnapshotIds.length,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+    });
+  }
+
+  /** Pages retained snapshots without copying binary assets. Hash/data validity is rechecked before recovery. */
+  async recoveryPage(projectId: string, offset = 0, limit = 10) {
+    if (
+      !Number.isSafeInteger(offset) ||
+      offset < 0 ||
+      !Number.isSafeInteger(limit) ||
+      limit < 1 ||
+      limit > 10
+    )
+      throw new Error('Invalid recovery page');
+    return inTransaction(this.db, ['roots', 'snapshots'], 'readonly', async (transaction) => {
+      const root = await getRecord<RootRecord>(transaction, 'roots', projectId);
+      if (!root) throw new StorageIntegrityError('3D project is not available');
+      const latestRecord = await getRecord<SnapshotRecord>(
+        transaction,
+        'snapshots',
+        root.snapshotId,
+      );
+      const latest = snapshotSummary(latestRecord, root.snapshotId, projectId, true);
+      if (latest.revision !== root.revision) latest.available = false;
+      const total = root.recoverySnapshotIds.length + 1;
+      const entries: RecoverySnapshotSummary[] = [];
+      for (let index = offset; index < Math.min(total, offset + limit); index++) {
+        const id =
+          index === 0
+            ? root.snapshotId
+            : root.recoverySnapshotIds[root.recoverySnapshotIds.length - index];
+        const item =
+          index === 0
+            ? latest
+            : snapshotSummary(
+                await getRecord<SnapshotRecord>(transaction, 'snapshots', id),
+                id,
+                projectId,
+                false,
+              );
+        if (item.available && latest.available && item.counts && latest.counts) {
+          item.difference = {
+            contentChanged: item.contentHash !== latest.contentHash,
+            renamed: item.name !== latest.name,
+            counts: Object.fromEntries(
+              Object.keys(item.counts).map((key) => [
+                key,
+                item.counts![key as keyof typeof item.counts] -
+                  latest.counts![key as keyof typeof latest.counts],
+              ]),
+            ) as NonNullable<RecoverySnapshotSummary['counts']>,
+          };
+        }
+        entries.push(item);
+      }
+      return {
+        projectId,
+        rootRevision: root.revision,
+        rootSnapshotId: root.snapshotId,
+        trashed: root.trashed,
+        total,
+        offset,
+        entries,
+      };
+    });
+  }
+
+  /** Atomic library operation for a CLOSED project; active editors must close explicitly first. */
+  async changeLibraryTrash(
+    expected: Pick<ProjectLibraryEntry, 'id' | 'revision' | 'snapshotId' | 'trashed'>,
+    trashed: boolean,
+  ): Promise<void> {
+    const token = { ...expected };
+    if (
+      typeof trashed !== 'boolean' ||
+      typeof token.trashed !== 'boolean' ||
+      !Number.isSafeInteger(token.revision)
+    )
+      throw new Error('Invalid trash request');
+    await inTransaction(this.db, ['roots', 'leases', 'meta'], 'readwrite', async (transaction) => {
+      const root = await getRecord<RootRecord>(transaction, 'roots', token.id);
+      if (
+        !root ||
+        root.revision !== token.revision ||
+        root.snapshotId !== token.snapshotId ||
+        root.trashed !== token.trashed
+      )
+        throw new StorageConflictError('revision');
+      const writer = await getRecord<LeaseRecord>(transaction, 'leases', token.id);
+      if (writer?.active) throw new StorageConflictError('writer');
+      root.trashed = trashed;
+      if (trashed) root.trashedAt = Date.now();
+      else delete root.trashedAt;
+      await requestResult(transaction.objectStore('roots').put(root));
+      await bumpEpoch(transaction);
+    });
+  }
+
   async acquireWriter(
     projectId: string,
     ownerId: string,
@@ -377,9 +576,11 @@ export class ProjectRepository {
             validation: { valid: true },
           };
         }
+        const savedAt = Date.now();
         await requestResult(
           transaction.objectStore('snapshots').add({
             id: candidate.id,
+            savedAt,
             project: candidate.project,
             contentHash: candidate.contentHash,
           }),
@@ -389,6 +590,7 @@ export class ProjectRepository {
           name: candidate.project.name,
           revision: candidate.project.revision,
           snapshotId: candidate.id,
+          savedAt,
           recoverySnapshotIds: root ? [...root.recoverySnapshotIds, root.snapshotId] : [],
           trashed: false,
         };
@@ -424,7 +626,7 @@ export class ProjectRepository {
     newProjectId: string,
     ownerId: string,
     options: { legacyBackup?: Uint8Array; signal?: AbortSignal } = {},
-  ): Promise<CommitResult> {
+  ): Promise<CommitResult & { writerLease: WriterLease }> {
     if (project.id === newProjectId) throw new StorageConflictError('exists');
     const copy = cloneProject(project);
     copy.id = newProjectId;
@@ -442,6 +644,7 @@ export class ProjectRepository {
         throw new StorageIntegrityError(`Copy blob hash mismatch: ${blob.id}`);
     const snapshot = {
       id: crypto.randomUUID(),
+      savedAt: Date.now(),
       project: copy,
       contentHash: await hashProject(copy),
     };
@@ -477,6 +680,7 @@ export class ProjectRepository {
             name: copy.name,
             revision: 0,
             snapshotId: snapshot.id,
+            savedAt: snapshot.savedAt,
             recoverySnapshotIds: [],
             trashed: false,
           }),
@@ -495,6 +699,7 @@ export class ProjectRepository {
         await bumpEpoch(transaction);
         return {
           projectId: copy.id,
+          writerLease: { projectId: copy.id, ownerId, token },
           revision: 0,
           snapshotId: snapshot.id,
           validation: { valid: true },
@@ -528,6 +733,71 @@ export class ProjectRepository {
     if ((await hashBlob(record.bytes)) !== record.hash)
       throw new StorageIntegrityError('Original backup hash mismatch');
     return new Uint8Array(record.bytes);
+  }
+
+  /**
+   * Backup-only rescue under write quota or denied writes. A single readonly transaction
+   * captures the retained root/snapshot and every referenced blob consistently with GC
+   * and concurrent writers. Hashing runs only after all bytes are detached and the
+   * transaction completes. This is not a substitute for pinned editing/export reads.
+   */
+  async captureBackupSnapshot(
+    projectId: string,
+    options: { snapshotId?: string; includeTrashed?: boolean } = {},
+  ): Promise<DetachedBackupSnapshot> {
+    const requestedId = options.snapshotId;
+    const includeTrashed = options.includeTrashed ?? false;
+    const result = await inTransaction(
+      this.db,
+      ['roots', 'snapshots', 'blobs'],
+      'readonly',
+      async (transaction) => {
+        const root = await getRecord<RootRecord>(transaction, 'roots', projectId);
+        if (!root || (root.trashed && !includeTrashed))
+          throw new StorageIntegrityError('3D project is not available');
+        const snapshotId = requestedId ?? root.snapshotId;
+        if (snapshotId !== root.snapshotId && !root.recoverySnapshotIds.includes(snapshotId))
+          throw new StorageIntegrityError('3D snapshot is not retained by this project');
+        const snapshot = await getRecord<SnapshotRecord>(transaction, 'snapshots', snapshotId);
+        if (!snapshot || snapshot.id !== snapshotId || snapshot.project.id !== projectId)
+          throw new StorageIntegrityError('3D snapshot is missing');
+        const jsonBytes = new TextEncoder().encode(JSON.stringify(snapshot.project)).byteLength;
+        if (jsonBytes > BACKUP_LIMITS.jsonBytes)
+          throw new StorageIntegrityError('Project JSON exceeds backup profile');
+        validateProject(snapshot.project);
+        if (snapshotId === root.snapshotId && snapshot.project.revision !== root.revision)
+          throw new StorageIntegrityError('Stored 3D root revision mismatch');
+        if (snapshot.project.blobIds.length + 2 > BACKUP_LIMITS.entries)
+          throw new StorageIntegrityError('Too many backup entries');
+        let payloadBytes = jsonBytes;
+        const blobs = new Map<string, Uint8Array>();
+        // Read sequentially so a large reference list cannot allocate every blob before
+        // the cumulative payload limit is checked. IndexedDB supplies detached values.
+        for (const id of snapshot.project.blobIds) {
+          const blob = await getRecord<BlobRecord>(transaction, 'blobs', id);
+          if (!blob || blob.id !== id || !(blob.bytes instanceof Uint8Array))
+            throw new StorageIntegrityError('Missing or invalid 3D blob');
+          payloadBytes += blob.bytes.byteLength;
+          if (!Number.isSafeInteger(payloadBytes) || payloadBytes > BACKUP_LIMITS.archiveBytes)
+            throw new StorageIntegrityError('Backup payload exceeds profile');
+          blobs.set(id, blob.bytes);
+        }
+        return { snapshot, blobs };
+      },
+    );
+    if ((await hashProject(result.snapshot.project)) !== result.snapshot.contentHash)
+      throw new StorageIntegrityError('Stored 3D snapshot hash mismatch');
+    for (const [id, bytes] of result.blobs)
+      if ((await hashBlob(bytes)) !== id)
+        throw new StorageIntegrityError('Stored 3D blob hash mismatch');
+    return {
+      projectId,
+      revision: result.snapshot.project.revision,
+      snapshotId: result.snapshot.id,
+      validation: { valid: true },
+      project: result.snapshot.project,
+      blobs: result.blobs,
+    };
   }
 
   async readSnapshot(

@@ -1,3 +1,4 @@
+import { measureNativeCommits } from './performanceRunner';
 import { NativeViewport } from '../../src/adapters3d/three/renderer';
 import { nativeBox } from './fixtures';
 
@@ -14,7 +15,34 @@ const mount = () => {
   viewport.setProject(project);
 };
 mount();
+let measurement: AbortController | null = null;
+const requireIdle = () => {
+  if (measurement) throw new Error('Stop measurement before changing the fixture');
+};
+const markMeasuring = (active: boolean) =>
+  document.querySelectorAll<HTMLButtonElement>('button').forEach((button) => {
+    button.disabled = button.id === 'cancel-measurement' ? !active : active;
+  });
 const evaluation = {
+  measureCommits: async (input: Parameters<typeof measureNativeCommits>[2]) => {
+    if (measurement) throw new Error('Measurement already running');
+    const operation = new AbortController();
+    measurement = operation;
+    markMeasuring(true);
+    try {
+      return await measureNativeCommits(viewport, project, input, {
+        iterations: 100,
+        observationMs: 60000,
+        signal: operation.signal,
+      });
+    } finally {
+      if (measurement === operation) {
+        measurement = null;
+        markMeasuring(false);
+      }
+    }
+  },
+  cancelMeasurement: () => measurement?.abort(),
   get diagnostics() {
     return viewport.diagnostics;
   },
@@ -37,6 +65,7 @@ const evaluation = {
     });
   },
   reset: () => viewport.resetCamera(),
+  resize: (width: number, height: number, dpr: number) => viewport.resize(width, height, dpr),
   hidden: (hidden: boolean) => viewport.setHidden(hidden),
   frozen: (frozen: boolean) => viewport.setFrozen(frozen),
   suspend: (persistedRevision: number | null = project.revision) =>
@@ -46,17 +75,23 @@ const evaluation = {
       sourcesComplete: true,
     }),
   resume: () => viewport.resume(),
-  dispose: () => viewport.dispose(),
+  dispose: () => {
+    requireIdle();
+    viewport.dispose();
+  },
   remount: () => {
+    requireIdle();
     viewport.dispose();
     mount();
   },
   edit: () => {
+    requireIdle();
     project.revision += 1;
     project.name = 'Edited name';
     viewport.setProject(project);
   },
   swap: () => {
+    requireIdle();
     project = nativeBox(project.id === 'native-box' ? 'other-box' : 'native-box');
     project.nodes[0].transform.translation[0] = project.id === 'native-box' ? 0 : 0.5;
     viewport.setProject(project);
@@ -90,3 +125,7 @@ document.getElementById('capture')!.onclick = () => {
   void evaluation.capture();
 };
 export type NativeEvaluation = typeof evaluation;
+
+window.addEventListener('pagehide', () => measurement?.abort());
+
+document.getElementById('cancel-measurement')!.onclick = evaluation.cancelMeasurement;

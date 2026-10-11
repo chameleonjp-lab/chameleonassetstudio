@@ -1,10 +1,27 @@
 # 要件から配置・検査・証拠への対応
 
+
+## 現在の配置を追うとき
+
+この169行のID・優先度・主担当・fixture/test対応は変更しない。具体pathは[現在の実在対応](ownership.md#現在の実在対応-local-candidate)を優先し、下の初期P配置説明を現在の実装不存在と解釈しない。
+
+| 後続候補が更新した論点 | 要件ID例 | 現在の証拠（実装と受入を区別） |
+| --- | --- | --- |
+| 骨編集と変形、rigid割当 | RIG-03 | [B05](../../evidence/3d/B05_NATIVE_RIG.md)、[rigid](../../evidence/3d/NATIVE_RIGID_ASSIGNMENT.md) |
+| key/clip/reduced-motion | ANIM-01〜07、UX-06 | [B06](../../evidence/3d/B06_NATIVE_ANIMATION.md)、[観察補助](../../evidence/3d/NATIVE_GROUND_INSPECTION.md) |
+| GLB/sidecar/consumer | EXP、GAME、QAの該当ID | [B07](../../evidence/3d/B07_ASSET_IO.md)、[B08](../../evidence/3d/B08_CONSUMER_INSPECTION.md) |
+| 未保存取込候補と出力事前確認 | IMP-01、EXP-03 | [import preview](../../evidence/3d/NATIVE_IMPORT_PREVIEW.md)、[export pre-review](../../evidence/3d/NATIVE_EXPORT_PREREVIEW.md) |
+| 保存候補/ごみ箱/依存削除/階層複製 | SAVE-04、SAVE-07、EDIT-02、EDIT-04、DATA-07 | [library](../../evidence/3d/NATIVE_LIBRARY_RECOVERY.md)、[clone](../../evidence/3d/NATIVE_HIERARCHY_CLONE.md) |
+| 資源予算/救出/安全な更新診断 | LIFE/PERF/OPSの該当ID | [B09資源](../../evidence/3d/B09_RESOURCE_BUDGETS.md)、[B09救出](../../evidence/3d/B09_NATIVE_RECOVERY.md)、[B10](../../evidence/3d/B10_SAFE_DELIVERY.md) |
+| source/図/path対応の再監査 | DOC-03、DOC-05、DOC-06 | [今回の静的監査](../../evidence/3d/NATIVE_ARCHITECTURE_AUDIT.md) |
+
+[受入台帳](../../evidence/3d/ACCEPTANCE_STATUS_2026-10-10.md)の集計はその固定基点に対する記録として保持する。後続実装を加えても、実画面・consumer・端末受入が未実行のまま要件をpassへ変えない。B11の17 SHOULDと6 FUTUREはこの配置修正で採用しない。
+
 [索引へ](README.md)。上位の [169要件対応表](../../THREE_D_PLAN_TRACEABILITY_2026-10-03.md) と同じID・優先度・主担当を保持し、配置groupと図への接続を追加する。受入全文、DEC、Fxx/Txx、ACは上位表の同IDが正本であり省略しない。
 
 ## 対応の読み方
 
-要件ID → 上位表のBxx/DEC/Fxx/Txx/AC → 下表のMgroup → [所有台帳の予定files/tests](ownership.md) → 対象SHAの証拠。P code/test/evidence pathは未作成。Mgroupは責務の集合であり各要件が全ファイルを必ず変更する指示ではない。具体diffと関連testsは工程開始時に絞る。
+要件ID → 上位表のBxx/DEC/Fxx/Txx/AC → 下表のMgroup → [所有台帳の予定files/tests](ownership.md) → 対象SHAの証拠。初期記録のP code/test/evidence pathは当時未作成だった。現在の実在pathは上のL対応から確認する。Mgroupは責務の集合であり各要件が全ファイルを必ず変更する指示ではない。具体diffと関連testsは工程開始時に絞る。
 
 全工程の証拠予定先は `docs/evidence/3d/Bxx.md`（P）、fixture仕様/権利/hashは `src/core3d/fixtures/`（P）。同じファイルへ要件ID、対象SHA/tree、fixture hash、test command/run、expected/actual、状態、画像/出力hash、制限を残す。自動生成した一覧をpass証拠にしない。実行log保持期限後も再現条件を残す。
 
@@ -208,3 +225,7 @@ FLOW-01〜06・AC-01〜15の最終閉鎖は上位表末尾と計画B10へ戻る�
 GAME-01–04 connect to core3d/game, NativeGamePanel and Three game helpers. EXP-01–06 and the basic AC-02/03/04 file portion connect to core3d/import, core3d/export, adapters3d/gltf, NativeAssetIoPanel and native-asset-io-product.spec.ts. DATA/COMPAT migration evidence includes strict 0.1/0.2 parsing and independent 0.3 copies.
 
 [S04 adoption](../../evidence/3d/S04_GLTF_ADOPTION.md) records the independent validator, format/codec policy and remaining browser gate. [B07 candidate](../../evidence/3d/B07_ASSET_IO.md) records ownership, recovery and test coverage. ANIM-06 independent runtime behavior is still B08; physical acceptance and final resource budgets remain B09/B10. Path existence and unit success do not update those gates to verified.
+
+## B08 candidate: consumer and inspection
+
+Renderer-free inspection is owned by core3d/inspection; the editor quality panel owns only temporary report/cancellation/navigation state. The shared asset worker owns bounded execution. tools/3d-consumer is a development-only independent Babylon entry excluded from app bundles. See [B08 evidence](../../evidence/3d/B08_CONSUMER_INSPECTION.md). Browser and physical acceptance remain separately recorded.

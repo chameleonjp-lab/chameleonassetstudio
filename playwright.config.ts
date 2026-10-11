@@ -34,6 +34,7 @@ export default defineConfig({
         'app.spec.ts',
         'studio-entries.spec.ts',
         'native-viewport-evaluation.spec.ts',
+        'native-performance-evaluation.spec.ts',
         'native-transform-evaluation.spec.ts',
         'native-panel.spec.ts',
         'native-viewport-product.spec.ts',
@@ -42,6 +43,12 @@ export default defineConfig({
         'native-rig-product.spec.ts',
         'native-animation-product.spec.ts',
         'native-asset-io-product.spec.ts',
+        'native-quality-product.spec.ts',
+        'native-recovery-product.spec.ts',
+        'native-cross-domain-recovery.spec.ts',
+        'native-library-product.spec.ts',
+        'native-diagnostics-product.spec.ts',
+        'native-consumer.spec.ts',
         'import.spec.ts',
         'storage.spec.ts',
         'export.spec.ts',
@@ -59,9 +66,16 @@ export default defineConfig({
       use: { ...devices['Desktop Safari'] },
     },
   ],
-  webServer: {
-    command: 'npm run dev -- --port 5173 --strictPort',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: [
+    {
+      command: 'npm run dev -- --port 5173 --strictPort',
+      url: 'http://localhost:5173',
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: 'npm run consumer:serve',
+      url: 'http://localhost:4177',
+      reuseExistingServer: !process.env.CI,
+    },
+  ],
 });

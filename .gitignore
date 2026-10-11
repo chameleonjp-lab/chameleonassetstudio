@@ -24,6 +24,13 @@ dist-3d-evaluation
 /playwright-report-native-interaction/
 /test-results-native-interaction/
 
-# Generated output from the early native GLB product check.
+# Isolated external consumer test build
+dist-3d-consumer/
+
+# Generated early native acceptance reports.
 /playwright-report-native-asset-io/
 /test-results-native-asset-io/
+/playwright-report-native-consumer/
+/test-results-native-consumer/
+/playwright-report-native-recovery/
+/test-results-native-recovery/

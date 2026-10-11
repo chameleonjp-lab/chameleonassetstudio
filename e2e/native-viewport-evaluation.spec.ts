@@ -123,7 +123,7 @@ test('hidden/frozen stop frames, GPU pause requires saved data, repeated disposa
   ).toEqual({ ok: true });
   expect(Buffer.from(await capture(page))).toEqual(Buffer.from(before));
 
-  for (let index = 0; index < 4; index++) {
+  for (let index = 0; index < 20; index++) {
     await page.getByRole('button', { name: 'Swap project', exact: true }).click();
     const state = await diagnostics(page);
     expect(state.renderers).toBe(1);
@@ -131,6 +131,8 @@ test('hidden/frozen stop frames, GPU pause requires saved data, repeated disposa
     await page.evaluate(() => (window as unknown as EvaluationWindow).nativeEvaluation.dispose());
     expect(await diagnostics(page)).toMatchObject({
       state: 'disposed',
+      resourceEstimate: { kind: 'ownership-estimate', scope: 'realm', totalBytes: 0 },
+      framebufferEstimateBytes: 0,
       renderers: 0,
       geometries: 0,
       materials: 0,
@@ -222,4 +224,34 @@ test('orthographic inspection and helper resources reconstruct after context los
   expect((await diagnostics(page)).helperGeometries).toBe(0);
   expect((await diagnostics(page)).helperMaterials).toBe(0);
   expect((await diagnostics(page)).inspectionMaterials).toBe(0);
+});
+
+test('display-only DPR and pixel caps retain a bounded render target and release estimates', async ({
+  page,
+}) => {
+  await ready(page);
+  await page.evaluate(() =>
+    (window as unknown as EvaluationWindow).nativeEvaluation.resize(4000, 4000, 4),
+  );
+  expect(await diagnostics(page)).toMatchObject({
+    state: 'active',
+    drawingPixelRatio: 0.5,
+    framebufferEstimateBytes: 128_000_000,
+  });
+  expect(
+    await page.locator('#viewport canvas').evaluate((canvas) => ({
+      width: (canvas as HTMLCanvasElement).width,
+      height: (canvas as HTMLCanvasElement).height,
+    })),
+  ).toEqual({ width: 2000, height: 2000 });
+  await page.evaluate(() =>
+    (window as unknown as EvaluationWindow).nativeEvaluation.resize(640, 480, 1),
+  );
+  expect((await diagnostics(page)).state).toBe('active');
+  await test.info().attach('native-resource-estimates.json', {
+    body: Buffer.from(JSON.stringify({ realDevice: false, diagnostics: await diagnostics(page) })),
+    contentType: 'application/json',
+  });
+  await page.evaluate(() => (window as unknown as EvaluationWindow).nativeEvaluation.dispose());
+  expect((await diagnostics(page)).resourceEstimate.totalBytes).toBe(0);
 });

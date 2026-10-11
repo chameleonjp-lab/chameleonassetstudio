@@ -676,7 +676,9 @@ test('legacy copy confirmation, cancellation, quota retry and original recovery 
   await expect(page.getByRole('group', { name: '旧作品のコピー確認', exact: true })).toHaveCount(0);
   await choose.click();
   await page.getByRole('button', { name: '容量増加を確認してコピーを作成', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('保存容量');
+  const quotaAlert = page.getByRole('alert');
+  await expect(quotaAlert).toContainText('容量が不足');
+  await expect(quotaAlert).toContainText('[EDIT_STORAGE]');
   await expect(page.getByRole('heading', { name: 'Legacy retained', exact: true })).toHaveCount(0);
   await page.evaluate(() => Object.assign(window, { failLegacyCopy: false }));
   await page.getByRole('button', { name: '容量増加を確認してコピーを作成', exact: true }).click();
@@ -718,4 +720,75 @@ test('legacy copy confirmation, cancellation, quota retry and original recovery 
       trashed: false,
     },
   ]);
+});
+
+test('history guidance distinguishes commit budget from owned estimates without changing content', async ({
+  page,
+}) => {
+  await createBox(page);
+  const before = await snapshot(page);
+  const beforeRevision = await revision(page);
+  const history = page.getByRole('group', { name: 'このタブのUndo履歴と予算', exact: true });
+  await history.getByText('Undo履歴と予算を確認', { exact: true }).click();
+  await expect(history).toContainText('元に戻せる操作: 1 件 / やり直せる操作: 0 件');
+  await expect(history).toContainText('32 MiB');
+  await expect(history).toContainText('上のJSON上限とは別の値');
+  await expect(history).toContainText('Undo・Redo履歴は含みません');
+  expect(await revision(page)).toBe(beforeRevision);
+  expect((await snapshot(page)).project).toEqual(before.project);
+  await page.getByRole('button', { name: '元に戻す', exact: true }).click();
+  await expect(history).toContainText('元に戻せる操作: 0 件 / やり直せる操作: 1 件');
+  await page.getByRole('button', { name: 'やり直す', exact: true }).click();
+  await expect(history).toContainText('元に戻せる操作: 1 件 / やり直せる操作: 0 件');
+  const restored = (await snapshot(page)).project;
+  expect({ ...restored, revision: before.project.revision }).toEqual(before.project);
+  await history.getByText('Undo履歴と予算を確認', { exact: true }).click();
+  await page.getByRole('button', { name: '今すぐ保存', exact: true }).click();
+  await history.getByText('Undo履歴と予算を確認', { exact: true }).click();
+  await expect(history).toContainText('元に戻せる操作: 1 件 / やり直せる操作: 0 件');
+  await expect(history.getByRole('button')).toHaveCount(0);
+});
+
+test('locked hierarchy copy and deletion explain refusal without applying or dropping data', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await createBox(page);
+  const authoring = page.getByRole('region', { name: '3D制作', exact: true });
+  await authoring
+    .getByRole('combobox', { name: '制作オブジェクト', exact: true })
+    .selectOption({ index: 1 });
+  await authoring.getByText('部品の名前・位置・複製', { exact: true }).click();
+  await authoring.getByRole('button', { name: '部品を編集ロック', exact: true }).click();
+  const before = (await snapshot(page)).project;
+  expect(before.nodes[0].locked).toBe(true);
+  for (const operation of [
+    {
+      summary: '階層と依存情報を複製',
+      button: '部品と階層の複製内容を確認',
+      target: '階層の複製',
+      confirmation: '階層複製の確認',
+    },
+    {
+      summary: '選択した部品の削除',
+      button: '部品の削除内容を確認',
+      target: '部品の削除',
+      confirmation: '部品削除の確認',
+    },
+  ]) {
+    await authoring.getByText(operation.summary, { exact: true }).click();
+    const panel = authoring
+      .locator('details')
+      .filter({ has: page.locator('summary').filter({ hasText: operation.summary }) });
+    await panel.getByRole('button', { name: operation.button, exact: true }).click();
+    await expect(panel.getByRole('alert')).toContainText(operation.target);
+    await expect(panel.getByRole('alert')).toContainText(
+      '編集ロック中の部品または共有資源に影響します。',
+    );
+    await expect(panel.getByRole('alert')).toContainText('[EDIT_LOCKED]');
+    await expect(
+      panel.getByRole('region', { name: operation.confirmation, exact: true }),
+    ).toHaveCount(0);
+    expect((await snapshot(page)).project).toEqual(before);
+  }
 });

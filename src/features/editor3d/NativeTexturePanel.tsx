@@ -1,3 +1,5 @@
+import { formatNativeEditingFailure } from './editingFailure';
+import { guardNativeCompositionKey } from './keyboardSafety';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Project3D } from '../../core3d/model/project';
 import type { ProjectSession } from './projectSession';
@@ -18,7 +20,7 @@ type Props = {
   disabled: boolean;
   onChange: () => void;
 };
-const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
+const message = (error: unknown) => formatNativeEditingFailure(error, 'texture');
 
 /** Native image authoring is loaded on demand and never mounts the 2D editor. */
 export function NativeTexturePanel({ project, session, disabled, onChange }: Props) {
@@ -189,7 +191,7 @@ export function NativeTexturePanel({ project, session, disabled, onChange }: Pro
         }
       })
       .catch((error) => {
-        if (!abort.signal.aborted) setFailure(`画像を確認できません。${message(error)}`);
+        if (!abort.signal.aborted) setFailure(message(error));
       });
     return () => abort.abort();
   }, [
@@ -265,6 +267,9 @@ export function NativeTexturePanel({ project, session, disabled, onChange }: Pro
       onCompositionEnd={() => {
         composing.current = false;
       }}
+      onKeyDownCapture={(event) => {
+        guardNativeCompositionKey(event, composing.current);
+      }}
       onKeyDown={(event) => {
         if (event.key === 'Escape' && !event.nativeEvent.isComposing && !composing.current)
           controller.current?.abort();
@@ -314,11 +319,16 @@ export function NativeTexturePanel({ project, session, disabled, onChange }: Pro
         </p>
         <fieldset disabled={unavailable}>
           <legend>画像を取り込み・差し替え</legend>
+          <p id="native-2d-texture-handoff">
+            2Dで作った画像は、2D画面の「PNG
+            をダウンロード」で書き出し、この画面で選択してください。「画像を取り込み適用」で、選択中の3D材質へ一方向にコピーします。元の2Dアセットは変更しません。後から2Dを編集しても自動同期されないため、反映するにはPNGをもう一度書き出して取り込んでください。
+          </p>
           <label>
             baseColor画像
             <input
               type="file"
               accept="image/png,image/jpeg"
+              aria-describedby="native-2d-texture-handoff"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
           </label>

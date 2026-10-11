@@ -4,7 +4,8 @@ import { createProject, identityTransform, cloneProject, type Project3D } from '
 import { worldMatrix, multiplyMatrices } from '../model/coordinates';
 import { ProjectHistory } from '../commands/history';
 import { addBox } from '../commands/box';
-import { openProjectRepository } from '../storage/repository';
+import { rotationFromDegrees } from '../commands/objectEditing';
+import { hashBlob, openProjectRepository } from '../storage/repository';
 import { SaveQueue } from '../storage/saveQueue';
 import { exportStoredBackup, restoreBackupCopy } from '../backup/repositoryBackup';
 import { skinVertexToMeshLocal, inverseAffineMatrix } from './math';
@@ -14,6 +15,7 @@ import {
   extendSkinJoints,
   removeUnusedRigJoint,
   addRigJoint,
+  assignRigidPartToJoint,
   bindSkin,
   setSkinWeights,
   fitRigJoint,
@@ -397,6 +399,297 @@ describe('native rig authoring commands', () => {
       const final = await target.readSnapshot('restored-rig');
       expect(final.project.skins[0].weights[0].values).toEqual([0.5, 0.5]);
       await final.release();
+    } finally {
+      source.close();
+      target.close();
+    }
+  });
+});
+
+describe('explicit rigid-part bone assignment', () => {
+  function rigidFixture() {
+    const p = bound();
+    addBox(p, 'rigid');
+    return p;
+  }
+  function close(actual: number[], expected: number[]) {
+    actual.forEach((value, index) => expect(value).toBeCloseTo(expected[index], 9));
+  }
+  function animate(p: Project3D, nodeId: string) {
+    p.clips.push({
+      id: `motion-${nodeId}`,
+      name: 'Motion',
+      duration: 1,
+      loop: false,
+      tracks: [
+        {
+          nodeId,
+          property: 'translation',
+          interpolation: 'LINEAR',
+          keys: [
+            { time: 0, value: [0, 0, 0] },
+            { time: 1, value: [1, 2, 3] },
+          ],
+        },
+      ],
+    });
+  }
+
+  it('preserves rest world placement under transformed parents without altering existing smooth skin', () => {
+    const p = rigidFixture();
+    fitRigJoint(p, 'root', {
+      translation: [4, -3, 1],
+      rotation: rotationFromDegrees([20, 30, 40]),
+      scale: [2, 2, 2],
+    });
+    addRigJoint(p, 'old-parent', 'Old', null, {
+      translation: [-5, 2, 3],
+      rotation: rotationFromDegrees([-10, 15, 20]),
+      scale: [0.5, 0.5, 0.5],
+    });
+    const part = p.nodes.find((item) => item.id === 'rigid-node')!;
+    part.parentId = 'old-parent';
+    part.transform = {
+      translation: [1, 2, 3],
+      rotation: rotationFromDegrees([10, -20, 30]),
+      scale: [-2, 3, 4],
+    };
+    const before = cloneProject(p),
+      world = worldMatrix(p, part.id);
+    assignRigidPartToJoint(p, part.id, 'tip', 'keep-world');
+    expect(p.nodes.find((item) => item.id === part.id)!.parentId).toBe('tip');
+    close(worldMatrix(p, part.id), world);
+    expect(p.nodes.filter((item) => item.id !== part.id)).toEqual(
+      before.nodes.filter((item) => item.id !== part.id),
+    );
+    expect({ ...p, nodes: before.nodes }).toEqual(before);
+    expect(p.skins.some((value) => value.meshId === part.meshId)).toBe(false);
+    assignRigidPartToJoint(p, part.id, null, 'keep-world');
+    expect(p.nodes.find((item) => item.id === part.id)!.parentId).toBeNull();
+    close(worldMatrix(p, part.id), world);
+    expect({ ...p, nodes: before.nodes }).toEqual(before);
+  });
+
+  it('preserves explicit local values exactly on assignment and detach', () => {
+    const p = fixture();
+    p.nodes.find((item) => item.id === 'root')!.transform.translation = [4, 0, 0];
+    const original = structuredClone(p.nodes[0].transform);
+    assignRigidPartToJoint(p, 'box-node', 'tip', 'keep-local');
+    expect(p.nodes[0].transform).toEqual(original);
+    close(worldMatrix(p, 'box-node').slice(12, 15), [4, 1, 0]);
+    assignRigidPartToJoint(p, 'box-node', null, 'keep-local');
+    expect(p.nodes[0].transform).toEqual(original);
+    close(worldMatrix(p, 'box-node').slice(12, 15), [0, 0, 0]);
+    expect(p.skins).toEqual([]);
+  });
+
+  it('changes only the chosen instance, allowing an unrelated locked instance of shared geometry', () => {
+    const p = fixture();
+    p.nodes.push({
+      ...structuredClone(p.nodes[0]),
+      id: 'locked-instance',
+      locked: true,
+    });
+    const before = cloneProject(p);
+    assignRigidPartToJoint(p, 'box-node', 'tip', 'keep-world');
+    expect(p.nodes.find((item) => item.id === 'locked-instance')).toEqual(before.nodes.at(-1));
+    expect(p.meshes).toEqual(before.meshes);
+    expect(p.nodes[0].meshId).toBe(p.nodes.at(-1)!.meshId);
+  });
+
+  it('allows animated target bones and ancestors while preserving all existing clips and skin data', () => {
+    const p = rigidFixture();
+    animate(p, 'tip');
+    animate(p, 'root');
+    animate(p, 'box-node');
+    const before = cloneProject(p),
+      world = worldMatrix(p, 'rigid-node');
+    assignRigidPartToJoint(p, 'rigid-node', 'tip', 'keep-world');
+    close(worldMatrix(p, 'rigid-node'), world);
+    expect(p.clips).toEqual(before.clips);
+    expect(p.skins).toEqual(before.skins);
+    expect({ ...p, nodes: before.nodes }).toEqual(before);
+    // Once attached, those tracks are old inherited motion. Detach cannot silently retarget it.
+    unchanged(p, () => assignRigidPartToJoint(p, 'rigid-node', null, 'keep-world'));
+  });
+
+  it.each(['box-node', 'tip', 'root'])(
+    'rejects animation on the source or its old ancestor %s for either retention mode',
+    (animatedId) => {
+      const p = fixture();
+      assignRigidPartToJoint(p, 'box-node', 'tip', 'keep-local');
+      addRigJoint(p, 'destination', 'Destination', null, identityTransform());
+      animate(p, animatedId);
+      for (const mode of ['keep-world', 'keep-local'] as const) {
+        unchanged(p, () => assignRigidPartToJoint(p, 'box-node', 'destination', mode));
+        unchanged(p, () => assignRigidPartToJoint(p, 'box-node', null, mode));
+      }
+    },
+  );
+
+  it('rejects skinned source instances and mesh nodes participating as joints', () => {
+    const p = bound();
+    p.nodes.push({ ...structuredClone(p.nodes[0]), id: 'shared-skinned' });
+    unchanged(p, () => assignRigidPartToJoint(p, 'box-node', 'tip', 'keep-world'));
+    unchanged(p, () => assignRigidPartToJoint(p, 'shared-skinned', 'tip', 'keep-local'));
+    const jointMesh = rigidFixture();
+    jointMesh.skins[0].joints.push({
+      nodeId: 'rigid-node',
+      inverseBind: inverseAffineMatrix(worldMatrix(jointMesh, 'rigid-node')),
+    });
+    unchanged(jointMesh, () =>
+      assignRigidPartToJoint(jointMesh, 'rigid-node', 'tip', 'keep-world'),
+    );
+  });
+
+  it.each(['source', 'old-ancestor', 'target', 'target-ancestor'])(
+    'rejects an effectively locked %s atomically',
+    (target) => {
+      const p = fixture();
+      addRigJoint(p, 'old-parent', 'Old', null, identityTransform());
+      p.nodes[0].parentId = 'old-parent';
+      const id = {
+        source: 'box-node',
+        'old-ancestor': 'old-parent',
+        target: 'tip',
+        'target-ancestor': 'root',
+      }[target];
+      p.nodes.find((item) => item.id === id)!.locked = true;
+      for (const mode of ['keep-world', 'keep-local'] as const)
+        unchanged(p, () => assignRigidPartToJoint(p, 'box-node', 'tip', mode));
+    },
+  );
+
+  it('rejects missing IDs, nonmesh sources, mesh targets, self-parenting, nonleaf parts and invalid modes', () => {
+    const p = fixture();
+    addBox(p, 'other');
+    unchanged(p, () => assignRigidPartToJoint(p, 'missing', 'tip', 'keep-world'));
+    unchanged(p, () => assignRigidPartToJoint(p, 'box-node', 'missing', 'keep-world'));
+    unchanged(p, () => assignRigidPartToJoint(p, 'root', 'tip', 'keep-world'));
+    unchanged(p, () => assignRigidPartToJoint(p, 'box-node', 'other-node', 'keep-world'));
+    unchanged(p, () => assignRigidPartToJoint(p, 'box-node', 'box-node', 'keep-world'));
+    unchanged(p, () => assignRigidPartToJoint(p, 'box-node', 'tip', 'bad' as 'keep-world'));
+    addRigJoint(p, 'child', 'Child', 'box-node', identityTransform());
+    unchanged(p, () => assignRigidPartToJoint(p, 'box-node', 'tip', 'keep-world'));
+    unchanged(p, () => assignRigidPartToJoint(p, 'box-node', 'child', 'keep-local'));
+  });
+
+  it('rejects an already corrupt cyclic input before resolving any world matrices', () => {
+    const p = fixture();
+    p.nodes.find((item) => item.id === 'root')!.parentId = 'tip';
+    unchanged(p, () => assignRigidPartToJoint(p, 'box-node', 'tip', 'keep-world'));
+  });
+
+  it('rejects shear for keep-world while still allowing the explicit local option', () => {
+    const p = fixture();
+    p.nodes.find((item) => item.id === 'tip')!.transform = {
+      ...identityTransform(),
+      rotation: rotationFromDegrees([0, 0, 35]),
+      scale: [2, 1, 3],
+    };
+    unchanged(p, () => assignRigidPartToJoint(p, 'box-node', 'tip', 'keep-world'));
+    const local = structuredClone(p.nodes[0].transform);
+    assignRigidPartToJoint(p, 'box-node', 'tip', 'keep-local');
+    expect(p.nodes[0].transform).toEqual(local);
+    p.nodes[0].transform.rotation = rotationFromDegrees([0, 0, 25]);
+    unchanged(p, () => assignRigidPartToJoint(p, 'box-node', null, 'keep-world'));
+  });
+
+  it.each([0, 1e-50, 1e50, Infinity])(
+    'rejects non-renderable target scale %s in either retention mode',
+    (scale) => {
+      const p = fixture();
+      p.nodes.find((item) => item.id === 'tip')!.transform.scale = [scale, 1, 1];
+      unchanged(p, () => assignRigidPartToJoint(p, 'box-node', 'tip', 'keep-world'));
+      unchanged(p, () => assignRigidPartToJoint(p, 'box-node', 'tip', 'keep-local'));
+    },
+  );
+
+  it('does not let a large world X hide lost Y precision during keep-world assignment', () => {
+    const p = fixture();
+    p.nodes[0].transform.translation = [1e8, 0.001, 0];
+    p.nodes.find((item) => item.id === 'tip')!.transform.translation = [0, 1e14, 0];
+    unchanged(p, () => assignRigidPartToJoint(p, 'box-node', 'tip', 'keep-world'));
+  });
+
+  it('uses one history revision, rejects repeated no-ops and undoes animated-target assignment', () => {
+    const p = fixture();
+    animate(p, 'tip');
+    const history = new ProjectHistory(p),
+      before = history.project;
+    history.execute((candidate) =>
+      assignRigidPartToJoint(candidate, 'box-node', 'tip', 'keep-world'),
+    );
+    const assigned = history.project;
+    expect(history.revision).toBe(1);
+    for (const mode of ['keep-world', 'keep-local'] as const) {
+      expect(() =>
+        history.execute((candidate) => assignRigidPartToJoint(candidate, 'box-node', 'tip', mode)),
+      ).toThrow('すでに');
+      expect(history.project).toEqual(assigned);
+      expect(history.revision).toBe(1);
+    }
+    expect(() =>
+      history.execute((candidate) =>
+        assignRigidPartToJoint(candidate, 'box-node', null, 'keep-world'),
+      ),
+    ).toThrow('元に戻す');
+    expect(history.revision).toBe(1);
+    history.undo();
+    expect(history.project.nodes).toEqual(before.nodes);
+    history.redo();
+    expect(history.project.nodes).toEqual(assigned.nodes);
+    expect(history.project.clips).toEqual(before.clips);
+    expect(history.revision).toBe(3);
+    const rootPart = fixture();
+    unchanged(rootPart, () => assignRigidPartToJoint(rootPart, 'box-node', null, 'keep-world'));
+  });
+
+  it('retains sources and original bytes through save, independent backup restore and further reassignment', async () => {
+    const source = await openProjectRepository({ indexedDB: new IDBFactory() });
+    const target = await openProjectRepository({ indexedDB: new IDBFactory() });
+    try {
+      const p = rigidFixture(),
+        originalBytes = new Uint8Array([3, 1, 4, 1, 5, 9]),
+        blobId = await hashBlob(originalBytes);
+      p.blobIds.push(blobId);
+      p.sources.push({
+        id: 'original-source',
+        blobId,
+        mimeType: 'application/octet-stream',
+        rights: { declared: 'Self-authored test source', embedded: '' },
+      });
+      const before = cloneProject(p);
+      await source.create(p, new Map([[blobId, originalBytes]]), 'writer');
+      const history = new ProjectHistory(p, undefined, true);
+      history.execute((candidate) =>
+        assignRigidPartToJoint(candidate, 'rigid-node', 'tip', 'keep-world'),
+      );
+      const lease = await source.acquireWriter(p.id, 'writer');
+      await new SaveQueue(source, lease, 0).save(
+        history.project,
+        new Map(),
+        history.historyBlobIds,
+      );
+      const archive = await exportStoredBackup(source, p.id);
+      await restoreBackupCopy(target, archive, 'restored-rigid', 'target-writer');
+      const restored = await target.readSnapshot('restored-rigid');
+      try {
+        expect(restored.project.nodes).toEqual(history.project.nodes);
+        expect(restored.project.skins).toEqual(before.skins);
+        expect(restored.project.meshes).toEqual(before.meshes);
+        expect(restored.project.sources).toEqual(before.sources);
+        expect(restored.project.blobIds).toEqual(before.blobIds);
+        expect(restored.blobs.get(blobId)).toEqual(originalBytes);
+        const resumed = new ProjectHistory(restored.project, undefined, true);
+        resumed.execute((candidate) =>
+          assignRigidPartToJoint(candidate, 'rigid-node', null, 'keep-world'),
+        );
+        close(worldMatrix(resumed.project, 'rigid-node'), worldMatrix(before, 'rigid-node'));
+        expect(resumed.project.skins).toEqual(before.skins);
+      } finally {
+        await restored.release();
+      }
     } finally {
       source.close();
       target.close();

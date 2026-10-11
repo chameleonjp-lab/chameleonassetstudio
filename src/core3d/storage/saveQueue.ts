@@ -1,3 +1,5 @@
+import { reserveResourceBytes } from '../profile/resourceLedger';
+import { estimateCanonicalBytes, estimateBinaryCopyBytes } from '../profile/resourceEstimates';
 import { cloneProject, type Project3D } from '../model/project';
 import type {
   BlobBytes,
@@ -45,39 +47,51 @@ export class SaveQueue {
   }
 
   save(project: Project3D, blobs: BlobBytes, history?: HistoryReferences): Promise<CommitResult> {
-    const snapshot = cloneProject(project);
-    if (snapshot.id !== this.lease.projectId)
-      throw new Error('Save queue belongs to a different project');
-    // Capture data at request time, before a preceding save or hash computation can yield.
-    const bytes = new Map([...blobs].map(([id, data]) => [id, new Uint8Array(data)]));
-    const refs = history && {
-      revision: history.revision,
-      undoBlobIds: [...history.undoBlobIds],
-      redoBlobIds: [...history.redoBlobIds],
-    };
-    this.noteEdited(Math.max(snapshot.revision, this.editorRevision));
-    const save = this.tail.then(async () => {
-      const stage = await this.repository.importStaged(snapshot, bytes);
-      try {
-        const result = await this.repository.commit(stage, {
-          expectedRevision: this.durableRevision,
-          lease: this.lease,
-          history: refs,
-        });
-        this.durableRevision = result.revision;
-        return result;
-      } catch (error) {
-        await this.repository.discardStaged(stage);
-        throw error;
-      }
-    });
-    this.lastSave = save;
-    // Failure leaves the revision unchanged but does not poison the local queue.
-    this.tail = save.then(
-      () => undefined,
-      () => undefined,
+    // Reserve before any detached project/binary copy, including queued saves.
+    const release = reserveResourceBytes(
+      'storage',
+      estimateCanonicalBytes(project) * 3 + estimateBinaryCopyBytes(blobs, 3),
     );
-    return save;
+    try {
+      const snapshot = cloneProject(project);
+      if (snapshot.id !== this.lease.projectId)
+        throw new Error('Save queue belongs to a different project');
+      // Capture data at request time, before a preceding save or hash computation can yield.
+      const bytes = new Map([...blobs].map(([id, data]) => [id, new Uint8Array(data)]));
+      const refs = history && {
+        revision: history.revision,
+        undoBlobIds: [...history.undoBlobIds],
+        redoBlobIds: [...history.redoBlobIds],
+      };
+      this.noteEdited(Math.max(snapshot.revision, this.editorRevision));
+      const save = this.tail
+        .then(async () => {
+          const stage = await this.repository.importStaged(snapshot, bytes);
+          try {
+            const result = await this.repository.commit(stage, {
+              expectedRevision: this.durableRevision,
+              lease: this.lease,
+              history: refs,
+            });
+            this.durableRevision = result.revision;
+            return result;
+          } catch (error) {
+            await this.repository.discardStaged(stage);
+            throw error;
+          }
+        })
+        .finally(release);
+      this.lastSave = save;
+      // Failure leaves the revision unchanged but does not poison the local queue.
+      this.tail = save.then(
+        () => undefined,
+        () => undefined,
+      );
+      return save;
+    } catch (error) {
+      release();
+      throw error;
+    }
   }
 
   async flush(): Promise<void> {

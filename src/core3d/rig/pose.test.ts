@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { createProject, identityTransform, cloneProject } from '../model/project';
 import { addBox } from '../commands/box';
 import { addRigJoint, bindSkin } from './authoring';
-import { evaluateRigPose, evaluateTransformPose, prepareTransformPose } from './pose';
+import {
+  evaluateRigPose,
+  evaluateTransformPose,
+  prepareTransformPose,
+  rigPoseTargetIds,
+} from './pose';
+import { worldMatrix, transformPoint } from '../model/coordinates';
 function fixture() {
   const p = createProject('pose');
   addBox(p, 'box');
@@ -200,4 +206,55 @@ it('prepared animation falls back near Float32 limits instead of trusting source
   ];
   expect(() => evaluateTransformPose(p, updates)).toThrow('Float32');
   expect(() => prepareTransformPose(p)(updates)).toThrow('Float32');
+});
+
+describe('rigid-only guide pose eligibility', () => {
+  function rigid() {
+    const project = createProject('rigid-pose');
+    addBox(project, 'part');
+    addRigJoint(project, 'guide', 'Guide', null, identityTransform());
+    addRigJoint(project, 'tip', 'Tip', 'guide', { ...identityTransform(), translation: [0, 1, 0] });
+    project.nodes[0].parentId = 'tip';
+    return project;
+  }
+  it('allows meshless ancestors of rigid parts while preserving original geometry/rest', () => {
+    const project = rigid(),
+      before = cloneProject(project);
+    expect([...rigPoseTargetIds(project)]).toEqual(['tip', 'guide']);
+    const posed = evaluateRigPose(project, [
+      { nodeId: 'guide', transform: { ...identityTransform(), translation: [3, 0, 0] } },
+    ]);
+    expect(transformPoint(worldMatrix(posed, 'part-node'), [0, 0, 0])).toEqual([3, 1, 0]);
+    expect(posed.meshes).toEqual(before.meshes);
+    expect(posed.skins).toEqual([]);
+    expect(project).toEqual(before);
+  });
+  it('rejects an unrelated empty guide and a mesh target', () => {
+    const project = rigid();
+    addRigJoint(project, 'unused', 'Unused', null, identityTransform());
+    for (const nodeId of ['unused', 'part-node'])
+      expect(() =>
+        evaluateRigPose(project, [{ nodeId, transform: identityTransform() }]),
+      ).toThrow();
+  });
+  it('keeps descendant/ancestor locks and Float32 limits for rigid-only poses', () => {
+    const project = rigid(),
+      before = cloneProject(project);
+    expect(() =>
+      evaluateRigPose(project, [
+        { nodeId: 'guide', transform: { ...identityTransform(), translation: [1e39, 0, 0] } },
+      ]),
+    ).toThrow();
+    expect(project).toEqual(before);
+    project.nodes[0].locked = true;
+    expect(() =>
+      evaluateRigPose(project, [{ nodeId: 'guide', transform: identityTransform() }]),
+    ).toThrow();
+  });
+  it('does not grant eligibility merely because a group is ancestor of a smooth skin mesh', () => {
+    const project = fixture();
+    addRigJoint(project, 'nonpalette', 'Nonpalette', null, identityTransform());
+    project.nodes.find((node) => node.meshId)!.parentId = 'nonpalette';
+    expect(rigPoseTargetIds(project).has('nonpalette')).toBe(false);
+  });
 });

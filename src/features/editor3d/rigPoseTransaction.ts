@@ -129,6 +129,7 @@ export class RigPoseTransaction implements RigPoseBinding {
     }
   }
   cancel(reason = 'restに戻しました。') {
+    if (this.disposed) return;
     const project = this.options.getProject();
     const changed =
       this.updates.length > 0 ||

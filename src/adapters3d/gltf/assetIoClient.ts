@@ -22,7 +22,7 @@ export function startAssetIo(
     assertIoBudget(request.sidecar?.length ?? 0, P.jsonBytes, 'Sidecar');
   }
   const estimate =
-    request.kind === 'export'
+    request.kind !== 'import'
       ? request.snapshot.estimatedBytes
       : request.bytes.length * 6 + (request.sidecar?.length ?? 0) * 4;
   assertIoBudget(estimate, P.estimatedPeakBytes, 'Worker peak estimate');

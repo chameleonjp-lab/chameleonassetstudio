@@ -1,12 +1,72 @@
-import { IDBFactory } from 'fake-indexeddb';
-import { describe, it, expect } from 'vitest';
+import { IDBDatabase as FakeIDBDatabase, IDBFactory } from 'fake-indexeddb';
+import { describe, it, expect, vi } from 'vitest';
 import { smallProject } from '../fixtures/project';
 import { ProjectHistory } from '../commands/history';
 import { openProjectRepository, hashBlob } from '../storage/repository';
 import { SaveQueue } from '../storage/saveQueue';
+import { inTransaction, openStorageDatabase, requestResult, STORAGE_STORES } from '../storage/db';
+import { importBackup } from './backup';
 import { exportStoredBackup, restoreBackupCopy } from './repositoryBackup';
 
 describe('native project persistence and independent rescue', () => {
+  it('exports a source-backed saved project when every write transaction is rejected', async () => {
+    const factory = new IDBFactory();
+    const source = await openProjectRepository({ indexedDB: factory });
+    const target = await openProjectRepository({ indexedDB: new IDBFactory() });
+    const db = await openStorageDatabase({ indexedDB: factory });
+    const project = smallProject();
+    const bytes = new Uint8Array([2, 3, 5, 7]);
+    const blobId = await hashBlob(bytes);
+    project.blobIds = [blobId];
+    project.sources = [
+      {
+        id: 'original',
+        blobId,
+        mimeType: 'application/octet-stream',
+        rights: { declared: 'CC0', embedded: '' },
+      },
+    ];
+    await source.create(project, new Map([[blobId, bytes]]), 'owner');
+    const records = () =>
+      inTransaction(db, STORAGE_STORES, 'readonly', (transaction) =>
+        Promise.all(
+          STORAGE_STORES.map((store) => requestResult(transaction.objectStore(store).getAll())),
+        ),
+      );
+    const before = await records();
+    const original = FakeIDBDatabase.prototype.transaction;
+    const fail = vi.spyOn(FakeIDBDatabase.prototype, 'transaction').mockImplementation(function (
+      this: IDBDatabase,
+      names,
+      mode,
+      options,
+    ) {
+      if (mode === 'readwrite') throw new DOMException('No writes available', 'QuotaExceededError');
+      return original.call(this, names, mode, options);
+    });
+    try {
+      await expect(source.readSnapshot(project.id)).rejects.toMatchObject({
+        name: 'QuotaExceededError',
+      });
+      const archive = await exportStoredBackup(source, project.id);
+      const decoded = await importBackup(archive);
+      expect(decoded.project).toEqual(project);
+      expect(decoded.blobs.get(blobId)).toEqual(bytes);
+      expect(await records()).toEqual(before);
+      fail.mockRestore();
+      await restoreBackupCopy(target, archive, 'quota-rescue', 'new-owner');
+      const restored = await target.captureBackupSnapshot('quota-rescue');
+      expect(restored.project.meshes).toEqual(project.meshes);
+      expect(restored.project.skins).toEqual(project.skins);
+      expect(restored.project.clips).toEqual(project.clips);
+      expect(restored.blobs.get(blobId)).toEqual(bytes);
+    } finally {
+      fail.mockRestore();
+      db.close();
+      target.close();
+      source.close();
+    }
+  });
   it('creates, edits, saves, backs up, restores into unrelated storage, and edits again', async () => {
     const source = await openProjectRepository({ indexedDB: new IDBFactory() });
     const target = await openProjectRepository({ indexedDB: new IDBFactory() });

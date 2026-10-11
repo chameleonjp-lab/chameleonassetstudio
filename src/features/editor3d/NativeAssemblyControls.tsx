@@ -1,3 +1,4 @@
+import { formatNativeEditingFailure } from './editingFailure';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { Project3D, Vec3 } from '../../core3d/model/project';
 import type { NativeEditBinding } from '../../core3d/ports/editPort';
@@ -113,7 +114,7 @@ export function NativeAssemblyControls({
       setError('');
       setNotice('適用しました。元に戻す操作で取り消せます。次の操作前に対象を確認してください。');
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(formatNativeEditingFailure(cause, 'assembly'));
       setNotice('');
     }
   }

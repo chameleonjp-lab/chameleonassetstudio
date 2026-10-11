@@ -94,6 +94,20 @@ const sizes: Record<number, number> = { 5120: 1, 5121: 1, 5122: 2, 5123: 2, 5125
 function requireValue(value: unknown, message: string): asserts value {
   if (!value) throw new Error(message);
 }
+function validateExtensionDeclarations(
+  value: unknown,
+  field: 'extensionsUsed' | 'extensionsRequired',
+): void {
+  if (value === undefined) return;
+  const invalid = 'Invalid ' + field + ' declarations';
+  requireValue(Array.isArray(value) && value.length > 0, invalid);
+  assertIoBudget(value.length, P.extensionDeclarations, field + ' declarations');
+  for (const [i, name] of value.entries()) {
+    requireValue(typeof name === 'string' && name.length > 0, invalid);
+    assertIoBudget(name.length, P.extensionNameChars, field + ' name');
+    requireValue(value.indexOf(name) === i, invalid);
+  }
+}
 function index(value: number | undefined, length: number, label: string) {
   requireValue(
     Number.isSafeInteger(value) && value! >= 0 && value! < length,
@@ -158,7 +172,9 @@ export function preflightGlb(input: Uint8Array): Preflight {
       (!json.asset.minVersion || json.asset.minVersion === '2.0'),
     'Unsupported glTF version',
   );
-  requireValue(!json.extensionsRequired?.length, 'Unsupported required extension');
+  validateExtensionDeclarations(json.extensionsUsed, 'extensionsUsed');
+  validateExtensionDeclarations(json.extensionsRequired, 'extensionsRequired');
+  requireValue(json.extensionsRequired === undefined, 'Unsupported required extension');
   requireValue((json.buffers?.length ?? 0) <= 1, 'Only embedded GLB buffer supported');
   for (const b of json.buffers ?? [])
     requireValue(

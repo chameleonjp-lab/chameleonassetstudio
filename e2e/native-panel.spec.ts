@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { PanelHarness } from './fixtures/native-panel';
 const state = (page: Page) =>
   page.evaluate(() => (window as unknown as { panelHarness: PanelHarness }).panelHarness.ports);
@@ -50,6 +50,8 @@ test('a throwing synchronization port is disposed and leaves a retry control', a
   await page.getByRole('button', { name: 'Toggle sync failure' }).click();
   await page.getByRole('button', { name: 'Increment and capture in layout' }).click();
   await expect(page.getByRole('button', { name: '3D表示を再試行' })).toBeVisible();
+  await expect(page.locator('.native-viewport-panel')).not.toContainText('Fixture sync failed');
+  await expect(page.locator('.native-viewport-reason').first()).toContainText('原因を特定できず');
   expect((await state(page))[0].disposed).toBe(true);
   await page.getByRole('button', { name: 'Toggle sync failure' }).click();
   await page.getByRole('button', { name: '3D表示を再試行' }).click();
@@ -306,4 +308,97 @@ test('animation binding and delayed PNG preserve canonical captures and reject i
       (window as unknown as { panelHarness: PanelHarness }).panelHarness.previewAnimation(),
     ),
   ).toMatchObject({ ok: true });
+});
+
+// Synthetic dispatch proves cancellation/propagation, not physical IME ordering or trusted clicks.
+async function cameraCompositionKey(
+  target: Locator,
+  key: 'Enter' | 'Escape',
+  signal: 'native' | '229' | 'none',
+) {
+  return target.evaluate(
+    (element, { key, signal }) => {
+      const event = new KeyboardEvent('keydown', {
+        key,
+        bubbles: true,
+        cancelable: true,
+        isComposing: signal === 'native',
+      });
+      if (signal === '229') Object.defineProperty(event, 'keyCode', { value: 229 });
+      let reachedDocument = false;
+      const observe = () => {
+        reachedDocument = true;
+      };
+      document.addEventListener('keydown', observe);
+      try {
+        element.dispatchEvent(event);
+        return { prevented: event.defaultPrevented, reachedDocument };
+      } finally {
+        document.removeEventListener('keydown', observe);
+      }
+    },
+    { key, signal },
+  );
+}
+
+test('numeric camera separates final composition keys from ordinary button activation', async ({
+  page,
+}) => {
+  await page.goto('/e2e/fixtures/native-panel.html?editing');
+  await expect(page.getByRole('button', { name: 'PNG画像を保存', exact: true })).toBeEnabled();
+  await page.getByText('カメラ・表示の詳細設定', { exact: true }).click();
+  const x = page.getByLabel('カメラ位置 X', { exact: true });
+  const apply = page.getByRole('button', { name: '数値カメラを適用', exact: true });
+  await x.fill('4');
+  const before = await page.evaluate(
+    () => (window as unknown as { panelHarness: PanelHarness }).panelHarness.editing,
+  );
+  expect(before).not.toBeNull();
+  const beforePort = (await state(page))[0];
+  await apply.focus();
+  for (const signal of ['native', '229'] as const) {
+    expect(await cameraCompositionKey(apply, 'Enter', signal)).toEqual({
+      prevented: true,
+      reachedDocument: false,
+    });
+    expect(await cameraCompositionKey(apply, 'Escape', signal)).toEqual({
+      prevented: false,
+      reachedDocument: false,
+    });
+    await expect(apply).toBeFocused();
+    expect((await state(page))[0].cameraWrites).toBe(beforePort.cameraWrites);
+  }
+  await x.dispatchEvent('compositionstart');
+  expect(await cameraCompositionKey(apply, 'Enter', 'none')).toEqual({
+    prevented: true,
+    reachedDocument: false,
+  });
+  expect(await cameraCompositionKey(x, 'Enter', 'none')).toEqual({
+    prevented: false,
+    reachedDocument: false,
+  });
+  expect(await cameraCompositionKey(x, 'Escape', 'none')).toEqual({
+    prevented: false,
+    reachedDocument: false,
+  });
+  await x.dispatchEvent('compositionend');
+  expect(await cameraCompositionKey(apply, 'Escape', 'none')).toEqual({
+    prevented: false,
+    reachedDocument: true,
+  });
+  expect(await cameraCompositionKey(apply, 'Enter', 'none')).toEqual({
+    prevented: false,
+    reachedDocument: true,
+  });
+  await apply.press('Enter');
+  await expect
+    .poll(async () => (await state(page))[0].cameraWrites)
+    .toBe(beforePort.cameraWrites + 1);
+  await expect(apply).toBeFocused();
+  expect((await state(page))[0].revision).toBe(beforePort.revision);
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { panelHarness: PanelHarness }).panelHarness.editing,
+    ),
+  ).toEqual(before);
 });

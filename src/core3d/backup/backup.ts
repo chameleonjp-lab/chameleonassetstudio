@@ -1,3 +1,5 @@
+import { reserveResourceBytes } from '../profile/resourceLedger';
+import { estimateCanonicalBytes, estimateJsonParseBytes } from '../profile/resourceEstimates';
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import {
   validateStoredProject,
@@ -32,8 +34,34 @@ async function digest(bytes: Uint8Array): Promise<string> {
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
-/** Resident, renderer/network-free rescue encoder; callers retain the original on every failure. */
+/** Resource admission precedes project/blob copies; rejection preserves all caller-owned sources. */
 export async function exportBackup(
+  project: StoredProject3D,
+  source: ReadonlyMap<string, Uint8Array>,
+): Promise<Uint8Array> {
+  validateStoredProject(project);
+  let blobBytes = 0;
+  for (const id of project.blobIds) {
+    const bytes = source.get(id);
+    assert(bytes, `Missing blob: ${id}`);
+    blobBytes += bytes.length;
+    assert(
+      Number.isSafeInteger(blobBytes) && blobBytes <= BACKUP_LIMITS.archiveBytes,
+      'Backup exceeds archive profile',
+    );
+  }
+  const release = reserveResourceBytes(
+    'storage',
+    estimateCanonicalBytes(project) * 3 + blobBytes * 3 + 65536,
+  );
+  try {
+    return await encodeBackup(project, source);
+  } finally {
+    release();
+  }
+}
+/** Resident, renderer/network-free rescue encoder; callers retain the original on every failure. */
+async function encodeBackup(
   project: StoredProject3D,
   source: ReadonlyMap<string, Uint8Array>,
 ): Promise<Uint8Array> {
@@ -81,6 +109,15 @@ export async function exportBackup(
 /** Native stored-ZIP profile only. External GLB and legacy 2D formats are separate paths. */
 export async function importBackup(input: Uint8Array): Promise<ProjectBackup> {
   assert(input.length <= BACKUP_LIMITS.archiveBytes, 'Backup exceeds archive profile');
+  const releases = [reserveResourceBytes('storage', input.length * 3)];
+  try {
+    return await decodeBackup(input, releases);
+  } finally {
+    for (const release of releases) release();
+  }
+}
+async function decodeBackup(input: Uint8Array, releases: (() => void)[]): Promise<ProjectBackup> {
+  assert(input.length <= BACKUP_LIMITS.archiveBytes, 'Backup exceeds archive profile');
   const bytes = input.slice();
   let entries = 0,
     expanded = 0;
@@ -103,13 +140,18 @@ export async function importBackup(input: Uint8Array): Promise<ProjectBackup> {
         Number.isSafeInteger(expanded) && expanded <= BACKUP_LIMITS.archiveBytes,
         'Backup payload exceeds profile',
       );
-      if (file.name.endsWith('.json'))
+      if (file.name.endsWith('.json')) {
         assert(file.originalSize <= BACKUP_LIMITS.jsonBytes, 'Backup JSON exceeds profile');
+        // UTF-16 decode allowance is separate from parsed structure and source ZIP bytes.
+        releases.push(reserveResourceBytes('storage', file.originalSize * 2));
+      }
       return true;
     },
   });
   assert(files['manifest.json'] && files['project.json'], 'Incomplete backup');
-  const manifest = JSON.parse(strFromU8(files['manifest.json'])) as Manifest;
+  const manifestText = strFromU8(files['manifest.json']);
+  releases.push(reserveResourceBytes('storage', estimateJsonParseBytes(manifestText) * 2));
+  const manifest = JSON.parse(manifestText) as Manifest;
   assert(
     manifest &&
       typeof manifest === 'object' &&
@@ -123,7 +165,9 @@ export async function importBackup(input: Uint8Array): Promise<ProjectBackup> {
   );
   assert(Array.isArray(manifest.blobs), 'Invalid blob manifest');
   assert((await digest(files['project.json'])) === manifest.projectHash, 'Project hash mismatch');
-  const project: unknown = JSON.parse(strFromU8(files['project.json']));
+  const projectText = strFromU8(files['project.json']);
+  releases.push(reserveResourceBytes('storage', estimateJsonParseBytes(projectText) * 2));
+  const project: unknown = JSON.parse(projectText);
   validateStoredProject(project);
   assert(manifest.version === project.schemaVersion, 'Backup/project version mismatch');
   const blobs = new Map<string, Uint8Array>();

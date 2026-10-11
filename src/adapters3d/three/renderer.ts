@@ -1,3 +1,9 @@
+import { reserveResourceBytes, resourceLedgerSnapshot } from '../../core3d/profile/resourceLedger';
+import {
+  NATIVE_RENDER_PROFILE,
+  estimateNativeGeometryBytes,
+  renderTargetBudget,
+} from '../../core3d/profile/renderProfile';
 import type { NativeViewportResult } from '../../core3d/ports/renderPort';
 import type { AnimationBinding } from '../../core3d/ports/animationPort';
 import type { RigPoseBinding } from '../../core3d/ports/rigPosePort';
@@ -115,6 +121,7 @@ const defaultViewOptions = (): NativeViewOptions => ({
   background: 'dark',
   lighting: 'studio',
   grid: false,
+  ground: false,
   axes: false,
   bounds: false,
 });
@@ -130,14 +137,68 @@ const boundsRadius = (bounds: Box3) =>
       64,
   );
 
+/** Bounded display resource, never added to the canonical graph or its picking map. */
+class InspectionGround extends Mesh<BufferGeometry, MeshBasicMaterial> {
+  private releaseEstimate: (() => void) | null;
+
+  constructor(size: number, background: NativeViewOptions['background']) {
+    // Fixed four vertices/two triangles, including conservative object/material + CPU/GPU
+    // allowance. Keep the old owner's ticket during replacement construction.
+    const releaseEstimate = reserveResourceBytes('geometry', 16 * 1024);
+    let geometry: BufferGeometry | undefined;
+    let material: MeshBasicMaterial | undefined;
+    try {
+      geometry = new BufferGeometry();
+      const half = size / 2;
+      // Author XZ directly: rotating a huge XY plane introduces nonzero world Y rounding.
+      geometry.setAttribute(
+        'position',
+        new Float32BufferAttribute(
+          [-half, 0, -half, half, 0, -half, -half, 0, half, half, 0, half],
+          3,
+        ),
+      );
+      geometry.setIndex([0, 2, 1, 2, 3, 1]);
+      // Unlit translucent reference plane, unchanged by model shading/lighting presets.
+      // Do not occlude transparent model surfaces or fight coplanar grid/model fragments.
+      material = new MeshBasicMaterial({
+        color: background === 'dark' ? 0x8593a8 : 0x66758a,
+        transparent: true,
+        opacity: 0.22,
+        depthWrite: false,
+        side: DoubleSide,
+        forceSinglePass: true,
+        toneMapped: false,
+        polygonOffset: true,
+        polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1,
+      });
+      super(geometry, material);
+      this.name = 'Inspection ground';
+      this.renderOrder = -1;
+      this.releaseEstimate = releaseEstimate;
+    } catch (error) {
+      geometry?.dispose();
+      material?.dispose();
+      releaseEstimate();
+      throw error;
+    }
+  }
+
+  dispose(): void {
+    if (!this.releaseEstimate) return;
+    super.dispose();
+    this.geometry.dispose();
+    this.material.dispose();
+    this.releaseEstimate();
+    this.releaseEstimate = null;
+  }
+}
+
+type InspectionHelper = GridHelper | AxesHelper | Box3Helper | InspectionGround;
+
 /** Native-only subset of compact-evaluation-0; not an import/decoder security profile. */
-export const NATIVE_EVALUATION_LIMITS = Object.freeze({
-  nodes: 1000,
-  depth: 64,
-  vertices: 100_000,
-  triangles: 100_000,
-  expandedCorners: 300_000,
-});
+export const NATIVE_EVALUATION_LIMITS = NATIVE_RENDER_PROFILE;
 
 /** Native contract checking only: no file loading, decoding, URL access, or import limits. */
 export function checkNativeProfile(
@@ -296,6 +357,7 @@ export function buildNativeGraph(
   const skeletons: Skeleton[] = [];
   const skinnedMeshes: SkinnedMesh[] = [];
   let disposed = false;
+  let releaseGeometry = () => {};
   const graph: NativeGraph = {
     root,
     geometries,
@@ -313,16 +375,22 @@ export function buildNativeGraph(
       skeletons.forEach((skeleton) => skeleton.dispose());
       skeletons.length = 0;
       skinnedMeshes.length = 0;
-      geometries.forEach((geometry) => geometry.dispose());
+      geometries.forEach((geometry) => {
+        geometry.dispose();
+        for (const name of Object.keys(geometry.attributes)) geometry.deleteAttribute(name);
+        geometry.setIndex(null);
+      });
       materials.forEach((material) => material.dispose());
       graphTextures.forEach((texture) => {
         texture.dispose();
         texture.image.data = null;
       });
       textureReservations.splice(0).forEach((release) => release());
+      releaseGeometry();
     },
   };
   try {
+    releaseGeometry = reserveResourceBytes('geometry', estimateNativeGeometryBytes(project));
     const texturesById = new Map<string, { texture: DataTexture; transparent: boolean }>();
     function textureFor(id: string) {
       const existing = texturesById.get(id);
@@ -543,7 +611,7 @@ export class NativeViewport {
   private readonly ambient = new AmbientLight(0xffffff, 1.5);
   private readonly light = new DirectionalLight(0xffffff, 3);
   private inspectionMaterial: MeshStandardMaterial | MeshBasicMaterial | null = null;
-  private helpers: (GridHelper | AxesHelper | Box3Helper)[] = [];
+  private helpers: InspectionHelper[] = [];
   private disposedHelperGeometries = 0;
   private disposedHelperMaterials = 0;
   private disposedInspectionMaterials = 0;
@@ -595,6 +663,9 @@ export class NativeViewport {
   private width = 1;
   private height = 1;
   private pixelRatio = 1;
+  private releaseFramebuffer: (() => void) | null = null;
+  private framebufferBytes = 0;
+  private resizeBudgetFault: ViewportStatus | null = null;
   private fitPending = true;
   private resetPending = true;
   private clippingPending = true;
@@ -665,6 +736,9 @@ export class NativeViewport {
   get diagnostics() {
     return {
       state: this.status.state,
+      resourceEstimate: resourceLedgerSnapshot(),
+      framebufferEstimateBytes: this.framebufferBytes,
+      drawingPixelRatio: this.pixelRatio,
       projectId: this.snapshot?.id ?? null,
       revision: this.snapshot?.revision ?? null,
       renderers: this.renderer ? 1 : 0,
@@ -1153,8 +1227,14 @@ export class NativeViewport {
     const nextHeight = height ?? bounds.height;
     const nextRatio = pixelRatio ?? this.document.defaultView?.devicePixelRatio ?? 1;
     if (![nextWidth, nextHeight, nextRatio].every(Number.isFinite)) return;
-    const widthValue = Math.max(1, Math.floor(nextWidth));
-    const heightValue = Math.max(1, Math.floor(nextHeight));
+    let target: ReturnType<typeof renderTargetBudget>;
+    try {
+      target = renderTargetBudget(nextWidth, nextHeight, nextRatio);
+    } catch {
+      return;
+    }
+    const widthValue = target.cssWidth;
+    const heightValue = target.cssHeight;
     const projection = this.camera.clone();
     this.updateProjection(projection, widthValue / heightValue);
     if (
@@ -1164,13 +1244,63 @@ export class NativeViewport {
       ].every(float32Finite)
     )
       return;
+    if (
+      widthValue === this.width &&
+      heightValue === this.height &&
+      target.pixelRatio === this.pixelRatio &&
+      this.renderer &&
+      this.releaseFramebuffer
+    ) {
+      if (this.resizeBudgetFault && this.fault === this.resizeBudgetFault) {
+        this.fault = null;
+        this.resizeBudgetFault = null;
+        this.syncActivity();
+        this.publish();
+      }
+      return;
+    }
+    let releaseNext: (() => void) | null = null;
+    try {
+      if (this.renderer) releaseNext = reserveResourceBytes('framebuffer', target.estimatedBytes);
+    } catch (error) {
+      this.fault = {
+        state: 'error',
+        reason: `Render target budget exceeded; project unchanged: ${String(error)}`,
+      };
+      this.resizeBudgetFault = this.fault;
+      this.publish();
+      return;
+    }
+    const previousRatio = this.pixelRatio;
     this.captureVersion++;
     this.width = widthValue;
     this.height = heightValue;
-    this.pixelRatio = Math.min(2, Math.max(0.5, nextRatio));
+    this.pixelRatio = target.pixelRatio;
     this.updateProjection();
-    this.renderer?.setPixelRatio(this.pixelRatio);
-    this.renderer?.setSize(this.width, this.height, false);
+    // Ordering avoids a temporary old-large-size/new-large-DPR allocation.
+    try {
+      if (this.pixelRatio <= previousRatio) {
+        this.renderer?.setPixelRatio(this.pixelRatio);
+        this.renderer?.setSize(this.width, this.height, false);
+      } else {
+        this.renderer?.setSize(this.width, this.height, false);
+        this.renderer?.setPixelRatio(this.pixelRatio);
+      }
+      this.releaseFramebuffer?.();
+      this.releaseFramebuffer = releaseNext;
+      this.framebufferBytes = this.renderer ? target.estimatedBytes : 0;
+      if (this.resizeBudgetFault && this.fault === this.resizeBudgetFault) {
+        this.fault = null;
+        this.resizeBudgetFault = null;
+        this.publish();
+      }
+    } catch (error) {
+      releaseNext?.();
+      this.fault = { state: 'error', reason: `Render target allocation failed: ${String(error)}` };
+      this.releaseRuntime();
+      this.publish();
+      return;
+    }
     this.requestRender();
   }
 
@@ -1239,17 +1369,19 @@ export class NativeViewport {
       !['material', 'solid', 'wireframe'].includes(options.shading) ||
       !['dark', 'light'].includes(options.background) ||
       !['studio', 'soft'].includes(options.lighting) ||
+      (options.ground !== undefined && typeof options.ground !== 'boolean') ||
       ![options.grid, options.axes, options.bounds].every((value) => typeof value === 'boolean')
     )
       return failure('Valid native shading, background, lighting and helper options are required.');
+    const normalized = { ...options, ground: options.ground ?? false };
     try {
-      this.applyInspection(options);
+      this.applyInspection(normalized);
     } catch (error) {
       return failure(
         `View construction failed: ${error instanceof Error ? error.message : 'unknown error'}`,
       );
     }
-    this.viewOptions = { ...options };
+    this.viewOptions = normalized;
     this.captureVersion++;
     this.requestRender();
     return { ok: true };
@@ -1506,6 +1638,17 @@ export class NativeViewport {
     if (!result.ok) throw new Error(result.reason);
   }
 
+  /** Confirm a draw of this exact fitted runtime before enabling an import review. */
+  renderInspectionFrame(): NativeViewportResult {
+    if (!this.canRender())
+      return failure('確認用の描画を実行できません。表示状態を確認してください。');
+    const generation = this.runtimeGeneration;
+    const drawn = this.renderNow();
+    if (!drawn || generation !== this.runtimeGeneration || !this.canRender())
+      return failure('確認用の描画を完了できませんでした。候補は保存していません。');
+    return { ok: true };
+  }
+
   setHidden(hidden: boolean): void {
     if (!this.disposed) {
       this.hidden = hidden;
@@ -1705,6 +1848,11 @@ export class NativeViewport {
     this.runtimeGeneration++;
     this.host.appendChild(canvas);
     try {
+      canvas.width = 1;
+      canvas.height = 1;
+      const target = renderTargetBudget(this.width, this.height, this.pixelRatio);
+      this.releaseFramebuffer = reserveResourceBytes('framebuffer', target.estimatedBytes);
+      this.framebufferBytes = target.estimatedBytes;
       const context = canvas.getContext('webgl2', { antialias: true });
       if (!context) {
         this.fault = {
@@ -1775,7 +1923,8 @@ export class NativeViewport {
     try {
       this.graph = buildNativeGraph(this.snapshot, this.textureSnapshot);
       this.scene.add(this.graph.root);
-      this.applyInspection();
+      // A new project resets inspection; do not allocate the previous project's helpers first.
+      this.applyInspection(this.resetPending ? defaultViewOptions() : this.viewOptions);
       try {
         this.rebuildGamePreview();
       } catch (error) {
@@ -1910,12 +2059,13 @@ export class NativeViewport {
   }
 
   private applyInspection(options = this.viewOptions): void {
-    const helpers: (GridHelper | AxesHelper | Box3Helper)[] = [];
+    const helpers: InspectionHelper[] = [];
     let material: MeshStandardMaterial | MeshBasicMaterial | null = null;
     try {
       if (this.graph) {
         const bounds = this.modelBounds();
         const size = Math.min(1e30, Math.max(1, boundsRadius(bounds) * 4));
+        if (options.ground) helpers.push(new InspectionGround(size, options.background));
         if (options.grid) {
           const grid = new GridHelper(
             size,
@@ -2028,6 +2178,9 @@ export class NativeViewport {
       this.renderer = null;
       this.disposedRenderers++;
     } else this.context?.getExtension('WEBGL_lose_context')?.loseContext();
+    this.releaseFramebuffer?.();
+    this.releaseFramebuffer = null;
+    this.framebufferBytes = 0;
     this.context = null;
     this.contextLost = false;
     this.element?.remove();

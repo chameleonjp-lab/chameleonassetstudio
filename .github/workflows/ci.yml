@@ -41,6 +41,7 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run build:app
+      - run: npm run consumer:build
       - name: Build isolated native viewport evaluation
         run: npx vite build --config tools/3d-evaluation/vite.config.ts
       - name: Build isolated native interaction evaluation
@@ -112,10 +113,18 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium webkit
+      - name: Check rescue, diagnostics and safe update in both browsers
+        run: npx playwright test e2e/native-recovery-product.spec.ts e2e/native-cross-domain-recovery.spec.ts e2e/native-library-product.spec.ts e2e/native-diagnostics-product.spec.ts --project=chromium --project=webkit-critical --output=test-results-native-recovery
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-native-recovery
       - name: Check native GLB product flow in both browsers
         run: npx playwright test e2e/native-asset-io-product.spec.ts --project=chromium --project=webkit-critical --output=test-results-native-asset-io
         env:
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-native-asset-io
+      - name: Check quality and independent consumer in both browsers
+        run: npx playwright test e2e/native-quality-product.spec.ts e2e/native-consumer.spec.ts --project=chromium --project=webkit-critical --output=test-results-native-consumer
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-native-consumer
       - name: Check isolated native interaction in both browsers
         run: npx playwright test e2e/native-transform-evaluation.spec.ts --project=chromium --project=webkit-critical --output=test-results-native-interaction
         env:
@@ -153,6 +162,10 @@ jobs:
           path: |
             playwright-report-native-asset-io/
             test-results-native-asset-io/
+            playwright-report-native-consumer/
+            playwright-report-native-recovery/
+            test-results-native-consumer/
+            test-results-native-recovery/
             playwright-report-native-interaction/
             test-results-native-interaction/
             playwright-report-native-acceptance/

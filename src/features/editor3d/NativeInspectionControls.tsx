@@ -1,3 +1,5 @@
+import { guardNativeCompositionKey } from './keyboardSafety';
+import { formatNativeEditingFailure } from './editingFailure';
 import { useId, useRef, useState } from 'react';
 import type { Project3D, Vec3 } from '../../core3d/model/project';
 import type { NativeEditBinding } from '../../core3d/ports/editPort';
@@ -33,6 +35,7 @@ const defaultOptions: NativeViewOptions = {
   background: 'dark',
   lighting: 'studio',
   grid: false,
+  ground: false,
   axes: false,
   bounds: false,
 };
@@ -83,7 +86,7 @@ export function NativeInspectionControls({
       try {
         operation(port);
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : String(cause));
+        setError(formatNativeEditingFailure(cause, 'inspection'));
       }
     });
   }
@@ -221,6 +224,9 @@ export function NativeInspectionControls({
         onCompositionEnd={() => {
           composing.current = false;
         }}
+        onKeyDownCapture={(event) => {
+          guardNativeCompositionKey(event, composing.current);
+        }}
       >
         <legend>数値カメラ</legend>
         <p>
@@ -314,6 +320,7 @@ export function NativeInspectionControls({
         {(
           [
             ['grid', 'グリッド'],
+            ['ground', '地面（Y=0）'],
             ['axes', '座標軸'],
             ['bounds', '全体の境界'],
           ] as const
@@ -328,7 +335,8 @@ export function NativeInspectionControls({
           </label>
         ))}
         <p>
-          ワイヤーフレームの線は見やすさを保つため照明の影響を受けません。PNGには選んだ背景・描画モードと、表示中の補助線が含まれます。材質・単色表示には照明も反映します。補助線なしの画像は上の3項目をすべてオフにして保存してください。編集データには補助線を追加しません。
+          ワイヤーフレームの線は見やすさを保つため照明の影響を受けません。PNGには選んだ背景・描画モードと、表示中の補助線が含まれます。材質・単色表示には照明も反映します。補助表示なしの画像は上の4項目をすべてオフにして保存してください。地面はY=0の表示専用平面で、モデルの足元を自動で移動する機能ではありません。編集データとGLB
+          geometryには補助表示を追加しません。
         </p>
       </fieldset>
       {error && <p role="alert">表示設定を適用できませんでした。{error}</p>}

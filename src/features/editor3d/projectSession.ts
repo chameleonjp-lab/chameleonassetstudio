@@ -66,64 +66,74 @@ export class ProjectSession {
     project: Project3D,
     private readonly blobs: Map<string, Uint8Array>,
     private readonly lease: WriterLease | null,
-    private readonly snapshot: SnapshotRead | null,
+    private snapshot: SnapshotRead | null,
     persisted: boolean,
   ) {
     this.projectId = project.id;
-    this.history = new ProjectHistory(project, undefined, persisted);
-    this.transforms = new TransformTransaction({
-      getProject: () => this.history.project,
-      getIdentity: () => ({ id: this.projectId, revision: this.history.revision }),
-      isReadOnly: () => !this.lease || this.conflict || this.closed,
-      commit: (updates, expected) =>
-        this.executeAuthoring((candidate) => {
-          for (const { id, transform } of updates) setNodeTransform(candidate, id, transform);
-        }, expected),
-    });
-    this.poses = new RigPoseTransaction({
-      getProject: () => this.history.project,
-      isReadOnly: () => !this.lease || this.conflict || this.closed,
-      editing: this.transforms,
-    });
-    this.animations = new AnimationTransaction({
-      getProject: () => this.history.project,
-      getRevision: () => this.history.revision,
-      isReadOnly: () => !this.lease || this.conflict || this.closed,
-      editing: this.transforms,
-      rig: this.poses,
-    });
-    this.autosave = lease
-      ? new ProjectAutosave(
-          new SaveQueue(
-            {
-              importStaged: (...args) => repository.importStaged(...args),
-              discardStaged: (...args) => repository.discardStaged(...args),
-              commit: async (...args) => {
-                try {
-                  return await repository.commit(...args);
-                } catch (error) {
-                  if (error instanceof StorageConflictError) {
-                    this.conflict = true;
-                    // Notify synchronously as soon as durable fencing establishes ownership loss.
-                    this.transforms.reconcile('writer ownership lost');
+    this.history = new ProjectHistory(project, undefined, persisted, { trackResources: true });
+    try {
+      this.transforms = new TransformTransaction({
+        getProject: () => this.history.project,
+        getIdentity: () => ({ id: this.projectId, revision: this.history.revision }),
+        isReadOnly: () => !this.lease || this.conflict || this.closed,
+        commit: (updates, expected) =>
+          this.executeAuthoring((candidate) => {
+            for (const { id, transform } of updates) setNodeTransform(candidate, id, transform);
+          }, expected),
+      });
+      this.poses = new RigPoseTransaction({
+        getProject: () => this.history.project,
+        isReadOnly: () => !this.lease || this.conflict || this.closed,
+        editing: this.transforms,
+      });
+      this.animations = new AnimationTransaction({
+        getProject: () => this.history.project,
+        getRevision: () => this.history.revision,
+        isReadOnly: () => !this.lease || this.conflict || this.closed,
+        editing: this.transforms,
+        rig: this.poses,
+      });
+      this.autosave = lease
+        ? new ProjectAutosave(
+            new SaveQueue(
+              {
+                importStaged: (...args) => repository.importStaged(...args),
+                discardStaged: (...args) => repository.discardStaged(...args),
+                commit: async (...args) => {
+                  try {
+                    return await repository.commit(...args);
+                  } catch (error) {
+                    if (error instanceof StorageConflictError) {
+                      this.conflict = true;
+                      // Notify synchronously as soon as durable fencing establishes ownership loss.
+                      this.transforms.reconcile('writer ownership lost');
+                    }
+                    throw error;
                   }
-                  throw error;
-                }
+                },
               },
-            },
-            lease,
-            persisted ? project.revision : null,
-            project.revision,
-          ),
-        )
-      : null;
-    if (!persisted) this.schedule();
+              lease,
+              persisted ? project.revision : null,
+              project.revision,
+            ),
+          )
+        : null;
+      if (!persisted) this.schedule();
+    } catch (error) {
+      this.history.dispose();
+      throw error;
+    }
   }
 
   static async create(repository: ProjectRepository, ownerId: string, name: string) {
     const project = createProject(crypto.randomUUID(), name);
     const lease = await repository.acquireWriter(project.id, ownerId);
-    return new ProjectSession(repository, ownerId, project, new Map(), lease, null, false);
+    try {
+      return new ProjectSession(repository, ownerId, project, new Map(), lease, null, false);
+    } catch (error) {
+      await repository.releaseWriter(lease).catch(() => undefined);
+      throw error;
+    }
   }
 
   static async open(repository: ProjectRepository, ownerId: string, projectId: string) {
@@ -142,9 +152,10 @@ export class ProjectSession {
     projectId: string,
     lease: WriterLease | null,
   ) {
+    let snapshot: SnapshotRead | null = null;
     try {
       // Read after acquiring ownership so a takeover never writes an earlier reader snapshot.
-      const snapshot = await repository.readSnapshot(projectId);
+      snapshot = await repository.readSnapshot(projectId);
       return new ProjectSession(
         repository,
         ownerId,
@@ -155,6 +166,7 @@ export class ProjectSession {
         true,
       );
     } catch (error) {
+      await snapshot?.release().catch(() => undefined);
       if (lease) await repository.releaseWriter(lease).catch(() => undefined);
       throw error;
     }
@@ -193,9 +205,11 @@ export class ProjectSession {
       this.history.acknowledgeSaved(this.projectId, persistedRevision);
     return {
       dirty: this.history.dirty,
+      closed: this.closed,
       readOnly: !this.lease || this.conflict || this.closed,
       canUndo: this.history.canUndo,
       canRedo: this.history.canRedo,
+      history: this.history.metadata,
       revision: this.history.revision,
       persistedRevision,
       status: save?.status ?? 'saved',
@@ -517,6 +531,9 @@ export class ProjectSession {
       if (this.state.dirty) throw new UnsavedProjectError();
       return;
     }
+    // Admission may have rejected the most recent autosave copy while canonical
+    // edits stayed resident. Recapture only that missing latest candidate on retry.
+    if (this.autosave!.state.needsReschedule) this.schedule();
     await this.autosave!.retry();
     // The getter reconciles only a durable acknowledgement, never a download.
     if (this.state.dirty) throw new UnsavedProjectError();
@@ -557,12 +574,16 @@ export class ProjectSession {
     return ProjectSession.read(this.repository, this.ownerId, id, lease);
   }
 
-  async close() {
+  async close(mayRelease: () => boolean = () => true, onRelease?: () => void): Promise<boolean> {
+    if (!mayRelease()) return false;
+    if (this.closed) {
+      onRelease?.();
+      return true;
+    }
     this.binaryGeneration++;
     this.animations.cancel('session boundary');
     this.poses.cancel('session boundary');
     this.transforms.cancel('close');
-    if (this.closed) return;
     if (this.state.dirty && this.preservedRevision !== this.history.revision) {
       await this.save();
       if (this.state.dirty) throw new UnsavedProjectError();
@@ -575,6 +596,7 @@ export class ProjectSession {
         if (this.state.dirty && this.preservedRevision !== this.history.revision) throw error;
       }
     }
+    if (!mayRelease()) return false;
     if (this.lease) {
       await this.repository.releaseHistoryReferences(this.lease);
       try {
@@ -584,14 +606,26 @@ export class ProjectSession {
       }
     }
     await this.snapshot?.release();
+    // Ownership can expire during any awaited storage release. Keep rescue bytes resident.
+    if (!mayRelease()) return false;
+    // This guard may reject; leave rescue ownership and history intact if it does.
+    this.autosave?.releaseAfterClose(this.preservedRevision);
+    // Transfer rescue ownership synchronously before resident bytes can disappear.
+    onRelease?.();
     this.animations.dispose();
     this.poses.dispose();
     this.closed = true;
+    this.snapshot = null;
     this.blobs.clear();
     this.sourceStorageReleases.splice(0).forEach((release) => release());
     this.sourceStorageHighWater = 0;
     this.binaryStorageReleases.splice(0).forEach((release) => release());
     this.binaryStorageHighWater = 0;
     this.transforms.reconcile('closed');
+    // Cache lightweight lock/revision context while canonical data is still live.
+    // Late view cleanup (setBlocked/capture release) may still read edit.state.
+    void this.transforms.state;
+    this.history.dispose();
+    return true;
   }
 }

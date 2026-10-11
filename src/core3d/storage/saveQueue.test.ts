@@ -1,3 +1,8 @@
+import {
+  resourceLedgerSnapshot,
+  reserveResourceBytes,
+  RESOURCE_ESTIMATE_CAP_BYTES,
+} from '../profile/resourceLedger';
 import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createProject } from '../model/project';
@@ -129,4 +134,42 @@ describe('revision-aware 3D save queue', () => {
     expect(snapshot.project.name).toBe('Current');
     await snapshot.release();
   });
+});
+
+it('reserves queued storage copies before admission and releases after failure or success', async () => {
+  const baseline = resourceLedgerSnapshot();
+  const queue = new SaveQueue(repository, lease, 0);
+  const entered = deferred(),
+    reply = deferred();
+  const commit = repository.commit.bind(repository);
+  vi.spyOn(repository, 'commit').mockImplementationOnce(async (...args) => {
+    entered.resolve();
+    await reply.promise;
+    return commit(...args);
+  });
+  const saving = queue.save({ ...createProject('project'), revision: 1 }, new Map());
+  await entered.promise;
+  const during = resourceLedgerSnapshot();
+  expect(during.byCategory.storage).toBeGreaterThan(baseline.byCategory.storage);
+  const hold = reserveResourceBytes('geometry', RESOURCE_ESTIMATE_CAP_BYTES - during.totalBytes);
+  expect(() => queue.save({ ...createProject('project'), revision: 2 }, new Map())).toThrow();
+  expect(queue.persistedRevision).toBe(0);
+  hold();
+  reply.resolve();
+  await saving;
+  expect(resourceLedgerSnapshot()).toEqual(baseline);
+  vi.spyOn(repository, 'commit').mockRejectedValueOnce(new Error('quota'));
+  await expect(queue.save({ ...createProject('project'), revision: 2 }, new Map())).rejects.toThrow(
+    'quota',
+  );
+  expect(resourceLedgerSnapshot()).toEqual(baseline);
+  expect(queue.persistedRevision).toBe(1);
+  await queue.save({ ...createProject('project'), revision: 3 }, new Map());
+  expect(resourceLedgerSnapshot()).toEqual(baseline);
+});
+it('releases a rejected wrong-project snapshot reservation synchronously', () => {
+  const before = resourceLedgerSnapshot();
+  const queue = new SaveQueue(repository, lease, 0);
+  expect(() => queue.save(createProject('another'), new Map())).toThrow('different project');
+  expect(resourceLedgerSnapshot()).toEqual(before);
 });

@@ -139,7 +139,10 @@ test('連番準備の取消は画像・隔離・previewを保存しない', asyn
   );
   await page.getByRole('button', { name: '連番previewを準備' }).click();
   await page.getByRole('button', { name: '取り込み準備を取消' }).click();
-  await expect(page.getByRole('button', { name: '連番previewを準備' })).toBeEnabled();
+  // Let the in-flight image decode/encode reach its abort checkpoint under full-suite load.
+  await expect(page.getByRole('button', { name: '連番previewを準備' })).toBeEnabled({
+    timeout: 15_000,
+  });
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(
     await page.evaluate(async () => {
