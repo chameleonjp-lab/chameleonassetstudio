@@ -1,0 +1,534 @@
+{
+  "evidenceScope": "isolated-native-renderer",
+  "inputBoundary": "setProject-to-framesRendered-increment",
+  "productInputLatencyMeasured": false,
+  "physicalAcceptance": false,
+  "record": {
+    "schemaVersion": "native-performance-v1",
+    "source": {
+      "commitSha": "64cb319bb46a0526f282193dca7f292d08baee96",
+      "dirty": false
+    },
+    "fixture": {
+      "id": "F01",
+      "sha256": "7a0b4fe323ddf2c56fd823da0a98429783facc36bc6f854c71ad38865ce04b62"
+    },
+    "environment": {
+      "browser": {
+        "family": "webkit",
+        "version": null
+      },
+      "os": {
+        "family": "unknown",
+        "version": null
+      },
+      "device": {
+        "realDevice": "headless",
+        "category": "desktop",
+        "model": "unrecorded",
+        "thermalState": "unknown"
+      },
+      "viewport": {
+        "widthCssPx": 1280,
+        "heightCssPx": 720,
+        "devicePixelRatio": 2
+      }
+    },
+    "cacheState": "warm",
+    "startedAt": "2026-10-11T01:25:29.058Z",
+    "measurements": [
+      {
+        "metric": "input",
+        "operation": "numeric-commit",
+        "status": "measured",
+        "window": {
+          "startMs": 0,
+          "endMs": 60012,
+          "visibility": "foreground",
+          "freeze": "unknown"
+        },
+        "samples": [
+          {
+            "startMs": 0,
+            "durationMs": 56
+          },
+          {
+            "startMs": 604,
+            "durationMs": 48
+          },
+          {
+            "startMs": 1204,
+            "durationMs": 41
+          },
+          {
+            "startMs": 1804,
+            "durationMs": 41
+          },
+          {
+            "startMs": 2404,
+            "durationMs": 38
+          },
+          {
+            "startMs": 3004,
+            "durationMs": 43
+          },
+          {
+            "startMs": 3604,
+            "durationMs": 43
+          },
+          {
+            "startMs": 4204,
+            "durationMs": 43
+          },
+          {
+            "startMs": 4804,
+            "durationMs": 42
+          },
+          {
+            "startMs": 5404,
+            "durationMs": 40
+          },
+          {
+            "startMs": 6004,
+            "durationMs": 41
+          },
+          {
+            "startMs": 6604,
+            "durationMs": 49
+          },
+          {
+            "startMs": 7204,
+            "durationMs": 41
+          },
+          {
+            "startMs": 7804,
+            "durationMs": 42
+          },
+          {
+            "startMs": 8404,
+            "durationMs": 48
+          },
+          {
+            "startMs": 9004,
+            "durationMs": 43
+          },
+          {
+            "startMs": 9604,
+            "durationMs": 39
+          },
+          {
+            "startMs": 10204,
+            "durationMs": 41
+          },
+          {
+            "startMs": 10804,
+            "durationMs": 42
+          },
+          {
+            "startMs": 11404,
+            "durationMs": 40
+          },
+          {
+            "startMs": 12004,
+            "durationMs": 46
+          },
+          {
+            "startMs": 12604,
+            "durationMs": 42
+          },
+          {
+            "startMs": 13204,
+            "durationMs": 49
+          },
+          {
+            "startMs": 13804,
+            "durationMs": 53
+          },
+          {
+            "startMs": 14404,
+            "durationMs": 39
+          },
+          {
+            "startMs": 15004,
+            "durationMs": 40
+          },
+          {
+            "startMs": 15604,
+            "durationMs": 38
+          },
+          {
+            "startMs": 16207,
+            "durationMs": 44
+          },
+          {
+            "startMs": 16804,
+            "durationMs": 43
+          },
+          {
+            "startMs": 17404,
+            "durationMs": 49
+          },
+          {
+            "startMs": 18004,
+            "durationMs": 43
+          },
+          {
+            "startMs": 18604,
+            "durationMs": 46
+          },
+          {
+            "startMs": 19204,
+            "durationMs": 41
+          },
+          {
+            "startMs": 19804,
+            "durationMs": 61
+          },
+          {
+            "startMs": 20404,
+            "durationMs": 42
+          },
+          {
+            "startMs": 21004,
+            "durationMs": 53
+          },
+          {
+            "startMs": 21604,
+            "durationMs": 37
+          },
+          {
+            "startMs": 22204,
+            "durationMs": 38
+          },
+          {
+            "startMs": 22804,
+            "durationMs": 39
+          },
+          {
+            "startMs": 23404,
+            "durationMs": 38
+          },
+          {
+            "startMs": 24004,
+            "durationMs": 43
+          },
+          {
+            "startMs": 24604,
+            "durationMs": 41
+          },
+          {
+            "startMs": 25204,
+            "durationMs": 38
+          },
+          {
+            "startMs": 25804,
+            "durationMs": 44
+          },
+          {
+            "startMs": 26404,
+            "durationMs": 45
+          },
+          {
+            "startMs": 27004,
+            "durationMs": 43
+          },
+          {
+            "startMs": 27604,
+            "durationMs": 46
+          },
+          {
+            "startMs": 28204,
+            "durationMs": 39
+          },
+          {
+            "startMs": 28804,
+            "durationMs": 37
+          },
+          {
+            "startMs": 29404,
+            "durationMs": 39
+          },
+          {
+            "startMs": 30004,
+            "durationMs": 43
+          },
+          {
+            "startMs": 30604,
+            "durationMs": 39
+          },
+          {
+            "startMs": 31204,
+            "durationMs": 51
+          },
+          {
+            "startMs": 31804,
+            "durationMs": 40
+          },
+          {
+            "startMs": 32404,
+            "durationMs": 39
+          },
+          {
+            "startMs": 33004,
+            "durationMs": 41
+          },
+          {
+            "startMs": 33604,
+            "durationMs": 47
+          },
+          {
+            "startMs": 34204,
+            "durationMs": 43
+          },
+          {
+            "startMs": 34804,
+            "durationMs": 37
+          },
+          {
+            "startMs": 35404,
+            "durationMs": 47
+          },
+          {
+            "startMs": 36004,
+            "durationMs": 38
+          },
+          {
+            "startMs": 36605,
+            "durationMs": 57
+          },
+          {
+            "startMs": 37204,
+            "durationMs": 44
+          },
+          {
+            "startMs": 37804,
+            "durationMs": 44
+          },
+          {
+            "startMs": 38404,
+            "durationMs": 50
+          },
+          {
+            "startMs": 39004,
+            "durationMs": 38
+          },
+          {
+            "startMs": 39604,
+            "durationMs": 41
+          },
+          {
+            "startMs": 40204,
+            "durationMs": 50
+          },
+          {
+            "startMs": 40804,
+            "durationMs": 38
+          },
+          {
+            "startMs": 41404,
+            "durationMs": 42
+          },
+          {
+            "startMs": 42004,
+            "durationMs": 40
+          },
+          {
+            "startMs": 42604,
+            "durationMs": 39
+          },
+          {
+            "startMs": 43204,
+            "durationMs": 40
+          },
+          {
+            "startMs": 43804,
+            "durationMs": 39
+          },
+          {
+            "startMs": 44404,
+            "durationMs": 51
+          },
+          {
+            "startMs": 45004,
+            "durationMs": 46
+          },
+          {
+            "startMs": 45604,
+            "durationMs": 39
+          },
+          {
+            "startMs": 46207,
+            "durationMs": 67
+          },
+          {
+            "startMs": 46804,
+            "durationMs": 38
+          },
+          {
+            "startMs": 47404,
+            "durationMs": 41
+          },
+          {
+            "startMs": 48004,
+            "durationMs": 42
+          },
+          {
+            "startMs": 48604,
+            "durationMs": 47
+          },
+          {
+            "startMs": 49204,
+            "durationMs": 39
+          },
+          {
+            "startMs": 49804,
+            "durationMs": 39
+          },
+          {
+            "startMs": 50404,
+            "durationMs": 41
+          },
+          {
+            "startMs": 51004,
+            "durationMs": 37
+          },
+          {
+            "startMs": 51604,
+            "durationMs": 43
+          },
+          {
+            "startMs": 52204,
+            "durationMs": 46
+          },
+          {
+            "startMs": 52804,
+            "durationMs": 46
+          },
+          {
+            "startMs": 53404,
+            "durationMs": 48
+          },
+          {
+            "startMs": 54004,
+            "durationMs": 36
+          },
+          {
+            "startMs": 54604,
+            "durationMs": 39
+          },
+          {
+            "startMs": 55204,
+            "durationMs": 36
+          },
+          {
+            "startMs": 55804,
+            "durationMs": 33
+          },
+          {
+            "startMs": 56405,
+            "durationMs": 62
+          },
+          {
+            "startMs": 57004,
+            "durationMs": 35
+          },
+          {
+            "startMs": 57604,
+            "durationMs": 41
+          },
+          {
+            "startMs": 58204,
+            "durationMs": 37
+          },
+          {
+            "startMs": 58804,
+            "durationMs": 41
+          },
+          {
+            "startMs": 59404,
+            "durationMs": 38
+          }
+        ],
+        "summary": {
+          "n": 100,
+          "medianMs": 41,
+          "maxMs": 67,
+          "p95Ms": null,
+          "p95Reason": "freeze-not-excluded",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "animation-frame",
+        "operation": "active-playback",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "long-task",
+        "operation": "main-thread",
+        "status": "unsupported",
+        "reason": "observer-unavailable",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "unsupported",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "import-first-draw",
+        "operation": "import-to-first-draw",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "cancel",
+        "operation": "cancel-to-canonical-unchanged",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "autosave-window",
+        "operation": "first-dirty-to-persisted",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      }
+    ]
+  },
+  "failedMetricSamples": {}
+}
