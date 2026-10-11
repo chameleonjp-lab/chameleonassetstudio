@@ -1,0 +1,216 @@
+{
+  "evidenceScope": "native-product-ui-headless",
+  "executionMode": "vite-production-preview",
+  "autosaveWindowBoundary": "from the first requestAnimationFrame observation of .editor3d-save-status entering is-dirty after numeric Apply to the first frame where the accessible save label is 保存済み · revision N and edited/persisted revision numbers match; this state reflects the SaveQueue durable commit acknowledgment, not merely autosave scheduling",
+  "productAutosaveWindowMeasured": true,
+  "persistedBackupMatchesCurrentProject": true,
+  "physicalAcceptance": false,
+  "requestedRuns": 20,
+  "record": {
+    "schemaVersion": "native-performance-v1",
+    "source": {
+      "commitSha": "e975f76c02088ab5fb5738c9d782e51a7b4bca3e",
+      "dirty": true
+    },
+    "fixture": {
+      "id": "F01",
+      "sha256": "ccd1bf92daf4078523e457cf2c23af9e516ab0682c9eda80b6fe312e37ca1a1f"
+    },
+    "environment": {
+      "browser": {
+        "family": "chromium",
+        "version": "151.0.7922.34"
+      },
+      "os": {
+        "family": "linux",
+        "version": null
+      },
+      "device": {
+        "realDevice": "headless",
+        "category": "desktop",
+        "model": "unrecorded",
+        "thermalState": "unknown"
+      },
+      "viewport": {
+        "widthCssPx": 1280,
+        "heightCssPx": 720,
+        "devicePixelRatio": 1
+      }
+    },
+    "cacheState": "warm",
+    "startedAt": "2026-10-11T03:39:36.168Z",
+    "measurements": [
+      {
+        "metric": "input",
+        "operation": "numeric-commit",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "animation-frame",
+        "operation": "active-playback",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "long-task",
+        "operation": "main-thread",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "import-first-draw",
+        "operation": "import-to-first-draw",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "cancel",
+        "operation": "cancel-to-canonical-unchanged",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "autosave-window",
+        "operation": "first-dirty-to-persisted",
+        "status": "measured",
+        "window": {
+          "startMs": 0,
+          "endMs": 21062.20000000298,
+          "visibility": "foreground",
+          "freeze": "none-observed"
+        },
+        "samples": [
+          {
+            "startMs": 172.89999999701968,
+            "durationMs": 916.5999999999999
+          },
+          {
+            "startMs": 1289.59999999702,
+            "durationMs": 849.8999999999996
+          },
+          {
+            "startMs": 2322.7999999970198,
+            "durationMs": 866.6000000000004
+          },
+          {
+            "startMs": 3356.09999999702,
+            "durationMs": 883.3000000000002
+          },
+          {
+            "startMs": 4422.699999997019,
+            "durationMs": 866.7000000000007
+          },
+          {
+            "startMs": 5472.699999997019,
+            "durationMs": 866.6000000000004
+          },
+          {
+            "startMs": 6522.699999997019,
+            "durationMs": 866.5
+          },
+          {
+            "startMs": 7589.199999997019,
+            "durationMs": 850
+          },
+          {
+            "startMs": 8622.49999999702,
+            "durationMs": 866.6999999999989
+          },
+          {
+            "startMs": 9689.099999997019,
+            "durationMs": 850.1000000000004
+          },
+          {
+            "startMs": 10722.49999999702,
+            "durationMs": 866.5999999999985
+          },
+          {
+            "startMs": 11755.79999999702,
+            "durationMs": 883.2000000000007
+          },
+          {
+            "startMs": 12805.69999999702,
+            "durationMs": 883.3000000000011
+          },
+          {
+            "startMs": 13872.29999999702,
+            "durationMs": 866.5999999999985
+          },
+          {
+            "startMs": 14922.29999999702,
+            "durationMs": 866.7000000000007
+          },
+          {
+            "startMs": 15972.29999999702,
+            "durationMs": 866.5999999999985
+          },
+          {
+            "startMs": 16988.89999999702,
+            "durationMs": 900
+          },
+          {
+            "startMs": 18055.49999999702,
+            "durationMs": 883.2999999999993
+          },
+          {
+            "startMs": 19088.79999999702,
+            "durationMs": 900
+          },
+          {
+            "startMs": 20138.69999999702,
+            "durationMs": 900
+          }
+        ],
+        "summary": {
+          "n": 20,
+          "medianMs": 866.6999999999998,
+          "maxMs": 916.5999999999999,
+          "p95Ms": null,
+          "p95Reason": "insufficient-samples",
+          "initialRunCoverage": null
+        }
+      }
+    ]
+  }
+}

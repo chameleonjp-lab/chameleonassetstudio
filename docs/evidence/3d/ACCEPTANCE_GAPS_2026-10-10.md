@@ -86,3 +86,14 @@ This is callback/draw-call cadence, not GPU completion, compositor presentation,
 [`PRODUCT_IMPORT_FIRST_DRAW_2026-10-11.md`](PRODUCT_IMPORT_FIRST_DRAW_2026-10-11.md) closes the local headless product-UI `import-first-draw:not-measured` gap: each engine completed five warm copy-restores from the `.cas3dproj` file-input change through the success notice, explicit **3D表示を開く** action, and first successful WebGL draw on a different viewport canvas. Chromium median/maximum is 266.3/277.3 ms; WebKit is 361/461 ms. The metric contract intentionally reports median/max only, not p95.
 
 This remains diagnostic headless evidence—not GPU completion, presentation latency, a B09 threshold verdict, or physical acceptance. `physicalAcceptance` is `false`; WebKit freeze is unknown. Cancel and autosave-window remain `not-measured`; B09 performance tiers, accessibility/input acceptance, physical-device and rollback lifecycle gates, and release sign-off remain open.
+
+
+## Latest product-path measurement status — 2026-10-11
+
+The earlier `not-measured` statements above are dated checkpoints and are superseded by the following local production-preview evidence:
+
+- [`PRODUCT_CANCEL_CANONICAL_2026-10-11.md`](PRODUCT_CANCEL_CANONICAL_2026-10-11.md) records 20 cancellation trials per engine. Median/max was 12.7/15 ms in Chromium and 7/16 ms in WebKit. Every trial preserved the editor revision and passed a full decoded canonical-project backup equality check. p95 is withheld (`n=20`); this is a UI-notice boundary, not an autosave or GPU/display timing result.
+- [`PRODUCT_AUTOSAVE_WINDOW_2026-10-11.md`](PRODUCT_AUTOSAVE_WINDOW_2026-10-11.md) records 20 first-dirty-to-durable-revision trials per engine. Median/max was 866.7/916.6 ms in Chromium and 815/935 ms in WebKit. The saved-version backup matched the current-project backup after timing. p95 is withheld (`n=20`); no numeric target or pass/fail threshold is established.
+- [`PHYSICAL_DEVICE_ACCESSIBILITY_GATES_2026-10-11.md`](PHYSICAL_DEVICE_ACCESSIBILITY_GATES_2026-10-11.md) prepares the physical PC/iPad/iPhone/Android and assistive-technology runbook. It is a plan; every physical and assistive-technology gate remains **not run**.
+
+The six collector metrics now have product/renderer evidence recorded across the preceding sections; WebKit long-task observation is explicitly unsupported. This does **not** close B09 performance tiers or numeric budgets, physical-device/accessibility acceptance, rollback lifecycle on physical devices, or final release sign-off. The local runs are diagnostic headless evidence only, and the records deliberately retain insufficient-sample/unavailable states rather than fabricating p95 values.

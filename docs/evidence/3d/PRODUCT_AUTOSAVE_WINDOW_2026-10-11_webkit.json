@@ -1,0 +1,216 @@
+{
+  "evidenceScope": "native-product-ui-headless",
+  "executionMode": "vite-production-preview",
+  "autosaveWindowBoundary": "from the first requestAnimationFrame observation of .editor3d-save-status entering is-dirty after numeric Apply to the first frame where the accessible save label is 保存済み · revision N and edited/persisted revision numbers match; this state reflects the SaveQueue durable commit acknowledgment, not merely autosave scheduling",
+  "productAutosaveWindowMeasured": true,
+  "persistedBackupMatchesCurrentProject": true,
+  "physicalAcceptance": false,
+  "requestedRuns": 20,
+  "record": {
+    "schemaVersion": "native-performance-v1",
+    "source": {
+      "commitSha": "e975f76c02088ab5fb5738c9d782e51a7b4bca3e",
+      "dirty": true
+    },
+    "fixture": {
+      "id": "F01",
+      "sha256": "50f969a2bb1fc4664e85487795b4a5db90501c1d9439d02d573807a554d54bb3"
+    },
+    "environment": {
+      "browser": {
+        "family": "webkit",
+        "version": "26.5"
+      },
+      "os": {
+        "family": "linux",
+        "version": null
+      },
+      "device": {
+        "realDevice": "headless",
+        "category": "desktop",
+        "model": "unrecorded",
+        "thermalState": "unknown"
+      },
+      "viewport": {
+        "widthCssPx": 1280,
+        "heightCssPx": 720,
+        "devicePixelRatio": 2
+      }
+    },
+    "cacheState": "warm",
+    "startedAt": "2026-10-11T03:40:02.799Z",
+    "measurements": [
+      {
+        "metric": "input",
+        "operation": "numeric-commit",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "animation-frame",
+        "operation": "active-playback",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "long-task",
+        "operation": "main-thread",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "import-first-draw",
+        "operation": "import-to-first-draw",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "cancel",
+        "operation": "cancel-to-canonical-unchanged",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "autosave-window",
+        "operation": "first-dirty-to-persisted",
+        "status": "measured",
+        "window": {
+          "startMs": 0,
+          "endMs": 22907,
+          "visibility": "foreground",
+          "freeze": "unknown"
+        },
+        "samples": [
+          {
+            "startMs": 266,
+            "durationMs": 810
+          },
+          {
+            "startMs": 1385,
+            "durationMs": 806
+          },
+          {
+            "startMs": 2552,
+            "durationMs": 869
+          },
+          {
+            "startMs": 3671,
+            "durationMs": 815
+          },
+          {
+            "startMs": 4807,
+            "durationMs": 905
+          },
+          {
+            "startMs": 6089,
+            "durationMs": 869
+          },
+          {
+            "startMs": 7284,
+            "durationMs": 891
+          },
+          {
+            "startMs": 8484,
+            "durationMs": 815
+          },
+          {
+            "startMs": 9607,
+            "durationMs": 818
+          },
+          {
+            "startMs": 10773,
+            "durationMs": 871
+          },
+          {
+            "startMs": 11933,
+            "durationMs": 802
+          },
+          {
+            "startMs": 13045,
+            "durationMs": 796
+          },
+          {
+            "startMs": 14114,
+            "durationMs": 805
+          },
+          {
+            "startMs": 15204,
+            "durationMs": 793
+          },
+          {
+            "startMs": 16275,
+            "durationMs": 790
+          },
+          {
+            "startMs": 17351,
+            "durationMs": 930
+          },
+          {
+            "startMs": 18566,
+            "durationMs": 935
+          },
+          {
+            "startMs": 19765,
+            "durationMs": 812
+          },
+          {
+            "startMs": 20879,
+            "durationMs": 926
+          },
+          {
+            "startMs": 22081,
+            "durationMs": 788
+          }
+        ],
+        "summary": {
+          "n": 20,
+          "medianMs": 815,
+          "maxMs": 935,
+          "p95Ms": null,
+          "p95Reason": "insufficient-samples",
+          "initialRunCoverage": null
+        }
+      }
+    ]
+  }
+}
