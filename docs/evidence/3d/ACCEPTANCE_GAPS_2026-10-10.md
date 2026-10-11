@@ -79,3 +79,10 @@ These are independent single runs with differing fixture hashes, not a paired be
 [`PRODUCT_ANIMATION_FRAME_2026-10-11.md`](PRODUCT_ANIMATION_FRAME_2026-10-11.md) adds a manual-only production-preview measurement of consecutive RAF callbacks that issue WebGL draw calls from the actual product viewport during a looping animation. Chromium completed 3,597 samples over 60,040 ms (median 16.7 ms, p95 17.1 ms, max 65.9 ms; foreground, no freeze observed). WebKit completed 807 samples over 60,042 ms (median 73 ms, max 123 ms); p95 is withheld because freeze state is unknown.
 
 This is callback/draw-call cadence, not GPU completion, compositor presentation, input-to-photon latency, a threshold verdict, or physical-device acceptance. The product animation-frame boundary is now measured in headless preview; import-first-draw, cancel, and autosave-window remain `not-measured`. No numeric B09 frame budget is set, and B09 performance tiers, accessibility/input acceptance, physical-device gates, rollback/device lifecycle, and release sign-off remain open.
+
+
+## Product backup import-to-first-draw follow-up — 2026-10-11
+
+[`PRODUCT_IMPORT_FIRST_DRAW_2026-10-11.md`](PRODUCT_IMPORT_FIRST_DRAW_2026-10-11.md) closes the local headless product-UI `import-first-draw:not-measured` gap: each engine completed five warm copy-restores from the `.cas3dproj` file-input change through the success notice, explicit **3D表示を開く** action, and first successful WebGL draw on a different viewport canvas. Chromium median/maximum is 266.3/277.3 ms; WebKit is 361/461 ms. The metric contract intentionally reports median/max only, not p95.
+
+This remains diagnostic headless evidence—not GPU completion, presentation latency, a B09 threshold verdict, or physical acceptance. `physicalAcceptance` is `false`; WebKit freeze is unknown. Cancel and autosave-window remain `not-measured`; B09 performance tiers, accessibility/input acceptance, physical-device and rollback lifecycle gates, and release sign-off remain open.

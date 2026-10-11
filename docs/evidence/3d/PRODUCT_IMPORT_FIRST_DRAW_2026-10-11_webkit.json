@@ -1,0 +1,155 @@
+{
+  "evidenceScope": "native-product-ui-headless",
+  "executionMode": "vite-production-preview",
+  "importFirstDrawBoundary": "from the capture-phase change event on #editor3d-restore through the restore notice and the 3D表示を開く action to return from the first successful WebGL draw call on a canvas in the new viewport; the canvas must differ from the pre-import canvas",
+  "productImportFirstDrawMeasured": true,
+  "physicalAcceptance": false,
+  "requestedRuns": 5,
+  "record": {
+    "schemaVersion": "native-performance-v1",
+    "source": {
+      "commitSha": "6bd00766aaa1bfed02f97f35f4f632885b5066a0",
+      "dirty": false
+    },
+    "fixture": {
+      "id": "F01",
+      "sha256": "13d27a6315e36c5d8759a0509e84ca736eed43425f92613e18f7a63ed39784d2"
+    },
+    "environment": {
+      "browser": {
+        "family": "webkit",
+        "version": "26.5"
+      },
+      "os": {
+        "family": "linux",
+        "version": null
+      },
+      "device": {
+        "realDevice": "headless",
+        "category": "desktop",
+        "model": "unrecorded",
+        "thermalState": "unknown"
+      },
+      "viewport": {
+        "widthCssPx": 1280,
+        "heightCssPx": 720,
+        "devicePixelRatio": 2
+      }
+    },
+    "cacheState": "warm",
+    "startedAt": "2026-10-11T03:23:00.374Z",
+    "measurements": [
+      {
+        "metric": "input",
+        "operation": "numeric-commit",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "animation-frame",
+        "operation": "active-playback",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "long-task",
+        "operation": "main-thread",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "import-first-draw",
+        "operation": "import-to-first-draw",
+        "status": "measured",
+        "window": {
+          "startMs": 0,
+          "endMs": 2387,
+          "visibility": "foreground",
+          "freeze": "unknown"
+        },
+        "samples": [
+          {
+            "startMs": 95,
+            "durationMs": 461
+          },
+          {
+            "startMs": 632,
+            "durationMs": 392
+          },
+          {
+            "startMs": 1129,
+            "durationMs": 360
+          },
+          {
+            "startMs": 1590,
+            "durationMs": 316
+          },
+          {
+            "startMs": 1980,
+            "durationMs": 361
+          }
+        ],
+        "summary": {
+          "n": 5,
+          "medianMs": 361,
+          "maxMs": 461,
+          "p95Ms": null,
+          "p95Reason": "first-draw-median-max-only",
+          "initialRunCoverage": "at-least-five-runs"
+        }
+      },
+      {
+        "metric": "cancel",
+        "operation": "cancel-to-canonical-unchanged",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "autosave-window",
+        "operation": "first-dirty-to-persisted",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      }
+    ]
+  }
+}
