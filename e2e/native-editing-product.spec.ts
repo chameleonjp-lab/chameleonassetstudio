@@ -166,6 +166,9 @@ test('keyboard-only Tab flow creates, numerically edits, saves and backs up a pr
   const x = panel.getByLabel('移動量 X（m）', { exact: true });
   await expect(x).toBeEnabled();
   await tabTo(page, x);
+  await expect(x).toHaveCSS('outline-style', 'solid');
+  await expect(x).toHaveCSS('outline-width', '3px');
+  await expect(x).toHaveCSS('outline-offset', '3px');
   await page.keyboard.press('ControlOrMeta+A');
   await page.keyboard.type('1.25');
   const before = await revision(page);
