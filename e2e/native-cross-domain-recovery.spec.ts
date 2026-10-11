@@ -114,6 +114,7 @@ test('same-origin 2D rollback and 3D resident recovery preserve independent dura
   await native.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true }).click();
   await native.getByRole('button', { name: '箱を追加', exact: true }).click();
   await native.getByRole('button', { name: '今すぐ保存', exact: true }).click();
+  await expect(native.locator('.editor3d-save-status')).toHaveText('保存済み · revision 1');
   const before3d = await stored(native, PROJECT_3D_DB_NAME, ['roots', 'snapshots', 'blobs']);
   await quota(native, true);
   await native.getByLabel('プロジェクト名', { exact: true }).fill('3D resident unsaved');

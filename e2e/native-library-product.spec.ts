@@ -368,6 +368,11 @@ test('failed project save refuses thumbnail creation without discarding unsaved 
   });
   await page.getByRole('button', { name: '箱を追加', exact: true }).click();
   await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('status').filter({
+      hasText: '保存に失敗 · 未保存の変更をこのタブに保持中',
+    }),
+  ).toBeVisible();
   const before = await backupCurrent(page);
   await page.getByRole('button', { name: '保存してサムネイルを作成', exact: true }).click();
   await expect(

@@ -236,8 +236,12 @@ test('COMPAT-06 explicitly copies a real 2D PNG export into 3D without automatic
   await page.getByRole('button', { name: '作成', exact: true }).click();
   const properties = page.getByRole('complementary', { name: 'プロパティ', exact: true });
   await properties.getByLabel('新規アセット名', { exact: true }).fill('compat06-red');
-  await properties.getByLabel('新規アセットのサイズ', { exact: true }).selectOption('32');
-  await properties.getByLabel('新規アセットのテンプレート', { exact: true }).selectOption('blank');
+  await properties
+    .getByRole('combobox', { name: '新規アセットのサイズ', exact: true })
+    .selectOption('32');
+  await properties
+    .getByRole('combobox', { name: '新規アセットのテンプレート', exact: true })
+    .selectOption('blank');
   await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
   await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
   await fill2DRaster(page, '#ff0000');
@@ -463,7 +467,10 @@ test('image authoring respects IME, backup interruption and another tab ownershi
   const second = await context.newPage();
   try {
     await second.goto('/3d/');
-    await second.getByRole('button', { name: /Texture fixture/ }).click();
+    await second
+      .getByRole('region', { name: '保存したプロジェクト', exact: true })
+      .getByRole('button', { name: /^Texture fixture revision \d+$/ })
+      .click();
     await expect(
       second.getByText(
         '別のタブが編集権を持っているか、編集権が切り替わりました。このタブでは内容を保持し、読み取り専用にしています。',

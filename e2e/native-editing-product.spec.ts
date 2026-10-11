@@ -676,7 +676,9 @@ test('legacy copy confirmation, cancellation, quota retry and original recovery 
   await expect(page.getByRole('group', { name: '旧作品のコピー確認', exact: true })).toHaveCount(0);
   await choose.click();
   await page.getByRole('button', { name: '容量増加を確認してコピーを作成', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('保存容量');
+  const quotaAlert = page.getByRole('alert');
+  await expect(quotaAlert).toContainText('容量が不足');
+  await expect(quotaAlert).toContainText('[EDIT_STORAGE]');
   await expect(page.getByRole('heading', { name: 'Legacy retained', exact: true })).toHaveCount(0);
   await page.evaluate(() => Object.assign(window, { failLegacyCopy: false }));
   await page.getByRole('button', { name: '容量増加を確認してコピーを作成', exact: true }).click();
@@ -753,7 +755,9 @@ test('locked hierarchy copy and deletion explain refusal without applying or dro
   test.setTimeout(60_000);
   await createBox(page);
   const authoring = page.getByRole('region', { name: '3D制作', exact: true });
-  await authoring.getByLabel('制作オブジェクト', { exact: true }).selectOption({ index: 1 });
+  await authoring
+    .getByRole('combobox', { name: '制作オブジェクト', exact: true })
+    .selectOption({ index: 1 });
   await authoring.getByText('部品の名前・位置・複製', { exact: true }).click();
   await authoring.getByRole('button', { name: '部品を編集ロック', exact: true }).click();
   const before = (await snapshot(page)).project;

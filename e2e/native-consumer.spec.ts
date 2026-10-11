@@ -485,6 +485,8 @@ test('edited textured mixed skin and two clips survive backup, re-edit and actua
       .poll(() => consumer.evaluate(() => window.__assetConsumer.snapshot().playback.ends))
       .toBe(1);
     expect(external).toEqual([]);
+    // Playback moves this weighted mesh beyond its rest-pose framing; restore the readable rest pose for visual evidence.
+    await consumer.evaluate((id) => window.__assetConsumer.sample(id, 0), clipIds[1]);
     await test.info().attach('full-native-delivery-evidence', {
       body: Buffer.from(
         JSON.stringify(

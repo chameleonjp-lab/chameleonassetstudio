@@ -787,7 +787,9 @@ test('native authoring, rig, animation and transform buttons suppress compositio
   await createBox(page);
   const authoring = page.getByRole('region', { name: '3D制作', exact: true });
   await authoring.getByText('基本形を作成', { exact: true }).click();
-  await authoring.getByLabel('制作オブジェクト', { exact: true }).selectOption({ index: 1 });
+  await authoring
+    .getByRole('combobox', { name: '制作オブジェクト', exact: true })
+    .selectOption({ index: 1 });
   await page.getByText('骨と重みの編集を開く', { exact: true }).click();
   await page.getByText('アニメーション編集を開く', { exact: true }).click();
   await page.getByText('数値で差分変形', { exact: true }).click();
@@ -815,11 +817,12 @@ test('native authoring, rig, animation and transform buttons suppress compositio
       });
     await expect(button).toBeFocused();
   }
-  const count = await rig.getByLabel('骨を選択', { exact: true }).locator('option').count();
+  const boneOptions = rig
+    .getByRole('combobox', { name: '骨を選択', exact: true })
+    .locator('option');
+  const count = await boneOptions.count();
   await bone.press('Enter');
-  await expect(rig.getByLabel('骨を選択', { exact: true }).locator('option')).toHaveCount(
-    count + 1,
-  );
+  await expect(boneOptions).toHaveCount(count + 1);
 });
 
 test('composition Escape keeps hierarchy confirmation and focus, ordinary Escape cancels', async ({
@@ -827,7 +830,9 @@ test('composition Escape keeps hierarchy confirmation and focus, ordinary Escape
 }) => {
   await createBox(page);
   const authoring = page.getByRole('region', { name: '3D制作', exact: true });
-  await authoring.getByLabel('制作オブジェクト', { exact: true }).selectOption({ index: 1 });
+  await authoring
+    .getByRole('combobox', { name: '制作オブジェクト', exact: true })
+    .selectOption({ index: 1 });
   await authoring.getByText('階層と依存情報を複製', { exact: true }).click();
   const prepare = authoring.getByRole('button', {
     name: '部品と階層の複製内容を確認',
