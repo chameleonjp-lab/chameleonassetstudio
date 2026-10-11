@@ -100,12 +100,36 @@ test('same-origin 2D rollback and 3D resident recovery preserve independent dura
     ctx.fillRect(0, 0, 8, 8);
     return canvas.toDataURL('image/png').split(',')[1];
   });
-  await page.getByLabel('画像を選ぶ', { exact: true }).setInputFiles({
-    name: 'original.png',
-    mimeType: 'image/png',
-    buffer: Buffer.from(png, 'base64'),
+  const browserDiagnostics: string[] = [];
+  const recordBrowserDiagnostic = (entry: string) => {
+    if (browserDiagnostics.length < 20) browserDiagnostics.push(entry.slice(0, 2000));
+  };
+  page.on('pageerror', (error) =>
+    recordBrowserDiagnostic(`pageerror: ${error.stack ?? error.message}`),
+  );
+  page.on('console', (message) => {
+    if (message.type() === 'error') recordBrowserDiagnostic(`console.error: ${message.text()}`);
   });
-  await confirmImageImport(page);
+  page.on('requestfailed', (request) =>
+    recordBrowserDiagnostic(
+      `requestfailed: ${request.method()} ${request.url()} (${request.failure()?.errorText ?? 'unknown'})`,
+    ),
+  );
+  try {
+    await page.getByLabel('画像を選ぶ', { exact: true }).setInputFiles({
+      name: 'original.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(png, 'base64'),
+    });
+    await confirmImageImport(page);
+  } catch (error) {
+    const original = error instanceof Error ? (error.stack ?? error.message) : String(error);
+    const events =
+      browserDiagnostics.length > 0
+        ? browserDiagnostics.join('\n')
+        : 'No pageerror, console.error, or requestfailed events were captured.';
+    throw new Error(`${original}\n\nImage-import browser diagnostics:\n${events}`);
+  }
   await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
   const first2d = await download(page, '.casproj をダウンロード');
   const native = await context.newPage();

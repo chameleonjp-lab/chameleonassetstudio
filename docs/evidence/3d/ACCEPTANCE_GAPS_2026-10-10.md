@@ -92,6 +92,8 @@ This remains diagnostic headless evidence—not GPU completion, presentation lat
 
 The earlier `not-measured` statements above are dated checkpoints and are superseded by the following local production-preview evidence:
 
+Separately, [`CI_IMPORT_PREVIEW_TIMEOUT_2026-10-11.md`](CI_IMPORT_PREVIEW_TIMEOUT_2026-10-11.md) records the historical PR #325 WebKit preview-dialog timeout and the follow-up failure-only browser diagnostics. The test wait and timeout remain unchanged; the root cause is still undetermined.
+
 - [`PRODUCT_CANCEL_CANONICAL_2026-10-11.md`](PRODUCT_CANCEL_CANONICAL_2026-10-11.md) records 20 cancellation trials per engine. Median/max was 12.7/15 ms in Chromium and 7/16 ms in WebKit. Every trial preserved the editor revision and passed a full decoded canonical-project backup equality check. p95 is withheld (`n=20`); this is a UI-notice boundary, not an autosave or GPU/display timing result.
 - [`PRODUCT_AUTOSAVE_WINDOW_2026-10-11.md`](PRODUCT_AUTOSAVE_WINDOW_2026-10-11.md) records 20 first-dirty-to-durable-revision trials per engine. Median/max was 866.7/916.6 ms in Chromium and 815/935 ms in WebKit. The saved-version backup matched the current-project backup after timing. p95 is withheld (`n=20`); no numeric target or pass/fail threshold is established.
 - [`PHYSICAL_DEVICE_ACCESSIBILITY_GATES_2026-10-11.md`](PHYSICAL_DEVICE_ACCESSIBILITY_GATES_2026-10-11.md) prepares the physical PC/iPad/iPhone/Android and assistive-technology runbook. It is a plan; every physical and assistive-technology gate remains **not run**.
