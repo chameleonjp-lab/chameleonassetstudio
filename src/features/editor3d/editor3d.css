@@ -45,7 +45,8 @@
 .editor3d a:focus-visible,
 .editor3d button:focus-visible,
 .editor3d input:focus-visible,
-.editor3d summary:focus-visible {
+.editor3d summary:focus-visible,
+.editor3d [tabindex='-1']:focus-visible {
   outline: 3px solid #b45309;
   outline-offset: 3px;
 }

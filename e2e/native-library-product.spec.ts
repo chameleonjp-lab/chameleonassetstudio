@@ -117,7 +117,7 @@ test('recovery comparison opens an earlier saved version as a new copy while pre
   });
 });
 
-test('object deletion confirms dependencies, supports cancel and Undo/Redo, and preserves image originals', async ({
+test('object deletion confirmation keeps keyboard focus through cancel and Undo/Redo while preserving image originals', async ({
   page,
 }, info) => {
   const { bytes, hash } = await createOriginal(page);
@@ -126,14 +126,41 @@ test('object deletion confirms dependencies, supports cancel and Undo/Redo, and 
   const node = original.project.nodes.find((entry) => entry.meshId)!;
   await form.getByRole('combobox', { name: '制作オブジェクト', exact: true }).selectOption(node.id);
   await form.getByText('選択した部品の削除', { exact: true }).click();
-  await form.getByRole('button', { name: '部品の削除内容を確認', exact: true }).click();
-  await expect(form.getByRole('region', { name: '部品削除の確認', exact: true })).toContainText(
-    '画像・GLB原本は保持',
-  );
-  await form.getByRole('button', { name: '部品の削除を取り消す', exact: true }).click();
+  const prepare = form.getByRole('button', { name: '部品の削除内容を確認', exact: true });
+  const confirmation = form.getByRole('region', { name: '部品削除の確認', exact: true });
+  await prepare.focus();
+  await page.keyboard.press('Enter');
+  await expect(confirmation).toContainText('画像・GLB原本は保持');
+  await expect(prepare).toBeFocused();
+  const confirmDeletion = confirmation.getByRole('button', {
+    name: '確認した部品と依存情報を削除',
+    exact: true,
+  });
+  const cancelDeletion = confirmation.getByRole('button', {
+    name: '部品の削除を取り消す',
+    exact: true,
+  });
+  await page.keyboard.press('Tab');
+  await expect(confirmDeletion).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(cancelDeletion).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(confirmation).toHaveCount(0);
+  await expect(prepare).toBeFocused();
   expect((await backupCurrent(page)).project).toEqual(original.project);
-  await form.getByRole('button', { name: '部品の削除内容を確認', exact: true }).click();
-  await form.getByRole('button', { name: '確認した部品と依存情報を削除', exact: true }).click();
+  await prepare.focus();
+  await page.keyboard.press('Enter');
+  await expect(confirmation).toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(confirmDeletion).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(confirmation).toHaveCount(0);
+  const deletionStatus = form.getByText(
+    'このrevisionで部品削除を適用しました。元に戻す操作で復元できます。',
+    { exact: true },
+  );
+  await expect(deletionStatus).toBeFocused();
+  await expect(deletionStatus).toHaveCSS('outline-width', '3px');
   const deleted = await backupCurrent(page);
   expect(deleted.project.nodes.some((entry) => entry.id === node.id)).toBe(false);
   expect(deleted.project.blobIds).toEqual(original.project.blobIds);
