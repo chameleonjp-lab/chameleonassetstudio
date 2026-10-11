@@ -128,17 +128,15 @@ export function NativeTransformControls({
       const delta = draft.map(
         (value) => Number(value) * (mode === 'rotate' ? Math.PI / 180 : 1),
       ) as Vec3;
-      const result = edit.preview(token, delta);
+      const result = commit ? edit.applyDelta(token, delta) : edit.preview(token, delta);
       if (!result.ok) throw new Error(result.reason);
       setDirty(false);
       setError('');
       if (commit) {
-        const applied = edit.commit(token);
-        if (!applied.ok) throw new Error(applied.reason);
         owned.current = null;
         setOwner(null);
         setNotice(
-          applied.changed
+          result.changed
             ? '変形を確定しました。元に戻す操作で取り消せます。'
             : '変形量はありません。確定済みの値を保ちました。',
         );

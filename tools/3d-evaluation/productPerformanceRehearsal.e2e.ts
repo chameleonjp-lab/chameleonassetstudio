@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { importBackup } from '../../src/core3d/backup/backup';
 import { sha256 } from '../../src/core3d/export/snapshot';
@@ -247,6 +247,16 @@ test('measures product numeric commit and observed main-thread long tasks withou
   if (!measurementStart.visible) collector.visibilityChanged(false);
   if (measurementStart.freezeSupported) collector.freezeMonitoringInstalled();
 
+  const cpuProfilePath = process.env.NATIVE_PRODUCT_CPU_PROFILE_PATH;
+  if (cpuProfilePath && browserName !== 'chromium')
+    throw new Error('NATIVE_PRODUCT_CPU_PROFILE_PATH is supported only in Chromium');
+  const cpuProfiler = cpuProfilePath ? await page.context().newCDPSession(page) : null;
+  if (cpuProfiler) {
+    await cpuProfiler.send('Profiler.enable');
+    await cpuProfiler.send('Profiler.setSamplingInterval', { interval: 1000 });
+    await cpuProfiler.send('Profiler.start');
+  }
+
   for (let index = 0; index < samples; index++) {
     await expect(startButton).toBeEnabled();
     await startButton.click();
@@ -306,6 +316,13 @@ test('measures product numeric commit and observed main-thread long tasks withou
       visibilityChanged: probe.visibilityChanged,
     };
   });
+  if (cpuProfiler && cpuProfilePath) {
+    const { profile } = await cpuProfiler.send('Profiler.stop');
+    await cpuProfiler.send('Profiler.disable');
+    await cpuProfiler.detach();
+    await mkdir(dirname(cpuProfilePath), { recursive: true });
+    await writeFile(cpuProfilePath, `${JSON.stringify(profile, null, 2)}\n`);
+  }
   expect(probeResult.pendingStart).toBeNull();
   expect(probeResult.samples).toHaveLength(samples);
   if (probeResult.visibilityChanged) collector.visibilityChanged(false);
@@ -331,6 +348,7 @@ test('measures product numeric commit and observed main-thread long tasks withou
 
   const result = {
     evidenceScope: 'native-product-ui-headless',
+    executionMode: 'vite-production-preview',
     inputBoundary:
       'capture-phase numeric-apply click to completion of the next requestAnimationFrame containing a WebGL draw from .native-viewport-host',
     productInputLatencyMeasured: true,

@@ -31,4 +31,11 @@ export default defineConfig({
   outputDir: '../../test-results/product-performance-playwright',
   reporter: 'list',
   projects,
+  // Measure the production bundle; never reuse the inherited Vite dev server.
+  webServer: {
+    command: 'npm run build:app && npm run preview -- --host 127.0.0.1 --port 5173 --strictPort',
+    url: 'http://localhost:5173',
+    reuseExistingServer: false,
+    timeout: 120_000,
+  },
 });

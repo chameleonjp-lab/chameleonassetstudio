@@ -82,6 +82,8 @@ export interface NativeEditBinding {
   setOptions(options: NativeEditOptions): NativeEditResult;
   begin(): NativeEditStart;
   preview(token: NativeEditToken, delta: Vec3): NativeEditResult;
+  /** Validates and commits a delta without publishing an intermediate preview. */
+  applyDelta(token: NativeEditToken, delta: Vec3): NativeEditResult;
   commit(token: NativeEditToken): NativeEditResult;
   /** Supplying a stale token must never cancel a newer gesture. */
   cancel(reason?: string, token?: NativeEditToken): void;

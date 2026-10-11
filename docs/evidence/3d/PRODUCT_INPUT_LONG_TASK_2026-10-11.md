@@ -42,3 +42,7 @@ SHA-256 checksums:
 - Chromium screenshot: `49c890fc2d6be9a2f20dc35a0b350c214e861e96d38fd3132faa272a03cccc9a`
 - WebKit JSON: `d0dd7695c0710fa9079d99353b224863abd7c47e93ec1a0bc7ab588ff8125f98`
 - WebKit screenshot: `4754708a17c6cf447fc81ac788281453e438a1ade563a7163d4135dfe8ba2595`
+
+## Execution-mode clarification — 2026-10-11
+
+The observer-enabled run at commit `9553615` also inherited `npm run dev` from the general Playwright configuration. Its results are development-server diagnostics only, **not** a production-build performance result. See [`PRODUCT_INPUT_PRODUCTION_PREVIEW_2026-10-11.md`](PRODUCT_INPUT_PRODUCTION_PREVIEW_2026-10-11.md) for the later clean production-preview run.
