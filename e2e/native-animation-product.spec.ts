@@ -225,6 +225,31 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
   await expect(keyActionStatus).toHaveText('');
   await expect(duplicatedKey).toBeVisible();
 
+  const existingKeyAtOne = animation.getByRole('button', {
+    name: 'キー 1秒: 2, 0, 0',
+    exact: true,
+  });
+  await expect(existingKeyAtOne).toBeVisible();
+  await expect(duplicatedKey).toHaveAttribute('aria-pressed', 'true');
+  await tabTo(page, existingKeyAtOne);
+  await page.keyboard.press('Enter');
+  await expect(duplicateTimeAlert).toHaveCount(0);
+  await tabTo(page, keyTime, 'Shift+Tab');
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('0.5');
+  await tabTo(page, applyKey);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => revision(page)).toBe(afterDuplicate);
+  await expect(animation.getByRole('alert')).toContainText('重複しない値');
+  await expect(keyActionStatus).toHaveText('');
+  await expect(existingKeyAtOne).toBeVisible();
+  await expect(existingKeyAtOne).toHaveAttribute('aria-pressed', 'true');
+  await expect(duplicatedKey).toBeVisible();
+  await expect(duplicatedKey).toHaveAttribute('aria-pressed', 'false');
+  await tabTo(page, duplicatedKey);
+  await page.keyboard.press('Enter');
+  await expect(animation.getByRole('alert')).toHaveCount(0);
+
   const deleteKey = animation.getByRole('button', { name: '選択キーを削除', exact: true });
   await tabTo(page, deleteKey);
   await page.keyboard.press('Enter');

@@ -52,3 +52,10 @@ The timeline now keeps its selected-key context status separate from a dedicated
 The keyboard-only animation workflow verifies all four success messages, resulting key-list contents, revision changes, and the saved backup's authored translation and scale values. It also attempts to duplicate a key onto an occupied time and verifies that the existing `role="alert"` guidance appears, the success status clears, the revision stays unchanged, and the original key remains. The complete `native-animation-product.spec.ts` suite passed 7/7 in system Chromium and 7/7 in WebKit-critical; all 3,530 unit tests passed, `npm run test:ci-scope` passed 8/8, formatting and the production build passed, and lint had zero errors with one pre-existing warning in `NativeViewportPanel.tsx:195`.
 
 This is DOM/status text and headless desktop-browser keyboard evidence only. It does not establish actual screen-reader speech, VoiceOver/TalkBack behavior, complete scene text alternatives, physical keyboard/device/touch acceptance, contrast compliance, or real browser/OS zoom. UX-05 and 3D-STAGE4-04 remain partial/open; no physical or assistive-technology acceptance is claimed.
+
+
+## Timeline-key update-collision recovery follow-up — 2026-10-12
+
+The keyboard-only timeline workflow now also reselects the existing 1-second key after a failed duplicate attempt, confirming the alert clears on recovery. It then attempts to update that key onto the occupied 0.5-second time and verifies that the alert returns, the success status stays empty, the revision is unchanged, both keys remain, and selection stays on the unmodified 1-second key. The test reselects the 0.5-second key before continuing its existing deletion/save/backup checks.
+
+The focused workflow passed in system Chromium and WebKit-critical (1/1 per browser project). This remains headless DOM/keyboard evidence only; screen-reader speech and assistive-technology or physical-device acceptance remain unverified. UX-05, 3D-STAGE4-04 and physical accessibility gates remain partial/open.

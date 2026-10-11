@@ -139,3 +139,8 @@ The keyboard-only workflow verifies all four action messages, updated key-list c
 A follow-up failure-path assertion rejects a keyboard duplicate at an already occupied key time. It verifies the existing alert guidance, cleared success-status text, unchanged revision, and retained key marker. This is still DOM/headless-browser evidence only; no assistive-technology acceptance is implied.
 
 This adds headless DOM/status evidence only. Actual screen-reader speech, VoiceOver/TalkBack, full scene alternatives, physical keyboard/device/touch, contrast and real browser/OS zoom remain unverified. UX-05, 3D-STAGE4-04, and physical accessibility gates remain partial/open; no acceptance status is promoted.
+
+
+## Timeline-key update-collision recovery follow-up — 2026-10-12
+
+[`PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md`](PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md) records the focused keyboard E2E extension: after recovering from a failed duplicate, updating a selected key onto another occupied time must restore the alert without success text or a revision change, while both original keys and the selected-key state remain intact. The focused workflow passed in Chromium and WebKit-critical (1/1 per project). This is software-only headless evidence; actual screen-reader speech, assistive technology, and physical-device acceptance remain open.
