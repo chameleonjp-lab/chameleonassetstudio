@@ -123,12 +123,21 @@ test('same-origin 2D rollback and 3D resident recovery preserve independent dura
     });
     await confirmImageImport(page);
   } catch (error) {
-    const original = error instanceof Error ? (error.stack ?? error.message) : String(error);
     const events =
       browserDiagnostics.length > 0
         ? browserDiagnostics.join('\n')
         : 'No pageerror, console.error, or requestfailed events were captured.';
-    throw new Error(`${original}\n\nImage-import browser diagnostics:\n${events}`);
+    const diagnostic = `\n\nImage-import browser diagnostics:\n${events}`;
+    if (error instanceof Error) {
+      error.message = `${error.message}${diagnostic}`;
+      if (error.stack) {
+        const stack = error.stack.split('\n');
+        stack[0] = `${error.name}: ${error.message}`;
+        error.stack = stack.join('\n');
+      }
+      throw error;
+    }
+    throw new Error(`${String(error)}${diagnostic}`);
   }
   await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
   const first2d = await download(page, '.casproj をダウンロード');

@@ -6,6 +6,8 @@ The failed [PR #325 CI run](https://github.com/chameleonjp-lab/chameleonassetstu
 
 The archived error context showed the page still on the `Shared quota 2D` editor with no imported assets and no preview dialog. This establishes that the dialog never became observable by the deadline; it does not show why. The recovery-specific artifacts contain the error-context and screenshots but no recovery-test trace or video.
 
+The run outcomes and revision comparison below are external GitHub Actions observations, not assertions derived solely from this local worktree. See the [GitHub commit comparison](https://github.com/chameleonjp-lab/chameleonassetstudio/compare/5371fee124a2ca491e85beb966f3c32d2c1d6af8...9ed88626f0e1fe34e2c0999719f9d165792a79fb) and linked run artifacts for the source evidence.
+
 ## Failed-versus-successful revision comparison
 
 The later successful [PR #325 CI run](https://github.com/chameleonjp-lab/chameleonassetstudio/actions/runs/38112096311) used head SHA `9ed88626f0e1fe34e2c0999719f9d165792a79fb`. Comparing the failed and successful revisions shows three intervening commits: a 3D numeric-commit performance change, its evidence, and the merge of PR #326. The changed files are limited to 3D transform transaction/controls and related evidence; the 2D image-import flow, `confirmImageImport`, and the failing recovery test were unchanged.
