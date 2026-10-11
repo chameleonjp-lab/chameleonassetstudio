@@ -2,7 +2,7 @@
 
 ## Scope
 
-`e2e/native-animation-product.spec.ts` adds `keyboard-only Tab flow selects and edits an animation key`. Starting from `/3d/`, the test uses Tab/Enter and keyboard text entry to create a project, add a box, open the native animation panel, create a clip, choose the object with ArrowDown/Enter, and add one key. It reaches the key-list entry with Tab and selects it with Enter, then uses Shift+Tab to reach its time input and Tab to reach its X value input. Enter applies the updated time/value. The editor revision must advance, the key-list label must change to `キー 1秒: 2, 0, 0`, and a decoded saved backup must contain exactly one key at time `1` with value `[2, 0, 0]`. The test uses no mouse click or programmatic focus.
+`e2e/native-animation-product.spec.ts` adds `keyboard-only Tab flow selects and edits an animation key`. Starting from `/3d/`, the test uses Tab/Enter and keyboard text entry to create a project, add a box, open the native animation panel, create a clip, and choose the `箱` target with ArrowDown/Enter. It adds one key, reaches the key-list entry with Tab, selects it with Enter, then uses Shift+Tab to reach its time input and Tab to reach its X value input. Enter applies the updated time/value. The editor revision must advance; after Save, the saved-status label and editing/persisted revision display must both equal that edited revision. The key-list label must change to `キー 1秒: 2, 0, 0`, and a decoded saved backup must contain exactly one key at time `1` with value `[2, 0, 0]` on the same selected node ID. The test uses no mouse click or programmatic focus.
 
 ## Local verification
 

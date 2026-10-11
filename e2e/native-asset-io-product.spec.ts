@@ -181,6 +181,131 @@ test('keyboard-only Tab flow exports and saves a GLB package', async ({ page }) 
   ]);
   expect(manifest.warnings).toEqual(expect.any(Array));
 });
+test('keyboard-only import preview, GameData edit and export after fixture upload', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await page.goto('/3d/');
+
+  const projectName = page.getByLabel('新しいプロジェクト名', { exact: true });
+  await tabTo(page, projectName);
+  await page.keyboard.type('Keyboard import workflow');
+  const create = page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true });
+  await page.keyboard.press('Tab');
+  await expect(create).toBeFocused();
+  await page.keyboard.press('Enter');
+  const addBox = page.getByRole('button', { name: '箱を追加', exact: true });
+  await tabTo(page, addBox);
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+
+  const openDetails = page.getByText('GLB読込・配布ファイル出力', { exact: true });
+  await tabTo(page, openDetails);
+  await page.keyboard.press('Enter');
+  const panel = io(page);
+  await expect(panel).toBeVisible();
+
+  const { bytes } = await exportGlb(captureAssetSnapshot(assetIoFixture(), () => new Uint8Array()));
+  const fileInput = panel.getByLabel('読み込むGLB（32MiBまで）', { exact: true });
+  const fileChooser = page.waitForEvent('filechooser');
+  await tabTo(page, fileInput);
+  await page.keyboard.press('Enter');
+  // Enter opens the chooser; Playwright injects the fixture so the native OS dialog UI is not tested.
+  await (
+    await fileChooser
+  ).setFiles({
+    name: 'keyboard-source.glb',
+    mimeType: 'model/gltf-binary',
+    buffer: Buffer.from(bytes),
+  });
+  await expect(panel.getByText(/^原本: keyboard-source\.glb/)).toBeVisible();
+  const inspect = panel.getByRole('button', {
+    name: 'GLBを検査して保存前に確認する',
+    exact: true,
+  });
+  await tabTo(page, inspect);
+  await page.keyboard.press('Enter');
+
+  const preview = panel.getByRole('region', { name: 'GLBの保存前確認', exact: true });
+  await expect(preview.getByText('取込候補を表示中（未保存）', { exact: true })).toBeVisible();
+  const frameAll = preview.getByRole('button', { name: '取込候補を全体表示', exact: true });
+  await expect(frameAll).toBeEnabled();
+  await tabTo(page, frameAll);
+  await page.keyboard.press('Enter');
+  const orbitLeft = preview.getByRole('button', { name: '取込候補を左から見る', exact: true });
+  await tabTo(page, orbitLeft);
+  await page.keyboard.press('Enter');
+  const importAcknowledgement = preview.getByLabel('変換後の表示と取込の注意を確認しました', {
+    exact: true,
+  });
+  await expect(importAcknowledgement).toBeEnabled();
+  await tabTo(page, importAcknowledgement);
+  await page.keyboard.press('Space');
+  await expect(importAcknowledgement).toBeChecked();
+  const saveCopy = preview.getByRole('button', {
+    name: '確認した取込候補を新しいコピーに保存',
+    exact: true,
+  });
+  await expect(saveCopy).toBeEnabled();
+  await tabTo(page, saveCopy);
+  await page.keyboard.press('Enter');
+
+  const savedProjects = page.getByRole('region', { name: '保存したプロジェクト', exact: true });
+  const importedProject = savedProjects.getByRole('button', { name: /^Imported GLB revision/ });
+  await expect(importedProject).toBeVisible();
+  await tabTo(page, importedProject);
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { name: 'Imported GLB', exact: true })).toBeVisible();
+  const open3d = page.getByRole('button', { name: '3D表示を開く', exact: true });
+  await tabTo(page, open3d);
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+
+  const gameDetails = page.getByText('ゲーム向け情報を編集', { exact: true });
+  await tabTo(page, gameDetails);
+  await page.keyboard.press('Enter');
+  const game = page.getByRole('region', { name: '3Dゲーム向け情報', exact: true });
+  const assetKind = game.getByLabel('asset種類', { exact: true });
+  await tabTo(page, assetKind);
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('character');
+  const applyGame = game.getByRole('button', { name: 'ゲーム基本情報を適用', exact: true });
+  await expect(applyGame).toBeEnabled();
+  await tabTo(page, applyGame);
+  await page.keyboard.press('Enter');
+  await expect(assetKind).toHaveValue('character');
+
+  const exportPanel = io(page);
+  if (!(await exportPanel.isVisible())) {
+    await tabTo(page, openDetails);
+    await page.keyboard.press('Enter');
+  }
+  await expect(exportPanel).toBeVisible();
+  const exportAcknowledgement = exportPanel.getByLabel(
+    '固定revisionの出力範囲と変換・損失の注意を確認しました',
+    { exact: true },
+  );
+  await expect(exportAcknowledgement).toBeEnabled();
+  await tabTo(page, exportAcknowledgement);
+  await page.keyboard.press('Space');
+  const createPackage = exportPanel.getByRole('button', {
+    name: 'GLB・付属情報・ZIPを作成',
+    exact: true,
+  });
+  await tabTo(page, createPackage);
+  await page.keyboard.press('Enter');
+  const saveZip = exportPanel.getByRole('button', { name: 'ZIPを保存', exact: true });
+  await expect(saveZip).toBeVisible();
+  await tabTo(page, saveZip);
+  const downloadEvent = page.waitForEvent('download');
+  await page.keyboard.press('Enter');
+  const zip = unzipSync(await readFile((await (await downloadEvent).path())!));
+  const glb = preflightGlb(zip['model.glb']);
+  const metadata = JSON.parse(new TextDecoder().decode(zip['game.json']));
+  expect(glb.json.meshes?.length).toBeGreaterThan(0);
+  expect(metadata.game.assetKind).toBe('character');
+  expect(metadata.modelHash).toBe(await sha256(zip['model.glb']));
+});
 test('retires a stale import preview without canceling a concurrent fixed-revision export', async ({
   page,
 }) => {

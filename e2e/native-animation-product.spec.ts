@@ -74,7 +74,9 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
   await tabTo(page, target);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect(target).not.toHaveValue('');
+  const targetId = await target.inputValue();
+  expect(targetId).not.toBe('');
+  await expect(target.locator('option:checked')).toContainText('箱 /');
   const readPose = animation.getByRole('button', { name: '表示中のTRSを読む', exact: true });
   await tabTo(page, readPose);
   await page.keyboard.press('Enter');
@@ -102,7 +104,8 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
   });
   await tabTo(page, applyKey);
   await page.keyboard.press('Enter');
-  await expect.poll(() => revision(page)).toBe(before + 1);
+  const afterEdit = before + 1;
+  await expect.poll(() => revision(page)).toBe(afterEdit);
   await expect(
     animation.getByRole('button', { name: 'キー 1秒: 2, 0, 0', exact: true }),
   ).toBeVisible();
@@ -110,7 +113,14 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
   const save = page.getByRole('button', { name: '今すぐ保存', exact: true });
   await tabTo(page, save);
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('status').filter({ hasText: '保存済み · revision' })).toBeVisible();
+  await expect(page.locator('.editor3d-save-status')).toHaveText(
+    `保存済み · revision ${afterEdit}`,
+  );
+  await expect(
+    page.getByText(`編集中 revision ${afterEdit} / 保存済み revision ${afterEdit}`, {
+      exact: true,
+    }),
+  ).toBeVisible();
   const backup = page.getByRole('button', { name: '現在の内容をバックアップ', exact: true });
   await tabTo(page, backup);
   const downloadEvent = page.waitForEvent('download');
@@ -120,6 +130,7 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
   expect(saved.project.clips[0].tracks[0].keys).toHaveLength(1);
   expect(saved.project.clips[0].tracks[0].keys[0].time).toBe(1);
   expect(saved.project.clips[0].tracks[0].keys[0].value).toEqual([2, 0, 0]);
+  expect(saved.project.clips[0].tracks[0].nodeId).toBe(targetId);
 });
 async function backup(page: Page) {
   const pending = page.waitForEvent('download');

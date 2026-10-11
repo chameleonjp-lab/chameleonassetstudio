@@ -156,12 +156,20 @@ test('keyboard-only Tab flow creates, numerically edits, saves and backs up a pr
   const apply = panel.getByRole('button', { name: '数値変形を適用', exact: true });
   await tabTo(page, apply);
   await page.keyboard.press('Enter');
-  await expect.poll(() => revision(page)).toBe(before + 1);
+  const afterEdit = before + 1;
+  await expect.poll(() => revision(page)).toBe(afterEdit);
 
   const save = page.getByRole('button', { name: '今すぐ保存', exact: true });
   await tabTo(page, save);
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('status').filter({ hasText: '保存済み · revision' })).toBeVisible();
+  await expect(page.locator('.editor3d-save-status')).toHaveText(
+    `保存済み · revision ${afterEdit}`,
+  );
+  await expect(
+    page.getByText(`編集中 revision ${afterEdit} / 保存済み revision ${afterEdit}`, {
+      exact: true,
+    }),
+  ).toBeVisible();
 
   const backup = page.getByRole('button', { name: '現在の内容をバックアップ', exact: true });
   const downloadEvent = page.waitForEvent('download');
