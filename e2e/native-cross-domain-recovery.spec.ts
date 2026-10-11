@@ -116,7 +116,9 @@ test('same-origin 2D rollback and 3D resident recovery preserve independent dura
     ),
   );
   try {
-    await page.getByLabel('画像を選ぶ', { exact: true }).setInputFiles({
+    const imageInput = page.getByLabel('画像を選ぶ', { exact: true });
+    await expect(imageInput).toBeEnabled();
+    await imageInput.setInputFiles({
       name: 'original.png',
       mimeType: 'image/png',
       buffer: Buffer.from(png, 'base64'),
