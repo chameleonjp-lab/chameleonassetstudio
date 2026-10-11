@@ -93,6 +93,47 @@ test('empty project to native box, keyboard camera, GPU pause, backup restore an
   }
 });
 
+test('3D viewer and active-object selector expose text alternatives for canvas information', async ({
+  page,
+}) => {
+  await createBox(page);
+
+  const viewer = page.getByRole('group', { name: 'Native box workの3D表示', exact: true });
+  await expect(viewer).toHaveAttribute('aria-describedby', /\S+/);
+  const viewerDescriptionIds = (await viewer.getAttribute('aria-describedby'))!
+    .split(/\s+/)
+    .filter(Boolean);
+  expect(viewerDescriptionIds).not.toHaveLength(0);
+  const viewerDescriptions = await Promise.all(
+    viewerDescriptionIds.map(async (id) => {
+      const description = page.locator(`[id="${id}"]`);
+      await expect(description).toHaveCount(1);
+      return (await description.textContent()) ?? '';
+    }),
+  );
+  const viewerDescriptionText = viewerDescriptions.join(' ');
+  expect(viewerDescriptionText).toContain('Tabキーで操作ボタンへ移動し');
+  expect(viewerDescriptionText).toContain('PNGは背景付きの表示画像です。');
+
+  const authoring = page.getByRole('region', { name: '3D制作', exact: true });
+  const objectSelect = authoring.getByRole('combobox', { name: '制作オブジェクト', exact: true });
+  await expect(objectSelect).toHaveAttribute('aria-describedby', /\S+/);
+  const objectDescriptionIds = (await objectSelect.getAttribute('aria-describedby'))!
+    .split(/\s+/)
+    .filter(Boolean);
+  expect(objectDescriptionIds).not.toHaveLength(0);
+  const objectDescriptions = await Promise.all(
+    objectDescriptionIds.map(async (id) => {
+      const description = page.locator(`[id="${id}"]`);
+      await expect(description).toHaveCount(1);
+      return (await description.textContent()) ?? '';
+    }),
+  );
+  expect(objectDescriptions.join(' ')).toMatch(/制作対象（アクティブ）: 箱 \/ .+/);
+  await expect(objectSelect.locator('option:checked')).toHaveText('1: 箱');
+  await expect(page.getByRole('status').filter({ hasText: '3D表示中' })).toBeVisible();
+});
+
 test('native panel fits a phone width and exposes keyboard-sized controls', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   await createBox(page);
