@@ -1,0 +1,237 @@
+{
+  "evidenceScope": "native-product-ui-headless",
+  "executionMode": "vite-production-preview",
+  "autosaveBurstBoundary": "each trial applies repeated numeric commits with every observed apply-to-apply gap below the configured 800 ms debounce; autosave-window samples run from the first dirty-state observation to the first durable revision checkpoint observed before the burst ends; the final revision is verified separately after the last edit",
+  "productContinuousAutosaveMeasured": true,
+  "continuousInputDebounceMs": 800,
+  "requestedRuns": 5,
+  "requestedCommitsPerRun": 20,
+  "requestedPauseBetweenCommitsMs": 200,
+  "allBurstsHadDurableCheckpointBeforeLastEdit": true,
+  "finalSavedBackupMatchesCurrentProject": true,
+  "physicalAcceptance": false,
+  "burstResults": [
+    {
+      "baselineRevision": 1,
+      "finalRevision": 21,
+      "requestedCommits": 20,
+      "actualApplyClicks": 20,
+      "maximumInterCommitGapMs": 526,
+      "firstDirtyAtMs": 318,
+      "firstCheckpointAtMs": 5470,
+      "firstDirtyToFirstCheckpointMs": 5152,
+      "checkpointCurrentRevision": 12,
+      "checkpointPersistedRevision": 12,
+      "firstCheckpointObservedDuringBurst": true,
+      "finalAckAtMs": 10501,
+      "lastEditToFinalAckMs": 872
+    },
+    {
+      "baselineRevision": 21,
+      "finalRevision": 41,
+      "requestedCommits": 20,
+      "actualApplyClicks": 20,
+      "maximumInterCommitGapMs": 535,
+      "firstDirtyAtMs": 11180,
+      "firstCheckpointAtMs": 16204,
+      "firstDirtyToFirstCheckpointMs": 5024,
+      "checkpointCurrentRevision": 32,
+      "checkpointPersistedRevision": 32,
+      "firstCheckpointObservedDuringBurst": true,
+      "finalAckAtMs": 21170,
+      "lastEditToFinalAckMs": 873
+    },
+    {
+      "baselineRevision": 41,
+      "finalRevision": 61,
+      "requestedCommits": 20,
+      "actualApplyClicks": 20,
+      "maximumInterCommitGapMs": 530,
+      "firstDirtyAtMs": 21769,
+      "firstCheckpointAtMs": 26888,
+      "firstDirtyToFirstCheckpointMs": 5119,
+      "checkpointCurrentRevision": 52,
+      "checkpointPersistedRevision": 52,
+      "firstCheckpointObservedDuringBurst": true,
+      "finalAckAtMs": 31670,
+      "lastEditToFinalAckMs": 827
+    },
+    {
+      "baselineRevision": 61,
+      "finalRevision": 81,
+      "requestedCommits": 20,
+      "actualApplyClicks": 20,
+      "maximumInterCommitGapMs": 473,
+      "firstDirtyAtMs": 32302,
+      "firstCheckpointAtMs": 37386,
+      "firstDirtyToFirstCheckpointMs": 5084,
+      "checkpointCurrentRevision": 73,
+      "checkpointPersistedRevision": 73,
+      "firstCheckpointObservedDuringBurst": true,
+      "finalAckAtMs": 41836,
+      "lastEditToFinalAckMs": 967
+    },
+    {
+      "baselineRevision": 81,
+      "finalRevision": 101,
+      "requestedCommits": 20,
+      "actualApplyClicks": 20,
+      "maximumInterCommitGapMs": 475,
+      "firstDirtyAtMs": 42744,
+      "firstCheckpointAtMs": 47826,
+      "firstDirtyToFirstCheckpointMs": 5082,
+      "checkpointCurrentRevision": 93,
+      "checkpointPersistedRevision": 93,
+      "firstCheckpointObservedDuringBurst": true,
+      "finalAckAtMs": 52238,
+      "lastEditToFinalAckMs": 911
+    }
+  ],
+  "record": {
+    "schemaVersion": "native-performance-v1",
+    "source": {
+      "commitSha": "9f0aa2ff739f31749d8cca88b6f92c516d10bab6",
+      "dirty": true
+    },
+    "fixture": {
+      "id": "F01",
+      "sha256": "542da943328ccae848c6a838c348dd1da0b4a18196dc5ab4017c6d8fcd1c0070"
+    },
+    "environment": {
+      "browser": {
+        "family": "webkit",
+        "version": "26.5"
+      },
+      "os": {
+        "family": "linux",
+        "version": null
+      },
+      "device": {
+        "realDevice": "headless",
+        "category": "desktop",
+        "model": "unrecorded",
+        "thermalState": "unknown"
+      },
+      "viewport": {
+        "widthCssPx": 1280,
+        "heightCssPx": 720,
+        "devicePixelRatio": 2
+      }
+    },
+    "cacheState": "warm",
+    "startedAt": "2026-10-11T04:42:34.945Z",
+    "measurements": [
+      {
+        "metric": "input",
+        "operation": "numeric-commit",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "animation-frame",
+        "operation": "active-playback",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "long-task",
+        "operation": "main-thread",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "import-first-draw",
+        "operation": "import-to-first-draw",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "cancel",
+        "operation": "cancel-to-canonical-unchanged",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "autosave-window",
+        "operation": "first-dirty-to-persisted",
+        "status": "measured",
+        "window": {
+          "startMs": 0,
+          "endMs": 52942,
+          "visibility": "foreground",
+          "freeze": "unknown"
+        },
+        "samples": [
+          {
+            "startMs": 318,
+            "durationMs": 5152
+          },
+          {
+            "startMs": 11180,
+            "durationMs": 5024
+          },
+          {
+            "startMs": 21769,
+            "durationMs": 5119
+          },
+          {
+            "startMs": 32302,
+            "durationMs": 5084
+          },
+          {
+            "startMs": 42744,
+            "durationMs": 5082
+          }
+        ],
+        "summary": {
+          "n": 5,
+          "medianMs": 5084,
+          "maxMs": 5152,
+          "p95Ms": null,
+          "p95Reason": "insufficient-samples",
+          "initialRunCoverage": null
+        }
+      }
+    ]
+  }
+}
