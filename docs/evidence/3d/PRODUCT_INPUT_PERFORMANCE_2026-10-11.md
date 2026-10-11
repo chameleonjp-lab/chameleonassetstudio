@@ -41,3 +41,7 @@ SHA-256 checksums:
 - Chromium screenshot: `d1ca3752bdffe9ed04fc4c2598ff13f939fb83dbe08d35673b7ee99d5c6534fd`
 - WebKit JSON: `6b09b5ace9a930127244ed3010e1eeefd8075478048e86d440a3a8aee6a36573`
 - WebKit screenshot: `6e71bca031c0207ba4d459dc74e4a50797b0fe71ba1ab57e3cb2e97ec93763a9`
+
+## Execution-mode clarification — 2026-10-11
+
+The run at commit `afd50ca` inherited `npm run dev` from the general Playwright configuration. It is development-server diagnostic evidence only, **not** a production-build performance result. See [`PRODUCT_INPUT_PRODUCTION_PREVIEW_2026-10-11.md`](PRODUCT_INPUT_PRODUCTION_PREVIEW_2026-10-11.md) for the later clean production-preview run.
