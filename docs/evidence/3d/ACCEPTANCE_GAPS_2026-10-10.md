@@ -128,3 +128,12 @@ The combined focused UX-05 scene-text/selection-status and timeline-key checks t
 A focused UX-05 software slice adds a separate `aria-live="polite"` selection status for the active clip, target object name/ID, property and selected key time. Property changes, key selection and selection clearing update the status. The continuously refreshed playback/time status is explicitly `aria-live="off"` to avoid per-frame announcements. The focused keyboard-only test passed in system Chromium and WebKit-critical (1/1 each); the complete `native-animation-product.spec.ts` suite passed 7/7 in each browser, and `npm run test:ci-scope` passed 8/8. All 3,530 unit tests, lint (zero errors; one existing viewport Hook warning), formatting, and the production build passed.
 
 This is DOM/status evidence, not actual screen-reader speech or assistive-technology acceptance. VoiceOver/TalkBack, physical-device/keyboard/touch, contrast and real browser/OS zoom remain unverified. UX-05, 3D-STAGE4-04 and physical accessibility gates remain open; this follow-up does not change any acceptance status to pass.
+
+
+## Timeline key-action announcement follow-up — 2026-10-12
+
+[`PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md`](PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md) now records a separate polite, atomic live status for successful timeline-key add, edit, duplicate, and delete actions. Each message includes clip, target name/ID, property, and affected time(s); existing error output remains a `role="alert"`, with no success announcement on failure. The continuously updated playback/time status remains `aria-live="off"`.
+
+The keyboard-only workflow verifies all four action messages, updated key-list content, revision changes and saved-backup values. The complete animation product E2E suite passed 7/7 in system Chromium and 7/7 in WebKit-critical. Full unit tests passed 3,530/3,530, CI-scope classification passed 8/8, formatting and production build passed, and lint had zero errors plus the existing `NativeViewportPanel.tsx:195` Hook warning. The build retains its existing non-blocking >500 kB chunk advisory.
+
+This adds headless DOM/status evidence only. Actual screen-reader speech, VoiceOver/TalkBack, full scene alternatives, physical keyboard/device/touch, contrast and real browser/OS zoom remain unverified. UX-05, 3D-STAGE4-04, and physical accessibility gates remain partial/open; no acceptance status is promoted.

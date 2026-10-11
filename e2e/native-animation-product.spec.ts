@@ -63,9 +63,12 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
   const animation = panel(page);
   const playbackStatus = animation.getByTestId('native-animation-playback-status');
   const selectionStatus = animation.getByTestId('native-animation-selection-status');
+  const keyActionStatus = animation.getByTestId('native-animation-key-action-status');
   await expect(playbackStatus).toHaveAttribute('aria-live', 'off');
   await expect(selectionStatus).toHaveAttribute('aria-live', 'polite');
   await expect(selectionStatus).toHaveAttribute('aria-atomic', 'true');
+  await expect(keyActionStatus).toHaveAttribute('aria-live', 'polite');
+  await expect(keyActionStatus).toHaveAttribute('aria-atomic', 'true');
 
   const clipName = animation.getByLabel('clip名', { exact: true });
   await tabTo(page, clipName);
@@ -90,6 +93,9 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
   await tabTo(page, addKey);
   await page.keyboard.press('Enter');
   const targetLabel = (await target.locator('option:checked').innerText()).trim();
+  await expect(keyActionStatus).toHaveText(
+    `Keyboard Move / ${targetLabel} / 移動: キー 0秒を追加しました。`,
+  );
   const timeline = animation.getByRole('group', {
     name: `タイムラインのキーマーカー: Keyboard Move / ${targetLabel} / 移動`,
   });
@@ -174,6 +180,9 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
   await page.keyboard.press('Enter');
   const afterEdit = before + 1;
   await expect.poll(() => revision(page)).toBe(afterEdit);
+  await expect(keyActionStatus).toHaveText(
+    `Keyboard Move / ${targetLabel} / 移動: キーを 1秒へ更新しました。`,
+  );
   await expect(
     animation.getByRole('button', { name: 'キー 1秒: 2, 0, 0', exact: true }),
   ).toBeVisible();
@@ -181,14 +190,48 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
     `選択中のキー: Keyboard Move / ${targetLabel} / 移動 / 未選択`,
   );
 
+  const editedKey = animation.getByRole('button', { name: 'キー 1秒: 2, 0, 0', exact: true });
+  await tabTo(page, editedKey);
+  await page.keyboard.press('Enter');
+  await tabTo(page, keyTime);
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('0.5');
+  const duplicateKey = animation.getByRole('button', {
+    name: '選択キーを指定時刻へ複製',
+    exact: true,
+  });
+  await tabTo(page, duplicateKey);
+  await page.keyboard.press('Enter');
+  const afterDuplicate = afterEdit + 1;
+  await expect.poll(() => revision(page)).toBe(afterDuplicate);
+  await expect(keyActionStatus).toHaveText(
+    `Keyboard Move / ${targetLabel} / 移動: キー 1秒を 0.5秒へ複製しました。`,
+  );
+  const duplicatedKey = animation.getByRole('button', {
+    name: 'キー 0.5秒: 2, 0, 0',
+    exact: true,
+  });
+  await expect(duplicatedKey).toBeVisible();
+  await tabTo(page, duplicatedKey);
+  await page.keyboard.press('Enter');
+  const deleteKey = animation.getByRole('button', { name: '選択キーを削除', exact: true });
+  await tabTo(page, deleteKey);
+  await page.keyboard.press('Enter');
+  const afterDelete = afterDuplicate + 1;
+  await expect.poll(() => revision(page)).toBe(afterDelete);
+  await expect(keyActionStatus).toHaveText(
+    `Keyboard Move / ${targetLabel} / 移動: キー 0.5秒を削除しました。`,
+  );
+  await expect(duplicatedKey).toHaveCount(0);
+
   const save = page.getByRole('button', { name: '今すぐ保存', exact: true });
   await tabTo(page, save);
   await page.keyboard.press('Enter');
   await expect(page.locator('.editor3d-save-status')).toHaveText(
-    `保存済み · revision ${afterEdit}`,
+    `保存済み · revision ${afterDelete}`,
   );
   await expect(
-    page.getByText(`編集中 revision ${afterEdit} / 保存済み revision ${afterEdit}`, {
+    page.getByText(`編集中 revision ${afterDelete} / 保存済み revision ${afterDelete}`, {
       exact: true,
     }),
   ).toBeVisible();
