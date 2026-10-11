@@ -328,10 +328,13 @@ export function NativeTexturePanel({ project, session, disabled, onChange }: Pro
             <input
               type="file"
               accept="image/png,image/jpeg"
-              aria-describedby="native-2d-texture-handoff"
+              aria-describedby="native-2d-texture-handoff native-texture-file-status"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
           </label>
+          <p id="native-texture-file-status" aria-live="polite">
+            {file ? `選択中: ${file.name}` : '画像ファイル未選択'}
+          </p>
           <label>
             画像の権利・出典
             <input

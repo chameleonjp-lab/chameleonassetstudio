@@ -93,6 +93,74 @@ test('empty project to native box, keyboard camera, GPU pause, backup restore an
   }
 });
 
+test('3D viewer and active-object selector expose text alternatives for canvas information', async ({
+  page,
+}) => {
+  await createBox(page);
+
+  const viewer = page.getByRole('group', { name: 'Native box workの3D表示', exact: true });
+  await expect(viewer).toHaveAttribute('aria-describedby', /\S+/);
+  const viewerDescriptionIds = (await viewer.getAttribute('aria-describedby'))!
+    .split(/\s+/)
+    .filter(Boolean);
+  expect(viewerDescriptionIds).not.toHaveLength(0);
+  const viewerDescriptions = await Promise.all(
+    viewerDescriptionIds.map(async (id) => {
+      const description = page.locator(`[id="${id}"]`);
+      await expect(description).toHaveCount(1);
+      return (await description.textContent()) ?? '';
+    }),
+  );
+  const viewerDescriptionText = viewerDescriptions.join(' ');
+  expect(viewerDescriptionText).toContain('Tabキーで操作ボタンへ移動し');
+  expect(viewerDescriptionText).toContain('PNGは背景付きの表示画像です。');
+
+  const authoring = page.getByRole('region', { name: '3D制作', exact: true });
+  const objectSelect = authoring.getByRole('combobox', { name: '制作オブジェクト', exact: true });
+  await expect(objectSelect).toHaveAttribute('aria-describedby', /\S+/);
+  const objectDescriptionIds = (await objectSelect.getAttribute('aria-describedby'))!
+    .split(/\s+/)
+    .filter(Boolean);
+  expect(objectDescriptionIds).not.toHaveLength(0);
+  const objectDescriptions = await Promise.all(
+    objectDescriptionIds.map(async (id) => {
+      const description = page.locator(`[id="${id}"]`);
+      await expect(description).toHaveCount(1);
+      return (await description.textContent()) ?? '';
+    }),
+  );
+  expect(objectDescriptions.join(' ')).toMatch(/制作対象（アクティブ）: 箱 \/ .+/);
+  await expect(objectSelect.locator('option:checked')).toHaveText('1: 箱');
+  await expect(page.getByRole('status').filter({ hasText: '3D表示中' })).toBeVisible();
+  await page.getByText('部品の組立を開く', { exact: true }).click();
+  const assembly = page.getByRole('region', { name: '3D部品の組立', exact: true });
+  await expect(
+    assembly.getByRole('heading', { name: '部品を組み立てる', level: 3, exact: true }),
+  ).toBeVisible();
+  const sceneList = assembly.getByRole('list');
+  await expect(sceneList).toHaveAttribute('aria-describedby', /\S+/);
+  const sceneDescriptionIds = (await sceneList.getAttribute('aria-describedby'))!
+    .split(/\s+/)
+    .filter(Boolean);
+  expect(sceneDescriptionIds).not.toHaveLength(0);
+  const sceneDescriptions = await Promise.all(
+    sceneDescriptionIds.map(async (id) => {
+      const description = page.locator(`[id="${id}"]`);
+      await expect(description).toHaveCount(1);
+      return (await description.textContent()) ?? '';
+    }),
+  );
+  expect(sceneDescriptions.join(' ')).toContain('選択中 1 個');
+  expect(sceneDescriptions.join(' ')).toContain('名前とIDで対象を確認してください');
+  const sceneItem = sceneList.getByRole('listitem');
+  await expect(sceneItem).toHaveCount(1);
+  await expect(sceneItem).toContainText('アクティブ');
+  await expect(sceneItem).toContainText('ID:');
+  await expect(sceneItem).toContainText('親: なし');
+  const assemblyCheckbox = sceneList.getByRole('checkbox', { name: /^組立対象 箱 \(.+\)$/ });
+  await expect(assemblyCheckbox).toBeChecked();
+});
+
 test('native panel fits a phone width and exposes keyboard-sized controls', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   await createBox(page);
@@ -109,6 +177,76 @@ test('native panel fits a phone width and exposes keyboard-sized controls', asyn
     body: await page.screenshot({ fullPage: true }),
     contentType: 'image/png',
   });
+});
+
+test('material panel reflows at 320 CSS px with 200% root text-size simulation', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await createBox(page);
+  const panel = page.getByRole('region', { name: '画像とUVを編集', exact: true });
+  await expect(panel).toBeVisible();
+  await panel.getByText('画像とUVを開く', { exact: true }).click();
+  await expect(
+    panel.getByRole('combobox', { name: '画像を編集する材質', exact: true }),
+  ).toBeVisible();
+
+  // This simulates enlarged root text and narrow reflow, not browser/OS zoom itself.
+  await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+  const textureFileInput = panel.locator('input[type="file"]');
+  const textureFileStatus = panel.locator('#native-texture-file-status');
+  await expect(textureFileInput).toBeVisible();
+  await expect(textureFileStatus).toHaveText('画像ファイル未選択');
+  await expect(textureFileStatus).toHaveAttribute('aria-live', 'polite');
+  const descriptionIds =
+    (await textureFileInput.getAttribute('aria-describedby'))?.split(/\s+/) ?? [];
+  expect(descriptionIds).toEqual(
+    expect.arrayContaining(['native-2d-texture-handoff', 'native-texture-file-status']),
+  );
+  await textureFileInput.setInputFiles({
+    name: 'sample-texture.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from('selection-only; no image import is run'),
+  });
+  await expect(textureFileStatus).toHaveText('選択中: sample-texture.png');
+  const metrics = await page.evaluate(() => {
+    const root = document.documentElement;
+    const panelElement = document.querySelector<HTMLElement>('.native-textures');
+    if (!panelElement) throw new Error('Native texture panel is missing');
+    const visibleElementBounds = Array.from(
+      panelElement.querySelectorAll<HTMLElement>('h3, p, summary, label, legend, button'),
+    )
+      .filter((element) => element.getClientRects().length > 0)
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return { left: rect.left, right: rect.right };
+      });
+    const panelRect = panelElement.getBoundingClientRect();
+    return {
+      rootFontSize: getComputedStyle(root).fontSize,
+      viewportWidth: window.innerWidth,
+      documentScrollWidth: root.scrollWidth,
+      panelLeft: panelRect.left,
+      panelRight: panelRect.right,
+      panelScrollWidth: panelElement.scrollWidth,
+      panelClientWidth: panelElement.clientWidth,
+      visibleElementBounds,
+    };
+  });
+  expect(metrics.rootFontSize).toBe('32px');
+  expect(metrics.documentScrollWidth).toBeLessThanOrEqual(metrics.viewportWidth);
+  expect(metrics.panelLeft).toBeGreaterThanOrEqual(0);
+  expect(metrics.panelRight).toBeLessThanOrEqual(metrics.viewportWidth);
+  expect(metrics.panelScrollWidth).toBeLessThanOrEqual(metrics.panelClientWidth + 1);
+  expect(
+    metrics.visibleElementBounds.filter(
+      (element) => element.left < 0 || element.right > metrics.viewportWidth,
+    ),
+  ).toEqual([]);
+
+  const importButton = panel.getByRole('button', { name: '画像を取り込み適用', exact: true });
+  const importButtonBox = await importButton.boundingBox();
+  expect(importButtonBox?.height).toBeGreaterThanOrEqual(44);
 });
 
 test('offline display chunk failure preserves saving and complete native backup', async ({

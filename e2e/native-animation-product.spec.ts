@@ -3,6 +3,23 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { importBackup } from '../src/core3d/backup/backup';
 const panel = (page: Page) => page.getByRole('region', { name: '3Dアニメーション', exact: true });
+const revision = async (page: Page) =>
+  Number(
+    (await page.locator('.editor3d-revision').textContent())!.match(/編集中 revision (\d+)/)![1],
+  );
+async function tabTo(
+  page: Page,
+  target: ReturnType<Page['getByRole']>,
+  direction: 'Tab' | 'Shift+Tab' = 'Tab',
+) {
+  await expect(target).toBeVisible();
+  if (await target.evaluate((element) => element === document.activeElement)) return;
+  for (let attempt = 0; attempt < 128; attempt++) {
+    await page.keyboard.press(direction);
+    if (await target.evaluate((element) => element === document.activeElement)) return;
+  }
+  throw new Error('Tab navigation did not reach the requested control.');
+}
 async function setup(page: Page) {
   await page.goto('/3d/');
   await page.getByLabel('新しいプロジェクト名', { exact: true }).fill('Animation work');
@@ -23,6 +40,98 @@ async function setup(page: Page) {
   await animation.getByRole('button', { name: 'キーを追加', exact: true }).click();
   return animation;
 }
+test('keyboard-only Tab flow selects and edits an animation key', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.goto('/3d/');
+
+  const projectName = page.getByLabel('新しいプロジェクト名', { exact: true });
+  await tabTo(page, projectName);
+  await page.keyboard.type('Keyboard animation work');
+  const create = page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true });
+  await page.keyboard.press('Tab');
+  await expect(create).toBeFocused();
+  await page.keyboard.press('Enter');
+
+  const addBox = page.getByRole('button', { name: '箱を追加', exact: true });
+  await tabTo(page, addBox);
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+
+  const openAnimation = page.getByText('アニメーション編集を開く', { exact: true });
+  await tabTo(page, openAnimation);
+  await page.keyboard.press('Enter');
+  const animation = panel(page);
+
+  const clipName = animation.getByLabel('clip名', { exact: true });
+  await tabTo(page, clipName);
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('Keyboard Move');
+  const createClip = animation.getByRole('button', { name: '新しいclipを作成', exact: true });
+  await tabTo(page, createClip);
+  await page.keyboard.press('Enter');
+
+  const target = animation.getByRole('combobox', { name: 'キー対象', exact: true });
+  await tabTo(page, target);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  const targetId = await target.inputValue();
+  expect(targetId).not.toBe('');
+  await expect(target.locator('option:checked')).toContainText('箱 /');
+  const readPose = animation.getByRole('button', { name: '表示中のTRSを読む', exact: true });
+  await tabTo(page, readPose);
+  await page.keyboard.press('Enter');
+
+  const addKey = animation.getByRole('button', { name: 'キーを追加', exact: true });
+  await tabTo(page, addKey);
+  await page.keyboard.press('Enter');
+  const key = animation.getByRole('button', { name: 'キー 0秒: 0, 0, 0', exact: true });
+  await tabTo(page, key);
+  await page.keyboard.press('Enter');
+  await expect(key).toHaveAttribute('aria-pressed', 'true');
+
+  const keyTime = animation.getByLabel('キー時刻（秒）', { exact: true });
+  const keyX = animation.getByLabel('キー値 X', { exact: true });
+  await tabTo(page, keyTime, 'Shift+Tab');
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('1');
+  await tabTo(page, keyX);
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('2');
+  const before = await revision(page);
+  const applyKey = animation.getByRole('button', {
+    name: '選択キーの時刻と値を適用',
+    exact: true,
+  });
+  await tabTo(page, applyKey);
+  await page.keyboard.press('Enter');
+  const afterEdit = before + 1;
+  await expect.poll(() => revision(page)).toBe(afterEdit);
+  await expect(
+    animation.getByRole('button', { name: 'キー 1秒: 2, 0, 0', exact: true }),
+  ).toBeVisible();
+
+  const save = page.getByRole('button', { name: '今すぐ保存', exact: true });
+  await tabTo(page, save);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.editor3d-save-status')).toHaveText(
+    `保存済み · revision ${afterEdit}`,
+  );
+  await expect(
+    page.getByText(`編集中 revision ${afterEdit} / 保存済み revision ${afterEdit}`, {
+      exact: true,
+    }),
+  ).toBeVisible();
+  const backup = page.getByRole('button', { name: '現在の内容をバックアップ', exact: true });
+  await tabTo(page, backup);
+  const downloadEvent = page.waitForEvent('download');
+  await page.keyboard.press('Enter');
+  const bytes = await readFile((await (await downloadEvent).path())!);
+  const saved = await importBackup(new Uint8Array(bytes));
+  expect(saved.project.clips[0].tracks[0].keys).toHaveLength(1);
+  expect(saved.project.clips[0].tracks[0].keys[0].time).toBe(1);
+  expect(saved.project.clips[0].tracks[0].keys[0].value).toEqual([2, 0, 0]);
+  expect(saved.project.clips[0].tracks[0].nodeId).toBe(targetId);
+});
 async function backup(page: Page) {
   const pending = page.waitForEvent('download');
   await page.getByRole('button', { name: '現在の内容をバックアップ', exact: true }).click();
@@ -214,7 +323,7 @@ test('a clip with an undisplayable key stays selectable for repair', async ({ pa
   await expect(animation.getByRole('alert')).toHaveCount(0);
 });
 
-test('reduced motion changes pause preview without changing clips and still allow explicit playback', async ({
+test('reduced motion applies editor CSS and pauses preview without changing clips', async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
@@ -226,6 +335,21 @@ test('reduced motion changes pause preview without changing clips and still allo
   await expect(animation.getByRole('status')).toContainText('アニメーション再生中');
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(animation.getByTestId('native-motion-preference')).toContainText('設定を検出');
+  const reducedMotionStyles = await page.locator('.editor3d').evaluate((element) => {
+    const styles = getComputedStyle(element);
+    const milliseconds = (value: string) =>
+      value.endsWith('ms') ? Number.parseFloat(value) : Number.parseFloat(value) * 1000;
+    return {
+      animationDurationMs: milliseconds(styles.animationDuration),
+      animationIterationCount: styles.animationIterationCount,
+      scrollBehavior: styles.scrollBehavior,
+      transitionDurationMs: milliseconds(styles.transitionDuration),
+    };
+  });
+  expect(reducedMotionStyles.animationDurationMs).toBeCloseTo(0.01, 5);
+  expect(reducedMotionStyles.animationIterationCount).toBe('1');
+  expect(reducedMotionStyles.scrollBehavior).toBe('auto');
+  expect(reducedMotionStyles.transitionDurationMs).toBeCloseTo(0.01, 5);
   await expect(animation.getByRole('status')).toContainText('アニメーション停止pose');
   expect((await importBackup(new Uint8Array(await backup(page)))).project).toEqual(before);
   await animation.getByRole('button', { name: 'clipを再生', exact: true }).click();
