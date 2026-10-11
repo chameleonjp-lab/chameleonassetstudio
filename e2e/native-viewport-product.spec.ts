@@ -132,6 +132,33 @@ test('3D viewer and active-object selector expose text alternatives for canvas i
   expect(objectDescriptions.join(' ')).toMatch(/制作対象（アクティブ）: 箱 \/ .+/);
   await expect(objectSelect.locator('option:checked')).toHaveText('1: 箱');
   await expect(page.getByRole('status').filter({ hasText: '3D表示中' })).toBeVisible();
+  await page.getByText('部品の組立を開く', { exact: true }).click();
+  const assembly = page.getByRole('region', { name: '3D部品の組立', exact: true });
+  await expect(
+    assembly.getByRole('heading', { name: '部品を組み立てる', level: 3, exact: true }),
+  ).toBeVisible();
+  const sceneList = assembly.getByRole('list');
+  await expect(sceneList).toHaveAttribute('aria-describedby', /\S+/);
+  const sceneDescriptionIds = (await sceneList.getAttribute('aria-describedby'))!
+    .split(/\s+/)
+    .filter(Boolean);
+  expect(sceneDescriptionIds).not.toHaveLength(0);
+  const sceneDescriptions = await Promise.all(
+    sceneDescriptionIds.map(async (id) => {
+      const description = page.locator(`[id="${id}"]`);
+      await expect(description).toHaveCount(1);
+      return (await description.textContent()) ?? '';
+    }),
+  );
+  expect(sceneDescriptions.join(' ')).toContain('選択中 1 個');
+  expect(sceneDescriptions.join(' ')).toContain('名前とIDで対象を確認してください');
+  const sceneItem = sceneList.getByRole('listitem');
+  await expect(sceneItem).toHaveCount(1);
+  await expect(sceneItem).toContainText('アクティブ');
+  await expect(sceneItem).toContainText('ID:');
+  await expect(sceneItem).toContainText('親: なし');
+  const assemblyCheckbox = sceneList.getByRole('checkbox', { name: /^組立対象 箱 \(.+\)$/ });
+  await expect(assemblyCheckbox).toBeChecked();
 });
 
 test('native panel fits a phone width and exposes keyboard-sized controls', async ({ page }) => {
