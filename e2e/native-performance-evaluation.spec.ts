@@ -1,4 +1,6 @@
 import { execFileSync } from 'node:child_process';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { expect, test } from '@playwright/test';
 import type { NativeEvaluation } from '../tools/3d-evaluation/main';
 import {
@@ -60,6 +62,21 @@ test('records bounded real isolated-renderer commit observations without asserti
   expect(record.measurements.find((entry) => entry.metric === 'animation-frame')!.status).toBe(
     'not-measured',
   );
+  const evidencePath = process.env.NATIVE_PERFORMANCE_EVIDENCE_PATH;
+  if (evidencePath) {
+    await mkdir(dirname(evidencePath), { recursive: true });
+    await writeFile(evidencePath, `${JSON.stringify(result, null, 2)}\n`);
+  }
+  const screenshot = await page.screenshot({ fullPage: true });
+  const screenshotPath = process.env.NATIVE_PERFORMANCE_SCREENSHOT_PATH;
+  if (screenshotPath) {
+    await mkdir(dirname(screenshotPath), { recursive: true });
+    await writeFile(screenshotPath, screenshot);
+  }
+  await test.info().attach('native-performance-evaluation-screen', {
+    body: screenshot,
+    contentType: 'image/png',
+  });
   await test.info().attach('native-performance-isolated-raw', {
     body: Buffer.from(JSON.stringify(result, null, 2)),
     contentType: 'application/json',
