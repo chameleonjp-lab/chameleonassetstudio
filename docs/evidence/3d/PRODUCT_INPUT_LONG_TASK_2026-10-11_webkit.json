@@ -1,0 +1,533 @@
+{
+  "evidenceScope": "native-product-ui-headless",
+  "inputBoundary": "capture-phase numeric-apply click to completion of the next requestAnimationFrame containing a WebGL draw from .native-viewport-host",
+  "productInputLatencyMeasured": true,
+  "physicalAcceptance": false,
+  "record": {
+    "schemaVersion": "native-performance-v1",
+    "source": {
+      "commitSha": "9553615417f624959582880b3fa7dfbcbbb3995a",
+      "dirty": false
+    },
+    "fixture": {
+      "id": "F01",
+      "sha256": "ab3aa32c76a279551a793e0945abb9ce29ba1933f33b37f95dc79f1ca7e0ae38"
+    },
+    "environment": {
+      "browser": {
+        "family": "webkit",
+        "version": "26.5"
+      },
+      "os": {
+        "family": "linux",
+        "version": null
+      },
+      "device": {
+        "realDevice": "headless",
+        "category": "desktop",
+        "model": "unrecorded",
+        "thermalState": "unknown"
+      },
+      "viewport": {
+        "widthCssPx": 1280,
+        "heightCssPx": 720,
+        "devicePixelRatio": 2
+      }
+    },
+    "cacheState": "warm",
+    "startedAt": "2026-10-11T01:59:11.133Z",
+    "measurements": [
+      {
+        "metric": "input",
+        "operation": "numeric-commit",
+        "status": "measured",
+        "window": {
+          "startMs": 0,
+          "endMs": 60111,
+          "visibility": "foreground",
+          "freeze": "unknown"
+        },
+        "samples": [
+          {
+            "startMs": 277,
+            "durationMs": 136
+          },
+          {
+            "startMs": 779,
+            "durationMs": 120
+          },
+          {
+            "startMs": 1262,
+            "durationMs": 77
+          },
+          {
+            "startMs": 1860,
+            "durationMs": 88
+          },
+          {
+            "startMs": 2453,
+            "durationMs": 88
+          },
+          {
+            "startMs": 3056,
+            "durationMs": 100
+          },
+          {
+            "startMs": 3658,
+            "durationMs": 111
+          },
+          {
+            "startMs": 4277,
+            "durationMs": 86
+          },
+          {
+            "startMs": 4864,
+            "durationMs": 71
+          },
+          {
+            "startMs": 5568,
+            "durationMs": 85
+          },
+          {
+            "startMs": 6082,
+            "durationMs": 79
+          },
+          {
+            "startMs": 6691,
+            "durationMs": 151
+          },
+          {
+            "startMs": 7274,
+            "durationMs": 75
+          },
+          {
+            "startMs": 7875,
+            "durationMs": 79
+          },
+          {
+            "startMs": 8476,
+            "durationMs": 67
+          },
+          {
+            "startMs": 9084,
+            "durationMs": 73
+          },
+          {
+            "startMs": 9689,
+            "durationMs": 113
+          },
+          {
+            "startMs": 10295,
+            "durationMs": 78
+          },
+          {
+            "startMs": 10894,
+            "durationMs": 79
+          },
+          {
+            "startMs": 11495,
+            "durationMs": 75
+          },
+          {
+            "startMs": 12112,
+            "durationMs": 87
+          },
+          {
+            "startMs": 12714,
+            "durationMs": 84
+          },
+          {
+            "startMs": 13311,
+            "durationMs": 70
+          },
+          {
+            "startMs": 13909,
+            "durationMs": 90
+          },
+          {
+            "startMs": 14509,
+            "durationMs": 76
+          },
+          {
+            "startMs": 15121,
+            "durationMs": 75
+          },
+          {
+            "startMs": 15723,
+            "durationMs": 80
+          },
+          {
+            "startMs": 16325,
+            "durationMs": 88
+          },
+          {
+            "startMs": 16928,
+            "durationMs": 95
+          },
+          {
+            "startMs": 17535,
+            "durationMs": 76
+          },
+          {
+            "startMs": 18132,
+            "durationMs": 84
+          },
+          {
+            "startMs": 18732,
+            "durationMs": 97
+          },
+          {
+            "startMs": 19343,
+            "durationMs": 87
+          },
+          {
+            "startMs": 19950,
+            "durationMs": 99
+          },
+          {
+            "startMs": 20548,
+            "durationMs": 93
+          },
+          {
+            "startMs": 21151,
+            "durationMs": 77
+          },
+          {
+            "startMs": 21760,
+            "durationMs": 87
+          },
+          {
+            "startMs": 22350,
+            "durationMs": 70
+          },
+          {
+            "startMs": 22951,
+            "durationMs": 104
+          },
+          {
+            "startMs": 23567,
+            "durationMs": 76
+          },
+          {
+            "startMs": 24166,
+            "durationMs": 94
+          },
+          {
+            "startMs": 24775,
+            "durationMs": 73
+          },
+          {
+            "startMs": 25365,
+            "durationMs": 81
+          },
+          {
+            "startMs": 25982,
+            "durationMs": 114
+          },
+          {
+            "startMs": 26574,
+            "durationMs": 79
+          },
+          {
+            "startMs": 27181,
+            "durationMs": 89
+          },
+          {
+            "startMs": 27779,
+            "durationMs": 71
+          },
+          {
+            "startMs": 28385,
+            "durationMs": 79
+          },
+          {
+            "startMs": 28982,
+            "durationMs": 93
+          },
+          {
+            "startMs": 29601,
+            "durationMs": 89
+          },
+          {
+            "startMs": 30201,
+            "durationMs": 91
+          },
+          {
+            "startMs": 30804,
+            "durationMs": 80
+          },
+          {
+            "startMs": 31419,
+            "durationMs": 81
+          },
+          {
+            "startMs": 31994,
+            "durationMs": 102
+          },
+          {
+            "startMs": 32603,
+            "durationMs": 72
+          },
+          {
+            "startMs": 33212,
+            "durationMs": 96
+          },
+          {
+            "startMs": 33816,
+            "durationMs": 79
+          },
+          {
+            "startMs": 34414,
+            "durationMs": 78
+          },
+          {
+            "startMs": 35022,
+            "durationMs": 99
+          },
+          {
+            "startMs": 35624,
+            "durationMs": 76
+          },
+          {
+            "startMs": 36225,
+            "durationMs": 87
+          },
+          {
+            "startMs": 36840,
+            "durationMs": 79
+          },
+          {
+            "startMs": 37442,
+            "durationMs": 76
+          },
+          {
+            "startMs": 38025,
+            "durationMs": 91
+          },
+          {
+            "startMs": 38642,
+            "durationMs": 74
+          },
+          {
+            "startMs": 39245,
+            "durationMs": 85
+          },
+          {
+            "startMs": 39847,
+            "durationMs": 80
+          },
+          {
+            "startMs": 40446,
+            "durationMs": 75
+          },
+          {
+            "startMs": 41043,
+            "durationMs": 87
+          },
+          {
+            "startMs": 41651,
+            "durationMs": 77
+          },
+          {
+            "startMs": 42267,
+            "durationMs": 84
+          },
+          {
+            "startMs": 42865,
+            "durationMs": 102
+          },
+          {
+            "startMs": 43472,
+            "durationMs": 74
+          },
+          {
+            "startMs": 44068,
+            "durationMs": 73
+          },
+          {
+            "startMs": 44665,
+            "durationMs": 74
+          },
+          {
+            "startMs": 45266,
+            "durationMs": 84
+          },
+          {
+            "startMs": 45868,
+            "durationMs": 92
+          },
+          {
+            "startMs": 46486,
+            "durationMs": 77
+          },
+          {
+            "startMs": 47085,
+            "durationMs": 73
+          },
+          {
+            "startMs": 47695,
+            "durationMs": 84
+          },
+          {
+            "startMs": 48288,
+            "durationMs": 92
+          },
+          {
+            "startMs": 48888,
+            "durationMs": 96
+          },
+          {
+            "startMs": 49491,
+            "durationMs": 89
+          },
+          {
+            "startMs": 50094,
+            "durationMs": 73
+          },
+          {
+            "startMs": 50708,
+            "durationMs": 81
+          },
+          {
+            "startMs": 51302,
+            "durationMs": 82
+          },
+          {
+            "startMs": 51898,
+            "durationMs": 111
+          },
+          {
+            "startMs": 52518,
+            "durationMs": 91
+          },
+          {
+            "startMs": 53101,
+            "durationMs": 77
+          },
+          {
+            "startMs": 53718,
+            "durationMs": 86
+          },
+          {
+            "startMs": 54315,
+            "durationMs": 71
+          },
+          {
+            "startMs": 54916,
+            "durationMs": 72
+          },
+          {
+            "startMs": 55521,
+            "durationMs": 103
+          },
+          {
+            "startMs": 56129,
+            "durationMs": 76
+          },
+          {
+            "startMs": 56738,
+            "durationMs": 86
+          },
+          {
+            "startMs": 57331,
+            "durationMs": 78
+          },
+          {
+            "startMs": 57937,
+            "durationMs": 98
+          },
+          {
+            "startMs": 58539,
+            "durationMs": 89
+          },
+          {
+            "startMs": 59138,
+            "durationMs": 89
+          },
+          {
+            "startMs": 59753,
+            "durationMs": 83
+          }
+        ],
+        "summary": {
+          "n": 100,
+          "medianMs": 84,
+          "maxMs": 151,
+          "p95Ms": null,
+          "p95Reason": "freeze-not-excluded",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "animation-frame",
+        "operation": "active-playback",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "long-task",
+        "operation": "main-thread",
+        "status": "unsupported",
+        "reason": "observer-unavailable",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "unsupported",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "import-first-draw",
+        "operation": "import-to-first-draw",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "cancel",
+        "operation": "cancel-to-canonical-unchanged",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "autosave-window",
+        "operation": "first-dirty-to-persisted",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      }
+    ]
+  }
+}
