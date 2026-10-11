@@ -52,3 +52,9 @@ See [`POST_318_LOCAL_CHROMIUM_2026-10-10.md`](POST_318_LOCAL_CHROMIUM_2026-10-10
 [`PRODUCT_INPUT_PERFORMANCE_2026-10-11.md`](PRODUCT_INPUT_PERFORMANCE_2026-10-11.md) adds a manual-only headless product-UI measurement from the numeric-apply click to the next WebGL-drawing animation frame. Chromium and WebKit each completed 100 samples over approximately 60 seconds. Chromium reports median 157.2 ms and p95 194.2 ms; WebKit reports median 80.5 ms and maximum 147 ms, while its p95 is withheld because freeze state is unknown. These are diagnostic measurements, not a pass/fail threshold or a cross-browser ranking.
 
 This closes only one product-path measurement boundary. Animation-frame, long-task, import-first-draw, cancel, and autosave-window remain `not-measured`; B09 performance tiers, input/accessibility acceptance, physical devices, and final release sign-off remain open. Headless browser evidence does not imply physical acceptance.
+
+## Product main-thread long-task follow-up — 2026-10-11
+
+[`PRODUCT_INPUT_LONG_TASK_2026-10-11.md`](PRODUCT_INPUT_LONG_TASK_2026-10-11.md) supersedes the input-only run's `long-task:not-measured` status: the observer measured 310 Chromium entries (median 116 ms, p95 150 ms, maximum 208 ms); WebKit records `unsupported: observer-unavailable`. In the Chromium run, all 100 input intervals overlapped at least one long-task interval (1–2 overlaps, median 2). This is temporal correlation, not causal attribution or a performance-budget verdict. The observer-enabled input values are a distinct run, not a before/after comparison with the input-only record.
+
+Animation-frame, import-first-draw, cancel and autosave-window remain `not-measured`. No numeric B09 latency threshold is set; performance tiers, input/accessibility acceptance, physical-device gates and release sign-off remain open.
