@@ -6,9 +6,9 @@
 
 ## Local verification
 
-- Chromium: passed in the final 16-test matrix; this case completed in 7.5 s.
-- WebKit-critical: passed in the same matrix; this case completed in 8.5 s.
-- The full selected matrix passed 16/16 with one worker.
+- Chromium: passed in the final 18-test matrix; this case completed in 7.1 s.
+- WebKit-critical: passed in the same matrix; this case completed in 9.7 s.
+- The full selected matrix passed 18/18 with one worker.
 
 ## Boundaries
 

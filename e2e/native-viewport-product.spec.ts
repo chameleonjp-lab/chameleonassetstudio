@@ -179,6 +179,76 @@ test('native panel fits a phone width and exposes keyboard-sized controls', asyn
   });
 });
 
+test('material panel reflows at 320 CSS px with 200% root text-size simulation', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await createBox(page);
+  const panel = page.getByRole('region', { name: '画像とUVを編集', exact: true });
+  await expect(panel).toBeVisible();
+  await panel.getByText('画像とUVを開く', { exact: true }).click();
+  await expect(
+    panel.getByRole('combobox', { name: '画像を編集する材質', exact: true }),
+  ).toBeVisible();
+
+  // This simulates enlarged root text and narrow reflow, not browser/OS zoom itself.
+  await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+  const textureFileInput = panel.locator('input[type="file"]');
+  const textureFileStatus = panel.locator('#native-texture-file-status');
+  await expect(textureFileInput).toBeVisible();
+  await expect(textureFileStatus).toHaveText('画像ファイル未選択');
+  await expect(textureFileStatus).toHaveAttribute('aria-live', 'polite');
+  const descriptionIds =
+    (await textureFileInput.getAttribute('aria-describedby'))?.split(/\s+/) ?? [];
+  expect(descriptionIds).toEqual(
+    expect.arrayContaining(['native-2d-texture-handoff', 'native-texture-file-status']),
+  );
+  await textureFileInput.setInputFiles({
+    name: 'sample-texture.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from('selection-only; no image import is run'),
+  });
+  await expect(textureFileStatus).toHaveText('選択中: sample-texture.png');
+  const metrics = await page.evaluate(() => {
+    const root = document.documentElement;
+    const panelElement = document.querySelector<HTMLElement>('.native-textures');
+    if (!panelElement) throw new Error('Native texture panel is missing');
+    const visibleElementBounds = Array.from(
+      panelElement.querySelectorAll<HTMLElement>('h3, p, summary, label, legend, button'),
+    )
+      .filter((element) => element.getClientRects().length > 0)
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return { left: rect.left, right: rect.right };
+      });
+    const panelRect = panelElement.getBoundingClientRect();
+    return {
+      rootFontSize: getComputedStyle(root).fontSize,
+      viewportWidth: window.innerWidth,
+      documentScrollWidth: root.scrollWidth,
+      panelLeft: panelRect.left,
+      panelRight: panelRect.right,
+      panelScrollWidth: panelElement.scrollWidth,
+      panelClientWidth: panelElement.clientWidth,
+      visibleElementBounds,
+    };
+  });
+  expect(metrics.rootFontSize).toBe('32px');
+  expect(metrics.documentScrollWidth).toBeLessThanOrEqual(metrics.viewportWidth);
+  expect(metrics.panelLeft).toBeGreaterThanOrEqual(0);
+  expect(metrics.panelRight).toBeLessThanOrEqual(metrics.viewportWidth);
+  expect(metrics.panelScrollWidth).toBeLessThanOrEqual(metrics.panelClientWidth + 1);
+  expect(
+    metrics.visibleElementBounds.filter(
+      (element) => element.left < 0 || element.right > metrics.viewportWidth,
+    ),
+  ).toEqual([]);
+
+  const importButton = panel.getByRole('button', { name: '画像を取り込み適用', exact: true });
+  const importButtonBox = await importButton.boundingBox();
+  expect(importButtonBox?.height).toBeGreaterThanOrEqual(44);
+});
+
 test('offline display chunk failure preserves saving and complete native backup', async ({
   page,
   context,

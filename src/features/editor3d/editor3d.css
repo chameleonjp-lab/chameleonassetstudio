@@ -320,6 +320,11 @@
 
   .editor3d-main {
     padding-top: 1.25rem;
+    padding-inline: 0.5rem;
+  }
+
+  .editor3d-card {
+    padding: 0.5rem;
   }
 
   .editor3d-details dl {

@@ -21,8 +21,21 @@
 .native-textures select {
   box-sizing: border-box;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 44px;
   font: inherit;
+}
+.native-textures input[type='file'] {
+  overflow: hidden;
+  font-size: 0;
+}
+.native-textures input[type='file']::file-selector-button {
+  min-height: 44px;
+  max-width: 100%;
+  color: #20332b;
+  font-size: 1rem;
+  white-space: normal;
 }
 .native-textures button {
   min-height: 44px;
@@ -31,8 +44,11 @@
   white-space: normal;
 }
 .native-textures fieldset {
-  min-width: 0;
+  min-inline-size: 0;
+  width: 100%;
+  max-width: 100%;
   margin-block: 1rem;
+  padding: 0.5rem;
 }
 .native-textures canvas {
   display: block;
@@ -59,4 +75,10 @@
 }
 .native-textures .native-texture-checkbox input {
   width: 24px;
+}
+
+@media (max-width: 760px) {
+  .native-textures {
+    padding: 0.5rem;
+  }
 }
