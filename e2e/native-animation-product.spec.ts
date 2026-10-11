@@ -323,7 +323,7 @@ test('a clip with an undisplayable key stays selectable for repair', async ({ pa
   await expect(animation.getByRole('alert')).toHaveCount(0);
 });
 
-test('reduced motion changes pause preview without changing clips and still allow explicit playback', async ({
+test('reduced motion applies editor CSS and pauses preview without changing clips', async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
@@ -335,6 +335,21 @@ test('reduced motion changes pause preview without changing clips and still allo
   await expect(animation.getByRole('status')).toContainText('アニメーション再生中');
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(animation.getByTestId('native-motion-preference')).toContainText('設定を検出');
+  const reducedMotionStyles = await page.locator('.editor3d').evaluate((element) => {
+    const styles = getComputedStyle(element);
+    const milliseconds = (value: string) =>
+      value.endsWith('ms') ? Number.parseFloat(value) : Number.parseFloat(value) * 1000;
+    return {
+      animationDurationMs: milliseconds(styles.animationDuration),
+      animationIterationCount: styles.animationIterationCount,
+      scrollBehavior: styles.scrollBehavior,
+      transitionDurationMs: milliseconds(styles.transitionDuration),
+    };
+  });
+  expect(reducedMotionStyles.animationDurationMs).toBeCloseTo(0.01, 5);
+  expect(reducedMotionStyles.animationIterationCount).toBe('1');
+  expect(reducedMotionStyles.scrollBehavior).toBe('auto');
+  expect(reducedMotionStyles.transitionDurationMs).toBeCloseTo(0.01, 5);
   await expect(animation.getByRole('status')).toContainText('アニメーション停止pose');
   expect((await importBackup(new Uint8Array(await backup(page)))).project).toEqual(before);
   await animation.getByRole('button', { name: 'clipを再生', exact: true }).click();
