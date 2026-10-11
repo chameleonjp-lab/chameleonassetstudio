@@ -116,3 +116,8 @@ The six collector metrics now have product/renderer evidence recorded across the
 
 
 The combined focused UX-05 scene-text/selection-status and timeline-key checks then passed 2/2 in Chromium and 2/2 in WebKit-critical on the updated tree. This remains software-only keyboard/DOM evidence; screen-reader speech and physical device acceptance are still unverified.
+
+
+## Dynamic timeline-key context follow-up — 2026-10-12
+
+[`PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md`](PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md) now also records a keyboard-only check that switches the animation key property from translation to scale and back. The timeline group and marker names update with the active property; Enter changes the scale marker's `aria-pressed` state, and returning to translation clears the stale selected state. The decoded saved backup retains both authored tracks and their values. The focused Chromium run using `/usr/bin/chromium` and WebKit-critical run each passed 1/1. This is software-only DOM/keyboard evidence; actual screen-reader speech, complete scene alternatives, and physical-device/assistive-technology acceptance remain open.

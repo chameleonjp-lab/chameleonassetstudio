@@ -27,3 +27,10 @@ This is DOM and keyboard interaction evidence only. It does not verify actual sc
 ## Combined focused UX-05 run — 2026-10-12
 
 After the timeline follow-up, the existing scene-text/selection-status test and the keyboard-only timeline key test were run together on the updated tree. Both passed in Chromium (2/2) and WebKit-critical (2/2). The test set checks DOM semantics and keyboard operation only; it is not evidence of actual screen-reader speech or physical-device accessibility acceptance.
+
+
+## Dynamic timeline-key context follow-up — 2026-10-12
+
+The keyboard-only `keyboard-only Tab flow selects and edits an animation key` workflow now switches the key property from translation to scale, creates a scale key, and verifies that the timeline group and marker accessible names reflect the active property. Enter toggles the scale marker's `aria-pressed` state; switching back to translation makes its existing marker report `aria-pressed="false"` rather than retaining a stale selected state. The workflow then edits the translation key, saves, and decodes the backup to verify both track values.
+
+The focused test passed in Chromium using `/usr/bin/chromium` with `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` (1/1) and in WebKit-critical (1/1). This verifies DOM names/states and keyboard behavior in headless desktop browsers only. It does not test screen-reader speech, VoiceOver, TalkBack, full scene text alternatives, physical devices/keyboards, touch, contrast, or actual browser/OS zoom; UX-05 and physical accessibility gates remain open.
