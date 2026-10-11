@@ -13,3 +13,17 @@ The targeted Playwright test passed in Chromium using `/usr/bin/chromium` throug
 ## Boundaries
 
 This verifies DOM semantics and updated live-region text in headless desktop browsers, not that a screen reader actually speaks the update. It does **not** test actual screen-reader speech, VoiceOver, TalkBack, physical devices/keyboards, touch, or whether a user can understand the complete visual scene without a canvas. This partial UX-05 smoke does not complete 3D-STAGE4-04 or close any physical accessibility gate.
+
+
+## Timeline key marker accessibility follow-up — 2026-10-12
+
+`NativeAnimationPanel` now exposes the visible timeline markers as a named group whose accessible name includes the selected clip, target object name/ID, and animated property. Each marker button exposes its target, property, and time and reports selection through `aria-pressed`. The existing keyboard-only workflow tabs to a marker, activates it with Enter, verifies the pressed state, then continues to edit the key, save, and decode the backup to confirm the authored value and target ID are preserved.
+
+The focused Playwright workflow passed locally in Chromium (1/1) and WebKit-critical (1/1). Formatting, lint, production build, and unit tests also passed; lint retains one pre-existing React Hook warning in `NativeViewportPanel.tsx`.
+
+This is DOM and keyboard interaction evidence only. It does not verify actual screen-reader speech, complete text rendering of scene geometry, physical keyboards/devices, VoiceOver/TalkBack, or physical accessibility acceptance. UX-05 and the physical/assistive-technology gates remain partial/open.
+
+
+## Combined focused UX-05 run — 2026-10-12
+
+After the timeline follow-up, the existing scene-text/selection-status test and the keyboard-only timeline key test were run together on the updated tree. Both passed in Chromium (2/2) and WebKit-critical (2/2). The test set checks DOM semantics and keyboard operation only; it is not evidence of actual screen-reader speech or physical-device accessibility acceptance.

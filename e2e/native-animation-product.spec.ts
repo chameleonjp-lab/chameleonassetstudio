@@ -84,6 +84,19 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
   const addKey = animation.getByRole('button', { name: 'キーを追加', exact: true });
   await tabTo(page, addKey);
   await page.keyboard.press('Enter');
+  const targetLabel = (await target.locator('option:checked').innerText()).trim();
+  const timeline = animation.getByRole('group', {
+    name: `タイムラインのキーマーカー: Keyboard Move / ${targetLabel} / 移動`,
+  });
+  const timelineKey = timeline.getByRole('button', {
+    name: `${targetLabel} の 移動 キー 0秒`,
+    exact: true,
+  });
+  await expect(timelineKey).toHaveAttribute('aria-pressed', 'false');
+  await tabTo(page, timelineKey);
+  await page.keyboard.press('Enter');
+  await expect(timelineKey).toHaveAttribute('aria-pressed', 'true');
+
   const key = animation.getByRole('button', { name: 'キー 0秒: 0, 0, 0', exact: true });
   await tabTo(page, key);
   await page.keyboard.press('Enter');
