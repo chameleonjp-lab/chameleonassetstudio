@@ -328,7 +328,11 @@ export function NativeTransformControls({
         </p>
         {unavailable && <p>現在は変形できません。読み取り専用または別の処理中です。</p>}
         {error && <p role="alert">{error}</p>}
-        {notice && <p role="status">{notice}</p>}
+        {notice && (
+          <p role="status" aria-live="polite">
+            {notice}
+          </p>
+        )}
       </details>
     </section>
   );

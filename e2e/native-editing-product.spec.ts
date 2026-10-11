@@ -180,6 +180,73 @@ test('keyboard-only Tab flow creates, numerically edits, saves and backs up a pr
   expect(project.nodes[0].transform.translation).toEqual([1.25, 0, 0]);
 });
 
+test('keyboard-only Escape cancels numeric edits and exposes status announcements', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.goto('/3d/');
+
+  const projectName = page.getByLabel('新しいプロジェクト名', { exact: true });
+  await tabTo(page, projectName);
+  await page.keyboard.type('Keyboard cancel work');
+  const create = page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true });
+  await page.keyboard.press('Tab');
+  await expect(create).toBeFocused();
+  await page.keyboard.press('Enter');
+
+  const addBox = page.getByRole('button', { name: '箱を追加', exact: true });
+  await tabTo(page, addBox);
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+
+  const panel = controls(page);
+  const disclosure = panel.locator('summary');
+  await tabTo(page, disclosure);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.editor3d-save-status')).toHaveText(/保存済み · revision \d+/);
+  const before = await revision(page);
+  await expect(
+    page.getByText(`編集中 revision ${before} / 保存済み revision ${before}`, { exact: true }),
+  ).toBeVisible();
+  const backup = page.getByRole('button', { name: '現在の内容をバックアップ', exact: true });
+  const baselineDownload = page.waitForEvent('download');
+  await tabTo(page, backup);
+  await page.keyboard.press('Enter');
+  const baselineProject = (
+    await importBackup(await readFile((await (await baselineDownload).path())!))
+  ).project;
+
+  const start = panel.getByRole('button', { name: '数値変形を開始', exact: true });
+  await tabTo(page, start);
+  await page.keyboard.press('Enter');
+
+  const x = panel.getByLabel('移動量 X（m）', { exact: true });
+  await tabTo(page, x);
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('9.5');
+  await expect(panel.getByRole('status').first()).toContainText('数値を入力中（未プレビュー）');
+  await expect(panel.getByRole('status').first()).toHaveAttribute('aria-live', 'polite');
+
+  await page.keyboard.press('Escape');
+  await expect.poll(() => revision(page)).toBe(before);
+  await expect(panel.getByRole('status').first()).toContainText('確定済みの状態');
+  const cancelNotice = panel
+    .getByRole('status')
+    .filter({ hasText: '数値変形を取り消しました。確定済みの値に戻りました。' });
+  await expect(cancelNotice).toBeVisible();
+  await expect(cancelNotice).toHaveAttribute('aria-live', 'polite');
+  await expect(x).toBeDisabled();
+
+  const cancelDownload = page.waitForEvent('download');
+  await tabTo(page, backup);
+  await page.keyboard.press('Enter');
+  const afterCancelProject = (
+    await importBackup(await readFile((await (await cancelDownload).path())!))
+  ).project;
+  expect(afterCancelProject).toEqual(baselineProject);
+  expect(afterCancelProject.nodes[0].transform.translation).toEqual([0, 0, 0]);
+});
+
 for (const projection of ['perspective', 'orthographic'] as const) {
   test(`product ${projection} pointer and numeric edits share one saved transaction`, async ({
     page,
