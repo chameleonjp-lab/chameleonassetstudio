@@ -46,3 +46,9 @@ The integrated candidate passed 2,179 unit tests across 167 files, TypeScript, E
 ## Post-#318 local Chromium follow-up
 
 See [`POST_318_LOCAL_CHROMIUM_2026-10-10.md`](POST_318_LOCAL_CHROMIUM_2026-10-10.md) for the 19/19 selected Chromium checkpoint, saved screenshots, 34/34 WebKit and Chromium follow-up, expanded and post-update all-native E2E runs at 132/132 in each browser, Vitest-4 full Chromium/WebKit results, the Vitest 4.1.11 remediation, and the fast-uri dependency review. After the Vitest update, the unit suite passed 3,528/3,528, app/H3 and consumer builds passed, and the full dependency audit reports zero findings. These are headless software evidence, not final release or physical-device acceptance.
+
+## Product-path numeric input performance follow-up — 2026-10-11
+
+[`PRODUCT_INPUT_PERFORMANCE_2026-10-11.md`](PRODUCT_INPUT_PERFORMANCE_2026-10-11.md) adds a manual-only headless product-UI measurement from the numeric-apply click to the next WebGL-drawing animation frame. Chromium and WebKit each completed 100 samples over approximately 60 seconds. Chromium reports median 157.2 ms and p95 194.2 ms; WebKit reports median 80.5 ms and maximum 147 ms, while its p95 is withheld because freeze state is unknown. These are diagnostic measurements, not a pass/fail threshold or a cross-browser ranking.
+
+This closes only one product-path measurement boundary. Animation-frame, long-task, import-first-draw, cancel, and autosave-window remain `not-measured`; B09 performance tiers, input/accessibility acceptance, physical devices, and final release sign-off remain open. Headless browser evidence does not imply physical acceptance.
