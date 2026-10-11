@@ -51,7 +51,7 @@ async function numeric(page: Page, x: string, y = '0', z = '0') {
 async function tabTo(page: Page, target: ReturnType<Page['getByRole']>) {
   await expect(target).toBeVisible();
   if (await target.evaluate((element) => element === document.activeElement)) return;
-  for (let attempt = 0; attempt < 64; attempt++) {
+  for (let attempt = 0; attempt < 128; attempt++) {
     await page.keyboard.press('Tab');
     if (await target.evaluate((element) => element === document.activeElement)) return;
   }
@@ -136,6 +136,22 @@ test('keyboard-only Tab flow creates, numerically edits, saves and backs up a pr
   await tabTo(page, addBox);
   await page.keyboard.press('Enter');
   await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+
+  const assembly = page.getByRole('region', { name: '3D部品の組立', exact: true });
+  const assemblyDisclosure = assembly.getByText('部品の組立を開く', { exact: true });
+  await tabTo(page, assemblyDisclosure);
+  await page.keyboard.press('Enter');
+  const assemblyCheckbox = assembly.getByRole('checkbox');
+  await expect(assemblyCheckbox).toHaveCount(1);
+  await tabTo(page, assemblyCheckbox);
+  await expect(assemblyCheckbox).toBeChecked();
+  await page.keyboard.press('Space');
+  await expect(assemblyCheckbox).not.toBeChecked();
+  await expect(assembly.getByText(/選択中 0 個/)).toBeVisible();
+  await page.keyboard.press('Space');
+  await expect(assemblyCheckbox).toBeChecked();
+  await expect(assembly.getByText(/選択中 1 個/)).toBeVisible();
+  await expect(assembly.getByRole('listitem')).toContainText('アクティブ');
 
   const panel = controls(page);
   const disclosure = panel.locator('summary');

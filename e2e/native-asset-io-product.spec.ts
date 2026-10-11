@@ -748,7 +748,8 @@ test('successful unsaved import previews cancel on close, Escape, file replaceme
     before.project,
   );
   await prepare();
-  await checked.focus();
+  await tabTo(page, checked);
+  await expect(checked).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(candidate).toHaveCount(0);
   await expect(start).toBeFocused();
