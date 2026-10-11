@@ -143,6 +143,9 @@ test('3D viewer and active-object selector expose text alternatives for canvas i
     .split(/\s+/)
     .filter(Boolean);
   expect(sceneDescriptionIds).not.toHaveLength(0);
+  const selectionStatus = assembly.getByRole('status');
+  await expect(selectionStatus).toHaveAttribute('aria-live', 'polite');
+  await expect(selectionStatus).toHaveAttribute('aria-atomic', 'true');
   const sceneDescriptions = await Promise.all(
     sceneDescriptionIds.map(async (id) => {
       const description = page.locator(`[id="${id}"]`);

@@ -152,7 +152,7 @@ export function NativeAssemblyControls({
         {notice && <p role="status">{notice}</p>}
         <fieldset disabled={disabled}>
           <legend>組立対象</legend>
-          <p id={`${descriptionId}-selection`}>
+          <p id={`${descriptionId}-selection`} role="status" aria-live="polite" aria-atomic="true">
             複数の部品を選べます。選択中 {selectedIds.length} 個。名前とIDで対象を確認してください。
           </p>
           {project.nodes.length === 0 ? (

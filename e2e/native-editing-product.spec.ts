@@ -142,15 +142,18 @@ test('keyboard-only Tab flow creates, numerically edits, saves and backs up a pr
   await tabTo(page, assemblyDisclosure);
   await page.keyboard.press('Enter');
   const assemblyCheckbox = assembly.getByRole('checkbox');
+  const selectionStatus = assembly.getByRole('status');
+  await expect(selectionStatus).toHaveAttribute('aria-live', 'polite');
+  await expect(selectionStatus).toHaveAttribute('aria-atomic', 'true');
   await expect(assemblyCheckbox).toHaveCount(1);
   await tabTo(page, assemblyCheckbox);
   await expect(assemblyCheckbox).toBeChecked();
   await page.keyboard.press('Space');
   await expect(assemblyCheckbox).not.toBeChecked();
-  await expect(assembly.getByText(/選択中 0 個/)).toBeVisible();
+  await expect(selectionStatus).toContainText('選択中 0 個');
   await page.keyboard.press('Space');
   await expect(assemblyCheckbox).toBeChecked();
-  await expect(assembly.getByText(/選択中 1 個/)).toBeVisible();
+  await expect(selectionStatus).toContainText('選択中 1 個');
   await expect(assembly.getByRole('listitem')).toContainText('アクティブ');
 
   const panel = controls(page);
