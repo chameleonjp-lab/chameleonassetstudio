@@ -78,3 +78,12 @@ The updated focused product test initially reproduced focus loss after cancel in
 
 
 The post-delete status is programmatically focusable and receives the existing 3px `:focus-visible` ring. After adding an explicit outline assertion, the focused deletion workflow passed again in Chromium (1/1) and WebKit-critical (1/1).
+
+
+## Scene-selection live-status follow-up — 2026-10-12
+
+The assembly panel now separates its stable list instructions from a polite, atomic `role="status"` announcement. The status identifies the selection count, up to three selected node names/IDs, any additional selected count, and the active node name/ID; an empty selection has an explicit message. Because the active node is included separately, changing the active item announces a real text change even when the selected count remains the same. This is transient UI text only; no project or backup schema changed.
+
+The focused Chromium and WebKit-critical run passed 2/2 checks per browser project, including zero/single/multiple selection, bounded announcement text for four selected nodes, and active-node changes. The complete `native-viewport-product.spec.ts` passed 17/17 in Chromium and 17/17 in WebKit-critical. Formatting, lint (zero errors; one pre-existing warning in `NativeViewportPanel.tsx:195`), production build, all 3,530 unit tests, and `npm run test:ci-scope` (8/8) passed.
+
+This verifies DOM/status text changes in headless desktop browsers only. It does not establish actual screen-reader speech, VoiceOver/TalkBack behavior, physical keyboard/device/touch acceptance, or complete scene/geometry narration. UX-05 and 3D-STAGE4-04 remain partial/open; no assistive-technology or physical-device acceptance is claimed.

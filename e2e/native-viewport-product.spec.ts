@@ -153,8 +153,8 @@ test('3D viewer and active-object selector expose text alternatives for canvas i
       return (await description.textContent()) ?? '';
     }),
   );
-  expect(sceneDescriptions.join(' ')).toContain('選択中 1 個');
-  expect(sceneDescriptions.join(' ')).toContain('名前とIDで対象を確認してください');
+  expect(sceneDescriptions.join(' ')).toContain('複数の部品を選べます');
+  expect(sceneDescriptions.join(' ')).toContain('各項目には名前とIDがあります');
   const sceneItem = sceneList.getByRole('listitem');
   await expect(sceneItem).toHaveCount(1);
   await expect(sceneItem).toContainText('アクティブ');
@@ -162,6 +162,77 @@ test('3D viewer and active-object selector expose text alternatives for canvas i
   await expect(sceneItem).toContainText('親: なし');
   const assemblyCheckbox = sceneList.getByRole('checkbox', { name: /^組立対象 箱 \(.+\)$/ });
   await expect(assemblyCheckbox).toBeChecked();
+  await expect(selectionStatus).toContainText('選択中 1 個');
+  const selectedId = (await assemblyCheckbox.getAttribute('aria-label'))?.match(
+    /\(([^)]+)\)$/,
+  )?.[1];
+  expect(selectedId).toBeTruthy();
+  await expect(selectionStatus).toContainText(`アクティブ: 箱 (ID: ${selectedId})`);
+});
+
+test('assembly selection status announces names, IDs and active-object changes', async ({
+  page,
+}) => {
+  await createBox(page);
+  for (let index = 0; index < 3; index += 1) {
+    await page.getByRole('button', { name: '箱を追加', exact: true }).click();
+  }
+
+  const assembly = page.getByRole('region', { name: '3D部品の組立', exact: true });
+  await assembly.getByText('部品の組立を開く', { exact: true }).click();
+  const sceneList = assembly.locator('.native-assembly-list');
+  const rows = Array.from({ length: 4 }, (_, index) => sceneList.getByRole('listitem').nth(index));
+  await expect(sceneList.getByRole('listitem')).toHaveCount(4);
+  const objects = await Promise.all(
+    rows.map(async (row) => {
+      const checkbox = row.getByRole('checkbox');
+      const accessibleName = await checkbox.getAttribute('aria-label');
+      return {
+        row,
+        checkbox,
+        name: (await row.locator('strong').textContent())?.trim() ?? '',
+        id: accessibleName?.match(/\(([^)]+)\)$/)?.[1] ?? '',
+      };
+    }),
+  );
+  for (const object of objects) {
+    expect(object.name).not.toBe('');
+    expect(object.id).not.toBe('');
+  }
+
+  const selectionStatus = assembly.getByRole('status').filter({ hasText: '選択中' });
+  for (const { checkbox } of objects) {
+    if (await checkbox.isChecked()) await checkbox.uncheck();
+  }
+  await expect(selectionStatus).toHaveText('選択中 0 個。組立対象はありません。');
+
+  for (const { checkbox } of objects.slice(0, 3)) await checkbox.check();
+  await expect(selectionStatus).toContainText('選択中 3 個');
+  for (const { name, id } of objects.slice(0, 3)) {
+    await expect(selectionStatus).toContainText(`${name} (ID: ${id})`);
+  }
+  await objects[3].checkbox.check();
+  await expect(selectionStatus).toContainText('選択中 4 個');
+  await expect(selectionStatus).toContainText('ほか 1 個');
+  await expect(selectionStatus).toContainText(
+    `アクティブ: ${objects[3].name} (ID: ${objects[3].id})`,
+  );
+
+  await objects[0].row
+    .getByRole('button', { name: `${objects[0].name} をアクティブにする`, exact: true })
+    .click();
+  await expect(selectionStatus).toContainText(
+    `アクティブ: ${objects[0].name} (ID: ${objects[0].id})`,
+  );
+  const firstActiveStatus = await selectionStatus.textContent();
+  await objects[3].row
+    .getByRole('button', { name: `${objects[3].name} をアクティブにする`, exact: true })
+    .click();
+  await expect(selectionStatus).toContainText(
+    `アクティブ: ${objects[3].name} (ID: ${objects[3].id})`,
+  );
+  await expect(selectionStatus).toContainText('選択中 4 個');
+  expect(await selectionStatus.textContent()).not.toBe(firstActiveStatus);
 });
 
 test('scene text summary exposes each object transform and geometry size', async ({ page }) => {
