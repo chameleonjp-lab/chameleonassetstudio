@@ -24,6 +24,13 @@ function number(value: string) {
     throw new Error('有限の数値を入力してください。');
   return Number(value);
 }
+
+const animationPropertyLabels: Record<AnimationProperty, string> = {
+  translation: '移動',
+  rotation: '回転',
+  scale: '倍率',
+};
+
 export function NativeAnimationPanel({
   project,
   session,
@@ -76,6 +83,8 @@ export function NativeAnimationPanel({
   const span = (clip?.duration ?? 0) / zoom;
   const windowStart = Math.max(0, Math.min(start, Math.max(0, (clip?.duration ?? 0) - span)));
   const keys = track?.keys ?? [];
+  const timelineTargetLabel = node ? `${node.name} / ${node.id}` : '対象未選択';
+  const timelineGroupLabel = `タイムラインのキーマーカー: ${clip?.name ?? 'clip未選択'} / ${timelineTargetLabel} / ${animationPropertyLabels[property]}`;
   const pageCount = Math.max(1, Math.ceil(keys.length / 50));
   const pageIndex = Math.min(page, pageCount - 1);
   function act(operation: () => void) {
@@ -356,7 +365,7 @@ export function NativeAnimationPanel({
             }
           />
         </label>
-        <div className="native-animation-timeline" aria-label="表示範囲のキーマーカー">
+        <div className="native-animation-timeline" role="group" aria-label={timelineGroupLabel}>
           {keys
             .filter((key) => key.time >= windowStart && key.time <= windowStart + span)
             .slice(0, 200)
@@ -365,7 +374,8 @@ export function NativeAnimationPanel({
                 type="button"
                 key={key.time}
                 style={{ left: `${span ? ((key.time - windowStart) / span) * 100 : 0}%` }}
-                aria-label={`タイムラインのキー ${key.time}秒`}
+                aria-label={`${timelineTargetLabel} の ${animationPropertyLabels[property]} キー ${key.time}秒`}
+                aria-pressed={selectedTime === key.time && loaded === identity}
                 onClick={() => act(() => readKey(key.time))}
               >
                 ◆

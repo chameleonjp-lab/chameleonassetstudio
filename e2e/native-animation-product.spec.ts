@@ -84,6 +84,54 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
   const addKey = animation.getByRole('button', { name: 'キーを追加', exact: true });
   await tabTo(page, addKey);
   await page.keyboard.press('Enter');
+  const targetLabel = (await target.locator('option:checked').innerText()).trim();
+  const timeline = animation.getByRole('group', {
+    name: `タイムラインのキーマーカー: Keyboard Move / ${targetLabel} / 移動`,
+  });
+  const timelineKey = timeline.getByRole('button', {
+    name: `${targetLabel} の 移動 キー 0秒`,
+    exact: true,
+  });
+  await expect(timelineKey).toHaveAttribute('aria-pressed', 'false');
+  await tabTo(page, timelineKey);
+  await page.keyboard.press('Enter');
+  await expect(timelineKey).toHaveAttribute('aria-pressed', 'true');
+
+  const property = animation.getByRole('combobox', { name: 'キー属性', exact: true });
+  await tabTo(page, property);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(property).toHaveValue('scale');
+  await tabTo(page, readPose);
+  await page.keyboard.press('Enter');
+  await tabTo(page, addKey);
+  await page.keyboard.press('Enter');
+  const scaleTimeline = animation.getByRole('group', {
+    name: `タイムラインのキーマーカー: Keyboard Move / ${targetLabel} / 倍率`,
+  });
+  const scaleMarker = scaleTimeline.getByRole('button', {
+    name: `${targetLabel} の 倍率 キー 0秒`,
+    exact: true,
+  });
+  await expect(scaleMarker).toHaveAttribute('aria-pressed', 'false');
+  await tabTo(page, scaleMarker);
+  await page.keyboard.press('Enter');
+  await expect(scaleMarker).toHaveAttribute('aria-pressed', 'true');
+
+  await tabTo(page, property, 'Shift+Tab');
+  await page.keyboard.press('Home');
+  await page.keyboard.press('Enter');
+  await expect(property).toHaveValue('translation');
+  const translationTimeline = animation.getByRole('group', {
+    name: `タイムラインのキーマーカー: Keyboard Move / ${targetLabel} / 移動`,
+  });
+  const translationMarker = translationTimeline.getByRole('button', {
+    name: `${targetLabel} の 移動 キー 0秒`,
+    exact: true,
+  });
+  await expect(translationMarker).toHaveAttribute('aria-pressed', 'false');
+
   const key = animation.getByRole('button', { name: 'キー 0秒: 0, 0, 0', exact: true });
   await tabTo(page, key);
   await page.keyboard.press('Enter');
@@ -127,10 +175,16 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
   await page.keyboard.press('Enter');
   const bytes = await readFile((await (await downloadEvent).path())!);
   const saved = await importBackup(new Uint8Array(bytes));
-  expect(saved.project.clips[0].tracks[0].keys).toHaveLength(1);
-  expect(saved.project.clips[0].tracks[0].keys[0].time).toBe(1);
-  expect(saved.project.clips[0].tracks[0].keys[0].value).toEqual([2, 0, 0]);
-  expect(saved.project.clips[0].tracks[0].nodeId).toBe(targetId);
+  const savedTranslation = saved.project.clips[0].tracks.find(
+    (track) => track.nodeId === targetId && track.property === 'translation',
+  );
+  const savedScale = saved.project.clips[0].tracks.find(
+    (track) => track.nodeId === targetId && track.property === 'scale',
+  );
+  expect(savedTranslation?.keys).toHaveLength(1);
+  expect(savedTranslation?.keys[0].time).toBe(1);
+  expect(savedTranslation?.keys[0].value).toEqual([2, 0, 0]);
+  expect(savedScale?.keys).toEqual([{ time: 0, value: [1, 1, 1] }]);
 });
 async function backup(page: Page) {
   const pending = page.waitForEvent('download');
