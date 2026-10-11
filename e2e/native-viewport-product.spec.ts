@@ -137,7 +137,7 @@ test('3D viewer and active-object selector expose text alternatives for canvas i
   await expect(
     assembly.getByRole('heading', { name: '部品を組み立てる', level: 3, exact: true }),
   ).toBeVisible();
-  const sceneList = assembly.getByRole('list');
+  const sceneList = assembly.locator('.native-assembly-list');
   await expect(sceneList).toHaveAttribute('aria-describedby', /\S+/);
   const sceneDescriptionIds = (await sceneList.getAttribute('aria-describedby'))!
     .split(/\s+/)
@@ -162,6 +162,36 @@ test('3D viewer and active-object selector expose text alternatives for canvas i
   await expect(sceneItem).toContainText('親: なし');
   const assemblyCheckbox = sceneList.getByRole('checkbox', { name: /^組立対象 箱 \(.+\)$/ });
   await expect(assemblyCheckbox).toBeChecked();
+});
+
+test('scene text summary exposes each object transform and geometry size', async ({ page }) => {
+  await createBox(page);
+
+  const assembly = page.getByRole('region', { name: '3D部品の組立', exact: true });
+  await assembly.getByText('部品の組立を開く', { exact: true }).click();
+  const summary = assembly.locator('.native-scene-text-alternative');
+  await expect(summary.locator('summary')).toContainText('シーンの部品情報をテキストで確認（1個）');
+  await summary.locator('summary').click();
+
+  const sceneItems = summary.getByRole('list', { name: 'シーン内の部品情報', exact: true });
+  const sceneItem = sceneItems.getByRole('listitem');
+  await expect(sceneItem).toHaveCount(1);
+  await expect(sceneItem).toContainText('位置（親に対するlocal・m）');
+  await expect(sceneItem).toContainText('X 0, Y 0, Z 0');
+  await expect(sceneItem).toContainText('回転（local・度 XYZ）');
+  await expect(sceneItem).toContainText('倍率（local）');
+  await expect(sceneItem).toContainText('表示 / 編集可能');
+  await expect(sceneItem).toContainText(/\d+ 頂点、\d+ 面/);
+  await expect(summary).toContainText('アニメーション再生中の姿勢');
+
+  const authoring = page.getByRole('region', { name: '3D制作', exact: true });
+  await authoring.getByText('部品の名前・位置・複製', { exact: true }).click();
+  await authoring.getByRole('button', { name: '部品の現在値を読む', exact: true }).click();
+  await authoring.getByLabel('位置 X（m）', { exact: true }).fill('0.25');
+  await authoring.getByLabel('回転 Y（度）', { exact: true }).fill('30');
+  await authoring.getByRole('button', { name: '部品の変形を適用', exact: true }).click();
+  await expect(sceneItem).toContainText('X 0.25, Y 0, Z 0');
+  await expect(sceneItem).toContainText('X 0, Y 30, Z 0');
 });
 
 test('native panel fits a phone width and exposes keyboard-sized controls', async ({ page }) => {
