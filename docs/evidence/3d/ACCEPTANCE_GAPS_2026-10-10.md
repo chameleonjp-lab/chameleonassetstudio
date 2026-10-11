@@ -136,4 +136,6 @@ This is DOM/status evidence, not actual screen-reader speech or assistive-techno
 
 The keyboard-only workflow verifies all four action messages, updated key-list content, revision changes and saved-backup values. The complete animation product E2E suite passed 7/7 in system Chromium and 7/7 in WebKit-critical. Full unit tests passed 3,530/3,530, CI-scope classification passed 8/8, formatting and production build passed, and lint had zero errors plus the existing `NativeViewportPanel.tsx:195` Hook warning. The build retains its existing non-blocking >500 kB chunk advisory.
 
+A follow-up failure-path assertion rejects a keyboard duplicate at an already occupied key time. It verifies the existing alert guidance, cleared success-status text, unchanged revision, and retained key marker. This is still DOM/headless-browser evidence only; no assistive-technology acceptance is implied.
+
 This adds headless DOM/status evidence only. Actual screen-reader speech, VoiceOver/TalkBack, full scene alternatives, physical keyboard/device/touch, contrast and real browser/OS zoom remain unverified. UX-05, 3D-STAGE4-04, and physical accessibility gates remain partial/open; no acceptance status is promoted.

@@ -214,6 +214,17 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
   await expect(duplicatedKey).toBeVisible();
   await tabTo(page, duplicatedKey);
   await page.keyboard.press('Enter');
+  await tabTo(page, keyTime);
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('1');
+  await tabTo(page, duplicateKey);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => revision(page)).toBe(afterDuplicate);
+  const duplicateTimeAlert = animation.getByRole('alert');
+  await expect(duplicateTimeAlert).toContainText('重複しない値');
+  await expect(keyActionStatus).toHaveText('');
+  await expect(duplicatedKey).toBeVisible();
+
   const deleteKey = animation.getByRole('button', { name: '選択キーを削除', exact: true });
   await tabTo(page, deleteKey);
   await page.keyboard.press('Enter');
