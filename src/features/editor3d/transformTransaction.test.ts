@@ -203,6 +203,35 @@ describe('native session transform authority', () => {
     expect(commit).toHaveBeenCalledOnce();
   });
 
+  it('commits a validated delta without publishing an intermediate preview', () => {
+    const { edit, evaluator, history, commit } = fixture();
+    const events: string[] = [];
+    edit.subscribe(() => events.push(edit.state.lastReason));
+    const token = begin(edit);
+    events.length = 0;
+
+    expect(edit.applyDelta(token, [2, 0, 0])).toEqual({ ok: true, changed: true });
+    expect(events).toEqual(['committed']);
+    expect(evaluator.evaluateDelta).toHaveBeenCalledOnce();
+    expect(history.revision).toBe(1);
+    expect(history.project.nodes[0].transform.translation).toEqual([2, 0, 0]);
+    expect(edit.state.preview).toBeNull();
+    expect(commit).toHaveBeenCalledOnce();
+  });
+
+  it('rejects an invalid direct delta and permits a corrected sample without committing invalid data', () => {
+    const { edit, history, commit } = fixture();
+    const token = begin(edit);
+
+    expect(edit.applyDelta(token, [NaN, 0, 0])).toEqual({ ok: false, reason: 'invalid sample' });
+    expect(edit.state).toMatchObject({ active: true, preview: null });
+    expect(history.revision).toBe(0);
+    expect(commit).not.toHaveBeenCalled();
+
+    expect(edit.applyDelta(token, [3, 0, 0])).toEqual({ ok: true, changed: true });
+    expect(history.project.nodes[0].transform.translation).toEqual([3, 0, 0]);
+  });
+
   it('invalidates the last good overlay when the latest sample fails, then refuses commit', () => {
     const { edit, history, commit } = fixture();
     const token = move(edit);
@@ -271,6 +300,7 @@ describe('native session transform authority', () => {
     const state = edit.state;
     expect(edit.preview(first, [6, 0, 0]).ok).toBe(false);
     expect(edit.commit(first).ok).toBe(false);
+    expect(edit.applyDelta(first, [6, 0, 0]).ok).toBe(false);
     edit.cancel('late cancel', first);
     expect(edit.state).toEqual(state);
     expect(edit.commit({ ...second }).ok).toBe(false);

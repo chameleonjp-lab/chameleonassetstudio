@@ -219,6 +219,23 @@ export class TransformTransaction implements NativeEditBinding {
     }
     return gesture;
   }
+  private evaluateUpdates(gesture: Gesture, delta: Vec3): NativeTransformUpdate[] {
+    const updates = this.evaluator!.evaluateDelta(
+      gesture.project,
+      gesture.context,
+      gesture.frame,
+      delta,
+    );
+    if (
+      updates.length !== gesture.context.selection.length ||
+      new Set(updates.map((update) => update.id)).size !== updates.length ||
+      updates.some((update) => !gesture.context.selection.includes(update.id))
+    )
+      throw new Error('変形の対象が選択内容と一致しません。');
+    const candidate = cloneProject(gesture.project);
+    for (const update of updates) setNodeTransform(candidate, update.id, update.transform);
+    return updates;
+  }
   preview(token: NativeEditToken, delta: Vec3): NativeEditResult {
     try {
       const gesture = this.requireCurrent(token);
@@ -226,20 +243,7 @@ export class TransformTransaction implements NativeEditBinding {
       gesture.valid = false;
       gesture.updates = null;
       this.overlay = null;
-      const updates = this.evaluator!.evaluateDelta(
-        gesture.project,
-        gesture.context,
-        gesture.frame,
-        delta,
-      );
-      if (
-        updates.length !== gesture.context.selection.length ||
-        new Set(updates.map((update) => update.id)).size !== updates.length ||
-        updates.some((update) => !gesture.context.selection.includes(update.id))
-      )
-        throw new Error('変形の対象が選択内容と一致しません。');
-      const candidate = cloneProject(gesture.project);
-      for (const update of updates) setNodeTransform(candidate, update.id, update.transform);
+      const updates = this.evaluateUpdates(gesture, delta);
       gesture.updates = structuredClone(updates);
       gesture.valid = true;
       this.overlay = {
@@ -253,6 +257,20 @@ export class TransformTransaction implements NativeEditBinding {
       return { ok: true };
     } catch (error) {
       // Late callbacks are inert, including notification/reason state of a newer gesture.
+      if (this.gesture?.token === token) this.publish(reason(error));
+      return failure(error);
+    }
+  }
+  applyDelta(token: NativeEditToken, delta: Vec3): NativeEditResult {
+    try {
+      const gesture = this.requireCurrent(token);
+      gesture.valid = false;
+      gesture.updates = null;
+      this.overlay = null;
+      gesture.updates = structuredClone(this.evaluateUpdates(gesture, delta));
+      gesture.valid = true;
+      return this.commit(token);
+    } catch (error) {
       if (this.gesture?.token === token) this.publish(reason(error));
       return failure(error);
     }
