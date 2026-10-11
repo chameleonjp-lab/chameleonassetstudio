@@ -48,6 +48,16 @@ async function numeric(page: Page, x: string, y = '0', z = '0') {
   await panel.getByRole('button', { name: '数値変形を適用', exact: true }).click();
 }
 
+async function tabTo(page: Page, target: ReturnType<Page['getByRole']>) {
+  await expect(target).toBeVisible();
+  if (await target.evaluate((element) => element === document.activeElement)) return;
+  for (let attempt = 0; attempt < 64; attempt++) {
+    await page.keyboard.press('Tab');
+    if (await target.evaluate((element) => element === document.activeElement)) return;
+  }
+  throw new Error('Tab navigation did not reach the requested control.');
+}
+
 async function warmPixels(page: Page, png: Buffer) {
   return page.evaluate(async (base64) => {
     const image = new Image();
@@ -107,6 +117,60 @@ async function xHandle(page: Page) {
   const box = (await canvas.boundingBox())!;
   return { x: box.x + point.x * box.width, y: box.y + point.y * box.height };
 }
+
+test('keyboard-only Tab flow creates, numerically edits, saves and backs up a project', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.goto('/3d/');
+
+  const projectName = page.getByLabel('新しいプロジェクト名', { exact: true });
+  await tabTo(page, projectName);
+  await page.keyboard.type('Keyboard accessible work');
+  const create = page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true });
+  await page.keyboard.press('Tab');
+  await expect(create).toBeFocused();
+  await page.keyboard.press('Enter');
+
+  const addBox = page.getByRole('button', { name: '箱を追加', exact: true });
+  await tabTo(page, addBox);
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+
+  const panel = controls(page);
+  const disclosure = panel.locator('summary');
+  await expect(disclosure).toContainText('数値で差分変形');
+  await tabTo(page, disclosure);
+  await page.keyboard.press('Enter');
+  const start = panel.getByRole('button', { name: '数値変形を開始', exact: true });
+  await expect(start).toBeEnabled();
+  await tabTo(page, start);
+  await page.keyboard.press('Enter');
+
+  const x = panel.getByLabel('移動量 X（m）', { exact: true });
+  await expect(x).toBeEnabled();
+  await tabTo(page, x);
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('1.25');
+  const before = await revision(page);
+  const apply = panel.getByRole('button', { name: '数値変形を適用', exact: true });
+  await tabTo(page, apply);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => revision(page)).toBe(before + 1);
+
+  const save = page.getByRole('button', { name: '今すぐ保存', exact: true });
+  await tabTo(page, save);
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status').filter({ hasText: '保存済み · revision' })).toBeVisible();
+
+  const backup = page.getByRole('button', { name: '現在の内容をバックアップ', exact: true });
+  const downloadEvent = page.waitForEvent('download');
+  await tabTo(page, backup);
+  await page.keyboard.press('Enter');
+  const bytes = await readFile((await (await downloadEvent).path())!);
+  const project = (await importBackup(bytes)).project;
+  expect(project.nodes[0].transform.translation).toEqual([1.25, 0, 0]);
+});
 
 for (const projection of ['perspective', 'orthographic'] as const) {
   test(`product ${projection} pointer and numeric edits share one saved transaction`, async ({
