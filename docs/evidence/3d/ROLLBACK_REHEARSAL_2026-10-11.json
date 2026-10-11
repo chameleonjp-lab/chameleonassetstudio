@@ -1,0 +1,50 @@
+{
+  "format": "chameleon-versioned-rollback-rehearsal-1",
+  "generatedAt": "2026-10-11T01:15:38.319Z",
+  "appIdentities": {
+    "old": {
+      "appVersion": "0.1.0",
+      "sourceRevision": "910ed2d0d667c6fa5f30e68c74ecc0f52307ce21",
+      "projectSchema": "0.2.0"
+    },
+    "current": {
+      "appVersion": "0.1.0",
+      "sourceRevision": "728d571cba22c207ae56a7a866123f3c416ffe6a",
+      "nativeSchemaVersion": "0.3.0"
+    }
+  },
+  "backups": {
+    "oldSeed": {
+      "sha256": "6f15ed2c53165d5a1177256817b39e5fe6f35523ad1396aa89c64670e2113375",
+      "schema": "0.2.0"
+    },
+    "oldAppExport": {
+      "sha256": "2d5b9818b7f657f3528777353d97d00c767b86c6719f8291c34b252aa4e8d73b",
+      "schema": "0.2.0"
+    },
+    "currentMigratedExport": {
+      "sha256": "4fbed253ebd0dac5d62e9afb82b5c83ad9c45e22f4d900b98e816f259c1c18a2",
+      "schema": "0.3.0"
+    },
+    "currentUnsupportedImport": {
+      "sha256": "0b8860a1e37e87793a52db608b7d5ed8e02f438c7b85205b40bb2c3274d02001",
+      "schema": "0.3.0"
+    },
+    "retainedPreMigrationRecovery": {
+      "sha256": "2d5b9818b7f657f3528777353d97d00c767b86c6719f8291c34b252aa4e8d73b",
+      "schema": "0.2.0",
+      "projectId": "e1288fcf-e316-4de3-bd2b-ca1437710d7e"
+    }
+  },
+  "invariants": {
+    "oldDatabaseContentSha256BeforeMigration": "2eb1eb800832d981461fccd7d9ed1e0c7291251e08bba19408b82bdeadfea993",
+    "oldDatabaseContentSha256AfterMigration": "2eb1eb800832d981461fccd7d9ed1e0c7291251e08bba19408b82bdeadfea993",
+    "oldDatabaseUnchangedDuringMigration": true,
+    "currentDatabaseContentSha256BeforeRollback": "a874c23d09fb22bb7ff7a41ceddc6363a07306574d0ae09293343cd4176e3031",
+    "currentDatabaseContentSha256AfterOldAppRefusal": "a874c23d09fb22bb7ff7a41ceddc6363a07306574d0ae09293343cd4176e3031",
+    "currentDatabaseUnchangedDuringRollback": true,
+    "refusalMessage": "操作を完了できませんでした。現在の内容を保持しています。Unsupported backup format/version",
+    "currentSourceBlobSha256": "517688c8544ab2bf0add5eb6f17e5750a685d9b789f6403a7ad50f9bfce3babd"
+  },
+  "scope": "Local browser rehearsal only; no deployed release, production data, or device lifecycle behavior is covered."
+}
