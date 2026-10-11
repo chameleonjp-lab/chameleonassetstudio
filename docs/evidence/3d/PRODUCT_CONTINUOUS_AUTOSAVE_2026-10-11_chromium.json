@@ -1,0 +1,237 @@
+{
+  "evidenceScope": "native-product-ui-headless",
+  "executionMode": "vite-production-preview",
+  "autosaveBurstBoundary": "each trial applies repeated numeric commits with every observed apply-to-apply gap below the configured 800 ms debounce; autosave-window samples run from the first dirty-state observation to the first durable revision checkpoint observed before the burst ends; the final revision is verified separately after the last edit",
+  "productContinuousAutosaveMeasured": true,
+  "continuousInputDebounceMs": 800,
+  "requestedRuns": 5,
+  "requestedCommitsPerRun": 20,
+  "requestedPauseBetweenCommitsMs": 200,
+  "allBurstsHadDurableCheckpointBeforeLastEdit": true,
+  "finalSavedBackupMatchesCurrentProject": true,
+  "physicalAcceptance": false,
+  "burstResults": [
+    {
+      "baselineRevision": 1,
+      "finalRevision": 21,
+      "requestedCommits": 20,
+      "actualApplyClicks": 20,
+      "maximumInterCommitGapMs": 549.7000000029802,
+      "firstDirtyAtMs": 232.30000000447035,
+      "firstCheckpointAtMs": 5277.10000000149,
+      "firstDirtyToFirstCheckpointMs": 5044.79999999702,
+      "checkpointCurrentRevision": 11,
+      "checkpointPersistedRevision": 11,
+      "firstCheckpointObservedDuringBurst": true,
+      "finalAckAtMs": 10527,
+      "lastEditToFinalAckMs": 512.1999999955297
+    },
+    {
+      "baselineRevision": 21,
+      "finalRevision": 41,
+      "requestedCommits": 20,
+      "actualApplyClicks": 20,
+      "maximumInterCommitGapMs": 550.0999999940395,
+      "firstDirtyAtMs": 11396.39999999851,
+      "firstCheckpointAtMs": 16528.5,
+      "firstDirtyToFirstCheckpointMs": 5132.10000000149,
+      "checkpointCurrentRevision": 32,
+      "checkpointPersistedRevision": 32,
+      "firstCheckpointObservedDuringBurst": true,
+      "finalAckAtMs": 21777,
+      "lastEditToFinalAckMs": 880
+    },
+    {
+      "baselineRevision": 41,
+      "finalRevision": 61,
+      "requestedCommits": 20,
+      "actualApplyClicks": 20,
+      "maximumInterCommitGapMs": 516.6000000014901,
+      "firstDirtyAtMs": 22240.5,
+      "firstCheckpointAtMs": 27326.30000000447,
+      "firstDirtyToFirstCheckpointMs": 5085.80000000447,
+      "checkpointCurrentRevision": 52,
+      "checkpointPersistedRevision": 52,
+      "firstCheckpointObservedDuringBurst": true,
+      "finalAckAtMs": 32128,
+      "lastEditToFinalAckMs": 864.7999999970198
+    },
+    {
+      "baselineRevision": 61,
+      "finalRevision": 81,
+      "requestedCommits": 20,
+      "actualApplyClicks": 20,
+      "maximumInterCommitGapMs": 484.59999999403954,
+      "firstDirtyAtMs": 32541.39999999851,
+      "firstCheckpointAtMs": 37561.89999999851,
+      "firstDirtyToFirstCheckpointMs": 5020.5,
+      "checkpointCurrentRevision": 75,
+      "checkpointPersistedRevision": 74,
+      "firstCheckpointObservedDuringBurst": true,
+      "finalAckAtMs": 40678,
+      "lastEditToFinalAckMs": 965.1999999955297
+    },
+    {
+      "baselineRevision": 81,
+      "finalRevision": 101,
+      "requestedCommits": 20,
+      "actualApplyClicks": 20,
+      "maximumInterCommitGapMs": 400,
+      "firstDirtyAtMs": 41356.70000000298,
+      "firstCheckpointAtMs": 46375.70000000298,
+      "firstDirtyToFirstCheckpointMs": 5019,
+      "checkpointCurrentRevision": 95,
+      "checkpointPersistedRevision": 95,
+      "firstCheckpointObservedDuringBurst": true,
+      "finalAckAtMs": 49225.10000000149,
+      "lastEditToFinalAckMs": 862
+    }
+  ],
+  "record": {
+    "schemaVersion": "native-performance-v1",
+    "source": {
+      "commitSha": "9f0aa2ff739f31749d8cca88b6f92c516d10bab6",
+      "dirty": true
+    },
+    "fixture": {
+      "id": "F01",
+      "sha256": "28cd2bb89dbf5d7f0b1b33ef63efa1b9b3442427624dae7c5e64961b9e144529"
+    },
+    "environment": {
+      "browser": {
+        "family": "chromium",
+        "version": "151.0.7922.34"
+      },
+      "os": {
+        "family": "linux",
+        "version": null
+      },
+      "device": {
+        "realDevice": "headless",
+        "category": "desktop",
+        "model": "unrecorded",
+        "thermalState": "unknown"
+      },
+      "viewport": {
+        "widthCssPx": 1280,
+        "heightCssPx": 720,
+        "devicePixelRatio": 1
+      }
+    },
+    "cacheState": "warm",
+    "startedAt": "2026-10-11T04:41:39.683Z",
+    "measurements": [
+      {
+        "metric": "input",
+        "operation": "numeric-commit",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "animation-frame",
+        "operation": "active-playback",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "long-task",
+        "operation": "main-thread",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "import-first-draw",
+        "operation": "import-to-first-draw",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "cancel",
+        "operation": "cancel-to-canonical-unchanged",
+        "status": "not-measured",
+        "reason": "not-run",
+        "summary": {
+          "n": 0,
+          "medianMs": null,
+          "maxMs": null,
+          "p95Ms": null,
+          "p95Reason": "not-measured",
+          "initialRunCoverage": null
+        }
+      },
+      {
+        "metric": "autosave-window",
+        "operation": "first-dirty-to-persisted",
+        "status": "measured",
+        "window": {
+          "startMs": 0,
+          "endMs": 49882.39999999851,
+          "visibility": "foreground",
+          "freeze": "none-observed"
+        },
+        "samples": [
+          {
+            "startMs": 232.30000000447035,
+            "durationMs": 5044.79999999702
+          },
+          {
+            "startMs": 11396.39999999851,
+            "durationMs": 5132.10000000149
+          },
+          {
+            "startMs": 22240.5,
+            "durationMs": 5085.80000000447
+          },
+          {
+            "startMs": 32541.39999999851,
+            "durationMs": 5020.5
+          },
+          {
+            "startMs": 41356.70000000298,
+            "durationMs": 5019
+          }
+        ],
+        "summary": {
+          "n": 5,
+          "medianMs": 5044.79999999702,
+          "maxMs": 5132.10000000149,
+          "p95Ms": null,
+          "p95Reason": "insufficient-samples",
+          "initialRunCoverage": null
+        }
+      }
+    ]
+  }
+}

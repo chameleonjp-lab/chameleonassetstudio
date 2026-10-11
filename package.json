@@ -19,6 +19,7 @@
     "test:product-import-first-draw": "node tools/3d-evaluation/runProductImportFirstDrawRehearsal.mjs",
     "test:product-cancel-canonical": "node tools/3d-evaluation/runProductCancelCanonicalRehearsal.mjs",
     "test:product-autosave-window": "node tools/3d-evaluation/runProductAutosaveWindowRehearsal.mjs",
+    "test:product-continuous-autosave": "node tools/3d-evaluation/runProductContinuousAutosaveRehearsal.mjs",
     "test:ci-scope": "node tools/ci/*.test.mjs",
     "measure:h3:node": "vite-node tools/h3/measure-node.ts",
     "measure:h3:build": "tsc --noEmit && vite build --config tools/h3/vite.config.ts",
