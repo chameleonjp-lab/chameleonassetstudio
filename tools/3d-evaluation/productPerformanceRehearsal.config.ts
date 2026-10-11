@@ -1,0 +1,34 @@
+import { defineConfig, devices } from '@playwright/test';
+import config from '../../playwright.config';
+
+const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+const selectedBrowser = process.env.PRODUCT_PERFORMANCE_BROWSER ?? 'all';
+const allProjects = [
+  {
+    name: 'chromium-product-performance',
+    use: {
+      ...devices['Desktop Chrome'],
+      ...(chromiumExecutablePath
+        ? { launchOptions: { executablePath: chromiumExecutablePath } }
+        : {}),
+    },
+  },
+  { name: 'webkit-product-performance', use: { ...devices['Desktop Safari'] } },
+];
+const projects =
+  selectedBrowser === 'all'
+    ? allProjects
+    : allProjects.filter((project) => project.name.startsWith(`${selectedBrowser}-`));
+if (projects.length === 0)
+  throw new Error('PRODUCT_PERFORMANCE_BROWSER must be all, chromium, or webkit');
+
+export default defineConfig({
+  ...config,
+  testDir: '.',
+  testMatch: '**/productPerformanceRehearsal.e2e.ts',
+  fullyParallel: false,
+  workers: 1,
+  outputDir: '../../test-results/product-performance-playwright',
+  reporter: 'list',
+  projects,
+});
