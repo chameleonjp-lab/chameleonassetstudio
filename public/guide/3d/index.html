@@ -1,0 +1,681 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="Chameleon Asset Studioの3D開発版ガイド。はじめの一作品から、保存・バックアップ・骨と動き・GLB・困ったときの救出まで。"
+    />
+    <meta name="theme-color" content="#163c36" />
+    <title>3D制作のはじめ方 | Chameleon Asset Studio</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #18312d;
+        --muted: #536a63;
+        --paper: #fffdf7;
+        --forest: #163c36;
+        --leaf: #7dcf76;
+        --leaf-soft: #e8f7df;
+        --sun-soft: #fff2cf;
+        --line: #d9e1da;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-padding-top: 24px;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: radial-gradient(circle at 8% 0%, #e8f7df, transparent 30rem), var(--paper);
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Hiragino Kaku Gothic ProN',
+          'Yu Gothic',
+          'Noto Sans JP',
+          sans-serif;
+        line-height: 1.85;
+        overflow-wrap: anywhere;
+        -webkit-text-size-adjust: 100%;
+      }
+
+      a {
+        color: var(--forest);
+        text-underline-offset: 0.2em;
+        text-decoration-thickness: 0.08em;
+        touch-action: manipulation;
+      }
+
+      a:hover {
+        text-decoration-thickness: 0.15em;
+      }
+
+      :focus-visible {
+        outline: 3px solid var(--forest);
+        outline-offset: 4px;
+      }
+
+      .skip-link {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        z-index: 10;
+        padding: 10px 16px;
+        color: white;
+        background: var(--forest);
+        border-radius: 10px;
+        transform: translateY(-180%);
+      }
+
+      .skip-link:focus {
+        transform: translateY(0);
+        outline-color: white;
+        box-shadow: 0 0 0 7px var(--forest);
+      }
+
+      .wrap {
+        width: min(1040px, calc(100% - 40px));
+        margin-inline: auto;
+      }
+
+      .site-header {
+        border-bottom: 1px solid var(--line);
+      }
+
+      .header-inner,
+      .header-links,
+      .actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .header-inner {
+        justify-content: space-between;
+        padding-block: 16px;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 800;
+        line-height: 1.35;
+        text-decoration: none;
+      }
+
+      .brand-mark {
+        display: grid;
+        flex: 0 0 38px;
+        width: 38px;
+        height: 38px;
+        place-items: center;
+        border-radius: 13px 13px 13px 4px;
+        background: var(--leaf);
+      }
+
+      .header-links a,
+      .button {
+        display: inline-flex;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 16px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: white;
+        font-weight: 700;
+      }
+
+      .button.primary {
+        color: white;
+        background: var(--forest);
+        border-color: var(--forest);
+      }
+
+      .hero {
+        padding-block: clamp(36px, 7vw, 72px) 32px;
+      }
+
+      .eyebrow,
+      .section-number {
+        color: var(--muted);
+        font-size: 0.85rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+      }
+
+      h1,
+      h2,
+      h3 {
+        line-height: 1.4;
+        text-wrap: balance;
+      }
+
+      h1 {
+        margin-block: 10px 18px;
+        font-size: clamp(2rem, 5vw, 3.4rem);
+      }
+
+      h2 {
+        margin-block: 8px 18px;
+        font-size: clamp(1.35rem, 3vw, 1.9rem);
+      }
+
+      h3 {
+        margin-block: 0 12px;
+        font-size: 1.1rem;
+      }
+
+      p {
+        margin-block: 0 16px;
+      }
+
+      .lead {
+        max-width: 50em;
+        font-size: 1.1rem;
+      }
+
+      .note {
+        padding: 16px 20px;
+        border: 1px solid #d8c78f;
+        border-radius: 16px;
+        background: var(--sun-soft);
+      }
+
+      .hero .note {
+        margin-block: 24px 0;
+      }
+
+      .contents {
+        padding: 24px;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: white;
+      }
+
+      .contents h2 {
+        margin-top: 0;
+        font-size: 1.15rem;
+      }
+
+      .contents ul {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px 20px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .contents a {
+        display: flex;
+        min-height: 44px;
+        align-items: center;
+      }
+
+      .section {
+        padding-block: 40px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .section-number {
+        margin: 0;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+        margin-block: 20px;
+      }
+
+      .card {
+        min-width: 0;
+        padding: clamp(18px, 3vw, 26px);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: white;
+      }
+
+      .card.safe {
+        background: var(--leaf-soft);
+      }
+
+      ol,
+      ul {
+        padding-left: 1.5em;
+      }
+
+      li + li {
+        margin-top: 10px;
+      }
+
+      .contents li + li {
+        margin-top: 0;
+      }
+
+      .card > :last-child,
+      .note > :last-child {
+        margin-bottom: 0;
+      }
+
+      code {
+        font-size: 0.95em;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      footer {
+        padding-block: 32px 48px;
+      }
+
+      @media (max-width: 680px) {
+        .wrap {
+          width: calc(100% - 32px);
+        }
+
+        .contents ul,
+        .grid {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .section {
+          padding-block: 32px;
+        }
+      }
+
+      @media print {
+        body {
+          background: white;
+        }
+
+        .wrap {
+          width: 100%;
+        }
+
+        .skip-link,
+        .header-links,
+        .actions {
+          display: none;
+        }
+
+        .card,
+        .note {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">本文へ移動</a>
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="../../" aria-label="Chameleon Asset Studioのトップへ">
+          <span class="brand-mark" aria-hidden="true">C</span>
+          <span>Chameleon Asset Studio<br />3D制作ガイド</span>
+        </a>
+        <nav class="header-links" aria-label="ページ移動">
+          <a href="../">2Dの使い方</a>
+          <a href="../../3d/" target="_blank" rel="noopener noreferrer">3Dを開く（別タブ）</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" class="wrap" tabindex="-1">
+      <section class="hero" aria-labelledby="hero-title">
+        <p class="eyebrow">3D BEGINNER GUIDE · 開発版</p>
+        <h1 id="hero-title">小さく作って、<br />ファイルに残そう。</h1>
+        <p class="lead">
+          はじめは箱ひとつで大丈夫。形を作り、保存を確かめ、編集用のバックアップを手元に残します。
+          骨や動き、ゲームへの受渡しは、そのあとに試せます。
+        </p>
+        <div class="actions">
+          <a class="button primary" href="#start">最初の3ステップ</a>
+          <a class="button" href="#rescue">保存できない・画面が動かない</a>
+        </div>
+        <p class="note">
+          <strong>3Dは開発中です。</strong>
+          このガイドは現在の実装範囲の説明です。PC・iPad・iPhone・Androidの実機での統合確認や、すべてのゲームエンジンでの動作を保証するものではありません。
+        </p>
+      </section>
+
+      <nav class="contents" aria-labelledby="contents-title">
+        <h2 id="contents-title">知りたいところから</h2>
+        <ul>
+          <li><a href="#start">01 新しく作る</a></li>
+          <li><a href="#save">02 保存と端末移行</a></li>
+          <li><a href="#motion">03 骨とアニメーション</a></li>
+          <li><a href="#export">04 ゲーム情報とGLB</a></li>
+          <li><a href="#quality">05 品質と利用条件</a></li>
+          <li><a href="#rescue">06 上限と救出</a></li>
+          <li><a href="#update">07 版の確認と更新</a></li>
+          <li><a href="#diagnostics">08 問題を報告する</a></li>
+          <li><a href="#limits">09 いまの制限</a></li>
+          <li><a href="#release-notes">10 このタブの更新内容</a></li>
+        </ul>
+      </nav>
+
+      <section id="start" class="section" aria-labelledby="start-title">
+        <p class="section-number">01 · はじめの一作品</p>
+        <h2 id="start-title">箱を作って、保存を確かめる</h2>
+        <ol>
+          <li>
+            <a href="../../3d/" target="_blank" rel="noopener noreferrer">3D画面を別タブで開く</a>。
+            「新しく作る」で名前を入れ、「新しい3Dプロジェクトを作成」を押します。
+          </li>
+          <li>
+            「箱を追加」で最初の形を作ります。「3D表示を開く」で表示し、位置・回転・倍率を調整します。
+            「形と材質を作る」では基本形や色も編集できます。
+          </li>
+          <li>
+            「保存済み」を確認します。必要なら「今すぐ保存」を押し、 「現在の内容をバックアップ」で
+            <code>.cas3dproj</code> を保存します。
+          </li>
+        </ol>
+        <p class="muted">
+          操作を戻すには「元に戻す」、戻した操作を進めるには「やり直す」。Undo履歴はバックアップには入りません。
+        </p>
+      </section>
+
+      <section id="save" class="section" aria-labelledby="save-title">
+        <p class="section-number">02 · 大切な作品を残す</p>
+        <h2 id="save-title">自動保存とバックアップを使い分ける</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>自動保存は、このブラウザー内</h3>
+            <p>
+              作品と原本は、サイト・ブラウザーのプロフィールごとの保存領域（IndexedDB）に残ります。
+              別ブラウザーや別端末へは自動同期しません。
+            </p>
+            <p>
+              サイトデータやプロフィールを消すと作品を失うことがあります。
+              「コピーとして保存」も同じブラウザー内のコピーです。
+            </p>
+          </article>
+          <article class="card safe">
+            <h3>端末を移る前に、編集用ファイルを保存</h3>
+            <ol>
+              <li>「現在の内容をバックアップ」で <code>.cas3dproj</code> を取得。</li>
+              <li>ブラウザーで選んだ保存先にファイルがあることを確認。</li>
+              <li>移行先の3D画面で「.cas3dproj を選んでコピー復元」を選択。</li>
+            </ol>
+            <p>
+              元の作品を残し、別の作品として復元します。復元を確かめるまで控えを保管してください。
+            </p>
+          </article>
+        </div>
+        <p>
+          現在の保存形式は <strong>0.3.0</strong>。旧0.1.0／0.2.0作品は、
+          「旧作品の一覧を読む」から容量増加を確認し、新しい形式のコピーを作ります。
+          元の作品は旧保存領域に残ります。
+        </p>
+        <p class="note">
+          旧版へ戻す可能性があるときは「移行前の復元控えを取得」も使ってください。
+          通常のバックアップには旧形式の控えは入りません。新しいバックアップを旧アプリで開けるとは限りません。
+          2D用の <code>.casproj</code> と3D用の <code>.cas3dproj</code> は別形式です。
+        </p>
+      </section>
+
+      <section id="motion" class="section" aria-labelledby="motion-title">
+        <p class="section-number">03 · 動きを試す</p>
+        <h2 id="motion-title">骨を付け、キーで動きを記録する</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>骨と重み</h3>
+            <p>
+              「骨と重みの編集を開く」から、必要なら「人型の骨ガイドを追加」。
+              骨の位置と親子関係を整え、動かしたい形に骨と重みを指定してbind（関連付け）します。
+            </p>
+            <p>
+              重みは、各頂点がどの骨について動くかを決める値です。1頂点につき最大4つの骨が影響します。
+              最初のbindは全頂点へ同じ指定を割り当てるため、必要な頂点を個別に調整します。
+            </p>
+            <p>骨の自動フィット・自動重み付けはありません。bind後の形状変更は制限されます。</p>
+          </article>
+          <article class="card">
+            <h3>アニメーション</h3>
+            <ol>
+              <li>3D表示と「アニメーション編集を開く」を開き、clip（動きのまとまり）を作成。</li>
+              <li>物体または骨、移動・回転・倍率を選び、時刻と値を入れて「キーを追加」。</li>
+              <li>「clipを再生」で確認。「restへ戻す」で基準形に戻ります。</li>
+            </ol>
+            <p>
+              STEPは次のキーまで値を保持し、LINEARはキーの間を補間します。回転値はX/Y/Z/W形式です。
+            </p>
+          </article>
+        </div>
+        <p class="note">
+          <strong>自動キーはオフです。</strong>
+          再生や時刻の移動だけではキーを追加しません。保存するのは基準形（rest）とclipで、
+          確認中の姿勢（pose）は保存しません。タブの背景化やGPU休止後は、表示を戻してから明示的に再生します。
+        </p>
+      </section>
+
+      <section id="export" class="section" aria-labelledby="export-title">
+        <p class="section-number">04 · ゲームへ渡す</p>
+        <h2 id="export-title">GLBと付属情報を一緒に確認する</h2>
+        <ol>
+          <li>
+            「ゲーム向け情報を編集」で種類・ID・単位・前方向・原点を設定します。
+            anchorは取り付け位置、colliderは当たり判定用の形の情報です。ゲームの衝突処理は受渡し先で設定します。
+          </li>
+          <li>
+            「GLB読込・配布ファイル出力」→「GLB入出力を開く」→「GLB・付属情報・ZIPを作成」。
+            出力は開始時点の作品の版（revision）です。後から編集した分は、もう一度出力してください。
+          </li>
+          <li>
+            注意一覧を読み、GLB・<code>game.json</code>・<code>manifest.json</code>
+            またはZIPを保存します。 利用先で見た目・動き・大きさ・原点を確認してください。
+          </li>
+        </ol>
+        <p>
+          GLBはm・Y上・+Z前の座標です。受渡し単位や原点、前方向、loop、anchor／colliderなどの情報は
+          <code>game.json</code> も使います。利用先で座標を変える場合は一度だけ適用してください。
+          非表示部品もGLBに含まれ、他のソフトでは見える場合があります。
+        </p>
+        <div class="card">
+          <h3>手元のGLBを読み込むとき</h3>
+          <p>
+            GLB2（最大32MiB）と、必要なら対応する <code>game.json</code>（最大8MiB）を選びます。
+            変換で失われる情報を確認して取り込むと、原本付きの新しいコピーを保存します。
+            「保存したプロジェクト」のImported GLBから開いてください。
+          </p>
+          <p>外部URL参照や未対応の必須拡張、不正なデータは取り込めません。</p>
+        </div>
+        <p class="note">
+          <strong>GLB／ZIPは、再編集用バックアップの代わりにはなりません。</strong>
+          原本や利用条件を含む作品の控えには <code>.cas3dproj</code> も残してください。
+          出力できたことだけでは、外部エンジンでの動作確認にはなりません。
+        </p>
+      </section>
+
+      <section id="quality" class="section" aria-labelledby="quality-title">
+        <p class="section-number">05 · 渡す前に確かめる</p>
+        <h2 id="quality-title">品質の警告と素材の利用条件を読む</h2>
+        <p>
+          「作品の品質検査を開く」から、頂点・三角形・部品数、画像の寸法、基準形の範囲、
+          出力の警告を確認します。「編集先を確認」は修正する場所を案内するだけで、自動修正はしません。
+          編集後は再検査してください。
+        </p>
+        <p>
+          「保持原本の情報」では、利用者が申告した条件と素材に埋め込まれた条件を分けて確認できます。
+          表示があっても利用許可の確認済みという意味ではありません。商用利用・改変・再配布・クレジット表記は、
+          元の配布元の条件を確認してください。
+        </p>
+        <p>
+          アプリに同梱するライブラリの条件は
+          <a href="../../licenses/runtime-notices.txt" target="_blank" rel="noopener noreferrer"
+            >ライセンス原文</a
+          >
+          で読めます。作品の素材に対する利用許可とは別で、素材の権利を付与するものではありません。
+        </p>
+        <p class="muted">
+          警告がないことは、実機性能や外部エンジンでの動作、権利面の保証ではありません。
+          原本にVRMなどの情報が残っていても、その形式の編集・書出し対応を意味しません。
+        </p>
+      </section>
+
+      <section id="rescue" class="section" aria-labelledby="rescue-title">
+        <p class="section-number">06 · 困ったとき</p>
+        <h2 id="rescue-title">タブを閉じる前に、作品を救出する</h2>
+        <p>
+          「保存履歴とごみ箱を読む」では、正常版と復旧候補の時刻・revision・差を確認できます。選んだ版は別IDのコピーとして復旧し、元の正常版を上書きしません。記録のない時刻は不明として表示します。
+        </p>
+        <p>
+          作品を保存して閉じると、対象1件を確認してごみ箱へ移動できます。原本と復旧候補は保持し、ごみ箱から戻せます。自動消去期限や完全削除機能はありません。サイトデータを消すと失う可能性があるため、別ファイルのバックアップも残してください。
+        </p>
+        <div class="grid">
+          <article class="card safe">
+            <h3>現在のタブに変更が残っている</h3>
+            <p>
+              保存失敗や編集画面のエラー時は、まず「現在の内容をバックアップ」を試してください。
+              未保存の変更と必要な原本を含めた <code>.cas3dproj</code> を取得します。
+            </p>
+            <p>ファイルを確認し、別タブでコピー復元を試すまで、元のタブは閉じないでください。</p>
+          </article>
+          <article class="card">
+            <h3>最後に保存した版を取り出したい</h3>
+            <p>
+              作品一覧の「保存済みの版をバックアップ」は、保存領域へ書き込まずに最後の保存版を取り出します。
+              <strong>現在のタブの未保存変更は含みません。</strong>
+            </p>
+            <p>
+              保存データを読めない場合や必要な原本が欠けている場合は、救出できるとは限りません。
+            </p>
+          </article>
+        </div>
+        <p>
+          上限エラーは表示・画像処理・GLB・履歴・保存用コピーの見積りに基づきます。
+          端末の空きメモリを実測した値ではありません。3D表示や作成済み出力を閉じ、処理が終わってから再試行します。
+          保存失敗後は「保存を再試行」を使えます。
+        </p>
+        <p class="note">
+          上限に達しても作品や原本を自動で小さくしません。描画解像度だけを抑える場合も、形や原本は変わりません。
+          トラブル対応のためにサイトデータを一括削除せず、先にバックアップを確保してください。
+        </p>
+      </section>
+
+      <section id="update" class="section" aria-labelledby="update-title">
+        <p class="section-number">07 · 安全に更新する</p>
+        <h2 id="update-title">版を確認し、保存してから読み直す</h2>
+        <ol>
+          <li>「版と更新を確認」でアプリ版・source revision（コードの版）・保存形式を確認。</li>
+          <li>
+            「配信版を確認」を押すと、同じサイトへ版情報を問い合わせます。
+            別の版があっても自動更新しません。確認は中止でき、15秒で打ち切られます。
+          </li>
+          <li>
+            更新するときは「現在の内容を保存して再読み込み」。保存失敗時は読み直さず、
+            タブを保ってバックアップを試してください。
+          </li>
+        </ol>
+        <p>
+          読み込み済みの機能では、通信が切れても編集・保存・バックアップを続けられます。
+          未取得の機能の読み込みや、完全なオフライン起動は保証していません。
+          アプリを旧版へ戻しても、作品の保存形式は自動で戻りません。
+        </p>
+      </section>
+
+      <section id="diagnostics" class="section" aria-labelledby="diagnostics-title">
+        <p class="section-number">08 · 個人情報を確かめて共有</p>
+        <h2 id="diagnostics-title">診断情報は、作るだけでは送信されません</h2>
+        <ol>
+          <li>「問題報告用の診断情報」→「診断情報を作成」を押します。再現手順の入力は任意です。</li>
+          <li>
+            「共有前の確認・編集」で内容を読み、不要な情報を編集・削除します。
+            名前、個人ファイルの場所、認証情報は書かないでください。
+          </li>
+          <li>
+            「確認した内容をコピー」または「確認した内容をテキスト保存」を選びます。
+            コピーできなければ「内容を選択して手動コピー」を使います。送信先は自分で確認してください。
+          </li>
+        </ol>
+        <p>
+          自動で含めるのは版、固定のエラーID、対象機能、大まかなブラウザー種類・版です。
+          作品名・画像・GLB・個人のパス・エラー全文は自動で入りません。
+          匿名性を保つには、自分で書いた再現手順や確認欄も点検してください。
+        </p>
+        <p class="muted">
+          コピー・保存には、その時点の確認欄の文章だけを使います。診断情報の作成・コピー・保存で自動送信はしません。
+          編集済みの文章を再作成で置き換えるときは確認が必要です。
+        </p>
+      </section>
+
+      <section id="limits" class="section" aria-labelledby="limits-title">
+        <p class="section-number">09 · いまの制限</p>
+        <h2 id="limits-title">小さな作品で、利用先まで試してください</h2>
+        <ul>
+          <li>
+            実機PC・iPad・iPhone・Androidでの統合受入、性能区分、操作・アクセシビリティの最終確認は未完了です。
+          </li>
+          <li>
+            すべての外部ゲームエンジンでの動作は確認済みではありません。固定サンプルの結果は個々の作品の保証にはなりません。
+          </li>
+          <li>
+            圧縮形式、自動重み付け、IK、動きの移し替え（retarget）、UV編集・テクスチャペイントなどは完成済みではありません。
+          </li>
+          <li>
+            ブラウザーがタブを破棄した後の未保存内容は、必ず復元できるとは限りません。こまめにファイルの控えを残してください。
+          </li>
+        </ul>
+        <p class="note">
+          保存破損・救出不能・繰り返すクラッシュなどが起きたら、元データを保ち、診断情報で状況を伝えてください。
+          このガイドの追加は、3D製品の完成や公開判定の完了を意味しません。
+        </p>
+      </section>
+      <section id="release-notes" class="section" aria-labelledby="release-notes-title">
+        <p class="section-number">10 / RELEASE NOTES</p>
+        <h2 id="release-notes-title">このタブの更新内容</h2>
+        <p>
+          開発版の説明更新:
+          2026-10-10。アプリの「版と更新を確認」を開くと、そのタブに同梱された更新内容と正確なsource
+          revisionを確認できます。このガイドは固定の説明で、別の配信版や最新mainの内容を照合したものではありません。
+        </p>
+        <ul>
+          <li>
+            形・材質・骨と重み・clip編集に加え、階層の依存情報付き複製、rigid部品の骨割当、保存前のGLB表示確認、出力前の保持範囲確認を追加しています。
+          </li>
+          <li>
+            作品一覧と保持版のコピー復元、原本付きバックアップ、資源上限と背景停止、版・診断情報の明示確認を備えます。見積りは同一JavaScript
+            realm内で、端末全体の実メモリ計測ではありません。
+          </li>
+          <li>
+            保存形式は0.3.0。旧0.1/0.2作品は旧領域を残してコピー移行します。新形式を旧アプリへ完全に戻すことは保証できません。
+          </li>
+          <li>
+            編集用バックアップを保存してから移行・更新してください。ゲーム用GLB/ZIPは編集用バックアップの代わりにはなりません。残した原本と生成したGLBの違いを確認してください。
+          </li>
+        </ul>
+        <p class="callout">
+          実機のIME、mobileの操作、OS終了後の復旧、端末全体のメモリとGPU、Unity/Godot/Blenderの実行は、この表示だけで合格にはなりません。自動weight、IK/brush、motion
+          template、retarget、CUBICSPLINE、named snapshotなどの推奨機能は採用完了していません。
+        </p>
+      </section>
+    </main>
+
+    <footer class="wrap">
+      <nav class="actions" aria-label="ガイドの終わりのページ移動">
+        <a class="button primary" href="../../3d/" target="_blank" rel="noopener noreferrer"
+          >3Dを開く（別タブ）</a
+        >
+        <a class="button" href="../">2Dの使い方</a>
+        <a class="button" href="../features/">2Dの機能別ガイド</a>
+        <a class="button" href="#main">先頭へ戻る</a>
+      </nav>
+    </footer>
+  </body>
+</html>

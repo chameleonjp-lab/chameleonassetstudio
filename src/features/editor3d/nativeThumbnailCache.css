@@ -1,0 +1,31 @@
+.native-thumbnail-cache {
+  overflow-wrap: anywhere;
+}
+.native-thumbnail-cache-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+.native-thumbnail-cache-grid li {
+  min-width: 0;
+  padding: 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 0.5rem;
+}
+.native-thumbnail-cache-grid img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.native-thumbnail-cache button,
+.native-thumbnail-cache summary {
+  min-height: 44px;
+}
+.native-thumbnail-cache label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+}

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self' ws://127.0.0.1:4177 ws://localhost:4177; worker-src 'none'; object-src 'none'; base-uri 'none'"
+    />
+    <title>Independent Babylon asset consumer</title>
+  </head>
+  <body>
+    <h1>Independent Babylon asset consumer</h1>
+    <p>
+      Test-only entry. No editor renderer or evaluator. Metadata does not implement game physics.
+    </p>
+    <p>
+      <a href="./licenses/babylon-notices.txt" target="_blank" rel="noopener noreferrer"
+        >Bundled Babylon licenses and notices</a
+      >. Package notices do not mean that optional decoders are enabled.
+    </p>
+    <label>GLB <input id="glb" type="file" accept=".glb" /></label>
+    <label>Matching game.json <input id="sidecar" type="file" accept=".json" /></label>
+    <button id="load">Load independently</button>
+    <button id="dispose">Dispose</button>
+    <p id="status" role="status">Ready for bounded GLB and sidecar</p>
+    <canvas
+      id="consumer-canvas"
+      width="640"
+      height="480"
+      style="width: min(90vw, 640px); height: 480px; display: block"
+      aria-label="Independent Babylon viewport"
+    ></canvas>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

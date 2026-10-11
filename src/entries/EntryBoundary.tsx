@@ -1,7 +1,7 @@
 import { Component, type ReactNode } from 'react';
 
 export class EntryBoundary extends Component<
-  { children: ReactNode; domain: string },
+  { children: ReactNode; domain: string; recovery?: ReactNode },
   { failed: boolean }
 > {
   state = { failed: false };
@@ -19,6 +19,7 @@ export class EntryBoundary extends Component<
         <a href={import.meta.env.BASE_URL} target="_blank" rel="noopener noreferrer">
           トップを別タブで開く
         </a>
+        {this.props.recovery}
       </main>
     );
   }

@@ -1,3 +1,4 @@
+import { formatAssetIoFailure, readAssetIoLossRequest } from './assetIoFailure';
 import {
   useCallback,
   useEffect,
@@ -9,6 +10,7 @@ import {
 } from 'react';
 import { startAssetIo } from '../../adapters3d/gltf/assetIoClient';
 import { captureAssetSnapshot } from '../../core3d/export/snapshot';
+import { analyzeNativeExport } from '../../core3d/export/review';
 import type {
   AssetExport,
   AssetImport,
@@ -21,6 +23,12 @@ import {
   reserveAssetIoBytes,
 } from '../../core3d/profile/assetIoProfile';
 import type { ProjectSession } from './projectSession';
+import {
+  createNativeImportReview,
+  createNativeImportConfirmation,
+  type NativeImportReview,
+} from './importReview';
+import { NativeImportPreview } from './NativeImportPreview';
 import './nativeAssetIoPanel.css';
 
 type Kind = 'import' | 'export';
@@ -42,8 +50,6 @@ type ExportRecord = {
   release(): void;
 };
 type Download = { timer: ReturnType<typeof setTimeout>; release(): void };
-const lossPrefix = 'Source-only features require explicit loss approval: ';
-const message = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
 const abortError = () => new DOMException('処理を中止しました。', 'AbortError');
 
 function safeFilename(name: string) {
@@ -122,6 +128,11 @@ export function NativeAssetIoPanel({
   onImport(result: AssetImport, signal: AbortSignal): Promise<void>;
 }) {
   const [open, setOpen] = useState(true);
+  const [exportAcknowledgement, setExportAcknowledgement] = useState<{
+    session: ProjectSession;
+    projectId: string;
+    revision: number;
+  } | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [sidecar, setSidecar] = useState<File | null>(null);
   const [fileKey, setFileKey] = useState(0);
@@ -133,6 +144,15 @@ export function NativeAssetIoPanel({
   const [notice, setNotice] = useState('');
   const [sourceHash, setSourceHash] = useState('');
   const [exported, setExported] = useState<ExportRecord | null>(null);
+  const [importReview, setImportReview] = useState<NativeImportReview | null>(null);
+  const [readyReview, setReadyReview] = useState<NativeImportReview | null>(null);
+  const [importAcknowledgement, setImportAcknowledgement] = useState<NativeImportReview | null>(
+    null,
+  );
+  const pendingImport = useRef<NativeImportReview | null>(null);
+  const importConfirmation = useRef(createNativeImportConfirmation());
+  const importButton = useRef<HTMLButtonElement>(null);
+  const restoreImportFocus = useRef(false);
   const [foreground, setForeground] = useState(!document.hidden);
   const active = useRef<Activity | null>(null);
   const generation = useRef(0);
@@ -152,8 +172,33 @@ export function NativeAssetIoPanel({
   );
   useSyncExternalStore(subscription.subscribe, subscription.getSnapshot, subscription.getSnapshot);
   const state = session.state;
+  const exportReview = useMemo(() => {
+    if (!open) return null;
+    try {
+      const project = session.project;
+      if (project.revision !== state.revision) throw new Error('Revision changed');
+      return { report: analyzeNativeExport(project), error: '' };
+    } catch {
+      return {
+        report: null,
+        error: '出力前の確認を作成できません。作品を変更せず、バックアップで保持してください。',
+      };
+    }
+  }, [open, session, state.revision]);
+  const exportReviewed =
+    !!exportReview?.report &&
+    !exportReview.report.hasBlockers &&
+    exportAcknowledgement?.session === session &&
+    exportAcknowledgement.projectId === exportReview.report.projectId &&
+    exportAcknowledgement.revision === state.revision;
   const inputProblem = fileProblem(file, sidecar);
   const busy = progress !== null;
+  useEffect(() => {
+    if (restoreImportFocus.current && open && !busy && !importReview) {
+      restoreImportFocus.current = false;
+      importButton.current?.focus();
+    }
+  }, [open, busy, importReview]);
 
   useLayoutEffect(() => {
     latestSession.current = session;
@@ -172,23 +217,47 @@ export function NativeAssetIoPanel({
     currentExport.current = null;
     setExported(null);
   }, []);
-  const cancel = useCallback((reason: string, notify = true) => {
-    const previous = active.current;
-    active.current = null;
-    generation.current++;
-    previous?.controller.abort();
-    previous?.job?.cancel();
-    if (notify && mounted.current && previous) {
-      setProgress(null);
-      setFailure('');
-      setNotice(reason);
+  const clearImportReview = useCallback((updateUi = true) => {
+    const previous = pendingImport.current;
+    pendingImport.current = null;
+    importConfirmation.current.clear();
+    previous?.dispose();
+    if (updateUi) {
+      setImportReview(null);
+      setReadyReview(null);
+      setImportAcknowledgement(null);
     }
   }, []);
+  const importPreviewState = useCallback((review: NativeImportReview, ready: boolean) => {
+    if (!mounted.current || pendingImport.current !== review || !available.current) return;
+    importConfirmation.current.updateReady(review, ready);
+    setReadyReview(ready ? review : null);
+    if (!ready) setImportAcknowledgement(null);
+  }, []);
+  const cancel = useCallback(
+    (reason: string, notify = true) => {
+      const previous = active.current;
+      const reviewing = pendingImport.current !== null;
+      active.current = null;
+      generation.current++;
+      previous?.controller.abort();
+      previous?.job?.cancel();
+      clearImportReview(notify);
+      if (notify && mounted.current && (previous || reviewing)) {
+        setProgress(null);
+        setFailure('');
+        setNotice(reason);
+      }
+    },
+    [clearImportReview],
+  );
 
   useLayoutEffect(() => {
     mounted.current = true;
     if (initializedSession.current !== session) {
       initializedSession.current = session;
+      clearImportReview();
+      setExportAcknowledgement(null);
       setFile(null);
       setSidecar(null);
       setFileKey((value) => value + 1);
@@ -202,6 +271,21 @@ export function NativeAssetIoPanel({
     }
     const unsubscribe = session.edit.subscribe(() => {
       const running = active.current;
+      const review = pendingImport.current;
+      if (session.state.closed) {
+        cancel('作品の編集セッションが終了したため、GLB入出力を中止しました。');
+        return;
+      }
+      if (review && (session.state.readOnly || session.state.revision !== review.origin.revision)) {
+        const reason =
+          '作品や編集権限が変わったため、未保存の取込候補を閉じました。原本と現在の作品は保持しています。';
+        if (running?.kind === 'export' && running.session === session && !session.state.closed) {
+          // A stale import review must not cancel an export of an already captured revision.
+          clearImportReview();
+          setNotice(reason);
+        } else cancel(reason);
+        return;
+      }
       if (
         running?.kind === 'import' &&
         running.session === session &&
@@ -219,7 +303,7 @@ export function NativeAssetIoPanel({
       currentExport.current?.release();
       currentExport.current = null;
     };
-  }, [session, cancel, clearExport, revokeDownloads]);
+  }, [session, cancel, clearExport, revokeDownloads, clearImportReview]);
 
   useEffect(() => {
     let frozen = false;
@@ -271,6 +355,7 @@ export function NativeAssetIoPanel({
       active.current === running &&
       generation.current === running.generation &&
       latestSession.current === running.session &&
+      !running.session.state.closed &&
       !running.controller.signal.aborted
     );
   }
@@ -281,11 +366,32 @@ export function NativeAssetIoPanel({
       setFailure('実行中の処理を終えるか、取り消してから操作してください。');
       return null;
     }
+    if (session.state.closed) {
+      setFailure('この作品の編集セッションは終了しています。一覧から開き直してください。');
+      return null;
+    }
     if (kind === 'import' && session.state.readOnly) {
       setFailure('読み取り専用の作品からは取り込みを開始できません。');
       return null;
     }
-    const project = session.project;
+    let project: ProjectSession['project'];
+    try {
+      project = session.project;
+    } catch {
+      setFailure(
+        '現在の作品を安全に読み取れませんでした。作品を変更せず、バックアップと保存状態を確認してください。',
+      );
+      return null;
+    }
+    if (
+      kind === 'export' &&
+      (!exportReviewed ||
+        exportAcknowledgement?.projectId !== project.id ||
+        exportAcknowledgement.revision !== project.revision)
+    ) {
+      setFailure('現在のrevisionの出力範囲と変換・損失の注意を確認してください。');
+      return null;
+    }
     const running: Activity = {
       kind,
       generation: ++generation.current,
@@ -322,14 +428,17 @@ export function NativeAssetIoPanel({
   }
   function report(running: Activity, cause: unknown) {
     if (!isCurrent(running)) return;
-    const text = message(cause);
-    if (running.kind === 'import' && text.startsWith(lossPrefix)) {
-      setLosses(text.slice(lossPrefix.length).split(', ').filter(Boolean));
+    const requestedLosses = running.kind === 'import' ? readAssetIoLossRequest(cause) : null;
+    if (requestedLosses) {
+      setLosses(requestedLosses);
       setAllowLoss(false);
       setFailure(
         'そのまま編集できない情報があります。下の一覧を確認し、対応部分への変換を許可する場合だけチェックして再実行してください。',
       );
-    } else setFailure(`${text} 現在の作品と選択した原本は保持しています。`);
+    } else
+      setFailure(
+        `${formatAssetIoFailure(cause, running.kind)} 現在の作品と選択した原本は保持しています。`,
+      );
   }
   function selectFile(next: File | null, isSidecar: boolean) {
     cancel('選択ファイルが変わったため処理を中止しました。');
@@ -346,9 +455,9 @@ export function NativeAssetIoPanel({
     const started = begin('import');
     if (!started) return;
     const { running } = started;
+    clearImportReview();
     const permittedLoss = allowLoss && losses.length > 0;
     let releaseRead: (() => void) | undefined;
-    let releaseResult: (() => void) | undefined;
     try {
       releaseRead = reserveAssetIoBytes(file.size + (sidecar?.size ?? 0));
       const bytes = await readFile(file, running.controller.signal);
@@ -391,28 +500,69 @@ export function NativeAssetIoPanel({
         throw new Error('読み込み中に作品や編集権限が変わりました。再実行してください。');
       if (result.losses.length && !permittedLoss)
         throw new Error('未承認の変換を含むため取り込みません。');
-      const jsonBytes = new TextEncoder().encode(JSON.stringify(result.project)).length;
-      assertIoBudget(jsonBytes, ASSET_IO_PROFILE.jsonBytes, 'Imported project JSON');
-      const retainedBytes = [...result.blobs.values()].reduce((sum, value) => {
-        if (!(value instanceof Uint8Array)) throw new Error('取り込んだ原本の内容が不正です。');
-        return sum + value.length;
-      }, 0);
-      assertIoBudget(retainedBytes, ASSET_IO_PROFILE.totalBlobBytes, 'Imported blobs');
-      // The worker has released its reservation; the atomic copy still retains inputs and staging copies.
-      releaseResult = reserveAssetIoBytes(
-        jsonBytes * 4 + retainedBytes * 4 + bytes.length + (sidecarBytes?.length ?? 0),
+      const review = createNativeImportReview(
+        result,
+        {
+          session: running.session,
+          projectId: running.id,
+          revision: running.revision,
+        },
+        bytes.length + (sidecarBytes?.length ?? 0),
       );
-      observe(running, { phase: '新しいコピーを保存', fraction: 0.95 });
-      await onImport(result, running.controller.signal);
-      if (!isCurrent(running)) return;
+      if (!isCurrent(running)) {
+        review.dispose();
+        return;
+      }
+      pendingImport.current = review;
+      setImportReview(review);
+      setReadyReview(null);
+      setImportAcknowledgement(null);
       setSourceHash(result.sourceHash);
       setLosses(result.losses);
-      setNotice('新しいコピーとして取り込みました。原本GLBもコピー内に保持しています。');
+      setNotice(
+        '検査した候補はまだ保存していません。変換後の表示と注意を確認してから新しいコピーを保存してください。',
+      );
     } catch (cause) {
       report(running, cause);
     } finally {
       releaseRead?.();
-      releaseResult?.();
+      finish(running);
+    }
+  }
+  async function applyImportReview() {
+    const review = pendingImport.current;
+    if (!review || !importConfirmation.current.allows(review)) {
+      setFailure('変換後の表示が準備できてから、取込候補の確認にチェックしてください。');
+      return;
+    }
+    const started = begin('import');
+    if (!started) return;
+    const { running } = started;
+    let borrowed: ReturnType<NativeImportReview['borrow']> | undefined;
+    try {
+      review.assertCurrent(
+        session,
+        running.id,
+        running.revision,
+        session.state.readOnly,
+        session.state.closed,
+      );
+      borrowed = review.borrow();
+      observe(running, { phase: '確認した新しいコピーを保存', fraction: 0.95 });
+      await onImport(borrowed.result, running.controller.signal);
+      if (!isCurrent(running) || pendingImport.current !== review) return;
+      clearImportReview();
+      setNotice(
+        '確認した候補を新しいコピーとして保存しました。原本GLBもコピー内に保持しています。',
+      );
+    } catch (cause) {
+      if (isCurrent(running)) {
+        importConfirmation.current.acknowledge(review, false);
+        setImportAcknowledgement(null);
+      }
+      report(running, cause);
+    } finally {
+      borrowed?.release();
       finish(running);
     }
   }
@@ -518,7 +668,7 @@ export function NativeAssetIoPanel({
         URL.revokeObjectURL(url);
       }
       release?.();
-      setFailure(message(cause));
+      setFailure(formatAssetIoFailure(cause, 'download'));
     }
   }
   function close() {
@@ -535,6 +685,7 @@ export function NativeAssetIoPanel({
     setSourceHash('');
     setFailure('');
     if (!wasRunning) setNotice('入出力を閉じました。作品と保存済みファイルは保持しています。');
+    setExportAcknowledgement(null);
     setOpen(false);
   }
   return (
@@ -553,9 +704,10 @@ export function NativeAssetIoPanel({
             event.preventDefault();
             event.stopPropagation();
           }
-        } else if (event.key === 'Escape' && active.current) {
+        } else if (event.key === 'Escape' && (active.current || pendingImport.current)) {
           event.preventDefault();
           event.stopPropagation();
+          restoreImportFocus.current = true;
           cancel('処理を中止しました。現在の作品と原本は保持しています。');
         }
       }}
@@ -669,7 +821,10 @@ export function NativeAssetIoPanel({
                 type="checkbox"
                 checked={allowLoss}
                 disabled={!losses.length}
-                onChange={(event) => setAllowLoss(event.target.checked)}
+                onChange={(event) => {
+                  cancel('変換の許可を変更したため、取込候補の確認を取り消しました。');
+                  setAllowLoss(event.target.checked);
+                }}
               />
               一覧の損失を確認し、原本を保持して対応部分だけを編集用に変換する
             </label>
@@ -679,14 +834,69 @@ export function NativeAssetIoPanel({
             <button
               type="button"
               disabled={!file || !!inputProblem || (!!losses.length && !allowLoss)}
+              ref={importButton}
               onClick={() => void importAsset()}
             >
-              {losses.length
-                ? '損失を許可して新しいコピーへ再取り込み'
-                : 'GLBを検査して新しいコピーへ取り込む'}
+              {losses.length ? '損失を許可して取込候補を再検査' : 'GLBを検査して保存前に確認する'}
             </button>
           </fieldset>
-          {sourceHash && <p className="native-asset-io-hash">保持した原本 SHA-256: {sourceHash}</p>}
+          {sourceHash && (
+            <p className="native-asset-io-hash">検査した原本GLB SHA-256: {sourceHash}</p>
+          )}
+          {importReview && (
+            <section aria-label="GLBの保存前確認">
+              <h4>未保存の取込候補</h4>
+              <p>
+                これは変換後のrest形状・材質の確認です。アニメーション再生、未対応機能、外部ゲームエンジンでの結果はこの表示では確認できません。
+              </p>
+              <NativeImportPreview
+                key={importReview.summary.projectId}
+                review={importReview}
+                onReady={importPreviewState}
+              />
+              <label className="native-asset-io-checkbox">
+                <input
+                  type="checkbox"
+                  checked={importAcknowledgement === importReview}
+                  disabled={busy || readyReview !== importReview || !foreground || state.readOnly}
+                  onChange={(event) => {
+                    const accepted =
+                      pendingImport.current === importReview &&
+                      importConfirmation.current.acknowledge(importReview, event.target.checked);
+                    setImportAcknowledgement(accepted ? importReview : null);
+                  }}
+                />
+                変換後の表示と取込の注意を確認しました
+              </label>
+              <button
+                type="button"
+                disabled={
+                  busy ||
+                  readyReview !== importReview ||
+                  importAcknowledgement !== importReview ||
+                  !foreground ||
+                  state.readOnly
+                }
+                onClick={() => void applyImportReview()}
+              >
+                確認した取込候補を新しいコピーに保存
+              </button>
+              <p>
+                保存開始後の取消では、保存済みのコピーが一覧に残る場合があります。取消操作で保存済み作品を削除することはありません。
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  restoreImportFocus.current = true;
+                  cancel(
+                    '取込候補を取り消しました。原本と現在の作品は保持しています。保存直後のコピーは一覧で確認してください。',
+                  );
+                }}
+              >
+                {busy ? '取込処理と候補表示を取り消す' : '未保存の取込候補を取り消す'}
+              </button>
+            </section>
+          )}
           <fieldset disabled={busy || !foreground}>
             <legend>固定revisionから出力する</legend>
             <p>
@@ -696,7 +906,74 @@ export function NativeAssetIoPanel({
             <p>
               GLBはm・Y上・+Z前の正本座標です。単位・原点・前方向・anchor・colliderはgame.jsonで受け渡します。受渡し先での二重変換に注意してください。
             </p>
-            <button type="button" onClick={() => void exportAsset()}>
+            <section aria-label="出力前の範囲と変換・損失の確認">
+              <h4>作成前に確認する内容</h4>
+              {exportReview?.error && <p role="alert">{exportReview.error}</p>}
+              {exportReview?.report && (
+                <>
+                  <p>
+                    確認対象: revision {exportReview.report.revision} /{' '}
+                    {exportReview.report.profileId}
+                    。ここでは正本メタデータから分かる差を示します。実変換、原本hash、画像decodeの成功判定ではありません。
+                  </p>
+                  <ul>
+                    {exportReview.report.outputs.map((output) => (
+                      <li key={output.id}>
+                        <strong>{output.label}</strong>: {output.description}
+                      </li>
+                    ))}
+                  </ul>
+                  <ol>
+                    {exportReview.report.items.map((item, index) => (
+                      <li key={`${item.code}:${item.target.id}:${index}`}>
+                        <strong>
+                          {item.severity === 'error'
+                            ? '作成できない内容'
+                            : item.severity === 'warning'
+                              ? '注意'
+                              : '説明'}
+                          : {item.message}
+                        </strong>
+                        <p>
+                          対象 {item.target.kind}: {item.target.id} / 件数 {item.count}
+                        </p>
+                        <p>{item.preservation}</p>
+                      </li>
+                    ))}
+                  </ol>
+                  <ul>
+                    {exportReview.report.limitations.map((limitation) => (
+                      <li key={limitation}>{limitation}</li>
+                    ))}
+                  </ul>
+                  {exportReview.report.hasBlockers && (
+                    <p role="alert">
+                      作成を妨げる内容があります。修正するか編集用バックアップで保持してください。原本を自動で削減しません。
+                    </p>
+                  )}
+                  <label className="native-asset-io-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={exportReviewed}
+                      disabled={exportReview.report.hasBlockers}
+                      onChange={(event) =>
+                        setExportAcknowledgement(
+                          event.target.checked
+                            ? {
+                                session,
+                                projectId: exportReview.report!.projectId,
+                                revision: exportReview.report!.revision,
+                              }
+                            : null,
+                        )
+                      }
+                    />
+                    固定revisionの出力範囲と変換・損失の注意を確認しました
+                  </label>
+                </>
+              )}
+            </section>
+            <button type="button" disabled={!exportReviewed} onClick={() => void exportAsset()}>
               GLB・付属情報・ZIPを作成
             </button>
           </fieldset>

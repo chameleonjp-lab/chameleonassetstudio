@@ -1,9 +1,17 @@
-import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
+import { IDBDatabase as FakeIDBDatabase, IDBFactory, IDBObjectStore } from 'fake-indexeddb';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createProject, type Project3D } from '../model/project';
-import { openStorageDatabase, PROJECT_3D_DB_NAME, requestResult, STORAGE_STORES } from './db';
+import {
+  inTransaction,
+  openStorageDatabase,
+  PROJECT_3D_DB_NAME,
+  requestResult,
+  STORAGE_STORES,
+} from './db';
+import { BACKUP_LIMITS } from '../backup/backup';
 import {
   hashBlob,
+  hashProject,
   openProjectRepository,
   type ProjectRepository,
   type WriterLease,
@@ -287,6 +295,226 @@ describe('isolated 3D project repository', () => {
     db.close();
     expect(data.project.blobIds).toEqual([data.id]);
     expect(data.bytes).toEqual(new Uint8Array([10, 20, 30]));
+  });
+});
+
+describe('write-free stored backup capture', () => {
+  async function records(db: IDBDatabase) {
+    return inTransaction(db, STORAGE_STORES, 'readonly', (transaction) =>
+      Promise.all(
+        STORAGE_STORES.map((store) => requestResult(transaction.objectStore(store).getAll())),
+      ),
+    );
+  }
+
+  it('owns detached verified bytes and does not touch any store, even with all writes rejected', async () => {
+    const data = await withSource();
+    await save(data.project, null, data.blobs);
+    const db = await openStorageDatabase({ indexedDB: factory });
+    const before = await records(db);
+    const original = FakeIDBDatabase.prototype.transaction;
+    const transactions: string[] = [];
+    const fail = vi.spyOn(FakeIDBDatabase.prototype, 'transaction').mockImplementation(function (
+      this: IDBDatabase,
+      stores,
+      mode,
+      options,
+    ) {
+      transactions.push(mode ?? 'readonly');
+      if (mode === 'readwrite') throw new DOMException('No writes available', 'QuotaExceededError');
+      return original.call(this, stores, mode, options);
+    });
+    try {
+      const captured = await repository.captureBackupSnapshot('project');
+      expect(captured).toMatchObject({
+        projectId: 'project',
+        revision: 0,
+        validation: { valid: true },
+      });
+      expect('release' in captured).toBe(false);
+      expect(captured.blobs.get(data.id)).toEqual(data.bytes);
+      captured.project.name = 'Detached edit';
+      captured.blobs.get(data.id)!.fill(0);
+      const second = await repository.captureBackupSnapshot('project');
+      expect(second.project.name).toBe(data.project.name);
+      expect(second.blobs.get(data.id)).toEqual(data.bytes);
+      expect(await records(db)).toEqual(before);
+      expect(transactions.every((mode) => mode === 'readonly')).toBe(true);
+    } finally {
+      fail.mockRestore();
+      db.close();
+    }
+  });
+
+  it('captures one consistent revision while a root replacement and old-blob deletion are queued', async () => {
+    const data = await withSource();
+    const first = await save(data.project, null, data.blobs);
+    const db = await openStorageDatabase({ indexedDB: factory });
+    const replacementBytes = new Uint8Array([40, 50, 60]);
+    const replacementId = await hashBlob(replacementBytes);
+    const replacement = structuredClone(data.project);
+    replacement.name = 'Next revision';
+    replacement.revision = 1;
+    replacement.blobIds = [replacementId];
+    replacement.sources[0].blobId = replacementId;
+    const contentHash = await hashProject(replacement);
+    const original = IDBObjectStore.prototype.get;
+    let queued: Promise<void> | undefined;
+    const intercept = vi.spyOn(IDBObjectStore.prototype, 'get').mockImplementation(function (
+      this: IDBObjectStore,
+      key,
+    ) {
+      const request = original.call(this, key);
+      if (this.name === 'roots' && this.transaction.mode === 'readonly' && !queued) {
+        request.addEventListener(
+          'success',
+          () => {
+            queued = inTransaction(
+              db,
+              ['roots', 'snapshots', 'blobs'],
+              'readwrite',
+              async (transaction) => {
+                await requestResult(
+                  transaction
+                    .objectStore('snapshots')
+                    .put({ id: 'next', project: replacement, contentHash }),
+                );
+                await requestResult(
+                  transaction
+                    .objectStore('blobs')
+                    .put({ id: replacementId, bytes: replacementBytes }),
+                );
+                await requestResult(
+                  transaction.objectStore('roots').put({
+                    id: 'project',
+                    name: replacement.name,
+                    revision: 1,
+                    snapshotId: 'next',
+                    recoverySnapshotIds: [],
+                    trashed: false,
+                  }),
+                );
+                await requestResult(transaction.objectStore('blobs').delete(data.id));
+                await requestResult(transaction.objectStore('snapshots').delete(first.snapshotId));
+              },
+            );
+          },
+          { once: true },
+        );
+      }
+      return request;
+    });
+    try {
+      const captured = await repository.captureBackupSnapshot('project');
+      expect(queued).toBeDefined();
+      await queued;
+      expect(captured.project).toEqual(data.project);
+      expect([...captured.blobs]).toEqual([...data.blobs]);
+      intercept.mockRestore();
+      const next = await repository.captureBackupSnapshot('project');
+      expect(next.project).toEqual(replacement);
+      expect([...next.blobs]).toEqual([[replacementId, replacementBytes]]);
+    } finally {
+      intercept.mockRestore();
+      await queued;
+      db.close();
+    }
+  });
+
+  it('allows only a current or retained recovery snapshot of the selected project', async () => {
+    const data = await withSource();
+    const previous = await save(data.project, null, data.blobs);
+    await save({ ...data.project, revision: 1, name: 'Current' }, 0, data.blobs);
+    expect(
+      (await repository.captureBackupSnapshot('project', { snapshotId: previous.snapshotId }))
+        .project.name,
+    ).toBe(data.project.name);
+    await expect(
+      repository.captureBackupSnapshot('project', { snapshotId: 'unrelated' }),
+    ).rejects.toThrow('not retained');
+    await repository.pruneRecovery(lease, 0);
+    await expect(
+      repository.captureBackupSnapshot('project', { snapshotId: previous.snapshotId }),
+    ).rejects.toThrow('not retained');
+    await repository.setTrashed(lease, 1, true);
+    await expect(repository.captureBackupSnapshot('project')).rejects.toThrow('not available');
+    expect(
+      (await repository.captureBackupSnapshot('project', { includeTrashed: true })).revision,
+    ).toBe(1);
+  });
+
+  it.each([
+    'missing-blob',
+    'blob-hash',
+    'snapshot-hash',
+    'root-revision',
+    'foreign-project',
+    'missing-snapshot',
+  ] as const)(
+    'rejects %s without attempting a write or returning incomplete bytes',
+    async (problem) => {
+      const data = await withSource();
+      const saved = await save(data.project, null, data.blobs);
+      const db = await openStorageDatabase({ indexedDB: factory });
+      try {
+        await inTransaction(
+          db,
+          ['roots', 'snapshots', 'blobs'],
+          'readwrite',
+          async (transaction) => {
+            if (problem === 'missing-blob')
+              await requestResult(transaction.objectStore('blobs').delete(data.id));
+            else if (problem === 'blob-hash')
+              await requestResult(
+                transaction.objectStore('blobs').put({ id: data.id, bytes: new Uint8Array([255]) }),
+              );
+            else if (problem === 'missing-snapshot')
+              await requestResult(transaction.objectStore('snapshots').delete(saved.snapshotId));
+            else if (problem === 'root-revision') {
+              const root = await requestResult(transaction.objectStore('roots').get('project'));
+              root.revision++;
+              await requestResult(transaction.objectStore('roots').put(root));
+            } else {
+              const record = await requestResult(
+                transaction.objectStore('snapshots').get(saved.snapshotId),
+              );
+              if (problem === 'snapshot-hash') record.project.name = 'Tampered';
+              else record.project.id = 'different-project';
+              await requestResult(transaction.objectStore('snapshots').put(record));
+            }
+          },
+        );
+        const before = await records(db);
+        await expect(repository.captureBackupSnapshot('project')).rejects.toThrow();
+        expect(await records(db)).toEqual(before);
+      } finally {
+        db.close();
+      }
+    },
+  );
+
+  it('enforces existing backup payload and JSON limits without reducing or rewriting the saved project', async () => {
+    const data = await withSource();
+    await save(data.project, null, data.blobs);
+    const original = { ...BACKUP_LIMITS };
+    const db = await openStorageDatabase({ indexedDB: factory });
+    const before = await records(db);
+    try {
+      Object.assign(BACKUP_LIMITS, { jsonBytes: 1 });
+      await expect(repository.captureBackupSnapshot('project')).rejects.toThrow('JSON exceeds');
+      Object.assign(BACKUP_LIMITS, { jsonBytes: original.jsonBytes, entries: 2 });
+      await expect(repository.captureBackupSnapshot('project')).rejects.toThrow('backup entries');
+      Object.assign(BACKUP_LIMITS, {
+        entries: original.entries,
+        archiveBytes:
+          new TextEncoder().encode(JSON.stringify(data.project)).length + data.bytes.length - 1,
+      });
+      await expect(repository.captureBackupSnapshot('project')).rejects.toThrow('payload exceeds');
+      expect(await records(db)).toEqual(before);
+    } finally {
+      Object.assign(BACKUP_LIMITS, original);
+      db.close();
+    }
   });
 });
 

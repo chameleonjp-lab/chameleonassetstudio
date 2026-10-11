@@ -1,3 +1,4 @@
+import { formatNativeEditingFailure } from './editingFailure';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { deleteAttachment, putAttachment, updateGame } from '../../core3d/game/authoring';
 import { rotationFromDegrees, rotationToDegrees } from '../../core3d/commands/objectEditing';
@@ -593,7 +594,7 @@ export function NativeGamePanel({
       setNotice('適用しました。元に戻す操作で取り消せます。');
       return session.project;
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(formatNativeEditingFailure(cause, 'game'));
       setNotice('');
       return null;
     } finally {

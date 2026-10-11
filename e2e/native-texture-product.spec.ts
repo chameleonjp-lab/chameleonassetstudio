@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { createProject, identityTransform } from '../src/core3d/model/project';
@@ -114,6 +115,208 @@ async function visual(name: string, bytes: Buffer) {
   await writeFile(path, bytes);
   await test.info().attach(name, { path, contentType: 'image/png' });
 }
+
+async function fill2DRaster(page: Page, color: string) {
+  const fill = page.getByRole('button', { name: '塗りつぶし', exact: true });
+  await fill.click();
+  await expect(fill).toHaveAttribute('aria-pressed', 'true');
+  const canvas = page.getByLabel('アセットキャンバス');
+  await expect(canvas).toHaveAttribute('data-raster-input-ready', 'true');
+  await page.getByLabel('描画色', { exact: true }).fill(color);
+  await canvas.scrollIntoViewIfNeeded();
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('Canvasの座標を取得できません。');
+  await canvas.click({ position: { x: box.width / 2, y: box.height / 2 } });
+}
+
+async function expectStored2DColor(page: Page, rgba: number[]) {
+  // Read-only save readiness check. The handoff below uses the actual UI download,
+  // never a blob or project copied directly out of the 2D database.
+  await expect
+    .poll(() =>
+      page.evaluate(async (rgba) => {
+        const db = await new Promise<IDBDatabase>((resolve, reject) => {
+          const request = indexedDB.open('chameleon-asset-studio', 2);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        try {
+          const assets = await new Promise<
+            Array<{ data: { id: string; textures: Array<{ kind: string; path: string }> } }>
+          >((resolve, reject) => {
+            const request = db.transaction('assets', 'readonly').objectStore('assets').getAll();
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          });
+          const asset = assets[0]?.data;
+          const texture = asset?.textures.find((entry) => entry.kind === 'edit');
+          if (!asset || !texture) throw new Error('編集用TextureRefが見つかりません。');
+          const record = await new Promise<{ bytes: ArrayBuffer; mimeType: string } | undefined>(
+            (resolve, reject) => {
+              const request = db
+                .transaction('blobs', 'readonly')
+                .objectStore('blobs')
+                .get(`${asset.id}/${texture.path}`);
+              request.onsuccess = () => resolve(request.result);
+              request.onerror = () => reject(request.error);
+            },
+          );
+          if (!record) throw new Error('保存済み編集画像Blobが見つかりません。');
+          const bitmap = await createImageBitmap(
+            new Blob([record.bytes], { type: record.mimeType }),
+          );
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = bitmap.width;
+            canvas.height = bitmap.height;
+            const context = canvas.getContext('2d')!;
+            context.drawImage(bitmap, 0, 0);
+            const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+            return {
+              width: canvas.width,
+              height: canvas.height,
+              allPixelsMatch: pixels.every((channel, index) => channel === rgba[index % 4]),
+            };
+          } finally {
+            bitmap.close();
+          }
+        } finally {
+          db.close();
+        }
+      }, rgba),
+    )
+    .toEqual({ width: 32, height: 32, allPixelsMatch: true });
+}
+
+async function download2DPng(page: Page, outputName: string, rgba: number[]) {
+  const pending = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'PNG をダウンロード', exact: true }).click();
+  const download = await pending;
+  expect(download.suggestedFilename()).toBe('compat06-red.png');
+  const path = test.info().outputPath(outputName);
+  await download.saveAs(path);
+  const bytes = await readFile(path);
+  const decoded = await page.evaluate(
+    async (bytes) => {
+      const bitmap = await createImageBitmap(
+        new Blob([new Uint8Array(bytes)], { type: 'image/png' }),
+      );
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+        const context = canvas.getContext('2d')!;
+        context.drawImage(bitmap, 0, 0);
+        return {
+          width: canvas.width,
+          height: canvas.height,
+          pixels: [...context.getImageData(0, 0, canvas.width, canvas.height).data],
+        };
+      } finally {
+        bitmap.close();
+      }
+    },
+    [...bytes],
+  );
+  expect(decoded).toEqual({
+    width: 32,
+    height: 32,
+    pixels: Array.from({ length: 32 * 32 * 4 }, (_, index) => rgba[index % 4]),
+  });
+  return { path, bytes, hash: createHash('sha256').update(bytes).digest('hex') };
+}
+
+test('COMPAT-06 explicitly copies a real 2D PNG export into 3D without automatic synchronization', async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  await page.goto('/2d/');
+  await page.getByLabel('プロジェクト名', { exact: true }).fill('COMPAT-06 PNG handoff');
+  await page.getByRole('button', { name: '作成', exact: true }).click();
+  const properties = page.getByRole('complementary', { name: 'プロパティ', exact: true });
+  await properties.getByLabel('新規アセット名', { exact: true }).fill('compat06-red');
+  await properties
+    .getByRole('combobox', { name: '新規アセットのサイズ', exact: true })
+    .selectOption('32');
+  await properties
+    .getByRole('combobox', { name: '新規アセットのテンプレート', exact: true })
+    .selectOption('blank');
+  await properties.getByRole('button', { name: '新規アセットを作成', exact: true }).click();
+  await expect(page.getByLabel('アセットキャンバス')).toBeVisible();
+  await fill2DRaster(page, '#ff0000');
+  await expectStored2DColor(page, [255, 0, 0, 255]);
+  const red = await download2DPng(page, 'compat06-red.png', [255, 0, 0, 255]);
+
+  // A separate context has no shared 2D IndexedDB, storage or editor state.
+  // Only the user-exported PNG crosses into the existing 3D image-import UI.
+  const independent = await browser.newContext({ baseURL });
+  try {
+    const native = await independent.newPage();
+    await open(native);
+    await panel(native)
+      .getByRole('combobox', { name: '画像を編集する材質', exact: true })
+      .selectOption('white');
+    await expect(panel(native)).toContainText('この材質を共有する部品 1 個: UV quad');
+    const handoff = panel(native).locator('#native-2d-texture-handoff');
+    await expect(handoff).toContainText('2D画面の「PNG をダウンロード」');
+    await expect(handoff).toContainText('選択中の3D材質へ一方向にコピー');
+    await expect(handoff).toContainText('元の2Dアセットは変更しません');
+    await expect(handoff).toContainText('後から2Dを編集しても自動同期されない');
+    await expect(handoff).toContainText('PNGをもう一度書き出して取り込んでください');
+    await panel(native).getByLabel('baseColor画像', { exact: true }).setInputFiles(red.path);
+    const rights = '自作: COMPAT-06 2D raster fixture';
+    await panel(native).getByLabel('画像の権利・出典', { exact: true }).fill(rights);
+    const before = await backup(native);
+    expect(before.project.materials[0].textureBlobId).toBeUndefined();
+    expect(before.project.sources).toHaveLength(0);
+    expect(before.blobs.size).toBe(0);
+
+    await panel(native).getByRole('button', { name: '画像を取り込み適用', exact: true }).click();
+    await expect(panel(native).getByRole('status')).toContainText('一回の操作');
+    const imported = await backup(native);
+    expect(imported.project.materials[0].textureBlobId).toBe(red.hash);
+    expect(imported.project.revision).toBe(before.project.revision + 1);
+    expect(imported.project.sources).toHaveLength(1);
+    expect(imported.project.sources[0]).toEqual({
+      id: expect.any(String),
+      blobId: red.hash,
+      mimeType: 'image/png',
+      rights: { declared: rights, embedded: '' },
+    });
+    expect(imported.project.sources[0].derivedFrom).toBeUndefined();
+    expect(Buffer.from(imported.blobs.get(red.hash)!)).toEqual(red.bytes);
+    expect(imported.project.meshes).toEqual(before.project.meshes);
+
+    // Uniform color proves the explicit handoff, not UV orientation. The separate
+    // four-color UV0 test below retains the orientation coverage.
+    await panel(native).getByLabel('UVの面境界を表示', { exact: true }).uncheck();
+    const preview = panel(native).getByLabel('画像とUV0のプレビュー', { exact: true });
+    await expect
+      .poll(() =>
+        preview.evaluate((element) => {
+          const canvas = element as HTMLCanvasElement;
+          return [...canvas.getContext('2d')!.getImageData(128, 128, 1, 1).data];
+        }),
+      )
+      .toEqual([255, 0, 0, 255]);
+
+    await page.bringToFront();
+    await expectStored2DColor(page, [255, 0, 0, 255]);
+    await fill2DRaster(page, '#0000ff');
+    await expectStored2DColor(page, [0, 0, 255, 255]);
+    const blue = await download2DPng(page, 'compat06-blue.png', [0, 0, 255, 255]);
+    expect(blue.hash).not.toBe(red.hash);
+    await native.bringToFront();
+    const unchanged = await backup(native);
+    expect(unchanged.project).toEqual(imported.project);
+    expect(unchanged.project.materials[0].textureBlobId).toBe(red.hash);
+    expect(Buffer.from(unchanged.blobs.get(red.hash)!)).toEqual(red.bytes);
+    expect(unchanged.blobs.has(blue.hash)).toBe(false);
+  } finally {
+    await independent.close();
+  }
+});
 
 test('native image and derived color retain original bytes through Undo and independent recovery without WebGL', async ({
   page,
@@ -264,7 +467,10 @@ test('image authoring respects IME, backup interruption and another tab ownershi
   const second = await context.newPage();
   try {
     await second.goto('/3d/');
-    await second.getByRole('button', { name: /Texture fixture/ }).click();
+    await second
+      .getByRole('region', { name: '保存したプロジェクト', exact: true })
+      .getByRole('button', { name: /^Texture fixture revision \d+$/ })
+      .click();
     await expect(
       second.getByText(
         '別のタブが編集権を持っているか、編集権が切り替わりました。このタブでは内容を保持し、読み取り専用にしています。',
@@ -664,3 +870,33 @@ for (const [width, textScale] of [
     }
   });
 }
+
+test('unknown file-read errors do not disclose their path or apply an incomplete image', async ({
+  page,
+}) => {
+  await open(page);
+  const before = await backup(page);
+  const bytes = await image(page);
+  await page.evaluate(() => {
+    const original = File.prototype.arrayBuffer;
+    File.prototype.arrayBuffer = async function () {
+      if (this.name === 'PRIVATE-SOURCE.png')
+        throw new Error('file:///private/SECRET-SOURCE.png?token=SECRET-TOKEN');
+      return original.call(this);
+    };
+  });
+  await panel(page)
+    .getByLabel('baseColor画像', { exact: true })
+    .setInputFiles({ name: 'PRIVATE-SOURCE.png', mimeType: 'image/png', buffer: bytes });
+  await panel(page).getByLabel('画像の権利・出典', { exact: true }).fill('自作');
+  await panel(page).getByRole('button', { name: '画像を取り込み適用', exact: true }).click();
+  const alert = panel(page).getByRole('alert');
+  await expect(alert).toContainText('現在');
+  await expect(alert).toContainText('画像・色調の編集');
+  await expect(alert).toContainText('[EDIT_UNKNOWN]');
+  await expect(alert).not.toContainText('SECRET');
+  await expect(alert).not.toContainText('PRIVATE-SOURCE');
+  await expect(alert).not.toContainText('file:///');
+  expect((await backup(page)).project).toEqual(before.project);
+  expect((await backup(page)).blobs.size).toBe(before.blobs.size);
+});

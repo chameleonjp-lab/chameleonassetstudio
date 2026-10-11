@@ -92,6 +92,29 @@ function multiplyShaderMatrices(left: DualVector, right: DualVector): DualVector
   return result;
 }
 
+/** Meshless ancestors of rigid (unskinned) parts may be posed without a skin palette. */
+export function rigPoseTargetIds(project: Project3D): ReadonlySet<string> {
+  const targets = new Set(
+    project.skins.flatMap((skin) => skin.joints.map((joint) => joint.nodeId)),
+  );
+  const skinned = new Set(project.skins.map((skin) => skin.meshId));
+  const nodes = new Map(project.nodes.map((node) => [node.id, node]));
+  for (const part of project.nodes) {
+    if (!part.meshId || skinned.has(part.meshId)) continue;
+    const visited = new Set<string>();
+    let parentId = part.parentId;
+    while (parentId !== null) {
+      if (visited.has(parentId)) throw new Error('Rig pose hierarchy is cyclic');
+      visited.add(parentId);
+      const parent = nodes.get(parentId);
+      if (!parent) throw new Error('Rig pose parent is missing');
+      if (parent.meshId === undefined) targets.add(parent.id);
+      parentId = parent.parentId;
+    }
+  }
+  return targets;
+}
+
 /** Returns a detached posed scene, never a replacement for the stored rest project. */
 export function evaluateRigPose(project: Project3D, updates: readonly RigPoseUpdate[]): Project3D {
   return evaluatePose(project, updates, true);
@@ -111,16 +134,14 @@ function evaluatePose(
   validateProject(project);
   const posed = cloneProject(project);
   const ids = new Set<string>();
-  const jointIds = new Set(
-    project.skins.flatMap((skin) => skin.joints.map((joint) => joint.nodeId)),
-  );
+  const jointIds = manual ? rigPoseTargetIds(project) : new Set<string>();
   for (const update of updates) {
     if (
       ids.has(update.nodeId) ||
       !project.nodes.some((node) => node.id === update.nodeId) ||
       (manual && !jointIds.has(update.nodeId))
     )
-      throw new Error('Pose target must be a unique bound joint');
+      throw new Error('Pose target must be a unique bound joint or rigid-part parent');
     ids.add(update.nodeId);
     if (manual) assertNodeEditable(project, update.nodeId, true);
     posed.nodes.find((node) => node.id === update.nodeId)!.transform = structuredClone(

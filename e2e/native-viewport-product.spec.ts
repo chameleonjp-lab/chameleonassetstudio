@@ -1,8 +1,8 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type Locator } from '@playwright/test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { nativeBox } from '../src/core3d/fixtures/nativeBox';
-import { exportBackup } from '../src/core3d/backup/backup';
+import { exportBackup, importBackup } from '../src/core3d/backup/backup';
 
 const literalPattern = (value: string) => new RegExp(value.replace(/[.*+?^$(){}|[\]\\]/g, '\\$&'));
 
@@ -143,6 +143,10 @@ test('offline display chunk failure preserves saving and complete native backup'
     const event = page.waitForEvent('download');
     await page.getByRole('button', { name: '現在の内容をバックアップ', exact: true }).click();
     expect((await event).suggestedFilename()).toBe('Offline native work.cas3dproj');
+    await expect(page.getByTestId('viewport-load-error')).not.toContainText('Failed to fetch');
+    await expect(page.getByTestId('viewport-load-error')).not.toContainText('http://');
+    await expect(page.getByTestId('viewport-load-error')).not.toContainText('https://');
+    await expect(page.getByTestId('viewport-load-error')).toContainText('[EDIT_');
     events.push({
       event: 'offline-boundary',
       error: await page.getByTestId('viewport-load-error').textContent(),
@@ -194,6 +198,7 @@ test('inspection camera and helpers preserve canonical revision and survive GPU 
   await page.getByRole('combobox', { name: '背景', exact: true }).selectOption('light');
   await page.getByRole('combobox', { name: '照明', exact: true }).selectOption('soft');
   await page.getByLabel('グリッド', { exact: true }).check();
+  await page.getByLabel('地面（Y=0）', { exact: true }).check();
   await page.getByLabel('座標軸', { exact: true }).check();
   await page.getByLabel('全体の境界', { exact: true }).check();
   await expect(revision).toContainText('revision 1');
@@ -371,7 +376,9 @@ test('native authoring creates, edits, undoes and restores independent mesh and 
   await page.getByRole('button', { name: '元に戻す', exact: true }).click();
   await expect(panel.getByRole('button', { name: '部品の変形を適用', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'やり直す', exact: true }).click();
-  await panel.getByRole('button', { name: '独立した部品を複製', exact: true }).click();
+  await panel.getByText('階層と依存情報を複製', { exact: true }).click();
+  await panel.getByRole('button', { name: '部品と階層の複製内容を確認', exact: true }).click();
+  await panel.getByRole('button', { name: '確認した階層と依存情報を複製', exact: true }).click();
   await page.getByRole('button', { name: '元に戻す', exact: true }).click();
   await expect(panel.getByRole('combobox', { name: '制作オブジェクト', exact: true })).toHaveValue(
     '',
@@ -658,5 +665,232 @@ test('native scene assembly preserves world pose and restores independently assi
     expect(recovered.materials).toEqual(final.project.materials);
   } finally {
     await fresh.close();
+  }
+});
+
+test('ground is an independent view-only helper and never enters canonical backup or GLB geometry', async ({
+  page,
+}) => {
+  await createBox(page);
+  const download = async (name: string) => {
+    const pending = page.waitForEvent('download');
+    await page.getByRole('button', { name, exact: true }).click();
+    return new Uint8Array(await readFile((await (await pending).path())!));
+  };
+  const { importBackup } = await import('../src/core3d/backup/backup');
+  const before = await importBackup(await download('現在の内容をバックアップ'));
+  await page.getByText('GLB読込・配布ファイル出力', { exact: true }).click();
+  await page
+    .getByLabel('固定revisionの出力範囲と変換・損失の注意を確認しました', { exact: true })
+    .check();
+  await page.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }),
+  ).toBeEnabled();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  const firstGlb = await download('GLBを保存');
+  const plain = await png(page);
+  await page.getByText('カメラ・表示の詳細設定', { exact: true }).click();
+  await expect(page.getByLabel('グリッド', { exact: true })).not.toBeChecked();
+  await page.getByLabel('地面（Y=0）', { exact: true }).check();
+  await expect(page.getByLabel('グリッド', { exact: true })).not.toBeChecked();
+  const grounded = await png(page);
+  expect(grounded.equals(plain)).toBe(false);
+  await attachNativeVisual('ground-only.png', grounded);
+  const after = await importBackup(await download('現在の内容をバックアップ'));
+  expect(after.project).toEqual(before.project);
+  await page
+    .getByLabel('固定revisionの出力範囲と変換・損失の注意を確認しました', { exact: true })
+    .check();
+  await page.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }),
+  ).toBeEnabled();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  expect(await download('GLBを保存')).toEqual(firstGlb);
+  await page.getByLabel('地面（Y=0）', { exact: true }).uncheck();
+  expect((await png(page)).equals(plain)).toBe(true);
+});
+
+// Synthetic key dispatch checks event contracts, not OS/IME behavior or trusted default clicks.
+async function compositionKey(
+  target: Locator,
+  key: 'Enter' | 'Escape',
+  signal: 'native' | '229' | 'none',
+) {
+  return target.evaluate(
+    (element, { key, signal }) => {
+      const event = new KeyboardEvent('keydown', {
+        key,
+        bubbles: true,
+        cancelable: true,
+        isComposing: signal === 'native',
+      });
+      if (signal === '229') Object.defineProperty(event, 'keyCode', { value: 229 });
+      let reachedDocument = false;
+      const observe = () => {
+        reachedDocument = true;
+      };
+      document.addEventListener('keydown', observe);
+      try {
+        element.dispatchEvent(event);
+        return { prevented: event.defaultPrevented, reachedDocument };
+      } finally {
+        document.removeEventListener('keydown', observe);
+      }
+    },
+    { key, signal },
+  );
+}
+
+test('new project form separates IME confirmation from ordinary Enter submission', async ({
+  page,
+}) => {
+  await page.goto('/3d/');
+  const name = page.getByLabel('新しいプロジェクト名', { exact: true });
+  await name.fill('IME guarded project');
+  await name.dispatchEvent('compositionstart');
+  expect(await compositionKey(name, 'Enter', 'none')).toEqual({
+    prevented: true,
+    reachedDocument: false,
+  });
+  await name.evaluate((element) => (element as HTMLInputElement).form!.requestSubmit());
+  await expect(page.getByRole('heading', { name: 'IME guarded project', exact: true })).toHaveCount(
+    0,
+  );
+  await name.dispatchEvent('compositionend');
+  for (const signal of ['native', '229'] as const) {
+    expect(await compositionKey(name, 'Enter', signal)).toEqual({
+      prevented: true,
+      reachedDocument: false,
+    });
+    expect(await compositionKey(name, 'Escape', signal)).toEqual({
+      prevented: false,
+      reachedDocument: false,
+    });
+  }
+  await expect(name).toHaveValue('IME guarded project');
+  expect(await compositionKey(name, 'Enter', 'none')).toEqual({
+    prevented: false,
+    reachedDocument: true,
+  });
+  await name.press('Enter');
+  await expect(
+    page.getByRole('heading', { name: 'IME guarded project', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: '箱を追加', exact: true })).toBeEnabled();
+});
+
+test('native authoring, rig, animation and transform buttons suppress composition Enter defaults', async ({
+  page,
+}) => {
+  await createBox(page);
+  const authoring = page.getByRole('region', { name: '3D制作', exact: true });
+  await authoring.getByText('基本形を作成', { exact: true }).click();
+  await authoring
+    .getByRole('combobox', { name: '制作オブジェクト', exact: true })
+    .selectOption({ index: 1 });
+  await page.getByText('骨と重みの編集を開く', { exact: true }).click();
+  await page.getByText('アニメーション編集を開く', { exact: true }).click();
+  await page.getByText('数値で差分変形', { exact: true }).click();
+  const rig = page.getByRole('region', { name: '3D骨と重み', exact: true });
+  const bone = rig.getByRole('button', { name: '骨を追加', exact: true });
+  const buttons = [
+    authoring.getByRole('button', { name: '基本形を追加', exact: true }),
+    bone,
+    page.getByRole('button', { name: '新しいclipを作成', exact: true }),
+    page.getByRole('button', { name: '数値変形を開始', exact: true }),
+  ];
+  for (const button of buttons) {
+    await expect(button).toBeEnabled();
+    await button.focus();
+    await button.dispatchEvent('compositionstart');
+    expect(await compositionKey(button, 'Enter', 'none')).toEqual({
+      prevented: true,
+      reachedDocument: false,
+    });
+    await button.dispatchEvent('compositionend');
+    for (const signal of ['native', '229'] as const)
+      expect(await compositionKey(button, 'Enter', signal)).toEqual({
+        prevented: true,
+        reachedDocument: false,
+      });
+    await expect(button).toBeFocused();
+  }
+  const boneOptions = rig
+    .getByRole('combobox', { name: '骨を選択', exact: true })
+    .locator('option');
+  const count = await boneOptions.count();
+  await bone.press('Enter');
+  await expect(boneOptions).toHaveCount(count + 1);
+});
+
+test('composition Escape keeps hierarchy confirmation and focus, ordinary Escape cancels', async ({
+  page,
+}) => {
+  await createBox(page);
+  const authoring = page.getByRole('region', { name: '3D制作', exact: true });
+  await authoring
+    .getByRole('combobox', { name: '制作オブジェクト', exact: true })
+    .selectOption({ index: 1 });
+  await authoring.getByText('階層と依存情報を複製', { exact: true }).click();
+  const prepare = authoring.getByRole('button', {
+    name: '部品と階層の複製内容を確認',
+    exact: true,
+  });
+  await prepare.click();
+  const confirmation = authoring.getByRole('region', { name: '階層複製の確認', exact: true });
+  const apply = confirmation.getByRole('button', {
+    name: '確認した階層と依存情報を複製',
+    exact: true,
+  });
+  await apply.focus();
+  for (const signal of ['native', '229'] as const) {
+    expect(await compositionKey(apply, 'Escape', signal)).toEqual({
+      prevented: false,
+      reachedDocument: false,
+    });
+    await expect(confirmation).toBeVisible();
+    await expect(apply).toBeFocused();
+  }
+  await apply.dispatchEvent('compositionstart');
+  expect(await compositionKey(apply, 'Escape', 'none')).toEqual({
+    prevented: false,
+    reachedDocument: false,
+  });
+  await expect(confirmation).toBeVisible();
+  await apply.dispatchEvent('compositionend');
+  await apply.press('Escape');
+  await expect(confirmation).toHaveCount(0);
+  await expect(prepare).toBeFocused();
+});
+
+test('invalid material factors show Japanese guidance without applying a partial material', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await createBox(page);
+  const snapshot = async () => {
+    const event = page.waitForEvent('download');
+    await page.getByRole('button', { name: '現在の内容をバックアップ', exact: true }).click();
+    return importBackup(await readFile((await (await event).path())!));
+  };
+  const before = await snapshot();
+  const panel = page.getByRole('region', { name: '3D制作', exact: true });
+  await panel.getByText('材質の色・金属・粗さ', { exact: true }).click();
+  for (const label of ['赤 R', '発光色 R', '透過しきい値 alphaCutoff']) {
+    const field = panel.getByLabel(label, { exact: true });
+    const original = await field.inputValue();
+    await field.fill('2');
+    await panel.getByRole('button', { name: '入力した値で材質を新規作成', exact: true }).click();
+    const alert = panel.getByRole('alert');
+    await expect(alert).toContainText('0〜1');
+    await expect(alert).toContainText('形状・材質の編集');
+    await expect(alert).toContainText('[EDIT_MATERIAL_RANGE]');
+    await expect(alert).not.toContainText('factor out of range');
+    await expect(alert).not.toContainText('Invalid alpha cutoff');
+    await expect(alert).toContainText('現在');
+    expect((await snapshot()).project).toEqual(before.project);
+    await field.fill(original);
   }
 });

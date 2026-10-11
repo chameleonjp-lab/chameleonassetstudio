@@ -1,0 +1,31 @@
+.native-quality {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.native-quality button {
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  margin: 0.25rem;
+}
+.native-quality dl > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-bottom: 1px solid #ddd;
+  padding: 0.25rem 0;
+}
+.native-quality dt {
+  font-weight: 600;
+}
+.native-quality dd {
+  margin: 0;
+}
+.native-quality pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 24rem;
+  overflow: auto;
+}
+.native-quality li {
+  margin-bottom: 1rem;
+}

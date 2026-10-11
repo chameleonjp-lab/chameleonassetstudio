@@ -13,6 +13,7 @@ import {
 } from '../../core3d/storage/repository';
 import { ProjectSession, UnsavedProjectError } from './projectSession';
 import { addBox } from '../../core3d/commands/box';
+import { ProjectHistory } from '../../core3d/commands/history';
 import type { NativeTransformEvaluator } from '../../core3d/ports/editPort';
 import type { Vec3 } from '../../core3d/model/project';
 import { setNodeTransform, updateMaterial } from '../../core3d/commands/objectEditing';
@@ -22,6 +23,13 @@ import {
   applyDerivedBaseColorTexture,
   removeBaseColorTexture,
 } from '../../core3d/commands/textureEditing';
+import { estimateCanonicalBytes } from '../../core3d/profile/resourceEstimates';
+import * as resourceEstimates from '../../core3d/profile/resourceEstimates';
+import {
+  RESOURCE_ESTIMATE_CAP_BYTES,
+  reserveResourceBytes,
+  resourceLedgerSnapshot,
+} from '../../core3d/profile/resourceLedger';
 import { NATIVE_TEXTURE_PROFILE } from '../../core3d/model/textureProfile';
 import {
   nativeTextureReservedBytes,
@@ -37,6 +45,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   repository.close();
   expect(nativeTextureReservedBytes()).toBe(0);
+  expect(resourceLedgerSnapshot().totalBytes).toBe(0);
 });
 
 /** Header-only native PNG metadata; these tests never allocate the declared pixels or decode. */
@@ -80,6 +89,119 @@ async function imageFixture() {
   };
   return { session, bytes, hash, source };
 }
+
+describe('session history metadata', () => {
+  it('forwards frozen detached counts and estimates through successful, rejected and cleared edits', async () => {
+    const session = await ProjectSession.create(repository, 'history-metadata', 'Initial');
+    await session.save();
+    const initial = session.state.history;
+    expect(initial).toEqual({
+      undoCount: 0,
+      redoCount: 0,
+      hasPreview: false,
+      serializedCommitBudgetBytes: 32 * 1024 * 1024,
+      ownershipEstimateBytes: estimateCanonicalBytes(session.project),
+    });
+    expect(Object.getPrototypeOf(initial)).toBe(Object.prototype);
+    expect(Object.isFrozen(initial)).toBe(true);
+    expect(Reflect.set(initial, 'undoCount', 42)).toBe(false);
+    const forwarding = vi.spyOn(ProjectHistory.prototype, 'metadata', 'get');
+    expect(session.state.history).toEqual(initial);
+    expect(forwarding).toHaveBeenCalledOnce();
+    forwarding.mockRestore();
+    session.rename('Edited');
+    expect(session.state).toMatchObject({
+      revision: 1,
+      dirty: true,
+      canUndo: true,
+      history: { undoCount: 1, redoCount: 0, hasPreview: false },
+    });
+    expect(initial.undoCount).toBe(0);
+    expect(session.state.history).not.toBe(initial);
+    expect(session.state.history.ownershipEstimateBytes).toBe(
+      resourceLedgerSnapshot().byCategory.history,
+    );
+    const before = session.state,
+      project = session.project;
+    expect(() =>
+      session.executeAuthoring((p) => {
+        p.id = 'invalid-identity';
+      }),
+    ).toThrow('identity');
+    expect(session.state).toEqual(before);
+    expect(session.project).toEqual(project);
+    session.undo();
+    expect(session.state.history).toMatchObject({ undoCount: 0, redoCount: 1 });
+    session.redo();
+    expect(session.state.history).toEqual(before.history);
+    session.undo();
+    session.rename('New branch');
+    expect(session.state.history).toMatchObject({ undoCount: 1, redoCount: 0 });
+    session.clearHistory();
+    expect(session.state).toMatchObject({
+      revision: 6,
+      dirty: true,
+      history: { undoCount: 0, redoCount: 0, hasPreview: false },
+    });
+    expect(session.state.history.ownershipEstimateBytes).toBe(
+      estimateCanonicalBytes(session.project),
+    );
+    expect(session.project.name).toBe('New branch');
+    await session.close();
+    expect(session.state.history).toMatchObject({
+      undoCount: 0,
+      redoCount: 0,
+      hasPreview: false,
+      ownershipEstimateBytes: 0,
+    });
+  });
+
+  it('reads metadata without cloning, serializing, re-estimating or changing stored content and originals', async () => {
+    const project = createProject('metadata-originals', 'Originals'),
+      bytes = textureBytes(),
+      hash = await hashBlob(bytes);
+    project.blobIds = [hash];
+    project.sources = [
+      {
+        id: 'original',
+        blobId: hash,
+        mimeType: 'image/png',
+        rights: { declared: 'CC0 fixture', embedded: '' },
+      },
+    ];
+    await repository.create(project, new Map([[hash, bytes]]), 'metadata-reader');
+    const session = await ProjectSession.open(repository, 'metadata-reader', project.id);
+    const before = session.state,
+      ledger = resourceLedgerSnapshot();
+    const clone = vi.spyOn(globalThis, 'structuredClone'),
+      serialize = vi.spyOn(JSON, 'stringify'),
+      encode = vi.spyOn(TextEncoder.prototype, 'encode'),
+      estimate = vi.spyOn(resourceEstimates, 'estimateCanonicalBytes'),
+      commit = vi.spyOn(repository, 'commit'),
+      stage = vi.spyOn(repository, 'importStaged');
+    for (let read = 0; read < 10; read++) expect(session.state).toEqual(before);
+    expect(clone).not.toHaveBeenCalled();
+    expect(serialize).not.toHaveBeenCalled();
+    expect(encode).not.toHaveBeenCalled();
+    expect(estimate).not.toHaveBeenCalled();
+    expect(commit).not.toHaveBeenCalled();
+    expect(stage).not.toHaveBeenCalled();
+    expect(resourceLedgerSnapshot()).toEqual(ledger);
+    vi.restoreAllMocks();
+    expect(session.project).toEqual(project);
+    expect(session.readBlob(hash)).toEqual(bytes);
+    expect(session.state).toMatchObject({ dirty: false, revision: 0 });
+    const stored = await repository.readSnapshot(project.id);
+    expect(stored.project).toEqual(project);
+    expect(stored.blobs.get(hash)).toEqual(bytes);
+    await stored.release();
+    const backup = await importBackup(await session.backup());
+    expect(backup.project).toEqual(project);
+    expect(backup.blobs.get(hash)).toEqual(bytes);
+    expect(backup.project).not.toHaveProperty('history');
+    await session.close();
+  });
+});
 
 describe('native binary authoring sessions', () => {
   it('reserves reopened unassigned original sources before returning a preprocessing context', async () => {
@@ -931,20 +1053,30 @@ describe('native transform durable session integration', () => {
     const session = await editableSession();
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const commit = vi.spyOn(repository, 'commit');
+    const history = session.state.history;
     preview(session);
+    // Native transform overlays are separate from ProjectHistory-owned preview snapshots.
+    expect(session.state.history).toEqual(history);
     await vi.advanceTimersByTimeAsync(6000);
     expect(commit).not.toHaveBeenCalled();
     expect(session.state).toMatchObject({ dirty: false, revision: 1, status: 'saved' });
     session.edit.cancel();
+    expect(session.state.history).toEqual(history);
     const zero = preview(session, [0, 0, 0]);
     expect(session.edit.commit(zero)).toEqual({ ok: true, changed: false });
     const invalid = preview(session);
     session.edit.preview(invalid, [NaN, 0, 0]);
     expect(session.edit.commit(invalid).ok).toBe(false);
+    expect(session.state.history).toEqual(history);
     await vi.advanceTimersByTimeAsync(6000);
     expect(commit).not.toHaveBeenCalled();
     const changed = preview(session, [4, 5, 6]);
     expect(session.edit.commit(changed)).toEqual({ ok: true, changed: true });
+    expect(session.state.history).toMatchObject({
+      undoCount: history.undoCount + 1,
+      redoCount: 0,
+      hasPreview: false,
+    });
     expect(session.state).toMatchObject({ dirty: true, revision: 2, status: 'pending' });
     await vi.advanceTimersByTimeAsync(799);
     expect(commit).not.toHaveBeenCalled();
@@ -983,7 +1115,14 @@ describe('native transform durable session integration', () => {
       const result = session[operation]();
       expect(session.edit.state).toMatchObject({ active: false, preview: null });
       const returned = await result;
-      expect(session.project).toEqual(canonical);
+      if (operation === 'close') {
+        expect(() => session.project).toThrow('closed');
+        expect(session.state).toMatchObject({
+          readOnly: true,
+          dirty: false,
+          revision: canonical.revision,
+        });
+      } else expect(session.project).toEqual(canonical);
       expect(session.edit.commit(token).ok).toBe(false);
       if (returned instanceof Uint8Array) {
         const backup = await importBackup(returned);
@@ -1201,4 +1340,248 @@ it('keeps large GLB source bytes separate from the image budget and releases sou
   expect(assetIoReservedBytes()).toBe(bytes.length * 2);
   await session.close();
   expect(assetIoReservedBytes()).toBe(0);
+});
+
+describe('bounded session history lifetime', () => {
+  it('returns history and storage ownership to baseline across 20 real edit/save/open/close cycles', async () => {
+    const baseline = resourceLedgerSnapshot();
+    for (let cycle = 0; cycle < 20; cycle++) {
+      const session = await ProjectSession.create(repository, `cycle-${cycle}`, 'Owned');
+      const original = session.project;
+      expect(resourceLedgerSnapshot().byCategory.history).toBe(estimateCanonicalBytes(original));
+      session.rename('Edited');
+      session.undo();
+      session.redo();
+      session.clearHistory();
+      expect(resourceLedgerSnapshot().byCategory.history).toBe(
+        estimateCanonicalBytes(session.project),
+      );
+      await session.save();
+      const saved = session.project;
+      const revision = session.state.revision;
+      session.edit.setBlocked('shell-operation', true);
+      const capture = session.edit.beginCapture();
+      const notifications: boolean[] = [];
+      const unsubscribe = session.edit.subscribe(() => {
+        notifications.push(session.edit.state.context.readOnly);
+        expect(session.state.revision).toBe(revision);
+      });
+      await expect(session.close()).resolves.toBe(true);
+      expect(resourceLedgerSnapshot()).toEqual(baseline);
+      expect(() => session.project).toThrow('closed');
+      expect(() => session.edit.getProject()).toThrow('closed');
+      expect(session.state).toMatchObject({
+        readOnly: true,
+        closed: true,
+        dirty: false,
+        revision,
+        canUndo: false,
+        canRedo: false,
+      });
+      expect(() => session.edit.setBlocked('shell-operation', false)).not.toThrow();
+      expect(() => capture.release()).not.toThrow();
+      expect(session.edit.state.observerError).toBeNull();
+      expect(session.edit.state.context.readOnly).toBe(true);
+      expect(session.edit.begin().ok).toBe(false);
+      expect(notifications).toContain(true);
+      unsubscribe();
+      await expect(session.close()).resolves.toBe(true);
+      const reopened = await ProjectSession.open(repository, `reopen-${cycle}`, saved.id);
+      expect(reopened.project).toEqual(saved);
+      expect(resourceLedgerSnapshot().byCategory.history).toBe(estimateCanonicalBytes(saved));
+      await reopened.close();
+      expect(resourceLedgerSnapshot()).toEqual(baseline);
+    }
+  });
+
+  it('keeps canonical history and tickets after quota failure, then releases only after successful close', async () => {
+    const session = await ProjectSession.create(repository, 'quota-history', 'Initial');
+    await session.save();
+    session.rename('Unsaved rescue');
+    const before = session.project;
+    const historyBytes = resourceLedgerSnapshot().byCategory.history;
+    const fail = vi
+      .spyOn(repository, 'commit')
+      .mockRejectedValue(new DOMException('Full', 'QuotaExceededError'));
+    await expect(session.close()).rejects.toMatchObject({ name: 'QuotaExceededError' });
+    expect(session.project).toEqual(before);
+    expect(session.state).toMatchObject({ readOnly: false, dirty: true, canUndo: true });
+    expect(resourceLedgerSnapshot().byCategory.history).toBe(historyBytes);
+    const failed = resourceLedgerSnapshot();
+    await expect(session.close()).rejects.toMatchObject({ name: 'QuotaExceededError' });
+    expect(resourceLedgerSnapshot()).toEqual(failed);
+    session.undo();
+    expect(session.project.name).toBe('Initial');
+    session.redo();
+    expect(session.project.name).toBe('Unsaved rescue');
+    fail.mockRestore();
+    await session.close();
+    expect(resourceLedgerSnapshot().totalBytes).toBe(0);
+  });
+
+  it('preserves project/undo ownership when admission fails during a real session edit', async () => {
+    const session = await ProjectSession.create(repository, 'budget-history', 'Initial');
+    session.rename('Undo retained');
+    await session.save();
+    const before = session.project;
+    const history = session.state.history;
+    const release = reserveResourceBytes(
+      'geometry',
+      RESOURCE_ESTIMATE_CAP_BYTES - resourceLedgerSnapshot().totalBytes,
+    );
+    const full = resourceLedgerSnapshot();
+    try {
+      expect(() => session.rename('Rejected')).toThrow('cap');
+      expect(session.project).toEqual(before);
+      expect(session.state).toMatchObject({ dirty: false, canUndo: true });
+      expect(session.state.history).toEqual(history);
+      expect(resourceLedgerSnapshot()).toEqual(full);
+    } finally {
+      release();
+    }
+    session.undo();
+    expect(session.project.name).toBe('Initial');
+    await session.close();
+  });
+
+  it.each(['before-close', 'after-writer-release', 'after-snapshot-release'] as const)(
+    'retains owned history when the close guard expires %s',
+    async (boundary) => {
+      const created = await ProjectSession.create(repository, 'guard-history', 'Original');
+      const id = created.project.id;
+      await created.close();
+      let valid = true;
+      if (boundary === 'after-snapshot-release') {
+        const read = repository.readSnapshot.bind(repository);
+        vi.spyOn(repository, 'readSnapshot').mockImplementationOnce(async (...args) => {
+          const snapshot = await read(...args);
+          return {
+            ...snapshot,
+            release: async () => {
+              await snapshot.release();
+              valid = false;
+            },
+          };
+        });
+      }
+      const session = await ProjectSession.open(repository, 'guard-history', id);
+      session.rename('Keep history');
+      await session.save();
+      const before = session.project;
+      const owned = resourceLedgerSnapshot();
+      if (boundary === 'before-close') valid = false;
+      if (boundary === 'after-writer-release') {
+        const release = repository.releaseWriter.bind(repository);
+        vi.spyOn(repository, 'releaseWriter').mockImplementationOnce(async (...args) => {
+          await release(...args);
+          valid = false;
+        });
+      }
+      const onRelease = vi.fn();
+      await expect(session.close(() => valid, onRelease)).resolves.toBe(false);
+      expect(onRelease).not.toHaveBeenCalled();
+      expect(session.project).toEqual(before);
+      expect(session.state.canUndo).toBe(true);
+      expect(resourceLedgerSnapshot()).toEqual(owned);
+      await session.close();
+      expect(resourceLedgerSnapshot().totalBytes).toBe(0);
+    },
+  );
+
+  it('releases acquired writer and snapshot pins when opening cannot admit its history', async () => {
+    const project = createProject('open-budget', 'Persisted');
+    await repository.create(project, new Map(), 'seed');
+    await repository.releaseWriter(await repository.acquireWriter(project.id, 'seed'));
+    const released = vi.fn();
+    const read = repository.readSnapshot.bind(repository);
+    vi.spyOn(repository, 'readSnapshot').mockImplementationOnce(async (...args) => {
+      const snapshot = await read(...args);
+      return {
+        ...snapshot,
+        release: async () => {
+          await snapshot.release();
+          released();
+        },
+      };
+    });
+    const writer = vi.spyOn(repository, 'releaseWriter');
+    const release = reserveResourceBytes('geometry', RESOURCE_ESTIMATE_CAP_BYTES);
+    try {
+      await expect(ProjectSession.open(repository, 'open-history', project.id)).rejects.toThrow(
+        'cap',
+      );
+      expect(released).toHaveBeenCalledOnce();
+      expect(writer).toHaveBeenCalledOnce();
+      expect(resourceLedgerSnapshot().byCategory.history).toBe(0);
+    } finally {
+      release();
+    }
+    const session = await ProjectSession.open(repository, 'other-owner', project.id);
+    expect(session.state.readOnly).toBe(false);
+    await session.close();
+  });
+
+  it('releases a new writer when constructor admission rejects before a session is returned', async () => {
+    const writer = vi.spyOn(repository, 'releaseWriter');
+    const release = reserveResourceBytes('geometry', RESOURCE_ESTIMATE_CAP_BYTES);
+    try {
+      await expect(ProjectSession.create(repository, 'create-history', 'Rejected')).rejects.toThrow(
+        'cap',
+      );
+      expect(writer).toHaveBeenCalledOnce();
+      expect(resourceLedgerSnapshot().byCategory.history).toBe(0);
+      expect(await repository.listProjects()).toEqual([]);
+    } finally {
+      release();
+    }
+  });
+
+  it('recaptures the latest canonical revision after autosave admission rejects its copy', async () => {
+    const session = await ProjectSession.create(repository, 'schedule-budget', 'Initial');
+    await session.save();
+    const bytes = estimateCanonicalBytes(session.project);
+    const release = reserveResourceBytes('geometry', RESOURCE_ESTIMATE_CAP_BYTES - bytes * 3);
+    try {
+      // The three history snapshots fit exactly during detached edit preparation.
+      // Afterwards the pending save also needs history-reference metadata bytes.
+      expect(() => session.rename('Changed')).toThrow('cap');
+      expect(session.project.name).toBe('Changed');
+      expect(session.state).toMatchObject({
+        dirty: true,
+        revision: 1,
+        status: 'error',
+        canUndo: true,
+      });
+      expect(resourceLedgerSnapshot().byCategory.history).toBe(bytes * 2);
+      await expect(session.save()).rejects.toThrow('cap');
+      expect(session.project.name).toBe('Changed');
+    } finally {
+      release();
+    }
+    await session.save();
+    expect(session.state).toMatchObject({ dirty: false, revision: 1, persistedRevision: 1 });
+    const durable = await repository.readSnapshot(session.project.id);
+    expect(durable.project.name).toBe('Changed');
+    await durable.release();
+    await session.close();
+  });
+
+  it('releases admitted history if initial autosave admission rejects construction', async () => {
+    const id = '00000000-0000-4000-8000-000000000000';
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue(id);
+    const bytes = estimateCanonicalBytes(createProject(id, 'Initial'));
+    const writer = vi.spyOn(repository, 'releaseWriter');
+    const release = reserveResourceBytes('geometry', RESOURCE_ESTIMATE_CAP_BYTES - bytes);
+    try {
+      await expect(
+        ProjectSession.create(repository, 'constructor-budget', 'Initial'),
+      ).rejects.toThrow('cap');
+      expect(resourceLedgerSnapshot().byCategory.history).toBe(0);
+      expect(resourceLedgerSnapshot().byCategory.storage).toBe(0);
+      expect(writer).toHaveBeenCalledOnce();
+      expect(await repository.listProjects()).toEqual([]);
+    } finally {
+      release();
+    }
+  });
 });

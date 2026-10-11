@@ -60,3 +60,29 @@ it('rejects oversized sidecar before constructing a worker', () => {
   ).toThrow('Sidecar');
   expect(called).toBe(false);
 });
+
+it('inspection uses the same exclusive worker and releases its memory ticket on cancel', async () => {
+  const { captureInspectionSnapshot } = await import('../../core3d/inspection/report');
+  const { nativeBox } = await import('../../core3d/fixtures/nativeBox');
+  const { assetIoReservedBytes } = await import('../../core3d/profile/assetIoProfile');
+  const snapshot = captureInspectionSnapshot(nativeBox(), () => new Uint8Array());
+  let terminated = 0;
+  const worker = { postMessage: () => {}, terminate: () => terminated++ } as unknown as Worker;
+  const job = startAssetIo(
+    { kind: 'inspect', snapshot },
+    () => {},
+    () => worker,
+  );
+  expect(assetIoReservedBytes()).toBe(snapshot.estimatedBytes);
+  expect(() =>
+    startAssetIo(
+      { kind: 'inspect', snapshot },
+      () => {},
+      () => worker,
+    ),
+  ).toThrow('Another');
+  job.cancel();
+  await expect(job.promise).rejects.toThrow('cancelled');
+  expect(terminated).toBe(1);
+  expect(assetIoReservedBytes()).toBe(0);
+});

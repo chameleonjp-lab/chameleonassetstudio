@@ -196,3 +196,15 @@ it('reuses revision-owned sources on renderer ticks rather than cloning canonica
   animation.dispose();
   f.animation.dispose();
 });
+
+it('disposed animation drops cached project/evaluation and accepts late cleanup without rereading history', () => {
+  const f = fixture();
+  f.animation.dispose();
+  f.rig.dispose();
+  const retained = f.animation as unknown as { cachedProject: unknown; evaluator: unknown };
+  expect(retained.cachedProject).toBeNull();
+  expect(retained.evaluator).toBeNull();
+  expect(() => f.animation.cancel()).not.toThrow();
+  expect(() => f.animation.dispose()).not.toThrow();
+  expect(f.animation.state.active).toBe(false);
+});

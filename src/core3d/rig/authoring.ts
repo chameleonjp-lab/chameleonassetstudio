@@ -1,5 +1,6 @@
-import { worldMatrix } from '../model/coordinates';
+import { multiplyMatrices, worldMatrix } from '../model/coordinates';
 import { assertMeshEditable, assertNodeEditable, assertLocksPreserved } from '../model/editability';
+import { exactTRS, matricesMatch } from '../model/transformDecomposition';
 import {
   cloneProject,
   validateProject,
@@ -88,6 +89,73 @@ export function addRigJoint(
       assertNodeEditable(candidate, parentId);
     }
     candidate.nodes.push({ id, name, parentId, transform: structuredClone(transform) });
+    return [];
+  });
+}
+
+/** Rigid attachment is independent of smooth skin binding and never writes skin data.
+ * Only an unskinned leaf mesh may move. Keep-world preserves its canonical rest placement,
+ * not its previous animation: an animated destination deliberately supplies new motion.
+ * Existing source/ancestor animation needs explicit retargeting, including on detach.
+ */
+export function assignRigidPartToJoint(
+  project: Project3D,
+  partNodeId: string,
+  jointId: string | null,
+  mode: 'keep-world' | 'keep-local',
+) {
+  atomic(project, (candidate) => {
+    if (mode !== 'keep-world' && mode !== 'keep-local')
+      throw new Error('restのworld位置を保持するか、local値を保持するか選択してください。');
+    const part = node(candidate, partNodeId);
+    if (part.meshId === undefined)
+      throw new Error('骨へ割り当てるメッシュ部品を選択してください。');
+    if (candidate.nodes.some((item) => item.parentId === partNodeId))
+      throw new Error('rigid割当は子のない末端の部品に対応しています。');
+    if (
+      candidate.skins.some(
+        (value) =>
+          value.meshId === part.meshId || value.joints.some((joint) => joint.nodeId === partNodeId),
+      )
+    )
+      throw new Error('skinやjointとして使われている部品はrigid割当できません。');
+    assertNodeEditable(candidate, partNodeId);
+    if (jointId !== null) {
+      const joint = node(candidate, jointId);
+      let parent: string | null = jointId;
+      while (parent !== null) {
+        if (parent === partNodeId) throw new Error('自分自身や子孫を親にすることはできません。');
+        parent = node(candidate, parent).parentId;
+      }
+      if (joint.meshId !== undefined)
+        throw new Error('割当先にはメッシュを持たない骨を選択してください。');
+      assertNodeEditable(candidate, jointId);
+    }
+    if (part.parentId === jointId) throw new Error('すでに指定した親です。変更していません。');
+    const previousMotionScope = new Set<string>();
+    let ancestor: string | null = partNodeId;
+    while (ancestor !== null) {
+      previousMotionScope.add(ancestor);
+      ancestor = node(candidate, ancestor).parentId;
+    }
+    if (
+      candidate.clips.some((clip) =>
+        clip.tracks.some((track) => previousMotionScope.has(track.nodeId)),
+      )
+    )
+      throw new Error(
+        '部品や元の親にanimationがあります。動きの変換は未対応です。直前の割当は元に戻す操作で取り消せます。',
+      );
+    const before = worldMatrix(candidate, partNodeId);
+    if (mode === 'keep-world')
+      part.transform = exactTRS(
+        jointId === null
+          ? before
+          : multiplyMatrices(inverseAffineMatrix(worldMatrix(candidate, jointId)), before),
+      );
+    part.parentId = jointId;
+    if (mode === 'keep-world' && !matricesMatch(before, worldMatrix(candidate, partNodeId)))
+      throw new Error('数値精度の範囲でrestのworld位置を保持できません。変更していません。');
     return [];
   });
 }
