@@ -106,8 +106,11 @@ test('ギミック種別で movementPreset とタグを設定できる', async (
 
   await page.getByLabel('アセット種別').selectOption('gimmick');
   await page.getByRole('button', { name: 'ギミック設定を追加' }).click();
-  await page.getByLabel('移動プリセット').selectOption('horizontal');
+  const movementPreset = page.getByLabel('移動プリセット');
+  await movementPreset.selectOption('horizontal');
+  await expect(movementPreset).toHaveValue('horizontal');
   await page.getByRole('button', { name: 'hazard', exact: true }).click();
+  await expect(movementPreset).toHaveValue('horizontal');
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
