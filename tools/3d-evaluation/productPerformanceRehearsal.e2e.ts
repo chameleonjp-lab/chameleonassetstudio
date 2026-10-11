@@ -16,9 +16,13 @@ type ProductProbe = {
   enabled: boolean;
   freezeObserved: boolean;
   freezeSupported: boolean;
+  longTaskObserver: PerformanceObserver | null;
+  longTaskSupported: boolean;
+  longTasks: { startMs: number; durationMs: number }[];
   pendingStart: number | null;
   samples: { startMs: number; durationMs: number }[];
   startedAt: number;
+  stopAt: number | null;
   visibilityChanged: boolean;
   visibleAtStart: boolean;
 };
@@ -54,13 +58,40 @@ async function installProbe(page: Page) {
       enabled: false,
       freezeObserved: false,
       freezeSupported: 'onfreeze' in document,
+      longTaskObserver: null,
+      longTaskSupported: false,
+      longTasks: [],
       pendingStart: null,
       samples: [],
       startedAt: 0,
+      stopAt: null,
       visibilityChanged: false,
       visibleAtStart: !document.hidden,
     };
     (window as ProbeWindow).__nativeProductPerformanceProbe = probe;
+
+    const recordLongTask = (entry: PerformanceEntry) => {
+      if (entry.entryType !== 'longtask' || !probe.startedAt || entry.startTime < probe.startedAt)
+        return;
+      if (probe.stopAt !== null && entry.startTime > probe.stopAt) return;
+      probe.longTasks.push({
+        startMs: entry.startTime - probe.startedAt,
+        durationMs: entry.duration,
+      });
+    };
+    try {
+      if (PerformanceObserver.supportedEntryTypes?.includes('longtask')) {
+        const observer = new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) recordLongTask(entry);
+        });
+        observer.observe({ type: 'longtask', buffered: false });
+        probe.longTaskObserver = observer;
+        probe.longTaskSupported = true;
+      }
+    } catch {
+      probe.longTaskObserver = null;
+      probe.longTaskSupported = false;
+    }
 
     const drawMethods = [
       'drawArrays',
@@ -120,7 +151,7 @@ async function installProbe(page: Page) {
   });
 }
 
-test('measures product numeric commit to the next native WebGL frame without claiming physical acceptance', async ({
+test('measures product numeric commit and observed main-thread long tasks without claiming physical acceptance', async ({
   page,
   browser,
   browserName,
@@ -180,7 +211,9 @@ test('measures product numeric commit to the next native WebGL frame without cla
   const measurementStart = await page.evaluate(() => {
     const probe = (window as ProbeWindow).__nativeProductPerformanceProbe!;
     probe.samples = [];
+    probe.longTasks = [];
     probe.pendingStart = null;
+    probe.stopAt = null;
     probe.visibilityChanged = false;
     probe.freezeObserved = false;
     probe.visibleAtStart = !document.hidden;
@@ -191,6 +224,7 @@ test('measures product numeric commit to the next native WebGL frame without cla
       startedAt: new Date().toISOString(),
       visible: probe.visibleAtStart,
       freezeSupported: probe.freezeSupported,
+      longTaskSupported: probe.longTaskSupported,
     };
   });
 
@@ -208,6 +242,8 @@ test('measures product numeric commit to the next native WebGL frame without cla
     measurementStart.visible,
   );
   collector.observing('input');
+  if (measurementStart.longTaskSupported) collector.observing('long-task');
+  else collector.unavailable('long-task');
   if (!measurementStart.visible) collector.visibilityChanged(false);
   if (measurementStart.freezeSupported) collector.freezeMonitoringInstalled();
 
@@ -246,10 +282,25 @@ test('measures product numeric commit to the next native WebGL frame without cla
     await page.waitForTimeout(observationMs + 100 - elapsedAfterSamples);
   const probeResult = await page.evaluate(() => {
     const probe = (window as ProbeWindow).__nativeProductPerformanceProbe!;
+    const stopAt = performance.now();
+    probe.stopAt = stopAt;
     probe.enabled = false;
+    const pendingLongTasks = probe.longTaskObserver?.takeRecords() ?? [];
+    for (const entry of pendingLongTasks) {
+      if (entry.entryType !== 'longtask' || entry.startTime < probe.startedAt) continue;
+      if (entry.startTime > stopAt) continue;
+      probe.longTasks.push({
+        startMs: entry.startTime - probe.startedAt,
+        durationMs: entry.duration,
+      });
+    }
+    probe.longTaskObserver?.disconnect();
+    probe.longTasks.sort((left, right) => left.startMs - right.startMs);
     return {
-      elapsedMs: performance.now() - probe.startedAt,
+      elapsedMs: stopAt - probe.startedAt,
       freezeObserved: probe.freezeObserved,
+      longTaskSupported: probe.longTaskSupported,
+      longTasks: probe.longTasks,
       pendingStart: probe.pendingStart,
       samples: probe.samples,
       visibilityChanged: probe.visibilityChanged,
@@ -259,17 +310,24 @@ test('measures product numeric commit to the next native WebGL frame without cla
   expect(probeResult.samples).toHaveLength(samples);
   if (probeResult.visibilityChanged) collector.visibilityChanged(false);
   if (probeResult.freezeObserved) collector.frozen();
-  for (const sample of probeResult.samples) {
-    clock.value = sample.startMs + sample.durationMs;
-    collector.observe('input', sample);
+  const observations = [
+    ...probeResult.samples.map((sample) => ({ metric: 'input' as const, sample })),
+    ...probeResult.longTasks.map((sample) => ({ metric: 'long-task' as const, sample })),
+  ].sort((left, right) => left.sample.startMs - right.sample.startMs);
+  for (const observation of observations) {
+    clock.value = Math.max(clock.value, observation.sample.startMs + observation.sample.durationMs);
+    collector.observe(observation.metric, observation.sample);
   }
   clock.value = Math.max(observationMs, probeResult.elapsedMs);
   const measured = collector.finishRecord();
   const record = parseNativePerformanceRecord(serializeNativePerformanceRecord(measured.record));
   const input = record.measurements.find((entry) => entry.metric === 'input')!;
+  const longTask = record.measurements.find((entry) => entry.metric === 'long-task')!;
   expect(input.status).toBe('measured');
   expect(input.summary.n).toBe(samples);
   expect(input.summary.medianMs).not.toBeNull();
+  expect(longTask.status).toBe(probeResult.longTaskSupported ? 'measured' : 'unsupported');
+  if (longTask.status === 'measured') expect(longTask.summary.n).toBe(probeResult.longTasks.length);
 
   const result = {
     evidenceScope: 'native-product-ui-headless',
