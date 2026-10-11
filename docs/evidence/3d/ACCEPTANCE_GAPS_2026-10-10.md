@@ -121,3 +121,10 @@ The combined focused UX-05 scene-text/selection-status and timeline-key checks t
 ## Dynamic timeline-key context follow-up — 2026-10-12
 
 [`PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md`](PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md) now also records a keyboard-only check that switches the animation key property from translation to scale and back. The timeline group and marker names update with the active property; Enter changes the scale marker's `aria-pressed` state, and returning to translation clears the stale selected state. The decoded saved backup retains both authored tracks and their values. The focused Chromium run using `/usr/bin/chromium` and WebKit-critical run each passed 1/1. This is software-only DOM/keyboard evidence; actual screen-reader speech, complete scene alternatives, and physical-device/assistive-technology acceptance remain open.
+
+
+## Timeline selection-context announcement follow-up — 2026-10-12
+
+A focused UX-05 software slice adds a separate `aria-live="polite"` selection status for the active clip, target object name/ID, property and selected key time. Property changes, key selection and selection clearing update the status. The continuously refreshed playback/time status is explicitly `aria-live="off"` to avoid per-frame announcements. The focused keyboard-only test passed in system Chromium and WebKit-critical (1/1 each); the complete `native-animation-product.spec.ts` suite passed 7/7 in each browser, and `npm run test:ci-scope` passed 8/8. All 3,530 unit tests, lint (zero errors; one existing viewport Hook warning), formatting, and the production build passed.
+
+This is DOM/status evidence, not actual screen-reader speech or assistive-technology acceptance. VoiceOver/TalkBack, physical-device/keyboard/touch, contrast and real browser/OS zoom remain unverified. UX-05, 3D-STAGE4-04 and physical accessibility gates remain open; this follow-up does not change any acceptance status to pass.

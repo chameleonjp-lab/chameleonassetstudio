@@ -87,6 +87,11 @@ export function NativeAnimationPanel({
   const timelineGroupLabel = `タイムラインのキーマーカー: ${clip?.name ?? 'clip未選択'} / ${timelineTargetLabel} / ${animationPropertyLabels[property]}`;
   const pageCount = Math.max(1, Math.ceil(keys.length / 50));
   const pageIndex = Math.min(page, pageCount - 1);
+  const selected =
+    selectedTime !== null &&
+    loaded === identity &&
+    !!track?.keys.some((key) => key.time === selectedTime);
+  const timelineSelectionStatus = `選択中のキー: ${clip?.name ?? 'clip未選択'} / ${timelineTargetLabel} / ${animationPropertyLabels[property]} / ${selected ? `${selectedTime}秒` : '未選択'}`;
   function act(operation: () => void) {
     if (composing.current) return;
     try {
@@ -139,10 +144,6 @@ export function NativeAnimationPanel({
     setLoaded(identity);
   }
   const draftValues = () => values.slice(0, property === 'rotation' ? 4 : 3).map(number);
-  const selected =
-    selectedTime !== null &&
-    loaded === identity &&
-    !!track?.keys.some((key) => key.time === selectedTime);
   return (
     <section
       className="native-animation"
@@ -163,7 +164,7 @@ export function NativeAnimationPanel({
         オフ。キーは明示操作だけで保存します。回転値は単位quaternion（X/Y/Z/W）です。
       </p>
       {error && <p role="alert">{error}</p>}
-      <p role="status">
+      <p role="status" aria-live="off" data-testid="native-animation-playback-status">
         {state.playing
           ? 'アニメーション再生中'
           : state.active
@@ -365,6 +366,14 @@ export function NativeAnimationPanel({
             }
           />
         </label>
+        <p
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          data-testid="native-animation-selection-status"
+        >
+          {timelineSelectionStatus}
+        </p>
         <div className="native-animation-timeline" role="group" aria-label={timelineGroupLabel}>
           {keys
             .filter((key) => key.time >= windowStart && key.time <= windowStart + span)
