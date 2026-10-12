@@ -198,10 +198,9 @@ This is headless same-context browser evidence only. Process/OS crash, clock ske
 
 ## IMP-07 worker failure payload privacy hardening — 2026-10-12
 
-[`IMP07_WORKER_FAILURE_PRIVACY_2026-10-12.md`](IMP07_WORKER_FAILURE_PRIVACY_2026-10-12.md) records a focused software-only boundary change: the asset-I/O worker now posts a fixed typed failure code instead of the raw exception message, while the client ignores arbitrary worker message text and sanitizes worker construction / `postMessage` exceptions. Targeted tests passed 55/55; the full unit suite passed 3,533/3,533, formatting and app/H3 build passed, and lint had zero errors plus the existing `NativeViewportPanel.tsx:205` Hook warning. The existing large-chunk advisory remains.
+[`IMP07_WORKER_FAILURE_PRIVACY_2026-10-12.md`](IMP07_WORKER_FAILURE_PRIVACY_2026-10-12.md) records the finite safe worker-error categories, 6/6 focused import regression E2Es, full asset-I/O product E2E success in Chromium/WebKit-critical, and full unit 3,536/3,536. The first hosted run on the implementation commit passed build-and-test and asset-I/O E2E but reached two stale quality-worker E2E expectations: the existing formatter/unit contract returns bounded `EDIT_QUALITY_WORKER`, while that older test still expected `EDIT_UNKNOWN`. The E2E now checks the established safe code/message/action, excludes private text, and verifies backup preservation; the exact two-browser case passed 2/2 locally. Hosted CI for this expectation correction is pending. Formatting, lint (zero errors; one existing Hook warning), typecheck, and app/H3 build passed; existing chunk advisory remains.
 
-This hardens only the worker error payload path. Cause- and stage-specific Japanese guidance across every import/export failure is still incomplete, so IMP-07 and overall acceptance remain partial/open. No browser-injected worker crash, external telemetry, deployed-runtime, physical-device, GPU, OS-crash/discard, real network/cache, or final-head CI acceptance is claimed; CI was not monitored.
-
+IMP-07 and overall acceptance remain partial: unclassified exceptions and genuine worker startup/crash/communication failures remain generic, and full cause/stage-specific guidance is incomplete. No browser-injected worker crash, external telemetry, deployed runtime, physical device, GPU, OS crash/discard, real network/cache, or overall acceptance pass is claimed. Do not infer a hosted rerun pass from the local E2E.
 
 ## QA-05 product quality inspection background / late result — 2026-10-12
 
