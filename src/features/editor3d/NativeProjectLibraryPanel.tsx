@@ -8,7 +8,7 @@ import type {
 
 type RecoveryPage = Awaited<ReturnType<ProjectRepository['recoveryPage']>>;
 type Confirmation =
-  | { kind: 'trash' | 'restore'; entry: ProjectLibraryEntry }
+  | { kind: 'trash' | 'restore' | 'purge'; entry: ProjectLibraryEntry }
   | { kind: 'recover'; entry: ProjectLibraryEntry; snapshot: RecoverySnapshotSummary };
 const time = (value: number | null) =>
   value === null ? '時刻の記録なし' : new Date(value).toLocaleString();
@@ -47,12 +47,18 @@ export function NativeProjectLibraryPanel({
     generation = useRef(0),
     mounted = useRef(false);
   const confirmationTrigger = useRef<HTMLButtonElement | null>(null),
-    focusAfterConfirmationCancel = useRef(false);
+    focusAfterConfirmationCancel = useRef(false),
+    focusAfterPurge = useRef(false),
+    noticeRef = useRef<HTMLParagraphElement | null>(null);
   useLayoutEffect(() => {
+    if (focusAfterPurge.current && notice) {
+      focusAfterPurge.current = false;
+      noticeRef.current?.focus();
+    }
     if (confirmation || !focusAfterConfirmationCancel.current) return;
     focusAfterConfirmationCancel.current = false;
     confirmationTrigger.current?.focus();
-  }, [confirmation]);
+  }, [confirmation, notice]);
   useEffect(() => {
     mounted.current = true;
     const epoch = ++generation.current;
@@ -115,6 +121,16 @@ export function NativeProjectLibraryPanel({
           setNotice(
             '選んだ版を別の作品として保存しました。元の正常版・ごみ箱の状態は変えていません。',
           );
+      } else if (request.kind === 'purge') {
+        if (request.entry.id === currentProjectId)
+          throw new Error('先に保存してプロジェクトを閉じてください。');
+        const result = await repository.purgeTrashedProject(request.entry);
+        if (current()) {
+          focusAfterPurge.current = true;
+          setNotice(
+            `${request.entry.name} を3D保存領域から完全削除しました。保存版${result.deletedSnapshotCount}件、他作品が参照しない素材${result.deletedBlobCount}件を削除しました${result.removedLegacyBackup ? '。旧形式の元archiveも削除しました。' : '。'}`,
+          );
+        }
       } else {
         if (request.entry.id === currentProjectId)
           throw new Error('先に保存してプロジェクトを閉じてください。');
@@ -143,7 +159,11 @@ export function NativeProjectLibraryPanel({
       <button type="button" disabled={blocked} onClick={() => void act(refresh)}>
         保存履歴とごみ箱を読む
       </button>
-      {notice && <p role="status">{notice}</p>}
+      {notice && (
+        <p ref={noticeRef} tabIndex={-1} role="status">
+          {notice}
+        </p>
+      )}
       {failure && <p role="alert">{failure}</p>}
       {entries?.length === 0 && <p>保存された作品はありません。</p>}
       {entries && (
@@ -175,6 +195,19 @@ export function NativeProjectLibraryPanel({
               >
                 {entry.trashed ? 'ごみ箱から戻す' : 'ごみ箱へ移動'}
               </button>
+              {entry.trashed && (
+                <button
+                  type="button"
+                  disabled={blocked || entry.id === currentProjectId}
+                  aria-label={`完全削除を確認: ${entry.name}`}
+                  onClick={(event) => {
+                    confirmationTrigger.current = event.currentTarget;
+                    setConfirmation({ kind: 'purge', entry });
+                  }}
+                >
+                  ごみ箱の作品を完全削除
+                </button>
+              )}
               {entry.id === currentProjectId && (
                 <p>移動する前に、この作品を保存して閉じてください。</p>
               )}
@@ -281,7 +314,9 @@ export function NativeProjectLibraryPanel({
               ? '別コピーとして復旧しますか'
               : confirmation.kind === 'trash'
                 ? 'ごみ箱へ移動しますか'
-                : 'ごみ箱から戻しますか'}
+                : confirmation.kind === 'restore'
+                  ? 'ごみ箱から戻しますか'
+                  : 'ごみ箱の1作品を完全削除しますか'}
           </h3>
           <p id="editor3d-library-confirmation-target">
             対象1作品: {confirmation.entry.name}（{confirmation.entry.id}）
@@ -290,6 +325,12 @@ export function NativeProjectLibraryPanel({
             <p id="editor3d-library-confirmation-details">
               選んだ revision {confirmation.snapshot.revision}{' '}
               を新しいIDで保存して開きます。元の正常版、元の復旧候補、原本は保持します。新しいコピーの容量が必要です。現在の作品を保存できない場合は切り替えません。
+            </p>
+          ) : confirmation.kind === 'purge' ? (
+            <p id="editor3d-library-confirmation-details">
+              対象を3D保存領域から削除します。正常保存版1件と保持中の復旧候補
+              {confirmation.entry.recoveryCount}
+              件、作品だけが参照する画像・GLB・旧形式の元archive・復旧用参照が対象です。他の作品も使う共有素材と2Dの保存には触れません。削除後はこの作品と復旧候補をアプリから復元できません。ごみ箱移動とは別の不可逆操作です。ブラウザー記憶媒体上の物理消去は保証しません。
             </p>
           ) : (
             <p id="editor3d-library-confirmation-details">
@@ -303,7 +344,9 @@ export function NativeProjectLibraryPanel({
               ? '確認した版を別コピーで復旧'
               : confirmation.kind === 'trash'
                 ? '確認した1作品をごみ箱へ移動'
-                : '確認した1作品をごみ箱から戻す'}
+                : confirmation.kind === 'restore'
+                  ? '確認した1作品をごみ箱から戻す'
+                  : '確認した1作品を完全削除'}
           </button>
           <button
             type="button"
@@ -318,7 +361,7 @@ export function NativeProjectLibraryPanel({
         </div>
       )}
       <p>
-        完全削除は行いません。ブラウザーのサイトデータやprofileを削除すると、ごみ箱と復旧候補も失う可能性があります。
+        通常の削除は期限のないごみ箱への移動です。完全削除は、ごみ箱内の1作品に対して別の確認を行った場合だけ実行します。ブラウザーのサイトデータやprofileを削除すると、ごみ箱と復旧候補も失う可能性があります。
       </p>
     </section>
   );
