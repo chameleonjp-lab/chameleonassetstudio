@@ -953,3 +953,54 @@ test('locked hierarchy copy and deletion explain refusal without applying or dro
     expect((await snapshot(page)).project).toEqual(before);
   }
 });
+
+test('keyboard node visibility and edit-lock changes announce the target and resulting state', async ({
+  page,
+}) => {
+  await createBox(page);
+  const authoring = page.getByRole('region', { name: '3D制作', exact: true });
+  const objectSelect = authoring.getByRole('combobox', { name: '制作オブジェクト', exact: true });
+  const nodeId = await objectSelect.inputValue();
+  const status = authoring.getByRole('status');
+  const nodeState = authoring.locator('p').filter({ hasText: '部品の状態:' });
+  const identity = `「箱」（ID: ${nodeId}）`;
+
+  const detailsSummary = authoring.getByText('部品の名前・位置・複製', { exact: true });
+  await detailsSummary.focus();
+  await page.keyboard.press('Enter');
+  await expect(nodeState).toContainText('表示 / 編集可能');
+
+  const visibilityButton = authoring.getByRole('button', { name: /^部品を(?:非表示|表示)$/ });
+  await visibilityButton.focus();
+  await page.keyboard.press('Enter');
+  await expect(visibilityButton).toBeFocused();
+  await expect(visibilityButton).toHaveAccessibleName('部品を表示');
+  await expect(status).toHaveAttribute('aria-live', 'polite');
+  await expect(status).toHaveAttribute('aria-atomic', 'true');
+  await expect(status).toHaveText(`${identity}の表示設定を非表示にしました。`);
+  await expect(nodeState).toContainText('非表示 / 編集可能');
+
+  await page.keyboard.press('Enter');
+  await expect(visibilityButton).toBeFocused();
+  await expect(visibilityButton).toHaveAccessibleName('部品を非表示');
+  await expect(status).toHaveText(
+    `${identity}の表示設定を有効にしました。親の設定が非表示の場合は、キャンバスに表示されません。`,
+  );
+  await expect(nodeState).toContainText('表示 / 編集可能');
+
+  const lockButton = authoring.getByRole('button', {
+    name: /^(?:部品を編集ロック|部品の編集ロックを解除)$/,
+  });
+  await lockButton.focus();
+  await page.keyboard.press('Enter');
+  await expect(lockButton).toBeFocused();
+  await expect(lockButton).toHaveAccessibleName('部品の編集ロックを解除');
+  await expect(status).toHaveText(`${identity}の編集ロックを有効にしました。`);
+  await expect(nodeState).toContainText('表示 / 編集ロック中');
+
+  await page.keyboard.press('Enter');
+  await expect(lockButton).toBeFocused();
+  await expect(lockButton).toHaveAccessibleName('部品を編集ロック');
+  await expect(status).toHaveText(`${identity}の編集ロックを解除しました。`);
+  await expect(nodeState).toContainText('表示 / 編集可能');
+});

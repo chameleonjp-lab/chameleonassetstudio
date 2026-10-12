@@ -136,7 +136,10 @@ export function NativeAuthoringPanel({
   const uses = project.nodes.filter((n) =>
     project.meshes.find((m) => m.id === n.meshId)?.faces.some((f) => f.materialId === materialId),
   );
-  function act(operation: () => void) {
+  function act(
+    operation: () => void,
+    successNotice = '適用しました。元に戻す操作で取り消せます。',
+  ) {
     if (disabled || composing.current) return;
     try {
       if (edit) {
@@ -150,7 +153,7 @@ export function NativeAuthoringPanel({
       }
       operation();
       setError('');
-      setNotice('適用しました。元に戻す操作で取り消せます。');
+      setNotice(successNotice);
     } catch (cause) {
       setError(formatNativeEditingFailure(cause, 'authoring'));
       setNotice('');
@@ -234,7 +237,11 @@ export function NativeAuthoringPanel({
         </p>
       )}
       {error && <p role="alert">{error}</p>}
-      {notice && <p role="status">{notice}</p>}
+      {notice && (
+        <p role="status" aria-live="polite" aria-atomic="true">
+          {notice}
+        </p>
+      )}
       <fieldset disabled={disabled}>
         <details>
           <summary>基本形を作成</summary>
@@ -336,8 +343,12 @@ export function NativeAuthoringPanel({
                 type="button"
                 disabled={isNodeLocked(project, node.id)}
                 onClick={() =>
-                  act(() =>
-                    execute((p) => setNodeFlags(p, node.id, { visible: node.visible === false })),
+                  act(
+                    () =>
+                      execute((p) => setNodeFlags(p, node.id, { visible: node.visible === false })),
+                    node.visible === false
+                      ? `「${node.name}」（ID: ${node.id}）の表示設定を有効にしました。親の設定が非表示の場合は、キャンバスに表示されません。`
+                      : `「${node.name}」（ID: ${node.id}）の表示設定を非表示にしました。`,
                   )
                 }
               >
@@ -347,7 +358,10 @@ export function NativeAuthoringPanel({
                 type="button"
                 disabled={node.parentId !== null && isNodeLocked(project, node.parentId)}
                 onClick={() =>
-                  act(() => execute((p) => setNodeFlags(p, node.id, { locked: !node.locked })))
+                  act(
+                    () => execute((p) => setNodeFlags(p, node.id, { locked: !node.locked })),
+                    `「${node.name}」（ID: ${node.id}）${node.locked ? 'の編集ロックを解除しました。' : 'の編集ロックを有効にしました。'}`,
+                  )
                 }
               >
                 {node.locked ? '部品の編集ロックを解除' : '部品を編集ロック'}
