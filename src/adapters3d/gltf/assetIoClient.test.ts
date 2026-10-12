@@ -4,6 +4,7 @@ import {
   ASSET_IO_WORKER_FAILURE_CODE,
   ASSET_IO_WORKER_FAILURE_CODES as C,
 } from '../../core3d/ports/assetIoPort';
+import { assetIoReservedBytes } from '../../core3d/profile/assetIoProfile';
 it('terminates on cancel, rejects late results, and releases ownership after first worker failure', async () => {
   let terminated = 0;
   const worker = {
@@ -42,6 +43,38 @@ it('terminates on cancel, rejects late results, and releases ownership after fir
   );
   next.cancel();
   await expect(next.promise).rejects.toThrow();
+});
+
+it('ignores a queued worker result after cancellation and releases its reservation once', async () => {
+  let terminated = 0;
+  const worker = {
+    terminate: () => terminated++,
+    postMessage: () => {},
+    onmessage: null as ((event: MessageEvent) => void) | null,
+    onerror: null,
+    onmessageerror: null,
+  };
+  const before = assetIoReservedBytes();
+  const job = startAssetIo(
+    {
+      kind: 'import',
+      bytes: new Uint8Array([1]),
+      projectId: 'p',
+      allowLoss: false,
+    },
+    () => {},
+    () => worker as unknown as Worker,
+  );
+  const deliverQueuedResult = worker.onmessage!;
+
+  job.cancel();
+  await expect(job.promise).rejects.toThrow('cancelled');
+  expect(terminated).toBe(1);
+  expect(assetIoReservedBytes()).toBe(before);
+
+  deliverQueuedResult({ data: { kind: 'result', result: {} } } as MessageEvent);
+  expect(terminated).toBe(1);
+  expect(assetIoReservedBytes()).toBe(before);
 });
 
 it('ignores raw worker failure text and exposes only the fixed safe failure', async () => {
