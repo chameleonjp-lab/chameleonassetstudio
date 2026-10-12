@@ -507,6 +507,109 @@ test('material panel reflows at 320 CSS px with 200% root text-size simulation',
   expect(importButtonBox?.height).toBeGreaterThanOrEqual(44);
 });
 
+test('shared 3D workspace text contrast is measured without assuming an acceptance threshold', async ({
+  page,
+}) => {
+  await page.goto('/3d/');
+  await expect(page.getByRole('heading', { name: '3Dプロジェクト', exact: true })).toBeVisible();
+
+  const samples = await page.evaluate(() => {
+    const root = document.querySelector<HTMLElement>('.editor3d');
+    const header = root?.querySelector<HTMLElement>('.editor3d-header');
+    if (!root || !header) throw new Error('The 3D workspace palette is not mounted');
+
+    const probes: { name: string; element: HTMLElement }[] = [];
+    const addProbe = (
+      name: string,
+      tag: keyof HTMLElementTagNameMap,
+      className = '',
+      parent = root,
+    ) => {
+      const element = document.createElement(tag) as HTMLElement;
+      element.className = className;
+      element.textContent = name;
+      element.setAttribute('aria-hidden', 'true');
+      element.style.position = 'fixed';
+      element.style.left = '-10000px';
+      parent.append(element);
+      probes.push({ name, element });
+      return element;
+    };
+
+    addProbe('base text', 'p');
+    addProbe('link', 'a');
+    addProbe('eyebrow', 'span', 'editor3d-eyebrow', header);
+    addProbe('button', 'button');
+    const disabledButton = addProbe('disabled button', 'button');
+    if (!(disabledButton instanceof HTMLButtonElement))
+      throw new Error('The disabled contrast probe is not a button');
+    disabledButton.disabled = true;
+    addProbe('error status', 'p', 'editor3d-alert');
+    addProbe('success status', 'p', 'editor3d-notice');
+    addProbe('dirty save status', 'p', 'editor3d-save-status is-dirty');
+    addProbe('revision text', 'p', 'editor3d-revision');
+    addProbe('empty state', 'div', 'editor3d-placeholder');
+
+    const channels = (color: string) => {
+      const values = color.match(/[\d.]+/g);
+      if (!values || values.length < 3) throw new Error(`Unsupported computed color: ${color}`);
+      return values.slice(0, 3).map(Number);
+    };
+    const luminance = (color: number[]) => {
+      const [red, green, blue] = color.map((channel) => {
+        const value = channel / 255;
+        return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+    };
+    const solidBackground = (element: HTMLElement) => {
+      let current: HTMLElement | null = element;
+      while (current) {
+        const value = getComputedStyle(current).backgroundColor;
+        const components = value.match(/[\d.]+/g);
+        if (components && Number(components[3] ?? 1) > 0)
+          return { channels: channels(value), color: value };
+        current = current.parentElement;
+      }
+      throw new Error('No solid background was found for a contrast probe');
+    };
+
+    const measurements = probes.map(({ name, element }) => {
+      const foreground = channels(getComputedStyle(element).color);
+      const background = solidBackground(element);
+      const [lighter, darker] = [luminance(foreground), luminance(background.channels)].sort(
+        (left, right) => right - left,
+      );
+      return {
+        name,
+        foreground: getComputedStyle(element).color,
+        background: background.color,
+        ratio: (lighter + 0.05) / (darker + 0.05),
+      };
+    });
+    probes.forEach(({ element }) => element.remove());
+    return measurements;
+  });
+
+  expect(samples.map(({ name }) => name)).toEqual([
+    'base text',
+    'link',
+    'eyebrow',
+    'button',
+    'disabled button',
+    'error status',
+    'success status',
+    'dirty save status',
+    'revision text',
+    'empty state',
+  ]);
+  expect(samples.every(({ ratio }) => Number.isFinite(ratio))).toBe(true);
+  await test.info().attach('native-shell-contrast-measurements.json', {
+    body: JSON.stringify(samples, null, 2),
+    contentType: 'application/json',
+  });
+});
+
 test('offline display chunk failure preserves saving and complete native backup', async ({
   page,
   context,
