@@ -25,6 +25,15 @@ it('maps known GLB validation failures to fixed safe codes', () => {
   );
 });
 
+it('maps accessor and index range validation failures to the fixed GLB format code', () => {
+  for (const message of [
+    'Accessor outside bufferView',
+    'Non-finite accessor',
+    'Index exceeds positions',
+  ])
+    expect(classifyAssetIoWorkerFailure(new Error(message))).toBe(C.FORMAT);
+});
+
 it('falls back to a generic code for unrecognized and non-Error failures', () => {
   expect(classifyAssetIoWorkerFailure(new Error('file:///private/SECRET.glb?token=secret'))).toBe(
     C.WORKER,

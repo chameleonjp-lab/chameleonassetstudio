@@ -711,6 +711,96 @@ test('phone game numeric editing supports IME and cancels a worker without chang
     await context.close();
   }
 });
+
+test('IMP-02: browser rejects malformed GLB header, chunk and accessor ranges before review', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await setup(page);
+  const before = await importBackup(await download(page, '現在の内容をバックアップ')),
+    panel = await openIo(page),
+    project = assetIoFixture(),
+    { bytes: valid } = await exportGlb(captureAssetSnapshot(project, () => new Uint8Array()));
+
+  const invalidMagic = valid.slice();
+  invalidMagic[0] ^= 0xff;
+  const invalidChunkLength = valid.slice();
+  new DataView(
+    invalidChunkLength.buffer,
+    invalidChunkLength.byteOffset,
+    invalidChunkLength.byteLength,
+  ).setUint32(12, 0xfffffffc, true);
+  const parsed = preflightGlb(valid),
+    invalidAccessorJson = structuredClone(parsed.json);
+  if (!invalidAccessorJson.accessors?.[0]) throw new Error('Fixture GLB has no accessor.');
+  invalidAccessorJson.accessors[0].byteOffset = 9999999;
+  const invalidAccessorRange = encodeGlb(invalidAccessorJson, parsed.binary);
+  const fixtures = [
+    {
+      name: 'imp02-invalid-magic.glb',
+      bytes: invalidMagic,
+      expected: 'Invalid GLB header',
+    },
+    {
+      name: 'imp02-invalid-chunk-length.glb',
+      bytes: invalidChunkLength,
+      expected: 'Invalid GLB chunk range',
+    },
+    {
+      name: 'imp02-accessor-outside-buffer-view.glb',
+      bytes: invalidAccessorRange,
+      expected: 'Accessor outside bufferView',
+    },
+  ];
+  for (const fixture of fixtures)
+    expect(() => preflightGlb(fixture.bytes)).toThrow(fixture.expected);
+  await test.info().attach('imp02-fixture-sha256.json', {
+    body: JSON.stringify(
+      await Promise.all(
+        fixtures.map(async ({ name, bytes, expected }) => ({
+          name,
+          sha256: await sha256(bytes),
+          rejectedAt: expected,
+          bytes: bytes.byteLength,
+        })),
+      ),
+      null,
+      2,
+    ),
+    contentType: 'application/json',
+  });
+
+  const workerUrls: string[] = [];
+  page.on('worker', (worker) => workerUrls.push(worker.url()));
+  const worker = /assetIo\.worker/;
+  for (const fixture of fixtures) {
+    const priorWorkerCount = workerUrls.filter((url) => worker.test(url)).length;
+    await panel.getByLabel('読み込むGLB（32MiBまで）', { exact: true }).setInputFiles({
+      name: fixture.name,
+      mimeType: 'model/gltf-binary',
+      buffer: Buffer.from(fixture.bytes),
+    });
+    await panel.getByRole('button', { name: 'GLBを検査して保存前に確認する', exact: true }).click();
+    await expect
+      .poll(() => workerUrls.filter((url) => worker.test(url)).length)
+      .toBe(priorWorkerCount + 1);
+    const alert = panel.getByRole('alert');
+    await expect(alert).toContainText('GLBの取込');
+    await expect(alert).toContainText('[IO_FORMAT]');
+    await expect(alert).not.toContainText('[IO_WORKER]');
+    await expect(alert).toContainText('ファイルの構造・宣言・参照が不正、または破損しています。');
+    await expect(alert).toContainText('現在の作品と選択した原本は保持しています。');
+    await expect(alert).not.toContainText(fixture.expected);
+    await expect(
+      panel.getByRole('region', { name: '変換後GLBの未保存プレビュー', exact: true }),
+    ).toHaveCount(0);
+  }
+
+  const after = await importBackup(await download(page, '現在の内容をバックアップ'));
+  expect(after.project).toEqual(before.project);
+  expect([...after.blobs]).toEqual([...before.blobs]);
+});
+
 test('mismatched sidecar and unknown required extension reject while the canonical backup survives', async ({
   page,
 }) => {
