@@ -255,6 +255,17 @@ describe('fixed native editing failure guidance', () => {
     }
   });
 
+  it('guides an unsupported archive path to the native 3D backup format', () => {
+    const cause = new Error('Unsupported backup path');
+    const failure = describeNativeEditingFailure(cause, 'storage');
+    expect(failure.code).toBe('EDIT_STORAGE_BACKUP');
+    expect(failure.reason).toContain('バックアップの形式');
+    const formatted = formatNativeEditingFailure(cause, 'storage');
+    expect(formatted).toContain('対応する.cas3dprojファイルを選び直してください');
+    expect(formatted).toContain('[EDIT_STORAGE_BACKUP]');
+    expect(describeNativeEditingFailure(cause, 'authoring').code).toBe('EDIT_UNKNOWN');
+  });
+
   it('classifies an exact cyclic hierarchy error specifically for rig editing', () => {
     expect(describeNativeEditingFailure('Cyclic hierarchy', 'rig').code).toBe('EDIT_RIG_CYCLE');
     expect(describeNativeEditingFailure('Cyclic hierarchy', 'authoring').code).toBe(

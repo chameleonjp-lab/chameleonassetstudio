@@ -586,6 +586,11 @@ export function describeNativeEditingFailure(
     )
       return result('EDIT_STORAGE_UNAVAILABLE');
   }
+  if (
+    target === 'storage' &&
+    /^(?:Unsupported backup path|Unsupported backup format\/version|Incomplete backup)$/.test(text)
+  )
+    return result('EDIT_STORAGE_BACKUP');
   if (/^Thumbnail cache is full;/.test(text)) return result('EDIT_THUMBNAIL_LIMIT');
   if (/^Thumbnail cache is closed\b/.test(text)) return result('EDIT_THUMBNAIL_CLOSED');
   if (
