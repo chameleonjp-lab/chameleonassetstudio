@@ -124,6 +124,66 @@ test('a real editor render failure retains resident image/GLB bytes for rescue a
     contentType: 'image/png',
   });
 });
+test('LIFE-10: unavailable WebGL keeps the top, project list and binary rescue usable without reload', async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  await page.addInitScript(() => {
+    const state = globalThis as typeof globalThis & {
+        __life10BlockedWebGlContexts?: number;
+      },
+      originalGetContext = HTMLCanvasElement.prototype.getContext;
+    Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+      configurable: true,
+      value: function (this: HTMLCanvasElement, contextType: string, ...args: unknown[]) {
+        if (['webgl2', 'webgl', 'experimental-webgl'].includes(contextType)) {
+          state.__life10BlockedWebGlContexts = (state.__life10BlockedWebGlContexts ?? 0) + 1;
+          return null;
+        }
+        return Reflect.apply(originalGetContext, this, [contextType, ...args]);
+      },
+    });
+  });
+  let mainFrameNavigations = 0;
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) mainFrameNavigations += 1;
+  });
+
+  const fixture = await original();
+  await restore(page, fixture.bytes);
+  await page.getByRole('button', { name: '3D表示を開く', exact: true }).click();
+  const unavailableAlert = page
+    .getByRole('region', { name: '3D表示', exact: true })
+    .getByRole('alert');
+  await expect(unavailableAlert).toContainText('この環境ではWebGL2の3D表示を利用できません。');
+  const blocked = await page.evaluate(
+    () =>
+      (globalThis as typeof globalThis & { __life10BlockedWebGlContexts?: number })
+        .__life10BlockedWebGlContexts ?? 0,
+  );
+  expect(blocked).toBeGreaterThan(0);
+  await expect(page.getByRole('link', { name: 'トップへ', exact: true })).toBeVisible();
+  const projects = page.getByRole('region', { name: '保存したプロジェクト', exact: true });
+  await expect(projects).toBeVisible();
+  await expect(
+    projects.getByRole('button', {
+      name: '保存済みの版をバックアップ: Binary rescue',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await assertBytes(await download(page, '現在の内容をバックアップ'), fixture.blobs);
+  await assertBytes(
+    await download(page, '保存済みの版をバックアップ: Binary rescue'),
+    fixture.blobs,
+  );
+  await page.waitForTimeout(1500);
+  expect(mainFrameNavigations).toBe(1);
+  await expect(unavailableAlert).toContainText('この環境ではWebGL2の3D表示を利用できません。');
+  await test.info().attach('native-visual-webgl-unavailable-rescue', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png',
+  });
+});
 test('saved source-backed backup succeeds under total write quota and leaves every store unchanged', async ({
   page,
 }) => {
