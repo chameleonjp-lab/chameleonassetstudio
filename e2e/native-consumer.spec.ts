@@ -1179,6 +1179,20 @@ test('product-authored origin, unit and forward remain descriptive in canonical 
     let canonicalHash: string | undefined;
     let canonicalPositions: number[] | undefined;
 
+    const editorRegion = page.getByRole('region', {
+      name: 'GAME-01 coordinate handoff',
+      exact: true,
+    });
+    const readEditorRevision = async () => {
+      const text = await editorRegion
+        .getByText(/編集中 revision \d+ \/ 保存済み revision \d+/)
+        .textContent();
+      const match = text?.match(/編集中 revision (\d+) \/ 保存済み revision \d+/);
+      if (!match) throw new Error(`Editor revision status is unavailable: ${text ?? ''}`);
+      return Number(match[1]);
+    };
+    let editorRevision = await readEditorRevision();
+
     for (const originMode of ['feet', 'center', 'custom'] as const) {
       await settings.getByLabel('原点の決め方', { exact: true }).selectOption(originMode);
       if (originMode === 'custom') {
@@ -1193,6 +1207,8 @@ test('product-authored origin, unit and forward remain descriptive in canonical 
       await expect(
         settings.getByRole('button', { name: 'ゲーム基本情報を適用', exact: true }),
       ).toBeDisabled();
+      await expect.poll(readEditorRevision).toBe(editorRevision + 1);
+      editorRevision += 1;
 
       const ioPanel = page.getByRole('region', { name: '3D GLB入出力', exact: true });
       if (!(await ioPanel.isVisible()))
@@ -1202,7 +1218,13 @@ test('product-authored origin, unit and forward remain descriptive in canonical 
         .getByLabel('固定revisionの出力範囲と変換・損失の注意を確認しました', { exact: true })
         .check();
       await page.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }).click();
-      await expect(page.getByRole('button', { name: 'GLBを保存', exact: true })).toBeVisible();
+      const output = ioPanel.getByRole('region', { name: '作成済みの3D出力', exact: true });
+      await expect(
+        output.getByRole('heading', {
+          name: `作成済み: revision ${editorRevision}`,
+          exact: true,
+        }),
+      ).toBeVisible();
       const glb = await download(page, 'GLBを保存');
       const sidecar = await download(page, 'game.jsonを保存');
       const serialized = JSON.parse(new TextDecoder().decode(sidecar));
