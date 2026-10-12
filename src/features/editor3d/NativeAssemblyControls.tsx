@@ -3,6 +3,8 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { Project3D, Vec3 } from '../../core3d/model/project';
 import type { NativeEditBinding } from '../../core3d/ports/editPort';
 import { useNativeObjectSelection } from './useNativeEditState';
+import { isNodeLocked, isNodeVisible } from '../../core3d/model/editability';
+import { rotationToDegrees } from '../../core3d/commands/objectEditing';
 import {
   groupNodes,
   reparentNodes,
@@ -23,6 +25,14 @@ type ReviewedTargets = {
   parentId: string | null;
 };
 type OffsetDraft = Record<'x' | 'y' | 'z', string>;
+
+function formatNumber(value: number) {
+  return Object.is(value, -0) ? '0' : String(Number(value.toPrecision(12)));
+}
+
+function formatVector([x, y, z]: Vec3) {
+  return `X ${formatNumber(x)}, Y ${formatNumber(y)}, Z ${formatNumber(z)}`;
+}
 
 function pivotOffset(draft: OffsetDraft): Vec3 {
   return (['x', 'y', 'z'] as const).map((axis) => {
@@ -201,6 +211,65 @@ export function NativeAssemblyControls({
                 );
               })}
             </ul>
+          )}
+          {project.nodes.length > 0 && (
+            <details className="native-scene-text-alternative">
+              <summary>シーンの部品情報をテキストで確認（{project.nodes.length}個）</summary>
+              <p>
+                保存された基本変形は親に対するlocal値です。アニメーション再生中の姿勢や、頂点・面の全形状を表すものではありません。
+              </p>
+              <ol aria-label="シーン内の部品情報">
+                {project.nodes.map((node) => {
+                  const currentParent =
+                    node.parentId === null ? undefined : nodesById.get(node.parentId);
+                  const mesh = project.meshes.find((item) => item.id === node.meshId);
+                  return (
+                    <li key={node.id}>
+                      <strong>{node.name}</strong>
+                      <dl>
+                        <div>
+                          <dt>ID</dt>
+                          <dd>{node.id}</dd>
+                        </div>
+                        <div>
+                          <dt>親</dt>
+                          <dd>
+                            {currentParent ? `${currentParent.name} (${currentParent.id})` : 'なし'}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>位置（親に対するlocal・m）</dt>
+                          <dd>{formatVector(node.transform.translation)}</dd>
+                        </div>
+                        <div>
+                          <dt>回転（local・度 XYZ）</dt>
+                          <dd>{formatVector(rotationToDegrees(node.transform.rotation))}</dd>
+                        </div>
+                        <div>
+                          <dt>倍率（local）</dt>
+                          <dd>{formatVector(node.transform.scale)}</dd>
+                        </div>
+                        <div>
+                          <dt>状態</dt>
+                          <dd>
+                            {isNodeVisible(project, node.id) ? '表示' : '非表示'} /{' '}
+                            {isNodeLocked(project, node.id) ? '編集ロック中' : '編集可能'}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>形状の規模</dt>
+                          <dd>
+                            {mesh
+                              ? `${mesh.vertices.length} 頂点、${mesh.faces.length} 面`
+                              : 'meshなし'}
+                          </dd>
+                        </div>
+                      </dl>
+                    </li>
+                  );
+                })}
+              </ol>
+            </details>
           )}
           {missingIds.length > 0 && (
             <div role="status">

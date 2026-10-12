@@ -59,3 +59,12 @@ This is DOM/status text and headless desktop-browser keyboard evidence only. It 
 The keyboard-only timeline workflow now also reselects the existing 1-second key after a failed duplicate attempt, confirming the alert clears on recovery. It then attempts to update that key onto the occupied 0.5-second time and verifies that the alert returns, the success status stays empty, the revision is unchanged, both keys remain, and selection stays on the unmodified 1-second key. The test reselects the 0.5-second key before continuing its existing deletion/save/backup checks.
 
 The focused workflow passed in system Chromium and WebKit-critical (1/1 per browser project). This remains headless DOM/keyboard evidence only; screen-reader speech and assistive-technology or physical-device acceptance remain unverified. UX-05, 3D-STAGE4-04 and physical accessibility gates remain partial/open.
+
+
+## Scene structure and properties text summary follow-up — 2026-10-12
+
+The 3D assembly panel now offers a collapsed, keyboard-discoverable text summary for every scene node: stable ID, parent, saved local translation in meters, local XYZ rotation in degrees, local scale, inherited visibility/lock state, and attached mesh vertex/face counts. The values are derived from the current project and update after numeric editing; no project schema or persisted data changed. The disclosure explicitly explains that base local values do not represent the evaluated playback pose, world-space transform, or full vertex/face geometry.
+
+The new focused product E2E passed 1/1 in Chromium and 1/1 in WebKit-critical. The complete `native-viewport-product.spec.ts` run passed in both browser projects. `npm run format:check`, `npm run build`, and `npm run test` passed; unit tests: 3,530/3,530 across 185 files. Lint had zero errors and one pre-existing warning in `NativeViewportPanel.tsx:195`.
+
+This verifies rendered DOM content and headless browser update behavior only. It does not establish actual screen-reader speech or assistive-technology acceptance, a full textual rendering of mesh geometry, world-space/evaluated-pose narration, physical-device acceptance, contrast compliance, or real browser/OS zoom. UX-05 and 3D-STAGE4-04 remain partial/open.
