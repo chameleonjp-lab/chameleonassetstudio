@@ -4,6 +4,7 @@ import { assetIoFixture, assetIoPng } from '../src/core3d/fixtures/assetIo';
 import { exportBackup, importBackup } from '../src/core3d/backup/backup';
 import { sha256 } from '../src/core3d/export/snapshot';
 import { identityTransform } from '../src/core3d/model/project';
+import { PROJECT_3D_DB_NAME } from '../src/core3d/storage/db';
 
 async function createOriginal(page: Page, hierarchy = false) {
   const project = assetIoFixture(),
@@ -115,6 +116,74 @@ test('recovery comparison opens an earlier saved version as a new copy while pre
     body: await page.screenshot({ fullPage: true }),
     contentType: 'image/png',
   });
+});
+
+test('failed recovery-copy write exposes an accessible alert and preserves the saved project', async ({
+  page,
+}) => {
+  const { bytes, hash } = await createOriginal(page),
+    original = await backupCurrent(page);
+  expect(original.blobs.get(hash)).toEqual(bytes);
+  await page.getByLabel('プロジェクト名', { exact: true }).fill('Library latest');
+  await page.getByRole('button', { name: '今すぐ保存', exact: true }).click();
+  const latest = await backupCurrent(page);
+  expect(latest.project.id).toBe(original.project.id);
+
+  const library = page.getByRole('region', { name: '3D保存履歴とごみ箱' });
+  await library.getByRole('button', { name: '保存履歴とごみ箱を読む', exact: true }).click();
+  await library
+    .getByRole('button', { name: '復旧候補を読む: Library latest', exact: true })
+    .click();
+  await expect(library.getByText('内容hashに差あり', { exact: false })).toBeVisible();
+  await library
+    .getByRole('button', { name: 'revision 0 の別コピー復旧を確認', exact: true })
+    .click();
+
+  await page.evaluate((databaseName) => {
+    type FailureWindow = Window & { __recoveryWriteFailureCount?: number };
+    const target = window as FailureWindow;
+    let injected = false;
+    target.__recoveryWriteFailureCount = 0;
+    const transaction = IDBDatabase.prototype.transaction;
+    IDBDatabase.prototype.transaction = function (...args) {
+      if (this.name === databaseName && args[1] === 'readwrite' && !injected) {
+        injected = true;
+        target.__recoveryWriteFailureCount = 1;
+        throw new DOMException('fixture recovery quota', 'QuotaExceededError');
+      }
+      return transaction.call(
+        this,
+        typeof args[0] === 'string' ? args[0] : Array.from(args[0]),
+        args[1],
+        args[2],
+      );
+    };
+  }, PROJECT_3D_DB_NAME);
+
+  await library.getByRole('button', { name: '確認した版を別コピーで復旧', exact: true }).click();
+  const alert = library.getByRole('alert');
+  await expect(alert).toContainText(
+    '作品一覧・復旧候補: 保存領域を利用できないか、容量が不足しています。',
+  );
+  await expect(alert).toContainText(
+    '現在のタブを閉じず、編集用バックアップを別ファイルに保持してください。原本や保持版を整理せず、保存先を確認してください。',
+  );
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as Window & { __recoveryWriteFailureCount?: number }).__recoveryWriteFailureCount,
+      ),
+    )
+    .toBe(1);
+  await expect(alert).not.toContainText('fixture recovery quota');
+  await expect(page.getByRole('heading', { name: 'Library latest', exact: true })).toBeVisible();
+
+  const after = await backupCurrent(page);
+  expect(after.project).toEqual(latest.project);
+  expect(after.blobs).toEqual(latest.blobs);
+  await library.getByRole('button', { name: '保存履歴とごみ箱を読む', exact: true }).click();
+  await expect(library.locator('.editor3d-project-list > li')).toHaveCount(1);
 });
 
 test('object deletion confirmation keeps keyboard focus through cancel and Undo/Redo while preserving image originals', async ({
