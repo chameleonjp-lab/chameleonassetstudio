@@ -222,3 +222,10 @@ This covers the repository's Babylon CPU consumer only, not every external engin
 [`IMP08_IMPORT_CANCEL_RESELECT_RACE_2026-10-12.md`](IMP08_IMPORT_CANCEL_RESELECT_RACE_2026-10-12.md) adds a focused software-only slice. The product test cancels an active GLB import, verifies no candidate/project was published and the canonical backup is unchanged, then reselects different bytes and verifies only that replacement hash and node are saved. A client unit test manually delivers a queued result after cancellation and verifies the settled job ignores it and releases its reservation once. The focused case passed 1/1 in Chromium and 1/1 in WebKit-critical; the full unit suite passed 3,534/3,534, and format/build passed. Lint had zero errors with the existing `NativeViewportPanel.tsx:205` Hook warning; the >500 kB chunk advisory remains.
 
 IMP-08 remains `implemented-candidate / partial`: switching to a separate project session during import, exhaustive Worker event-loop interleavings, real OS/process suspension or discard, physical devices, GPU behavior, and production runtime remain unverified. CI was not monitored.
+
+
+## SAVE-06 early storage-unavailable guidance — 2026-10-12
+
+[`SAVE06_EARLY_STORAGE_UNAVAILABLE_2026-10-12.md`](SAVE06_EARLY_STORAGE_UNAVAILABLE_2026-10-12.md) adds deterministic denial evidence for the 3D storage entry path. The E2E makes `IDBFactory.open` throw a `SecurityError`, verifies early backup guidance and that project creation is unavailable until reconnection, restores access, and creates a project. The complete recovery product spec passed 3/3 in Chromium and 3/3 in WebKit-critical; all 3,534 unit tests, format, lint (zero errors; one existing Hook warning), and app/H3 builds passed.
+
+SAVE-06 remains partial: injected denial is not actual private browsing, storage eviction, real disk-full behavior, device acceptance, or a persistence guarantee. CI was not monitored.
