@@ -144,3 +144,8 @@ This adds headless DOM/status evidence only. Actual screen-reader speech, VoiceO
 ## Timeline-key update-collision recovery follow-up — 2026-10-12
 
 [`PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md`](PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md) records the focused keyboard E2E extension: after recovering from a failed duplicate, updating a selected key onto another occupied time must restore the alert without success text or a revision change, while both original keys and the selected-key state remain intact. The focused workflow passed in Chromium and WebKit-critical (1/1 per project). This is software-only headless evidence; actual screen-reader speech, assistive technology, and physical-device acceptance remain open.
+
+
+## Viewport camera shortcut IME/modifier regression follow-up — 2026-10-12
+
+[`PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md`](PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md) records five synthetic keyboard-event probes for `isComposing`, legacy key code 229, and Ctrl/Meta/Alt modifiers. Each remains unprevented, leaves the camera unchanged, and preserves the decoded project backup; the focused run passed 2/2 across Chromium and WebKit-critical, and the full viewport product E2E passed 38/38. This is a software-only DOM check, not trusted physical input or real OS/IME behavior. Actual screen-reader speech, assistive technology, contrast, real browser/OS zoom, and physical-device acceptance remain unverified; UX-05 and 3D-STAGE4-04 remain partial/open.

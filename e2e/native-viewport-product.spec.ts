@@ -35,6 +35,33 @@ async function snapshot(page: Page) {
   return importBackup(await readFile((await (await event).path())!));
 }
 
+type ViewerKeyProbe = {
+  key: string;
+  isComposing?: boolean;
+  keyCode?: number;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  altKey?: boolean;
+};
+
+async function dispatchViewerKey(viewer: Locator, probe: ViewerKeyProbe) {
+  return viewer.evaluate((element, keyProbe) => {
+    const event = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: keyProbe.key,
+      isComposing: keyProbe.isComposing,
+      ctrlKey: keyProbe.ctrlKey,
+      metaKey: keyProbe.metaKey,
+      altKey: keyProbe.altKey,
+    });
+    if (keyProbe.keyCode !== undefined)
+      Object.defineProperty(event, 'keyCode', { get: () => keyProbe.keyCode });
+    element.dispatchEvent(event);
+    return event.defaultPrevented;
+  }, probe);
+}
+
 test('empty project to native box, keyboard camera, GPU pause, backup restore and re-edit', async ({
   page,
   context,
@@ -246,6 +273,54 @@ test('keyboard-focused viewer orbits, zooms, frames selection and fit without ed
   await page.keyboard.press('f');
   const fitCamera = await readCamera();
   expect(fitCamera).not.toEqual(beforeFit);
+  expect((await snapshot(page)).project).toEqual(before);
+});
+
+test('viewer camera shortcuts leave IME and browser-modified key events untouched', async ({
+  page,
+}) => {
+  await createBox(page);
+  const viewer = page.getByRole('group', {
+    name: 'Native box workの3D表示',
+    exact: true,
+  });
+  const details = page.locator('details.native-inspection');
+  await details.locator('summary').click();
+  const readCameraButton = details.getByRole('button', {
+    name: '現在のカメラを読み取る',
+    exact: true,
+  });
+  const cameraFields = [
+    'カメラ位置 X',
+    'カメラ位置 Y',
+    'カメラ位置 Z',
+    '注視点 X',
+    '注視点 Y',
+    '注視点 Z',
+  ];
+  const readCamera = async () => {
+    await readCameraButton.click();
+    return Promise.all(
+      cameraFields.map((label) => details.getByLabel(label, { exact: true }).inputValue()),
+    );
+  };
+  const before = (await snapshot(page)).project;
+  const initialCamera = await readCamera();
+  const ignoredKeys: ViewerKeyProbe[] = [
+    { key: 'ArrowLeft', isComposing: true },
+    { key: 'r', keyCode: 229 },
+    { key: 'ArrowLeft', ctrlKey: true },
+    { key: 'r', metaKey: true },
+    { key: 'f', altKey: true },
+  ];
+
+  for (const probe of ignoredKeys) {
+    await viewer.focus();
+    const prevented = await dispatchViewerKey(viewer, probe);
+    expect(prevented, JSON.stringify(probe)).toBe(false);
+    expect(await readCamera(), JSON.stringify(probe)).toEqual(initialCamera);
+  }
+
   expect((await snapshot(page)).project).toEqual(before);
 });
 
