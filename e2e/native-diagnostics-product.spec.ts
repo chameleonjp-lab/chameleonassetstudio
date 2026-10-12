@@ -94,6 +94,7 @@ test('SEC-01: product asset workflows stay on a same-origin read-only network al
   const project = assetIoFixture(),
     projectMarker = 'SEC01-PRIVATE-PROJECT-4F19',
     filenameMarker = 'SEC01-PRIVATE-FILENAME-4F19.cas3dproj',
+    sourceMarker = 'SEC01-PRIVATE-SOURCE-RIGHTS-4F19',
     reproductionMarker = 'SEC01-PRIVATE-DIAGNOSTIC-4F19';
   project.name = projectMarker;
   const pixels = await assetIoPng(),
@@ -105,13 +106,18 @@ test('SEC-01: product asset workflows stay on a same-origin read-only network al
       id: 'private-image-source',
       blobId: textureId,
       mimeType: 'image/png',
-      rights: { declared: 'SEC01-PRIVATE-SOURCE-RIGHTS-4F19', embedded: '' },
+      rights: { declared: sourceMarker, embedded: '' },
     },
   ];
   const archive = await exportBackup(project, new Map([[textureId, pixels]]));
   const allowedOrigin = new URL(String(test.info().project.use.baseURL ?? 'http://localhost:5173'))
     .origin;
-  const requests: { url: string; method: string; body: Buffer | null }[] = [],
+  const requests: {
+      url: string;
+      method: string;
+      body: Buffer | null;
+      headers: Record<string, string>;
+    }[] = [],
     rejectedRequests: string[] = [],
     websocketURLs: string[] = [];
   page.on('request', (request) => {
@@ -120,6 +126,7 @@ test('SEC-01: product asset workflows stay on a same-origin read-only network al
         url: request.url(),
         method: request.method(),
         body: request.postDataBuffer(),
+        headers: request.headers(),
       });
     }
   });
@@ -191,18 +198,42 @@ test('SEC-01: product asset workflows stay on a same-origin read-only network al
   const archiveBytes = Buffer.from(archive),
     pixelBytes = Buffer.from(pixels),
     archiveBase64 = archiveBytes.toString('base64'),
-    pixelBase64 = pixelBytes.toString('base64');
+    pixelBase64 = pixelBytes.toString('base64'),
+    urlSafeBase64 = (bytes: Buffer) =>
+      bytes.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, ''),
+    percentEncodedBytes = (bytes: Buffer) =>
+      Array.from(bytes, (byte) => `%${byte.toString(16).padStart(2, '0')}`).join('');
+  const privateMarkers = [
+      projectMarker,
+      filenameMarker,
+      sourceMarker,
+      reproductionMarker,
+      textureId,
+    ],
+    encodedAssetValues = [
+      archiveBase64,
+      pixelBase64,
+      urlSafeBase64(archiveBytes),
+      urlSafeBase64(pixelBytes),
+      percentEncodedBytes(archiveBytes),
+      percentEncodedBytes(pixelBytes),
+    ];
   for (const request of requests) {
-    expect(request.url).not.toContain(projectMarker);
-    expect(request.url).not.toContain(filenameMarker);
-    expect(request.url).not.toContain(reproductionMarker);
+    let decodedUrl = request.url;
+    try {
+      decodedUrl = decodeURIComponent(request.url);
+    } catch {
+      // Keep scanning the raw URL if it contains an invalid percent escape.
+    }
+    const requestMetadata = `${request.url}\n${decodedUrl}\n${JSON.stringify(request.headers)}`;
+    for (const marker of privateMarkers) expect(requestMetadata).not.toContain(marker);
+    for (const encodedValue of encodedAssetValues) {
+      expect(requestMetadata.toLowerCase()).not.toContain(encodedValue.toLowerCase());
+    }
     if (request.body) {
       const bodyText = request.body.toString('utf8');
-      expect(bodyText).not.toContain(projectMarker);
-      expect(bodyText).not.toContain(filenameMarker);
-      expect(bodyText).not.toContain(reproductionMarker);
-      expect(bodyText).not.toContain(archiveBase64);
-      expect(bodyText).not.toContain(pixelBase64);
+      for (const marker of privateMarkers) expect(bodyText).not.toContain(marker);
+      for (const encodedValue of encodedAssetValues) expect(bodyText).not.toContain(encodedValue);
       expect(request.body.indexOf(archiveBytes)).toBe(-1);
       expect(request.body.indexOf(pixelBytes)).toBe(-1);
     }
@@ -215,6 +246,7 @@ test('SEC-01: product asset workflows stay on a same-origin read-only network al
         observedOrigins: origins,
         observedMethods: [...new Set(requests.map(({ method }) => method))],
         nonemptyRequestBodies: requests.filter(({ body }) => body && body.length > 0).length,
+        requestURLsAndHeadersScanned: requests.length,
         rejectedRequests: rejectedRequests.length,
         websockets: websocketURLs.length,
       },
