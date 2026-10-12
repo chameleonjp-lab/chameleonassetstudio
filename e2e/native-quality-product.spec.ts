@@ -211,7 +211,10 @@ test('inspection worker startup failure gives safe guidance and leaves the proje
   });
   await panel.getByRole('button', { name: '現在の版を検査', exact: true }).click();
   await expect(panel.getByRole('status')).toContainText('[EDIT_QUALITY_WORKER]');
-  await expect(panel.getByRole('status')).toContainText('処理または応答を確認できませんでした');
+  await expect(panel.getByRole('status')).toContainText(
+    '品質検査の処理または応答を確認できませんでした。',
+  );
+  await expect(panel.getByRole('status')).toContainText('保存・バックアップ');
   await expect(panel.getByRole('status')).not.toContainText('PRIVATE-WORKER');
   await expect(panel.getByRole('status')).not.toContainText('/private/');
   await expect(panel.getByText('検査版:', { exact: false })).toHaveCount(0);
