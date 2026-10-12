@@ -446,6 +446,182 @@ test('a project authored and exported in the product opens in a separate consume
   }
 });
 
+test('AC-02 product-authored face extrusion survives backup restore and matches the same GLB in Babylon', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(180_000);
+  const { importBackup } = await import('../src/core3d/backup/backup');
+  const { createRequire } = await import('node:module');
+  const validator = createRequire(import.meta.url)('gltf-validator') as {
+    validateBytes(
+      bytes: Uint8Array,
+      options: Record<string, unknown>,
+    ): Promise<{ issues: { numErrors: number; truncated: boolean; messages: unknown[] } }>;
+  };
+  const download = async (target: Page, name: string) => {
+    const event = target.waitForEvent('download');
+    await target.getByRole('button', { name, exact: true }).click();
+    return new Uint8Array(await readFile((await (await event).path())!));
+  };
+  const backup = async (target: Page) =>
+    importBackup(await download(target, '現在の内容をバックアップ'));
+  await page.goto('/3d/');
+  await page.getByLabel('新しいプロジェクト名', { exact: true }).fill('AC-02 extrusion handoff');
+  await page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true }).click();
+  await page.getByRole('button', { name: '箱を追加', exact: true }).click();
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  const author = page.getByRole('region', { name: '3D制作', exact: true });
+  const boxId = await author
+    .getByRole('combobox', { name: '制作オブジェクト', exact: true })
+    .inputValue();
+  await author.getByText('基本形を作成', { exact: true }).click();
+  await author.getByRole('combobox', { name: '基本形', exact: true }).selectOption('sphere');
+  await author.getByLabel('分割数', { exact: true }).fill('4');
+  await author.getByRole('button', { name: '基本形を追加', exact: true }).click();
+  const sphereId = await author
+    .getByRole('combobox', { name: '制作オブジェクト', exact: true })
+    .inputValue();
+  expect(sphereId).not.toBe(boxId);
+  await author.getByRole('combobox', { name: '制作オブジェクト', exact: true }).selectOption(boxId);
+  const baseline = await backup(page),
+    boxMeshId = baseline.project.nodes.find((node) => node.id === boxId)!.meshId!,
+    baselineMesh = baseline.project.meshes.find((mesh) => mesh.id === boxMeshId)!;
+  await author.getByText('頂点・辺・面を編集', { exact: true }).click();
+  await author.getByRole('combobox', { name: '編集要素', exact: true }).selectOption('face');
+  await author.getByRole('combobox', { name: '制作要素', exact: true }).selectOption({ index: 1 });
+  await author.getByLabel('押出し距離（m）', { exact: true }).fill('0.2');
+  await author.getByRole('button', { name: '選択面を押し出す', exact: true }).click();
+  await expect(author.getByRole('alert')).toHaveCount(0);
+  const extruded = await backup(page),
+    extrudedMesh = extruded.project.meshes.find((mesh) => mesh.id === boxMeshId)!;
+  expect(extrudedMesh.vertices).toHaveLength(baselineMesh.vertices.length + 3);
+  expect(extrudedMesh.faces).toHaveLength(baselineMesh.faces.length + 6);
+  await page.getByRole('button', { name: '元に戻す', exact: true }).click();
+  expect((await backup(page)).project.meshes.find((mesh) => mesh.id === boxMeshId)).toEqual(
+    baselineMesh,
+  );
+  await page.getByRole('button', { name: 'やり直す', exact: true }).click();
+  expect((await backup(page)).project.meshes.find((mesh) => mesh.id === boxMeshId)).toEqual(
+    extrudedMesh,
+  );
+  await author.getByText('材質の色・金属・粗さ', { exact: true }).click();
+  await author.getByRole('combobox', { name: '制作材質', exact: true }).selectOption({ index: 1 });
+  await author.getByRole('button', { name: '材質の現在値を読む', exact: true }).click();
+  await author.getByLabel('赤 R', { exact: true }).fill('0.85');
+  await author.getByRole('button', { name: '材質を適用', exact: true }).click();
+  await expect(author.getByRole('alert')).toHaveCount(0);
+  await page.getByRole('button', { name: '今すぐ保存', exact: true }).click();
+  const archive = await download(page, '現在の内容をバックアップ'),
+    saved = await importBackup(archive),
+    savedMesh = saved.project.meshes.find((mesh) => mesh.id === boxMeshId)!;
+  expect(saved.project.nodes).toHaveLength(2);
+  expect(savedMesh).toEqual(extrudedMesh);
+  expect(saved.project.materials.some((material) => material.baseColor[0] === 0.85)).toBe(true);
+
+  const restoredContext = await browser.newContext({ baseURL: new URL(page.url()).origin });
+  const consumerContext = await browser.newContext();
+  try {
+    const restored = await restoredContext.newPage();
+    await restored.goto('/3d/');
+    await restored.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+      name: 'ac02-extrusion.cas3dproj',
+      mimeType: 'application/zip',
+      buffer: Buffer.from(archive),
+    });
+    await expect(
+      restored.getByRole('heading', { name: 'AC-02 extrusion handoff', exact: true }),
+    ).toBeVisible();
+    const restoredProject = await backup(restored);
+    expect(restoredProject.project.meshes.find((mesh) => mesh.id === boxMeshId)).toEqual(savedMesh);
+    await restored.getByText('GLB読込・配布ファイル出力', { exact: true }).click();
+    await restored
+      .getByLabel('固定revisionの出力範囲と変換・損失の注意を確認しました', { exact: true })
+      .check();
+    await restored.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }).click();
+    await expect(restored.getByRole('button', { name: 'GLBを保存', exact: true })).toBeVisible();
+    const glb = await download(restored, 'GLBを保存'),
+      sidecar = await download(restored, 'game.jsonを保存'),
+      sidecarData = JSON.parse(new TextDecoder().decode(sidecar)) as { modelHash: string };
+    const modelHash = await sha256(glb);
+    expect(sidecarData.modelHash).toBe(modelHash);
+    const validation = await validator.validateBytes(glb, { format: 'glb', maxIssues: 1000 });
+    expect(validation.issues.numErrors, JSON.stringify(validation.issues)).toBe(0);
+    expect(validation.issues.truncated).toBe(false);
+
+    const consumer = await consumerContext.newPage();
+    const external = await open(consumer);
+    const report = await consumer.evaluate(
+      ({ glb, sidecar }) => window.__assetConsumer.load(glb, sidecar),
+      { glb: Array.from(glb), sidecar: Array.from(sidecar) },
+    );
+    expect(report.engine).toBe('Babylon.js');
+    expect(report.version).toBe('9.28.0');
+    expect(report.hash).toBe(modelHash);
+    expect(report.oracle.positionPass).toBe(true);
+    expect(report.oracle.nodePass).toBe(true);
+    const boxMeshes = report.meshes.filter((mesh) => mesh.nodeId === boxId),
+      sphereMeshes = report.meshes.filter((mesh) => mesh.nodeId === sphereId);
+    expect(boxMeshes.length).toBeGreaterThan(0);
+    expect(sphereMeshes.length).toBeGreaterThan(0);
+    const consumerTriangleCount = boxMeshes.reduce(
+      (count, mesh) =>
+        count + (mesh.indices.length ? mesh.indices.length / 3 : mesh.positions.length / 9),
+      0,
+    );
+    expect(consumerTriangleCount).toBe(savedMesh.faces.length);
+    const actualBoxPositions = boxMeshes.flatMap((mesh) => mesh.positions);
+    for (const vertex of savedMesh.vertices) {
+      const [x, y, z] = vertex.position;
+      expect(
+        Array.from({ length: actualBoxPositions.length / 3 }, (_, index) => index * 3).some(
+          (index) =>
+            Math.abs(actualBoxPositions[index] - x) < 1e-5 &&
+            Math.abs(actualBoxPositions[index + 1] - y) < 1e-5 &&
+            Math.abs(actualBoxPositions[index + 2] - z) < 1e-5,
+        ),
+      ).toBe(true);
+    }
+    expect(report.materials.some((material) => (material.baseColor?.[0] ?? 0) > 0.8)).toBe(true);
+    expect(external).toEqual([]);
+    await test.info().attach('ac02-extrusion-independent-consumer-evidence', {
+      body: Buffer.from(
+        JSON.stringify(
+          {
+            kind: 'product-authored-extrusion',
+            sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+            browser: test.info().project.name,
+            modelHash,
+            runtime: report.engine,
+            runtimeVersion: report.version,
+            validator: validation.issues,
+            nodeIds: { boxId, sphereId },
+            geometry: {
+              authoredVertices: savedMesh.vertices.length,
+              authoredFaces: savedMesh.faces.length,
+            },
+            consumerTriangles: consumerTriangleCount,
+            materialRed: report.materials.find((material) => (material.baseColor?.[0] ?? 0) > 0.8)
+              ?.baseColor,
+            positionPass: report.oracle.positionPass,
+            externalRequests: external,
+          },
+          null,
+          2,
+        ),
+      ),
+      contentType: 'application/json',
+    });
+    await test.info().attach('ac02-extrusion-babylon-render', {
+      body: await consumer.screenshot(),
+      contentType: 'image/png',
+    });
+  } finally {
+    await restoredContext.close();
+    await consumerContext.close();
+  }
+});
+
 test('edited textured mixed skin and two clips survive backup, re-edit and actual independent delivery with verified sidecar metadata', async ({
   page,
   browser,
