@@ -29,3 +29,16 @@
 - ファイル入力にはPlaywrightのfixture注入を使用し、OSのネイティブfile picker操作自体は検査していない。
 - 対象は自動化されたChromium/WebKit製品previewであり、実端末、assistive technology、OS/process interruption、実storage quota/eviction、deployment環境の受入は含まない。
 - テスト結果はこのローカルHEADとfixtureに対するもの。リモートCIの状態や、別headでの結果へ一般化しない。
+
+
+## SEC-02 製品入力セキュリティ再照合 — 2026-10-13 JST
+
+- Tested code commit: `133f6785be9eb28536b0c2b9ffa68314a8c84094`、PR #409 head `59234231423a23286dc3184de88215f10d1f4f5d`をbaseとするchild branch。
+- 対象: `SEC-02`。production-previewの製品3D画面で合成`.cas3dproj`と合成GLBを復元し、HTML風project/node name、copyright/VRM metadata、申告権利を品質検査・診断経路へ通した。
+- 結果: Chromium 3回 + WebKit 3回で**6/6 pass**。DOM injectionなし、event handler実行なし、`Object.prototype`汚染なし。GLBの`__proto__` keyは`invalid`として拒否理由を表示。診断previewはimported name/metadata/rightsを含まず、backup再読込後のsource bytes一致を確認。
+- コマンド: `npx playwright test --config playwright.production.config.ts e2e/native-security-product.spec.ts --project=chromium --project=webkit-critical --repeat-each=3 --timeout=30000`。
+- 同じ候補treeの全体検証: unit **186 files / 3,553 tests**、lint 0 errors / 既存warning 1件、format check、app + H3 build、consumer build、CI scope **8/8**。
+
+### 台帳の読み替え
+
+`SEC-02`のローカル製品DOM injection / prototype negative / diagnostics経路という残条件に対する合成入力の証拠を追加した。実装状況は`implemented-candidate`、検査状態は`partial`を維持する。公開配信/CDN、実素材、実端末・支援技術、全runtime/engineは未検証。Remote CIは照会・監視していない。詳しいfixtureと観測境界は[SEC02_PRODUCT_INERT_JSON_2026-10-13.md](SEC02_PRODUCT_INERT_JSON_2026-10-13.md)を参照。
