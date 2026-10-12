@@ -309,6 +309,151 @@ test('a project authored and exported in the product opens in a separate consume
   }
 });
 
+test('a product-authored bone anchor follows clip playback world transforms in an independent consumer', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(120000);
+  const { readFile } = await import('node:fs/promises');
+  const { importBackup } = await import('../src/core3d/backup/backup');
+  const download = async (target: Page, name: string) => {
+    const event = target.waitForEvent('download');
+    await target.getByRole('button', { name, exact: true }).click();
+    return new Uint8Array(await readFile((await (await event).path())!));
+  };
+
+  await page.goto('/3d/');
+  await page
+    .getByLabel('新しいプロジェクト名', { exact: true })
+    .fill('Bone anchor consumer playback');
+  await page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true }).click();
+  await page.getByRole('button', { name: '箱を追加', exact: true }).click();
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  const initial = (await importBackup(await download(page, '現在の内容をバックアップ'))).project;
+  const meshPartId = initial.nodes.find((node) => node.meshId !== undefined)!.id;
+
+  await page.getByText('骨と重みの編集を開く', { exact: true }).click();
+  const rig = page.getByRole('region', { name: '3D骨と重み', exact: true });
+  await rig.getByLabel('骨の名前', { exact: true }).fill('Root');
+  await rig.getByRole('button', { name: '骨を追加', exact: true }).click();
+  const root = await rig.getByRole('combobox', { name: '骨を選択', exact: true }).inputValue();
+  await rig.getByRole('combobox', { name: '親の骨', exact: true }).selectOption(root);
+  await rig.getByLabel('骨の名前', { exact: true }).fill('Tip');
+  await rig.getByRole('button', { name: '骨を追加', exact: true }).click();
+  const tip = await rig.getByRole('combobox', { name: '骨を選択', exact: true }).inputValue();
+  await rig.getByRole('button', { name: '骨の現在値を読む', exact: true }).click();
+  await rig.getByLabel('骨位置 Y', { exact: true }).fill('1');
+  await rig.getByRole('button', { name: 'restを適用して再bind', exact: true }).click();
+  await rig.getByRole('combobox', { name: '重み対象の部品', exact: true }).selectOption(meshPartId);
+  await rig.getByRole('combobox', { name: '影響 1 の骨', exact: true }).selectOption(root);
+  await rig.getByLabel('影響 1 の重み', { exact: true }).fill('0.25');
+  await rig.getByRole('combobox', { name: '影響 2 の骨', exact: true }).selectOption(tip);
+  await rig.getByLabel('影響 2 の重み', { exact: true }).fill('0.75');
+  await rig.getByRole('button', { name: '全頂点へ明示weightをbind', exact: true }).click();
+  await expect(rig.getByText(/bind済み/)).toBeVisible();
+
+  await page.getByText('ゲーム向け情報を編集', { exact: true }).click();
+  const game = page.getByRole('region', { name: '3Dゲーム向け情報', exact: true });
+  const anchor = game.getByRole('region', { name: '3D anchor編集', exact: true });
+  await anchor.getByLabel('anchor名', { exact: true }).fill('Tip socket');
+  await anchor.getByLabel('anchor追従先（node / bone）', { exact: true }).selectOption(tip);
+  await anchor.getByLabel('anchor位置（m） X', { exact: true }).fill('0.25');
+  await anchor.getByLabel('anchor位置（m） Y', { exact: true }).fill('0.5');
+  await anchor.getByLabel('anchor回転（度・XYZ） Z', { exact: true }).fill('90');
+  await anchor.getByRole('button', { name: 'anchorを追加', exact: true }).click();
+
+  await page.getByText('アニメーション編集を開く', { exact: true }).click();
+  const animation = page.getByRole('region', { name: '3Dアニメーション', exact: true });
+  await animation.getByLabel('clip名', { exact: true }).fill('Tip travels');
+  await animation.getByLabel('clipの長さ（秒）', { exact: true }).fill('1');
+  await animation.getByLabel('clipをloop再生する', { exact: true }).uncheck();
+  await animation.getByRole('button', { name: '新しいclipを作成', exact: true }).click();
+  const clipId = await animation
+    .getByRole('combobox', { name: 'clipを選択', exact: true })
+    .inputValue();
+  await animation.getByRole('combobox', { name: 'キー対象', exact: true }).selectOption(tip);
+  await animation.getByRole('button', { name: '表示中のTRSを読む', exact: true }).click();
+  await animation.getByLabel('キー時刻（秒）', { exact: true }).fill('0');
+  await animation.getByLabel('キー値 X', { exact: true }).fill('0');
+  await animation.getByLabel('キー値 Y', { exact: true }).fill('1');
+  await animation.getByLabel('キー値 Z', { exact: true }).fill('0');
+  await animation.getByRole('button', { name: 'キーを追加', exact: true }).click();
+  await animation.getByLabel('キー時刻（秒）', { exact: true }).fill('1');
+  await animation.getByLabel('キー値 X', { exact: true }).fill('1');
+  await animation.getByLabel('キー値 Y', { exact: true }).fill('1');
+  await animation.getByLabel('キー値 Z', { exact: true }).fill('0');
+  await animation.getByRole('button', { name: 'キーを追加', exact: true }).click();
+
+  await page.getByText('GLB読込・配布ファイル出力', { exact: true }).click();
+  await page
+    .getByLabel('固定revisionの出力範囲と変換・損失の注意を確認しました', { exact: true })
+    .check();
+  await page.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'GLBを保存', exact: true })).toBeVisible();
+  const glb = await download(page, 'GLBを保存');
+  const sidecar = await download(page, 'game.jsonを保存');
+
+  const consumerContext = await browser.newContext();
+  try {
+    const consumer = await consumerContext.newPage();
+    const external = await open(consumer);
+    const rest = await consumer.evaluate(
+      ({ glb, sidecar }) => window.__assetConsumer.load(glb, sidecar),
+      { glb: Array.from(glb), sidecar: Array.from(sidecar) },
+    );
+    const restAnchor = rest.anchors.find((item) => item.name === 'Tip socket')!;
+    expect(rest.oracle.positionPass).toBe(true);
+    expect(rest.oracle.nodePass).toBe(true);
+    expect(restAnchor.nodeId).toBe(tip);
+    expect(restAnchor.position).toEqual([0.25, 1.5, 0]);
+
+    const pose = await consumer.evaluate((id) => window.__assetConsumer.sample(id, 1), clipId);
+    const posedAnchor = pose.anchors.find((item) => item.name === 'Tip socket')!;
+    expect(pose.oracle.positionPass).toBe(true);
+    expect(pose.oracle.nodePass).toBe(true);
+    expect(posedAnchor.nodeId).toBe(tip);
+    expect(posedAnchor.position).toEqual([1.25, 1.5, 0]);
+    const expectedWorld = [0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1, 0, 1.25, 1.5, 0, 1];
+    expect(posedAnchor.world).toHaveLength(expectedWorld.length);
+    expectedWorld.forEach((value, index) => expect(posedAnchor.world[index]).toBeCloseTo(value, 5));
+    expect(external).toEqual([]);
+
+    await test.info().attach('product-anchor-consumer-world-transform', {
+      body: Buffer.from(
+        JSON.stringify(
+          {
+            kind: 'product-ui-bone-anchor-consumer-playback',
+            sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+            browser: test.info().project.name,
+            glbHash: await sha256(glb),
+            sidecarHash: await sha256(sidecar),
+            meshPartId,
+            root,
+            tip,
+            clipId,
+            anchor: 'Tip socket',
+            expectedRestPosition: [0.25, 1.5, 0],
+            expectedPosePosition: [1.25, 1.5, 0],
+            expectedPoseWorld: expectedWorld,
+            consumerOracle: pose.oracle,
+            runtime: pose.engine,
+            runtimeVersion: pose.version,
+          },
+          null,
+          2,
+        ),
+      ),
+      contentType: 'application/json',
+    });
+    await test.info().attach('native-visual-consumer-product-anchor', {
+      body: await consumer.screenshot(),
+      contentType: 'image/png',
+    });
+  } finally {
+    await consumerContext.close();
+  }
+});
+
 test('edited textured mixed skin and two clips survive backup, re-edit and actual independent delivery', async ({
   page,
   browser,
