@@ -21,6 +21,10 @@ Fourteen paths add a small shared helper, focused tests, local handlers in seven
 
 ## Verification boundaries
 
-Focused helper tests: 37/37 passed. TypeScript no-emit, targeted ESLint, targeted Prettier and whitespace checks passed. Vite production app build completed in 5.13 seconds with existing chunk-size warnings. Playwright collection found 24 viewport-suite cases across Chromium/WebKit, including the three added scenarios per engine; no browser cases were executed locally. Added browser scenarios inspect synthetic event cancellation/propagation, unchanged confirmation/focus and subsequent ordinary keyboard behavior. Synthetic keyboard dispatch is not proof of a trusted default click, physical IME ordering or mobile keyboard behavior. Browser execution and full-unit aggregate were not retried where previously blocked/cancelled.
+The original local candidate recorded 37/37 focused helper tests, 777/777 tests across the two focused guard/failure files, TypeScript no-emit, targeted ESLint/Prettier/whitespace, and a successful Vite production app build with existing chunk-size warnings. At that time, browser cases had only been collected, not executed. Synthetic dispatch does not establish trusted default activation, physical IME ordering, or mobile keyboard behavior.
 
-This remains an unpublished local candidate; no main integration or whole-product acceptance is inferred.
+### Follow-up product-browser execution (2026-10-13)
+
+Ten selected existing product E2E cases were executed against production Vite preview in Chromium and Playwright WebKit (`webkit-critical`), each three times per browser: **60/60 passed**. Coverage includes the new-project submission guard; composition Enter/Escape behavior and focus retention in authoring/rig/animation/transform actions; invalid authoring draft/composition; viewer camera shortcut suppression for IME and browser-modified keys; viewport Tab/Shift+Tab order with visible focus; and selected keyboard-only create/edit/save/backup workflows. See [the dated UX-04/05 browser evidence](UX04_05_KEYBOARD_BROWSER_2026-10-13.md).
+
+This follow-up does not run either complete product E2E suite, establish real Japanese IME event ordering, or complete every editor workflow. The specific numeric-camera input-field fixture remains collection-only. Real devices, screen readers, assistive technology, and mobile keyboards are unverified. This is a Draft review candidate; no main integration or whole-product acceptance is inferred.
