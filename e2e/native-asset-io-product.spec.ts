@@ -635,6 +635,73 @@ test('stale import and outer-panel close discard in-flight workers without publi
   await expect(io(page).getByRole('button', { name: 'ZIPを保存', exact: true })).toHaveCount(0);
 });
 
+test('cancels an in-flight import before file reselection and only adopts the replacement candidate', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await setup(page);
+  const before = await importBackup(await download(page, '現在の内容をバックアップ')),
+    panel = await openIo(page),
+    original = assetIoFixture(),
+    replacement = assetIoFixture();
+  replacement.nodes[0].name = 'Replacement candidate';
+  const originalGlb = await exportGlb(captureAssetSnapshot(original, () => new Uint8Array())),
+    replacementGlb = await exportGlb(captureAssetSnapshot(replacement, () => new Uint8Array()));
+  await panel.getByLabel('読み込むGLB（32MiBまで）', { exact: true }).setInputFiles({
+    name: 'original.glb',
+    mimeType: 'model/gltf-binary',
+    buffer: Buffer.from(originalGlb.bytes),
+  });
+
+  const held = await holdWorker(page);
+  try {
+    await panel.getByRole('button', { name: 'GLBを検査して保存前に確認する', exact: true }).click();
+    await held.seen;
+    await panel.getByRole('button', { name: 'GLB処理を取り消す', exact: true }).click();
+    await expect(
+      panel.getByRole('progressbar', { name: 'GLB入出力の進捗', exact: true }),
+    ).toHaveCount(0);
+  } finally {
+    await held.release();
+  }
+
+  const candidate = panel.getByRole('region', { name: 'GLBの保存前確認', exact: true });
+  await expect(candidate).toHaveCount(0);
+  await expect(panel.getByRole('status')).toContainText('中止');
+  expect((await importBackup(await download(page, '現在の内容をバックアップ'))).project).toEqual(
+    before.project,
+  );
+  await expect(page.getByRole('button', { name: /^Imported GLB revision/ })).toHaveCount(0);
+
+  await panel.getByLabel('読み込むGLB（32MiBまで）', { exact: true }).setInputFiles({
+    name: 'replacement.glb',
+    mimeType: 'model/gltf-binary',
+    buffer: Buffer.from(replacementGlb.bytes),
+  });
+  await panel.getByRole('button', { name: 'GLBを検査して保存前に確認する', exact: true }).click();
+  await expect(candidate.getByText('取込候補を表示中（未保存）', { exact: true })).toBeVisible();
+  await expect(
+    panel.getByText(`検査した原本GLB SHA-256: ${await sha256(replacementGlb.bytes)}`, {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await candidate.getByLabel('変換後の表示と取込の注意を確認しました', { exact: true }).check();
+  await candidate
+    .getByRole('button', { name: '確認した取込候補を新しいコピーに保存', exact: true })
+    .click();
+
+  const importedProject = page
+    .getByRole('region', { name: '保存したプロジェクト', exact: true })
+    .getByRole('button', { name: /^Imported GLB revision/ });
+  await expect(importedProject).toBeVisible();
+  await importedProject.click();
+  const imported = await importBackup(await download(page, '現在の内容をバックアップ')),
+    sourceHash = await sha256(replacementGlb.bytes);
+  expect(imported.project.nodes.some((node) => node.name === 'Replacement candidate')).toBe(true);
+  expect(imported.blobs.get(sourceHash)).toEqual(replacementGlb.bytes);
+  expect(imported.blobs.has(await sha256(originalGlb.bytes))).toBe(false);
+});
+
 test('worker validates JPEG and converts WebP with actual four-corner RGBA pixels', async ({
   browser,
   baseURL,

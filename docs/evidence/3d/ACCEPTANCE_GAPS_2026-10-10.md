@@ -215,3 +215,10 @@ This is synthetic browser visibility/result-delay evidence, not OS-level backgro
 [`GAME02_PRODUCT_ANIMATED_ANCHOR_CONSUMER_2026-10-12.md`](GAME02_PRODUCT_ANIMATED_ANCHOR_CONSUMER_2026-10-12.md) adds a product-UI-to-export-to-independent-consumer check. A bone-following anchor authored with local offset `[0.25, 0.5, 0]` is verified at world `[0.25, 1.5, 0]` at rest and `[1.25, 1.5, 0]` at the one-second animation endpoint after downloading the actual GLB and sidecar. The focused product handoff test passed 1/1 in Chromium and WebKit-critical; existing mixed-skin and rigid attachment checks remain active. TypeScript, focused lint, formatting, and diff checks passed.
 
 This covers the repository's Babylon CPU consumer only, not every external engine/runtime, GPU rendering, deployed runtime, or physical device. GAME-02 and overall acceptance remain partial/open; CI was not monitored.
+
+
+## IMP-08 import cancel / reselect / queued-result race — 2026-10-12
+
+[`IMP08_IMPORT_CANCEL_RESELECT_RACE_2026-10-12.md`](IMP08_IMPORT_CANCEL_RESELECT_RACE_2026-10-12.md) adds a focused software-only slice. The product test cancels an active GLB import, verifies no candidate/project was published and the canonical backup is unchanged, then reselects different bytes and verifies only that replacement hash and node are saved. A client unit test manually delivers a queued result after cancellation and verifies the settled job ignores it and releases its reservation once. The focused case passed 1/1 in Chromium and 1/1 in WebKit-critical; the full unit suite passed 3,534/3,534, and format/build passed. Lint had zero errors with the existing `NativeViewportPanel.tsx:205` Hook warning; the >500 kB chunk advisory remains.
+
+IMP-08 remains `implemented-candidate / partial`: switching to a separate project session during import, exhaustive Worker event-loop interleavings, real OS/process suspension or discard, physical devices, GPU behavior, and production runtime remain unverified. CI was not monitored.
