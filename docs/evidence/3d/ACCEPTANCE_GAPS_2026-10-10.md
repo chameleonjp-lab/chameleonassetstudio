@@ -229,3 +229,10 @@ IMP-08 remains `implemented-candidate / partial`: switching to a separate projec
 [`SAVE06_EARLY_STORAGE_UNAVAILABLE_2026-10-12.md`](SAVE06_EARLY_STORAGE_UNAVAILABLE_2026-10-12.md) adds deterministic denial evidence for the 3D storage entry path. The E2E makes `IDBFactory.open` throw a `SecurityError`, verifies early backup guidance and that project creation is unavailable until reconnection, restores access, and creates a project. The complete recovery product spec passed 3/3 in Chromium and 3/3 in WebKit-critical; all 3,534 unit tests, format, lint (zero errors; one existing Hook warning), and app/H3 builds passed.
 
 SAVE-06 remains partial: injected denial is not actual private browsing, storage eviction, real disk-full behavior, device acceptance, or a persistence guarantee. CI was not monitored.
+
+
+## SAVE-02 browser IndexedDB transaction-abort recovery — 2026-10-12
+
+[`SAVE02_IDB_TRANSACTION_ABORT_2026-10-12.md`](SAVE02_IDB_TRANSACTION_ABORT_2026-10-12.md) records a focused product-browser case that aborts a real IndexedDB read/write transaction immediately after the canonical snapshot request is queued. The saved project records remain unchanged, the resident edit is recoverable through the current-content backup, and removing the injected abort allows retry, reload, and reopen. The focused case passed 1/1 in Chromium and WebKit-critical; the complete recovery product spec passed 4/4 in Chromium. TypeScript, formatting, app/H3 builds and all 3,534 unit tests passed; lint had zero errors with the existing `NativeViewportPanel.tsx:205` Hook warning and the build retains its >500 kB chunk advisory. The coordination `meta.epoch` is excluded because staging and cleanup legitimately advance it.
+
+This is synthetic browser transaction-abort evidence, not physical quota/disk-full, process/OS interruption, cross-tab concurrent-write, corrupt-record, production, or physical-device verification. SAVE-02 and overall acceptance remain partial/open; CI was not monitored.

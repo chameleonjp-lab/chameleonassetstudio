@@ -224,3 +224,94 @@ test('reports unavailable storage before project creation and recovers after exp
   await create.click();
   await expect(page.getByRole('button', { name: '箱を追加', exact: true })).toBeVisible();
 });
+
+test('an aborted snapshot commit leaves saved records unchanged and retries the resident edit', async ({
+  page,
+}) => {
+  const fixture = await original();
+  await restore(page, fixture.bytes);
+
+  // Staging and cleanup advance meta.epoch even when the canonical snapshot transaction aborts.
+  const savedProjectStores = STORAGE_STORES.filter((store) => store !== 'meta');
+  const stored = () =>
+    page.evaluate(
+      async ({ name, stores }) => {
+        const request = indexedDB.open(name);
+        const db = await new Promise<IDBDatabase>((resolve, reject) => {
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        try {
+          const transaction = db.transaction(stores, 'readonly');
+          const result = await Promise.all(
+            stores.map(
+              (store) =>
+                new Promise<unknown[]>((resolve, reject) => {
+                  const get = transaction.objectStore(store).getAll();
+                  get.onsuccess = () => resolve(get.result);
+                  get.onerror = () => reject(get.error);
+                }),
+            ),
+          );
+          return JSON.stringify(result);
+        } finally {
+          db.close();
+        }
+      },
+      { name: PROJECT_3D_DB_NAME, stores: savedProjectStores },
+    );
+  const before = await stored();
+
+  await page.evaluate(() => {
+    const originalAdd = IDBObjectStore.prototype.add;
+    let denySnapshotCommit = true;
+    IDBObjectStore.prototype.add = function (...args: Parameters<IDBObjectStore['add']>) {
+      const request = originalAdd.apply(this, args);
+      if (
+        denySnapshotCommit &&
+        this.transaction.mode === 'readwrite' &&
+        this.name === 'snapshots' &&
+        this.transaction.db.name === 'chameleon-asset-studio-3d-v3'
+      ) {
+        this.transaction.abort();
+      }
+      return request;
+    };
+    Object.defineProperty(globalThis, '__restoreSnapshotCommitForTest', {
+      configurable: true,
+      value: () => {
+        denySnapshotCommit = false;
+        IDBObjectStore.prototype.add = originalAdd;
+      },
+    });
+  });
+
+  await page.getByLabel('プロジェクト名', { exact: true }).fill('Atomic abort still resident');
+  await page.getByRole('button', { name: /^(今すぐ保存|保存を再試行)$/ }).click();
+  await expect(page.getByRole('alert').filter({ hasText: '保存に失敗しました' })).toBeVisible();
+  await expect(page.locator('.editor3d-save-status')).toContainText('保存に失敗');
+  const rescued = await importBackup(await download(page, '現在の内容をバックアップ'));
+  expect(rescued.project.name).toBe('Atomic abort still resident');
+  expect(rescued.project.meshes).toHaveLength(1);
+  expect(await stored()).toBe(before);
+
+  await page.evaluate(() => {
+    const restore = (globalThis as unknown as Record<string, () => void>)[
+      '__restoreSnapshotCommitForTest'
+    ];
+    restore();
+  });
+  await page.getByRole('button', { name: '保存を再試行', exact: true }).click();
+  await expect(page.locator('.editor3d-save-status')).toContainText('保存済み');
+  expect(await stored()).not.toBe(before);
+
+  await page.reload();
+  const savedProjects = page.getByRole('region', { name: '保存したプロジェクト', exact: true });
+  await savedProjects
+    .getByRole('button', { name: /Atomic abort still resident revision 1/ })
+    .click();
+  await expect(page.getByLabel('プロジェクト名', { exact: true })).toHaveValue(
+    'Atomic abort still resident',
+  );
+  await expect(page.locator('.editor3d-save-status')).toContainText('保存済み');
+});
