@@ -847,7 +847,7 @@ test('edited textured mixed skin and two clips survive backup, re-edit and actua
   }
 });
 
-test('product-authored rigid attachment and mixed skin follow their joint in an independent consumer', async ({
+test('product-authored rigid attachment, animated anchor, and mixed skin follow their joint in an independent consumer', async ({
   page,
   browser,
 }) => {
@@ -906,6 +906,18 @@ test('product-authored rigid attachment and mixed skin follow their joint in an 
   await rigid.getByRole('button', { name: '確認したrigid割当を適用', exact: true }).click();
   await expect(rigid.getByRole('status')).toContainText('このrevisionでrigid割当を適用しました');
 
+  await page.getByText('ゲーム向け情報を編集', { exact: true }).click();
+  const game = page.getByRole('region', { name: '3Dゲーム向け情報', exact: true });
+  const anchor = game.getByRole('region', { name: '3D anchor編集', exact: true });
+  await anchor.getByLabel('anchor名', { exact: true }).fill('Tip Grip');
+  await anchor.getByLabel('anchor用途', { exact: true }).fill('hand_attach');
+  await anchor.getByLabel('anchor追従先（node / bone）', { exact: true }).selectOption(tip);
+  await anchor.getByLabel('anchor位置（m） X', { exact: true }).fill('0.25');
+  await anchor.getByLabel('anchor位置（m） Y', { exact: true }).fill('0.5');
+  await anchor.getByLabel('anchor位置（m） Z', { exact: true }).fill('0');
+  await anchor.getByRole('button', { name: 'anchorを追加', exact: true }).click();
+  await expect(game.getByRole('status')).toContainText('適用しました');
+
   await page.getByText('アニメーション編集を開く', { exact: true }).click();
   const animation = page.getByRole('region', { name: '3Dアニメーション', exact: true });
   await animation.getByLabel('clip名', { exact: true }).fill('Joint motion');
@@ -950,6 +962,7 @@ test('product-authored rigid attachment and mixed skin follow their joint in an 
     expect(rest.oracle.nodePass).toBe(true);
     expect(rest.resources.skeletons).toBe(1);
     expect(rest.resources.animations).toBe(1);
+    expect(rest.anchors).toHaveLength(1);
     const restSkin = rest.meshes.find((mesh) => mesh.nodeId === skinPartId)!;
     const restRigid = rest.meshes.find((mesh) => mesh.nodeId === rigidPartId)!;
     expect(restSkin.positions.length).toBeGreaterThan(0);
@@ -958,6 +971,12 @@ test('product-authored rigid attachment and mixed skin follow their joint in an 
     const pose = await consumer.evaluate((id) => window.__assetConsumer.sample(id, 1), clipId);
     expect(pose.oracle.positionPass).toBe(true);
     expect(pose.oracle.nodePass).toBe(true);
+    for (const [position, expected] of [
+      [rest.anchors[0].position, [0.25, 1.5, 0]],
+      [pose.anchors[0].position, [1.25, 1.5, 0]],
+    ] as const) {
+      position.forEach((value, index) => expect(value).toBeCloseTo(expected[index], 5));
+    }
     const posedSkin = pose.meshes.find((mesh) => mesh.nodeId === skinPartId)!;
     const posedRigid = pose.meshes.find((mesh) => mesh.nodeId === rigidPartId)!;
     for (const [before, after, deltaX] of [
@@ -975,7 +994,7 @@ test('product-authored rigid attachment and mixed skin follow their joint in an 
       body: Buffer.from(
         JSON.stringify(
           {
-            kind: 'product-ui-rigid-and-skin-handoff',
+            kind: 'product-ui-rigid-skin-animated-anchor-handoff',
             sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
             browser: test.info().project.name,
             glbHash: await sha256(glb),
@@ -985,6 +1004,11 @@ test('product-authored rigid attachment and mixed skin follow their joint in an 
             root,
             tip,
             clipId,
+            expectedAnchorPositions: [
+              [0.25, 1.5, 0],
+              [1.25, 1.5, 0],
+            ],
+            actualAnchorPositions: [rest.anchors[0].position, pose.anchors[0].position],
             expectedPoseDeltaX: { mixedSkin: 0.75, rigidAttachment: 1 },
             consumerOracle: pose.oracle,
             runtime: pose.engine,

@@ -207,3 +207,10 @@ IMP-07 and overall acceptance remain partial: unclassified exceptions and genuin
 [`QA05_QUALITY_BACKGROUND_LATE_RESULT_2026-10-12.md`](QA05_QUALITY_BACKGROUND_LATE_RESULT_2026-10-12.md) records a product-browser test that holds a completed inspection worker result, simulates the hidden-page event, verifies cancellation, replays the old result without showing a stale report, then restores visibility and confirms a fresh inspection succeeds. The complete quality-product spec passed 12/12 across Chromium and WebKit-critical (six per project); the focused case passed in both. TypeScript, focused lint, formatting, and diff checks passed. The existing worker-startup case now expects PR #371's fixed `[EDIT_QUALITY_WORKER]` guidance while still proving path/message suppression and project/blob backup preservation.
 
 This is synthetic browser visibility/result-delay evidence, not OS-level backgrounding, freeze/suspension, or physical-device verification. QA-05 and overall acceptance remain partial/open; no real external runtime, GPU, OS-crash, real network/cache, or final-head CI result is claimed, and CI was not monitored.
+
+
+## GAME-02 product-authored animated anchor consumer handoff — 2026-10-12
+
+[`GAME02_PRODUCT_ANIMATED_ANCHOR_CONSUMER_2026-10-12.md`](GAME02_PRODUCT_ANIMATED_ANCHOR_CONSUMER_2026-10-12.md) adds a product-UI-to-export-to-independent-consumer check. A bone-following anchor authored with local offset `[0.25, 0.5, 0]` is verified at world `[0.25, 1.5, 0]` at rest and `[1.25, 1.5, 0]` at the one-second animation endpoint after downloading the actual GLB and sidecar. The focused product handoff test passed 1/1 in Chromium and WebKit-critical; existing mixed-skin and rigid attachment checks remain active. TypeScript, focused lint, formatting, and diff checks passed.
+
+This covers the repository's Babylon CPU consumer only, not every external engine/runtime, GPU rendering, deployed runtime, or physical device. GAME-02 and overall acceptance remain partial/open; CI was not monitored.
