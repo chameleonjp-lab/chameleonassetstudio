@@ -1140,3 +1140,184 @@ test('product-authored box, sphere and capsule collider dimensions reach an inde
     await consumerContext.close();
   }
 });
+
+test('product-authored origin, unit and forward remain descriptive in canonical GLB consumer delivery', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(180000);
+  const { readFile } = await import('node:fs/promises');
+  const download = async (target: Page, name: string) => {
+    const event = target.waitForEvent('download');
+    await target.getByRole('button', { name, exact: true }).click();
+    return new Uint8Array(await readFile((await (await event).path())!));
+  };
+
+  await page.goto('/3d/');
+  await page.getByLabel('新しいプロジェクト名', { exact: true }).fill('GAME-01 coordinate handoff');
+  await page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true }).click();
+  await page.getByRole('button', { name: '箱を追加', exact: true }).click();
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  await page.getByText('ゲーム向け情報を編集', { exact: true }).click();
+  const game = page.getByRole('region', { name: '3Dゲーム向け情報', exact: true });
+  const settings = game.getByRole('region', { name: 'ゲーム向け基本情報', exact: true });
+  await settings.getByLabel('受渡し単位（1単位あたりのm）', { exact: true }).fill('0.01');
+  await settings.getByLabel('受渡し前方向', { exact: true }).selectOption('-X');
+
+  const consumerContext = await browser.newContext();
+  try {
+    const consumer = await consumerContext.newPage();
+    const external = await open(consumer);
+    const cases: Array<{
+      originMode: 'feet' | 'center' | 'custom';
+      glbHash: string;
+      sidecarHash: string;
+      origin: number[];
+      canonicalPositions: number[];
+      coordinatesApplied: boolean;
+    }> = [];
+    let canonicalHash: string | undefined;
+    let canonicalPositions: number[] | undefined;
+
+    const editorRegion = page.getByRole('region', {
+      name: 'GAME-01 coordinate handoff',
+      exact: true,
+    });
+    const readEditorRevision = async () => {
+      const text = await editorRegion
+        .getByText(/編集中 revision \d+ \/ 保存済み revision \d+/)
+        .textContent();
+      const match = text?.match(/編集中 revision (\d+) \/ 保存済み revision \d+/);
+      if (!match) throw new Error(`Editor revision status is unavailable: ${text ?? ''}`);
+      return Number(match[1]);
+    };
+    let editorRevision = await readEditorRevision();
+
+    for (const originMode of ['feet', 'center', 'custom'] as const) {
+      await settings.getByLabel('原点の決め方', { exact: true }).selectOption(originMode);
+      if (originMode === 'custom') {
+        for (const [axis, value] of [
+          ['X', '1'],
+          ['Y', '-2'],
+          ['Z', '3'],
+        ] as const)
+          await settings.getByLabel(`受渡し原点（m） ${axis}`, { exact: true }).fill(value);
+      }
+      await settings.getByRole('button', { name: 'ゲーム基本情報を適用', exact: true }).click();
+      await expect(
+        settings.getByRole('button', { name: 'ゲーム基本情報を適用', exact: true }),
+      ).toBeDisabled();
+      await expect.poll(readEditorRevision).toBe(editorRevision + 1);
+      editorRevision += 1;
+
+      const ioPanel = page.getByRole('region', { name: '3D GLB入出力', exact: true });
+      if (!(await ioPanel.isVisible()))
+        await page.getByText('GLB読込・配布ファイル出力', { exact: true }).click();
+      await expect(ioPanel).toBeVisible();
+      await page
+        .getByLabel('固定revisionの出力範囲と変換・損失の注意を確認しました', { exact: true })
+        .check();
+      await page.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }).click();
+      const output = ioPanel.getByRole('region', { name: '作成済みの3D出力', exact: true });
+      await expect(
+        output.getByRole('heading', {
+          name: `作成済み: revision ${editorRevision}`,
+          exact: true,
+        }),
+      ).toBeVisible();
+      const glb = await download(page, 'GLBを保存');
+      const sidecar = await download(page, 'game.jsonを保存');
+      const serialized = JSON.parse(new TextDecoder().decode(sidecar));
+      const report = await consumer.evaluate(
+        ({ glb, sidecar }) => window.__assetConsumer.load(glb, sidecar),
+        { glb: Array.from(glb), sidecar: Array.from(sidecar) },
+      );
+      const glbHash = await sha256(glb);
+      const sidecarHash = await sha256(sidecar);
+      const positions = report.meshes.flatMap((mesh) => mesh.positions) as number[];
+      const [x, y, z] = bounds(positions);
+      const center = [x[0] / 2 + x[1] / 2, y[0] / 2 + y[1] / 2, z[0] / 2 + z[1] / 2];
+      const expectedOrigin =
+        originMode === 'feet'
+          ? [center[0], y[0], center[2]]
+          : originMode === 'center'
+            ? center
+            : [1, -2, 3];
+
+      expect(serialized.coordinates).toBe('right-handed-meter-y-up-positive-z-forward');
+      expect(serialized.application).toBe(
+        'GLB is canonical meters; game metadata is descriptive. Apply origin, unit and forward only once in an explicitly configured consumer.',
+      );
+      expect(serialized.modelHash).toBe(glbHash);
+      expect(serialized.game.originMode).toBe(originMode);
+      expect(serialized.game.unitMeters).toBe(0.01);
+      expect(serialized.game.forward).toBe('-X');
+      expect(serialized.game.origin).toHaveLength(3);
+      serialized.game.origin.forEach((value: number, index: number) =>
+        expect(value).toBeCloseTo(expectedOrigin[index], 5),
+      );
+      expect(report.hash).toBe(glbHash);
+      expect(report.engine).toBe('Babylon.js');
+      expect(report.version).toBe('9.28.0');
+      expect(report.rightHanded).toBe(true);
+      expect(report.oracle.positionPass, JSON.stringify(report.oracle)).toBe(true);
+      expect(report.oracle.nodePass, JSON.stringify(report.oracle)).toBe(true);
+      expect(report.game).toMatchObject({
+        originMode,
+        unitMeters: 0.01,
+        forward: '-X',
+        coordinatesApplied: false,
+      });
+      report.game.origin.forEach((value: number, index: number) =>
+        expect(value).toBeCloseTo(expectedOrigin[index], 5),
+      );
+      if (canonicalHash === undefined) {
+        canonicalHash = glbHash;
+        canonicalPositions = positions;
+      } else {
+        expect(glbHash).toBe(canonicalHash);
+        expect(positions).toEqual(canonicalPositions);
+      }
+      cases.push({
+        originMode,
+        glbHash,
+        sidecarHash,
+        origin: [...report.game.origin],
+        canonicalPositions: positions,
+        coordinatesApplied: report.game.coordinatesApplied,
+      });
+    }
+    expect(new Set(cases.map((item) => item.glbHash)).size).toBe(1);
+    expect(new Set(cases.map((item) => item.sidecarHash)).size).toBe(3);
+    expect(external).toEqual([]);
+
+    await test.info().attach('game01-product-coordinate-consumer-evidence', {
+      body: Buffer.from(
+        JSON.stringify(
+          {
+            kind: 'product-ui-game01-coordinate-metadata-consumer',
+            sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+            browser: test.info().project.name,
+            runtime: 'Babylon.js',
+            runtimeVersion: '9.28.0',
+            canonicalGlbHash: canonicalHash,
+            canonicalPositionsUnchanged: true,
+            downstreamConversionAppliedByHarness: false,
+            cases: cases.map((item) => ({
+              originMode: item.originMode,
+              glbHash: item.glbHash,
+              sidecarHash: item.sidecarHash,
+              origin: item.origin,
+              coordinatesApplied: item.coordinatesApplied,
+            })),
+          },
+          null,
+          2,
+        ),
+      ),
+      contentType: 'application/json',
+    });
+  } finally {
+    await consumerContext.close();
+  }
+});
