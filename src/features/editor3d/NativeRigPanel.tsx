@@ -308,7 +308,7 @@ export function NativeRigPanel({
         >
           未使用の骨を削除
         </button>
-        <p>skin・clip・子を参照している骨は削除しません。</p>
+        <p>skin・clip・anchor・collider・子を参照している骨は削除しません。</p>
         <NativeRigidAttachmentPanel
           project={project}
           session={session}

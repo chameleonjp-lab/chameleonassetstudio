@@ -136,7 +136,7 @@
 | QA-01 | MUST | B08 | 05/06 | F03/F06/F07/F13 | T01/T06/T09 | AC-04/08/12 | pending |
 | QA-02 | MUST | B08 | 05/06 | F03/F06/F07/F13 | T01/T06/T09 | AC-04/08/12 | pending |
 | QA-03 | SHOULD | B11（接続B08） | 05/06 | F03/F06/F07/F13 | T01/T06/T09 | AC-04/08/12 | 個別採否待ち |
-| QA-04 | MUST | B08 | 05/06 | F03/F06/F07/F13 | T01/T06/T09 | AC-04/08/12 | pending |
+| QA-04 | MUST | B08 | 05/06 | F03/F06/F07/F13 | T01/T06/T09 | AC-04/08/12 | partial: rig-joint removal protects anchor/collider references; loss-preview requirement remains |
 | QA-05 | MUST | B08 | 05/06 | F03/F06/F07/F13 | T01/T06/T09 | AC-04/08/12 | pending |
 | PERF-01 | MUST | B09 | 05/09 | F11/F13 | T04/T06/T10 | AC-01/07/09 | pending |
 | PERF-02 | MUST | B09 | 05/09 | F11/F13 | T04/T06/T10 | AC-01/07/09 | pending |
