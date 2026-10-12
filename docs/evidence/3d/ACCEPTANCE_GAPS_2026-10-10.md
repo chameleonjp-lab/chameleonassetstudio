@@ -187,3 +187,10 @@ The 404 is Playwright-injected, not an actual stale CDN/HTML deployment. Service
 [`PRODUCT_OBJECT_DELETION_DEPENDENCIES_2026-10-12.md`](PRODUCT_OBJECT_DELETION_DEPENDENCIES_2026-10-12.md) adds a dependency-rich product-browser check for the explicit descendant deletion flow. The confirmation reports four nodes, one last-used mesh and skin, one animation track/two keys, one anchor and one collider; cancellation leaves the decoded project unchanged. After confirmation, the track is removed while the clip identity remains, and material/source metadata/original image bytes are preserved. Full decoded project and blob-map comparisons cover Undo/Redo. The focused library product suite passed 28/28 across Chromium and WebKit-critical; unit 3,531/3,531, formatting, lint (zero errors; one existing Hook warning) and app/H3 build passed.
 
 This is automated headless evidence against generated fixtures only. DATA-07 remains partial: no human review, deployed-runtime, physical-device, or broader real-project acceptance is claimed.
+
+
+## SAVE-05 / AC-06 product cross-tab durable preservation — 2026-10-12
+
+[`SAVE05_CROSS_TAB_DURABLE_PRESERVATION_2026-10-12.md`](SAVE05_CROSS_TAB_DURABLE_PRESERVATION_2026-10-12.md) strengthens the product-level lease-takeover case. The new owner adds geometry and saves revision 2; the stale page's conflicting rename is rejected without losing its dirty state and is saved as a separate project ID. A third page opens the original read-only and its downloaded full project/blob backup equals the new owner's pre-conflict durable backup, independently checking that the original root was not silently overwritten. The focused test passed 1/1 in Chromium and WebKit-critical; the full spec had 10 passes and 2 existing project skips. Unit 3,531/3,531, formatting, lint (zero errors; one existing Hook warning), and app/H3 build passed.
+
+This is headless same-context browser evidence only. Process/OS crash, clock skew, lease-expiry timing, physical storage failure and devices remain unverified; SAVE-05/AC-06 and overall acceptance remain partial/open.

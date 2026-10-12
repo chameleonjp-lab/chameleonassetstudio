@@ -1,5 +1,12 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { importBackup } from '../src/core3d/backup/backup';
+
+async function backupCurrent(page: Page) {
+  const pending = page.waitForEvent('download');
+  await page.getByRole('button', { name: '現在の内容をバックアップ', exact: true }).click();
+  return importBackup(new Uint8Array(await readFile(await (await pending).path()!)));
+}
 
 // Fresh browser contexts and observed requests, never a warm-cache timing proxy.
 test('lightweight hub opens a separate noopener 3D tab and preserves 2D discovery', async ({
@@ -173,6 +180,7 @@ test('a second tab explicitly takes over while the old writer retains unsaved wo
   await page.getByLabel('新しいプロジェクト名', { exact: true }).fill('二つのタブ');
   await page.getByRole('button', { name: '新しい3Dプロジェクトを作成' }).click();
   await expect(page.getByRole('status').filter({ hasText: '保存済み · revision' })).toBeVisible();
+  const initial = await backupCurrent(page);
   const other = await context.newPage();
   await other.goto('/3d/');
   await other.getByRole('button', { name: /二つのタブ.*revision/ }).click();
@@ -180,6 +188,10 @@ test('a second tab explicitly takes over while the old writer retains unsaved wo
   await other.getByRole('button', { name: 'このタブで編集を引き継ぐ' }).click();
   const otherName = other.getByLabel('プロジェクト名', { exact: true });
   await expect(otherName).toBeEditable();
+  await other.getByRole('button', { name: '箱を追加', exact: true }).click();
+  await expect(
+    other.getByRole('status').filter({ hasText: '保存済み · revision 1' }),
+  ).toBeVisible();
   await otherName.fill('新しい所有者');
   console.log(
     'native-takeover-input',
@@ -197,17 +209,51 @@ test('a second tab explicitly takes over while the old writer retains unsaved wo
   await other.getByRole('button', { name: '今すぐ保存' }).click();
   await expect(otherName).toHaveValue('新しい所有者');
   await expect(
-    other.getByRole('status').filter({ hasText: '保存済み · revision 1' }),
+    other.getByRole('status').filter({ hasText: '保存済み · revision 2' }),
   ).toBeVisible();
+  const currentOwner = await backupCurrent(other);
+  expect(currentOwner.project.id).toBe(initial.project.id);
+  expect(currentOwner.project.name).toBe('新しい所有者');
+  expect(currentOwner.project.revision).toBe(2);
+  expect(currentOwner.project.nodes).toHaveLength(1);
+  expect(currentOwner.project.meshes).toHaveLength(1);
+  expect(currentOwner.blobs).toEqual(initial.blobs);
   await page.getByLabel('プロジェクト名', { exact: true }).fill('旧タブの大切な変更');
   await page.getByRole('button', { name: '今すぐ保存' }).click();
   await expect(page.getByRole('status').filter({ hasText: '競合・未保存' })).toBeVisible();
   await expect(page.getByLabel('プロジェクト名', { exact: true })).toHaveValue(
     '旧タブの大切な変更',
   );
+  const staleWriter = await backupCurrent(page);
+  expect(staleWriter.project.id).toBe(initial.project.id);
+  expect(staleWriter.project.name).toBe('旧タブの大切な変更');
   await page.getByRole('button', { name: 'コピーとして保存' }).click();
   await expect(page.getByRole('status').filter({ hasText: '保存済み · revision' })).toBeVisible();
+  const rescuedCopy = await backupCurrent(page);
+  expect(rescuedCopy.project.id).not.toBe(currentOwner.project.id);
+  expect(rescuedCopy.project.name).toBe('旧タブの大切な変更');
+  expect(rescuedCopy.project.nodes).toEqual(staleWriter.project.nodes);
+  expect(rescuedCopy.project.meshes).toEqual(staleWriter.project.meshes);
   await other.getByRole('button', { name: '一覧を更新' }).click();
   await expect(other.getByRole('button', { name: /旧タブの大切な変更.*revision/ })).toBeVisible();
+  await expect(other.getByRole('button', { name: /新しい所有者.*revision 2/ })).toBeVisible();
   await expect(other.getByLabel('プロジェクト名', { exact: true })).toHaveValue('新しい所有者');
+
+  const verifier = await context.newPage();
+  try {
+    await verifier.goto('/3d/');
+    await verifier.getByRole('button', { name: /新しい所有者.*revision 2/ }).click();
+    await expect(verifier.getByLabel('プロジェクト名', { exact: true })).toHaveValue(
+      '新しい所有者',
+    );
+    await expect(verifier.getByLabel('プロジェクト名', { exact: true })).toHaveAttribute(
+      'readonly',
+      '',
+    );
+    const persistedOriginal = await backupCurrent(verifier);
+    expect(persistedOriginal.project).toEqual(currentOwner.project);
+    expect(persistedOriginal.blobs).toEqual(currentOwner.blobs);
+  } finally {
+    await verifier.close();
+  }
 });
