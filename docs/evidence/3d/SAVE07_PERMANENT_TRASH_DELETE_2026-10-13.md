@@ -28,3 +28,11 @@ This is automated evidence over generated fixtures, fake IndexedDB unit tests an
 ### Production-preview cross-check
 
 After the full local validation, the new permanent-deletion scenario was also rerun against a freshly built application/consumer production preview: 1/1 in Chromium and 1/1 in WebKit-critical. This checks the selected UI flow in the built bundle, not a deployed service or physical device.
+
+## Follow-up after guide correction and E2E readiness synchronization — 2026-10-13
+
+A local audit found that the public 3D guide still said permanent deletion was unavailable. It now documents the no-expiry trash, the separately confirmed per-project irreversible deletion, the target-only saved/recovery records and unshared assets, the preservation of shared assets and 2D data, app-level non-recovery afterward, and the limitation that browser physical-media erasure is not guaranteed. A product regression checks those statements.
+
+The expanded `e2e/native-library-product.spec.ts` passed 17/17 in serial Chromium and 17/17 in serial WebKit-critical. During the first expanded runs, the suite exposed two test-readiness assumptions: selecting a second backup before asynchronous project close re-enabled the file input, and focusing a recovery candidate before it became enabled. The tests now wait for the close/input-ready state, the copy-restore success status, and an enabled recovery trigger. The final full suites pass; the initial failures were test synchronization issues, not a confirmed product defect. A freshly built production preview passed both selected cases (permanent deletion and guide wording) in 2/2 Chromium and 2/2 WebKit-critical runs.
+
+Follow-up quality checks passed: ESLint 0 errors (the existing `NativeViewportPanel.tsx:205` Hook warning remains), TypeScript no-emit, Prettier, app and H3 builds, CI-scope classification (8/8), and `git diff --check`. The full Vitest result remains 3,547/3,547 across 186 files; this follow-up changes no core implementation or unit-test code. The existing >500 kB chunk advisory remains. No remote CI was monitored.

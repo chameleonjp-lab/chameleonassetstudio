@@ -168,11 +168,20 @@ test('permanent deletion needs a second confirmation and preserves a shared sour
   const siblingBackup = await exportBackup(siblingProject, saved.blobs);
 
   await page.getByRole('button', { name: 'プロジェクトを閉じる', exact: true }).click();
-  await page.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+  const chooser = page.getByRole('heading', { name: 'プロジェクトを選んでください', exact: true });
+  const restoreInput = page.getByLabel('.cas3dproj を選んでコピー復元', { exact: true });
+  await expect(chooser).toBeVisible();
+  await expect(restoreInput).toBeEnabled();
+  await restoreInput.setInputFiles({
     name: 'shared-survivor.cas3dproj',
     mimeType: 'application/zip',
     buffer: Buffer.from(siblingBackup),
   });
+  await expect(
+    page.getByRole('status').filter({
+      hasText: '新しいプロジェクトとして復元しました。元のプロジェクトは上書きしていません。',
+    }),
+  ).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole('heading', { name: 'Shared survivor', exact: true })).toBeVisible();
 
   const library = page.getByRole('region', { name: '3D保存履歴とごみ箱' });
@@ -236,6 +245,19 @@ test('permanent deletion needs a second confirmation and preserves a shared sour
   expect(survivor.blobs.get(hash)).toEqual(bytes);
 });
 
+test('3D user guide explains trash retention and permanent deletion boundaries', async ({
+  page,
+}) => {
+  await page.goto('/guide/3d/#rescue');
+  const rescue = page.locator('#rescue');
+  await expect(rescue).toContainText('自動消去期限はありません。');
+  await expect(rescue).toContainText('作品ごとの別確認後に完全削除できます。');
+  await expect(rescue).toContainText('その作品だけが参照する素材・旧形式の控え');
+  await expect(rescue).toContainText('他の作品が使う共有素材と2Dの保存には触れません。');
+  await expect(rescue).toContainText('削除後はアプリから復元できません。');
+  await expect(rescue).toContainText('ブラウザー記憶媒体上の物理的な消去は保証しません。');
+});
+
 test('recovery-copy confirmation cancellation returns keyboard focus to its candidate', async ({
   page,
 }) => {
@@ -251,6 +273,7 @@ test('recovery-copy confirmation cancellation returns keyboard focus to its cand
     name: 'revision 0 の別コピー復旧を確認',
     exact: true,
   });
+  await expect(trigger).toBeEnabled();
   await trigger.focus();
   await expect(trigger).toBeFocused();
   await trigger.press('Enter');

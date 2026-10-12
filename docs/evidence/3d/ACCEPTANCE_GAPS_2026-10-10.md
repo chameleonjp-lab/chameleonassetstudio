@@ -318,3 +318,10 @@ This is generated-fixture, fake-IndexedDB and headless-browser evidence only. It
 
 
 The new permanent-deletion flow also passed a selected production-preview rerun, 1/1 in Chromium and 1/1 in WebKit-critical, using the freshly built local app and consumer. This does not establish deployed-runtime, physical-device, secure-erasure, or release acceptance.
+
+
+## SAVE-07 guide and browser-readiness follow-up — 2026-10-13
+
+The permanent-trash-delete implementation revealed stale user guidance claiming the capability did not exist. The public 3D guide now accurately explains per-project separate confirmation, no automatic trash expiry, what the app removes and preserves, app-level irreversibility, and the browser's lack of a physical-erasure guarantee. A new product-browser regression guards this wording. The full 17-case library product suite passed 17/17 in serial Chromium and WebKit-critical after synchronizing E2E waits with async close/restore and recovery-button readiness. A freshly built production preview passed the permanent-deletion scenario and the guide regression in 2/2 cases per engine (4/4 total).
+
+This follow-up also records the resolved E2E readiness assumptions; the first expanded runs failed only while the test selected a file before the async close operation had re-enabled the input, or focused a recovery action before it became enabled. The final full suites pass. SAVE-07 and overall acceptance remain partial/open: secure physical erasure, browser/OS storage reclamation, real quota/eviction, all process/OS interruption interleavings, deployed runtime, assistive/physical-device acceptance and release sign-off are not established. Remote CI was not monitored.
