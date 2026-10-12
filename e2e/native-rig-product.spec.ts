@@ -125,6 +125,83 @@ test('authors mixed skin, previews deformation, preserves rest backup and re-edi
   }
 });
 
+test('requires explicit humanoid suitability confirmation before adding and manually fitting a guide', async ({
+  page,
+}) => {
+  await page.goto('/3d/');
+  await page.getByLabel('新しいプロジェクト名', { exact: true }).fill('Humanoid guide acceptance');
+  await page.getByRole('button', { name: '新しい3Dプロジェクトを作成' }).click();
+  for (let index = 0; index < 4; index++)
+    await page.getByRole('button', { name: '箱を追加', exact: true }).click();
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  await page.getByText('骨と重みの編集を開く', { exact: true }).click();
+
+  const rig = panel(page);
+  await expect(rig).toContainText('二足直立形状向け');
+  await expect(rig).toContainText('正面は +Z');
+  await expect(rig).toContainText('左 -X、右 +X');
+  await expect(rig).toContainText('四足・非人型など対象外');
+  await expect(rig).toContainText('自動fit・自動weightは行いません');
+  const confirmation = rig.getByRole('checkbox', {
+    name: 'この作品が二足で直立した人型で、ガイドの適合条件を満たすことを確認しました',
+    exact: true,
+  });
+  const addGuide = rig.getByRole('button', { name: '人型の骨ガイドを追加', exact: true });
+  await expect(confirmation).not.toBeChecked();
+  await expect(addGuide).toBeDisabled();
+
+  const before = (await importBackup(new Uint8Array(await backup(page)))).project;
+  expect(before.skins).toEqual([]);
+  expect(before.nodes.map((node) => node.name)).not.toEqual(
+    expect.arrayContaining([
+      'hips',
+      'spine',
+      'head',
+      'left-arm',
+      'right-arm',
+      'left-leg',
+      'right-leg',
+    ]),
+  );
+
+  await confirmation.check();
+  await expect(addGuide).toBeEnabled();
+  await confirmation.uncheck();
+  await expect(addGuide).toBeDisabled();
+  await confirmation.check();
+  await addGuide.click();
+
+  const afterGuide = (await importBackup(new Uint8Array(await backup(page)))).project;
+  expect(afterGuide.nodes.map((node) => node.name)).toEqual(
+    expect.arrayContaining([
+      'hips',
+      'spine',
+      'head',
+      'left-arm',
+      'right-arm',
+      'left-leg',
+      'right-leg',
+    ]),
+  );
+  expect(afterGuide.nodes.filter((node) => node.meshId !== undefined)).toEqual(
+    before.nodes.filter((node) => node.meshId !== undefined),
+  );
+  expect(afterGuide.meshes).toEqual(before.meshes);
+  expect(afterGuide.skins).toEqual([]);
+  await expect(confirmation).not.toBeChecked();
+
+  const hips = afterGuide.nodes.find((node) => node.name === 'hips')!;
+  await rig.getByRole('combobox', { name: '骨を選択', exact: true }).selectOption(hips.id);
+  await rig.getByRole('button', { name: '骨の現在値を読む', exact: true }).click();
+  await rig.getByLabel('骨位置 Z', { exact: true }).fill('0.2');
+  await rig.getByRole('button', { name: 'restを適用して再bind', exact: true }).click();
+  const manuallyFitted = (await importBackup(new Uint8Array(await backup(page)))).project;
+  expect(manuallyFitted.nodes.find((node) => node.id === hips.id)?.transform.translation).toEqual([
+    0, 0, 0.2,
+  ]);
+  expect(manuallyFitted.skins).toEqual([]);
+});
+
 test('phone numeric rig handles IME, invalid input, pause and repeated rest previews without overflow', async ({
   page,
 }) => {
@@ -162,6 +239,12 @@ test('extends a skin palette beyond four joints without replacing existing weigh
   page,
 }) => {
   const { rig } = await setup(page);
+  await rig
+    .getByRole('checkbox', {
+      name: 'この作品が二足で直立した人型で、ガイドの適合条件を満たすことを確認しました',
+      exact: true,
+    })
+    .check();
   await rig.getByRole('button', { name: '人型の骨ガイドを追加', exact: true }).click();
   const extraJoint = await rig
     .getByRole('combobox', { name: '骨を選択', exact: true })

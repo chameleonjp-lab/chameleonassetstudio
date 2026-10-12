@@ -66,6 +66,7 @@ export function NativeRigPanel({
   const [normalize, setNormalize] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [humanoidConfirmedFor, setHumanoidConfirmedFor] = useState('');
   const [, redraw] = useState(0);
   const composing = useRef(false);
   useEffect(() => session.rigPose.subscribe(() => redraw((value) => value + 1)), [session]);
@@ -76,6 +77,8 @@ export function NativeRigPanel({
   const skin = project.skins.find((value) => value.meshId === mesh?.id);
   const pose = session.rigPose.state;
   const identity = `${project.id}:${project.revision}:${jointId}`;
+  const humanoidConfirmationIdentity = `${project.id}:${project.revision}`;
+  const humanoidFitConfirmed = humanoidConfirmedFor === humanoidConfirmationIdentity;
   useEffect(() => {
     setVertexId('');
   }, [project.id, mesh?.id]);
@@ -155,8 +158,24 @@ export function NativeRigPanel({
         {formatNativeMotionStatusReason(pose.reason, 'rig')}
       </p>
       <fieldset disabled={disabled}>
+        <p>
+          人型ガイドは、腰から胴・頭へ続き、左右に腕と脚がある二足直立形状向けです。正面は
+          +Z、頭側は +Y、左右は X 軸（左 -X、右
+          +X）です。四足・非人型など対象外の形状には使わず、骨位置は数値で手動fitしてください。自動fit・自動weightは行いません。
+        </p>
+        <label>
+          <input
+            type="checkbox"
+            checked={humanoidFitConfirmed}
+            onChange={(event) =>
+              setHumanoidConfirmedFor(event.target.checked ? humanoidConfirmationIdentity : '')
+            }
+          />
+          この作品が二足で直立した人型で、ガイドの適合条件を満たすことを確認しました
+        </label>
         <button
           type="button"
+          disabled={!humanoidFitConfirmed}
           onClick={() =>
             act(() => {
               const prefix = crypto.randomUUID();
