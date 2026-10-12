@@ -149,3 +149,8 @@ This adds headless DOM/status evidence only. Actual screen-reader speech, VoiceO
 ## Viewport camera shortcut IME/modifier regression follow-up — 2026-10-12
 
 [`PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md`](PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md) records five synthetic keyboard-event probes for `isComposing`, legacy key code 229, and Ctrl/Meta/Alt modifiers. Each remains unprevented, leaves the camera unchanged, and preserves the decoded project backup; the focused run passed 2/2 across Chromium and WebKit-critical, and the full viewport product E2E passed 38/38. This is a software-only DOM check, not trusted physical input or real OS/IME behavior. Actual screen-reader speech, assistive technology, contrast, real browser/OS zoom, and physical-device acceptance remain unverified; UX-05 and 3D-STAGE4-04 remain partial/open.
+
+
+## Shared 3D workspace text-contrast measurements — 2026-10-12
+
+[`PRODUCT_CONTRAST_MEASUREMENTS_2026-10-12.md`](PRODUCT_CONTRAST_MEASUREMENTS_2026-10-12.md) records computed foreground/background pairs and relative-luminance ratios for ten representative shared-shell text styles in Chromium and WebKit-critical. The disabled-button text measured 4.2774:1 against its background. The repository does not define an acceptance threshold or settle the applicability of an inactive-control exception, so this is measurement only: no pass/fail judgment, project-wide 4.5:1 standard, or product color change is claimed. The focused browser probes passed in both engines; UX-05, 3D-STAGE4-04, contrast acceptance, and physical accessibility gates remain open.
