@@ -53,6 +53,7 @@ async function expectAccessibleConfirmation(
   details: string,
 ) {
   const confirmation = library.getByRole('region', { name: heading, exact: true });
+  await expect(confirmation).toBeVisible();
   await expect(confirmation).toHaveAttribute(
     'aria-labelledby',
     'editor3d-library-confirmation-heading',
@@ -171,10 +172,7 @@ test('recovery-copy confirmation cancellation returns keyboard focus to its cand
   });
   await trigger.focus();
   await expect(trigger).toBeFocused();
-  await trigger.press('Enter');
-  await expect(
-    library.getByRole('region', { name: '別コピーとして復旧しますか', exact: true }),
-  ).toBeVisible();
+  await page.keyboard.press('Enter');
 
   const confirmation = await expectAccessibleConfirmation(
     library,
