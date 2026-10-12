@@ -130,6 +130,16 @@ const cameraActionGroups: {
     ],
   },
 ];
+const viewerCameraKeys: Readonly<Record<string, NativeCameraAction>> = {
+  ArrowLeft: 'orbit-left',
+  ArrowRight: 'orbit-right',
+  ArrowUp: 'orbit-up',
+  ArrowDown: 'orbit-down',
+  '+': 'zoom-in',
+  '=': 'zoom-in',
+  '-': 'zoom-out',
+  _: 'zoom-out',
+};
 
 function errorText(cause: unknown) {
   return describeNativeEditingFailure(cause, 'viewport').reason;
@@ -876,7 +886,8 @@ function ViewportContent(props: NativeViewportPanelProps) {
         {props.editing &&
           '部品をクリックして選択し、変形ハンドルで移動・回転・拡縮します。Shiftを押しながらのクリックで複数選択、Escapeで変形を取り消せます。ハンドル以外の'}
         ドラッグ・1本指でカメラを回転、ホイール・2本指のピンチで拡大縮小、右ドラッグ・2本指の移動で平行移動します。
-        Tabキーで操作ボタンへ移動し、Enter・スペースキーで回転・平行移動・拡大縮小できます。
+        Tabキーで操作ボタンと3D表示領域へ移動できます。表示領域の外枠にフォーカスして矢印キーでカメラを回転、+/-キーで拡大縮小、Rキーで選択対象に合わせ、Fキーで全体表示できます。
+        Enter・スペースキーでも回転・平行移動・拡大縮小できます。
         GPUの休止・再開には、現在の内容の保存が必要です。
         PNGは背景付きの表示画像です。変形ハンドル・選択の強調表示・操作パネル・3Dの編集データは含みません。
       </p>
@@ -887,6 +898,40 @@ function ViewportContent(props: NativeViewportPanelProps) {
         aria-label={`${project.name}の3D表示`}
         aria-describedby={guidanceId}
         aria-busy={status.state === 'loading'}
+        tabIndex={active ? 0 : -1}
+        onKeyDownCapture={(event) => {
+          if (
+            event.target !== event.currentTarget ||
+            event.nativeEvent.isComposing ||
+            event.nativeEvent.keyCode === 229 ||
+            event.ctrlKey ||
+            event.metaKey ||
+            event.altKey
+          )
+            return;
+          const key = event.key.toLowerCase();
+          const cameraAction = viewerCameraKeys[event.key];
+          let operation: ((port: NativeViewportPort) => void) | null = null;
+          if (cameraAction) {
+            operation = (port) => {
+              const result = port.cameraAction(cameraAction);
+              if (!result.ok) throw new Error(result.reason);
+            };
+          } else if (key === 'r') {
+            operation = (port) => {
+              const activeId = latest.current.editing?.state.context.activeId;
+              if (!activeId) return;
+              const result = port.focusNode(activeId);
+              if (!result.ok) throw new Error(result.reason);
+            };
+          } else if (key === 'f') {
+            operation = (port) => port.fitCamera();
+          }
+          if (!operation) return;
+          event.preventDefault();
+          event.stopPropagation();
+          runCamera(operation);
+        }}
       />
       <NativeInspectionControls
         key={attempt}

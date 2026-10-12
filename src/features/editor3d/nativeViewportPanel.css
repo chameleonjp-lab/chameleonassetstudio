@@ -80,6 +80,10 @@
   border-radius: 8px;
   background: #18202b;
 }
+.native-viewport-host:focus-visible {
+  outline: 3px solid #b45309;
+  outline-offset: 3px;
+}
 
 .native-viewport-runtime {
   position: absolute;
