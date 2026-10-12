@@ -2,6 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 
 // バージョン違いの同梱ブラウザしか無い環境向けに、実行ファイルを差し替えられるようにする。
 const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+// Playwrightは通常BFCacheを無効化する。LIFE-07の実BFCache受入時だけ明示的に有効化する。
+const enableChromiumBackForwardCache = process.env.PLAYWRIGHT_ENABLE_BFCACHE === '1';
 
 export default defineConfig({
   testDir: 'e2e',
@@ -23,8 +25,15 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        ...(chromiumExecutablePath
-          ? { launchOptions: { executablePath: chromiumExecutablePath } }
+        ...(chromiumExecutablePath || enableChromiumBackForwardCache
+          ? {
+              launchOptions: {
+                ...(chromiumExecutablePath ? { executablePath: chromiumExecutablePath } : {}),
+                ...(enableChromiumBackForwardCache
+                  ? { ignoreDefaultArgs: ['--disable-back-forward-cache'] }
+                  : {}),
+              },
+            }
           : {}),
       },
     },
