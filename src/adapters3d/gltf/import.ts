@@ -14,6 +14,7 @@ import { inverseAffineMatrix } from '../../core3d/rig/math';
 import { sha256 } from '../../core3d/export/snapshot';
 import type { AssetImport } from '../../core3d/ports/assetIoPort';
 import { inspectNativeImage } from '../../core3d/model/nativeImageMetadata';
+import { NATIVE_TEXTURE_PROFILE } from '../../core3d/model/textureProfile';
 import { applySidecar } from '../../core3d/export/mapping';
 const validId = (value: unknown): value is string =>
   typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(value);
@@ -113,7 +114,8 @@ export async function importGlb(
     const hash = await sha256(imageBytes);
     if (!blobs.has(hash)) {
       imagePixels += info.width * info.height;
-      if (imagePixels > 8_000_000) throw new Error('Total image pixels exceed native profile');
+      if (imagePixels > NATIVE_TEXTURE_PROFILE.maxTotalPixels)
+        throw new Error('Total image pixels exceed native profile');
     }
     imageHashes.push(hash);
     if (!blobs.has(hash)) {
