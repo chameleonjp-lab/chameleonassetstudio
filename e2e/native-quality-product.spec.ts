@@ -17,6 +17,13 @@ async function setup(page: Page) {
   await page.getByText('作品の品質検査を開く', { exact: true }).click();
   return page.getByRole('region', { name: '作品の品質検査', exact: true });
 }
+
+async function backupCurrent(page: Page) {
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: '現在の内容をバックアップ', exact: true }).click();
+  return importBackup(new Uint8Array(await readFile((await (await download).path())!)));
+}
+
 test('inspects a fixed revision, distinguishes unknown values and invalidates stale results', async ({
   page,
 }) => {
@@ -145,9 +152,19 @@ test('a warning opens the correct material section without overwriting an unsave
   await page.getByRole('button', { name: '材質の現在値を読む', exact: true }).click();
   await page.getByLabel(/^透過モード/).selectOption('LEGACY_AUTO');
   await page.getByRole('button', { name: '材質を適用', exact: true }).click();
+  const beforeInspection = await backupCurrent(page);
   await panel.getByRole('button', { name: '現在の版を検査', exact: true }).click();
   await expect(panel.getByText('検査結果を取得しました。', { exact: true })).toBeVisible();
   await expect(panel.getByText('警告: 互換用の自動透過設定です。', { exact: true })).toBeVisible();
+  await expect(
+    panel.getByText('GLBは明示的な透過方式へ変換します。', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByText('不透明・切抜き・半透明を確認してください。', { exact: true }),
+  ).toBeVisible();
+  const afterInspection = await backupCurrent(page);
+  expect(afterInspection.project).toEqual(beforeInspection.project);
+  expect([...afterInspection.blobs]).toEqual([...beforeInspection.blobs]);
   await page.getByLabel('粗さ roughness', { exact: true }).fill('0.123');
   await page.getByText('材質の色・金属・粗さ', { exact: true }).click();
   await panel.getByRole('button', { name: '編集先を確認', exact: true }).first().click();
@@ -187,12 +204,7 @@ test('inspection worker startup failure gives safe guidance and leaves the proje
   await expect(page.getByRole('heading', { name: project.name, exact: true })).toBeVisible();
   await page.getByText('作品の品質検査を開く', { exact: true }).click();
   const panel = page.getByRole('region', { name: '作品の品質検査', exact: true });
-  const backup = async () => {
-    const download = page.waitForEvent('download');
-    await page.getByRole('button', { name: '現在の内容をバックアップ', exact: true }).click();
-    return importBackup(new Uint8Array(await readFile((await (await download).path())!)));
-  };
-  const before = await backup();
+  const before = await backupCurrent(page);
   expect(before.blobs.size).toBe(1);
   expect(before.blobs.get(sourceHash)).toEqual(sourceBytes);
   expect(await sha256(before.blobs.get(sourceHash)!)).toBe(sourceHash);
@@ -218,11 +230,11 @@ test('inspection worker startup failure gives safe guidance and leaves the proje
   await expect(panel.getByRole('status')).not.toContainText('PRIVATE-WORKER');
   await expect(panel.getByRole('status')).not.toContainText('/private/');
   await expect(panel.getByText('検査版:', { exact: false })).toHaveCount(0);
-  const after = await backup();
+  const after = await backupCurrent(page);
   expect(after.project).toEqual(before.project);
   expect([...after.blobs]).toEqual([...before.blobs]);
   expect(after.blobs.get(sourceHash)).toEqual(sourceBytes);
   await panel.getByRole('button', { name: '現在の版を検査', exact: true }).click();
   await expect(panel.getByText('検査結果を取得しました。', { exact: true })).toBeVisible();
-  expect((await backup()).project).toEqual(before.project);
+  expect((await backupCurrent(page)).project).toEqual(before.project);
 });
