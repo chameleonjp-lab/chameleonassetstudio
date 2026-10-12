@@ -400,6 +400,9 @@ test('failed project save refuses thumbnail creation without discarding unsaved 
       hasText: '保存に失敗 · 未保存の変更をこのタブに保持中',
     }),
   ).toBeVisible();
+  await expect(page.getByRole('alert').filter({ hasText: '保存に失敗しました。' })).toContainText(
+    '保存に失敗しました。タブを閉じずに再試行するか、現在の内容をバックアップしてください。',
+  );
   const before = await backupCurrent(page);
   await page.getByRole('button', { name: '保存してサムネイルを作成', exact: true }).click();
   await expect(
