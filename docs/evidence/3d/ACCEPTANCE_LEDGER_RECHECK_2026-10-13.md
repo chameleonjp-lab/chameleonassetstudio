@@ -51,3 +51,12 @@ Tested application source commit: `b38adb721facafa910d4d65acfb450de7246328c`（D
 同じtreeのfresh app/H3 buildとconsumer buildはpass。build後の`npx vitest run tools/build/thirdPartyNotices.test.ts --reporter=dot`は**31/31 passed**で、production runtime notice、Three MIT notice、独立consumer Babylon noticesの配布byte比較を含む。大chunk advisoryは既存。未導入`vite-node`を新規installせず、repo内checkerだけを使用した。
 
 SEC-04は`implemented-candidate / partial`を維持する。確認範囲はlocal production previewと生成distribution artifactであり、公開サイト/CDN/cache、広範なbrowser regression、法的・商用利用適合判断は含まない。Remote CIは照会・監視していない。詳細は[NATIVE_DISTRIBUTION_NOTICES.md](NATIVE_DISTRIBUTION_NOTICES.md)を参照。
+
+
+## SEC-07 shared runtime log privacy follow-up — 2026-10-13 JST
+
+Tested source commit: `0d4d6787d11dd34d1bfcc4d387ab386d959991a2` (child of Draft PR #411 head `1ae6a7673e78d74e4bc5df95df190a7197af4853`). A source audit found one shared 2D image-editor recovery-point failure path that passed the raw storage exception to `console.warn`. The path now emits only the fixed category `復旧点の保存に失敗しました`; a regression test supplies token/path markers and asserts the console receives exactly that fixed string, not the exception object. A post-change scan found only this sanitized runtime console sink under product `src`.
+
+Local results: targeted regression **1/1**; full unit suite **187 files / 3,554 tests**; lint **0 errors / one pre-existing warning**; format check, app/H3 build, consumer build and CI-scope **8/8** passed. The two builds retain their existing large-chunk advisory. Remote CI was not queried or monitored.
+
+This follow-up addresses one concrete shared-product logging sink; it does not complete the 3D product/browser acceptance boundary. `SEC-07` remains `implemented-candidate / partial`. The specific browser failure path, clipboard, assistive technology, physical devices, and deployed runtime were not exercised. See [SEC07_RUNTIME_LOG_PRIVACY_2026-10-13.md](SEC07_RUNTIME_LOG_PRIVACY_2026-10-13.md) for evidence details.
