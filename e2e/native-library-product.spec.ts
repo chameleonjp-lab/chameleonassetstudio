@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { assetIoFixture, assetIoPng } from '../src/core3d/fixtures/assetIo';
 import { exportBackup, importBackup } from '../src/core3d/backup/backup';
@@ -46,6 +46,28 @@ async function backupCurrent(page: Page) {
   return importBackup(new Uint8Array(await readFile((await (await pending).path())!)));
 }
 
+async function expectAccessibleConfirmation(
+  library: Locator,
+  heading: string,
+  target: string,
+  details: string,
+) {
+  const confirmation = library.getByRole('region', { name: heading, exact: true });
+  await expect(confirmation).toHaveAttribute(
+    'aria-labelledby',
+    'editor3d-library-confirmation-heading',
+  );
+  await expect(confirmation).toHaveAttribute(
+    'aria-describedby',
+    'editor3d-library-confirmation-target editor3d-library-confirmation-details',
+  );
+  await expect(confirmation.locator('#editor3d-library-confirmation-target')).toContainText(target);
+  await expect(confirmation.locator('#editor3d-library-confirmation-details')).toContainText(
+    details,
+  );
+  return confirmation;
+}
+
 test('closed-project trash requires confirmation, preserves original bytes and restores the same identity', async ({
   page,
 }, info) => {
@@ -60,6 +82,12 @@ test('closed-project trash requires confirmation, preserves original bytes and r
   await library
     .getByRole('button', { name: 'ごみ箱移動を確認: Library original', exact: true })
     .click();
+  await expectAccessibleConfirmation(
+    library,
+    'ごみ箱へ移動しますか',
+    'Library original',
+    '自動消去の期限はありません。',
+  );
   await expect(library.getByText('自動消去の期限はありません。', { exact: false })).toBeVisible();
   await library.getByRole('button', { name: 'この操作を取り消す', exact: true }).click();
   await expect(
@@ -75,6 +103,12 @@ test('closed-project trash requires confirmation, preserves original bytes and r
   await library
     .getByRole('button', { name: 'ごみ箱復元を確認: Library original', exact: true })
     .click();
+  await expectAccessibleConfirmation(
+    library,
+    'ごみ箱から戻しますか',
+    'Library original',
+    'ごみ箱から戻して復元できます。',
+  );
   await library.getByRole('button', { name: '確認した1作品をごみ箱から戻す', exact: true }).click();
   await page.getByRole('button', { name: /Library original revision/ }).click();
   const restored = await backupCurrent(page);
@@ -98,7 +132,12 @@ test('library confirmation cancel returns keyboard focus to its trigger', async 
   await trigger.focus();
   await page.keyboard.press('Enter');
 
-  const confirmation = library.getByRole('region', { name: '保存作品の操作確認', exact: true });
+  const confirmation = await expectAccessibleConfirmation(
+    library,
+    'ごみ箱へ移動しますか',
+    'Library original',
+    '自動消去の期限はありません。',
+  );
   const confirm = confirmation.getByRole('button', {
     name: '確認した1作品をごみ箱へ移動',
     exact: true,
@@ -133,7 +172,12 @@ test('recovery-copy confirmation cancellation returns keyboard focus to its cand
   await trigger.focus();
   await page.keyboard.press('Enter');
 
-  const confirmation = library.getByRole('region', { name: '保存作品の操作確認', exact: true });
+  const confirmation = await expectAccessibleConfirmation(
+    library,
+    '別コピーとして復旧しますか',
+    'Library latest',
+    '新しいコピーの容量が必要です。',
+  );
   const confirm = confirmation.getByRole('button', {
     name: '確認した版を別コピーで復旧',
     exact: true,
