@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
-import { strFromU8, unzipSync } from 'fflate';
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { assetIoPng } from '../src/core3d/fixtures/assetIo';
 import { nativeBox } from '../src/core3d/fixtures/nativeBox';
 import { exportBackup, importBackup } from '../src/core3d/backup/backup';
@@ -101,4 +101,55 @@ test('product restore upgrades a 0.1.0 backup to a detached 0.3.0 copy and retai
   expect(recoveryArchives).toEqual([
     { id: restored.project.id, hash: await sha256(archive), bytes: Array.from(archive) },
   ]);
+});
+
+test('EXP-10: a valid 2D .casproj is refused by 3D restore without replacing a saved project', async ({
+  page,
+}) => {
+  const [projectText, assetJson, imageBase64] = await Promise.all([
+    readFile('src/core/storage/__fixtures__/v0.1.0-project.json', 'utf-8'),
+    readFile('src/core/storage/__fixtures__/v0.1.0-asset.json', 'utf-8'),
+    readFile('src/core/storage/__fixtures__/v0.1.0-image-8x8.png.base64.txt', 'utf-8'),
+  ]);
+  const asset = JSON.parse(assetJson) as { id: string; textures: Array<{ path: string }> };
+  const twoDArchive = zipSync(
+    {
+      'project.json': strToU8(projectText),
+      [`assets/${asset.id}/asset.json`]: strToU8(assetJson),
+      [`assets/${asset.id}/${asset.textures[0].path}`]: Buffer.from(imageBase64.trim(), 'base64'),
+    },
+    { level: 0 },
+  );
+
+  const preserved = nativeBox('exp10-preserved-project');
+  preserved.name = 'EXP-10 preserved 3D project';
+  const validBackup = await exportBackup(preserved, new Map());
+  expect((await importBackup(validBackup)).project).toEqual(preserved);
+
+  await page.goto('/3d/');
+  await page.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+    name: 'preserved-project.cas3dproj',
+    mimeType: 'application/zip',
+    buffer: Buffer.from(validBackup),
+  });
+  await expect(page.getByRole('heading', { name: preserved.name, exact: true })).toBeVisible();
+  await page.reload();
+
+  const library = page.getByRole('complementary', { name: '3Dプロジェクト一覧と復元' });
+  const preservedProject = library.getByText(preserved.name, { exact: true });
+  await expect(library).toBeVisible();
+  await expect(preservedProject).toBeVisible();
+  await expect(importBackup(twoDArchive)).rejects.toThrow('Unsupported backup path');
+
+  await page.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+    name: 'legacy-2d-casproj-as-native.cas3dproj',
+    mimeType: 'application/zip',
+    buffer: Buffer.from(twoDArchive),
+  });
+  const alert = page.locator('.editor3d-alert');
+  await expect(alert).toContainText('編集用バックアップの形式を確認してください');
+  await expect(alert).toContainText('対応する.cas3dprojファイルを選び直してください');
+  await expect(alert).toContainText('[EDIT_STORAGE_BACKUP]');
+  await expect(preservedProject).toBeVisible();
+  await expect(library.getByText('旧形式フィクスチャ', { exact: true })).toHaveCount(0);
 });
