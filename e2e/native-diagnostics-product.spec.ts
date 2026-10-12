@@ -204,6 +204,70 @@ test('a failed initial 3D shell chunk leaves local diagnostics and a separate wo
   ).toBeVisible();
 });
 
+test('AC-13 recovers the explicitly saved project after the reloaded editor chunk returns 404', async ({
+  page,
+}) => {
+  const missingShellChunks: string[] = [];
+  let failEditorShell = false;
+  await page.route('**/*Editor3DShell*', async (route) => {
+    if (!failEditorShell) {
+      await route.continue();
+      return;
+    }
+    missingShellChunks.push(route.request().url());
+    await route.fulfill({
+      status: 404,
+      contentType: 'text/javascript',
+      body: '/* stale document references an unavailable editor chunk */',
+    });
+  });
+  await page.route('**/native-build-info.json', (route) =>
+    route.fulfill({
+      json: {
+        format: 'chameleon-build-info-1',
+        appVersion: '0.2.0',
+        sourceRevision: 'f'.repeat(40),
+        sourceDirty: false,
+        nativeSchemaVersion: '0.4.0',
+      },
+    }),
+  );
+
+  await page.goto('/3d/');
+  const initialName = 'AC-13 before update';
+  await page.getByLabel('新しいプロジェクト名', { exact: true }).fill(initialName);
+  await page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true }).click();
+  await expect(page.getByRole('heading', { name: initialName, exact: true })).toBeVisible();
+
+  const panel = page.getByLabel('3Dの版と更新', { exact: true });
+  await panel.locator('summary').click();
+  await panel.getByRole('button', { name: '配信版を確認', exact: true }).click();
+  await expect(panel.getByRole('status')).toContainText('別の版');
+
+  const updatedName = 'AC-13 saved before chunk 404';
+  await page.getByLabel('プロジェクト名', { exact: true }).fill(updatedName);
+  await expect(page.locator('.editor3d-save-status')).toContainText('未保存の変更あり');
+  failEditorShell = true;
+  await panel.getByRole('button', { name: '現在の内容を保存して再読み込み', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: '3Dを表示できませんでした', exact: true }),
+  ).toBeVisible();
+  expect(missingShellChunks.length).toBeGreaterThan(0);
+  await expect(page.getByRole('alert')).toContainText('保存済みデータは削除していません');
+
+  await page.unroute('**/*Editor3DShell*');
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '新しく作る', exact: true })).toBeVisible();
+  const projectEntry = page
+    .getByRole('region', { name: '保存したプロジェクト', exact: true })
+    .locator('li')
+    .filter({ hasText: updatedName });
+  await expect(projectEntry).toContainText(updatedName);
+  await projectEntry.getByRole('button').first().click();
+  await expect(page.getByRole('heading', { name: updatedName, exact: true })).toBeVisible();
+  await expect(page.locator('.editor3d-save-status')).toContainText('保存済み · revision');
+});
+
 test('a stalled explicit version check can be cancelled and the served metadata can be retried', async ({
   page,
 }) => {
