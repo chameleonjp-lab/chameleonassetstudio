@@ -454,6 +454,119 @@ test('imports actual mixed-skin textured animation bytes in an independent conte
     await fresh.close();
   }
 });
+test('final package preserves multiple rights notes as unverified paired provenance', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const { exportBackup } = await import('../src/core3d/backup/backup');
+  const ancestor = assetIoFixture();
+  const originalA = new TextEncoder().encode('synthetic original source A');
+  const originalB = new TextEncoder().encode('synthetic original source B');
+  const hashA = await sha256(originalA);
+  const hashB = await sha256(originalB);
+  ancestor.sources = [
+    {
+      id: 'prior-source-a',
+      blobId: hashA,
+      mimeType: 'text/plain',
+      rights: { declared: 'User-declared source A terms', embedded: 'Embedded source A notice' },
+    },
+    {
+      id: 'prior-source-b',
+      blobId: hashB,
+      mimeType: 'text/plain',
+      rights: { declared: 'User-declared source B terms', embedded: 'Embedded source B notice' },
+    },
+  ];
+  ancestor.blobIds = [hashA, hashB];
+  const ancestorBlobs = new Map([
+    [hashA, originalA],
+    [hashB, originalB],
+  ]);
+  const first = await exportGlb(captureAssetSnapshot(ancestor, (id) => ancestorBlobs.get(id)!));
+  const priorPackage = await buildAssetPackage(
+    ancestor,
+    first.bytes,
+    first.warnings,
+    ancestorBlobs,
+  );
+  const modelHash = await sha256(priorPackage.glb);
+  const sidecarHash = await sha256(priorPackage.sidecar);
+  const current = structuredClone(ancestor);
+  current.name = 'EXP-06 provenance evidence';
+  current.sources = [
+    {
+      id: 'paired-model-source',
+      blobId: modelHash,
+      mimeType: 'model/gltf-binary',
+      rights: { declared: 'User-declared reimported model terms', embedded: '' },
+    },
+    {
+      id: 'paired-sidecar-source',
+      blobId: sidecarHash,
+      mimeType: 'application/json',
+      rights: {
+        declared: 'User-declared paired note terms',
+        embedded: 'Attribution text has not been verified',
+      },
+      derivedFrom: {
+        sourceId: 'paired-model-source',
+        hash: modelHash,
+        operation: 'paired-sidecar',
+        version: '1.0.0',
+        settings: 'paired export fixture',
+      },
+    },
+  ];
+  current.blobIds = [modelHash, sidecarHash];
+  const backup = await exportBackup(
+    current,
+    new Map([
+      [modelHash, priorPackage.glb],
+      [sidecarHash, priorPackage.sidecar],
+    ]),
+  );
+
+  await page.goto('/3d/');
+  await page.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+    name: 'multi-source-provenance.cas3dproj',
+    mimeType: 'application/zip',
+    buffer: Buffer.from(backup),
+  });
+  await expect(page.getByRole('heading', { name: current.name, exact: true })).toBeVisible();
+  const panel = await openIo(page);
+  await panel
+    .getByLabel('固定revisionの出力範囲と変換・損失の注意を確認しました', { exact: true })
+    .check();
+  await panel.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }).click();
+  await expect(panel.getByRole('button', { name: 'ZIPを保存', exact: true })).toBeVisible();
+
+  const zip = unzipSync(await download(page, 'ZIPを保存'));
+  const sidecar = JSON.parse(new TextDecoder().decode(zip['game.json']));
+  const manifest = JSON.parse(new TextDecoder().decode(zip['manifest.json']));
+  expect(sidecar.provenance.claims).toBe('user-declared-not-verified');
+  expect(sidecar.provenance.sources).toEqual(current.sources);
+  expect(sidecar.provenance.ancestors).toEqual([{ hash: sidecarHash, sources: ancestor.sources }]);
+  expect(sidecar.provenance.ancestors[0].sources[0].rights.declared).toBe(
+    'User-declared source A terms',
+  );
+  expect(sidecar.provenance.ancestors[0].sources[1].rights.declared).toBe(
+    'User-declared source B terms',
+  );
+  expect(manifest.format).toBe('chameleon-asset-package-3d');
+  expect(manifest.files).toEqual([
+    {
+      path: 'model.glb',
+      sha256: await sha256(zip['model.glb']),
+      bytes: zip['model.glb'].length,
+    },
+    {
+      path: 'game.json',
+      sha256: await sha256(zip['game.json']),
+      bytes: zip['game.json'].length,
+    },
+  ]);
+});
 test('phone game numeric editing supports IME and cancels a worker without changing the project', async ({
   browser,
   baseURL,
