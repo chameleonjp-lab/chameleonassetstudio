@@ -182,3 +182,45 @@ test('saved source-backed backup succeeds under total write quota and leaves eve
   );
   expect(await stored()).toBe(before);
 });
+
+test('reports unavailable storage before project creation and recovers after explicit reconnect', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const originalOpen = IDBFactory.prototype.open;
+    let denied = true;
+    IDBFactory.prototype.open = function (...args: Parameters<IDBFactory['open']>) {
+      if (denied) throw new DOMException('Injected storage access denial', 'SecurityError');
+      return originalOpen.apply(this, args);
+    };
+    Object.defineProperty(globalThis, '__restoreStorageOpenForTest', {
+      configurable: true,
+      value: () => {
+        denied = false;
+      },
+    });
+  });
+
+  await page.goto('/3d/');
+  const alert = page.getByRole('alert');
+  await expect(alert).toContainText('ブラウザーの保存領域に接続できません。');
+  await expect(alert).toContainText('編集用バックアップ');
+  await expect(alert).toContainText('[EDIT_STORAGE_UNAVAILABLE]');
+  await expect(page.getByText('3Dの保存領域を開けませんでした。', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true }),
+  ).toHaveCount(0);
+
+  await page.evaluate(() => {
+    const restore = (globalThis as unknown as Record<string, () => void>)[
+      '__restoreStorageOpenForTest'
+    ];
+    restore();
+  });
+  await page.getByRole('button', { name: '保存領域を再接続', exact: true }).click();
+  const create = page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true });
+  await expect(create).toBeVisible();
+  await page.getByLabel('新しいプロジェクト名', { exact: true }).fill('Storage access restored');
+  await create.click();
+  await expect(page.getByRole('button', { name: '箱を追加', exact: true })).toBeVisible();
+});
