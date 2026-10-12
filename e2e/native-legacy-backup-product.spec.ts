@@ -153,3 +153,48 @@ test('EXP-10: a valid 2D .casproj is refused by 3D restore without replacing a s
   await expect(preservedProject).toBeVisible();
   await expect(library.getByText('旧形式フィクスチャ', { exact: true })).toHaveCount(0);
 });
+
+test('IMP-03: compressed native backup entries are refused without changing the saved project', async ({
+  page,
+}) => {
+  const project = nativeBox('imp03-compressed-backup');
+  project.name = 'IMP-03 preserved 3D project';
+  const storedBackup = await exportBackup(project, new Map());
+  expect((await importBackup(storedBackup)).project).toEqual(project);
+
+  const compressedBackup = zipSync(unzipSync(storedBackup), { level: 6 });
+  const compressionMethods: number[] = [];
+  unzipSync(compressedBackup, {
+    filter: (file) => {
+      compressionMethods.push(file.compression);
+      return false;
+    },
+  });
+  expect(compressionMethods.some((method) => method !== 0)).toBe(true);
+  await expect(importBackup(compressedBackup)).rejects.toThrow(
+    'This backup profile requires stored ZIP entries',
+  );
+
+  await page.goto('/3d/');
+  await page.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+    name: 'imp03-preserved.cas3dproj',
+    mimeType: 'application/zip',
+    buffer: Buffer.from(storedBackup),
+  });
+  await expect(page.getByRole('heading', { name: project.name, exact: true })).toBeVisible();
+  await page.reload();
+
+  const library = page.getByRole('complementary', { name: '3Dプロジェクト一覧と復元' });
+  const preservedProject = library.getByText(project.name, { exact: true });
+  await expect(library).toBeVisible();
+  await expect(preservedProject).toBeVisible();
+  await page.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+    name: 'deflated-native-backup.cas3dproj',
+    mimeType: 'application/zip',
+    buffer: Buffer.from(compressedBackup),
+  });
+  const alert = page.locator('.editor3d-alert');
+  await expect(alert).toContainText('編集用バックアップの形式を確認してください');
+  await expect(alert).toContainText('[EDIT_STORAGE_BACKUP]');
+  await expect(preservedProject).toBeVisible();
+});

@@ -588,7 +588,9 @@ export function describeNativeEditingFailure(
   }
   if (
     target === 'storage' &&
-    /^(?:Unsupported backup path|Unsupported backup format\/version|Incomplete backup)$/.test(text)
+    /^(?:Unsupported backup path|Unsupported backup format\/version|Incomplete backup|This backup profile requires stored ZIP entries)$/.test(
+      text,
+    )
   )
     return result('EDIT_STORAGE_BACKUP');
   if (/^Thumbnail cache is full;/.test(text)) return result('EDIT_THUMBNAIL_LIMIT');
