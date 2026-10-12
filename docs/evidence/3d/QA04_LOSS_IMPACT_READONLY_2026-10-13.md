@@ -8,7 +8,7 @@ The product E2E downloads and imports the saved project immediately before and a
 
 ## Local verification
 
-The focused warning test passed 1/1 in Chromium and 1/1 in WebKit-critical. The complete `e2e/native-quality-product.spec.ts` passed 6/6 in Chromium and 6/6 in WebKit-critical. The assertions cover the exact impact/remedy text and byte-level backup equality around inspection.
+The focused warning test passed 1/1 in Chromium and 1/1 in WebKit-critical. The complete `e2e/native-quality-product.spec.ts` passed 6/6 in Chromium and 6/6 in WebKit-critical. The assertions cover the exact impact/remedy text and equality of the exported project and blob map around inspection. This warning fixture contains no stored image blob, so it does not independently establish source-image byte preservation.
 
 ## Acceptance limits
 
