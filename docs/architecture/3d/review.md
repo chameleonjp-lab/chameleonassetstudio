@@ -17,6 +17,12 @@
 
 検査結果・対象範囲・未確認は[今回の証拠](../../evidence/3d/NATIVE_ARCHITECTURE_AUDIT.md)へ記録する。静的auditの自己検査と、別担当によるread-onlyレビューを混同しない。node/edge/pathが整合しても、Mermaidの実描画やmobileの可読性を合格にしない。
 
+## 2026-10-13 local candidate link-anchor follow-up
+
+`8178bf5`で既存のread-only checkerに、提供されたMarkdown文書のlocal ATX見出しanchor検証を追加。READMEとtraceabilityから参照する6 fragmentすべてが対象headingと一致し、7文書の407 link target、16 Mermaid図も検査済み。duplicate heading、Unicode slug、fenced code内の見出し、未対応setext構文を回帰testで区別する。製品runtimeは変更していない。
+
+checkerは[実装](../../../tools/build/nativeArchitecture.ts)と[regression](../../../tools/build/nativeArchitecture.test.ts)を参照。現在の検査件数、結果、ATX以外の見出し・query・外部URL・full Markdown/HTML grammar・公式Mermaid renderingの未確認境界は[追補証拠](../../evidence/3d/NATIVE_ARCHITECTURE_AUDIT.md)に記録する。DOC-05は静的候補を前進させるが、全形式を合格扱いしない。
+
 ## 以下は初期レビューの履歴
 
 基準main `eabbeff3062c24a0d72d23df63d45433274af717`、要件169ID、計画PR #295。対象は [索引](README.md) 配下の文書と3つの既存入口リンク。runtime・依存・schema・CI設定は変更しない。
