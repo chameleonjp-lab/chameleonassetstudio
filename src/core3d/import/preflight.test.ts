@@ -168,6 +168,9 @@ it('rejects URI, required extensions, unsafe accessor ranges and truncated chunk
       f.json.buffers![0].uri = 'https://example.invalid/private';
     },
     (f: ReturnType<typeof preflightGlb>) => {
+      f.json.images = [{ uri: 'https://example.invalid/private.png', mimeType: 'image/png' }];
+    },
+    (f: ReturnType<typeof preflightGlb>) => {
       f.json.extensionsRequired = ['UNKNOWN'];
     },
     (f: ReturnType<typeof preflightGlb>) => {
