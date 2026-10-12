@@ -751,30 +751,38 @@ test('mismatched sidecar and unknown required extension reject while the canonic
   );
 });
 
-test('rejects external GLB buffer and image URIs without requests and preserves the current project', async ({
+test('IMP-05 rejects external, loopback and internal GLB resource URIs without requests', async ({
   page,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   await setup(page);
   const before = await importBackup(await download(page, '現在の内容をバックアップ')),
     panel = await openIo(page),
     { bytes } = await exportGlb(captureAssetSnapshot(assetIoFixture(), () => new Uint8Array()));
-  const externalUriPattern = /^https:\/\/external-uri-marker\.invalid\//;
-  let externalRequests = 0;
-  const rejectExternalRequest = async (route: Route) => {
-    externalRequests++;
+  const uriProbePattern = /\/__imp05-uri-probe__\//;
+  const attemptedUriRequests: string[] = [];
+  const rejectUriProbeRequest = async (route: Route) => {
+    attemptedUriRequests.push(route.request().url());
     await route.abort();
   };
   const context = page.context();
-  await context.route(externalUriPattern, rejectExternalRequest);
+  const cases = [
+    { id: 'external-buffer', kind: 'buffer', origin: 'https://external-uri-marker.invalid' },
+    { id: 'external-image', kind: 'image', origin: 'https://external-uri-marker.invalid' },
+    { id: 'localhost-buffer', kind: 'buffer', origin: 'http://localhost:4177' },
+    { id: 'loopback-image', kind: 'image', origin: 'http://127.0.0.1:4177' },
+    { id: 'private-buffer', kind: 'buffer', origin: 'http://192.168.1.50:4177' },
+    { id: 'link-local-image', kind: 'image', origin: 'http://169.254.169.254' },
+  ] as const;
+  await context.route(uriProbePattern, rejectUriProbeRequest);
   try {
-    for (const kind of ['buffer', 'image'] as const) {
+    for (const { id, kind, origin } of cases) {
       const candidate = preflightGlb(bytes),
-        externalUri = `https://external-uri-marker.invalid/${kind}.dat`;
-      if (kind === 'buffer') candidate.json.buffers![0].uri = externalUri;
-      else candidate.json.images = [{ uri: externalUri, mimeType: 'image/png' }];
+        uri = `${origin}/__imp05-uri-probe__/${id}.dat`;
+      if (kind === 'buffer') candidate.json.buffers![0].uri = uri;
+      else candidate.json.images = [{ uri, mimeType: 'image/png' }];
       await panel.getByLabel('読み込むGLB（32MiBまで）', { exact: true }).setInputFiles({
-        name: `${kind}-uri.glb`,
+        name: `${id}.glb`,
         mimeType: 'model/gltf-binary',
         buffer: Buffer.from(encodeGlb(candidate.json, candidate.binary)),
       });
@@ -785,17 +793,17 @@ test('rejects external GLB buffer and image URIs without requests and preserves 
       await expect(alert).toContainText(
         kind === 'buffer' ? '[IO_EXTERNAL_REFERENCE]' : '[IO_IMAGE]',
       );
-      await expect(alert).not.toContainText('external-uri-marker.invalid');
+      await expect(alert).not.toContainText(new URL(uri).host);
       if (kind === 'buffer')
         await expect(alert).toContainText('外部URLの取得や安全制限の解除は行いません。');
-      expect(
-        (await importBackup(await download(page, '現在の内容をバックアップ'))).project,
-      ).toEqual(before.project);
+      const after = await importBackup(await download(page, '現在の内容をバックアップ'));
+      expect(after.project).toEqual(before.project);
+      expect(after.blobs).toEqual(before.blobs);
       await expect(page.getByRole('button', { name: /^Imported GLB revision/ })).toHaveCount(0);
     }
-    expect(externalRequests).toBe(0);
+    expect(attemptedUriRequests).toEqual([]);
   } finally {
-    await context.unroute(externalUriPattern, rejectExternalRequest);
+    await context.unroute(uriProbePattern, rejectUriProbeRequest);
   }
 });
 
