@@ -832,6 +832,56 @@ test('requires current-revision export review before generation and clears ackno
   await visual(page, 'export-prereview');
 });
 
+test('pre-export review discloses an omitted native vertex and backup retains it', async ({
+  page,
+}) => {
+  const { nativeBox } = await import('../src/core3d/fixtures/nativeBox');
+  const { exportBackup } = await import('../src/core3d/backup/backup');
+  const project = nativeBox('unused-vertex-export-review');
+  const unused = { id: 'unused-export-vertex', position: [4, 5, 6] as [number, number, number] };
+  project.meshes[0].vertices.push(unused);
+  const archive = await exportBackup(project, new Map());
+
+  const workers: string[] = [];
+  page.on('worker', (worker) => {
+    if (worker.url().includes('assetIo')) workers.push(worker.url());
+  });
+  await page.goto('/3d/');
+  await page.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+    name: 'unused-vertex.cas3dproj',
+    mimeType: 'application/zip',
+    buffer: Buffer.from(archive),
+  });
+  await expect(page.getByRole('heading', { name: 'Native box', exact: true })).toBeVisible();
+  const panel = await openIo(page);
+  const review = panel.getByRole('region', { name: '出力前の範囲と変換・損失の確認', exact: true });
+  await expect(review).toContainText(
+    '面から使われていない頂点は編集後GLBのgeometryへ出力されません。',
+  );
+  await expect(review).toContainText(
+    '未使用頂点を含む編集構造はnative backupに保持します。game.jsonにはgeometryを保持しません。',
+  );
+
+  const create = panel.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true });
+  const consent = panel.getByLabel('固定revisionの出力範囲と変換・損失の注意を確認しました', {
+    exact: true,
+  });
+  await expect(consent).not.toBeChecked();
+  await expect(create).toBeDisabled();
+  expect(workers).toEqual([]);
+
+  await consent.check();
+  await create.click();
+  await expect(panel.getByRole('button', { name: 'GLBを保存', exact: true })).toBeVisible();
+  expect(workers.length).toBeGreaterThan(0);
+  const glb = preflightGlb(await download(page, 'GLBを保存'));
+  const positionAccessor = glb.json.meshes![0].primitives[0].attributes.POSITION;
+  expect(glb.read(positionAccessor)).not.toContainEqual(unused.position);
+
+  const backup = await importBackup(await download(page, '現在の内容をバックアップ'));
+  expect(backup.project.meshes[0].vertices).toContainEqual(unused);
+});
+
 test('successful unsaved import previews cancel on close, Escape, file replacement and canonical changes', async ({
   page,
 }) => {
