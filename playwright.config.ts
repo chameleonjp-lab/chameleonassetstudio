@@ -35,6 +35,7 @@ export default defineConfig({
         'studio-entries.spec.ts',
         'native-viewport-evaluation.spec.ts',
         'native-performance-evaluation.spec.ts',
+        'native-workspace-skip-link.spec.ts',
         'native-transform-evaluation.spec.ts',
         'native-panel.spec.ts',
         'native-viewport-product.spec.ts',

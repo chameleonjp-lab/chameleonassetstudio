@@ -623,7 +623,7 @@ function Editor3DContent({
           </a>
         </nav>
       </header>
-      <main id="editor3d-main" className="editor3d-main">
+      <main id="editor3d-main" className="editor3d-main" tabIndex={-1}>
         <section className="editor3d-intro" aria-labelledby="editor3d-preparation">
           <span className="editor3d-badge">3D制作・開発版</span>
           <h2 id="editor3d-preparation">まずは、プロジェクトの保存と再開から</h2>
