@@ -87,3 +87,10 @@ The assembly panel now separates its stable list instructions from a polite, ato
 The focused Chromium and WebKit-critical run passed 2/2 checks per browser project, including zero/single/multiple selection, bounded announcement text for four selected nodes, and active-node changes. The complete `native-viewport-product.spec.ts` passed 17/17 in Chromium and 17/17 in WebKit-critical. Formatting, lint (zero errors; one pre-existing warning in `NativeViewportPanel.tsx:195`), production build, all 3,530 unit tests, and `npm run test:ci-scope` (8/8) passed.
 
 This verifies DOM/status text changes in headless desktop browsers only. It does not establish actual screen-reader speech, VoiceOver/TalkBack behavior, physical keyboard/device/touch acceptance, or complete scene/geometry narration. UX-05 and 3D-STAGE4-04 remain partial/open; no assistive-technology or physical-device acceptance is claimed.
+
+
+## Node visibility and edit-lock status follow-up — 2026-10-12
+
+The 3D authoring panel's visible/hidden and edit-lock toggles now update a polite, atomic status with the affected node name/ID and the resulting setting. The visibility-on message clarifies that an ancestor's hidden setting may still keep the node off-canvas. A keyboard-only product E2E checks all four transitions, the corresponding visible state text, and focus remaining on the operated control. No project or backup schema changed.
+
+This verifies live-region semantics and DOM text transitions in headless desktop browsers only. It does not establish actual screen-reader speech, VoiceOver/TalkBack behavior, contrast, real browser/OS zoom, or physical-device acceptance; UX-05 and 3D-STAGE4-04 remain partial/open.
