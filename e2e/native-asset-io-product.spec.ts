@@ -551,6 +551,54 @@ test('mismatched sidecar and unknown required extension reject while the canonic
   );
 });
 
+test('rejects external GLB buffer and image URIs without requests and preserves the current project', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await setup(page);
+  const before = await importBackup(await download(page, '現在の内容をバックアップ')),
+    panel = await openIo(page),
+    { bytes } = await exportGlb(captureAssetSnapshot(assetIoFixture(), () => new Uint8Array()));
+  const externalUriPattern = /^https:\/\/external-uri-marker\.invalid\//;
+  let externalRequests = 0;
+  const rejectExternalRequest = async (route: Route) => {
+    externalRequests++;
+    await route.abort();
+  };
+  const context = page.context();
+  await context.route(externalUriPattern, rejectExternalRequest);
+  try {
+    for (const kind of ['buffer', 'image'] as const) {
+      const candidate = preflightGlb(bytes),
+        externalUri = `https://external-uri-marker.invalid/${kind}.dat`;
+      if (kind === 'buffer') candidate.json.buffers![0].uri = externalUri;
+      else candidate.json.images = [{ uri: externalUri, mimeType: 'image/png' }];
+      await panel.getByLabel('読み込むGLB（32MiBまで）', { exact: true }).setInputFiles({
+        name: `${kind}-uri.glb`,
+        mimeType: 'model/gltf-binary',
+        buffer: Buffer.from(encodeGlb(candidate.json, candidate.binary)),
+      });
+      await panel
+        .getByRole('button', { name: 'GLBを検査して保存前に確認する', exact: true })
+        .click();
+      const alert = panel.getByRole('alert');
+      await expect(alert).toContainText(
+        kind === 'buffer' ? '[IO_EXTERNAL_REFERENCE]' : '[IO_IMAGE]',
+      );
+      await expect(alert).not.toContainText('external-uri-marker.invalid');
+      if (kind === 'buffer')
+        await expect(alert).toContainText('外部URLの取得や安全制限の解除は行いません。');
+      expect(
+        (await importBackup(await download(page, '現在の内容をバックアップ'))).project,
+      ).toEqual(before.project);
+      await expect(page.getByRole('button', { name: /^Imported GLB revision/ })).toHaveCount(0);
+    }
+    expect(externalRequests).toBe(0);
+  } finally {
+    await context.unroute(externalUriPattern, rejectExternalRequest);
+  }
+});
+
 test('stale import and outer-panel close discard in-flight workers without publishing their copies', async ({
   page,
 }) => {
