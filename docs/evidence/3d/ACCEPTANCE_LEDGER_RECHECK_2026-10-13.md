@@ -42,3 +42,12 @@
 ### 台帳の読み替え
 
 `SEC-02`のローカル製品DOM injection / prototype negative / diagnostics経路という残条件に対する合成入力の証拠を追加した。実装状況は`implemented-candidate`、検査状態は`partial`を維持する。公開配信/CDN、実素材、実端末・支援技術、全runtime/engineは未検証。Remote CIは照会・監視していない。詳しいfixtureと観測境界は[SEC02_PRODUCT_INERT_JSON_2026-10-13.md](SEC02_PRODUCT_INERT_JSON_2026-10-13.md)を参照。
+
+
+## SEC-04 配布NOTICE browser follow-up — 2026-10-13 JST
+
+Tested application source commit: `b38adb721facafa910d4d65acfb450de7246328c`（Draft PR #410 head）。既存のproduction-preview test `bundled dependency notices open only on request and preserve their complete static text`をChromium/WebKitで実行し、**2/2 passed**。noticeリンクを明示的に選ぶ前は`runtime-notices.txt`のrequestがなく、選択後のpopupは同一origin・固定path・queryなし、配信bodyは`public/licenses/runtime-notices.txt`とbyte-for-byte一致した。
+
+同じtreeのfresh app/H3 buildとconsumer buildはpass。build後の`npx vitest run tools/build/thirdPartyNotices.test.ts --reporter=dot`は**31/31 passed**で、production runtime notice、Three MIT notice、独立consumer Babylon noticesの配布byte比較を含む。大chunk advisoryは既存。未導入`vite-node`を新規installせず、repo内checkerだけを使用した。
+
+SEC-04は`implemented-candidate / partial`を維持する。確認範囲はlocal production previewと生成distribution artifactであり、公開サイト/CDN/cache、広範なbrowser regression、法的・商用利用適合判断は含まない。Remote CIは照会・監視していない。詳細は[NATIVE_DISTRIBUTION_NOTICES.md](NATIVE_DISTRIBUTION_NOTICES.md)を参照。
