@@ -5,6 +5,7 @@ import { consumerFixture, type ConsumerFixtureId } from '../src/core3d/fixtures/
 import { captureAssetSnapshot, sha256 } from '../src/core3d/export/snapshot';
 import { exportGlb } from '../src/adapters3d/gltf/export';
 import { buildAssetPackage } from '../src/core3d/export/mapping';
+import { preflightGlb } from '../src/core3d/import/preflight';
 import { parseConsumerGlb } from '../tools/3d-consumer/sidecar';
 async function delivery(id: ConsumerFixtureId) {
   const { project, blobs } = await consumerFixture(id);
@@ -1025,6 +1026,183 @@ test('product-authored rigid attachment, animated anchor, and mixed skin follow 
       contentType: 'image/png',
     });
   } finally {
+    await consumerContext.close();
+  }
+});
+
+test('DATA-03 product-derived texture preserves original bytes and lineage through independent backup, GLB export, and consumer', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(180000);
+  const { assetIoPng } = await import('../src/core3d/fixtures/assetIo');
+  const { importBackup } = await import('../src/core3d/backup/backup');
+  const download = async (target: Page, name: string) => {
+    const event = target.waitForEvent('download');
+    await target.getByRole('button', { name, exact: true }).click();
+    return new Uint8Array(await readFile((await (await event).path())!));
+  };
+
+  const originalBytes = await assetIoPng();
+  const originalHash = await sha256(originalBytes);
+  await page.goto('/3d/');
+  await page
+    .getByLabel('新しいプロジェクト名', { exact: true })
+    .fill('DATA-03 derived texture lineage');
+  await page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true }).click();
+  await page.getByRole('button', { name: '箱を追加', exact: true }).click();
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+
+  const texture = page.getByRole('region', { name: '画像とUVを編集', exact: true });
+  await texture.getByText('画像とUVを開く', { exact: true }).click();
+  await texture.getByLabel('baseColor画像', { exact: true }).setInputFiles({
+    name: 'data03-original.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(originalBytes),
+  });
+  await texture
+    .getByLabel('画像の権利・出典', { exact: true })
+    .fill('DATA-03 self-authored fixture; CC0');
+  await texture.getByRole('button', { name: '画像を取り込み適用', exact: true }).click();
+  await expect(texture.getByRole('status')).toContainText('一回の操作');
+
+  const imported = await importBackup(await download(page, '現在の内容をバックアップ'));
+  const originalSource = imported.project.sources.find(
+    (source) => source.blobId === originalHash && !source.derivedFrom,
+  )!;
+  expect(
+    imported.project.materials.some((material) => material.textureBlobId === originalHash),
+  ).toBe(true);
+  expect(imported.blobs.get(originalHash)).toEqual(originalBytes);
+  expect(originalSource.rights.declared).toBe('DATA-03 self-authored fixture; CC0');
+
+  await texture.getByLabel('赤の倍率', { exact: true }).fill('0.25');
+  await texture.getByRole('button', { name: '色調を派生画像として適用', exact: true }).click();
+  await expect(texture.getByRole('status')).toContainText('一回の操作');
+  const authoredBackup = await download(page, '現在の内容をバックアップ');
+  const authored = await importBackup(authoredBackup);
+  const derivedMaterial = authored.project.materials.find((material) => material.textureBlobId);
+  if (!derivedMaterial?.textureBlobId) throw new Error('派生texture material was not exported.');
+  const derivedHash = derivedMaterial.textureBlobId;
+  const derivedBytes = authored.blobs.get(derivedHash)!;
+  const derivedSource = authored.project.sources.find((source) => source.blobId === derivedHash)!;
+  expect(derivedHash).not.toBe(originalHash);
+  expect(derivedSource.derivedFrom).toMatchObject({
+    sourceId: originalSource.id,
+    hash: originalHash,
+    operation: 'baseColor-linear-adjustment',
+    version: '1',
+  });
+  expect(JSON.parse(derivedSource.derivedFrom!.settings)).toEqual({
+    gain: [0.25, 1, 1],
+    brightness: 0,
+    saturation: 1,
+  });
+  expect(derivedSource.rights).toEqual(originalSource.rights);
+  expect(authored.blobs.get(originalHash)).toEqual(originalBytes);
+  expect(derivedBytes).not.toEqual(originalBytes);
+
+  const restoredContext = await browser.newContext({ baseURL: new URL(page.url()).origin });
+  const consumerContext = await browser.newContext();
+  try {
+    const restored = await restoredContext.newPage();
+    await restored.goto('/3d/');
+    await restored.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+      name: 'data03-derived-texture.cas3dproj',
+      mimeType: 'application/zip',
+      buffer: Buffer.from(authoredBackup),
+    });
+    await expect(
+      restored.getByRole('heading', { name: 'DATA-03 derived texture lineage', exact: true }),
+    ).toBeVisible();
+    const restoredBackup = await importBackup(await download(restored, '現在の内容をバックアップ'));
+    expect(restoredBackup.project.sources).toEqual(authored.project.sources);
+    expect(
+      restoredBackup.project.materials.find((material) => material.textureBlobId)?.textureBlobId,
+    ).toBe(derivedHash);
+    expect(restoredBackup.blobs.get(originalHash)).toEqual(originalBytes);
+    expect(restoredBackup.blobs.get(derivedHash)).toEqual(derivedBytes);
+
+    await restored.getByText('GLB読込・配布ファイル出力', { exact: true }).click();
+    const io = restored.getByRole('region', { name: '3D GLB入出力', exact: true });
+    await io
+      .getByLabel('固定revisionの出力範囲と変換・損失の注意を確認しました', { exact: true })
+      .check();
+    await io.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }).click();
+    await expect(io.getByRole('button', { name: 'GLBを保存', exact: true })).toBeVisible();
+    const glb = await download(restored, 'GLBを保存');
+    const sidecarBytes = await download(restored, 'game.jsonを保存');
+    const sidecar = JSON.parse(new TextDecoder().decode(sidecarBytes)) as {
+      modelHash: string;
+      provenance: { claims: string; sources: typeof authored.project.sources };
+    };
+    expect(sidecar.modelHash).toBe(await sha256(glb));
+    expect(sidecar.provenance.claims).toBe('user-declared-not-verified');
+    expect(sidecar.provenance.sources).toEqual(restoredBackup.project.sources);
+
+    const encoded = preflightGlb(glb);
+    const image = encoded.json.images![0]!;
+    const view = encoded.json.bufferViews![image.bufferView!]!;
+    const embeddedTexture = encoded.binary.slice(
+      view.byteOffset ?? 0,
+      (view.byteOffset ?? 0) + view.byteLength,
+    );
+    expect(image.mimeType).toBe('image/png');
+    expect(embeddedTexture).toEqual(derivedBytes);
+
+    const consumer = await consumerContext.newPage();
+    const external = await open(consumer);
+    const report = await consumer.evaluate(
+      ({ glb, sidecar }) => window.__assetConsumer.load(glb, sidecar),
+      { glb: Array.from(glb), sidecar: Array.from(sidecarBytes) },
+    );
+    expect(report.hash).toBe(await sha256(glb));
+    expect(report.engine).toBe('Babylon.js');
+    expect(report.version).toBe('9.28.0');
+    expect(report.oracle.positionPass).toBe(true);
+    expect(
+      report.materials.some(
+        (material) =>
+          material.loaded && material.textureSize?.[0] === 2 && material.textureSize[1] === 2,
+      ),
+    ).toBe(true);
+    expect(external).toEqual([]);
+
+    await test.info().attach('data03-derived-texture-roundtrip-evidence', {
+      body: Buffer.from(
+        JSON.stringify(
+          {
+            kind: 'product-ui-derived-source-independent-backup-reexport-consumer',
+            sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+            browser: test.info().project.name,
+            originalHash,
+            derivedHash,
+            derivedFrom: derivedSource.derivedFrom,
+            originalBytesRetained: Buffer.from(restoredBackup.blobs.get(originalHash)!).equals(
+              Buffer.from(originalBytes),
+            ),
+            glbHash: report.hash,
+            sidecarHash: await sha256(sidecarBytes),
+            embeddedTextureHash: await sha256(embeddedTexture),
+            consumer: {
+              engine: report.engine,
+              version: report.version,
+              textureSize: report.materials.find((material) => material.textureSize)?.textureSize,
+              oracle: report.oracle,
+            },
+          },
+          null,
+          2,
+        ),
+      ),
+      contentType: 'application/json',
+    });
+    await test.info().attach('native-visual-consumer-data03-derived-texture', {
+      body: await consumer.screenshot(),
+      contentType: 'image/png',
+    });
+  } finally {
+    await restoredContext.close();
     await consumerContext.close();
   }
 });
