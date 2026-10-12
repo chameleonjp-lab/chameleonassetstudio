@@ -751,6 +751,47 @@ test('mismatched sidecar and unknown required extension reject while the canonic
   );
 });
 
+test('IMP-07: worker startup failure gives fixed recovery guidance and preserves the saved project', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await setup(page);
+  const before = await importBackup(await download(page, '現在の内容をバックアップ')),
+    panel = await openIo(page),
+    { bytes } = await exportGlb(captureAssetSnapshot(assetIoFixture(), () => new Uint8Array()));
+  await panel.getByLabel('読み込むGLB（32MiBまで）', { exact: true }).setInputFiles({
+    name: 'worker-startup-failure.glb',
+    mimeType: 'model/gltf-binary',
+    buffer: Buffer.from(bytes),
+  });
+
+  let workerRequests = 0;
+  const pattern = /assetIo\.worker/;
+  const failWorker = async (route: Route) => {
+    workerRequests++;
+    await route.abort('failed');
+  };
+  await page.route(pattern, failWorker);
+  try {
+    await panel.getByRole('button', { name: 'GLBを検査して保存前に確認する', exact: true }).click();
+    const alert = panel.getByRole('alert');
+    await expect(alert).toContainText(
+      'GLBの取込: 処理用の機能を準備できないか、応答を確認できませんでした。',
+    );
+    await expect(alert).toContainText('編集用バックアップを残し');
+    await expect(alert).toContainText('[IO_WORKER]');
+    await expect(alert).not.toContainText(/assetIo\.worker|worker-startup-failure\.glb|ERR_FAILED/);
+    expect(workerRequests).toBeGreaterThan(0);
+
+    const after = await importBackup(await download(page, '現在の内容をバックアップ'));
+    expect(after.project).toEqual(before.project);
+    expect([...after.blobs]).toEqual([...before.blobs]);
+    await expect(page.getByRole('button', { name: /^Imported GLB revision/ })).toHaveCount(0);
+  } finally {
+    await page.unroute(pattern, failWorker);
+  }
+});
+
 test('IMP-05 rejects external, loopback and internal GLB resource URIs without requests', async ({
   page,
 }) => {
