@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { unzipSync } from 'fflate';
 import { exportBackup, importBackup } from '../src/core3d/backup/backup';
 import { assetIoFixture, assetIoPng } from '../src/core3d/fixtures/assetIo';
 import { sha256 } from '../src/core3d/export/snapshot';
@@ -143,7 +144,7 @@ test('phone quality controls remain usable and do not mark fixtures as current-a
   }
 });
 
-test('a warning opens the correct material section without overwriting an unsaved draft', async ({
+test('a warning opens the correct material section, preserves drafts and survives package export', async ({
   page,
 }) => {
   const panel = await setup(page);
@@ -153,6 +154,10 @@ test('a warning opens the correct material section without overwriting an unsave
   await page.getByLabel(/^透過モード/).selectOption('LEGACY_AUTO');
   await page.getByRole('button', { name: '材質を適用', exact: true }).click();
   const beforeInspection = await backupCurrent(page);
+  const legacyMaterialId = beforeInspection.project.materials.find(
+    (material) => material.alphaMode === 'LEGACY_AUTO',
+  )?.id;
+  expect(legacyMaterialId).toBeDefined();
   await panel.getByRole('button', { name: '現在の版を検査', exact: true }).click();
   await expect(panel.getByText('検査結果を取得しました。', { exact: true })).toBeVisible();
   await expect(panel.getByText('警告: 互換用の自動透過設定です。', { exact: true })).toBeVisible();
@@ -175,6 +180,22 @@ test('a warning opens the correct material section without overwriting an unsave
   await expect(
     panel.getByRole('button', { name: '編集先を確認', exact: true }).first(),
   ).toBeDisabled();
+  const currentRevision = (await backupCurrent(page)).project.revision;
+  await page.getByText('GLB読込・配布ファイル出力', { exact: true }).click();
+  const assetIo = page.getByRole('region', { name: '3D GLB入出力', exact: true });
+  await assetIo
+    .getByLabel('固定revisionの出力範囲と変換・損失の注意を確認しました', { exact: true })
+    .check();
+  await assetIo.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }).click();
+  await expect(assetIo.getByRole('button', { name: 'ZIPを保存', exact: true })).toBeVisible();
+  const importantWarning = `Legacy alpha resolved for material ${legacyMaterialId}`;
+  await expect(assetIo.getByText(importantWarning, { exact: true })).toBeVisible();
+  const download = page.waitForEvent('download');
+  await assetIo.getByRole('button', { name: 'ZIPを保存', exact: true }).click();
+  const archive = unzipSync(new Uint8Array(await readFile((await (await download).path())!)));
+  const manifest = JSON.parse(new TextDecoder().decode(archive['manifest.json']));
+  expect(manifest.revision).toBe(currentRevision);
+  expect(manifest.warnings).toContain(importantWarning);
 });
 
 test('inspection worker startup failure gives safe guidance and leaves the project recoverable', async ({
