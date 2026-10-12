@@ -270,24 +270,28 @@ export function NativeProjectLibraryPanel({
         </div>
       )}
       {confirmation && (
-        <div role="region" aria-label="保存作品の操作確認">
-          <h3>
+        <div
+          role="region"
+          aria-labelledby="editor3d-library-confirmation-heading"
+          aria-describedby="editor3d-library-confirmation-target editor3d-library-confirmation-details"
+        >
+          <h3 id="editor3d-library-confirmation-heading">
             {confirmation.kind === 'recover'
               ? '別コピーとして復旧しますか'
               : confirmation.kind === 'trash'
                 ? 'ごみ箱へ移動しますか'
                 : 'ごみ箱から戻しますか'}
           </h3>
-          <p>
+          <p id="editor3d-library-confirmation-target">
             対象1作品: {confirmation.entry.name}（{confirmation.entry.id}）
           </p>
           {confirmation.kind === 'recover' ? (
-            <p>
+            <p id="editor3d-library-confirmation-details">
               選んだ revision {confirmation.snapshot.revision}{' '}
               を新しいIDで保存して開きます。元の正常版、元の復旧候補、原本は保持します。新しいコピーの容量が必要です。現在の作品を保存できない場合は切り替えません。
             </p>
           ) : (
-            <p>
+            <p id="editor3d-library-confirmation-details">
               作品のroot1件の一覧表示だけを変更します。保持中の復旧候補
               {confirmation.entry.recoveryCount}
               版と画像・GLB原本を残します。他の作品と2Dの保存は変更しません。ごみ箱から戻して復元できます。自動消去の期限はありません。
