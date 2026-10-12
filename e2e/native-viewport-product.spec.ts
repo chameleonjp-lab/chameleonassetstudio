@@ -1393,3 +1393,42 @@ test('invalid material factors show Japanese guidance without applying a partial
     await field.fill(original);
   }
 });
+
+test('keyboard Tab order traverses viewport actions and shows visible focus', async ({ page }) => {
+  await createBox(page);
+
+  const tabOrder = [
+    page.getByRole('button', { name: 'カメラをリセット', exact: true }),
+    page.getByRole('button', { name: '全体を表示', exact: true }),
+    page.getByRole('button', { name: '保存してGPU表示を休止', exact: true }),
+    page.getByRole('button', { name: 'PNG画像を保存', exact: true }),
+    page.getByRole('button', { name: '保存してサムネイルを作成', exact: true }),
+    page.getByRole('button', { name: 'カメラを左へ回転', exact: true }),
+    page.getByRole('button', { name: 'カメラを右へ回転', exact: true }),
+    page.getByRole('button', { name: 'カメラを上へ回転', exact: true }),
+    page.getByRole('button', { name: 'カメラを下へ回転', exact: true }),
+    page.getByRole('button', { name: 'カメラを左へ平行移動', exact: true }),
+    page.getByRole('button', { name: 'カメラを右へ平行移動', exact: true }),
+    page.getByRole('button', { name: 'カメラを上へ平行移動', exact: true }),
+    page.getByRole('button', { name: 'カメラを下へ平行移動', exact: true }),
+    page.getByRole('button', { name: '3D表示を拡大', exact: true }),
+    page.getByRole('button', { name: '3D表示を縮小', exact: true }),
+    page.getByRole('group', { name: 'Native box workの3D表示', exact: true }),
+  ];
+
+  await tabOrder[0].focus();
+  await expect(tabOrder[0]).toBeFocused();
+  for (const target of tabOrder.slice(1)) {
+    await page.keyboard.press('Tab');
+    await expect(target).toBeFocused();
+    await expect(target).toHaveCSS('outline-style', 'solid');
+    await expect(target).toHaveCSS('outline-width', '3px');
+  }
+
+  for (let index = tabOrder.length - 2; index >= 0; index -= 1) {
+    await page.keyboard.press('Shift+Tab');
+    await expect(tabOrder[index]).toBeFocused();
+    await expect(tabOrder[index]).toHaveCSS('outline-style', 'solid');
+    await expect(tabOrder[index]).toHaveCSS('outline-width', '3px');
+  }
+});
