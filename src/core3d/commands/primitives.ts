@@ -23,7 +23,7 @@ export const PRIMITIVE_LIMITS = {
   maxSegments: { box: 16, plane: 64, sphere: 16, cylinder: 64, cone: 64 },
 } as const;
 
-const names: Record<PrimitiveKind, string> = {
+export const PRIMITIVE_NAMES: Record<PrimitiveKind, string> = {
   box: '箱',
   plane: '平面',
   sphere: '球',
@@ -235,7 +235,7 @@ export function addPrimitive(project: Project3D, id: string, options: PrimitiveO
   // Leave nine characters for the longest generated suffix, "-material".
   if (typeof id !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,118}$/.test(id))
     throw new Error('Invalid primitive ID');
-  if (!Object.hasOwn(names, options.kind)) throw new Error('Unsupported primitive kind');
+  if (!Object.hasOwn(PRIMITIVE_NAMES, options.kind)) throw new Error('Unsupported primitive kind');
   for (const dimension of [options.width, options.height, options.depth])
     if (
       !Number.isFinite(dimension) ||
@@ -279,7 +279,7 @@ export function addPrimitive(project: Project3D, id: string, options: PrimitiveO
     visible: true,
     locked: false,
     id: nodeId,
-    name: names[options.kind],
+    name: PRIMITIVE_NAMES[options.kind],
     parentId: null,
     transform: identityTransform(),
     meshId,

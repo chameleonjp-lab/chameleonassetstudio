@@ -1004,3 +1004,39 @@ test('keyboard node visibility and edit-lock changes announce the target and res
   await expect(status).toHaveText(`${identity}の編集ロックを解除しました。`);
   await expect(nodeState).toContainText('表示 / 編集可能');
 });
+
+test('keyboard primitive addition announces the created name and ID without relying on selection status', async ({
+  page,
+}) => {
+  await createBox(page);
+  const authoring = page.getByRole('region', { name: '3D制作', exact: true });
+  const objectSelect = authoring.getByRole('combobox', { name: '制作オブジェクト', exact: true });
+  const previousId = await objectSelect.inputValue();
+  const disclosure = authoring.getByText('基本形を作成', { exact: true });
+  await disclosure.focus();
+  await page.keyboard.press('Enter');
+
+  const addButton = authoring.getByRole('button', { name: '基本形を追加', exact: true });
+  await addButton.focus();
+  const beforeRevision = await revision(page);
+  await page.keyboard.press('Enter');
+  await expect(addButton).toBeFocused();
+  await expect.poll(() => revision(page)).toBe(beforeRevision + 1);
+
+  const id = await objectSelect.inputValue();
+  expect(id).not.toBe(previousId);
+  const status = authoring.getByRole('status');
+  await expect(status).toHaveAttribute('aria-live', 'polite');
+  await expect(status).toHaveAttribute('aria-atomic', 'true');
+  await expect(status).toHaveText(
+    `基本形「箱」（ID: ${id}）を追加しました。元に戻す操作で取り消せます。`,
+  );
+
+  await authoring.getByLabel('分割数', { exact: true }).fill('0');
+  await addButton.focus();
+  const afterSuccessRevision = await revision(page);
+  await page.keyboard.press('Enter');
+  await expect(authoring.getByRole('alert')).toContainText('分割数は 1〜16 の整数');
+  await expect(status).toHaveCount(0);
+  await expect.poll(() => revision(page)).toBe(afterSuccessRevision);
+});

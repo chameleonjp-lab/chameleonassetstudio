@@ -94,3 +94,12 @@ This verifies DOM/status text changes in headless desktop browsers only. It does
 The 3D authoring panel's visible/hidden and edit-lock toggles now update a polite, atomic status with the affected node name/ID and the resulting setting. The visibility-on message clarifies that an ancestor's hidden setting may still keep the node off-canvas. A keyboard-only product E2E checks all four transitions, the corresponding visible state text, and focus remaining on the operated control. No project or backup schema changed.
 
 This verifies live-region semantics and DOM text transitions in headless desktop browsers only. It does not establish actual screen-reader speech, VoiceOver/TalkBack behavior, contrast, real browser/OS zoom, or physical-device acceptance; UX-05 and 3D-STAGE4-04 remain partial/open.
+
+
+## Primitive-creation outcome announcement follow-up — 2026-10-12
+
+The authoring panel now announces successful primitive creation in a polite, atomic status with the canonical Japanese primitive name, the created node's ID, and an Undo hint. This result remains available while the newly created node becomes active; it is separate from the assembly selection status. Invalid creation continues through the existing alert and does not leave a success status or advance the project revision. The UI reuses the primitive command's canonical name map; no project or backup schema changed.
+
+The focused keyboard-only product E2E passed in Chromium and WebKit-critical (1/1 each). The complete `native-editing-product.spec.ts` passed 14/14 in each browser project. `npm run format:check`, `npm run test:ci-scope` (8/8), and `npm run build` passed; `npm test` passed all 3,530 tests across 185 files. `npm run lint` reported zero errors and one pre-existing React Hook warning in `NativeViewportPanel.tsx:195`; build retained the existing non-blocking large-chunk advisory.
+
+This verifies status markup, DOM text, and keyboard behavior in headless desktop browsers only. It does not establish actual screen-reader speech, VoiceOver/TalkBack behavior, contrast compliance, real browser/OS zoom, or physical-device acceptance. UX-05 and 3D-STAGE4-04 remain partial/open; no assistive-technology or physical-device acceptance is claimed.
