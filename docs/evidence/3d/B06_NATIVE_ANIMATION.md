@@ -40,10 +40,18 @@ This candidate targets ANIM-01–05/07 native authoring/playback and the native-
 
 ## ANIM-06 product-to-consumer follow-up
 
-The product test authors two clips and keys through the UI, saves a `.cas3dproj`, restores that archive in a separate browser context, edits a user-authored key, saves again, and exports actual GLB plus `game.json`. It now checks that the sidecar's `modelHash` matches the exact GLB bytes and that both clip records preserve ID, name, duration and loop state. A fresh Babylon consumer context independently loads the same bytes, confirms two animation groups, samples each clip, and runs playback to its end event. This closes the previously unexecuted software-only browser route as a candidate; it is not evidence of import or physics behavior in Unity/Godot or on a physical device.
+The product test authors two clips and keys through the UI, saves a `.cas3dproj`, restores that archive in a separate browser context, edits a user-authored key, saves again, and exports actual GLB plus `game.json`. It now checks that the sidecar's `modelHash` matches the exact GLB bytes and that both clip records preserve ID, name, duration and loop state. A fresh Babylon consumer context independently loads the same bytes, confirms two animation groups, samples each clip, and runs playback to its end event. This also closes ANIM-02's software candidate gap for independently restored, re-edited user keys reaching real output playback. It is not evidence of import or physics behavior in Unity/Godot or on a physical device.
 
 Local verification on 2026-10-12 JST: the focused `native-consumer.spec.ts` case passed in Chromium and WebKit (2/2). The test harness/browser consumer is independent of the editor implementation, but no production game-engine runtime was exercised. ANIM-06 remains `implemented-candidate / partial` pending the wider release/consumer acceptance gates.
 
 On the same stack, `npm run test` passed 3,530 tests across 185 files; `npm run test:ci-scope` passed 8/8; `npm run format:check` and `npm run build` passed. `npm run lint` had zero errors and one pre-existing React Hooks warning at `NativeViewportPanel.tsx:205`; the production build retained its existing >500 kB chunk advisory. CI was not monitored.
+
+## ANIM-03 product quaternion / Float32 follow-up
+
+A second product E2E creates a LINEAR rotation track through the editor UI: a 45-degree Y rotation at 0.1 seconds followed by the opposite-sign representation of the 135-degree Y rotation at `0.30000001192092896` seconds. The product GLB inserts its documented initial hold at time zero; the test parses the actual sampler and checks its Float32 input times are exactly `[0, Math.fround(0.1), Math.fround(0.3)]`. It also confirms the two endpoint quaternions encode the expected 90-degree arc independently of sign.
+
+A separate Babylon consumer loads the downloaded GLB/sidecar and samples at the initial hold, the rounded 0.1-second key, the encoded-key midpoint, and the rounded endpoint. Its world matrices match 45, 45, 90 and 135 degrees respectively, and the consumer's position/node oracles pass. The focused E2E passed Chromium and WebKit (2/2) on 2026-10-12 JST. This is software/browser candidate evidence only; no production engine or physical device was tested, so ANIM-03 remains `implemented-candidate / partial`.
+
+On this ANIM-03 stack, `npm run test` passed 3,530 tests across 185 files; `npm run test:ci-scope` passed 8/8; `npm run format:check` and `npm run build` passed. `npm run lint` had zero errors and one pre-existing React Hooks warning at `NativeViewportPanel.tsx:205`; the production build retained its >500 kB chunk advisory. CI was not monitored.
 
 Revert the PR to restore previous UI/render behavior. Existing backup format and canonical originals remain intact; explicit key edits use Undo/Redo. No failure automatically deletes keys, converts unsupported interpolation or replaces original sources.

@@ -1,9 +1,11 @@
 import { execFileSync } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import { test, expect, type Page } from '@playwright/test';
 import { consumerFixture, type ConsumerFixtureId } from '../src/core3d/fixtures/consumer';
 import { captureAssetSnapshot, sha256 } from '../src/core3d/export/snapshot';
 import { exportGlb } from '../src/adapters3d/gltf/export';
 import { buildAssetPackage } from '../src/core3d/export/mapping';
+import { parseConsumerGlb } from '../tools/3d-consumer/sidecar';
 async function delivery(id: ConsumerFixtureId) {
   const { project, blobs } = await consumerFixture(id);
   const encoded = await exportGlb(captureAssetSnapshot(project, (key) => blobs.get(key)!));
@@ -131,6 +133,141 @@ test('F02/F05 skin, sparse holds, STEP, single keys, quaternion sign and exact l
     body: await page.screenshot(),
     contentType: 'image/png',
   });
+});
+test('product-authored quaternion sign, midpoint and Float32 times match an independent consumer', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  await page.goto('/3d/');
+  await page.getByLabel('新しいプロジェクト名', { exact: true }).fill('ANIM-03 quaternion handoff');
+  await page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true }).click();
+  await page.getByRole('button', { name: '箱を追加', exact: true }).click();
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  await page.getByText('アニメーション編集を開く', { exact: true }).click();
+  const animation = page.getByRole('region', { name: '3Dアニメーション', exact: true });
+  const duration = '0.30000001192092896';
+  await animation.getByLabel('clip名', { exact: true }).fill('Quaternion sign');
+  await animation.getByLabel('clipの長さ（秒）', { exact: true }).fill(duration);
+  await animation.getByLabel('clipをloop再生する', { exact: true }).uncheck();
+  await animation.getByRole('button', { name: '新しいclipを作成', exact: true }).click();
+  const clipId = await animation
+    .getByRole('combobox', { name: 'clipを選択', exact: true })
+    .inputValue();
+  const target = animation.getByRole('combobox', { name: 'キー対象', exact: true });
+  const nodeId = await target.locator('option').nth(1).getAttribute('value');
+  expect(nodeId).toBeTruthy();
+  await target.selectOption(nodeId!);
+  await animation.getByRole('combobox', { name: 'キー属性', exact: true }).selectOption('rotation');
+  await animation.getByRole('combobox', { name: 'キー補間', exact: true }).selectOption('LINEAR');
+  const addRotationKey = async (time: string, values: [string, string, string, string]) => {
+    await animation.getByLabel('キー時刻（秒）', { exact: true }).fill(time);
+    for (const [index, axis] of ['X', 'Y', 'Z', 'W'].entries())
+      await animation.getByLabel(`キー値 ${axis}`, { exact: true }).fill(values[index]);
+    await animation.getByRole('button', { name: 'キーを追加', exact: true }).click();
+  };
+  await addRotationKey('0.1', ['0', '0.3826834323650898', '0', '0.9238795325112867']);
+  await addRotationKey(duration, ['0', '-0.9238795325112867', '0', '-0.3826834323650898']);
+
+  await page.getByText('GLB読込・配布ファイル出力', { exact: true }).click();
+  await page
+    .getByLabel('固定revisionの出力範囲と変換・損失の注意を確認しました', { exact: true })
+    .check();
+  await page.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'GLBを保存', exact: true })).toBeVisible();
+  const download = async (name: string) => {
+    const event = page.waitForEvent('download');
+    await page.getByRole('button', { name, exact: true }).click();
+    return new Uint8Array(await readFile((await (await event).path())!));
+  };
+  const glb = await download('GLBを保存');
+  const sidecar = await download('game.jsonを保存');
+  const parsed = parseConsumerGlb(glb);
+  const exportedClip = parsed.gltf.animations?.find((clip) => clip.extras?.casId === clipId);
+  expect(exportedClip).toBeDefined();
+  const rotationChannel = exportedClip!.channels.find(
+    (channel) => channel.target.path === 'rotation',
+  );
+  expect(rotationChannel).toBeDefined();
+  const sampler = exportedClip!.samplers[rotationChannel!.sampler];
+  expect(sampler.interpolation).toBe('LINEAR');
+  const times = parsed.read(sampler.input);
+  expect(times).toEqual([0, Math.fround(0.1), Math.fround(0.3)]);
+  const rotations = parsed.read(sampler.output);
+  expect(rotations).toHaveLength(12);
+  const qStart = rotations.slice(4, 8);
+  const qEnd = rotations.slice(8, 12);
+  const signIndependentDot = Math.abs(
+    qStart.reduce((sum, value, index) => sum + value * qEnd[index], 0),
+  );
+  expect(signIndependentDot).toBeCloseTo(Math.SQRT1_2, 5);
+
+  const consumerContext = await browser.newContext();
+  try {
+    const consumer = await consumerContext.newPage();
+    const external = await open(consumer);
+    const report = await consumer.evaluate(
+      ({ glb, sidecar }) => window.__assetConsumer.load(glb, sidecar),
+      { glb: Array.from(glb), sidecar: Array.from(sidecar) },
+    );
+    expect(report.hash).toBe(await sha256(glb));
+    const midpoint = (times[1] + times[2]) / 2;
+    const sample = async (time: number) => {
+      const pose = await consumer.evaluate(
+        ({ clipId, time }) => window.__assetConsumer.sample(clipId, time),
+        { clipId, time },
+      );
+      expect(pose.oracle.positionPass).toBe(true);
+      expect(pose.oracle.nodePass).toBe(true);
+      const node = pose.nodes.find((item) => item.id === nodeId);
+      expect(node).toBeDefined();
+      return node!.world as number[];
+    };
+    const cases = [
+      [times[0], 45],
+      [times[1], 45],
+      [midpoint, 90],
+      [times[2], 135],
+    ] as const;
+    const matrices: number[][] = [];
+    for (const [time, degrees] of cases) {
+      const world = await sample(time);
+      matrices.push(world);
+      const radians = (degrees * Math.PI) / 180;
+      expect(world[0]).toBeCloseTo(Math.cos(radians), 4);
+      expect(world[2]).toBeCloseTo(-Math.sin(radians), 4);
+      expect(world[8]).toBeCloseTo(Math.sin(radians), 4);
+      expect(world[10]).toBeCloseTo(Math.cos(radians), 4);
+    }
+    expect(external).toEqual([]);
+    await test.info().attach('anim03-quaternion-f32-evidence', {
+      body: Buffer.from(
+        JSON.stringify(
+          {
+            sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+            browser: test.info().project.name,
+            clipId,
+            nodeId,
+            encodedTimes: times,
+            requestedTimes: cases.map(([time]) => time),
+            degrees: cases.map(([, degrees]) => degrees),
+            modelHash: await sha256(glb),
+            sidecarHash: await sha256(sidecar),
+            matrices,
+          },
+          null,
+          2,
+        ),
+      ),
+      contentType: 'application/json',
+    });
+    await test.info().attach('native-visual-consumer-anime03-quaternion', {
+      body: await consumer.screenshot(),
+      contentType: 'image/png',
+    });
+  } finally {
+    await consumerContext.close();
+  }
 });
 test('F04 actual PNG upload preserves corner colors and alpha in independent rendering', async ({
   page,
