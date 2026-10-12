@@ -995,3 +995,148 @@ test('a saved manual vertex-weight correction reaches animated geometry in an in
     await consumerContext.close();
   }
 });
+
+test('product-authored box, sphere and capsule collider dimensions reach an independent consumer', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(120000);
+  const { readFile } = await import('node:fs/promises');
+  const download = async (target: Page, name: string) => {
+    const event = target.waitForEvent('download');
+    await target.getByRole('button', { name, exact: true }).click();
+    return new Uint8Array(await readFile((await (await event).path())!));
+  };
+
+  await page.goto('/3d/');
+  await page.getByLabel('新しいプロジェクト名', { exact: true }).fill('GAME-03 collider handoff');
+  await page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true }).click();
+  await page.getByRole('button', { name: '箱を追加', exact: true }).click();
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  await page.getByText('ゲーム向け情報を編集', { exact: true }).click();
+  const game = page.getByRole('region', { name: '3Dゲーム向け情報', exact: true });
+  const colliders = game.getByRole('region', { name: '3D collider編集', exact: true });
+  const resetNew = async () => {
+    const select = colliders.getByLabel('colliderを選択', { exact: true });
+    if ((await select.inputValue()) !== '') await select.selectOption('');
+  };
+  const fillVector = async (label: string, values: readonly number[]) => {
+    for (const [index, axis] of ['X', 'Y', 'Z'].entries())
+      await colliders.getByLabel(`${label} ${axis}`, { exact: true }).fill(String(values[index]));
+  };
+
+  await colliders.getByLabel('collider名', { exact: true }).fill('Crate box');
+  await colliders.getByLabel('collider用途', { exact: true }).fill('solid');
+  await fillVector('collider位置（m）', [1.25, 2.5, -0.75]);
+  await fillVector('collider回転（度・XYZ）', [0, 0, 90]);
+  await fillVector('collider倍率', [1.25, 0.75, 1.5]);
+  await fillVector('collider全寸法（m）', [2, 3, 4]);
+  await colliders.getByRole('button', { name: 'colliderを追加', exact: true }).click();
+
+  await resetNew();
+  await colliders.getByLabel('collider名', { exact: true }).fill('Pickup sphere');
+  await colliders.getByLabel('collider用途', { exact: true }).fill('trigger');
+  await colliders.getByLabel('collider形状', { exact: true }).selectOption('sphere');
+  await colliders.getByLabel('collider半径（m）', { exact: true }).fill('0.75');
+  await fillVector('collider位置（m）', [-2, 0.5, 1]);
+  await colliders.getByRole('button', { name: 'colliderを追加', exact: true }).click();
+
+  await resetNew();
+  await colliders.getByLabel('collider名', { exact: true }).fill('Player capsule');
+  await colliders.getByLabel('collider用途', { exact: true }).fill('body');
+  await colliders.getByLabel('collider形状', { exact: true }).selectOption('capsule');
+  await colliders.getByLabel('collider半径（m）', { exact: true }).fill('0.3');
+  await colliders.getByLabel('collider円柱部の長さ（m）', { exact: true }).fill('1.4');
+  await fillVector('collider位置（m）', [0.25, 0.5, 2]);
+  await expect(colliders.locator('h4')).toContainText('2件');
+  await colliders.getByRole('button', { name: 'colliderを追加', exact: true }).click();
+  await expect(colliders.locator('h4')).toContainText('3件');
+
+  await page.getByText('GLB読込・配布ファイル出力', { exact: true }).click();
+  await page
+    .getByLabel('固定revisionの出力範囲と変換・損失の注意を確認しました', { exact: true })
+    .check();
+  await page.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'GLBを保存', exact: true })).toBeVisible();
+  const glb = await download(page, 'GLBを保存');
+  const sidecar = await download(page, 'game.jsonを保存');
+  const serialized = JSON.parse(new TextDecoder().decode(sidecar));
+  expect(serialized.game.colliders).toHaveLength(3);
+
+  const consumerContext = await browser.newContext();
+  try {
+    const consumer = await consumerContext.newPage();
+    const external: string[] = [];
+    await consumer.route('**/*', (route) => {
+      const url = route.request().url();
+      if (/^https?:/.test(url) && new URL(url).origin !== 'http://localhost:4177') {
+        external.push(url);
+        return route.abort();
+      }
+      return route.continue();
+    });
+    await consumer.goto('http://localhost:4177');
+    await consumer.waitForFunction(() => !!window.__assetConsumer);
+    const report = await consumer.evaluate(
+      ({ glb, sidecar }) => window.__assetConsumer.load(glb, sidecar),
+      { glb: Array.from(glb), sidecar: Array.from(sidecar) },
+    );
+    expect(report.hash).toBe(await sha256(glb));
+    expect(report.engine).toBe('Babylon.js');
+    expect(report.version).toBe('9.28.0');
+    expect(report.rightHanded).toBe(true);
+    expect(report.oracle.positionPass, JSON.stringify(report.oracle)).toBe(true);
+    expect(report.oracle.nodePass, JSON.stringify(report.oracle)).toBe(true);
+    expect(report.colliders).toHaveLength(3);
+    expect(new Set(report.colliders.map((item) => item.id)).size).toBe(3);
+
+    const box = report.colliders.find((item) => item.name === 'Crate box')!;
+    expect(box.shape).toBe('box');
+    expect(box.size).toEqual([2, 3, 4]);
+    expect(box.purpose).toBe('solid');
+    expect(box.nodeId).toBeNull();
+    expect(box.position).toEqual([1.25, 2.5, -0.75]);
+    const boxWorld = [0, 1.25, 0, 0, -0.75, 0, 0, 0, 0, 0, 1.5, 0, 1.25, 2.5, -0.75, 1];
+    expect(box.world).toHaveLength(16);
+    boxWorld.forEach((value, index) => expect(box.world[index]).toBeCloseTo(value, 5));
+
+    const sphere = report.colliders.find((item) => item.name === 'Pickup sphere')!;
+    expect(sphere.shape).toBe('sphere');
+    expect(sphere.radius).toBe(0.75);
+    expect(sphere.purpose).toBe('trigger');
+    expect(sphere.position).toEqual([-2, 0.5, 1]);
+
+    const capsule = report.colliders.find((item) => item.name === 'Player capsule')!;
+    expect(capsule.shape).toBe('capsule');
+    expect(capsule.radius).toBe(0.3);
+    expect(capsule.height).toBe(1.4);
+    expect(capsule.height + 2 * capsule.radius).toBeCloseTo(2, 8);
+    expect(capsule.purpose).toBe('body');
+    expect(capsule.position).toEqual([0.25, 0.5, 2]);
+    expect(external).toEqual([]);
+
+    await test.info().attach('game03-product-collider-consumer-evidence', {
+      body: Buffer.from(
+        JSON.stringify(
+          {
+            kind: 'product-ui-game03-collider-consumer',
+            sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+            browser: test.info().project.name,
+            glbHash: await sha256(glb),
+            sidecarHash: await sha256(sidecar),
+            colliders: report.colliders,
+            capsuleTotalHeight: capsule.height + 2 * capsule.radius,
+            oracle: report.oracle,
+            runtime: report.engine,
+            runtimeVersion: report.version,
+          },
+          null,
+          2,
+        ),
+      ),
+      contentType: 'application/json',
+    });
+  } finally {
+    await consumerContext.close();
+  }
+});
