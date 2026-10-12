@@ -202,6 +202,90 @@ test('keyboard-only Tab flow creates, numerically edits, saves and backs up a pr
   expect(project.nodes[0].transform.translation).toEqual([1.25, 0, 0]);
 });
 
+test('keyboard Tab order previews numeric transforms without saving until explicit apply', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.goto('/3d/');
+
+  const projectName = page.getByLabel('新しいプロジェクト名', { exact: true });
+  await tabTo(page, projectName);
+  await page.keyboard.type('Keyboard transform preview');
+  const create = page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true });
+  await page.keyboard.press('Tab');
+  await expect(create).toBeFocused();
+  await page.keyboard.press('Enter');
+
+  const addBox = page.getByRole('button', { name: '箱を追加', exact: true });
+  await tabTo(page, addBox);
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+
+  const panel = controls(page);
+  const disclosure = panel.locator('summary');
+  await tabTo(page, disclosure);
+  await page.keyboard.press('Enter');
+
+  const mode = panel.getByRole('combobox', { name: '変形の種類', exact: true });
+  const space = panel.getByRole('combobox', { name: '変形の座標', exact: true });
+  const snap = panel.getByLabel('スナップ間隔（m）', { exact: true });
+  const applySnap = panel.getByRole('button', { name: 'スナップ設定を適用', exact: true });
+  const start = panel.getByRole('button', { name: '数値変形を開始', exact: true });
+
+  await page.keyboard.press('Tab');
+  await expect(mode).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(space).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(snap).toBeFocused();
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('0.25');
+  await page.keyboard.press('Tab');
+  await expect(applySnap).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(panel.getByText('適用中のスナップ: 0.25 m', { exact: true })).toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(start).toBeFocused();
+  await expect(start).toBeEnabled();
+  await page.keyboard.press('Enter');
+
+  const x = panel.getByLabel('移動量 X（m）', { exact: true });
+  const y = panel.getByLabel('移動量 Y（m）', { exact: true });
+  const z = panel.getByLabel('移動量 Z（m）', { exact: true });
+  const preview = panel.getByRole('button', { name: '数値変形をプレビュー', exact: true });
+  const apply = panel.getByRole('button', { name: '数値変形を適用', exact: true });
+
+  await page.keyboard.press('Tab');
+  await expect(x).toBeFocused();
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('0.5');
+  await page.keyboard.press('Tab');
+  await expect(y).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(z).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(preview).toBeFocused();
+
+  const beforePreview = await revision(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => revision(page)).toBe(beforePreview);
+  await expect(
+    panel
+      .getByRole('status')
+      .filter({ hasText: 'プレビュー中です。作品への確定は「数値変形を適用」で行います。' }),
+  ).toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(apply).toBeFocused();
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => revision(page)).toBe(beforePreview + 1);
+  await expect(
+    panel
+      .getByRole('status')
+      .filter({ hasText: '変形を確定しました。元に戻す操作で取り消せます。' }),
+  ).toBeVisible();
+});
+
 test('keyboard-only Escape cancels numeric edits and exposes status announcements', async ({
   page,
 }) => {
