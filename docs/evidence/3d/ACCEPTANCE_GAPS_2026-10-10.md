@@ -121,3 +121,26 @@ The combined focused UX-05 scene-text/selection-status and timeline-key checks t
 ## Dynamic timeline-key context follow-up — 2026-10-12
 
 [`PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md`](PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md) now also records a keyboard-only check that switches the animation key property from translation to scale and back. The timeline group and marker names update with the active property; Enter changes the scale marker's `aria-pressed` state, and returning to translation clears the stale selected state. The decoded saved backup retains both authored tracks and their values. The focused Chromium run using `/usr/bin/chromium` and WebKit-critical run each passed 1/1. This is software-only DOM/keyboard evidence; actual screen-reader speech, complete scene alternatives, and physical-device/assistive-technology acceptance remain open.
+
+
+## Timeline selection-context announcement follow-up — 2026-10-12
+
+A focused UX-05 software slice adds a separate `aria-live="polite"` selection status for the active clip, target object name/ID, property and selected key time. Property changes, key selection and selection clearing update the status. The continuously refreshed playback/time status is explicitly `aria-live="off"` to avoid per-frame announcements. The focused keyboard-only test passed in system Chromium and WebKit-critical (1/1 each); the complete `native-animation-product.spec.ts` suite passed 7/7 in each browser, and `npm run test:ci-scope` passed 8/8. All 3,530 unit tests, lint (zero errors; one existing viewport Hook warning), formatting, and the production build passed.
+
+This is DOM/status evidence, not actual screen-reader speech or assistive-technology acceptance. VoiceOver/TalkBack, physical-device/keyboard/touch, contrast and real browser/OS zoom remain unverified. UX-05, 3D-STAGE4-04 and physical accessibility gates remain open; this follow-up does not change any acceptance status to pass.
+
+
+## Timeline key-action announcement follow-up — 2026-10-12
+
+[`PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md`](PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md) now records a separate polite, atomic live status for successful timeline-key add, edit, duplicate, and delete actions. Each message includes clip, target name/ID, property, and affected time(s); existing error output remains a `role="alert"`, with no success announcement on failure. The continuously updated playback/time status remains `aria-live="off"`.
+
+The keyboard-only workflow verifies all four action messages, updated key-list content, revision changes and saved-backup values. The complete animation product E2E suite passed 7/7 in system Chromium and 7/7 in WebKit-critical. Full unit tests passed 3,530/3,530, CI-scope classification passed 8/8, formatting and production build passed, and lint had zero errors plus the existing `NativeViewportPanel.tsx:195` Hook warning. The build retains its existing non-blocking >500 kB chunk advisory.
+
+A follow-up failure-path assertion rejects a keyboard duplicate at an already occupied key time. It verifies the existing alert guidance, cleared success-status text, unchanged revision, and retained key marker. This is still DOM/headless-browser evidence only; no assistive-technology acceptance is implied.
+
+This adds headless DOM/status evidence only. Actual screen-reader speech, VoiceOver/TalkBack, full scene alternatives, physical keyboard/device/touch, contrast and real browser/OS zoom remain unverified. UX-05, 3D-STAGE4-04, and physical accessibility gates remain partial/open; no acceptance status is promoted.
+
+
+## Timeline-key update-collision recovery follow-up — 2026-10-12
+
+[`PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md`](PRODUCT_CANVAS_TEXT_ALTERNATIVES_2026-10-11.md) records the focused keyboard E2E extension: after recovering from a failed duplicate, updating a selected key onto another occupied time must restore the alert without success text or a revision change, while both original keys and the selected-key state remain intact. The focused workflow passed in Chromium and WebKit-critical (1/1 per project). This is software-only headless evidence; actual screen-reader speech, assistive technology, and physical-device acceptance remain open.

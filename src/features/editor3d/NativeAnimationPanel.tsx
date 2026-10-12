@@ -75,6 +75,7 @@ export function NativeAnimationPanel({
   const [start, setStart] = useState(0);
   const [page, setPage] = useState(0);
   const [error, setError] = useState('');
+  const [keyActionStatus, setKeyActionStatus] = useState('');
   const composing = useRef(false);
   const track = clip?.tracks.find(
     (value) => value.nodeId === nodeId && value.property === property,
@@ -87,14 +88,24 @@ export function NativeAnimationPanel({
   const timelineGroupLabel = `タイムラインのキーマーカー: ${clip?.name ?? 'clip未選択'} / ${timelineTargetLabel} / ${animationPropertyLabels[property]}`;
   const pageCount = Math.max(1, Math.ceil(keys.length / 50));
   const pageIndex = Math.min(page, pageCount - 1);
-  function act(operation: () => void) {
+  const selected =
+    selectedTime !== null &&
+    loaded === identity &&
+    !!track?.keys.some((key) => key.time === selectedTime);
+  const timelineSelectionStatus = `選択中のキー: ${clip?.name ?? 'clip未選択'} / ${timelineTargetLabel} / ${animationPropertyLabels[property]} / ${selected ? `${selectedTime}秒` : '未選択'}`;
+  function keyActionMessage(message: string) {
+    return `${clip?.name ?? 'clip未選択'} / ${timelineTargetLabel} / ${animationPropertyLabels[property]}: ${message}`;
+  }
+  function act(operation: () => void | string) {
     if (composing.current) return;
+    setKeyActionStatus('');
     try {
       const current = session.project;
       if (current.id !== project.id || current.revision !== project.revision)
         throw new Error('作品が変わりました。現在値を確認してください。');
-      operation();
+      const status = operation();
       setError('');
+      if (status) setKeyActionStatus(status);
     } catch (cause) {
       setError(formatNativeEditingFailure(cause, 'animation'));
     } finally {
@@ -139,10 +150,6 @@ export function NativeAnimationPanel({
     setLoaded(identity);
   }
   const draftValues = () => values.slice(0, property === 'rotation' ? 4 : 3).map(number);
-  const selected =
-    selectedTime !== null &&
-    loaded === identity &&
-    !!track?.keys.some((key) => key.time === selectedTime);
   return (
     <section
       className="native-animation"
@@ -163,7 +170,7 @@ export function NativeAnimationPanel({
         オフ。キーは明示操作だけで保存します。回転値は単位quaternion（X/Y/Z/W）です。
       </p>
       {error && <p role="alert">{error}</p>}
-      <p role="status">
+      <p role="status" aria-live="off" data-testid="native-animation-playback-status">
         {state.playing
           ? 'アニメーション再生中'
           : state.active
@@ -365,6 +372,14 @@ export function NativeAnimationPanel({
             }
           />
         </label>
+        <p
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          data-testid="native-animation-selection-status"
+        >
+          {timelineSelectionStatus}
+        </p>
         <div className="native-animation-timeline" role="group" aria-label={timelineGroupLabel}>
           {keys
             .filter((key) => key.time >= windowStart && key.time <= windowStart + span)
@@ -495,6 +510,7 @@ export function NativeAnimationPanel({
               execute((p) => addKey(p, clipId, nodeId, property, interpolation, time, value));
               setSelectedTime(null);
               setLoaded('');
+              return keyActionMessage(`キー ${time}秒を追加しました。`);
             })
           }
         >
@@ -510,6 +526,7 @@ export function NativeAnimationPanel({
               execute((p) => editKey(p, clipId, nodeId, property, selectedTime!, time, value));
               setSelectedTime(null);
               setLoaded('');
+              return keyActionMessage(`キーを ${time}秒へ更新しました。`);
             })
           }
         >
@@ -524,6 +541,7 @@ export function NativeAnimationPanel({
               execute((p) => duplicateKey(p, clipId, nodeId, property, selectedTime!, time));
               setSelectedTime(null);
               setLoaded('');
+              return keyActionMessage(`キー ${selectedTime}秒を ${time}秒へ複製しました。`);
             })
           }
         >
@@ -537,6 +555,7 @@ export function NativeAnimationPanel({
               execute((p) => deleteKey(p, clipId, nodeId, property, selectedTime!));
               setSelectedTime(null);
               setLoaded('');
+              return keyActionMessage(`キー ${selectedTime}秒を削除しました。`);
             })
           }
         >
@@ -546,6 +565,14 @@ export function NativeAnimationPanel({
           重複時刻と範囲外のキーは拒否します。キーを失う長さ短縮も拒否します。選択した値は編集revisionが変わったら読み直してください。
         </p>
       </fieldset>
+      <p
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-testid="native-animation-key-action-status"
+      >
+        {keyActionStatus}
+      </p>
       <div role="group" aria-label="キー一覧">
         <p>
           {keys.length}キー · {pageIndex + 1}/{pageCount}ページ

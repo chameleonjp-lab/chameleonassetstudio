@@ -61,6 +61,14 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
   await tabTo(page, openAnimation);
   await page.keyboard.press('Enter');
   const animation = panel(page);
+  const playbackStatus = animation.getByTestId('native-animation-playback-status');
+  const selectionStatus = animation.getByTestId('native-animation-selection-status');
+  const keyActionStatus = animation.getByTestId('native-animation-key-action-status');
+  await expect(playbackStatus).toHaveAttribute('aria-live', 'off');
+  await expect(selectionStatus).toHaveAttribute('aria-live', 'polite');
+  await expect(selectionStatus).toHaveAttribute('aria-atomic', 'true');
+  await expect(keyActionStatus).toHaveAttribute('aria-live', 'polite');
+  await expect(keyActionStatus).toHaveAttribute('aria-atomic', 'true');
 
   const clipName = animation.getByLabel('clip名', { exact: true });
   await tabTo(page, clipName);
@@ -85,6 +93,9 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
   await tabTo(page, addKey);
   await page.keyboard.press('Enter');
   const targetLabel = (await target.locator('option:checked').innerText()).trim();
+  await expect(keyActionStatus).toHaveText(
+    `Keyboard Move / ${targetLabel} / 移動: キー 0秒を追加しました。`,
+  );
   const timeline = animation.getByRole('group', {
     name: `タイムラインのキーマーカー: Keyboard Move / ${targetLabel} / 移動`,
   });
@@ -96,6 +107,9 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
   await tabTo(page, timelineKey);
   await page.keyboard.press('Enter');
   await expect(timelineKey).toHaveAttribute('aria-pressed', 'true');
+  await expect(selectionStatus).toHaveText(
+    `選択中のキー: Keyboard Move / ${targetLabel} / 移動 / 0秒`,
+  );
 
   const property = animation.getByRole('combobox', { name: 'キー属性', exact: true });
   await tabTo(page, property);
@@ -103,6 +117,9 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect(property).toHaveValue('scale');
+  await expect(selectionStatus).toHaveText(
+    `選択中のキー: Keyboard Move / ${targetLabel} / 倍率 / 未選択`,
+  );
   await tabTo(page, readPose);
   await page.keyboard.press('Enter');
   await tabTo(page, addKey);
@@ -118,11 +135,17 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
   await tabTo(page, scaleMarker);
   await page.keyboard.press('Enter');
   await expect(scaleMarker).toHaveAttribute('aria-pressed', 'true');
+  await expect(selectionStatus).toHaveText(
+    `選択中のキー: Keyboard Move / ${targetLabel} / 倍率 / 0秒`,
+  );
 
   await tabTo(page, property, 'Shift+Tab');
   await page.keyboard.press('Home');
   await page.keyboard.press('Enter');
   await expect(property).toHaveValue('translation');
+  await expect(selectionStatus).toHaveText(
+    `選択中のキー: Keyboard Move / ${targetLabel} / 移動 / 未選択`,
+  );
   const translationTimeline = animation.getByRole('group', {
     name: `タイムラインのキーマーカー: Keyboard Move / ${targetLabel} / 移動`,
   });
@@ -136,6 +159,9 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
   await tabTo(page, key);
   await page.keyboard.press('Enter');
   await expect(key).toHaveAttribute('aria-pressed', 'true');
+  await expect(selectionStatus).toHaveText(
+    `選択中のキー: Keyboard Move / ${targetLabel} / 移動 / 0秒`,
+  );
 
   const keyTime = animation.getByLabel('キー時刻（秒）', { exact: true });
   const keyX = animation.getByLabel('キー値 X', { exact: true });
@@ -154,18 +180,94 @@ test('keyboard-only Tab flow selects and edits an animation key', async ({ page 
   await page.keyboard.press('Enter');
   const afterEdit = before + 1;
   await expect.poll(() => revision(page)).toBe(afterEdit);
+  await expect(keyActionStatus).toHaveText(
+    `Keyboard Move / ${targetLabel} / 移動: キーを 1秒へ更新しました。`,
+  );
   await expect(
     animation.getByRole('button', { name: 'キー 1秒: 2, 0, 0', exact: true }),
   ).toBeVisible();
+  await expect(selectionStatus).toHaveText(
+    `選択中のキー: Keyboard Move / ${targetLabel} / 移動 / 未選択`,
+  );
+
+  const editedKey = animation.getByRole('button', { name: 'キー 1秒: 2, 0, 0', exact: true });
+  await tabTo(page, editedKey);
+  await page.keyboard.press('Enter');
+  await tabTo(page, keyTime);
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('0.5');
+  const duplicateKey = animation.getByRole('button', {
+    name: '選択キーを指定時刻へ複製',
+    exact: true,
+  });
+  await tabTo(page, duplicateKey);
+  await page.keyboard.press('Enter');
+  const afterDuplicate = afterEdit + 1;
+  await expect.poll(() => revision(page)).toBe(afterDuplicate);
+  await expect(keyActionStatus).toHaveText(
+    `Keyboard Move / ${targetLabel} / 移動: キー 1秒を 0.5秒へ複製しました。`,
+  );
+  const duplicatedKey = animation.getByRole('button', {
+    name: 'キー 0.5秒: 2, 0, 0',
+    exact: true,
+  });
+  await expect(duplicatedKey).toBeVisible();
+  await tabTo(page, duplicatedKey);
+  await page.keyboard.press('Enter');
+  await tabTo(page, keyTime);
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('1');
+  await tabTo(page, duplicateKey);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => revision(page)).toBe(afterDuplicate);
+  const duplicateTimeAlert = animation.getByRole('alert');
+  await expect(duplicateTimeAlert).toContainText('重複しない値');
+  await expect(keyActionStatus).toHaveText('');
+  await expect(duplicatedKey).toBeVisible();
+
+  const existingKeyAtOne = animation.getByRole('button', {
+    name: 'キー 1秒: 2, 0, 0',
+    exact: true,
+  });
+  await expect(existingKeyAtOne).toBeVisible();
+  await expect(duplicatedKey).toHaveAttribute('aria-pressed', 'true');
+  await tabTo(page, existingKeyAtOne);
+  await page.keyboard.press('Enter');
+  await expect(duplicateTimeAlert).toHaveCount(0);
+  await tabTo(page, keyTime, 'Shift+Tab');
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('0.5');
+  await tabTo(page, applyKey);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => revision(page)).toBe(afterDuplicate);
+  await expect(animation.getByRole('alert')).toContainText('重複しない値');
+  await expect(keyActionStatus).toHaveText('');
+  await expect(existingKeyAtOne).toBeVisible();
+  await expect(existingKeyAtOne).toHaveAttribute('aria-pressed', 'true');
+  await expect(duplicatedKey).toBeVisible();
+  await expect(duplicatedKey).toHaveAttribute('aria-pressed', 'false');
+  await tabTo(page, duplicatedKey);
+  await page.keyboard.press('Enter');
+  await expect(animation.getByRole('alert')).toHaveCount(0);
+
+  const deleteKey = animation.getByRole('button', { name: '選択キーを削除', exact: true });
+  await tabTo(page, deleteKey);
+  await page.keyboard.press('Enter');
+  const afterDelete = afterDuplicate + 1;
+  await expect.poll(() => revision(page)).toBe(afterDelete);
+  await expect(keyActionStatus).toHaveText(
+    `Keyboard Move / ${targetLabel} / 移動: キー 0.5秒を削除しました。`,
+  );
+  await expect(duplicatedKey).toHaveCount(0);
 
   const save = page.getByRole('button', { name: '今すぐ保存', exact: true });
   await tabTo(page, save);
   await page.keyboard.press('Enter');
   await expect(page.locator('.editor3d-save-status')).toHaveText(
-    `保存済み · revision ${afterEdit}`,
+    `保存済み · revision ${afterDelete}`,
   );
   await expect(
-    page.getByText(`編集中 revision ${afterEdit} / 保存済み revision ${afterEdit}`, {
+    page.getByText(`編集中 revision ${afterDelete} / 保存済み revision ${afterDelete}`, {
       exact: true,
     }),
   ).toBeVisible();
@@ -195,7 +297,9 @@ async function seek(page: Page, time: string) {
   const animation = panel(page);
   await animation.getByLabel('指定時刻（秒）', { exact: true }).fill(time);
   await animation.getByRole('button', { name: '指定時刻を表示', exact: true }).click();
-  await expect(animation.getByRole('status')).toContainText('アニメーション停止pose');
+  await expect(animation.getByTestId('native-animation-playback-status')).toContainText(
+    'アニメーション停止pose',
+  );
 }
 async function visual(page: Page, name: string) {
   const path = test.info().outputPath('native-visual-animation-' + name + '.png');
@@ -224,7 +328,9 @@ test('authors object keys, scrubs, preserves rest PNG and restores editable clip
   expect([...(await readFile((await (await png).path())!)).subarray(0, 8)]).toEqual([
     137, 80, 78, 71, 13, 10, 26, 10,
   ]);
-  await expect(animation.getByRole('status')).toContainText('アニメーションrest表示');
+  await expect(animation.getByTestId('native-animation-playback-status')).toContainText(
+    'アニメーションrest表示',
+  );
   await seek(page, '0.5');
   const bytes = await backup(page),
     saved = await importBackup(new Uint8Array(bytes));
@@ -264,7 +370,9 @@ test('authors object keys, scrubs, preserves rest PNG and restores editable clip
     await restored.getByRole('button', { name: '3D表示を開く', exact: true }).click();
     await expect(restored.getByText('3D表示中', { exact: true })).toBeVisible();
     await rp.getByRole('button', { name: 'clipを再生', exact: true }).click();
-    await expect(rp.getByRole('status')).toContainText('アニメーション再生中');
+    await expect(rp.getByTestId('native-animation-playback-status')).toContainText(
+      'アニメーション再生中',
+    );
   } finally {
     await fresh.close();
   }
@@ -326,24 +434,34 @@ test('phone timeline supports IME, duplicate-time rejection and explicit resume 
     await animation.getByLabel('指定時刻（秒）', { exact: true }).fill('0.5');
     await animation.getByLabel('指定時刻（秒）', { exact: true }).dispatchEvent('compositionstart');
     await animation.getByRole('button', { name: '指定時刻を表示', exact: true }).click();
-    await expect(animation.getByRole('status')).toContainText('アニメーションrest表示');
+    await expect(animation.getByTestId('native-animation-playback-status')).toContainText(
+      'アニメーションrest表示',
+    );
     await animation.getByLabel('指定時刻（秒）', { exact: true }).dispatchEvent('compositionend');
     await animation.getByRole('button', { name: '指定時刻を表示', exact: true }).focus();
     await page.keyboard.press('Enter');
-    await expect(animation.getByRole('status')).toContainText('アニメーション停止pose');
+    await expect(animation.getByTestId('native-animation-playback-status')).toContainText(
+      'アニメーション停止pose',
+    );
     await animation
       .getByRole('combobox', { name: 'タイムライン拡大', exact: true })
       .selectOption('2');
     await animation.getByRole('button', { name: 'clipを再生', exact: true }).tap();
     await page.evaluate(() => document.dispatchEvent(new Event('freeze')));
-    await expect(animation.getByRole('status')).not.toContainText('アニメーション再生中');
+    await expect(animation.getByTestId('native-animation-playback-status')).not.toContainText(
+      'アニメーション再生中',
+    );
     await page.evaluate(() => document.dispatchEvent(new Event('resume')));
-    await expect(animation.getByRole('status')).not.toContainText('アニメーション再生中');
+    await expect(animation.getByTestId('native-animation-playback-status')).not.toContainText(
+      'アニメーション再生中',
+    );
     await page.getByRole('button', { name: '保存してGPU表示を休止', exact: true }).click();
     await page.getByRole('button', { name: 'GPU表示を再開', exact: true }).click();
     await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
     await animation.getByRole('button', { name: 'clipを再生', exact: true }).tap();
-    await expect(animation.getByRole('status')).toContainText('アニメーション再生中');
+    await expect(animation.getByTestId('native-animation-playback-status')).toContainText(
+      'アニメーション再生中',
+    );
     await animation.getByRole('button', { name: 'clipを停止', exact: true }).tap();
     await page.getByRole('button', { name: '全体を表示', exact: true }).tap();
     await visual(page, 'phone-timeline');
@@ -386,7 +504,9 @@ test('reduced motion applies editor CSS and pauses preview without changing clip
   await animation.getByRole('button', { name: 'clip設定を適用', exact: true }).click();
   const before = (await importBackup(new Uint8Array(await backup(page)))).project;
   await animation.getByRole('button', { name: 'clipを再生', exact: true }).click();
-  await expect(animation.getByRole('status')).toContainText('アニメーション再生中');
+  await expect(animation.getByTestId('native-animation-playback-status')).toContainText(
+    'アニメーション再生中',
+  );
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(animation.getByTestId('native-motion-preference')).toContainText('設定を検出');
   const reducedMotionStyles = await page.locator('.editor3d').evaluate((element) => {
@@ -404,17 +524,25 @@ test('reduced motion applies editor CSS and pauses preview without changing clip
   expect(reducedMotionStyles.animationIterationCount).toBe('1');
   expect(reducedMotionStyles.scrollBehavior).toBe('auto');
   expect(reducedMotionStyles.transitionDurationMs).toBeCloseTo(0.01, 5);
-  await expect(animation.getByRole('status')).toContainText('アニメーション停止pose');
+  await expect(animation.getByTestId('native-animation-playback-status')).toContainText(
+    'アニメーション停止pose',
+  );
   expect((await importBackup(new Uint8Array(await backup(page)))).project).toEqual(before);
   await animation.getByRole('button', { name: 'clipを再生', exact: true }).click();
-  await expect(animation.getByRole('status')).toContainText('アニメーション再生中');
+  await expect(animation.getByTestId('native-animation-playback-status')).toContainText(
+    'アニメーション再生中',
+  );
   await animation.getByRole('button', { name: 'clipを停止', exact: true }).click();
-  await expect(animation.getByRole('status')).toContainText('アニメーション停止pose');
+  await expect(animation.getByTestId('native-animation-playback-status')).toContainText(
+    'アニメーション停止pose',
+  );
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await expect(animation.getByTestId('native-motion-preference')).toContainText(
     '動き低減指定はありません',
   );
-  await expect(animation.getByRole('status')).toContainText('アニメーション停止pose');
+  await expect(animation.getByTestId('native-animation-playback-status')).toContainText(
+    'アニメーション停止pose',
+  );
   expect((await importBackup(new Uint8Array(await backup(page)))).project).toEqual(before);
 });
 
@@ -424,8 +552,12 @@ test('duplicate and out-of-range key times retain the clip with Japanese correct
   test.setTimeout(60_000);
   const animation = await setup(page);
   const before = await importBackup(await backup(page));
-  await expect(animation.getByRole('status')).toContainText('編集や保存の操作に合わせて');
-  await expect(animation.getByRole('status')).not.toContainText('session boundary');
+  await expect(animation.getByTestId('native-animation-playback-status')).toContainText(
+    '編集や保存の操作に合わせて',
+  );
+  await expect(animation.getByTestId('native-animation-playback-status')).not.toContainText(
+    'session boundary',
+  );
   for (const time of ['0', '-1', '2']) {
     await animation.getByLabel('キー時刻（秒）', { exact: true }).fill(time);
     await animation.getByRole('button', { name: 'キーを追加', exact: true }).click();

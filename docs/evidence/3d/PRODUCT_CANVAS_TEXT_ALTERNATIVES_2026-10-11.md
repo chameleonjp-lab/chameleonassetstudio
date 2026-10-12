@@ -34,3 +34,28 @@ After the timeline follow-up, the existing scene-text/selection-status test and 
 The keyboard-only `keyboard-only Tab flow selects and edits an animation key` workflow now switches the key property from translation to scale, creates a scale key, and verifies that the timeline group and marker accessible names reflect the active property. Enter toggles the scale marker's `aria-pressed` state; switching back to translation makes its existing marker report `aria-pressed="false"` rather than retaining a stale selected state. The workflow then edits the translation key, saves, and decodes the backup to verify both track values.
 
 The focused test passed in Chromium using `/usr/bin/chromium` with `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` (1/1) and in WebKit-critical (1/1). This verifies DOM names/states and keyboard behavior in headless desktop browsers only. It does not test screen-reader speech, VoiceOver, TalkBack, full scene text alternatives, physical devices/keyboards, touch, contrast, or actual browser/OS zoom; UX-05 and physical accessibility gates remain open.
+
+
+## Timeline selection live-status follow-up — 2026-10-12
+
+`NativeAnimationPanel` now exposes a dedicated polite, atomic status for the selected key context: clip name, target object name/ID, animated property, and selected key time (or `未選択`). Keyboard-only property changes and marker/key-list selection update this region. The continuously refreshed playback/time status explicitly uses `aria-live="off"`, so playback frames are not announced as a stream; discrete selection context is announced separately.
+
+The keyboard-only timeline workflow asserts the status role semantics and its transitions for translation selection, scale-property switch/selection, return to translation, and clearing selection after applying an edit. It also verifies that the playback status is not a live announcement. The focused Playwright case passed in system Chromium with `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium` (1/1) and WebKit-critical (1/1); the full `native-animation-product.spec.ts` suite passed 7/7 in each browser, and `npm run test:ci-scope` passed 8/8. Full unit tests passed (3,530/3,530), lint had zero errors and one pre-existing React Hook warning in `NativeViewportPanel.tsx`, formatting passed, and the production build passed (with the existing non-blocking large-chunk advisory).
+
+This verifies status markup and text updates in headless desktop browsers only. It does not establish that a screen reader actually speaks or presents the update correctly; VoiceOver, TalkBack, physical keyboards/devices, touch, contrast, actual browser/OS zoom, and full scene alternatives remain unverified. UX-05 and 3D-STAGE4-04 remain partial/open; no physical or assistive-technology acceptance is claimed.
+
+
+## Timeline key-action live-status follow-up — 2026-10-12
+
+The timeline now keeps its selected-key context status separate from a dedicated polite, atomic `role="status"` for successful key mutations. Keyboard-driven add, edit, duplicate, and delete operations announce the clip, target name/ID, property, and affected key time(s). A failed mutation continues through the existing `role="alert"` path and does not produce a success message. The playback/time status remains `aria-live="off"`.
+
+The keyboard-only animation workflow verifies all four success messages, resulting key-list contents, revision changes, and the saved backup's authored translation and scale values. It also attempts to duplicate a key onto an occupied time and verifies that the existing `role="alert"` guidance appears, the success status clears, the revision stays unchanged, and the original key remains. The complete `native-animation-product.spec.ts` suite passed 7/7 in system Chromium and 7/7 in WebKit-critical; all 3,530 unit tests passed, `npm run test:ci-scope` passed 8/8, formatting and the production build passed, and lint had zero errors with one pre-existing warning in `NativeViewportPanel.tsx:195`.
+
+This is DOM/status text and headless desktop-browser keyboard evidence only. It does not establish actual screen-reader speech, VoiceOver/TalkBack behavior, complete scene text alternatives, physical keyboard/device/touch acceptance, contrast compliance, or real browser/OS zoom. UX-05 and 3D-STAGE4-04 remain partial/open; no physical or assistive-technology acceptance is claimed.
+
+
+## Timeline-key update-collision recovery follow-up — 2026-10-12
+
+The keyboard-only timeline workflow now also reselects the existing 1-second key after a failed duplicate attempt, confirming the alert clears on recovery. It then attempts to update that key onto the occupied 0.5-second time and verifies that the alert returns, the success status stays empty, the revision is unchanged, both keys remain, and selection stays on the unmodified 1-second key. The test reselects the 0.5-second key before continuing its existing deletion/save/backup checks.
+
+The focused workflow passed in system Chromium and WebKit-critical (1/1 per browser project). This remains headless DOM/keyboard evidence only; screen-reader speech and assistive-technology or physical-device acceptance remain unverified. UX-05, 3D-STAGE4-04 and physical accessibility gates remain partial/open.
