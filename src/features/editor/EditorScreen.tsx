@@ -130,6 +130,7 @@ import {
   type SaveState,
   type SourceBlobTransitions,
 } from '../../core/storage';
+import { warnRecoveryPointSaveFailure } from './recoveryPointLogging';
 import { layerWorldPoint } from '../../renderers/canvas2d/view';
 import { AlignPanel } from './AlignPanel';
 import { AssetBatchPanel } from './AssetBatchPanel';
@@ -1717,9 +1718,8 @@ export function EditorScreen({ projectId, onBackToHome }: EditorScreenProps) {
         });
         await reloadSnapshots(before.id);
       } catch (snapshotError) {
-        console.warn('復旧点の保存に失敗しました', snapshotError);
+        warnRecoveryPointSaveFailure(snapshotError);
       }
-
       await commitPersistentMutationWithHistory({
         apply: () => saveAssetRevisionAndApply(next, { putBlobs: [{ key, blob: afterBlob }] }),
         history,
