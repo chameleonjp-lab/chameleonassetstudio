@@ -323,6 +323,11 @@ const guidance = {
     '空白だけでない骨の名前を入力し、長すぎる場合は短くしてから再操作してください。',
     'after-fix',
   ],
+  EDIT_RIG_CYCLE: [
+    '関節の親に自分自身または子孫を指定できません。',
+    '循環を作らない親を選び直してください。現在の骨階層とlocal rest値を確認してから再操作してください。',
+    'after-fix',
+  ],
   EDIT_WEIGHT_ZERO: [
     '重みが全て0のため、正規化できません。',
     '選択した頂点の重みに1つ以上の正の値を指定し、対象の骨を確認してから、必要な場合だけ正規化を選んで再操作してください。',
@@ -817,6 +822,7 @@ export function describeNativeEditingFailure(
     )
   )
     return result('EDIT_SELECTION');
+  if (target === 'rig' && /^Cyclic hierarchy$/i.test(text)) return result('EDIT_RIG_CYCLE');
   if (/\b(?:invalid face|corner count mismatch|cyclic hierarchy)\b/i.test(text))
     return result('EDIT_GEOMETRY');
   if (

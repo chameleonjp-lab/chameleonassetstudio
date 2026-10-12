@@ -76,6 +76,9 @@ export function NativeRigPanel({
   const skin = project.skins.find((value) => value.meshId === mesh?.id);
   const pose = session.rigPose.state;
   const identity = `${project.id}:${project.revision}:${jointId}`;
+  const coincidentJoint = Boolean(
+    joint && joint.parentId !== null && Math.hypot(...joint.transform.translation) <= 1e-9,
+  );
   useEffect(() => {
     setVertexId('');
   }, [project.id, mesh?.id]);
@@ -246,6 +249,11 @@ export function NativeRigPanel({
             </label>
           ))}
         </div>
+        {coincidentJoint && (
+          <p role="note">
+            選択中の関節は親と同じ位置にあります（親からの位置差は0）。有効な関節として保存できます。長さのある骨にする場合は位置を設定し、「restを適用して再bind」を押してください。
+          </p>
+        )}
         <p>
           対象・revisionが変わった後は現在値を読み直してください。rest調整は関係する全skinを再bindします。親変更は入力したlocal値を使います。
         </p>

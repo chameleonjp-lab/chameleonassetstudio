@@ -125,6 +125,78 @@ test('authors mixed skin, previews deformation, preserves rest backup and re-edi
   }
 });
 
+test('creates a coincident child joint, restores it independently, then edits its rest pose', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(60_000);
+  await page.goto('/3d/');
+  await page.getByLabel('新しいプロジェクト名', { exact: true }).fill('Coincident joint');
+  await page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true }).click();
+  await page.getByRole('button', { name: '箱を追加', exact: true }).click();
+  await page.getByText('骨と重みの編集を開く', { exact: true }).click();
+  const rig = panel(page);
+  await rig.getByLabel('骨の名前', { exact: true }).fill('Root');
+  await rig.getByRole('button', { name: '骨を追加', exact: true }).click();
+  const root = await rig.getByRole('combobox', { name: '骨を選択', exact: true }).inputValue();
+  await rig.getByRole('combobox', { name: '親の骨', exact: true }).selectOption(root);
+  await rig.getByLabel('骨の名前', { exact: true }).fill('Coincident tip');
+  await rig.getByRole('button', { name: '骨を追加', exact: true }).click();
+  const tip = await rig.getByRole('combobox', { name: '骨を選択', exact: true }).inputValue();
+  await expect(rig.getByRole('note')).toContainText('親と同じ位置');
+  await expect(rig.getByRole('note')).toContainText('有効な関節として保存できます');
+
+  const before = (await importBackup(await backup(page))).project;
+  expect(before.skins).toEqual([]);
+  expect(before.meshes).toHaveLength(1);
+  expect(before.nodes.find((node) => node.id === tip)).toMatchObject({
+    name: 'Coincident tip',
+    parentId: root,
+    transform: { translation: [0, 0, 0] },
+  });
+
+  const fresh = await browser.newContext({ baseURL: new URL(page.url()).origin });
+  try {
+    const restored = await fresh.newPage();
+    await restored.goto('/3d/');
+    await restored.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+      name: 'coincident.cas3dproj',
+      mimeType: 'application/octet-stream',
+      buffer: Buffer.from(await backup(page)),
+    });
+    await expect(
+      restored.getByRole('heading', { name: 'Coincident joint', exact: true }),
+    ).toBeVisible();
+    await restored.getByText('骨と重みの編集を開く', { exact: true }).click();
+    const restoredRig = panel(restored);
+    await restoredRig.getByRole('combobox', { name: '骨を選択', exact: true }).selectOption(tip);
+    await restoredRig.getByRole('button', { name: '骨の現在値を読む', exact: true }).click();
+    await expect(restoredRig.getByRole('note')).toContainText('親と同じ位置');
+
+    await restoredRig.getByRole('combobox', { name: '骨を選択', exact: true }).selectOption(root);
+    await restoredRig.getByRole('button', { name: '骨の現在値を読む', exact: true }).click();
+    await restoredRig.getByRole('combobox', { name: '親の骨', exact: true }).selectOption(tip);
+    const beforeRejectedCycle = (await importBackup(await backup(restored))).project;
+    await restoredRig.getByRole('button', { name: '親とlocal restを適用', exact: true }).click();
+    await expect(restoredRig.getByRole('alert')).toContainText('[EDIT_RIG_CYCLE]');
+    await expect(restoredRig.getByRole('alert')).toContainText('自分自身または子孫');
+    expect((await importBackup(await backup(restored))).project).toEqual(beforeRejectedCycle);
+
+    await restoredRig.getByRole('combobox', { name: '骨を選択', exact: true }).selectOption(tip);
+    await restoredRig.getByRole('button', { name: '骨の現在値を読む', exact: true }).click();
+    await expect(restoredRig.getByRole('note')).toContainText('親と同じ位置');
+    await restoredRig.getByLabel('骨位置 Y', { exact: true }).fill('1');
+    await restoredRig.getByRole('button', { name: 'restを適用して再bind', exact: true }).click();
+    await expect(restoredRig.getByRole('note')).toHaveCount(0);
+    const after = (await importBackup(await backup(restored))).project;
+    expect(after.skins).toEqual([]);
+    expect(after.meshes).toEqual(before.meshes);
+    expect(after.nodes.find((node) => node.id === tip)!.transform.translation).toEqual([0, 1, 0]);
+  } finally {
+    await fresh.close();
+  }
+});
+
 test('phone numeric rig handles IME, invalid input, pause and repeated rest previews without overflow', async ({
   page,
 }) => {
