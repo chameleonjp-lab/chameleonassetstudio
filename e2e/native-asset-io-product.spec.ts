@@ -7,7 +7,9 @@ import { preflightGlb } from '../src/core3d/import/preflight';
 import { assetIoFixture, assetIoPng } from '../src/core3d/fixtures/assetIo';
 import { captureAssetSnapshot, sha256 } from '../src/core3d/export/snapshot';
 import { exportGlb, encodeGlb } from '../src/adapters3d/gltf/export';
+import { importGlb } from '../src/adapters3d/gltf/import';
 import { buildAssetPackage } from '../src/core3d/export/mapping';
+import { NATIVE_TEXTURE_PROFILE } from '../src/core3d/model/textureProfile';
 async function setup(page: Page) {
   await page.goto('/3d/');
   await page.getByLabel('新しいプロジェクト名', { exact: true }).fill('Asset delivery');
@@ -62,6 +64,91 @@ async function holdWorker(page: Page) {
       await page.unroute(pattern, handler);
     },
   };
+}
+function headerOnlyPng(width: number, height: number, colorType: 2 | 6 = 6): Uint8Array {
+  const chunk = (type: string, data = new Uint8Array()) => {
+    const output = new Uint8Array(data.length + 12);
+    new DataView(output.buffer).setUint32(0, data.length);
+    output.set(new TextEncoder().encode(type), 4);
+    output.set(data, 8);
+    return output;
+  };
+  const header = new Uint8Array(13);
+  const view = new DataView(header.buffer);
+  view.setUint32(0, width);
+  view.setUint32(4, height);
+  header[8] = 8;
+  header[9] = colorType;
+  const parts = [
+    new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk('IHDR', header),
+    chunk('IDAT'),
+    chunk('IEND'),
+  ];
+  const bytes = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
+  let offset = 0;
+  for (const part of parts) {
+    bytes.set(part, offset);
+    offset += part.length;
+  }
+  return bytes;
+}
+function glbWithTextureHeaders(
+  source: Uint8Array,
+  images: { width: number; height: number; colorType?: 2 | 6 }[],
+): Uint8Array {
+  const parsed = preflightGlb(source);
+  const json = structuredClone(parsed.json);
+  const binaryParts = [parsed.binary];
+  let binaryLength = parsed.binary.length;
+  json.images = [];
+  json.textures = [];
+  json.samplers = [{ magFilter: 9729, minFilter: 9729, wrapS: 33071, wrapT: 33071 }];
+  if (!json.bufferViews || !json.buffers?.[0] || !json.materials?.[0] || !json.meshes?.[0])
+    throw new Error('Texture budget fixture requires a complete GLB');
+  const baseMaterial = structuredClone(json.materials[0]);
+  const basePrimitive = structuredClone(json.meshes[0].primitives[0]);
+  for (const [index, definition] of images.entries()) {
+    const padding = (4 - (binaryLength % 4)) % 4;
+    if (padding) {
+      binaryParts.push(new Uint8Array(padding));
+      binaryLength += padding;
+    }
+    const image = headerOnlyPng(definition.width, definition.height, definition.colorType);
+    const bufferView = json.bufferViews.length;
+    json.bufferViews.push({ buffer: 0, byteOffset: binaryLength, byteLength: image.length });
+    json.images.push({ bufferView, mimeType: 'image/png' });
+    json.textures.push({ source: index, sampler: 0 });
+    binaryParts.push(image);
+    binaryLength += image.length;
+  }
+  json.buffers[0].byteLength = binaryLength;
+  json.materials[0] = {
+    ...baseMaterial,
+    pbrMetallicRoughness: {
+      ...baseMaterial.pbrMetallicRoughness,
+      baseColorTexture: { index: 0 },
+    },
+  };
+  if (images.length > 1) {
+    json.materials.push({
+      ...baseMaterial,
+      name: 'Aggregate pixel budget fixture',
+      extras: { ...baseMaterial.extras, casId: 'imp04-pixel-budget-material' },
+      pbrMetallicRoughness: {
+        ...baseMaterial.pbrMetallicRoughness,
+        baseColorTexture: { index: 1 },
+      },
+    });
+    json.meshes[0].primitives.push({ ...basePrimitive, material: 1 });
+  }
+  const binary = new Uint8Array(binaryLength);
+  let offset = 0;
+  for (const part of binaryParts) {
+    binary.set(part, offset);
+    offset += part.length;
+  }
+  return encodeGlb(json, binary);
 }
 test('authors game metadata and emits GLB, sidecar and ZIP from a fixed canonical revision', async ({
   page,
@@ -709,6 +796,62 @@ test('rejects external GLB buffer and image URIs without requests and preserves 
     expect(externalRequests).toBe(0);
   } finally {
     await context.unroute(externalUriPattern, rejectExternalRequest);
+  }
+});
+
+test('IMP-04: refuses oversized GLB texture dimensions and aggregate pixels without replacing the saved project', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await setup(page);
+  const before = await importBackup(await download(page, '現在の内容をバックアップ'));
+  const project = assetIoFixture();
+  project.meshes[0].faces.forEach((face) => {
+    face.uv = [
+      [0, 0],
+      [1, 0],
+      [0, 1],
+    ];
+  });
+  const { bytes } = await exportGlb(captureAssetSnapshot(project, () => new Uint8Array()));
+  const cases = [
+    {
+      name: 'over-edge.glb',
+      images: [{ width: NATIVE_TEXTURE_PROFILE.maxEdge + 1, height: 1 }],
+      reason: '各辺',
+    },
+    {
+      name: 'aggregate-pixels.glb',
+      images: [
+        { width: NATIVE_TEXTURE_PROFILE.maxEdge, height: NATIVE_TEXTURE_PROFILE.maxEdge },
+        {
+          width: NATIVE_TEXTURE_PROFILE.maxEdge,
+          height: NATIVE_TEXTURE_PROFILE.maxEdge,
+          colorType: 2 as const,
+        },
+      ],
+      reason: 'Total image pixels',
+    },
+  ];
+  const panel = await openIo(page);
+  for (const fixture of cases) {
+    const candidate = glbWithTextureHeaders(bytes, fixture.images);
+    await expect(importGlb(candidate, 'imp04-candidate')).rejects.toThrow(fixture.reason);
+    await panel.getByLabel('読み込むGLB（32MiBまで）', { exact: true }).setInputFiles({
+      name: fixture.name,
+      mimeType: 'model/gltf-binary',
+      buffer: Buffer.from(candidate),
+    });
+    await panel.getByRole('button', { name: 'GLBを検査して保存前に確認する', exact: true }).click();
+    await expect(panel.getByRole('alert')).toBeVisible();
+    expect((await importBackup(await download(page, '現在の内容をバックアップ'))).project).toEqual(
+      before.project,
+    );
+    await expect(
+      page.getByRole('region', { name: '保存したプロジェクト', exact: true }).getByRole('button', {
+        name: /^Imported GLB revision/,
+      }),
+    ).toHaveCount(0);
   }
 });
 
