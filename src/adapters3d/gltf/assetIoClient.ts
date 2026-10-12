@@ -3,14 +3,35 @@ import type {
   AssetIoRequest,
   AssetIoResult,
   AssetIoProgress,
-  AssetIoWorkerFailure,
 } from '../../core3d/ports/assetIoPort';
-import { ASSET_IO_WORKER_FAILURE_CODE } from '../../core3d/ports/assetIoPort';
+import { ASSET_IO_WORKER_FAILURE_CODES as C } from '../../core3d/ports/assetIoPort';
 import {
   ASSET_IO_PROFILE as P,
   assertIoBudget,
   reserveAssetIoBytes,
 } from '../../core3d/profile/assetIoProfile';
+
+function workerFailureMessage(code: unknown): string {
+  switch (code) {
+    case C.WORKER:
+      return 'Asset worker failed; original project retained';
+    case C.REQUIRED_EXTENSION:
+      return 'Unsupported required extension';
+    case C.EXTERNAL_REFERENCE:
+      return 'External URI or invalid buffer';
+    case C.SIDECAR:
+      return 'Sidecar does not match this GLB';
+    case C.IMAGE:
+      return 'Image validation failed';
+    case C.FORMAT:
+      return 'Malformed or invalid GLB';
+    case C.PROFILE_LIMIT:
+      return 'Asset I/O exceeds profile limit';
+    default:
+      return 'Invalid asset worker response';
+  }
+}
+
 let active = false;
 export function startAssetIo(
   request: AssetIoRequest,
@@ -64,14 +85,7 @@ export function startAssetIo(
         release();
         if (data.kind === 'result') resolve(data.result);
         else if (data.kind === 'error') {
-          const failure = data as AssetIoWorkerFailure;
-          reject(
-            new Error(
-              failure.code === ASSET_IO_WORKER_FAILURE_CODE
-                ? 'Asset worker failed; original project retained'
-                : 'Invalid asset worker response',
-            ),
-          );
+          reject(new Error(workerFailureMessage(data.code)));
         } else reject(new Error('Invalid asset worker response'));
       };
       worker.onerror = () => {
