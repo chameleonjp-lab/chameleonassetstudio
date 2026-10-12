@@ -86,6 +86,69 @@ test('closed-project trash requires confirmation, preserves original bytes and r
   });
 });
 
+test('library confirmation cancel returns keyboard focus to its trigger', async ({ page }) => {
+  await createOriginal(page);
+  await page.getByRole('button', { name: 'プロジェクトを閉じる', exact: true }).click();
+  const library = page.getByRole('region', { name: '3D保存履歴とごみ箱' });
+  await library.getByRole('button', { name: '保存履歴とごみ箱を読む', exact: true }).click();
+  const trigger = library.getByRole('button', {
+    name: 'ごみ箱移動を確認: Library original',
+    exact: true,
+  });
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+
+  const confirmation = library.getByRole('region', { name: '保存作品の操作確認', exact: true });
+  const confirm = confirmation.getByRole('button', {
+    name: '確認した1作品をごみ箱へ移動',
+    exact: true,
+  });
+  const cancel = confirmation.getByRole('button', { name: 'この操作を取り消す', exact: true });
+  await expect(trigger).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(confirm).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(cancel).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(confirmation).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+  await expect(trigger).toHaveCSS('outline-width', '3px');
+});
+
+test('recovery-copy confirmation cancellation returns keyboard focus to its candidate', async ({
+  page,
+}) => {
+  await createOriginal(page);
+  await page.getByLabel('プロジェクト名', { exact: true }).fill('Library latest');
+  await page.getByRole('button', { name: '今すぐ保存', exact: true }).click();
+  const library = page.getByRole('region', { name: '3D保存履歴とごみ箱' });
+  await library.getByRole('button', { name: '保存履歴とごみ箱を読む', exact: true }).click();
+  await library
+    .getByRole('button', { name: '復旧候補を読む: Library latest', exact: true })
+    .click();
+  const trigger = library.getByRole('button', {
+    name: 'revision 0 の別コピー復旧を確認',
+    exact: true,
+  });
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+
+  const confirmation = library.getByRole('region', { name: '保存作品の操作確認', exact: true });
+  const confirm = confirmation.getByRole('button', {
+    name: '確認した版を別コピーで復旧',
+    exact: true,
+  });
+  const cancel = confirmation.getByRole('button', { name: 'この操作を取り消す', exact: true });
+  await page.keyboard.press('Tab');
+  await expect(confirm).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(cancel).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(confirmation).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+  await expect(trigger).toHaveCSS('outline-width', '3px');
+});
+
 test('recovery comparison opens an earlier saved version as a new copy while preserving the normal latest version', async ({
   page,
 }, info) => {
