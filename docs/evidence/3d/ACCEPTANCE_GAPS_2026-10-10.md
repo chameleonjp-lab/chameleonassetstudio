@@ -180,3 +180,10 @@ This confirms browser API calls only. It does not measure GPU-driver memory, ren
 [`AC13_UPDATE_CHUNK_RECOVERY_2026-10-12.md`](AC13_UPDATE_CHUNK_RECOVERY_2026-10-12.md) records the missing combined product-browser slice: after a changed build is reported, a dirty project is saved by the explicit update reload, the reloaded `Editor3DShell` chunk receives a synthetic HTTP 404, and a manual retry reopens the same saved project with its changed name and persisted revision. Focused cases passed in Chromium and WebKit-critical on the dev server (1/1 each) and Chromium production preview (1/1); the full diagnostics product spec passed 24/24 across Chromium and WebKit-critical. Unit tests passed 3,531/3,531; format, lint (zero errors; one existing Hook warning), and build passed.
 
 The 404 is Playwright-injected, not an actual stale CDN/HTML deployment. Service Worker/browser/CDN cache residue, real offline-to-network reconnection, OS discard and physical-device recovery remain untested. AC-13 and B10 remain partial/open; no acceptance pass is claimed.
+
+
+## DATA-07 product object deletion dependency preview — 2026-10-12
+
+[`PRODUCT_OBJECT_DELETION_DEPENDENCIES_2026-10-12.md`](PRODUCT_OBJECT_DELETION_DEPENDENCIES_2026-10-12.md) adds a dependency-rich product-browser check for the explicit descendant deletion flow. The confirmation reports four nodes, one last-used mesh and skin, one animation track/two keys, one anchor and one collider; cancellation leaves the decoded project unchanged. After confirmation, the track is removed while the clip identity remains, and material/source metadata/original image bytes are preserved. Full decoded project and blob-map comparisons cover Undo/Redo. The focused library product suite passed 28/28 across Chromium and WebKit-critical; unit 3,531/3,531, formatting, lint (zero errors; one existing Hook warning) and app/H3 build passed.
+
+This is automated headless evidence against generated fixtures only. DATA-07 remains partial: no human review, deployed-runtime, physical-device, or broader real-project acceptance is claimed.

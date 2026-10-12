@@ -297,20 +297,24 @@ test('failed recovery-copy write exposes an accessible alert and preserves the s
   await expect(library.locator('.editor3d-project-list > li')).toHaveCount(1);
 });
 
-test('object deletion confirmation keeps keyboard focus through cancel and Undo/Redo while preserving image originals', async ({
+test('object deletion previews linked dependencies and preserves originals through cancel and Undo/Redo', async ({
   page,
 }, info) => {
-  const { bytes, hash } = await createOriginal(page);
+  const { bytes, hash } = await createOriginal(page, true);
   const original = await backupCurrent(page);
   const form = page.getByRole('region', { name: '3D制作', exact: true });
-  const node = original.project.nodes.find((entry) => entry.meshId)!;
+  const node = original.project.nodes.find((entry) => entry.id === 'whole')!;
   await form.getByRole('combobox', { name: '制作オブジェクト', exact: true }).selectOption(node.id);
   await form.getByText('選択した部品の削除', { exact: true }).click();
+  await form.getByLabel('選択した部品の子階層も削除対象に含める', { exact: true }).check();
   const prepare = form.getByRole('button', { name: '部品の削除内容を確認', exact: true });
   const confirmation = form.getByRole('region', { name: '部品削除の確認', exact: true });
   await prepare.focus();
   await page.keyboard.press('Enter');
-  await expect(confirmation).toContainText('画像・GLB原本は保持');
+  await expect(confirmation).toContainText('対象 4部品');
+  await expect(confirmation).toContainText('この部品だけが使う形状 1、skin 1');
+  await expect(confirmation).toContainText('animation track 1（key 2）、anchor 1、collider 1');
+  await expect(confirmation).toContainText('clip本体、材質、画像・GLB原本は保持');
   await expect(prepare).toBeFocused();
   const confirmDeletion = confirmation.getByRole('button', {
     name: '確認した部品と依存情報を削除',
@@ -331,6 +335,7 @@ test('object deletion confirmation keeps keyboard focus through cancel and Undo/
   await prepare.focus();
   await page.keyboard.press('Enter');
   await expect(confirmation).toBeVisible();
+  await expect(confirmation).toContainText('animation track 1（key 2）、anchor 1、collider 1');
   await page.keyboard.press('Tab');
   await expect(confirmDeletion).toBeFocused();
   await page.keyboard.press('Enter');
@@ -342,8 +347,18 @@ test('object deletion confirmation keeps keyboard focus through cancel and Undo/
   await expect(deletionStatus).toBeFocused();
   await expect(deletionStatus).toHaveCSS('outline-width', '3px');
   const deleted = await backupCurrent(page);
-  expect(deleted.project.nodes.some((entry) => entry.id === node.id)).toBe(false);
+  expect(deleted.project.nodes).toEqual([]);
+  expect(deleted.project.meshes).toEqual([]);
+  expect(deleted.project.skins).toEqual([]);
+  expect(deleted.project.clips).toEqual(
+    original.project.clips.map((clip) => ({ ...clip, tracks: [] })),
+  );
+  expect(deleted.project.game.anchors).toEqual([]);
+  expect(deleted.project.game.colliders).toEqual([]);
+  expect(deleted.project.materials).toEqual(original.project.materials);
+  expect(deleted.project.sources).toEqual(original.project.sources);
   expect(deleted.project.blobIds).toEqual(original.project.blobIds);
+  expect(deleted.blobs).toEqual(original.blobs);
   expect(deleted.blobs.get(hash)).toEqual(bytes);
   await page.getByRole('button', { name: '元に戻す', exact: true }).click();
   await expect(
@@ -353,10 +368,12 @@ test('object deletion confirmation keeps keyboard focus through cancel and Undo/
   ).toHaveCount(0);
   const undo = await backupCurrent(page);
   expect({ ...undo.project, revision: original.project.revision }).toEqual(original.project);
+  expect(undo.blobs).toEqual(original.blobs);
   expect(undo.blobs.get(hash)).toEqual(bytes);
   await page.getByRole('button', { name: 'やり直す', exact: true }).click();
   const redo = await backupCurrent(page);
   expect({ ...redo.project, revision: deleted.project.revision }).toEqual(deleted.project);
+  expect(redo.blobs).toEqual(original.blobs);
   expect(redo.blobs.get(hash)).toEqual(bytes);
   await info.attach('object-deletion-redo', {
     body: await page.screenshot({ fullPage: true }),
