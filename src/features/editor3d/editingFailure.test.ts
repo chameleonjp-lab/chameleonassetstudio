@@ -255,8 +255,13 @@ describe('fixed native editing failure guidance', () => {
     }
   });
 
-  it('guides an unsupported archive path to the native 3D backup format', () => {
-    const cause = new Error('Unsupported backup path');
+  it.each([
+    'Unsupported backup path',
+    'Unsupported backup format/version',
+    'Incomplete backup',
+    'This backup profile requires stored ZIP entries',
+  ])('guides %s to the native 3D backup format', (message) => {
+    const cause = new Error(message);
     const failure = describeNativeEditingFailure(cause, 'storage');
     expect(failure.code).toBe('EDIT_STORAGE_BACKUP');
     expect(failure.reason).toContain('バックアップの形式');

@@ -82,6 +82,24 @@ describe('resident native backup', () => {
     const { p, bytes, hash } = await fixture();
     expectZipEntriesAtEpoch(await exportBackup(p, new Map([[hash, bytes]])));
   });
+  it('rejects compressed ZIP entries at the native backup profile gate', async () => {
+    const { unzipSync, zipSync } = await import('fflate');
+    const archive = await exportBackup(smallProject(), new Map());
+    const compressed = zipSync(unzipSync(archive), { level: 6 });
+    const methods: number[] = [];
+    unzipSync(compressed, {
+      filter: (file) => {
+        methods.push(file.compression);
+        return false;
+      },
+    });
+    expect(methods.some((method) => method !== 0)).toBe(true);
+    const before = compressed.slice();
+    await expect(importBackup(compressed)).rejects.toThrow(
+      'This backup profile requires stored ZIP entries',
+    );
+    expect(compressed).toEqual(before);
+  });
   it('captures data before awaiting and does not export later caller mutations', async () => {
     const { p, bytes, hash } = await fixture();
     const pending = exportBackup(p, new Map([[hash, bytes]]));
