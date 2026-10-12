@@ -68,3 +68,13 @@ The 3D assembly panel now offers a collapsed, keyboard-discoverable text summary
 The new focused product E2E passed 1/1 in Chromium and 1/1 in WebKit-critical. The complete `native-viewport-product.spec.ts` run passed in both browser projects. `npm run format:check`, `npm run build`, and `npm run test` passed; unit tests: 3,530/3,530 across 185 files. Lint had zero errors and one pre-existing warning in `NativeViewportPanel.tsx:195`.
 
 This verifies rendered DOM content and headless browser update behavior only. It does not establish actual screen-reader speech or assistive-technology acceptance, a full textual rendering of mesh geometry, world-space/evaluated-pose narration, physical-device acceptance, contrast compliance, or real browser/OS zoom. UX-05 and 3D-STAGE4-04 remain partial/open.
+
+
+## Keyboard focus recovery for destructive confirmation — 2026-10-12
+
+The native object-deletion inline confirmation is now exercised without pointer input. Enter opens the dependency preview; Tab reaches the confirm and cancel actions in DOM order. Cancel closes the preview and restores focus to the still-enabled confirmation trigger. Confirming deletion moves focus to the newly rendered status message explaining that Undo can restore the removed object; the trigger is disabled when the selection becomes empty, so it is not used as the post-delete focus target. This also keeps the destructive result and recovery path together for keyboard users.
+
+The updated focused product test initially reproduced focus loss after cancel in Chromium. After the minimal focus-restoration change, the focused Chromium E2E passed (1/1). This is a DOM/keyboard check only; it does not establish screen-reader speech, VoiceOver/TalkBack behavior, or physical-device acceptance. UX-05 and 3D-STAGE4-04 remain partial/open.
+
+
+The post-delete status is programmatically focusable and receives the existing 3px `:focus-visible` ring. After adding an explicit outline assertion, the focused deletion workflow passed again in Chromium (1/1) and WebKit-critical (1/1).

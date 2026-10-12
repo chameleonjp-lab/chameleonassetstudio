@@ -1,5 +1,5 @@
 import { formatNativeEditingFailure } from './editingFailure';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   previewObjectDeletion,
   applyObjectDeletion,
@@ -26,7 +26,17 @@ export function NativeObjectDeletionPanel({
   const [preview, setPreview] = useState<ObjectDeletionPreview | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState<{ projectId: string; revision: number } | null>(null);
+  const prepareButton = useRef<HTMLButtonElement>(null);
+  const noticeElement = useRef<HTMLParagraphElement>(null);
+  const focusAfterPreviewClose = useRef<'prepare' | 'notice' | null>(null);
   const selectionKey = JSON.stringify(selectedIds);
+  useLayoutEffect(() => {
+    if (preview || !focusAfterPreviewClose.current) return;
+    const target = focusAfterPreviewClose.current;
+    focusAfterPreviewClose.current = null;
+    if (target === 'notice') noticeElement.current?.focus();
+    else prepareButton.current?.focus();
+  }, [preview]);
   useEffect(() => {
     setPreview(null);
     setError('');
@@ -60,10 +70,12 @@ export function NativeObjectDeletionPanel({
       if (JSON.stringify(preview.requestedNodeIds) !== selectionKey)
         throw new Error('選択が変わりました。確認し直してください。');
       execute((candidate) => applyObjectDeletion(candidate, preview));
+      focusAfterPreviewClose.current = 'notice';
       setPreview(null);
       setError('');
       setNotice({ projectId: preview.projectId, revision: preview.revision + 1 });
     } catch (cause) {
+      focusAfterPreviewClose.current = 'prepare';
       setNotice(null);
       setPreview(null);
       setError(formatNativeEditingFailure(cause, 'deletion'));
@@ -82,12 +94,19 @@ export function NativeObjectDeletionPanel({
         />
         選択した部品の子階層も削除対象に含める
       </label>
-      <button type="button" disabled={disabled || !selectedIds.length} onClick={prepare}>
+      <button
+        ref={prepareButton}
+        type="button"
+        disabled={disabled || !selectedIds.length}
+        onClick={prepare}
+      >
         部品の削除内容を確認
       </button>
       {error && <p role="alert">{error}</p>}
       {notice?.projectId === project.id && notice.revision === project.revision && (
-        <p role="status">このrevisionで部品削除を適用しました。元に戻す操作で復元できます。</p>
+        <p ref={noticeElement} tabIndex={-1} role="status">
+          このrevisionで部品削除を適用しました。元に戻す操作で復元できます。
+        </p>
       )}
       {preview && (
         <section aria-label="部品削除の確認">
@@ -113,7 +132,14 @@ export function NativeObjectDeletionPanel({
           <button type="button" disabled={disabled} onClick={apply}>
             確認した部品と依存情報を削除
           </button>
-          <button type="button" disabled={disabled} onClick={() => setPreview(null)}>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              focusAfterPreviewClose.current = 'prepare';
+              setPreview(null);
+            }}
+          >
             部品の削除を取り消す
           </button>
         </section>
