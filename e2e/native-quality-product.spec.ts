@@ -91,6 +91,7 @@ test('a warning opens the correct material section without overwriting an unsave
   await page.getByRole('button', { name: '材質を適用', exact: true }).click();
   await panel.getByRole('button', { name: '現在の版を検査', exact: true }).click();
   await expect(panel.getByText('検査結果を取得しました。', { exact: true })).toBeVisible();
+  await expect(panel.getByText('警告: 互換用の自動透過設定です。', { exact: true })).toBeVisible();
   await page.getByLabel('粗さ roughness', { exact: true }).fill('0.123');
   await page.getByText('材質の色・金属・粗さ', { exact: true }).click();
   await panel.getByRole('button', { name: '編集先を確認', exact: true }).first().click();
