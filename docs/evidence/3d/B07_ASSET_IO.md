@@ -31,3 +31,11 @@ Local validation on 2026-10-10 JST passed lint, formatting, application/H3 build
 Submitted head/tree, CI runs and screenshots are recorded after execution. Test discovery is not execution. Browser color/worker/cancel evidence remains pending at candidate time.
 
 This closes the implementation candidate for GAME-01–04 and basic EXP-01–06. It does not claim all-plan completion. Independent consumer/runtime use of clips/sidecar/anchor/collider is B08; physical devices and finalized budgets remain B09; final acceptance/updates remain B10. Unadopted SHOULD features are not silently included.
+
+## GAME-04 engine handoff follow-up
+
+The product panel now links to a concrete engine setup guide. The guide treats `game.json` as a sidecar paired to the GLB, maps its collider shape, local transform, `nodeId`, and `purpose` to receiving-engine decisions, and documents Unity 6 / Godot 4 native-shape examples. This application and the test-only Babylon consumer do not instantiate physics bodies or collision shapes. The consumer remains a geometry/metadata oracle, not an engine physics runtime.
+
+The guide explains that this app's capsule `height` is the central cylinder length, while Unity/Godot shape height includes the hemispheres; receiving-engine capsule height is therefore cylinder length + 2 × radius. It also warns that purpose labels, body types, trigger behavior, collision layers/masks, and gameplay response must be selected in the receiving engine. E2E coverage asserts the UI link, guide steps, official documentation links, and the consumer's non-physics boundary. Unity/Godot project import and runtime collision behavior remain untested, so GAME-04 stays `implemented-candidate / partial`.
+
+Local candidate verification on 2026-10-12 JST: `npm run test` passed 3,530 tests across 185 files; `npm run test:ci-scope` passed 8/8; `npm run build`, `npm run consumer:build`, `npm run format:check`, and `git diff --check` passed. The new `e2e/native-game-handoff.spec.ts` passed all six cases (three Chromium, three WebKit). `npm run lint` completed with zero errors and one pre-existing `NativeViewportPanel.tsx:205` React Hooks warning. App and consumer builds emitted the existing large-chunk advisory. CI was not monitored; external engine projects and physical devices were not tested.
