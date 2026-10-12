@@ -1432,3 +1432,60 @@ test('keyboard Tab order traverses viewport actions and shows visible focus', as
     await expect(tabOrder[index]).toHaveCSS('outline-width', '3px');
   }
 });
+
+test('3D viewport action buttons meet the 44 CSS px target minimum at responsive sizes', async ({
+  page,
+}) => {
+  await createBox(page);
+
+  const viewports = [
+    { width: 320, height: 568 },
+    { width: 390, height: 844 },
+    { width: 844, height: 390 },
+  ];
+  const buttons = page.locator(
+    '.native-viewport-actions button:visible, .native-viewport-camera-actions button:visible',
+  );
+  const expectedCount = await buttons.count();
+  expect(expectedCount).toBeGreaterThan(0);
+
+  const measurements = [];
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    const targets = await buttons.evaluateAll((elements) =>
+      elements.map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          name:
+            element.getAttribute('aria-label')?.trim() ||
+            element.textContent?.trim() ||
+            element.tagName,
+          width: Number(rect.width.toFixed(2)),
+          height: Number(rect.height.toFixed(2)),
+        };
+      }),
+    );
+    measurements.push({ viewport, targets });
+  }
+
+  await test.info().attach('native-viewport-target-size-measurements.json', {
+    body: JSON.stringify(measurements, null, 2),
+    contentType: 'application/json',
+  });
+
+  for (const { viewport, targets } of measurements) {
+    expect(targets, `${viewport.width}x${viewport.height} visible control count`).toHaveLength(
+      expectedCount,
+    );
+    for (const target of targets) {
+      expect(
+        target.width,
+        `${viewport.width}x${viewport.height} ${target.name} width`,
+      ).toBeGreaterThanOrEqual(44);
+      expect(
+        target.height,
+        `${viewport.width}x${viewport.height} ${target.name} height`,
+      ).toBeGreaterThanOrEqual(44);
+    }
+  }
+});
