@@ -215,7 +215,7 @@ const cases = [
   ['Influence count must be between 1 and 4', 'EDIT_RIG_BIND'],
   ['Animated rest changes require an explicit conversion', 'EDIT_RIG_DEPENDENCY'],
   [
-    'Referenced joints cannot be removed. Keep the skin, clips and children intact.',
+    'Referenced joints cannot be removed. Keep skin, clip, anchor, collider and child references intact.',
     'EDIT_RIG_DEPENDENCY',
   ],
   ['Clip name must be nonempty', 'EDIT_ANIMATION_NAME'],

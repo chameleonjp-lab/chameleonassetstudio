@@ -61,6 +61,63 @@ describe('native rig authoring commands', () => {
     const boundProject = bound();
     unchanged(boundProject, () => removeUnusedRigJoint(boundProject, 'tip'));
   });
+  it('protects anchor and collider references from being classified as unused joints', () => {
+    const anchorProject = fixture();
+    anchorProject.game.anchors.push({
+      id: 'tip-grip',
+      purpose: 'fixture',
+      name: 'Tip grip',
+      nodeId: 'tip',
+      transform: identityTransform(),
+    });
+    const anchorBefore = cloneProject(anchorProject);
+    expect(() => removeUnusedRigJoint(anchorProject, 'tip')).toThrow(
+      'Referenced joints cannot be removed. Keep skin, clip, anchor, collider and child references intact.',
+    );
+    expect(anchorProject).toEqual(anchorBefore);
+
+    const clipProject = fixture();
+    clipProject.clips.push({
+      id: 'tip-motion',
+      name: 'Tip motion',
+      duration: 1,
+      loop: false,
+      tracks: [
+        {
+          nodeId: 'tip',
+          property: 'translation',
+          interpolation: 'LINEAR',
+          keys: [
+            { time: 0, value: [0, 0, 0] },
+            { time: 1, value: [0, 1, 0] },
+          ],
+        },
+      ],
+    });
+    const clipBefore = cloneProject(clipProject);
+    expect(() => removeUnusedRigJoint(clipProject, 'tip')).toThrow(
+      'Referenced joints cannot be removed. Keep skin, clip, anchor, collider and child references intact.',
+    );
+    expect(clipProject).toEqual(clipBefore);
+
+    const colliderProject = fixture();
+    colliderProject.game.colliders.push({
+      id: 'tip-hitbox',
+      purpose: 'hitbox',
+      name: 'Tip hitbox',
+      nodeId: 'tip',
+      transform: identityTransform(),
+      shape: 'sphere',
+      size: [1, 1, 1],
+      radius: 0.5,
+      height: 1,
+    });
+    const colliderBefore = cloneProject(colliderProject);
+    expect(() => removeUnusedRigJoint(colliderProject, 'tip')).toThrow(
+      'Referenced joints cannot be removed. Keep skin, clip, anchor, collider and child references intact.',
+    );
+    expect(colliderProject).toEqual(colliderBefore);
+  });
   it('supports more than four palette joints while retaining the four-influence per-vertex limit', () => {
     const p = bound();
     const guide = addHumanoidRig(p, 'guide');

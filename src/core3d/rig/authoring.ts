@@ -324,7 +324,7 @@ export function addHumanoidRig(project: Project3D, prefix: string): string[] {
   return result;
 }
 
-/** Joint removal is allowed only when it cannot orphan hierarchy, skin or clip references. */
+/** Joint removal is allowed only when it cannot orphan hierarchy, skin, clip or game-attachment references. */
 export function removeUnusedRigJoint(project: Project3D, jointId: string) {
   atomic(project, (candidate) => {
     const target = node(candidate, jointId);
@@ -333,10 +333,12 @@ export function removeUnusedRigJoint(project: Project3D, jointId: string) {
       target.meshId !== undefined ||
       candidate.nodes.some((item) => item.parentId === jointId) ||
       candidate.skins.some((value) => value.joints.some((joint) => joint.nodeId === jointId)) ||
+      candidate.game.anchors.some((attachment) => attachment.nodeId === jointId) ||
+      candidate.game.colliders.some((attachment) => attachment.nodeId === jointId) ||
       candidate.clips.some((clip) => clip.tracks.some((track) => track.nodeId === jointId))
     )
       throw new Error(
-        'Referenced joints cannot be removed. Keep the skin, clips and children intact.',
+        'Referenced joints cannot be removed. Keep skin, clip, anchor, collider and child references intact.',
       );
     candidate.nodes = candidate.nodes.filter((item) => item.id !== jointId);
     return [];

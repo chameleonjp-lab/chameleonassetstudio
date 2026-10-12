@@ -1,7 +1,10 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { importBackup } from '../src/core3d/backup/backup';
+import { exportBackup, importBackup } from '../src/core3d/backup/backup';
+import { assetIoFixture } from '../src/core3d/fixtures/assetIo';
+import { identityTransform } from '../src/core3d/model/project';
+import { addRigJoint } from '../src/core3d/rig/authoring';
 const panel = (page: Page) => page.getByRole('region', { name: '3D骨と重み', exact: true });
 async function setup(page: Page) {
   await page.goto('/3d/');
@@ -41,6 +44,37 @@ async function visual(page: Page, name: string) {
   await writeFile(path, await page.screenshot({ fullPage: true }));
   await test.info().attach(name, { path, contentType: 'image/png' });
 }
+
+test('QA-04: unused-joint removal refuses an anchor reference and preserves the saved project', async ({
+  page,
+}) => {
+  const project = assetIoFixture();
+  addRigJoint(project, 'anchor-only', 'Anchor target', 'root', identityTransform());
+  project.game.anchors.push({
+    id: 'anchor-only-ref',
+    purpose: 'attachment',
+    name: 'Anchor-only reference',
+    nodeId: 'anchor-only',
+    transform: identityTransform(),
+  });
+  const archive = await exportBackup(project, new Map());
+  await page.goto('/3d/');
+  await page.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+    name: 'qa04-anchor-only.cas3dproj',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from(archive),
+  });
+  await expect(page.getByRole('heading', { name: project.name, exact: true })).toBeVisible();
+  await page.getByText('骨と重みの編集を開く', { exact: true }).click();
+  const rig = panel(page);
+  await rig.getByRole('combobox', { name: '骨を選択', exact: true }).selectOption('anchor-only');
+  const before = await importBackup(new Uint8Array(await backup(page)));
+  await rig.getByRole('button', { name: '未使用の骨を削除', exact: true }).click();
+  await expect(rig.getByRole('alert')).toContainText('[EDIT_RIG_DEPENDENCY]');
+  const after = await importBackup(new Uint8Array(await backup(page)));
+  expect(after.project).toEqual(before.project);
+  expect([...after.blobs]).toEqual([...before.blobs]);
+});
 
 test('authors mixed skin, previews deformation, preserves rest backup and re-edits after independent restore', async ({
   page,

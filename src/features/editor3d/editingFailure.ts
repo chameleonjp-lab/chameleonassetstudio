@@ -747,7 +747,7 @@ export function describeNativeEditingFailure(
   )
     return result('EDIT_RIG_BIND');
   if (
-    /^(?:Animated rest changes require an explicit conversion|Referenced joints cannot be removed\. Keep the skin, clips and children intact\.)/i.test(
+    /^(?:Animated rest changes require an explicit conversion|Referenced joints cannot be removed\. Keep skin, clip, anchor, collider and child references intact\.)/i.test(
       text,
     )
   )

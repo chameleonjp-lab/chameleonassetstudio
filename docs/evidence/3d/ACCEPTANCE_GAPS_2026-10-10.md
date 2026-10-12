@@ -263,3 +263,10 @@ Only this fixture/direction is covered; 3D asset ZIP/manifest paths, other legac
 [`IMP03_COMPRESSED_ENTRY_REJECTION_2026-10-12.md`](IMP03_COMPRESSED_ENTRY_REJECTION_2026-10-12.md) adds a parser and product-browser slice: a valid stored native 3D archive is rebuilt with deflate entries and rejected with `This backup profile requires stored ZIP entries`; the caller-owned bytes remain unchanged. The ZIP metadata filter refuses the non-stored method before accepting the entry. The 3D product E2E confirms fixed format guidance and retention of a previously saved project. Focused E2E passed 1/1 in Chromium and WebKit-critical; the complete native-backup product spec passed 3/3 in each. Full Vitest passed 3,539 tests across 185 files; build, type-check, format passed, and lint had zero errors with the existing Hook warning and >500 kB advisory.
 
 Only this compressed-entry case is covered. Path traversal, duplicate/overstated-size declarations, real memory pressure, and device/production behavior remain open. IMP-03 and overall acceptance remain partial; CI was not monitored.
+
+
+## QA-04 rig-joint attachment-reference guard — 2026-10-13
+
+[`QA04_RIG_ATTACHMENT_REFERENCE_GUARDS_2026-10-13.md`](QA04_RIG_ATTACHMENT_REFERENCE_GUARDS_2026-10-13.md) records a focused safety slice for the explicit unused-joint removal action: anchor and collider references now block deletion alongside hierarchy, skin, and clip references. The product panel explains the rule and the bounded dependency failure preserves the saved project and blobs. Focused unit suites passed 799 tests; the product regression passed 2/2 across Chromium and WebKit-critical. Lint (zero errors; one existing Hook warning), formatting, TypeScript, app/H3 build, and diff checks passed; the existing chunk advisory remains.
+
+This does not complete QA-04's pre-action loss/impact preview for automatic repair paths. It covers only explicit rig-joint removal plus synthetic project fixtures; QA-04 and overall acceptance remain partial/open. No external runtime, GPU, production, OS-failure, or physical-device acceptance is claimed.
