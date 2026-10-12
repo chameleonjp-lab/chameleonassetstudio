@@ -170,7 +170,11 @@ test('recovery-copy confirmation cancellation returns keyboard focus to its cand
     exact: true,
   });
   await trigger.focus();
-  await page.keyboard.press('Enter');
+  await expect(trigger).toBeFocused();
+  await trigger.press('Enter');
+  await expect(
+    library.getByRole('region', { name: '別コピーとして復旧しますか', exact: true }),
+  ).toBeVisible();
 
   const confirmation = await expectAccessibleConfirmation(
     library,
