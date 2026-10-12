@@ -249,6 +249,10 @@ export function NativeRigPanel({
         <p>
           対象・revisionが変わった後は現在値を読み直してください。rest調整は関係する全skinを再bindします。親変更は入力したlocal値を使います。
         </p>
+        <p>
+          rest調整は関係する全skinのinverse
+          bindを再計算します。対象や関係する骨・階層にclipがある場合、動きを自動変換せずrest変更を拒否します。骨を追従先にするanchor・colliderの参照とlocal値は保持し、そのworld位置は骨のrest変更に追従します。
+        </p>
         <button
           type="button"
           disabled={!joint || loaded !== identity}

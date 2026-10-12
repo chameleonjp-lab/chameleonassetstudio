@@ -310,3 +310,96 @@ test('invalid joint names and zero-weight normalization preserve the rig with Ja
   await expect(rig.getByRole('alert')).not.toContainText('Cannot normalize');
   expect((await importBackup(await backup(page))).project).toEqual(before.project);
 });
+
+test('rest rebind explains clip and bone-following anchor effects, is undoable, and refuses animated rest conversion atomically', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  const { rig, tip } = await setup(page);
+  await page.getByRole('button', { name: '箱を追加', exact: true }).click();
+  const initial = (await importBackup(new Uint8Array(await backup(page)))).project;
+  const independentMesh = initial.nodes.find(
+    (node) => node.meshId && !initial.skins.some((skin) => skin.meshId === node.meshId),
+  );
+  expect(independentMesh).toBeDefined();
+  const meshNodeId = independentMesh!.id;
+
+  await page.getByText('アニメーション編集を開く', { exact: true }).click();
+  const animation = page.getByRole('region', { name: '3Dアニメーション', exact: true });
+  await animation.getByLabel('clip名', { exact: true }).fill('Mesh motion');
+  await animation.getByRole('button', { name: '新しいclipを作成', exact: true }).click();
+  await animation.getByRole('combobox', { name: 'キー対象', exact: true }).selectOption(meshNodeId);
+  await animation.getByRole('button', { name: '表示中のTRSを読む', exact: true }).click();
+  await animation.getByRole('button', { name: 'キーを追加', exact: true }).click();
+  await animation.getByLabel('キー時刻（秒）', { exact: true }).fill('1');
+  await animation.getByLabel('キー値 X', { exact: true }).fill('1');
+  await animation.getByRole('button', { name: 'キーを追加', exact: true }).click();
+
+  await page.getByText('ゲーム向け情報を編集', { exact: true }).click();
+  const game = page.getByRole('region', { name: '3Dゲーム向け情報', exact: true });
+  const anchors = game.getByRole('region', { name: '3D anchor編集', exact: true });
+  await anchors.getByLabel('anchor名', { exact: true }).fill('Tip marker');
+  await anchors
+    .getByRole('combobox', { name: 'anchor追従先（node / bone）', exact: true })
+    .selectOption(tip);
+  await anchors.getByRole('button', { name: 'anchorを追加', exact: true }).click();
+
+  const before = (await importBackup(new Uint8Array(await backup(page)))).project;
+  expect(before.clips).toHaveLength(1);
+  expect(before.clips[0].tracks[0].nodeId).toBe(meshNodeId);
+  expect(before.game.anchors[0].nodeId).toBe(tip);
+  expect(before.game.anchors[0].transform.translation).toEqual([0, 0, 0]);
+  await expect(
+    rig.getByText(/対象や関係する骨・階層にclipがある場合、動きを自動変換せずrest変更を拒否します/),
+  ).toBeVisible();
+  await expect(
+    rig.getByText(
+      /anchor・colliderの参照とlocal値は保持し、そのworld位置は骨のrest変更に追従します/,
+    ),
+  ).toBeVisible();
+
+  await rig.getByRole('button', { name: '骨の現在値を読む', exact: true }).click();
+  await rig.getByLabel('骨位置 Y', { exact: true }).fill('2');
+  await rig.getByRole('button', { name: 'restを適用して再bind', exact: true }).click();
+  const rebound = (await importBackup(new Uint8Array(await backup(page)))).project;
+  expect(rebound.nodes.find((node) => node.id === tip)!.transform.translation).toEqual([0, 2, 0]);
+  expect(rebound.skins[0].joints).not.toEqual(before.skins[0].joints);
+  expect(rebound.skins[0].weights).toEqual(before.skins[0].weights);
+  expect(rebound.clips).toEqual(before.clips);
+  expect(rebound.game.anchors).toEqual(before.game.anchors);
+
+  await page.getByRole('button', { name: '元に戻す', exact: true }).click();
+  const undone = (await importBackup(new Uint8Array(await backup(page)))).project;
+  expect(undone.nodes.find((node) => node.id === tip)!.transform.translation).toEqual([0, 1, 0]);
+  expect(undone.skins[0].joints).toEqual(before.skins[0].joints);
+  expect(undone.clips).toEqual(before.clips);
+  expect(undone.game.anchors).toEqual(before.game.anchors);
+  await page.getByRole('button', { name: 'やり直す', exact: true }).click();
+  const redone = (await importBackup(new Uint8Array(await backup(page)))).project;
+  expect(redone.nodes.find((node) => node.id === tip)!.transform.translation).toEqual([0, 2, 0]);
+  expect(redone.skins[0].joints).toEqual(rebound.skins[0].joints);
+  expect(redone.clips).toEqual(before.clips);
+  expect(redone.game.anchors).toEqual(before.game.anchors);
+
+  await animation.getByLabel('clip名', { exact: true }).fill('Bone motion');
+  await animation.getByRole('button', { name: '新しいclipを作成', exact: true }).click();
+  await animation.getByRole('combobox', { name: 'キー対象', exact: true }).selectOption(tip);
+  await animation.getByRole('button', { name: '表示中のTRSを読む', exact: true }).click();
+  await animation.getByLabel('キー時刻（秒）', { exact: true }).fill('0');
+  await animation.getByRole('button', { name: 'キーを追加', exact: true }).click();
+  await animation.getByLabel('キー時刻（秒）', { exact: true }).fill('1');
+  await animation.getByLabel('キー値 Y', { exact: true }).fill('2.5');
+  await animation.getByRole('button', { name: 'キーを追加', exact: true }).click();
+  const beforeRejectedEdit = (await importBackup(new Uint8Array(await backup(page)))).project;
+
+  await rig.getByRole('button', { name: '骨の現在値を読む', exact: true }).click();
+  await rig.getByLabel('骨位置 Y', { exact: true }).fill('3');
+  await rig.getByRole('button', { name: 'restを適用して再bind', exact: true }).click();
+  const alert = rig.getByRole('alert');
+  await expect(alert).toContainText('[EDIT_RIG_DEPENDENCY]');
+  await expect(alert).toContainText('アニメーションとの依存関係');
+  await expect(alert).toContainText('必要な変換が未対応の場合');
+  expect((await importBackup(new Uint8Array(await backup(page)))).project).toEqual(
+    beforeRejectedEdit,
+  );
+});
