@@ -1,5 +1,5 @@
 import { formatNativeEditingFailure } from './editingFailure';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type {
   ProjectLibraryEntry,
   ProjectRepository,
@@ -36,6 +36,7 @@ export function NativeProjectLibraryPanel({
   onChanged: () => Promise<void>;
   onRecover: (entry: ProjectLibraryEntry, snapshot: RecoverySnapshotSummary) => Promise<void>;
 }) {
+  const historyHeadingId = useId();
   const [entries, setEntries] = useState<ProjectLibraryEntry[] | null>(null);
   const [history, setHistory] = useState<RecoveryPage | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
@@ -182,8 +183,8 @@ export function NativeProjectLibraryPanel({
         </ul>
       )}
       {history && (
-        <div aria-label="保存版の比較">
-          <h3>最後の正常版と保持した復旧候補</h3>
+        <section aria-labelledby={historyHeadingId}>
+          <h3 id={historyHeadingId}>最後の正常版と保持した復旧候補</h3>
           <p>
             全{history.total}版。現在の正常版は revision {history.rootRevision}
             。表示はメタデータ比較です。コピー作成前に作品と原本のhashを検査します。
@@ -267,7 +268,7 @@ export function NativeProjectLibraryPanel({
           >
             古い候補へ
           </button>
-        </div>
+        </section>
       )}
       {confirmation && (
         <div
