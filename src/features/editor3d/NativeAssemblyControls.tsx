@@ -72,6 +72,25 @@ export function NativeAssemblyControls({
   const nodesById = new Map(project.nodes.map((node) => [node.id, node]));
   const missingIds = selectedIds.filter((id) => !nodesById.has(id));
   const selection = JSON.stringify([...selectedIds].sort());
+  const selectedDescriptions = selectedIds.map((id) => {
+    const node = nodesById.get(id);
+    return node ? `${node.name} (ID: ${node.id})` : `削除済み ID ${id}`;
+  });
+  const announcedSelection = selectedDescriptions.slice(0, 3).join('、');
+  const omittedSelectionCount = Math.max(0, selectedDescriptions.length - 3);
+  const activeDescription =
+    activeId && selectedIds.includes(activeId)
+      ? (() => {
+          const node = nodesById.get(activeId);
+          return node ? `${node.name} (ID: ${node.id})` : `削除済み ID ${activeId}`;
+        })()
+      : 'なし';
+  const selectionAnnouncement =
+    selectedIds.length === 0
+      ? '選択中 0 個。組立対象はありません。'
+      : `選択中 ${selectedIds.length} 個。対象: ${announcedSelection}${
+          omittedSelectionCount > 0 ? `、ほか ${omittedSelectionCount} 個` : ''
+        }。アクティブ: ${activeDescription}。`;
   useEffect(() => {
     setReviewed(null);
     setNotice((current) => (current.startsWith('現在の組立対象を確認') ? '' : current));
@@ -162,8 +181,11 @@ export function NativeAssemblyControls({
         {notice && <p role="status">{notice}</p>}
         <fieldset disabled={disabled}>
           <legend>組立対象</legend>
-          <p id={`${descriptionId}-selection`} role="status" aria-live="polite" aria-atomic="true">
-            複数の部品を選べます。選択中 {selectedIds.length} 個。名前とIDで対象を確認してください。
+          <p id={`${descriptionId}-selection`}>
+            複数の部品を選べます。各項目には名前とIDがあります。現在の対象とアクティブな部品は、次の状態通知で確認できます。
+          </p>
+          <p role="status" aria-live="polite" aria-atomic="true">
+            {selectionAnnouncement}
           </p>
           {project.nodes.length === 0 ? (
             <p>部品がありません。「形と材質を作る」で基本形を追加してください。</p>
