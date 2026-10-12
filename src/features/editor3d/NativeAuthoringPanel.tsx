@@ -8,6 +8,7 @@ import type { NativeEditBinding } from '../../core3d/ports/editPort';
 import { useNativeObjectSelection } from './useNativeEditState';
 import {
   addPrimitive,
+  PRIMITIVE_NAMES,
   PRIMITIVE_LIMITS,
   type PrimitiveKind,
 } from '../../core3d/commands/primitives';
@@ -102,6 +103,7 @@ export function NativeAuthoringPanel({
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const composing = useRef(false);
+  const preserveNoticeOnTargetChange = useRef(false);
   const descriptionId = useId();
   const node = project.nodes.find((n) => n.id === selected);
   const mesh = project.meshes.find((m) => m.id === node?.meshId);
@@ -113,7 +115,9 @@ export function NativeAuthoringPanel({
     setLoadedNode('');
     setLoadedMaterial('');
     setCopyMaterial(false);
-    setNotice('');
+    const preserveNotice = preserveNoticeOnTargetChange.current;
+    preserveNoticeOnTargetChange.current = false;
+    if (!preserveNotice) setNotice('');
   }, [targetKey]);
   const edgeMap = new Map<string, string[]>();
   for (const face of mesh?.faces ?? [])
@@ -138,7 +142,7 @@ export function NativeAuthoringPanel({
   );
   function act(
     operation: () => void,
-    successNotice = '適用しました。元に戻す操作で取り消せます。',
+    successNotice: string | (() => string) = '適用しました。元に戻す操作で取り消せます。',
   ) {
     if (disabled || composing.current) return;
     try {
@@ -153,7 +157,7 @@ export function NativeAuthoringPanel({
       }
       operation();
       setError('');
-      setNotice(successNotice);
+      setNotice(typeof successNotice === 'function' ? successNotice() : successNotice);
     } catch (cause) {
       setError(formatNativeEditingFailure(cause, 'authoring'));
       setNotice('');
@@ -273,23 +277,28 @@ export function NativeAuthoringPanel({
           </p>
           <button
             type="button"
-            onClick={() =>
-              act(() => {
-                let id = '';
-                execute((p) => {
-                  id = addPrimitive(p, crypto.randomUUID(), {
-                    kind,
-                    width: numeric(draft, 'width'),
-                    height: numeric(draft, 'height'),
-                    depth: numeric(draft, 'depth'),
-                    segments: numeric(draft, 'segments'),
+            onClick={() => {
+              let id = '';
+              act(
+                () => {
+                  execute((p) => {
+                    id = addPrimitive(p, crypto.randomUUID(), {
+                      kind,
+                      width: numeric(draft, 'width'),
+                      height: numeric(draft, 'height'),
+                      depth: numeric(draft, 'depth'),
+                      segments: numeric(draft, 'segments'),
+                    });
                   });
-                });
-                setSelection([id], id);
-                setEntity('');
-                setMaterialId('');
-              })
-            }
+                  preserveNoticeOnTargetChange.current = true;
+                  setSelection([id], id);
+                  setEntity('');
+                  setMaterialId('');
+                },
+                () =>
+                  `基本形「${PRIMITIVE_NAMES[kind]}」（ID: ${id}）を追加しました。元に戻す操作で取り消せます。`,
+              );
+            }}
           >
             基本形を追加
           </button>
