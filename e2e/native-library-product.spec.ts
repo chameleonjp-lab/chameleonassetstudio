@@ -669,3 +669,22 @@ test('cache connection failures redact private details and preserve original pro
   await expect(panel.getByText(/0件 · 0 bytes/)).toBeVisible();
   expect((await backupCurrent(page)).project).toEqual(before.project);
 });
+
+test('saved-version comparison is discoverable as a named region', async ({ page }) => {
+  await createOriginal(page);
+  const library = page.getByRole('region', { name: '3D保存履歴とごみ箱' });
+  await library.getByRole('button', { name: '保存履歴とごみ箱を読む', exact: true }).click();
+  await library
+    .getByRole('button', { name: '復旧候補を読む: Library original', exact: true })
+    .click();
+
+  const comparison = library.getByRole('region', {
+    name: '最後の正常版と保持した復旧候補',
+    exact: true,
+  });
+  await expect(comparison).toBeVisible();
+  await expect(
+    comparison.getByRole('heading', { name: '最後の正常版と保持した復旧候補', exact: true }),
+  ).toBeVisible();
+  await expect(comparison.getByRole('list')).toBeVisible();
+});
