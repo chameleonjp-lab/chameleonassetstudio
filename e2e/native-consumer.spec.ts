@@ -1207,6 +1207,158 @@ test('DATA-03 product-derived texture preserves original bytes and lineage throu
   }
 });
 
+test('DATA-04 product UI preserves canonical nonuniform skin coordinates with descriptive origin metadata', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(120000);
+  const { exportBackup, importBackup } = await import('../src/core3d/backup/backup');
+  const { project, blobs } = await consumerFixture('F07');
+  project.game.originMode = 'custom';
+  project.game.unitMeters = 0.01;
+  project.game.forward = '-X';
+  project.game.origin = [1, 2, 3];
+  const archive = await exportBackup(project, blobs);
+  const download = async (target: Page, name: string) => {
+    const event = target.waitForEvent('download');
+    await target.getByRole('button', { name, exact: true }).click();
+    return new Uint8Array(await readFile((await (await event).path())!));
+  };
+
+  await page.goto('/3d/');
+  await page.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+    name: 'data04-coordinate-contract.cas3dproj',
+    mimeType: 'application/zip',
+    buffer: Buffer.from(archive),
+  });
+  await expect(page.getByRole('heading', { name: 'F07', exact: true })).toBeVisible();
+  const restored = await importBackup(await download(page, '現在の内容をバックアップ'));
+  expect(restored.project.game).toMatchObject({
+    originMode: 'custom',
+    unitMeters: 0.01,
+    forward: '-X',
+    origin: [1, 2, 3],
+  });
+  expect(restored.project.skins).toEqual(project.skins);
+  expect(restored.project.clips).toEqual(project.clips);
+  const scaledParent = restored.project.nodes.find((node) => node.id === 'scaled-parent');
+  const meshNode = restored.project.nodes.find((node) => node.id === 'box-node');
+  const root = restored.project.nodes.find((node) => node.id === 'root');
+  if (!scaledParent || !meshNode || !root) throw new Error('F07 hierarchy was not restored.');
+  expect(scaledParent.transform).toMatchObject({
+    translation: [-1, 2, 3],
+    scale: [2, 3, 4],
+  });
+  expect(meshNode.parentId).toBe('scaled-parent');
+  expect(root.parentId).toBe('scaled-parent');
+
+  await page.getByText('GLB読込・配布ファイル出力', { exact: true }).click();
+  const io = page.getByRole('region', { name: '3D GLB入出力', exact: true });
+  await io
+    .getByLabel('固定revisionの出力範囲と変換・損失の注意を確認しました', { exact: true })
+    .check();
+  await io.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }).click();
+  await expect(io.getByRole('button', { name: 'GLBを保存', exact: true })).toBeVisible();
+  const glb = await download(page, 'GLBを保存');
+  const sidecarBytes = await download(page, 'game.jsonを保存');
+  const sidecar = JSON.parse(new TextDecoder().decode(sidecarBytes)) as {
+    modelHash: string;
+    coordinates: string;
+    game: {
+      originMode: string;
+      unitMeters: number;
+      forward: string;
+      origin: number[];
+    };
+  };
+  expect(sidecar.modelHash).toBe(await sha256(glb));
+  expect(sidecar.coordinates).toBe('right-handed-meter-y-up-positive-z-forward');
+  expect(sidecar.game).toMatchObject({
+    originMode: 'custom',
+    unitMeters: 0.01,
+    forward: '-X',
+    origin: [1, 2, 3],
+  });
+
+  const consumerContext = await browser.newContext();
+  try {
+    const consumer = await consumerContext.newPage();
+    const external = await open(consumer);
+    const rest = await consumer.evaluate(
+      ({ glb, sidecar }) => window.__assetConsumer.load(glb, sidecar),
+      { glb: Array.from(glb), sidecar: Array.from(sidecarBytes) },
+    );
+    expect(rest.hash).toBe(await sha256(glb));
+    expect(rest.rightHanded).toBe(true);
+    expect(rest.oracle.positionPass).toBe(true);
+    expect(rest.oracle.nodePass).toBe(true);
+    expect(rest.resources.skeletons).toBe(1);
+    expect(rest.game).toMatchObject({
+      originMode: 'custom',
+      unitMeters: 0.01,
+      forward: '-X',
+      origin: [1, 2, 3],
+      coordinatesApplied: false,
+    });
+    const restBounds = bounds(rest.meshes.flatMap((mesh) => mesh.positions));
+    for (const [axis, expected] of [
+      [2, 4],
+      [0.5, 3.5],
+      [1, 5],
+    ].entries()) {
+      expect(restBounds[axis][0]).toBeCloseTo(expected[0], 5);
+      expect(restBounds[axis][1]).toBeCloseTo(expected[1], 5);
+    }
+
+    const pose = await consumer.evaluate(() => window.__assetConsumer.sample('move', 1));
+    expect(pose.oracle.positionPass).toBe(true);
+    expect(pose.oracle.nodePass).toBe(true);
+    const posedBounds = bounds(pose.meshes.flatMap((mesh) => mesh.positions));
+    expect(posedBounds[1][0]).toBeCloseTo(2.75, 5);
+    expect(posedBounds[1][1]).toBeCloseTo(5.75, 5);
+    expect(external).toEqual([]);
+
+    await test.info().attach('data04-product-coordinate-handoff-evidence', {
+      body: Buffer.from(
+        JSON.stringify(
+          {
+            kind: 'product-ui-canonical-coordinate-contract-independent-consumer',
+            sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+            browser: test.info().project.name,
+            inputBackupHash: await sha256(archive),
+            glbHash: rest.hash,
+            sidecarHash: await sha256(sidecarBytes),
+            fixtureId: 'F07',
+            expectedRestBounds: [
+              [2, 4],
+              [0.5, 3.5],
+              [1, 5],
+            ],
+            actualRestBounds: restBounds,
+            expectedAnimatedYBounds: [2.75, 5.75],
+            actualAnimatedYBounds: posedBounds[1],
+            game: rest.game,
+            coordinates: sidecar.coordinates,
+            restOracle: rest.oracle,
+            poseOracle: pose.oracle,
+            runtime: rest.engine,
+            runtimeVersion: rest.version,
+          },
+          null,
+          2,
+        ),
+      ),
+      contentType: 'application/json',
+    });
+    await test.info().attach('native-visual-consumer-data04-coordinates', {
+      body: await consumer.screenshot(),
+      contentType: 'image/png',
+    });
+  } finally {
+    await consumerContext.close();
+  }
+});
+
 test('a saved manual vertex-weight correction reaches animated geometry in an independent consumer', async ({
   page,
   browser,
