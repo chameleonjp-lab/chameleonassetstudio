@@ -399,6 +399,97 @@ for (const projection of ['perspective', 'orthographic'] as const) {
   });
 }
 
+test('product pointercancel discards an in-progress gizmo drag before any late pointerup', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await createBox(page);
+  const panel = controls(page);
+  await page.getByText('カメラ・表示の詳細設定', { exact: true }).click();
+  await page.getByRole('button', { name: '正面から見る', exact: true }).click();
+
+  const baseline = (await snapshot(page)).project;
+  const before = await revision(page);
+  await page.evaluate(() => {
+    type PointerProbeWindow = Window & {
+      __e2ePointerProbe?: { pointerId: number; canvas: HTMLCanvasElement };
+    };
+    const probeWindow = window as PointerProbeWindow;
+    probeWindow.__e2ePointerProbe = undefined;
+    window.addEventListener(
+      'pointerdown',
+      (event) => {
+        const target = event.target;
+        if (target instanceof HTMLCanvasElement && target.matches('.native-viewport-host canvas'))
+          probeWindow.__e2ePointerProbe = {
+            pointerId: (event as PointerEvent).pointerId,
+            canvas: target,
+          };
+      },
+      { capture: true, once: true },
+    );
+  });
+  const point = await xHandle(page);
+  await page.mouse.move(point.x, point.y);
+  await page.mouse.down();
+  await expect(panel.getByRole('status').first()).toContainText('画面で変形中');
+  await page.mouse.move(point.x + 55, point.y, { steps: 8 });
+  expect(await revision(page)).toBe(before);
+
+  const pointerIdValue = await page.evaluate(() => {
+    type PointerProbeWindow = Window & {
+      __e2ePointerProbe?: { pointerId: number; canvas: HTMLCanvasElement };
+    };
+    return (window as PointerProbeWindow).__e2ePointerProbe?.pointerId ?? null;
+  });
+  expect(pointerIdValue).not.toBeNull();
+  if (pointerIdValue === null) throw new Error('The canvas pointerdown was not observed.');
+  const pointerId = pointerIdValue;
+  expect(Number.isSafeInteger(pointerId)).toBe(true);
+  expect(pointerId).toBeGreaterThan(0);
+  const cancellation = await page.evaluate((id) => {
+    type PointerProbeWindow = Window & {
+      __e2ePointerProbe?: { pointerId: number; canvas: HTMLCanvasElement };
+    };
+    const element = (window as PointerProbeWindow).__e2ePointerProbe?.canvas;
+    if (!element) throw new Error('The canvas pointerdown target was not retained.');
+    let observedPointerId: number | null = null;
+    element.addEventListener(
+      'pointercancel',
+      (event) => {
+        observedPointerId = (event as PointerEvent).pointerId;
+      },
+      { once: true },
+    );
+    element.dispatchEvent(
+      new PointerEvent('pointercancel', {
+        bubbles: true,
+        cancelable: true,
+        pointerId: id,
+        pointerType: 'mouse',
+      }),
+    );
+    return {
+      observedPointerId,
+      captured: element.hasPointerCapture(id),
+      connected: element.isConnected,
+      stillCurrent: element === document.querySelector('.native-viewport-host canvas'),
+    };
+  }, pointerId);
+  expect(cancellation).toEqual({
+    observedPointerId: pointerId,
+    captured: false,
+    connected: true,
+    stillCurrent: true,
+  });
+  await expect(panel.getByRole('status').first()).toContainText('確定済みの状態');
+
+  // A late physical release after OS/browser cancellation must not commit the preview.
+  await page.mouse.up();
+  expect(await revision(page)).toBe(before);
+  expect((await snapshot(page)).project).toEqual(baseline);
+});
+
 test('numeric editing without WebGL rejects invalid and interrupted drafts, then restores independently', async ({
   page,
   context,
