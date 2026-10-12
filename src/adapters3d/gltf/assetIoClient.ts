@@ -3,7 +3,9 @@ import type {
   AssetIoRequest,
   AssetIoResult,
   AssetIoProgress,
+  AssetIoWorkerFailure,
 } from '../../core3d/ports/assetIoPort';
+import { ASSET_IO_WORKER_FAILURE_CODE } from '../../core3d/ports/assetIoPort';
 import {
   ASSET_IO_PROFILE as P,
   assertIoBudget,
@@ -48,7 +50,7 @@ export function startAssetIo(
           phase: string;
           fraction: number;
           result: AssetIoResult;
-          message: string;
+          code?: unknown;
         };
         if (data.kind === 'progress') {
           try {
@@ -61,7 +63,16 @@ export function startAssetIo(
         settled = true;
         release();
         if (data.kind === 'result') resolve(data.result);
-        else reject(new Error(data.message ?? 'Invalid worker response'));
+        else if (data.kind === 'error') {
+          const failure = data as AssetIoWorkerFailure;
+          reject(
+            new Error(
+              failure.code === ASSET_IO_WORKER_FAILURE_CODE
+                ? 'Asset worker failed; original project retained'
+                : 'Invalid asset worker response',
+            ),
+          );
+        } else reject(new Error('Invalid asset worker response'));
       };
       worker.onerror = () => {
         if (settled) return;
@@ -76,10 +87,10 @@ export function startAssetIo(
         reject(new Error('Invalid asset worker response'));
       };
       worker.postMessage(request);
-    } catch (error) {
+    } catch {
       settled = true;
       release();
-      reject(error);
+      reject(new Error('Asset worker failed; original project retained'));
     }
   });
   return {

@@ -194,3 +194,10 @@ This is automated headless evidence against generated fixtures only. DATA-07 rem
 [`SAVE05_CROSS_TAB_DURABLE_PRESERVATION_2026-10-12.md`](SAVE05_CROSS_TAB_DURABLE_PRESERVATION_2026-10-12.md) strengthens the product-level lease-takeover case. The new owner adds geometry and saves revision 2; the stale page's conflicting rename is rejected without losing its dirty state and is saved as a separate project ID. A third page opens the original read-only and its downloaded full project/blob backup equals the new owner's pre-conflict durable backup, independently checking that the original root was not silently overwritten. The focused test passed 1/1 in Chromium and WebKit-critical; the full spec had 10 passes and 2 existing project skips. Unit 3,531/3,531, formatting, lint (zero errors; one existing Hook warning), and app/H3 build passed.
 
 This is headless same-context browser evidence only. Process/OS crash, clock skew, lease-expiry timing, physical storage failure and devices remain unverified; SAVE-05/AC-06 and overall acceptance remain partial/open.
+
+
+## IMP-07 worker failure payload privacy hardening — 2026-10-12
+
+[`IMP07_WORKER_FAILURE_PRIVACY_2026-10-12.md`](IMP07_WORKER_FAILURE_PRIVACY_2026-10-12.md) records a focused software-only boundary change: the asset-I/O worker now posts a fixed typed failure code instead of the raw exception message, while the client ignores arbitrary worker message text and sanitizes worker construction / `postMessage` exceptions. Targeted tests passed 55/55; the full unit suite passed 3,533/3,533, formatting and app/H3 build passed, and lint had zero errors plus the existing `NativeViewportPanel.tsx:205` Hook warning. The existing large-chunk advisory remains.
+
+This hardens only the worker error payload path. Cause- and stage-specific Japanese guidance across every import/export failure is still incomplete, so IMP-07 and overall acceptance remain partial/open. No browser-injected worker crash, external telemetry, deployed-runtime, physical-device, GPU, OS-crash/discard, real network/cache, or final-head CI acceptance is claimed; CI was not monitored.

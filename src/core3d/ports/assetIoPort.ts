@@ -26,6 +26,11 @@ export type AssetIoRequest =
       sidecar?: Uint8Array;
     };
 export type AssetIoResult = AssetImport | AssetExport | InspectionReport;
+export const ASSET_IO_WORKER_FAILURE_CODE = 'ASSET_IO_WORKER_FAILED' as const;
+export interface AssetIoWorkerFailure {
+  readonly kind: 'error';
+  readonly code: typeof ASSET_IO_WORKER_FAILURE_CODE;
+}
 export interface AssetIoProgress {
   phase: string;
   fraction: number;

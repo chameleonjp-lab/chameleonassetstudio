@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import { startAssetIo } from './assetIoClient';
+import { ASSET_IO_WORKER_FAILURE_CODE } from '../../core3d/ports/assetIoPort';
 it('terminates on cancel, rejects late results, and releases ownership after first worker failure', async () => {
   let terminated = 0;
   const worker = {
@@ -30,7 +31,7 @@ it('terminates on cancel, rejects late results, and releases ownership after fir
       throw Error('first launch');
     },
   );
-  await expect(failed.promise).rejects.toThrow('first launch');
+  await expect(failed.promise).rejects.toThrow('Asset worker failed; original project retained');
   const next = startAssetIo(
     req,
     () => {},
@@ -38,6 +39,82 @@ it('terminates on cancel, rejects late results, and releases ownership after fir
   );
   next.cancel();
   await expect(next.promise).rejects.toThrow();
+});
+
+it('ignores raw worker failure text and exposes only the fixed safe failure', async () => {
+  let terminated = 0;
+  const worker = {
+    terminate: () => terminated++,
+    postMessage: () => {},
+    onmessage: null as ((event: MessageEvent) => void) | null,
+    onerror: null,
+    onmessageerror: null,
+  };
+  const job = startAssetIo(
+    {
+      kind: 'import',
+      bytes: new Uint8Array([1]),
+      projectId: 'p',
+      allowLoss: false,
+    },
+    () => {},
+    () => worker as unknown as Worker,
+  );
+  worker.onmessage?.({
+    data: {
+      kind: 'error',
+      code: ASSET_IO_WORKER_FAILURE_CODE,
+      message: 'file:///private/SECRET-FILENAME.glb?token=SECRET-TOKEN',
+    },
+  } as MessageEvent);
+  let failure: unknown;
+  try {
+    await job.promise;
+  } catch (cause) {
+    failure = cause;
+  }
+  expect(failure).toBeInstanceOf(Error);
+  expect((failure as Error).message).toBe('Asset worker failed; original project retained');
+  expect((failure as Error).message).not.toMatch(/SECRET|private|token/i);
+  expect(terminated).toBe(1);
+});
+
+it('sanitizes worker construction and postMessage exceptions', async () => {
+  const secret = 'file:///private/SECRET-FILENAME.glb?token=SECRET-TOKEN';
+  const failedFactory = startAssetIo(
+    {
+      kind: 'import',
+      bytes: new Uint8Array([1]),
+      projectId: 'p',
+      allowLoss: false,
+    },
+    () => {},
+    () => {
+      throw new Error(secret);
+    },
+  );
+  await expect(failedFactory.promise).rejects.toThrow(
+    'Asset worker failed; original project retained',
+  );
+  const failedPost = startAssetIo(
+    {
+      kind: 'import',
+      bytes: new Uint8Array([1]),
+      projectId: 'p',
+      allowLoss: false,
+    },
+    () => {},
+    () =>
+      ({
+        terminate: () => {},
+        postMessage: () => {
+          throw new Error(secret);
+        },
+      }) as unknown as Worker,
+  );
+  await expect(failedPost.promise).rejects.toThrow(
+    'Asset worker failed; original project retained',
+  );
 });
 
 it('rejects oversized sidecar before constructing a worker', () => {
