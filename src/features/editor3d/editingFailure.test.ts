@@ -55,6 +55,7 @@ import {
   bindSkin,
   extendSkinJoints,
   fitRigJoint,
+  reparentRigJoint,
   rebindSkin,
   removeUnusedRigJoint,
   setSkinWeights,
@@ -168,7 +169,6 @@ const cases = [
   ['Missing reference', 'EDIT_SELECTION'],
   ['Invalid face', 'EDIT_GEOMETRY'],
   ['Corner count mismatch', 'EDIT_GEOMETRY'],
-  ['Cyclic hierarchy', 'EDIT_GEOMETRY'],
   ['Invalid canonical estimate input', 'EDIT_DATA'],
   ['Noncanonical estimate object', 'EDIT_DATA'],
   ['Command cannot change identity or revision', 'EDIT_DATA'],
@@ -253,6 +253,16 @@ describe('fixed native editing failure guidance', () => {
         expect(formatted.length).toBeLessThan(600);
       }
     }
+  });
+
+  it('classifies an exact cyclic hierarchy error specifically for rig editing', () => {
+    expect(describeNativeEditingFailure('Cyclic hierarchy', 'rig').code).toBe('EDIT_RIG_CYCLE');
+    expect(describeNativeEditingFailure('Cyclic hierarchy', 'authoring').code).toBe(
+      'EDIT_GEOMETRY',
+    );
+    expect(describeNativeEditingFailure(new Error(`Cyclic hierarchy: ${secret}`), 'rig').code).toBe(
+      'EDIT_GEOMETRY',
+    );
   });
 
   it.each([
@@ -1104,6 +1114,29 @@ describe('actual core failures and state preservation', () => {
       code: 'EDIT_RIG_NAME',
       target: '骨と重みの編集',
       reason: '骨の名前が空欄・空白だけ、または長すぎます。',
+      retry: 'after-fix',
+    });
+    expect(project).toEqual(before);
+  });
+
+  it('explains an actual parent cycle and preserves the joint hierarchy', () => {
+    const project = createProject('rig-cycle');
+    addRigJoint(project, 'root', 'Root', null, identityTransform());
+    addRigJoint(project, 'tip', 'Tip', 'root', {
+      ...identityTransform(),
+      translation: [0, 1, 0],
+    });
+    const before = cloneProject(project);
+    const cause = captureFailure(() =>
+      reparentRigJoint(project, 'root', 'tip', identityTransform()),
+    );
+
+    expect(cause.message).toBe('Cyclic hierarchy');
+    expect(describeNativeEditingFailure(cause, 'rig')).toMatchObject({
+      code: 'EDIT_RIG_CYCLE',
+      target: '骨と重みの編集',
+      reason: '関節の親に自分自身または子孫を指定できません。',
+      action: expect.stringContaining('循環を作らない親を選び直してください。'),
       retry: 'after-fix',
     });
     expect(project).toEqual(before);
