@@ -14,6 +14,13 @@ import {
 } from '../../core3d/profile/assetIoProfile';
 import type { ProjectSession } from './projectSession';
 import './nativeQualityPanel.css';
+
+const severityLabel: Record<'info' | 'warning' | 'error', string> = {
+  info: '情報',
+  warning: '警告',
+  error: 'エラー',
+};
+
 export function NativeQualityPanel({
   session,
   onNavigate,
@@ -174,7 +181,7 @@ export function NativeQualityPanel({
               {report.issues.slice(issuePage * 50, (issuePage + 1) * 50).map((issue, index) => (
                 <li key={`${issue.code}-${index}`}>
                   <strong>
-                    {issue.severity}: {issue.message}
+                    {severityLabel[issue.severity]}: {issue.message}
                   </strong>
                   <p>{issue.impact}</p>
                   <p>{issue.remedy}</p>
