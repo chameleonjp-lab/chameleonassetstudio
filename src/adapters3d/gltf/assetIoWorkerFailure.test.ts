@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 import { ASSET_IO_WORKER_FAILURE_CODES as C } from '../../core3d/ports/assetIoPort';
-import { classifyAssetIoWorkerFailure } from './assetIoWorkerFailure';
+import { SOURCE_ONLY_LOSS_APPROVAL_PREFIX } from '../../core3d/import/optionalLoss';
+import { classifyAssetIoWorkerFailure, createAssetIoWorkerFailure } from './assetIoWorkerFailure';
 
 it('maps known GLB validation failures to fixed safe codes', () => {
   expect(classifyAssetIoWorkerFailure(new Error('Unsupported required extension'))).toBe(
@@ -32,6 +33,24 @@ it('maps accessor and index range validation failures to the fixed GLB format co
     'Index exceeds positions',
   ])
     expect(classifyAssetIoWorkerFailure(new Error(message))).toBe(C.FORMAT);
+});
+
+it('transports only bounded optional-loss names in a dedicated fixed worker response', () => {
+  const names = ['VENDOR_optional', '拡張_🦎\n'],
+    request = new Error(SOURCE_ONLY_LOSS_APPROVAL_PREFIX + JSON.stringify(names));
+  expect(classifyAssetIoWorkerFailure(request)).toBe(C.LOSS_APPROVAL_REQUIRED);
+  expect(createAssetIoWorkerFailure(request)).toEqual({
+    kind: 'error',
+    code: C.LOSS_APPROVAL_REQUIRED,
+    losses: names,
+  });
+
+  for (const invalid of [['duplicate', 'duplicate'], ['x'.repeat(129)]]) {
+    const failure = createAssetIoWorkerFailure(
+      new Error(SOURCE_ONLY_LOSS_APPROVAL_PREFIX + JSON.stringify(invalid)),
+    );
+    expect(failure).toEqual({ kind: 'error', code: C.WORKER });
+  }
 });
 
 it('falls back to a generic code for unrecognized and non-Error failures', () => {

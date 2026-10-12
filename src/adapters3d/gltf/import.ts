@@ -1,5 +1,6 @@
 import { Matrix4, Quaternion, Vector3 } from 'three';
 import { preflightGlb } from '../../core3d/import/preflight';
+import { SOURCE_ONLY_LOSS_APPROVAL_PREFIX } from '../../core3d/import/optionalLoss';
 import {
   createProject,
   identityTransform,
@@ -38,9 +39,7 @@ export async function importGlb(
     f = preflightGlb(source),
     g = f.json;
   if (f.losses.length && !allowLoss)
-    throw new Error(
-      'Source-only features require explicit loss approval: ' + JSON.stringify(f.losses),
-    );
+    throw new Error(SOURCE_ONLY_LOSS_APPROVAL_PREFIX + JSON.stringify(f.losses));
   const p = createProject(projectId, 'Imported GLB'),
     sourceHash = await sha256(source),
     blobs = new Map<string, Uint8Array>([[sourceHash, source]]);
