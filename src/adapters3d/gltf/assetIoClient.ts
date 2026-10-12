@@ -4,11 +4,34 @@ import type {
   AssetIoResult,
   AssetIoProgress,
 } from '../../core3d/ports/assetIoPort';
+import { ASSET_IO_WORKER_FAILURE_CODES as C } from '../../core3d/ports/assetIoPort';
 import {
   ASSET_IO_PROFILE as P,
   assertIoBudget,
   reserveAssetIoBytes,
 } from '../../core3d/profile/assetIoProfile';
+
+function workerFailureMessage(code: unknown): string {
+  switch (code) {
+    case C.WORKER:
+      return 'Asset worker failed; original project retained';
+    case C.REQUIRED_EXTENSION:
+      return 'Unsupported required extension';
+    case C.EXTERNAL_REFERENCE:
+      return 'External URI or invalid buffer';
+    case C.SIDECAR:
+      return 'Sidecar does not match this GLB';
+    case C.IMAGE:
+      return 'Image validation failed';
+    case C.FORMAT:
+      return 'Malformed or invalid GLB';
+    case C.PROFILE_LIMIT:
+      return 'Asset I/O exceeds profile limit';
+    default:
+      return 'Invalid asset worker response';
+  }
+}
+
 let active = false;
 export function startAssetIo(
   request: AssetIoRequest,
@@ -48,7 +71,7 @@ export function startAssetIo(
           phase: string;
           fraction: number;
           result: AssetIoResult;
-          message: string;
+          code?: unknown;
         };
         if (data.kind === 'progress') {
           try {
@@ -61,7 +84,9 @@ export function startAssetIo(
         settled = true;
         release();
         if (data.kind === 'result') resolve(data.result);
-        else reject(new Error(data.message ?? 'Invalid worker response'));
+        else if (data.kind === 'error') {
+          reject(new Error(workerFailureMessage(data.code)));
+        } else reject(new Error('Invalid asset worker response'));
       };
       worker.onerror = () => {
         if (settled) return;
@@ -76,10 +101,10 @@ export function startAssetIo(
         reject(new Error('Invalid asset worker response'));
       };
       worker.postMessage(request);
-    } catch (error) {
+    } catch {
       settled = true;
       release();
-      reject(error);
+      reject(new Error('Asset worker failed; original project retained'));
     }
   });
   return {

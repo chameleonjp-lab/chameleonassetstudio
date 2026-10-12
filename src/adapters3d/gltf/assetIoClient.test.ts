@@ -1,5 +1,9 @@
 import { expect, it } from 'vitest';
 import { startAssetIo } from './assetIoClient';
+import {
+  ASSET_IO_WORKER_FAILURE_CODE,
+  ASSET_IO_WORKER_FAILURE_CODES as C,
+} from '../../core3d/ports/assetIoPort';
 it('terminates on cancel, rejects late results, and releases ownership after first worker failure', async () => {
   let terminated = 0;
   const worker = {
@@ -30,7 +34,7 @@ it('terminates on cancel, rejects late results, and releases ownership after fir
       throw Error('first launch');
     },
   );
-  await expect(failed.promise).rejects.toThrow('first launch');
+  await expect(failed.promise).rejects.toThrow('Asset worker failed; original project retained');
   const next = startAssetIo(
     req,
     () => {},
@@ -38,6 +42,116 @@ it('terminates on cancel, rejects late results, and releases ownership after fir
   );
   next.cancel();
   await expect(next.promise).rejects.toThrow();
+});
+
+it('ignores raw worker failure text and exposes only the fixed safe failure', async () => {
+  let terminated = 0;
+  const worker = {
+    terminate: () => terminated++,
+    postMessage: () => {},
+    onmessage: null as ((event: MessageEvent) => void) | null,
+    onerror: null,
+    onmessageerror: null,
+  };
+  const job = startAssetIo(
+    {
+      kind: 'import',
+      bytes: new Uint8Array([1]),
+      projectId: 'p',
+      allowLoss: false,
+    },
+    () => {},
+    () => worker as unknown as Worker,
+  );
+  worker.onmessage?.({
+    data: {
+      kind: 'error',
+      code: ASSET_IO_WORKER_FAILURE_CODE,
+      message: 'file:///private/SECRET-FILENAME.glb?token=SECRET-TOKEN',
+    },
+  } as MessageEvent);
+  let failure: unknown;
+  try {
+    await job.promise;
+  } catch (cause) {
+    failure = cause;
+  }
+  expect(failure).toBeInstanceOf(Error);
+  expect((failure as Error).message).toBe('Asset worker failed; original project retained');
+  expect((failure as Error).message).not.toMatch(/SECRET|private|token/i);
+  expect(terminated).toBe(1);
+});
+
+it('maps allowlisted worker failure codes to fixed messages without forwarding raw text', async () => {
+  const cases = [
+    { code: C.REQUIRED_EXTENSION, message: 'Unsupported required extension' },
+    { code: C.EXTERNAL_REFERENCE, message: 'External URI or invalid buffer' },
+    { code: C.SIDECAR, message: 'Sidecar does not match this GLB' },
+    { code: C.IMAGE, message: 'Image validation failed' },
+    { code: C.FORMAT, message: 'Malformed or invalid GLB' },
+    { code: C.PROFILE_LIMIT, message: 'Asset I/O exceeds profile limit' },
+    { code: 'ASSET_IO_UNTRUSTED' as const, message: 'Invalid asset worker response' },
+  ];
+  for (const sample of cases) {
+    const worker = {
+      terminate: () => {},
+      postMessage: () => {},
+      onmessage: null as ((event: MessageEvent) => void) | null,
+      onerror: null,
+      onmessageerror: null,
+    };
+    const job = startAssetIo(
+      { kind: 'import', bytes: new Uint8Array([1]), projectId: 'p', allowLoss: false },
+      () => {},
+      () => worker as unknown as Worker,
+    );
+    worker.onmessage?.({
+      data: {
+        kind: 'error',
+        code: sample.code,
+        message: 'file:///private/SECRET-FILENAME.glb?token=SECRET-TOKEN',
+      },
+    } as MessageEvent);
+    await expect(job.promise).rejects.toThrow(sample.message);
+  }
+});
+
+it('sanitizes worker construction and postMessage exceptions', async () => {
+  const secret = 'file:///private/SECRET-FILENAME.glb?token=SECRET-TOKEN';
+  const failedFactory = startAssetIo(
+    {
+      kind: 'import',
+      bytes: new Uint8Array([1]),
+      projectId: 'p',
+      allowLoss: false,
+    },
+    () => {},
+    () => {
+      throw new Error(secret);
+    },
+  );
+  await expect(failedFactory.promise).rejects.toThrow(
+    'Asset worker failed; original project retained',
+  );
+  const failedPost = startAssetIo(
+    {
+      kind: 'import',
+      bytes: new Uint8Array([1]),
+      projectId: 'p',
+      allowLoss: false,
+    },
+    () => {},
+    () =>
+      ({
+        terminate: () => {},
+        postMessage: () => {
+          throw new Error(secret);
+        },
+      }) as unknown as Worker,
+  );
+  await expect(failedPost.promise).rejects.toThrow(
+    'Asset worker failed; original project retained',
+  );
 });
 
 it('rejects oversized sidecar before constructing a worker', () => {

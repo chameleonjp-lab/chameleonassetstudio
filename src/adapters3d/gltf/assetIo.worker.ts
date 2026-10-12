@@ -1,9 +1,10 @@
 /// <reference lib="webworker" />
 import { ASSET_IO_PROFILE, assertIoBudget } from '../../core3d/profile/assetIoProfile';
-import type { AssetIoRequest } from '../../core3d/ports/assetIoPort';
+import type { AssetIoRequest, AssetIoWorkerFailure } from '../../core3d/ports/assetIoPort';
 import { buildInspectionReport, exportInspectionWarnings } from '../../core3d/inspection/report';
 import { exportGlb } from './export';
 import { importGlb } from './import';
+import { classifyAssetIoWorkerFailure } from './assetIoWorkerFailure';
 import { buildAssetPackage } from '../../core3d/export/mapping';
 self.onmessage = async (event: MessageEvent<AssetIoRequest>) => {
   try {
@@ -37,10 +38,10 @@ self.onmessage = async (event: MessageEvent<AssetIoRequest>) => {
         'Inspection report',
       );
     self.postMessage({ kind: 'result', result });
-  } catch (error) {
+  } catch (cause) {
     self.postMessage({
       kind: 'error',
-      message: error instanceof Error ? error.message : String(error),
-    });
+      code: classifyAssetIoWorkerFailure(cause),
+    } satisfies AssetIoWorkerFailure);
   }
 };
