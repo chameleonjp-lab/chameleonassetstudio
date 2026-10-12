@@ -103,3 +103,11 @@ The authoring panel now announces successful primitive creation in a polite, ato
 The focused keyboard-only product E2E passed in Chromium and WebKit-critical (1/1 each). The complete `native-editing-product.spec.ts` passed 14/14 in each browser project. `npm run format:check`, `npm run test:ci-scope` (8/8), and `npm run build` passed; `npm test` passed all 3,530 tests across 185 files. `npm run lint` reported zero errors and one pre-existing React Hook warning in `NativeViewportPanel.tsx:195`; build retained the existing non-blocking large-chunk advisory.
 
 This verifies status markup, DOM text, and keyboard behavior in headless desktop browsers only. It does not establish actual screen-reader speech, VoiceOver/TalkBack behavior, contrast compliance, real browser/OS zoom, or physical-device acceptance. UX-05 and 3D-STAGE4-04 remain partial/open; no assistive-technology or physical-device acceptance is claimed.
+
+## Viewport camera shortcut composition/modifier guard follow-up — 2026-10-12
+
+A focused software regression check now dispatches keyboard events to the focused viewport for IME composition (`isComposing`), the legacy IME key code 229, and Ctrl/Meta/Alt-modified camera keys. In all five cases the event remains unprevented, camera values stay unchanged, and a decoded backup remains identical to the baseline project. No product data, revision, or schema changed.
+
+The focused case passed in Chromium and WebKit-critical (2/2 total). The full `native-viewport-product.spec.ts` suite passed 38/38 across those browser projects. `npm run format:check`, `npm run build`, `npm run test:ci-scope` (8/8), and `npm test` (3,530/3,530) passed; `npm run lint` had zero errors and one pre-existing React Hook warning in `NativeViewportPanel.tsx:205`. The build retains the existing non-blocking large-chunk advisory.
+
+These checks use synthetic, untrusted DOM keyboard events in headless desktop browsers. They do not reproduce trusted hardware input or real OS/IME composition timing, and do not verify screen-reader speech, VoiceOver/TalkBack, contrast, real zoom, or physical-device acceptance. UX-05 and 3D-STAGE4-04 remain partial/open.
