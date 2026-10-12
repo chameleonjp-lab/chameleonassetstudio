@@ -629,7 +629,14 @@ export function NativeGamePanel({
     >
       <h3>ゲーム向け情報を作る</h3>
       <p>単位・前方向・原点は受渡し用metadataです。正本の形状（m・Y上・+Z前）は変換しません。</p>
-      <p>anchorとcolliderもmetadataです。衝突判定やゲームの動作は受渡し先で設定します。</p>
+      <p>
+        anchorとcolliderはgame.jsonに保存するmetadataです。GLBに物理bodyや衝突componentは追加されません。受渡し先でengineの形状と衝突動作を別に設定してください。
+      </p>
+      <p>
+        <a href="../guide/3d/#collider-handoff" target="_blank" rel="noopener noreferrer">
+          受渡し先でのcollider設定手順を見る
+        </a>
+      </p>
       {readOnly ? (
         <p role="status">読み取り専用です。設定の確認はできます。</p>
       ) : (

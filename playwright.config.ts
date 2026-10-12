@@ -51,6 +51,7 @@ export default defineConfig({
         'native-legacy-backup-product.spec.ts',
         'native-diagnostics-product.spec.ts',
         'native-consumer.spec.ts',
+        'native-game-handoff.spec.ts',
         'import.spec.ts',
         'storage.spec.ts',
         'export.spec.ts',

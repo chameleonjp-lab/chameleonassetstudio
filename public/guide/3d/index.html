@@ -471,7 +471,7 @@
         <ol>
           <li>
             「ゲーム向け情報を編集」で種類・ID・単位・前方向・原点を設定します。
-            anchorは取り付け位置、colliderは当たり判定用の形の情報です。ゲームの衝突処理は受渡し先で設定します。
+            anchorは取り付け位置、colliderは当たり判定用の形の情報です。どちらも受渡し用metadataで、GLBへ物理componentは追加しません。
           </li>
           <li>
             「GLB読込・配布ファイル出力」→「GLB入出力を開く」→「GLB・付属情報・ZIPを作成」。
@@ -487,6 +487,90 @@
           <code>game.json</code> も使います。利用先で座標を変える場合は一度だけ適用してください。
           非表示部品もGLBに含まれ、他のソフトでは見える場合があります。
         </p>
+        <div class="card" id="collider-handoff">
+          <h3>colliderを受渡し先のphysicsへ設定する</h3>
+          <p>
+            <strong>自動ではありません。</strong> <code>game.json</code> の
+            <code>game.colliders</code> は形状・用途・位置のmetadataです。
+            GLBの読み込みだけではcollision shape、physics
+            body、trigger、ゲーム処理は作成されず、このガイドやテスト用consumerも物理演算を実行しません。
+          </p>
+          <ol>
+            <li>
+              GLBと、同じ出力で作った <code>game.json</code> を一組として受渡します。sidecarの
+              <code>modelHash</code> がGLBと一致することを確認します。
+            </li>
+            <li>
+              受渡し先でGLBを読み込み、<code>game.colliders[]</code> を参照します。<code
+                >nodeId</code
+              >
+              があれば <code>game.json</code> の
+              <code>nodes</code>
+              対応表で対象nodeを特定し、なければ作品rootに配置します。transformはそのnodeに対するlocal値です。
+            </li>
+            <li>
+              受渡し先のnative
+              collider/shapeを作成し、寸法・向き・位置を反映します。canonicalのm・Y上・+Z前と受渡し先の座標系・単位を比較し、変換は一度だけ行います。
+            </li>
+            <li>
+              <code>purpose</code>
+              は用途ラベルで、physicsの設定値ではありません。solid/trigger等をどう動かすか、body種別、collision
+              layer/mask、イベント処理はゲーム側で選びます。
+            </li>
+            <li>
+              debug表示で形状を見て、実際のゲームsceneで接触・通過イベントを試します。sidecarを読めたことだけで衝突動作を確認済みとはしません。
+            </li>
+          </ol>
+          <p>
+            <strong>このアプリの寸法表現:</strong> box
+            <code>size</code>
+            はX/Y/Zの全寸法（m）、sphereは半径（m）、capsuleは半径（m）と円柱部の長さ（m）です。
+            capsuleの全高は円柱部の長さ + 2 × 半径です。
+          </p>
+          <p>
+            <strong>Unity 6の例:</strong> box/sphere/capsuleに対応するnative Collider
+            componentをGameObjectへ追加し、単位・姿勢を合わせて寸法を設定します。<code>height</code>
+            は円柱部なので、UnityのCapsuleCollider全高には
+            <code>height + 2 × radius</code> を設定します。
+            <a
+              href="https://docs.unity.com/en-us/engine/6000.0/manual/physics-section/physics-overview/collision-section/colliders-overview"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Unity 6: collisionとtrigger</a
+            >
+            /
+            <a
+              href="https://docs.unity.com/en-us/engine/6000.0/manual/physics-section/physics-overview/collision-section/collider-shapes/primitive-colliders/class-capsule-collider"
+              target="_blank"
+              rel="noopener noreferrer"
+              >CapsuleColliderの寸法</a
+            >
+          </p>
+          <p>
+            <strong>Godot 4の例:</strong> 物理objectまたはArea3Dの子として
+            <code>CollisionShape3D</code> を作り、box/sphere/capsuleのShape3Dを割り当てます。
+            <code>CapsuleShape3D.height</code> は半球を含む全高なので、円柱部の長さを
+            <code>height + 2 × radius</code>
+            に変換します。非一様scaleは期待通りにならない場合があるため、shape寸法とdebug表示を調整してください。
+            <a
+              href="https://docs.godotengine.org/en/stable/classes/class_collisionshape3d.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Godot: CollisionShape3D</a
+            >
+            /
+            <a
+              href="https://docs.godotengine.org/en/stable/classes/class_capsuleshape3d.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              >CapsuleShape3Dの寸法</a
+            >
+          </p>
+          <p class="note">
+            これらは受渡しの考え方を示す手順です。Unity/Godotの実projectでのimport・physics
+            runtime検証は、このアプリでは未実施です。
+          </p>
+        </div>
         <div class="card">
           <h3>手元のGLBを読み込むとき</h3>
           <p>
