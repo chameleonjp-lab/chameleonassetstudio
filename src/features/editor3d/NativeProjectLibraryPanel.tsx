@@ -1,5 +1,5 @@
 import { formatNativeEditingFailure } from './editingFailure';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type {
   ProjectLibraryEntry,
   ProjectRepository,
@@ -45,6 +45,13 @@ export function NativeProjectLibraryPanel({
   const busy = useRef(false),
     generation = useRef(0),
     mounted = useRef(false);
+  const confirmationTrigger = useRef<HTMLButtonElement | null>(null),
+    focusAfterConfirmationCancel = useRef(false);
+  useLayoutEffect(() => {
+    if (confirmation || !focusAfterConfirmationCancel.current) return;
+    focusAfterConfirmationCancel.current = false;
+    confirmationTrigger.current?.focus();
+  }, [confirmation]);
   useEffect(() => {
     mounted.current = true;
     const epoch = ++generation.current;
@@ -160,9 +167,10 @@ export function NativeProjectLibraryPanel({
                 type="button"
                 disabled={blocked || entry.id === currentProjectId}
                 aria-label={`${entry.trashed ? 'ごみ箱復元' : 'ごみ箱移動'}を確認: ${entry.name}`}
-                onClick={() =>
-                  setConfirmation({ kind: entry.trashed ? 'restore' : 'trash', entry })
-                }
+                onClick={(event) => {
+                  confirmationTrigger.current = event.currentTarget;
+                  setConfirmation({ kind: entry.trashed ? 'restore' : 'trash', entry });
+                }}
               >
                 {entry.trashed ? 'ごみ箱から戻す' : 'ごみ箱へ移動'}
               </button>
@@ -224,9 +232,12 @@ export function NativeProjectLibraryPanel({
                       type="button"
                       disabled={blocked}
                       aria-label={`revision ${snapshot.revision} の別コピー復旧を確認`}
-                      onClick={() => {
+                      onClick={(event) => {
                         const entry = entries?.find((value) => value.id === history.projectId);
-                        if (entry) setConfirmation({ kind: 'recover', entry, snapshot });
+                        if (entry) {
+                          confirmationTrigger.current = event.currentTarget;
+                          setConfirmation({ kind: 'recover', entry, snapshot });
+                        }
                       }}
                     >
                       この版の別コピー復旧を確認
@@ -289,7 +300,14 @@ export function NativeProjectLibraryPanel({
                 ? '確認した1作品をごみ箱へ移動'
                 : '確認した1作品をごみ箱から戻す'}
           </button>
-          <button type="button" disabled={blocked} onClick={() => setConfirmation(null)}>
+          <button
+            type="button"
+            disabled={blocked}
+            onClick={() => {
+              focusAfterConfirmationCancel.current = true;
+              setConfirmation(null);
+            }}
+          >
             この操作を取り消す
           </button>
         </div>

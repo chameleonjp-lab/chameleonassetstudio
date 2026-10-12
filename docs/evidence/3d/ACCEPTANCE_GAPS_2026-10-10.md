@@ -154,3 +154,15 @@ This adds headless DOM/status evidence only. Actual screen-reader speech, VoiceO
 ## Shared 3D workspace text-contrast measurements — 2026-10-12
 
 [`PRODUCT_CONTRAST_MEASUREMENTS_2026-10-12.md`](PRODUCT_CONTRAST_MEASUREMENTS_2026-10-12.md) records computed foreground/background pairs and relative-luminance ratios for ten representative shared-shell text styles in Chromium and WebKit-critical. The disabled-button text measured 4.2774:1 against its background. The repository does not define an acceptance threshold or settle the applicability of an inactive-control exception, so this is measurement only: no pass/fail judgment, project-wide 4.5:1 standard, or product color change is claimed. The focused browser probes passed in both engines; UX-05, 3D-STAGE4-04, contrast acceptance, and physical accessibility gates remain open.
+
+
+## Project-library confirmation focus return — 2026-10-12
+
+[`PRODUCT_LIBRARY_CONFIRM_FOCUS_2026-10-12.md`](PRODUCT_LIBRARY_CONFIRM_FOCUS_2026-10-12.md) records a keyboard-only UX-04 follow-up: cancelling the inline project-library confirmation now returns focus to its initiating trash/restore or recovery-candidate button, with the existing 3px focus outline intact. Before the fix, the new trash-confirmation test failed in both Chromium and WebKit-critical because the removed confirmation button left focus inactive. The complete `native-library-product.spec.ts` product suite passed 26/26 across both engines after adding cancellation checks for both entry points.
+
+This is headless DOM-focus evidence only, not actual screen-reader speech, VoiceOver/TalkBack, physical keyboard/pointer/device use, browser/OS zoom, contrast acceptance, or WCAG conformance. UX-04/UX-05 and physical accessibility gates remain partial/open; no acceptance status is promoted.
+
+
+## Project-library focus return in production preview — 2026-10-12
+
+The two keyboard cancellation flows were also exercised against the production preview using `playwright.production.config.ts`; 6/6 selected checks passed across Chromium and WebKit-critical, including both new library cases and the existing object-deletion focus case. This remains browser-emulated DOM-focus evidence. Screen-reader speech, physical keyboard/pointer/device behavior, actual browser/OS zoom, contrast acceptance, and WCAG conformance remain unverified; UX-04/UX-05 and physical accessibility gates remain partial/open.
