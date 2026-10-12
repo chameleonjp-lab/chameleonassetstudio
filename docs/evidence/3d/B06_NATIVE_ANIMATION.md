@@ -36,6 +36,14 @@ Submitted head, CI execution and visual inspection are recorded separately after
 
 ## Remaining cross-gate work and recovery
 
-This candidate targets ANIM-01–05/07 native authoring/playback and the native-save portion of AC-03. ANIM-06 GLB/reimport/sidecar/runtime acceptance remains B07/B08; physical devices and final budgets remain B09/B10. Templates/retarget SHOULD features are not silently added.
+This candidate targets ANIM-01–05/07 native authoring/playback and the native-save portion of AC-03. ANIM-06's product backup/re-edit/GLB+sidecar/independent-consumer browser route is now covered by a B06 follow-up; physical devices and final budgets remain B09/B10. Templates/retarget SHOULD features are not silently added.
+
+## ANIM-06 product-to-consumer follow-up
+
+The product test authors two clips and keys through the UI, saves a `.cas3dproj`, restores that archive in a separate browser context, edits a user-authored key, saves again, and exports actual GLB plus `game.json`. It now checks that the sidecar's `modelHash` matches the exact GLB bytes and that both clip records preserve ID, name, duration and loop state. A fresh Babylon consumer context independently loads the same bytes, confirms two animation groups, samples each clip, and runs playback to its end event. This closes the previously unexecuted software-only browser route as a candidate; it is not evidence of import or physics behavior in Unity/Godot or on a physical device.
+
+Local verification on 2026-10-12 JST: the focused `native-consumer.spec.ts` case passed in Chromium and WebKit (2/2). The test harness/browser consumer is independent of the editor implementation, but no production game-engine runtime was exercised. ANIM-06 remains `implemented-candidate / partial` pending the wider release/consumer acceptance gates.
+
+On the same stack, `npm run test` passed 3,530 tests across 185 files; `npm run test:ci-scope` passed 8/8; `npm run format:check` and `npm run build` passed. `npm run lint` had zero errors and one pre-existing React Hooks warning at `NativeViewportPanel.tsx:205`; the production build retained its existing >500 kB chunk advisory. CI was not monitored.
 
 Revert the PR to restore previous UI/render behavior. Existing backup format and canonical originals remain intact; explicit key edits use Undo/Redo. No failure automatically deletes keys, converts unsupported interpolation or replaces original sources.

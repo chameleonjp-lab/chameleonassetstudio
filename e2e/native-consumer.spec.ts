@@ -309,7 +309,7 @@ test('a project authored and exported in the product opens in a separate consume
   }
 });
 
-test('edited textured mixed skin and two clips survive backup, re-edit and actual independent delivery', async ({
+test('edited textured mixed skin and two clips survive backup, re-edit and actual independent delivery with verified sidecar metadata', async ({
   page,
   browser,
 }) => {
@@ -374,13 +374,15 @@ test('edited textured mixed skin and two clips survive backup, re-edit and actua
   await page.getByText('アニメーション編集を開く', { exact: true }).click();
   const animation = page.getByRole('region', { name: '3Dアニメーション', exact: true });
   const clipIds: string[] = [];
-  for (const [name, end] of [
-    ['Small', '1'],
-    ['Large', '2'],
-  ]) {
+  for (const [name, end, loop] of [
+    ['Small', '1', true],
+    ['Large', '2', false],
+  ] as const) {
     await animation.getByLabel('clip名', { exact: true }).fill(name);
     await animation.getByLabel('clipの長さ（秒）', { exact: true }).fill('1');
-    await animation.getByLabel('clipをloop再生する', { exact: true }).uncheck();
+    const loopControl = animation.getByLabel('clipをloop再生する', { exact: true });
+    if (loop) await loopControl.check();
+    else await loopControl.uncheck();
     await animation.getByRole('button', { name: '新しいclipを作成', exact: true }).click();
     clipIds.push(
       await animation.getByRole('combobox', { name: 'clipを選択', exact: true }).inputValue(),
@@ -441,6 +443,16 @@ test('edited textured mixed skin and two clips survive backup, re-edit and actua
     await expect(restored.getByRole('button', { name: 'GLBを保存', exact: true })).toBeVisible();
     const glb = await download(restored, 'GLBを保存'),
       sidecar = await download(restored, 'game.jsonを保存');
+    const gameSidecar = JSON.parse(new TextDecoder().decode(sidecar)) as {
+      modelHash: string;
+      clips: { id: string; name: string; duration: number; loop: boolean }[];
+    };
+    expect(gameSidecar.modelHash).toBe(await sha256(glb));
+    expect(gameSidecar.clips).toHaveLength(2);
+    expect(gameSidecar.clips).toMatchObject([
+      { id: clipIds[0], name: 'Small', duration: 1, loop: true },
+      { id: clipIds[1], name: 'Large', duration: 1, loop: false },
+    ]);
     const validation = await validator.validateBytes(glb, { maxIssues: 1000 });
     expect(validation.issues.numErrors, JSON.stringify(validation.issues)).toBe(0);
     expect(validation.issues.truncated).toBe(false);
@@ -466,11 +478,14 @@ test('edited textured mixed skin and two clips survive backup, re-edit and actua
     expect(
       rest.materials.some((material) => material.loaded && material.textureSize !== null),
     ).toBe(true);
-    for (const [clipId, x] of [
-      [clipIds[0], 0.75],
-      [clipIds[1], 1.875],
+    for (const [clipId, time, x] of [
+      [clipIds[0], 0.5, 0.375],
+      [clipIds[1], 1, 1.875],
     ] as const) {
-      const pose = await consumer.evaluate((id) => window.__assetConsumer.sample(id, 1), clipId);
+      const pose = await consumer.evaluate(
+        ({ id, time }) => window.__assetConsumer.sample(id, time),
+        { id: clipId, time },
+      );
       expect(pose.oracle.positionPass).toBe(true);
       expect(pose.oracle.nodePass).toBe(true);
       expect(pose.meshes.length).toBe(rest.meshes.length);
@@ -497,6 +512,7 @@ test('edited textured mixed skin and two clips survive backup, re-edit and actua
             modelHash: await sha256(glb),
             sidecarHash: await sha256(sidecar),
             backupHash: await sha256(archive),
+            clips: gameSidecar.clips,
             runtime: rest.engine,
             runtimeVersion: rest.version,
             validator: validation.issues,
