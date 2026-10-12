@@ -517,3 +517,336 @@ test('edited textured mixed skin and two clips survive backup, re-edit and actua
     await consumerContext.close();
   }
 });
+
+test('product-authored rigid attachment and mixed skin follow their joint in an independent consumer', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(180000);
+  const { readFile } = await import('node:fs/promises');
+  const { importBackup } = await import('../src/core3d/backup/backup');
+  const download = async (target: Page, name: string) => {
+    const event = target.waitForEvent('download');
+    await target.getByRole('button', { name, exact: true }).click();
+    return new Uint8Array(await readFile((await (await event).path())!));
+  };
+
+  await page.goto('/3d/');
+  await page.getByLabel('新しいプロジェクト名', { exact: true }).fill('Rigid consumer bridge');
+  await page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true }).click();
+  await page.getByRole('button', { name: '箱を追加', exact: true }).click();
+  await page.getByRole('button', { name: '箱を追加', exact: true }).click();
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+
+  const initial = await importBackup(await download(page, '現在の内容をバックアップ'));
+  const parts = initial.project.nodes.filter((node) => node.meshId !== undefined);
+  expect(parts).toHaveLength(2);
+  const skinPartId = parts[0].id;
+  const rigidPartId = parts[1].id;
+
+  await page.getByText('骨と重みの編集を開く', { exact: true }).click();
+  const rig = page.getByRole('region', { name: '3D骨と重み', exact: true });
+  await rig.getByLabel('骨の名前', { exact: true }).fill('Root');
+  await rig.getByRole('button', { name: '骨を追加', exact: true }).click();
+  const root = await rig.getByRole('combobox', { name: '骨を選択', exact: true }).inputValue();
+  await rig.getByRole('combobox', { name: '親の骨', exact: true }).selectOption(root);
+  await rig.getByLabel('骨の名前', { exact: true }).fill('Tip');
+  await rig.getByRole('button', { name: '骨を追加', exact: true }).click();
+  const tip = await rig.getByRole('combobox', { name: '骨を選択', exact: true }).inputValue();
+  await rig.getByRole('button', { name: '骨の現在値を読む', exact: true }).click();
+  await rig.getByLabel('骨位置 Y', { exact: true }).fill('1');
+  await rig.getByRole('button', { name: 'restを適用して再bind', exact: true }).click();
+
+  await rig.getByRole('combobox', { name: '重み対象の部品', exact: true }).selectOption(skinPartId);
+  await rig.getByRole('combobox', { name: '影響 1 の骨', exact: true }).selectOption(root);
+  await rig.getByLabel('影響 1 の重み', { exact: true }).fill('0.25');
+  await rig.getByRole('combobox', { name: '影響 2 の骨', exact: true }).selectOption(tip);
+  await rig.getByLabel('影響 2 の重み', { exact: true }).fill('0.75');
+  await rig.getByRole('button', { name: '全頂点へ明示weightをbind', exact: true }).click();
+  await expect(rig.getByText(/bind済み/)).toBeVisible();
+
+  const rigid = rig.getByRole('region', { name: 'rigid部品の骨割当', exact: true });
+  await rigid
+    .getByRole('combobox', { name: 'rigid割当の部品', exact: true })
+    .selectOption(rigidPartId);
+  await rigid.getByRole('combobox', { name: 'rigid割当先の骨', exact: true }).selectOption(tip);
+  await rigid.getByRole('button', { name: 'rigid割当の内容を確認', exact: true }).click();
+  await expect(rigid.getByRole('region', { name: 'rigid割当の確認', exact: true })).toContainText(
+    'restのworld配置を保持',
+  );
+  await rigid.getByRole('button', { name: '確認したrigid割当を適用', exact: true }).click();
+  await expect(rigid.getByRole('status')).toContainText('このrevisionでrigid割当を適用しました');
+
+  await page.getByText('アニメーション編集を開く', { exact: true }).click();
+  const animation = page.getByRole('region', { name: '3Dアニメーション', exact: true });
+  await animation.getByLabel('clip名', { exact: true }).fill('Joint motion');
+  await animation.getByLabel('clipの長さ（秒）', { exact: true }).fill('1');
+  await animation.getByLabel('clipをloop再生する', { exact: true }).uncheck();
+  await animation.getByRole('button', { name: '新しいclipを作成', exact: true }).click();
+  const clipId = await animation
+    .getByRole('combobox', { name: 'clipを選択', exact: true })
+    .inputValue();
+  await animation.getByRole('combobox', { name: 'キー対象', exact: true }).selectOption(tip);
+  await animation.getByRole('button', { name: '表示中のTRSを読む', exact: true }).click();
+  await animation.getByLabel('キー時刻（秒）', { exact: true }).fill('0');
+  await animation.getByLabel('キー値 X', { exact: true }).fill('0');
+  await animation.getByLabel('キー値 Y', { exact: true }).fill('1');
+  await animation.getByLabel('キー値 Z', { exact: true }).fill('0');
+  await animation.getByRole('button', { name: 'キーを追加', exact: true }).click();
+  await animation.getByLabel('キー時刻（秒）', { exact: true }).fill('1');
+  await animation.getByLabel('キー値 X', { exact: true }).fill('1');
+  await animation.getByLabel('キー値 Y', { exact: true }).fill('1');
+  await animation.getByLabel('キー値 Z', { exact: true }).fill('0');
+  await animation.getByRole('button', { name: 'キーを追加', exact: true }).click();
+
+  await page.getByText('GLB読込・配布ファイル出力', { exact: true }).click();
+  await page
+    .getByLabel('固定revisionの出力範囲と変換・損失の注意を確認しました', { exact: true })
+    .check();
+  await page.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'GLBを保存', exact: true })).toBeVisible();
+  const glb = await download(page, 'GLBを保存');
+  const sidecar = await download(page, 'game.jsonを保存');
+
+  const consumerContext = await browser.newContext();
+  try {
+    const consumer = await consumerContext.newPage();
+    const external = await open(consumer);
+    const rest = await consumer.evaluate(
+      ({ glb, sidecar }) => window.__assetConsumer.load(glb, sidecar),
+      { glb: Array.from(glb), sidecar: Array.from(sidecar) },
+    );
+    expect(rest.hash).toBe(await sha256(glb));
+    expect(rest.oracle.positionPass).toBe(true);
+    expect(rest.oracle.nodePass).toBe(true);
+    expect(rest.resources.skeletons).toBe(1);
+    expect(rest.resources.animations).toBe(1);
+    const restSkin = rest.meshes.find((mesh) => mesh.nodeId === skinPartId)!;
+    const restRigid = rest.meshes.find((mesh) => mesh.nodeId === rigidPartId)!;
+    expect(restSkin.positions.length).toBeGreaterThan(0);
+    expect(restRigid.positions.length).toBeGreaterThan(0);
+
+    const pose = await consumer.evaluate((id) => window.__assetConsumer.sample(id, 1), clipId);
+    expect(pose.oracle.positionPass).toBe(true);
+    expect(pose.oracle.nodePass).toBe(true);
+    const posedSkin = pose.meshes.find((mesh) => mesh.nodeId === skinPartId)!;
+    const posedRigid = pose.meshes.find((mesh) => mesh.nodeId === rigidPartId)!;
+    for (const [before, after, deltaX] of [
+      [restSkin, posedSkin, 0.75],
+      [restRigid, posedRigid, 1],
+    ] as const) {
+      expect(after.positions).toHaveLength(before.positions.length);
+      before.positions.forEach((value, index) => {
+        expect(after.positions[index]).toBeCloseTo(value + (index % 3 === 0 ? deltaX : 0), 4);
+      });
+    }
+    expect(external).toEqual([]);
+    await consumer.evaluate((id) => window.__assetConsumer.sample(id, 0), clipId);
+    await test.info().attach('rigid-attachment-consumer-evidence', {
+      body: Buffer.from(
+        JSON.stringify(
+          {
+            kind: 'product-ui-rigid-and-skin-handoff',
+            sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+            browser: test.info().project.name,
+            glbHash: await sha256(glb),
+            sidecarHash: await sha256(sidecar),
+            skinPartId,
+            rigidPartId,
+            root,
+            tip,
+            clipId,
+            expectedPoseDeltaX: { mixedSkin: 0.75, rigidAttachment: 1 },
+            consumerOracle: pose.oracle,
+            runtime: pose.engine,
+            runtimeVersion: pose.version,
+          },
+          null,
+          2,
+        ),
+      ),
+      contentType: 'application/json',
+    });
+    await test.info().attach('native-visual-consumer-rigid-attachment', {
+      body: await consumer.screenshot(),
+      contentType: 'image/png',
+    });
+  } finally {
+    await consumerContext.close();
+  }
+});
+
+test('a saved manual vertex-weight correction reaches animated geometry in an independent consumer', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(180000);
+  const { readFile } = await import('node:fs/promises');
+  const { importBackup } = await import('../src/core3d/backup/backup');
+  const download = async (target: Page, name: string) => {
+    const event = target.waitForEvent('download');
+    await target.getByRole('button', { name, exact: true }).click();
+    return new Uint8Array(await readFile((await (await event).path())!));
+  };
+
+  await page.goto('/3d/');
+  await page
+    .getByLabel('新しいプロジェクト名', { exact: true })
+    .fill('Manual weight consumer bridge');
+  await page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true }).click();
+  await page.getByRole('button', { name: '箱を追加', exact: true }).click();
+  await page.getByText('骨と重みの編集を開く', { exact: true }).click();
+  const rig = page.getByRole('region', { name: '3D骨と重み', exact: true });
+  await rig.getByLabel('骨の名前', { exact: true }).fill('Root');
+  await rig.getByRole('button', { name: '骨を追加', exact: true }).click();
+  const root = await rig.getByRole('combobox', { name: '骨を選択', exact: true }).inputValue();
+  await rig.getByRole('combobox', { name: '親の骨', exact: true }).selectOption(root);
+  await rig.getByLabel('骨の名前', { exact: true }).fill('Tip');
+  await rig.getByRole('button', { name: '骨を追加', exact: true }).click();
+  const tip = await rig.getByRole('combobox', { name: '骨を選択', exact: true }).inputValue();
+  await rig.getByRole('button', { name: '骨の現在値を読む', exact: true }).click();
+  await rig.getByLabel('骨位置 Y', { exact: true }).fill('1');
+  await rig.getByRole('button', { name: 'restを適用して再bind', exact: true }).click();
+
+  const partId = await rig
+    .getByRole('combobox', { name: '重み対象の部品', exact: true })
+    .inputValue();
+  await rig.getByRole('combobox', { name: '影響 1 の骨', exact: true }).selectOption(root);
+  await rig.getByLabel('影響 1 の重み', { exact: true }).fill('0.25');
+  await rig.getByRole('combobox', { name: '影響 2 の骨', exact: true }).selectOption(tip);
+  await rig.getByLabel('影響 2 の重み', { exact: true }).fill('0.75');
+  await rig.getByRole('button', { name: '全頂点へ明示weightをbind', exact: true }).click();
+  await expect(rig.getByText(/bind済み/)).toBeVisible();
+
+  const bound = await importBackup(await download(page, '現在の内容をバックアップ'));
+  const mesh = bound.project.meshes[0];
+  const editedVertexId = mesh.vertices[0].id;
+  const editedVertexPosition = mesh.vertices[0].position;
+  await rig.getByRole('combobox', { name: '重み対象の部品', exact: true }).selectOption(partId);
+  await rig
+    .getByRole('combobox', { name: '編集する頂点', exact: true })
+    .selectOption(editedVertexId);
+  await rig.getByRole('button', { name: '頂点の現在weightを読む', exact: true }).click();
+  await rig.getByLabel('影響 1 の重み', { exact: true }).fill('0.5');
+  await rig.getByLabel('影響 2 の重み', { exact: true }).fill('0.5');
+  await rig.getByRole('button', { name: '選択頂点のweightを適用', exact: true }).click();
+  await expect(
+    rig.getByRole('status').filter({ hasText: '適用しました。元に戻す操作' }),
+  ).toBeVisible();
+
+  await page.getByText('アニメーション編集を開く', { exact: true }).click();
+  const animation = page.getByRole('region', { name: '3Dアニメーション', exact: true });
+  await animation.getByLabel('clip名', { exact: true }).fill('Manual weight motion');
+  await animation.getByLabel('clipの長さ（秒）', { exact: true }).fill('1');
+  await animation.getByLabel('clipをloop再生する', { exact: true }).uncheck();
+  await animation.getByRole('button', { name: '新しいclipを作成', exact: true }).click();
+  const clipId = await animation
+    .getByRole('combobox', { name: 'clipを選択', exact: true })
+    .inputValue();
+  await animation.getByRole('combobox', { name: 'キー対象', exact: true }).selectOption(tip);
+  await animation.getByRole('button', { name: '表示中のTRSを読む', exact: true }).click();
+  await animation.getByLabel('キー時刻（秒）', { exact: true }).fill('0');
+  await animation.getByLabel('キー値 X', { exact: true }).fill('0');
+  await animation.getByLabel('キー値 Y', { exact: true }).fill('1');
+  await animation.getByLabel('キー値 Z', { exact: true }).fill('0');
+  await animation.getByRole('button', { name: 'キーを追加', exact: true }).click();
+  await animation.getByLabel('キー時刻（秒）', { exact: true }).fill('1');
+  await animation.getByLabel('キー値 X', { exact: true }).fill('1');
+  await animation.getByLabel('キー値 Y', { exact: true }).fill('1');
+  await animation.getByLabel('キー値 Z', { exact: true }).fill('0');
+  await animation.getByRole('button', { name: 'キーを追加', exact: true }).click();
+
+  await page.getByRole('button', { name: '今すぐ保存', exact: true }).click();
+  const archive = await download(page, '現在の内容をバックアップ');
+  const saved = await importBackup(archive);
+  const savedSkin = saved.project.skins[0];
+  const corrected = savedSkin.weights.find((weight) => weight.vertexId === editedVertexId)!;
+  expect(corrected.values).toEqual([0.5, 0.5]);
+  savedSkin.weights
+    .filter((weight) => weight.vertexId !== editedVertexId)
+    .forEach((weight) => expect(weight.values).toEqual([0.25, 0.75]));
+
+  const restoredContext = await browser.newContext({ baseURL: new URL(page.url()).origin });
+  const consumerContext = await browser.newContext();
+  try {
+    const restored = await restoredContext.newPage();
+    await restored.goto('/3d/');
+    await restored.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+      name: 'manual-weight.cas3dproj',
+      mimeType: 'application/octet-stream',
+      buffer: Buffer.from(archive),
+    });
+    await expect(
+      restored.getByRole('heading', { name: 'Manual weight consumer bridge', exact: true }),
+    ).toBeVisible();
+    await restored.getByText('GLB読込・配布ファイル出力', { exact: true }).click();
+    await restored
+      .getByLabel('固定revisionの出力範囲と変換・損失の注意を確認しました', { exact: true })
+      .check();
+    await restored.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }).click();
+    await expect(restored.getByRole('button', { name: 'GLBを保存', exact: true })).toBeVisible();
+    const glb = await download(restored, 'GLBを保存');
+    const sidecar = await download(restored, 'game.jsonを保存');
+
+    const consumer = await consumerContext.newPage();
+    const external = await open(consumer);
+    const rest = await consumer.evaluate(
+      ({ glb, sidecar }) => window.__assetConsumer.load(glb, sidecar),
+      { glb: Array.from(glb), sidecar: Array.from(sidecar) },
+    );
+    expect(rest.hash).toBe(await sha256(glb));
+    expect(rest.oracle.positionPass).toBe(true);
+    expect(rest.oracle.nodePass).toBe(true);
+    const restMesh = rest.meshes.find((value) => value.nodeId === partId)!;
+    const pose = await consumer.evaluate((id) => window.__assetConsumer.sample(id, 1), clipId);
+    expect(pose.oracle.positionPass).toBe(true);
+    expect(pose.oracle.nodePass).toBe(true);
+    const posedMesh = pose.meshes.find((value) => value.nodeId === partId)!;
+    let correctedVertexOccurrences = 0;
+    for (let index = 0; index < restMesh.positions.length; index += 3) {
+      const isCorrectedVertex = editedVertexPosition.every(
+        (coordinate, axis) => Math.abs(restMesh.positions[index + axis] - coordinate) < 1e-5,
+      );
+      if (isCorrectedVertex) correctedVertexOccurrences++;
+      const expectedDeltaX = isCorrectedVertex ? 0.5 : 0.75;
+      expect(posedMesh.positions[index] - restMesh.positions[index]).toBeCloseTo(expectedDeltaX, 4);
+      expect(posedMesh.positions[index + 1] - restMesh.positions[index + 1]).toBeCloseTo(0, 4);
+      expect(posedMesh.positions[index + 2] - restMesh.positions[index + 2]).toBeCloseTo(0, 4);
+    }
+    expect(correctedVertexOccurrences).toBeGreaterThan(0);
+    expect(external).toEqual([]);
+    await consumer.evaluate((id) => window.__assetConsumer.sample(id, 0), clipId);
+    await test.info().attach('manual-weight-consumer-evidence', {
+      body: Buffer.from(
+        JSON.stringify(
+          {
+            kind: 'product-ui-manual-weight-save-restore-consumer',
+            sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+            browser: test.info().project.name,
+            backupHash: await sha256(archive),
+            glbHash: await sha256(glb),
+            sidecarHash: await sha256(sidecar),
+            meshNodeId: partId,
+            editedVertexId,
+            editedVertexPosition,
+            clipId,
+            expectedDeltaX: { editedVertex: 0.5, otherVertices: 0.75 },
+            consumerOracle: pose.oracle,
+            runtime: pose.engine,
+            runtimeVersion: pose.version,
+          },
+          null,
+          2,
+        ),
+      ),
+      contentType: 'application/json',
+    });
+    await test.info().attach('native-visual-consumer-manual-weight', {
+      body: await consumer.screenshot(),
+      contentType: 'image/png',
+    });
+  } finally {
+    await restoredContext.close();
+    await consumerContext.close();
+  }
+});
