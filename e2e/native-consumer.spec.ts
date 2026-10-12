@@ -517,3 +517,161 @@ test('edited textured mixed skin and two clips survive backup, re-edit and actua
     await consumerContext.close();
   }
 });
+
+test('product-authored rigid attachment and mixed skin follow their joint in an independent consumer', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(180000);
+  const { readFile } = await import('node:fs/promises');
+  const { importBackup } = await import('../src/core3d/backup/backup');
+  const download = async (target: Page, name: string) => {
+    const event = target.waitForEvent('download');
+    await target.getByRole('button', { name, exact: true }).click();
+    return new Uint8Array(await readFile((await (await event).path())!));
+  };
+
+  await page.goto('/3d/');
+  await page.getByLabel('新しいプロジェクト名', { exact: true }).fill('Rigid consumer bridge');
+  await page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true }).click();
+  await page.getByRole('button', { name: '箱を追加', exact: true }).click();
+  await page.getByRole('button', { name: '箱を追加', exact: true }).click();
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+
+  const initial = await importBackup(await download(page, '現在の内容をバックアップ'));
+  const parts = initial.project.nodes.filter((node) => node.meshId !== undefined);
+  expect(parts).toHaveLength(2);
+  const skinPartId = parts[0].id;
+  const rigidPartId = parts[1].id;
+
+  await page.getByText('骨と重みの編集を開く', { exact: true }).click();
+  const rig = page.getByRole('region', { name: '3D骨と重み', exact: true });
+  await rig.getByLabel('骨の名前', { exact: true }).fill('Root');
+  await rig.getByRole('button', { name: '骨を追加', exact: true }).click();
+  const root = await rig.getByRole('combobox', { name: '骨を選択', exact: true }).inputValue();
+  await rig.getByRole('combobox', { name: '親の骨', exact: true }).selectOption(root);
+  await rig.getByLabel('骨の名前', { exact: true }).fill('Tip');
+  await rig.getByRole('button', { name: '骨を追加', exact: true }).click();
+  const tip = await rig.getByRole('combobox', { name: '骨を選択', exact: true }).inputValue();
+  await rig.getByRole('button', { name: '骨の現在値を読む', exact: true }).click();
+  await rig.getByLabel('骨位置 Y', { exact: true }).fill('1');
+  await rig.getByRole('button', { name: 'restを適用して再bind', exact: true }).click();
+
+  await rig.getByRole('combobox', { name: '重み対象の部品', exact: true }).selectOption(skinPartId);
+  await rig.getByRole('combobox', { name: '影響 1 の骨', exact: true }).selectOption(root);
+  await rig.getByLabel('影響 1 の重み', { exact: true }).fill('0.25');
+  await rig.getByRole('combobox', { name: '影響 2 の骨', exact: true }).selectOption(tip);
+  await rig.getByLabel('影響 2 の重み', { exact: true }).fill('0.75');
+  await rig.getByRole('button', { name: '全頂点へ明示weightをbind', exact: true }).click();
+  await expect(rig.getByText(/bind済み/)).toBeVisible();
+
+  const rigid = rig.getByRole('region', { name: 'rigid部品の骨割当', exact: true });
+  await rigid
+    .getByRole('combobox', { name: 'rigid割当の部品', exact: true })
+    .selectOption(rigidPartId);
+  await rigid.getByRole('combobox', { name: 'rigid割当先の骨', exact: true }).selectOption(tip);
+  await rigid.getByRole('button', { name: 'rigid割当の内容を確認', exact: true }).click();
+  await expect(rigid.getByRole('region', { name: 'rigid割当の確認', exact: true })).toContainText(
+    'restのworld配置を保持',
+  );
+  await rigid.getByRole('button', { name: '確認したrigid割当を適用', exact: true }).click();
+  await expect(rigid.getByRole('status')).toContainText('このrevisionでrigid割当を適用しました');
+
+  await page.getByText('アニメーション編集を開く', { exact: true }).click();
+  const animation = page.getByRole('region', { name: '3Dアニメーション', exact: true });
+  await animation.getByLabel('clip名', { exact: true }).fill('Joint motion');
+  await animation.getByLabel('clipの長さ（秒）', { exact: true }).fill('1');
+  await animation.getByLabel('clipをloop再生する', { exact: true }).uncheck();
+  await animation.getByRole('button', { name: '新しいclipを作成', exact: true }).click();
+  const clipId = await animation
+    .getByRole('combobox', { name: 'clipを選択', exact: true })
+    .inputValue();
+  await animation.getByRole('combobox', { name: 'キー対象', exact: true }).selectOption(tip);
+  await animation.getByRole('button', { name: '表示中のTRSを読む', exact: true }).click();
+  await animation.getByLabel('キー時刻（秒）', { exact: true }).fill('0');
+  await animation.getByLabel('キー値 X', { exact: true }).fill('0');
+  await animation.getByLabel('キー値 Y', { exact: true }).fill('1');
+  await animation.getByLabel('キー値 Z', { exact: true }).fill('0');
+  await animation.getByRole('button', { name: 'キーを追加', exact: true }).click();
+  await animation.getByLabel('キー時刻（秒）', { exact: true }).fill('1');
+  await animation.getByLabel('キー値 X', { exact: true }).fill('1');
+  await animation.getByLabel('キー値 Y', { exact: true }).fill('1');
+  await animation.getByLabel('キー値 Z', { exact: true }).fill('0');
+  await animation.getByRole('button', { name: 'キーを追加', exact: true }).click();
+
+  await page.getByText('GLB読込・配布ファイル出力', { exact: true }).click();
+  await page
+    .getByLabel('固定revisionの出力範囲と変換・損失の注意を確認しました', { exact: true })
+    .check();
+  await page.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'GLBを保存', exact: true })).toBeVisible();
+  const glb = await download(page, 'GLBを保存');
+  const sidecar = await download(page, 'game.jsonを保存');
+
+  const consumerContext = await browser.newContext();
+  try {
+    const consumer = await consumerContext.newPage();
+    const external = await open(consumer);
+    const rest = await consumer.evaluate(
+      ({ glb, sidecar }) => window.__assetConsumer.load(glb, sidecar),
+      { glb: Array.from(glb), sidecar: Array.from(sidecar) },
+    );
+    expect(rest.hash).toBe(await sha256(glb));
+    expect(rest.oracle.positionPass).toBe(true);
+    expect(rest.oracle.nodePass).toBe(true);
+    expect(rest.resources.skeletons).toBe(1);
+    expect(rest.resources.animations).toBe(1);
+    const restSkin = rest.meshes.find((mesh) => mesh.nodeId === skinPartId)!;
+    const restRigid = rest.meshes.find((mesh) => mesh.nodeId === rigidPartId)!;
+    expect(restSkin.positions.length).toBeGreaterThan(0);
+    expect(restRigid.positions.length).toBeGreaterThan(0);
+
+    const pose = await consumer.evaluate((id) => window.__assetConsumer.sample(id, 1), clipId);
+    expect(pose.oracle.positionPass).toBe(true);
+    expect(pose.oracle.nodePass).toBe(true);
+    const posedSkin = pose.meshes.find((mesh) => mesh.nodeId === skinPartId)!;
+    const posedRigid = pose.meshes.find((mesh) => mesh.nodeId === rigidPartId)!;
+    for (const [before, after, deltaX] of [
+      [restSkin, posedSkin, 0.75],
+      [restRigid, posedRigid, 1],
+    ] as const) {
+      expect(after.positions).toHaveLength(before.positions.length);
+      before.positions.forEach((value, index) => {
+        expect(after.positions[index]).toBeCloseTo(value + (index % 3 === 0 ? deltaX : 0), 4);
+      });
+    }
+    expect(external).toEqual([]);
+    await consumer.evaluate((id) => window.__assetConsumer.sample(id, 0), clipId);
+    await test.info().attach('rigid-attachment-consumer-evidence', {
+      body: Buffer.from(
+        JSON.stringify(
+          {
+            kind: 'product-ui-rigid-and-skin-handoff',
+            sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+            browser: test.info().project.name,
+            glbHash: await sha256(glb),
+            sidecarHash: await sha256(sidecar),
+            skinPartId,
+            rigidPartId,
+            root,
+            tip,
+            clipId,
+            expectedPoseDeltaX: { mixedSkin: 0.75, rigidAttachment: 1 },
+            consumerOracle: pose.oracle,
+            runtime: pose.engine,
+            runtimeVersion: pose.version,
+          },
+          null,
+          2,
+        ),
+      ),
+      contentType: 'application/json',
+    });
+    await test.info().attach('native-visual-consumer-rigid-attachment', {
+      body: await consumer.screenshot(),
+      contentType: 'image/png',
+    });
+  } finally {
+    await consumerContext.close();
+  }
+});
