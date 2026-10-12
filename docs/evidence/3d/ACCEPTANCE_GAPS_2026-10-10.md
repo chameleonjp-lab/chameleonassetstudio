@@ -173,3 +173,10 @@ The two keyboard cancellation flows were also exercised against the production p
 [`AC07_PRODUCT_VIEWPORT_LIFETIME_2026-10-12.md`](AC07_PRODUCT_VIEWPORT_LIFETIME_2026-10-12.md) records a new product-UI browser slice aligned with `LIFE-04` and the 20-cycle browser portion of `PERF-06`: two saved works are alternated 20 times, with one viewport canvas after each open and an API-level WebGL2 context-creation / explicit-loss-request count. The focused case passed 1/1 in system Chromium and 1/1 in WebKit-critical; the complete viewport product spec passed 46/46 across both projects. The full unit suite passed 3,531/3,531; formatting, build and lint (zero errors; one existing Hook warning) passed.
 
 This confirms browser API calls only. It does not measure GPU-driver memory, render-loop/worker/Object URL accumulation, import/export cancellation, product context-loss recovery/latest-revision resume, or background/OS discard. AC-07, LIFE-04 and PERF-06 remain partial/open; no acceptance pass is claimed.
+
+
+## AC-13 product update chunk failure retry — 2026-10-12
+
+[`AC13_UPDATE_CHUNK_RECOVERY_2026-10-12.md`](AC13_UPDATE_CHUNK_RECOVERY_2026-10-12.md) records the missing combined product-browser slice: after a changed build is reported, a dirty project is saved by the explicit update reload, the reloaded `Editor3DShell` chunk receives a synthetic HTTP 404, and a manual retry reopens the same saved project with its changed name and persisted revision. Focused cases passed in Chromium and WebKit-critical on the dev server (1/1 each) and Chromium production preview (1/1); the full diagnostics product spec passed 24/24 across Chromium and WebKit-critical. Unit tests passed 3,531/3,531; format, lint (zero errors; one existing Hook warning), and build passed.
+
+The 404 is Playwright-injected, not an actual stale CDN/HTML deployment. Service Worker/browser/CDN cache residue, real offline-to-network reconnection, OS discard and physical-device recovery remain untested. AC-13 and B10 remain partial/open; no acceptance pass is claimed.
