@@ -3,6 +3,10 @@ import { exportBackup, importBackup } from '../src/core3d/backup/backup';
 import { assetIoFixture, assetIoPng } from '../src/core3d/fixtures/assetIo';
 import { sha256 } from '../src/core3d/export/snapshot';
 import { test, expect, type Page, type Route } from '@playwright/test';
+type InterceptedWorkerWindow = Window & {
+  __nativeQualityWorker?: typeof Worker;
+  __heldQualityResult?: () => void;
+};
 async function setup(page: Page) {
   await page.goto(
     new URL('/3d/', String(test.info().project.use.baseURL ?? 'http://localhost:5173')).href,
@@ -48,6 +52,58 @@ test('closing inspection terminates the held worker and rejects late results', a
   await page.unroute(/assetIo\.worker/, handler);
   await page.getByText('作品の品質検査を開く', { exact: true }).click();
   await expect(panel.getByText('検査版:', { exact: false })).toHaveCount(0);
+  await panel.getByRole('button', { name: '現在の版を検査', exact: true }).click();
+  await expect(panel.getByText('検査結果を取得しました。', { exact: true })).toBeVisible();
+});
+test('backgrounding cancels inspection and suppresses a late worker result', async ({ page }) => {
+  const panel = await setup(page);
+  await page.evaluate(() => {
+    const state = window as InterceptedWorkerWindow;
+    const NativeWorker = window.Worker;
+    state.__nativeQualityWorker = NativeWorker;
+    window.Worker = class extends NativeWorker {
+      set onmessage(handler: Worker['onmessage']) {
+        if (!handler) {
+          super.onmessage = null;
+          return;
+        }
+        super.onmessage = (event) => {
+          if (event.data?.kind === 'result' && !state.__heldQualityResult) {
+            state.__heldQualityResult = () => handler.call(this, event);
+            return;
+          }
+          handler.call(this, event);
+        };
+      }
+      get onmessage() {
+        return super.onmessage;
+      }
+    };
+  });
+  await panel.getByRole('button', { name: '現在の版を検査', exact: true }).click();
+  await page.waitForFunction(
+    () => typeof (window as InterceptedWorkerWindow).__heldQualityResult === 'function',
+  );
+  await expect(panel.getByRole('status')).toHaveText('検査中…');
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect(panel.getByRole('status')).toHaveText('背景に移ったため検査を中止しました。');
+  await page.evaluate(() => {
+    const state = window as InterceptedWorkerWindow;
+    state.__heldQualityResult?.();
+    delete state.__heldQualityResult;
+  });
+  await expect(panel.getByText('検査版:', { exact: false })).toHaveCount(0);
+  await expect(panel.getByRole('status')).toHaveText('背景に移ったため検査を中止しました。');
+  await page.evaluate(() => {
+    const state = window as InterceptedWorkerWindow;
+    if (state.__nativeQualityWorker) window.Worker = state.__nativeQualityWorker;
+    delete state.__nativeQualityWorker;
+    Reflect.deleteProperty(document, 'hidden');
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
   await panel.getByRole('button', { name: '現在の版を検査', exact: true }).click();
   await expect(panel.getByText('検査結果を取得しました。', { exact: true })).toBeVisible();
 });
