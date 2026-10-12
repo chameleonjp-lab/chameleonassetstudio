@@ -166,3 +166,10 @@ This is headless DOM-focus evidence only, not actual screen-reader speech, Voice
 ## Project-library focus return in production preview — 2026-10-12
 
 The two keyboard cancellation flows were also exercised against the production preview using `playwright.production.config.ts`; 6/6 selected checks passed across Chromium and WebKit-critical, including both new library cases and the existing object-deletion focus case. This remains browser-emulated DOM-focus evidence. Screen-reader speech, physical keyboard/pointer/device behavior, actual browser/OS zoom, contrast acceptance, and WCAG conformance remain unverified; UX-04/UX-05 and physical accessibility gates remain partial/open.
+
+
+## AC-07 product viewport owner release repeat — 2026-10-12
+
+[`AC07_PRODUCT_VIEWPORT_LIFETIME_2026-10-12.md`](AC07_PRODUCT_VIEWPORT_LIFETIME_2026-10-12.md) records a new product-UI browser slice aligned with `LIFE-04` and the 20-cycle browser portion of `PERF-06`: two saved works are alternated 20 times, with one viewport canvas after each open and an API-level WebGL2 context-creation / explicit-loss-request count. The focused case passed 1/1 in system Chromium and 1/1 in WebKit-critical; the complete viewport product spec passed 46/46 across both projects. The full unit suite passed 3,531/3,531; formatting, build and lint (zero errors; one existing Hook warning) passed.
+
+This confirms browser API calls only. It does not measure GPU-driver memory, render-loop/worker/Object URL accumulation, import/export cancellation, product context-loss recovery/latest-revision resume, or background/OS discard. AC-07, LIFE-04 and PERF-06 remain partial/open; no acceptance pass is claimed.

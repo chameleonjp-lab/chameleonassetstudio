@@ -1489,3 +1489,104 @@ test('3D viewport action buttons meet the 44 CSS px target minimum at responsive
     }
   }
 });
+
+test('AC-07 product project switches release each prior WebGL2 viewport owner', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const probe = { contextCreations: 0, contextLossRequests: 0 };
+    Object.defineProperty(window, '__nativeWebglLifetimeProbe', { value: probe });
+
+    const observedContexts = new WeakSet<object>();
+    const canvasPrototype = HTMLCanvasElement.prototype as unknown as {
+      getContext: (this: HTMLCanvasElement, contextId: string, ...args: unknown[]) => unknown;
+    };
+    const originalGetContext = canvasPrototype.getContext;
+    canvasPrototype.getContext = function (
+      this: HTMLCanvasElement,
+      contextId: string,
+      ...args: unknown[]
+    ) {
+      const context = originalGetContext.call(this, contextId, ...args);
+      if (
+        contextId === 'webgl2' &&
+        context !== null &&
+        typeof context === 'object' &&
+        !observedContexts.has(context)
+      ) {
+        observedContexts.add(context);
+        probe.contextCreations += 1;
+      }
+      return context;
+    };
+
+    const glPrototype = WebGL2RenderingContext.prototype as unknown as {
+      getExtension: (this: WebGL2RenderingContext, name: string) => unknown;
+    };
+    const originalGetExtension = glPrototype.getExtension;
+    glPrototype.getExtension = function (this: WebGL2RenderingContext, name: string) {
+      const extension = originalGetExtension.call(this, name);
+      if (name !== 'WEBGL_lose_context' || extension === null || typeof extension !== 'object')
+        return extension;
+      return new Proxy(extension, {
+        get(target, property) {
+          const value = Reflect.get(target, property, target);
+          if (property === 'loseContext' && typeof value === 'function') {
+            return (...args: unknown[]) => {
+              probe.contextLossRequests += 1;
+              return Reflect.apply(value, target, args);
+            };
+          }
+          return typeof value === 'function' ? value.bind(target) : value;
+        },
+      });
+    };
+  });
+
+  type LifetimeProbe = {
+    contextCreations: number;
+    contextLossRequests: number;
+  };
+  const readLifetime = () =>
+    page.evaluate(
+      () =>
+        (window as unknown as { __nativeWebglLifetimeProbe: LifetimeProbe })
+          .__nativeWebglLifetimeProbe,
+    );
+  const saveCurrent = async () => {
+    await page.getByRole('button', { name: '今すぐ保存', exact: true }).click();
+    await expect(page.getByRole('status').filter({ hasText: '保存済み · revision' })).toBeVisible();
+  };
+  const openProject = async (name: string) => {
+    const projects = page.getByRole('region', { name: '保存したプロジェクト', exact: true });
+    await projects.locator('li').filter({ hasText: name }).getByRole('button').first().click();
+    await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '3D表示を開く', exact: true }).click();
+    await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+    await expect(page.locator('.native-viewport-host canvas')).toHaveCount(1);
+  };
+
+  const firstName = 'Native box work';
+  const secondName = 'AC-07 alternate work';
+  await createBox(page);
+  await saveCurrent();
+  expect(await readLifetime()).toEqual({ contextCreations: 1, contextLossRequests: 0 });
+
+  await page.getByLabel('新しいプロジェクト名', { exact: true }).fill(secondName);
+  await page.getByRole('button', { name: '新しい3Dプロジェクトを作成', exact: true }).click();
+  await expect(page.getByRole('heading', { name: secondName, exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '箱を追加', exact: true }).click();
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  await saveCurrent();
+  await expect.poll(readLifetime).toEqual({ contextCreations: 2, contextLossRequests: 1 });
+
+  let activeName = secondName;
+  for (let cycle = 0; cycle < 20; cycle += 1) {
+    const nextName = activeName === firstName ? secondName : firstName;
+    await openProject(nextName);
+    const expected = { contextCreations: cycle + 3, contextLossRequests: cycle + 2 };
+    await expect.poll(readLifetime).toEqual(expected);
+    expect(expected.contextCreations - expected.contextLossRequests).toBe(1);
+    activeName = nextName;
+  }
+});
