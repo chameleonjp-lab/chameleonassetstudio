@@ -29,6 +29,12 @@ async function png(page: Page) {
   return readFile((await download.path())!);
 }
 
+async function snapshot(page: Page) {
+  const event = page.waitForEvent('download');
+  await page.getByRole('button', { name: '現在の内容をバックアップ', exact: true }).click();
+  return importBackup(await readFile((await (await event).path())!));
+}
+
 test('empty project to native box, keyboard camera, GPU pause, backup restore and re-edit', async ({
   page,
   context,
@@ -112,7 +118,8 @@ test('3D viewer and active-object selector expose text alternatives for canvas i
     }),
   );
   const viewerDescriptionText = viewerDescriptions.join(' ');
-  expect(viewerDescriptionText).toContain('Tabキーで操作ボタンへ移動し');
+  expect(viewerDescriptionText).toContain('Tabキーで操作ボタンと3D表示領域へ移動できます');
+  expect(viewerDescriptionText).toContain('表示領域の外枠にフォーカスして矢印キーでカメラを回転');
   expect(viewerDescriptionText).toContain('PNGは背景付きの表示画像です。');
 
   const authoring = page.getByRole('region', { name: '3D制作', exact: true });
@@ -168,6 +175,78 @@ test('3D viewer and active-object selector expose text alternatives for canvas i
   )?.[1];
   expect(selectedId).toBeTruthy();
   await expect(selectionStatus).toContainText(`アクティブ: 箱 (ID: ${selectedId})`);
+});
+test('keyboard-focused viewer orbits, zooms, frames selection and fit without editing the project', async ({
+  page,
+}) => {
+  await createBox(page);
+  const viewer = page.getByRole('group', {
+    name: 'Native box workの3D表示',
+    exact: true,
+  });
+  await expect(viewer).toHaveAttribute('tabindex', '0');
+  const details = page.locator('details.native-inspection');
+  await details.locator('summary').click();
+  const readCameraButton = details.getByRole('button', {
+    name: '現在のカメラを読み取る',
+    exact: true,
+  });
+  const cameraFields = [
+    'カメラ位置 X',
+    'カメラ位置 Y',
+    'カメラ位置 Z',
+    '注視点 X',
+    '注視点 Y',
+    '注視点 Z',
+  ];
+  const readCamera = async () => {
+    await readCameraButton.click();
+    return Promise.all(
+      cameraFields.map((label) => details.getByLabel(label, { exact: true }).inputValue()),
+    );
+  };
+  const before = (await snapshot(page)).project;
+  const initialCamera = await readCamera();
+  await viewer.focus();
+  await expect(viewer).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  const leftCamera = await readCamera();
+  expect(leftCamera).not.toEqual(initialCamera);
+  await viewer.focus();
+  await page.keyboard.press('ArrowUp');
+  const upperCamera = await readCamera();
+  expect(upperCamera).not.toEqual(leftCamera);
+  await viewer.focus();
+  await page.keyboard.press('ArrowRight');
+  const rightCamera = await readCamera();
+  expect(rightCamera).not.toEqual(upperCamera);
+  await viewer.focus();
+  await page.keyboard.press('ArrowDown');
+  const lowerCamera = await readCamera();
+  expect(lowerCamera).not.toEqual(rightCamera);
+  await viewer.focus();
+  await page.keyboard.press('Shift+Equal');
+  const zoomedCamera = await readCamera();
+  expect(zoomedCamera).not.toEqual(lowerCamera);
+  await viewer.focus();
+  await page.keyboard.press('-');
+  const reducedCamera = await readCamera();
+  expect(reducedCamera).not.toEqual(zoomedCamera);
+
+  await page.getByRole('button', { name: 'カメラを右へ平行移動', exact: true }).click();
+  const beforeFocus = await readCamera();
+  await viewer.focus();
+  await page.keyboard.press('r');
+  const focusedCamera = await readCamera();
+  expect(focusedCamera).not.toEqual(beforeFocus);
+
+  await page.getByRole('button', { name: '3D表示を拡大', exact: true }).click();
+  const beforeFit = await readCamera();
+  await viewer.focus();
+  await page.keyboard.press('f');
+  const fitCamera = await readCamera();
+  expect(fitCamera).not.toEqual(beforeFit);
+  expect((await snapshot(page)).project).toEqual(before);
 });
 
 test('assembly selection status announces names, IDs and active-object changes', async ({
