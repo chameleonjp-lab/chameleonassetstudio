@@ -732,6 +732,160 @@ it('lists only root metadata and hides recoverable trash by default', async () =
   ]);
 });
 
+describe('permanent 3D project deletion', () => {
+  it('removes one trashed project and its recovery data but preserves a sibling shared blob', async () => {
+    const data = await withSource();
+    const uniqueBytes = new Uint8Array([90, 80, 70]);
+    const uniqueId = await hashBlob(uniqueBytes);
+    data.project.name = 'Trashed target';
+    data.project.blobIds.push(uniqueId);
+    data.project.sources.push({
+      id: 'unique-source',
+      blobId: uniqueId,
+      mimeType: 'application/octet-stream',
+      rights: { declared: '', embedded: '' },
+    });
+    const targetBlobs = new Map([...data.blobs, [uniqueId, uniqueBytes]]);
+    await save(data.project, null, targetBlobs);
+    const recovery = structuredClone(data.project);
+    recovery.revision = 1;
+    recovery.name = 'Trashed target latest';
+    await save(recovery, 0, targetBlobs);
+    await repository.setHistoryReferences(lease, {
+      revision: 2,
+      undoBlobIds: [uniqueId],
+      redoBlobIds: [],
+    });
+
+    const siblingLease = await repository.acquireWriter('sibling', 'tab-sibling');
+    const sibling = createProject('sibling');
+    sibling.name = 'Shared survivor';
+    sibling.blobIds = [data.id];
+    sibling.sources = [structuredClone(data.project.sources[0])];
+    const siblingStage = await repository.importStaged(sibling, new Map([[data.id, data.bytes]]));
+    await repository.commit(siblingStage, { expectedRevision: null, lease: siblingLease });
+    await repository.releaseWriter(siblingLease);
+
+    const archive = new Uint8Array([1, 3, 3, 7]);
+    const archiveHash = await hashBlob(archive);
+    const db = await openStorageDatabase({ indexedDB: factory });
+    await inTransaction(db, ['legacyBackups'], 'readwrite', (transaction) =>
+      requestResult(
+        transaction.objectStore('legacyBackups').put({
+          id: 'project',
+          bytes: archive,
+          hash: archiveHash,
+        }),
+      ),
+    );
+    db.close();
+
+    await repository.releaseWriter(lease);
+    const beforeTrash = (await repository.libraryEntries()).find(
+      (entry) => entry.id === 'project',
+    )!;
+    await repository.changeLibraryTrash(beforeTrash, true);
+    const trashed = (await repository.libraryEntries()).find((entry) => entry.id === 'project')!;
+    const result = await repository.purgeTrashedProject(trashed);
+
+    expect(result).toEqual({
+      deletedSnapshotCount: 2,
+      deletedBlobCount: 1,
+      removedLegacyBackup: true,
+    });
+    expect((await repository.libraryEntries()).map((entry) => entry.id)).toEqual(['sibling']);
+    expect(await repository.hasLegacyBackup('project')).toBe(false);
+    await expect(repository.readSnapshot('project', { includeTrashed: true })).rejects.toThrow(
+      'not available',
+    );
+    const siblingRead = await repository.readSnapshot('sibling');
+    expect(siblingRead.blobs.get(data.id)).toEqual(data.bytes);
+    await siblingRead.release();
+
+    const inspect = await openStorageDatabase({ indexedDB: factory });
+    const remaining = await inTransaction(
+      inspect,
+      ['snapshots', 'blobs', 'history'],
+      'readonly',
+      async (transaction) => {
+        const snapshots = await requestResult(transaction.objectStore('snapshots').getAll());
+        return {
+          targetSnapshots: snapshots.filter((snapshot) => snapshot.project.id === 'project'),
+          uniqueBlob: await requestResult(transaction.objectStore('blobs').get(uniqueId)),
+          sharedBlob: await requestResult(transaction.objectStore('blobs').get(data.id)),
+          targetHistory: (await requestResult(transaction.objectStore('history').getAll())).filter(
+            (history) => history.projectId === 'project',
+          ),
+        };
+      },
+    );
+    inspect.close();
+    expect(remaining.targetSnapshots).toEqual([]);
+    expect(remaining.uniqueBlob).toBeUndefined();
+    expect(remaining.sharedBlob.bytes).toEqual(data.bytes);
+    expect(remaining.targetHistory).toEqual([]);
+  });
+
+  it('refuses active writers and readers until their leases and snapshot pins are released', async () => {
+    const data = await withSource();
+    await save(data.project, null, data.blobs);
+    await repository.setTrashed(lease, 0, true);
+    const trashed = (await repository.libraryEntries()).find((entry) => entry.id === 'project')!;
+    await expect(repository.purgeTrashedProject(trashed)).rejects.toMatchObject({
+      reason: 'writer',
+    });
+
+    await repository.releaseWriter(lease);
+    const pinned = await repository.readSnapshot('project', { includeTrashed: true });
+    await expect(repository.purgeTrashedProject(trashed)).rejects.toMatchObject({
+      reason: 'writer',
+    });
+    await pinned.release();
+    await expect(repository.purgeTrashedProject(trashed)).resolves.toMatchObject({
+      deletedSnapshotCount: 1,
+      deletedBlobCount: 1,
+    });
+  });
+
+  it('rejects an untrashed or stale confirmation token without changing the project', async () => {
+    const data = await withSource();
+    await save(data.project, null, data.blobs);
+    const entry = (await repository.libraryEntries()).find((value) => value.id === 'project')!;
+    await expect(repository.purgeTrashedProject(entry)).rejects.toThrow(
+      'Invalid permanent 3D project deletion request',
+    );
+
+    await repository.releaseWriter(lease);
+    await repository.changeLibraryTrash(entry, true);
+    const stale = (await repository.libraryEntries()).find((value) => value.id === 'project')!;
+    await repository.changeLibraryTrash(stale, false);
+    await expect(repository.purgeTrashedProject(stale)).rejects.toMatchObject({
+      reason: 'trashed',
+    });
+    expect(await repository.libraryEntries()).toHaveLength(1);
+  });
+
+  it('rejects a confirmation when recovery candidates changed without a saved revision change', async () => {
+    const data = await withSource();
+    await save(data.project, null, data.blobs);
+    const recovery = structuredClone(data.project);
+    recovery.revision = 1;
+    recovery.name = 'Target latest';
+    await save(recovery, 0, data.blobs);
+    await repository.setTrashed(lease, 1, true);
+    const stale = (await repository.libraryEntries()).find((entry) => entry.id === 'project')!;
+    expect(stale.recoveryCount).toBe(1);
+
+    await repository.pruneRecovery(lease, 0);
+    await repository.releaseWriter(lease);
+    await expect(repository.purgeTrashedProject(stale)).rejects.toMatchObject({
+      reason: 'revision',
+    });
+    const current = (await repository.libraryEntries()).find((entry) => entry.id === 'project')!;
+    expect(current).toMatchObject({ trashed: true, recoveryCount: 0 });
+  });
+});
+
 it('refuses write access to both preserved pre-0.3 namespaces', async () => {
   const { LEGACY_PROJECT_3D_DB_NAME, PREVIOUS_PROJECT_3D_DB_NAME, openStorageDatabase } =
     await import('./db');

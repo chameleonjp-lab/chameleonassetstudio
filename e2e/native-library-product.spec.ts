@@ -154,6 +154,110 @@ test('library confirmation cancel returns keyboard focus to its trigger', async 
   await expect(trigger).toHaveCSS('outline-width', '3px');
 });
 
+test('permanent deletion needs a second confirmation and preserves a shared source in another project', async ({
+  page,
+}) => {
+  const { bytes, hash } = await createOriginal(page);
+  await page.getByLabel('プロジェクト名', { exact: true }).fill('Library purge target');
+  await page.getByRole('button', { name: '今すぐ保存', exact: true }).click();
+  await expect(page.locator('.editor3d-save-status')).toContainText('保存済み · revision 1');
+  const saved = await backupCurrent(page);
+  const siblingProject = structuredClone(saved.project);
+  siblingProject.id = 'shared-sibling-source';
+  siblingProject.name = 'Shared survivor';
+  const siblingBackup = await exportBackup(siblingProject, saved.blobs);
+
+  await page.getByRole('button', { name: 'プロジェクトを閉じる', exact: true }).click();
+  const chooser = page.getByRole('heading', { name: 'プロジェクトを選んでください', exact: true });
+  const restoreInput = page.getByLabel('.cas3dproj を選んでコピー復元', { exact: true });
+  await expect(chooser).toBeVisible();
+  await expect(restoreInput).toBeEnabled();
+  await restoreInput.setInputFiles({
+    name: 'shared-survivor.cas3dproj',
+    mimeType: 'application/zip',
+    buffer: Buffer.from(siblingBackup),
+  });
+  await expect(
+    page.getByRole('status').filter({
+      hasText: '新しいプロジェクトとして復元しました。元のプロジェクトは上書きしていません。',
+    }),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('heading', { name: 'Shared survivor', exact: true })).toBeVisible();
+
+  const library = page.getByRole('region', { name: '3D保存履歴とごみ箱' });
+  await library.getByRole('button', { name: '保存履歴とごみ箱を読む', exact: true }).click();
+  await expect(
+    library.getByRole('button', { name: '完全削除を確認: Library purge target', exact: true }),
+  ).toHaveCount(0);
+  const trash = library.getByRole('button', {
+    name: 'ごみ箱移動を確認: Library purge target',
+    exact: true,
+  });
+  await trash.click();
+  const moveConfirmation = await expectAccessibleConfirmation(
+    library,
+    'ごみ箱へ移動しますか',
+    'Library purge target',
+    '自動消去の期限はありません。',
+  );
+  await moveConfirmation
+    .getByRole('button', { name: '確認した1作品をごみ箱へ移動', exact: true })
+    .click();
+
+  const purge = library.getByRole('button', {
+    name: '完全削除を確認: Library purge target',
+    exact: true,
+  });
+  await purge.click();
+  const purgeConfirmation = await expectAccessibleConfirmation(
+    library,
+    'ごみ箱の1作品を完全削除しますか',
+    'Library purge target',
+    '不可逆操作です。',
+  );
+  await expect(purgeConfirmation.locator('#editor3d-library-confirmation-details')).toContainText(
+    '保持中の復旧候補1件',
+  );
+  await expect(purgeConfirmation.locator('#editor3d-library-confirmation-details')).toContainText(
+    '他の作品も使う共有素材と2Dの保存には触れません。',
+  );
+  await purgeConfirmation.getByRole('button', { name: 'この操作を取り消す', exact: true }).click();
+  await expect(purge).toBeFocused();
+  await expect(
+    library.getByRole('button', { name: '完全削除を確認: Library purge target', exact: true }),
+  ).toBeVisible();
+
+  await purge.click();
+  await library.getByRole('button', { name: '確認した1作品を完全削除', exact: true }).click();
+  await expect(
+    library.getByRole('button', { name: '完全削除を確認: Library purge target', exact: true }),
+  ).toHaveCount(0);
+  await expect(library.getByRole('listitem').filter({ hasText: 'Shared survivor' })).toContainText(
+    'Shared survivor',
+  );
+  await expect(
+    library.getByRole('button', { name: '完全削除を確認: Shared survivor', exact: true }),
+  ).toHaveCount(0);
+  await expect(library.getByRole('status')).toContainText('完全削除しました');
+
+  const survivor = await backupCurrent(page);
+  expect(survivor.project.name).toBe('Shared survivor');
+  expect(survivor.blobs.get(hash)).toEqual(bytes);
+});
+
+test('3D user guide explains trash retention and permanent deletion boundaries', async ({
+  page,
+}) => {
+  await page.goto('/guide/3d/#rescue');
+  const rescue = page.locator('#rescue');
+  await expect(rescue).toContainText('自動消去期限はありません。');
+  await expect(rescue).toContainText('作品ごとの別確認後に完全削除できます。');
+  await expect(rescue).toContainText('その作品だけが参照する素材・旧形式の控え');
+  await expect(rescue).toContainText('他の作品が使う共有素材と2Dの保存には触れません。');
+  await expect(rescue).toContainText('削除後はアプリから復元できません。');
+  await expect(rescue).toContainText('ブラウザー記憶媒体上の物理的な消去は保証しません。');
+});
+
 test('recovery-copy confirmation cancellation returns keyboard focus to its candidate', async ({
   page,
 }) => {
@@ -169,6 +273,7 @@ test('recovery-copy confirmation cancellation returns keyboard focus to its cand
     name: 'revision 0 の別コピー復旧を確認',
     exact: true,
   });
+  await expect(trigger).toBeEnabled();
   await trigger.focus();
   await expect(trigger).toBeFocused();
   await trigger.press('Enter');

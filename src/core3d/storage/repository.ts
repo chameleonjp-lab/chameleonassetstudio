@@ -62,6 +62,11 @@ export interface ProjectLibraryEntry {
   trashedAt: number | null;
   recoveryCount: number;
 }
+export interface PermanentProjectPurgeResult {
+  deletedSnapshotCount: number;
+  deletedBlobCount: number;
+  removedLegacyBackup: boolean;
+}
 export interface RecoverySnapshotSummary {
   snapshotId: string;
   kind: 'latest' | 'recovery';
@@ -417,6 +422,86 @@ export class ProjectRepository {
       else delete root.trashedAt;
       await requestResult(transaction.objectStore('roots').put(root));
       await bumpEpoch(transaction);
+    });
+  }
+
+  /** Permanently removes one already-trashed, closed project and only its unreferenced data. */
+  async purgeTrashedProject(
+    expected: Pick<
+      ProjectLibraryEntry,
+      'id' | 'revision' | 'snapshotId' | 'trashed' | 'recoveryCount'
+    >,
+  ): Promise<PermanentProjectPurgeResult> {
+    const token = { ...expected };
+    if (
+      !token.id ||
+      !token.snapshotId ||
+      token.trashed !== true ||
+      !Number.isSafeInteger(token.revision) ||
+      token.revision < 0
+    )
+      throw new Error('Invalid permanent 3D project deletion request');
+
+    return inTransaction(this.db, STORAGE_STORES, 'readwrite', async (transaction) => {
+      const root = await getRecord<RootRecord>(transaction, 'roots', token.id);
+      if (!root) throw new StorageConflictError('revision');
+      if (root.revision !== token.revision || root.snapshotId !== token.snapshotId)
+        throw new StorageConflictError('revision');
+      if (root.recoverySnapshotIds.length !== token.recoveryCount)
+        throw new StorageConflictError('revision');
+      if (!root.trashed) throw new StorageConflictError('trashed');
+
+      const writer = await getRecord<LeaseRecord>(transaction, 'leases', token.id);
+      if (writer?.active) throw new StorageConflictError('writer');
+      const [pins, histories, stages] = await Promise.all([
+        allRecords<PinRecord>(transaction, 'pins'),
+        allRecords<HistoryRecord>(transaction, 'history'),
+        allRecords<StageRecord>(transaction, 'staging'),
+      ]);
+      if (pins.some((pin) => pin.projectId === token.id)) throw new StorageConflictError('writer');
+
+      const targetHistories = histories.filter((history) => history.projectId === token.id);
+      const targetStages = stages.filter((stage) => stage.project?.id === token.id);
+      const candidateBlobIds = new Set<string>();
+      for (const history of targetHistories)
+        [...history.undoBlobIds, ...history.redoBlobIds].forEach((id) => candidateBlobIds.add(id));
+      for (const stage of targetStages) stage.blobIds.forEach((id) => candidateBlobIds.add(id));
+
+      const legacyBackup = await getRecord<{ id: string }>(transaction, 'legacyBackups', token.id);
+      await requestResult(transaction.objectStore('roots').delete(token.id));
+      await requestResult(transaction.objectStore('leases').delete(token.id));
+      for (const history of targetHistories)
+        await requestResult(transaction.objectStore('history').delete(history.id));
+      for (const stage of targetStages)
+        await requestResult(transaction.objectStore('staging').delete(stage.id));
+      if (legacyBackup)
+        await requestResult(transaction.objectStore('legacyBackups').delete(token.id));
+
+      // Recompute all references inside this write transaction. Shared or pinned bytes survive.
+      const live = await liveReferences(transaction);
+      const targetSnapshots = live.snapshots.filter((snapshot) => snapshot.project.id === token.id);
+      for (const snapshot of targetSnapshots)
+        snapshot.project.blobIds.forEach((id) => candidateBlobIds.add(id));
+      let deletedSnapshotCount = 0;
+      for (const snapshot of targetSnapshots) {
+        if (!live.snapshotIds.has(snapshot.id)) {
+          await requestResult(transaction.objectStore('snapshots').delete(snapshot.id));
+          deletedSnapshotCount++;
+        }
+      }
+      let deletedBlobCount = 0;
+      for (const id of candidateBlobIds) {
+        if (!live.blobIds.has(id) && (await getRecord<BlobRecord>(transaction, 'blobs', id))) {
+          await requestResult(transaction.objectStore('blobs').delete(id));
+          deletedBlobCount++;
+        }
+      }
+      await bumpEpoch(transaction);
+      return {
+        deletedSnapshotCount,
+        deletedBlobCount,
+        removedLegacyBackup: !!legacyBackup,
+      };
     });
   }
 
