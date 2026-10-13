@@ -42,3 +42,11 @@ The final local checks below cover the documented source candidate. The original
 The full unit aggregate and browser/physical-device checks were not rerun for this developer-tool/document change. These focused checks do not establish whole-product acceptance. This local candidate is not yet published or integrated into main.
 
 Independent read-only review found and closed the same-realm wording discrepancy. It also identified qualified worker traversal and the existing 2D canvas renderer prefix as missing static cases; both now have fail-closed regression coverage. These findings demonstrate the tool’s bounded scope rather than a guarantee about every possible JavaScript expression.
+
+## Local follow-up — 2026-10-13 JST (HEAD `8178bf5`)
+
+The read-only checker and its regression suite now verify supported local Markdown heading fragments as well as link targets and Mermaid nodes/edges. On this head, `node --experimental-strip-types tools/build/nativeArchitecture.ts --json` exited 0: **112 source files / 546 classified edges** (359 runtime, 173 type, 1 worker, 13 asset; 489 relative), **7 documents / 407 existing link targets / 16 diagrams**. All six local fragments were verified against their target headings. There were zero checker issues, architecture violations, missing anchors, unverified anchors or runtime-cycle groups. The four-node lifecycle feedback component remains an intentional informational diagram cycle, not a runtime import cycle.
+
+The focused architecture suite passed **77/77**, and the repository unit suite passed **3,550/3,550 across 186 files**. Repository ESLint had zero errors and one existing `NativeViewportPanel.tsx` Hook warning; Prettier passed; the application and H3 builds and `test:ci-scope` (**8/8**) passed. The application build retains the existing large-chunk advisory.
+
+DOC-05 remains **partial**: anchor verification supports a bounded ATX-heading slug subset in supplied Markdown documents. Setext/unsupported heading syntax remains unverified rather than guessed; full Markdown/HTML grammar, query semantics, external URL reachability, the official Mermaid parser/rendering, remote CI and physical-device acceptance are outside this evidence. This is a developer-tool/document check, not product runtime acceptance.

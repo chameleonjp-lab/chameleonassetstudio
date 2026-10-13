@@ -414,10 +414,10 @@ describe('native architecture dependency ownership', () => {
 });
 
 describe('architecture documentation integrity', () => {
-  it('checks files and directories while marking anchors, queries and external URLs unverified', () => {
+  it('checks local heading anchors while marking queries and external URLs unverified', () => {
     const report = document(
-      '[file](./other.md?view=1#section)\n[dir](../../../src/core3d)\n[anchor](#local)\n[web](https://example.invalid/never-fetched)',
-      { 'docs/architecture/3d/other.md': '', [A]: '' },
+      '# Local\n[file](./other.md?view=1#section)\n[dir](../../../src/core3d)\n## Anchor\n[anchor](#anchor)\n[web](https://example.invalid/never-fetched)',
+      { 'docs/architecture/3d/other.md': '# Section', [A]: '' },
     );
     expect(report.ok).toBe(true);
     expect(report.links).toEqual([
@@ -425,13 +425,34 @@ describe('architecture documentation integrity', () => {
         target: 'docs/architecture/3d/other.md',
         targetKind: 'file',
         status: 'exists',
-        anchor: 'unverified',
+        anchor: 'exists',
         query: 'unverified',
       }),
       expect.objectContaining({ target: 'src/core3d', targetKind: 'directory', status: 'exists' }),
-      expect.objectContaining({ target: DOC, anchor: 'unverified' }),
+      expect.objectContaining({ target: DOC, anchor: 'exists' }),
       expect.objectContaining({ status: 'external-unverified' }),
     ]);
+  });
+
+  it('uses GitHub-style Unicode slugs and disambiguates duplicate local headings', () => {
+    const report = document(
+      '## 入口 (local candidate)\n## Duplicate\n## Duplicate\n[unicode](#%E5%85%A5%E5%8F%A3-local-candidate)\n[first](#duplicate)\n[second](#duplicate-1)',
+    );
+    expect(report.ok).toBe(true);
+    expect(report.links.map((link) => link.anchor)).toEqual(['exists', 'exists', 'exists']);
+  });
+
+  it('reports missing local anchors without treating fenced headings as targets', () => {
+    const report = document('```md\n# Hidden\n```\n[missing](#hidden)');
+    expect(codes(report)).toEqual(['missing-markdown-anchor']);
+    expect(report.links[0]).toMatchObject({ target: DOC, anchor: 'missing' });
+  });
+
+  it('keeps unsupported setext heading anchors unverified instead of guessing', () => {
+    const report = document('Title\n---\n[section](#title)');
+    expect(report.ok).toBe(true);
+    expect(report.links[0]).toMatchObject({ anchor: 'unverified' });
+    expect(report.issues).toEqual([]);
   });
 
   it('supports injected directory knowledge without resolving a directory as a source module', () => {

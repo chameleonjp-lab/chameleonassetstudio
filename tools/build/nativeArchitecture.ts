@@ -31,7 +31,7 @@ export interface ArchitectureLink {
   target?: string;
   targetKind?: 'file' | 'directory' | 'unknown';
   status: 'exists' | 'missing' | 'external-unverified' | 'unsupported';
-  anchor: 'absent' | 'unverified';
+  anchor: 'absent' | 'exists' | 'missing' | 'unverified';
   query: 'absent' | 'unverified';
 }
 export interface ArchitectureDiagram {
@@ -363,11 +363,61 @@ function inspectDiagram(
   };
 }
 
+function markdownAnchorTargets(text: string) {
+  const ids = new Set<string>();
+  let supported = true;
+  let fence: { marker: string; length: number } | undefined;
+  const lines = text.split('\n');
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index];
+    const marker = /^\s*(`{3,}|~{3,})(.*)$/.exec(line);
+    if (fence) {
+      if (
+        marker &&
+        marker[1][0] === fence.marker &&
+        marker[1].length >= fence.length &&
+        !marker[2].trim()
+      )
+        fence = undefined;
+      continue;
+    }
+    if (marker) {
+      fence = { marker: marker[1][0], length: marker[1].length };
+      continue;
+    }
+    const heading = /^ {0,3}(#{1,6})(?:[ \t]+(.*)|[ \t]*)$/.exec(line);
+    if (heading) {
+      let title = (heading[2] ?? '').replace(/[ \t]+#+[ \t]*$/, '').trim();
+      if (/\[[^\]]+\]\(|<[^>]+>|\\/.test(title)) supported = false;
+      title = title.replace(/`([^`]*)`/g, '$1').replace(/[*_~]/g, '');
+      const base = title
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\p{M}\s-]/gu, '')
+        .trim()
+        .replace(/\s+/g, '-');
+      if (!base) supported = false;
+      else {
+        let id = base;
+        for (let suffix = 1; ids.has(id); suffix++) id = `${base}-${suffix}`;
+        ids.add(id);
+      }
+    } else if (index > 0 && lines[index - 1].trim() && /^ {0,3}(?:=+|-{3,})\s*$/.test(line)) {
+      // Setext headings and thematic-break ambiguity are outside this bounded parser.
+      supported = false;
+    }
+    const visibleLine = line.replace(/(`+)([^`]*?)\1/g, '');
+    for (const match of visibleLine.matchAll(/<[^>]*\b(?:id|name)\s*=\s*(["'])([^"']+)\1[^>]*>/gi))
+      ids.add(match[2]);
+  }
+  return { ids, supported };
+}
+
 function inspectDocument(
   file: string,
   text: string,
   exists: (path: string) => boolean,
-  pathKind: (path: string) => 'file' | 'directory' | undefined,
+  pathKind: (repositoryPath: string) => 'file' | 'directory' | undefined,
+  markdownFiles: Readonly<Record<string, string>>,
   issues: ArchitectureIssue[],
 ) {
   const links: ArchitectureLink[] = [];
@@ -418,7 +468,17 @@ function inspectDocument(
       detail: 'Unclosed fenced block',
     });
   const check = (href: string, line: number) => {
-    const anchor = href.includes('#') ? 'unverified' : 'absent';
+    const hashIndex = href.indexOf('#');
+    let fragment: string | undefined;
+    let invalidFragment = false;
+    if (hashIndex >= 0) {
+      try {
+        fragment = decodeURIComponent(href.slice(hashIndex + 1));
+      } catch {
+        invalidFragment = true;
+      }
+    }
+    let anchor: ArchitectureLink['anchor'] = hashIndex >= 0 ? 'unverified' : 'absent';
     const query = href.includes('?') ? 'unverified' : 'absent';
     if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(href)) {
       links.push({ file, line, status: 'external-unverified', anchor, query });
@@ -447,6 +507,34 @@ function inspectDocument(
       return;
     }
     const present = exists(target);
+    if (invalidFragment) {
+      issues.push({
+        file,
+        line,
+        code: 'unsupported-markdown-anchor',
+        detail: 'Invalid fragment encoding',
+      });
+    } else if (fragment !== undefined && fragment === '') anchor = 'exists';
+    else if (
+      fragment !== undefined &&
+      present &&
+      target.endsWith('.md') &&
+      Object.hasOwn(markdownFiles, target)
+    ) {
+      const headings = markdownAnchorTargets(markdownFiles[target]);
+      if (headings.supported) {
+        if (headings.ids.has(fragment)) anchor = 'exists';
+        else {
+          anchor = 'missing';
+          issues.push({
+            file,
+            line,
+            code: 'missing-markdown-anchor',
+            detail: `${target}#${fragment}`,
+          });
+        }
+      }
+    }
     links.push({
       file,
       line,
@@ -701,7 +789,14 @@ export function analyzeNativeArchitecture(input: NativeArchitectureInput) {
         detail: 'Document text was not supplied',
       });
     else {
-      const document = inspectDocument(file, input.files[file], exists, pathKind, issues);
+      const document = inspectDocument(
+        file,
+        input.files[file],
+        exists,
+        pathKind,
+        input.files,
+        issues,
+      );
       links.push(...document.links);
       diagrams.push(...document.diagrams);
     }
@@ -745,7 +840,7 @@ export function analyzeNativeArchitecture(input: NativeArchitectureInput) {
       'External package internals, package availability, aliases, glob imports and query/hash import transforms are not resolved.',
       'Worker/URL constructors support direct names and window/globalThis/self qualification; constructor aliases and arbitrary computed loading are not resolved.',
       'Non-code assets are checked for existence only; CSS imports/URLs and generated dependencies are not traversed.',
-      'Markdown checks cover simple inline links and reference definitions, not full Markdown/HTML grammar, heading anchors, query behavior or external URL reachability.',
+      'Markdown checks cover simple inline links and reference definitions; local anchors are checked for supplied files with the supported ATX-heading subset. Setext/unsupported heading syntax, query behavior, full Markdown/HTML grammar and external URL reachability remain unverified.',
       'Mermaid checks cover simple uppercase declared nodes and --> edges only, not full Mermaid grammar or rendering; feedback-cycle intent requires review.',
     ],
   };
