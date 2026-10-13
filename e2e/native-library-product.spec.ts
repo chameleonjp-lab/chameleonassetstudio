@@ -559,6 +559,144 @@ test('derived thumbnails survive reopening and explicit cache cleanup preserves 
   expect(after.blobs.get(hash)).toEqual(bytes);
 });
 
+test('VIEW-06 cached thumbnail pixels match the same-revision saved rest PNG', async ({
+  page,
+}, info) => {
+  const { bytes, hash } = await createOriginal(page);
+  const before = await backupCurrent(page);
+  const expectedRevision = before.project.revision;
+  const open = page.getByRole('button', { name: '3D表示を開く', exact: true });
+  const active = page.getByText('3D表示中', { exact: true });
+  await expect.poll(async () => (await open.isEnabled()) || (await active.isVisible())).toBe(true);
+  if (await open.isEnabled()) await open.click();
+  await expect(active).toBeVisible();
+
+  const pngEvent = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'PNG画像を保存', exact: true }).click();
+  const sourcePng = new Uint8Array(await readFile((await (await pngEvent).path())!));
+  await createThumbnail(page);
+
+  const panel = await thumbnailPanel(page);
+  const image = panel.getByRole('img', {
+    name: new RegExp(`^Library originalの保存済みrest表示、revision ${expectedRevision}$`),
+  });
+  await expect(image).toBeVisible();
+  await expect(
+    panel.getByText(`Library original · revision ${expectedRevision}`, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByText('一覧の保存版と同じrevisionのrest画像です。', { exact: true }),
+  ).toBeVisible();
+
+  const raster = await image.evaluate(async (element, sourceBytes) => {
+    const thumbnailBlob = await (await fetch((element as HTMLImageElement).src)).blob();
+    const thumbnailBytes = new Uint8Array(await thumbnailBlob.arrayBuffer());
+    const sourceArray = Uint8Array.from(sourceBytes);
+    const sourceBlob = new Blob([sourceArray.buffer as ArrayBuffer], { type: 'image/png' });
+    const [sourceBitmap, thumbnailBitmap] = await Promise.all([
+      createImageBitmap(sourceBlob),
+      createImageBitmap(thumbnailBlob),
+    ]);
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = thumbnailBitmap.width;
+      canvas.height = thumbnailBitmap.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      if (!context) throw new Error('2D canvas is unavailable');
+      context.imageSmoothingEnabled = true;
+      context.drawImage(sourceBitmap, 0, 0, canvas.width, canvas.height);
+      const expected = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(thumbnailBitmap, 0, 0);
+      const actual = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      let differingPixels = 0;
+      let maxChannelDelta = 0;
+      const colors = new Set<string>();
+      for (let pixel = 0; pixel < expected.length; pixel += 4) {
+        let differs = false;
+        for (let channel = 0; channel < 4; channel++) {
+          const delta = Math.abs(expected[pixel + channel]! - actual[pixel + channel]!);
+          maxChannelDelta = Math.max(maxChannelDelta, delta);
+          if (delta) differs = true;
+        }
+        if (differs) differingPixels++;
+        if (colors.size < 512)
+          colors.add(
+            `${actual[pixel]},${actual[pixel + 1]},${actual[pixel + 2]},${actual[pixel + 3]}`,
+          );
+      }
+      return {
+        mimeType: thumbnailBlob.type,
+        signature: Array.from(thumbnailBytes.slice(0, 8)),
+        bytes: Array.from(thumbnailBytes),
+        sourceWidth: sourceBitmap.width,
+        sourceHeight: sourceBitmap.height,
+        width: thumbnailBitmap.width,
+        height: thumbnailBitmap.height,
+        differingPixels,
+        maxChannelDelta,
+        distinctColors: colors.size,
+        alt: (element as HTMLImageElement).alt,
+      };
+    } finally {
+      sourceBitmap.close();
+      thumbnailBitmap.close();
+    }
+  }, Array.from(sourcePng));
+
+  expect(raster.mimeType).toBe('image/png');
+  expect(raster.signature).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+  expect(raster.width).toBe(
+    Math.max(
+      1,
+      Math.round(
+        raster.sourceWidth * Math.min(1, 192 / Math.max(raster.sourceWidth, raster.sourceHeight)),
+      ),
+    ),
+  );
+  expect(raster.height).toBe(
+    Math.max(
+      1,
+      Math.round(
+        raster.sourceHeight * Math.min(1, 192 / Math.max(raster.sourceWidth, raster.sourceHeight)),
+      ),
+    ),
+  );
+  expect(raster.differingPixels).toBe(0);
+  expect(raster.maxChannelDelta).toBe(0);
+  expect(raster.distinctColors).toBeGreaterThan(8);
+  const thumbnailPng = Buffer.from(raster.bytes);
+  await info.attach('view06-saved-rest-thumbnail.png', {
+    body: thumbnailPng,
+    contentType: 'image/png',
+  });
+  await info.attach('view06-pixel-match-evidence', {
+    body: Buffer.from(
+      JSON.stringify(
+        {
+          kind: 'same-revision-thumbnail-pixel-match',
+          browser: info.project.name,
+          sourceRevision: expectedRevision,
+          thumbnailAlt: raster.alt,
+          sourcePngHash: await sha256(sourcePng),
+          thumbnailPngHash: await sha256(thumbnailPng),
+          sourceSize: [raster.sourceWidth, raster.sourceHeight],
+          thumbnailSize: [raster.width, raster.height],
+          differingPixels: raster.differingPixels,
+          maxChannelDelta: raster.maxChannelDelta,
+          distinctColors: raster.distinctColors,
+        },
+        null,
+        2,
+      ),
+    ),
+    contentType: 'application/json',
+  });
+  const after = await backupCurrent(page);
+  expect(after.project).toEqual(before.project);
+  expect(after.blobs.get(hash)).toEqual(bytes);
+});
+
 test('a replacement thumbnail invalidates old cache cleanup confirmation and retains originals', async ({
   page,
 }) => {
