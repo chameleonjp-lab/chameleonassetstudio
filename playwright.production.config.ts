@@ -5,6 +5,7 @@ export default defineConfig({
   ...config,
   workers: 1,
   fullyParallel: false,
+  testIgnore: [],
   testMatch: [
     'release-quality.spec.ts',
     'release-performance.spec.ts',

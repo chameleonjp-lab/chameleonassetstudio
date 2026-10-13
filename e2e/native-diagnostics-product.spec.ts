@@ -1,5 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { exportBackup, importBackup } from '../src/core3d/backup/backup';
+import { assetIoFixture, assetIoPng } from '../src/core3d/fixtures/assetIo';
+import { sha256 } from '../src/core3d/export/snapshot';
 interface ClipboardFixture {
   writes: string[];
   resolve?: () => void;
@@ -82,6 +85,175 @@ test('diagnostics omit project data and export only the user-reviewed replacemen
   await test.info().attach('native-visual-diagnostics-mobile.png', {
     body: await page.screenshot({ fullPage: true }),
     contentType: 'image/png',
+  });
+});
+test('SEC-01: product asset workflows stay on a same-origin read-only network allowlist', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const project = assetIoFixture(),
+    projectMarker = 'SEC01-PRIVATE-PROJECT-4F19',
+    filenameMarker = 'SEC01-PRIVATE-FILENAME-4F19.cas3dproj',
+    sourceMarker = 'SEC01-PRIVATE-SOURCE-RIGHTS-4F19',
+    reproductionMarker = 'SEC01-PRIVATE-DIAGNOSTIC-4F19';
+  project.name = projectMarker;
+  const pixels = await assetIoPng(),
+    textureId = await sha256(pixels);
+  project.blobIds = [textureId];
+  project.materials[0].textureBlobId = textureId;
+  project.sources = [
+    {
+      id: 'private-image-source',
+      blobId: textureId,
+      mimeType: 'image/png',
+      rights: { declared: sourceMarker, embedded: '' },
+    },
+  ];
+  const archive = await exportBackup(project, new Map([[textureId, pixels]]));
+  const allowedOrigin = new URL(String(test.info().project.use.baseURL ?? 'http://localhost:5173'))
+    .origin;
+  const requests: {
+      url: string;
+      method: string;
+      body: Buffer | null;
+      headers: Record<string, string>;
+    }[] = [],
+    rejectedRequests: string[] = [],
+    websocketURLs: string[] = [];
+  page.on('request', (request) => {
+    if (/^https?:/i.test(request.url())) {
+      requests.push({
+        url: request.url(),
+        method: request.method(),
+        body: request.postDataBuffer(),
+        headers: request.headers(),
+      });
+    }
+  });
+  page.on('websocket', (socket) => websocketURLs.push(socket.url()));
+  await page.route('**/*', async (route) => {
+    let url: URL;
+    try {
+      url = new URL(route.request().url());
+    } catch {
+      await route.continue();
+      return;
+    }
+    if (
+      (url.protocol === 'http:' || url.protocol === 'https:') &&
+      (url.origin !== allowedOrigin || !['GET', 'HEAD'].includes(route.request().method()))
+    ) {
+      rejectedRequests.push(`${route.request().method()} ${url.origin}${url.pathname}`);
+      await route.abort();
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto('/3d/');
+  await page.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+    name: filenameMarker,
+    mimeType: 'application/zip',
+    buffer: Buffer.from(archive),
+  });
+  await expect(page.getByRole('heading', { name: projectMarker, exact: true })).toBeVisible();
+  await page.getByText('作品の品質検査を開く', { exact: true }).click();
+  const quality = page.getByRole('region', { name: '作品の品質検査', exact: true });
+  await quality.getByRole('button', { name: '現在の版を検査', exact: true }).click();
+  await expect(quality.getByText('検査結果を取得しました。', { exact: true })).toBeVisible();
+
+  const diagnosticPanel = page
+      .locator('footer details')
+      .filter({ has: page.locator('summary').filter({ hasText: '問題報告用の診断情報' }) }),
+    reproduction = diagnosticPanel.getByLabel('再現手順（任意）', { exact: true });
+  await diagnosticPanel.locator('summary').click();
+  await reproduction.fill(reproductionMarker);
+  await diagnosticPanel.getByRole('button', { name: '診断情報を作成', exact: true }).click();
+  const preview = diagnosticPanel.getByLabel('共有前の確認・編集', { exact: true });
+  await expect(preview).toContainText(reproductionMarker);
+  expect(await preview.inputValue()).not.toContain(projectMarker);
+
+  const diagnosticsDownload = page.waitForEvent('download');
+  await diagnosticPanel
+    .getByRole('button', { name: '確認した内容をテキスト保存', exact: true })
+    .click();
+  const diagnosticsPath = await (await diagnosticsDownload).path();
+  expect(await readFile(diagnosticsPath!, 'utf8')).toContain(reproductionMarker);
+
+  const backupDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: '現在の内容をバックアップ', exact: true }).click();
+  const backupPath = await (await backupDownload).path();
+  const backupBytes = new Uint8Array(await readFile(backupPath!));
+  const restored = await importBackup(backupBytes);
+  expect(restored.project.name).toBe(projectMarker);
+  expect(restored.blobs.get(textureId)).toEqual(pixels);
+
+  const origins = [...new Set(requests.map(({ url }) => new URL(url).origin))];
+  expect(requests.length).toBeGreaterThan(0);
+  expect(origins).toEqual([allowedOrigin]);
+  expect(rejectedRequests).toEqual([]);
+  expect(websocketURLs).toEqual([]);
+  expect(requests.every(({ method }) => ['GET', 'HEAD'].includes(method))).toBe(true);
+  expect(requests.every(({ body }) => body === null || body.length === 0)).toBe(true);
+  const archiveBytes = Buffer.from(archive),
+    pixelBytes = Buffer.from(pixels),
+    archiveBase64 = archiveBytes.toString('base64'),
+    pixelBase64 = pixelBytes.toString('base64'),
+    urlSafeBase64 = (bytes: Buffer) =>
+      bytes.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, ''),
+    percentEncodedBytes = (bytes: Buffer) =>
+      Array.from(bytes, (byte) => `%${byte.toString(16).padStart(2, '0')}`).join('');
+  const privateMarkers = [
+      projectMarker,
+      filenameMarker,
+      sourceMarker,
+      reproductionMarker,
+      textureId,
+    ],
+    encodedAssetValues = [
+      archiveBase64,
+      pixelBase64,
+      urlSafeBase64(archiveBytes),
+      urlSafeBase64(pixelBytes),
+      percentEncodedBytes(archiveBytes),
+      percentEncodedBytes(pixelBytes),
+    ];
+  for (const request of requests) {
+    let decodedUrl = request.url;
+    try {
+      decodedUrl = decodeURIComponent(request.url);
+    } catch {
+      // Keep scanning the raw URL if it contains an invalid percent escape.
+    }
+    const requestMetadata = `${request.url}\n${decodedUrl}\n${JSON.stringify(request.headers)}`;
+    for (const marker of privateMarkers) expect(requestMetadata).not.toContain(marker);
+    for (const encodedValue of encodedAssetValues) {
+      expect(requestMetadata.toLowerCase()).not.toContain(encodedValue.toLowerCase());
+    }
+    if (request.body) {
+      const bodyText = request.body.toString('utf8');
+      for (const marker of privateMarkers) expect(bodyText).not.toContain(marker);
+      for (const encodedValue of encodedAssetValues) expect(bodyText).not.toContain(encodedValue);
+      expect(request.body.indexOf(archiveBytes)).toBe(-1);
+      expect(request.body.indexOf(pixelBytes)).toBe(-1);
+    }
+  }
+  await test.info().attach('sec01-network-allowlist-summary.json', {
+    body: JSON.stringify(
+      {
+        allowlistedOrigin: allowedOrigin,
+        observedNetworkRequests: requests.length,
+        observedOrigins: origins,
+        observedMethods: [...new Set(requests.map(({ method }) => method))],
+        nonemptyRequestBodies: requests.filter(({ body }) => body && body.length > 0).length,
+        requestURLsAndHeadersScanned: requests.length,
+        rejectedRequests: rejectedRequests.length,
+        websockets: websocketURLs.length,
+      },
+      null,
+      2,
+    ),
+    contentType: 'application/json',
   });
 });
 test('late clipboard permission cannot copy content redacted or hidden while awaiting it', async ({
