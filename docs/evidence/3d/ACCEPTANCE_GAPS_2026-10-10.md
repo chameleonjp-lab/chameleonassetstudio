@@ -270,3 +270,10 @@ Only this compressed-entry case is covered. Path traversal, duplicate/overstated
 [`QA04_RIG_ATTACHMENT_REFERENCE_GUARDS_2026-10-13.md`](QA04_RIG_ATTACHMENT_REFERENCE_GUARDS_2026-10-13.md) records a focused safety slice for the explicit unused-joint removal action: anchor and collider references now block deletion alongside hierarchy, skin, and clip references. The product panel explains the rule and the bounded dependency failure preserves the saved project and blobs. Focused unit suites passed 799 tests; the product regression passed 2/2 across Chromium and WebKit-critical. Lint (zero errors; one existing Hook warning), formatting, TypeScript, app/H3 build, and diff checks passed; the existing chunk advisory remains.
 
 This does not complete QA-04's pre-action loss/impact preview for automatic repair paths. It covers only explicit rig-joint removal plus synthetic project fixtures; QA-04 and overall acceptance remain partial/open. No external runtime, GPU, production, OS-failure, or physical-device acceptance is claimed.
+
+
+## QA-04 existing loss-impact warning is read-only — 2026-10-13
+
+[`QA04_LOSS_IMPACT_READONLY_2026-10-13.md`](QA04_LOSS_IMPACT_READONLY_2026-10-13.md) adds a product regression for the existing `LEGACY_AUTO` alpha conversion warning: the impact and user-check remedy are visible before editing, and a downloaded/imported backup comparison proves that inspection leaves the full project and blob map unchanged. The complete quality product spec passed 6/6 in Chromium and 6/6 in WebKit-critical.
+
+This covers one existing output-conversion warning only; it does not complete QA-04's pre-action review for every loss-bearing route or automatic correction path. No optimizer or automatic repair was added. QA-04 and overall acceptance remain partial/open; no production or physical-device acceptance is claimed.
