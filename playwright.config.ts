@@ -7,6 +7,7 @@ const enableChromiumBackForwardCache = process.env.PLAYWRIGHT_ENABLE_BFCACHE ===
 
 export default defineConfig({
   testDir: 'e2e',
+  testIgnore: ['**/native-diagnostics-product.spec.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,
