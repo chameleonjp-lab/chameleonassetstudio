@@ -25,6 +25,101 @@ async function backupCurrent(page: Page) {
   return importBackup(new Uint8Array(await readFile((await (await download).path())!)));
 }
 
+function glbWithMetadata(json: unknown) {
+  const encoded = new TextEncoder().encode(JSON.stringify(json));
+  const jsonLength = Math.ceil(encoded.length / 4) * 4;
+  const bytes = new Uint8Array(20 + jsonLength);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(0, 0x46546c67, true);
+  view.setUint32(4, 2, true);
+  view.setUint32(8, bytes.length, true);
+  view.setUint32(12, jsonLength, true);
+  view.setUint32(16, 0x4e4f534a, true);
+  bytes.fill(32, 20);
+  bytes.set(encoded, 20);
+  return bytes;
+}
+
+test('SEC-06: embedded VRM restrictions stay separate from declarations through inspection and package provenance', async ({
+  page,
+}) => {
+  const project = assetIoFixture();
+  project.name = 'SEC-06 rights review fixture';
+  const sourceBytes = glbWithMetadata({
+      asset: { version: '2.0', copyright: 'Synthetic source author' },
+      extensions: {
+        VRMC_vrm: {
+          specVersion: '1.0',
+          meta: {
+            licenseName: 'CC BY-NC-ND 4.0',
+            commercialUsage: 'personalNonProfit',
+            allowRedistribution: false,
+          },
+        },
+      },
+    }),
+    sourceHash = await sha256(sourceBytes);
+  const declaredRights = 'Commercial use and redistribution permitted by user declaration.';
+  const storedEmbeddedRights = 'Original embedded attribution note';
+  project.blobIds = [sourceHash];
+  project.sources = [
+    {
+      id: 'vrm-restricted-source',
+      blobId: sourceHash,
+      mimeType: 'model/gltf-binary',
+      rights: { declared: declaredRights, embedded: storedEmbeddedRights },
+    },
+  ];
+  const archive = await exportBackup(project, new Map([[sourceHash, sourceBytes]]));
+
+  await page.goto('/3d/');
+  await page.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+    name: 'sec06-rights-review.cas3dproj',
+    mimeType: 'application/zip',
+    buffer: Buffer.from(archive),
+  });
+  await expect(page.getByRole('heading', { name: project.name, exact: true })).toBeVisible();
+  await page.getByText('作品の品質検査を開く', { exact: true }).click();
+  const panel = page.getByRole('region', { name: '作品の品質検査', exact: true });
+  await panel.getByRole('button', { name: '現在の版を検査', exact: true }).click();
+  await expect(panel.getByText('検査結果を取得しました。', { exact: true })).toBeVisible();
+  await expect(
+    panel.getByText('警告: 原本の利用条件を確認してください。', { exact: true }),
+  ).toBeVisible();
+
+  const sourceDetails = panel.locator('details').filter({ hasText: 'vrm-restricted-source' });
+  await sourceDetails.locator('summary').click();
+  const sourceProfile = sourceDetails.locator('pre');
+  await expect(sourceProfile).toContainText(declaredRights);
+  await expect(sourceProfile).toContainText(storedEmbeddedRights);
+  await expect(sourceProfile).toContainText('extensions.VRMC_vrm.meta.commercialUsage');
+  await expect(sourceProfile).toContainText('personalNonProfit');
+  await expect(sourceProfile).toContainText('extensions.VRMC_vrm.meta.allowRedistribution');
+  await expect(sourceProfile).toContainText('false');
+
+  const afterInspection = await backupCurrent(page);
+  expect(afterInspection.project.sources).toEqual(project.sources);
+  expect(afterInspection.blobs.get(sourceHash)).toEqual(sourceBytes);
+
+  await page.getByText('GLB読込・配布ファイル出力', { exact: true }).click();
+  const assetIo = page.getByRole('region', { name: '3D GLB入出力', exact: true });
+  await assetIo
+    .getByLabel('固定revisionの出力範囲と変換・損失の注意を確認しました', { exact: true })
+    .check();
+  await assetIo.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }).click();
+  await expect(assetIo.getByRole('button', { name: 'ZIPを保存', exact: true })).toBeVisible();
+  const download = page.waitForEvent('download');
+  await assetIo.getByRole('button', { name: 'ZIPを保存', exact: true }).click();
+  const packageFiles = unzipSync(new Uint8Array(await readFile((await (await download).path())!))),
+    sidecar = JSON.parse(new TextDecoder().decode(packageFiles['game.json']));
+  expect(sidecar.provenance.claims).toBe('user-declared-not-verified');
+  expect(sidecar.provenance.sources).toEqual(project.sources);
+  expect(sidecar.provenance.sources[0]).toMatchObject({
+    blobId: sourceHash,
+    rights: { declared: declaredRights, embedded: storedEmbeddedRights },
+  });
+});
+
 test('inspects a fixed revision, distinguishes unknown values and invalidates stale results', async ({
   page,
 }) => {
