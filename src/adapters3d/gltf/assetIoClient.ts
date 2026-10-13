@@ -6,6 +6,10 @@ import type {
 } from '../../core3d/ports/assetIoPort';
 import { ASSET_IO_WORKER_FAILURE_CODES as C } from '../../core3d/ports/assetIoPort';
 import {
+  isValidSourceOnlyLossList,
+  SOURCE_ONLY_LOSS_APPROVAL_PREFIX,
+} from '../../core3d/import/optionalLoss';
+import {
   ASSET_IO_PROFILE as P,
   assertIoBudget,
   reserveAssetIoBytes,
@@ -72,6 +76,7 @@ export function startAssetIo(
           fraction: number;
           result: AssetIoResult;
           code?: unknown;
+          losses?: unknown;
         };
         if (data.kind === 'progress') {
           try {
@@ -84,7 +89,11 @@ export function startAssetIo(
         settled = true;
         release();
         if (data.kind === 'result') resolve(data.result);
-        else if (data.kind === 'error') {
+        else if (data.kind === 'error' && data.code === C.LOSS_APPROVAL_REQUIRED) {
+          if (!isValidSourceOnlyLossList(data.losses))
+            reject(new Error('Invalid asset worker response'));
+          else reject(new Error(SOURCE_ONLY_LOSS_APPROVAL_PREFIX + JSON.stringify(data.losses)));
+        } else if (data.kind === 'error') {
           reject(new Error(workerFailureMessage(data.code)));
         } else reject(new Error('Invalid asset worker response'));
       };

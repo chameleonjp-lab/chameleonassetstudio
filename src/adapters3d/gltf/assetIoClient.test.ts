@@ -5,6 +5,7 @@ import {
   ASSET_IO_WORKER_FAILURE_CODES as C,
 } from '../../core3d/ports/assetIoPort';
 import { assetIoReservedBytes } from '../../core3d/profile/assetIoProfile';
+import { SOURCE_ONLY_LOSS_APPROVAL_PREFIX } from '../../core3d/import/optionalLoss';
 it('terminates on cancel, rejects late results, and releases ownership after first worker failure', async () => {
   let terminated = 0;
   const worker = {
@@ -147,6 +148,57 @@ it('maps allowlisted worker failure codes to fixed messages without forwarding r
     } as MessageEvent);
     await expect(job.promise).rejects.toThrow(sample.message);
   }
+});
+
+it('reconstructs only validated optional-loss names and ignores untrusted worker text', async () => {
+  const names = ['VENDOR_optional', '拡張_🦎\n'];
+  let terminated = 0;
+  const worker = {
+    terminate: () => terminated++,
+    postMessage: () => {},
+    onmessage: null as ((event: MessageEvent) => void) | null,
+    onerror: null,
+    onmessageerror: null,
+  };
+  const job = startAssetIo(
+    { kind: 'import', bytes: new Uint8Array([1]), projectId: 'p', allowLoss: false },
+    () => {},
+    () => worker as unknown as Worker,
+  );
+  worker.onmessage?.({
+    data: {
+      kind: 'error',
+      code: C.LOSS_APPROVAL_REQUIRED,
+      losses: names,
+      message: 'file:///private/SECRET-FILENAME.glb?token=SECRET-TOKEN',
+    },
+  } as MessageEvent);
+  await expect(job.promise).rejects.toThrow(
+    SOURCE_ONLY_LOSS_APPROVAL_PREFIX + JSON.stringify(names),
+  );
+  expect(terminated).toBe(1);
+
+  const invalidWorker = {
+    terminate: () => {},
+    postMessage: () => {},
+    onmessage: null as ((event: MessageEvent) => void) | null,
+    onerror: null,
+    onmessageerror: null,
+  };
+  const invalid = startAssetIo(
+    { kind: 'import', bytes: new Uint8Array([1]), projectId: 'p', allowLoss: false },
+    () => {},
+    () => invalidWorker as unknown as Worker,
+  );
+  invalidWorker.onmessage?.({
+    data: {
+      kind: 'error',
+      code: C.LOSS_APPROVAL_REQUIRED,
+      losses: ['x'.repeat(129)],
+      message: 'file:///private/SECRET-FILENAME.glb?token=SECRET-TOKEN',
+    },
+  } as MessageEvent);
+  await expect(invalid.promise).rejects.toThrow('Invalid asset worker response');
 });
 
 it('sanitizes worker construction and postMessage exceptions', async () => {

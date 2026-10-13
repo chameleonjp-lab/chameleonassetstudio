@@ -801,6 +801,177 @@ test('IMP-02: browser rejects malformed GLB header, chunk and accessor ranges be
   expect([...after.blobs]).toEqual([...before.blobs]);
 });
 
+test('IMP-06: optional-loss approval resets on file change and keeps original bytes apart from converted export', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await setup(page);
+  const before = await importBackup(await download(page, '現在の内容をバックアップ')),
+    panel = await openIo(page),
+    project = assetIoFixture(),
+    { bytes: valid } = await exportGlb(captureAssetSnapshot(project, () => new Uint8Array()));
+  const parsed = preflightGlb(valid),
+    optionalJson = structuredClone(parsed.json);
+  optionalJson.extensionsUsed = [
+    ...new Set([...(optionalJson.extensionsUsed ?? []), 'VENDOR_optional']),
+  ];
+  if (!optionalJson.materials?.[0]) throw new Error('Fixture GLB has no material.');
+  Object.assign(optionalJson.materials[0], {
+    extensions: { VENDOR_optional: { sourceOnlySurface: 'clearcoat' } },
+  });
+  const sourceGlb = encodeGlb(optionalJson, parsed.binary),
+    sourceHash = await sha256(sourceGlb),
+    sourceCheck = preflightGlb(sourceGlb);
+  expect(sourceCheck.losses).toContain('VENDOR_optional');
+  expect(sourceCheck.json.extensionsRequired ?? []).not.toContain('VENDOR_optional');
+
+  const input = panel.getByLabel('読み込むGLB（32MiBまで）', { exact: true }),
+    approval = panel.getByRole('checkbox', {
+      name: '一覧の損失を確認し、原本を保持して対応部分だけを編集用に変換する',
+      exact: true,
+    }),
+    inspect = panel.getByRole('button', {
+      name: 'GLBを検査して保存前に確認する',
+      exact: true,
+    }),
+    retry = panel.getByRole('button', {
+      name: '損失を許可して取込候補を再検査',
+      exact: true,
+    }),
+    lossPrompt = panel.getByText(
+      'そのまま編集できない情報があります。下の一覧を確認し、対応部分への変換を許可する場合だけチェックして再実行してください。',
+      { exact: true },
+    );
+
+  await input.setInputFiles({
+    name: 'imp06-source-only.glb',
+    mimeType: 'model/gltf-binary',
+    buffer: Buffer.from(sourceGlb),
+  });
+  await expect(panel.getByText(/^原本: imp06-source-only\.glb/)).toBeVisible();
+  await inspect.click();
+  await expect(lossPrompt).toBeVisible();
+  await expect(panel.getByText('VENDOR_optional', { exact: true })).toBeVisible();
+  await expect(approval).toBeEnabled();
+  await expect(approval).not.toBeChecked();
+  await expect(retry).toBeDisabled();
+
+  // A user's approval applies to the selected bytes only; changing files revokes it.
+  await approval.check();
+  await expect(approval).toBeChecked();
+  await input.setInputFiles({
+    name: 'imp06-plain.glb',
+    mimeType: 'model/gltf-binary',
+    buffer: Buffer.from(valid),
+  });
+  await expect(panel.getByText(/^原本: imp06-plain\.glb/)).toBeVisible();
+  await expect(approval).toBeDisabled();
+  await expect(approval).not.toBeChecked();
+  await expect(panel.getByText('VENDOR_optional', { exact: true })).toHaveCount(0);
+  await expect(inspect).toBeEnabled();
+  await expect(retry).toHaveCount(0);
+
+  await input.setInputFiles({
+    name: 'imp06-source-only-reselected.glb',
+    mimeType: 'model/gltf-binary',
+    buffer: Buffer.from(sourceGlb),
+  });
+  await expect(approval).toBeDisabled();
+  await expect(approval).not.toBeChecked();
+  await inspect.click();
+  await expect(lossPrompt).toBeVisible();
+  await expect(approval).toBeEnabled();
+  await expect(approval).not.toBeChecked();
+  await approval.check();
+  await retry.click();
+
+  const importReview = panel.getByRole('region', { name: 'GLBの保存前確認', exact: true }),
+    importPreview = importReview.getByRole('region', {
+      name: '変換後GLBの未保存プレビュー',
+      exact: true,
+    });
+  await expect(
+    importPreview.getByText('取込候補を表示中（未保存）', { exact: true }),
+  ).toBeVisible();
+  await expect(importPreview).toContainText('VENDOR_optional');
+  await expect(
+    importPreview.getByText(`原本GLBのSHA-256: ${sourceHash}`, { exact: true }),
+  ).toBeVisible();
+  await visual(page, 'imp06-optional-loss-review');
+  await importReview.getByLabel('変換後の表示と取込の注意を確認しました', { exact: true }).check();
+  await importReview
+    .getByRole('button', { name: '確認した取込候補を新しいコピーに保存', exact: true })
+    .click();
+
+  const savedProjects = page.getByRole('region', { name: '保存したプロジェクト', exact: true }),
+    importedProject = savedProjects.getByRole('button', { name: /^Imported GLB revision/ });
+  await expect(importedProject).toBeVisible();
+  await expect(
+    panel.getByText(
+      '確認した候補を新しいコピーとして保存しました。原本GLBもコピー内に保持しています。',
+      {
+        exact: true,
+      },
+    ),
+  ).toBeVisible();
+
+  const originalAfter = await importBackup(
+    await download(page, '保存済みの版をバックアップ: Asset delivery'),
+  );
+  expect(originalAfter.project).toEqual(before.project);
+  expect([...originalAfter.blobs]).toEqual([...before.blobs]);
+
+  await importedProject.click();
+  await expect(page.getByRole('heading', { name: 'Imported GLB', exact: true })).toBeVisible();
+  const saved = await importBackup(
+    await download(page, '保存済みの版をバックアップ: Imported GLB'),
+  );
+  expect(saved.project.blobIds).toContain(sourceHash);
+  expect(saved.project.sources).toContainEqual(
+    expect.objectContaining({ id: 'original-glb', blobId: sourceHash }),
+  );
+  expect(saved.blobs.get(sourceHash)).toEqual(sourceGlb);
+
+  await page.getByRole('button', { name: '3D表示を開く', exact: true }).click();
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  const exportPanel = await openIo(page),
+    exportAcknowledgement = exportPanel.getByLabel(
+      '固定revisionの出力範囲と変換・損失の注意を確認しました',
+      { exact: true },
+    );
+  await expect(exportAcknowledgement).toBeEnabled();
+  await exportAcknowledgement.check();
+  await exportPanel.getByRole('button', { name: 'GLB・付属情報・ZIPを作成', exact: true }).click();
+  await expect(exportPanel.getByRole('button', { name: 'GLBを保存', exact: true })).toBeVisible();
+  const convertedGlb = await download(page, 'GLBを保存'),
+    converted = preflightGlb(convertedGlb),
+    convertedMaterial = converted.json.materials?.[0] as
+      { extensions?: Record<string, unknown> } | undefined;
+  expect(converted.json.extensionsUsed ?? []).not.toContain('VENDOR_optional');
+  expect(convertedMaterial?.extensions?.VENDOR_optional).toBeUndefined();
+  expect(await sha256(convertedGlb)).not.toBe(sourceHash);
+  await test.info().attach('imp06-source-vs-converted-glb.json', {
+    body: JSON.stringify(
+      {
+        sourceHash,
+        convertedHash: await sha256(convertedGlb),
+        sourceBytes: sourceGlb.length,
+        convertedBytes: convertedGlb.length,
+        reportedLosses: sourceCheck.losses,
+        sourceIncludesOptionalExtension: true,
+        convertedIncludesOptionalExtension:
+          (converted.json.extensionsUsed ?? []).includes('VENDOR_optional') ||
+          convertedMaterial?.extensions?.VENDOR_optional !== undefined,
+        originalBlobRetainedInNewCopy: true,
+        originalProjectUnchanged: true,
+      },
+      null,
+      2,
+    ),
+    contentType: 'application/json',
+  });
+});
+
 test('mismatched sidecar and unknown required extension reject while the canonical backup survives', async ({
   page,
 }) => {

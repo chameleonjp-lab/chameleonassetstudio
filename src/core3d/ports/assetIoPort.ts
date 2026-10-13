@@ -35,13 +35,23 @@ export const ASSET_IO_WORKER_FAILURE_CODES = {
   FORMAT: 'ASSET_IO_FORMAT_INVALID',
   PROFILE_LIMIT: 'ASSET_IO_PROFILE_LIMIT',
   SIDECAR: 'ASSET_IO_SIDECAR_MISMATCH',
+  LOSS_APPROVAL_REQUIRED: 'ASSET_IO_LOSS_APPROVAL_REQUIRED',
 } as const;
 export type AssetIoWorkerFailureCode =
   (typeof ASSET_IO_WORKER_FAILURE_CODES)[keyof typeof ASSET_IO_WORKER_FAILURE_CODES];
-export interface AssetIoWorkerFailure {
-  readonly kind: 'error';
-  readonly code: AssetIoWorkerFailureCode;
-}
+export type AssetIoWorkerFailure =
+  | {
+      readonly kind: 'error';
+      readonly code: typeof ASSET_IO_WORKER_FAILURE_CODES.LOSS_APPROVAL_REQUIRED;
+      readonly losses: readonly string[];
+    }
+  | {
+      readonly kind: 'error';
+      readonly code: Exclude<
+        AssetIoWorkerFailureCode,
+        typeof ASSET_IO_WORKER_FAILURE_CODES.LOSS_APPROVAL_REQUIRED
+      >;
+    };
 export interface AssetIoProgress {
   phase: string;
   fraction: number;

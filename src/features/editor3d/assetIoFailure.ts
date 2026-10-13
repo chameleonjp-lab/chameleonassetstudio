@@ -1,4 +1,7 @@
-import { ASSET_IO_PROFILE } from '../../core3d/profile/assetIoProfile';
+import {
+  MAX_SOURCE_ONLY_LOSS_REQUEST_LENGTH,
+  parseSourceOnlyLossRequest,
+} from '../../core3d/import/optionalLoss';
 
 export type AssetIoOperation = 'import' | 'export' | 'download';
 export interface AssetIoFailure {
@@ -204,29 +207,6 @@ export function formatAssetIoFailure(cause: unknown, operation: AssetIoOperation
 
 /** Keep the existing explicit-loss request bounded; never grant loss approval here. */
 export function readAssetIoLossRequest(cause: unknown): string[] | null {
-  const prefix = 'Source-only features require explicit loss approval: ';
-  const maxLosses = ASSET_IO_PROFILE.extensionDeclarations + 32;
-  const maxMessage = prefix.length + 2 + maxLosses * (ASSET_IO_PROFILE.extensionNameChars * 6 + 3);
-  const { text } = description(cause, maxMessage + 1);
-  if (!text.startsWith(prefix) || text.length > maxMessage) return null;
-  let losses: unknown;
-  try {
-    losses = JSON.parse(text.slice(prefix.length));
-  } catch {
-    return null;
-  }
-  if (
-    !Array.isArray(losses) ||
-    !losses.length ||
-    losses.length > maxLosses ||
-    losses.some(
-      (loss) =>
-        typeof loss !== 'string' ||
-        !loss.length ||
-        loss.length > ASSET_IO_PROFILE.extensionNameChars,
-    ) ||
-    new Set(losses).size !== losses.length
-  )
-    return null;
-  return losses;
+  const { text } = description(cause, MAX_SOURCE_ONLY_LOSS_REQUEST_LENGTH + 1);
+  return parseSourceOnlyLossRequest(text);
 }
