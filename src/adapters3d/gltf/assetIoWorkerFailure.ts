@@ -22,6 +22,13 @@ export function classifyAssetIoWorkerFailure(cause: unknown): AssetIoWorkerFailu
     return ASSET_IO_WORKER_FAILURE_CODES.EXTERNAL_REFERENCE;
   if (/sidecar|game\.json|provenance|ancestry/i.test(message))
     return ASSET_IO_WORKER_FAILURE_CODES.SIDECAR;
+  // Range/finiteness failures are structural validation errors, not worker startup failures.
+  if (
+    /(?:accessor outside buffer.?view|non[- ]finite accessor|index exceeds positions)/i.test(
+      message,
+    )
+  )
+    return ASSET_IO_WORKER_FAILURE_CODES.FORMAT;
   if (/exceeds|exceed|budget|profile|上限/i.test(message))
     return ASSET_IO_WORKER_FAILURE_CODES.PROFILE_LIMIT;
   if (/image|texture|png|jpeg|mime/i.test(message)) return ASSET_IO_WORKER_FAILURE_CODES.IMAGE;
