@@ -126,6 +126,82 @@ test('empty project to native box, keyboard camera, GPU pause, backup restore an
   }
 });
 
+test('LIFE-07 preserves the saved project on history return and checks BFCache when the browser restores it', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const key = 'life07-navigation-events';
+    const record = (event: PageTransitionEvent) => {
+      const events = JSON.parse(sessionStorage.getItem(key) ?? '[]') as Array<{
+        path: string;
+        type: string;
+        persisted: boolean;
+      }>;
+      events.push({ path: location.pathname, type: event.type, persisted: event.persisted });
+      sessionStorage.setItem(key, JSON.stringify(events));
+    };
+    window.addEventListener('pagehide', record);
+    window.addEventListener('pageshow', record);
+  });
+  await createBox(page);
+  await page.getByRole('button', { name: '今すぐ保存', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: '保存済み · revision' })).toBeVisible();
+  const saved = await snapshot(page);
+  const beforePng = await png(page);
+
+  await page.goto('/');
+  expect(new URL(page.url()).pathname).toBe('/');
+  await page.goBack({ waitUntil: 'commit' });
+  expect(new URL(page.url()).pathname).toBe('/3d/');
+
+  const events = await page.evaluate(
+    () =>
+      JSON.parse(sessionStorage.getItem('life07-navigation-events') ?? '[]') as Array<{
+        path: string;
+        type: string;
+        persisted: boolean;
+      }>,
+  );
+  await test.info().attach('life07-navigation-events.json', {
+    body: Buffer.from(JSON.stringify(events, null, 2)),
+    contentType: 'application/json',
+  });
+  const bfcacheRestore =
+    events.some((event) => event.path === '/3d/' && event.type === 'pagehide' && event.persisted) &&
+    events.some((event) => event.path === '/3d/' && event.type === 'pageshow' && event.persisted);
+  test.info().annotations.push({
+    type: 'LIFE-07 restore path',
+    description: bfcacheRestore
+      ? 'BFCache persisted restore observed'
+      : 'normal reload observed; saved project reopened from the project list',
+  });
+  if (!bfcacheRestore) {
+    await expect(
+      page.getByRole('region', { name: '保存したプロジェクト', exact: true }),
+    ).toBeVisible();
+    const projects = page.getByRole('region', { name: '保存したプロジェクト', exact: true });
+    await projects
+      .locator('li')
+      .filter({ hasText: 'Native box work' })
+      .getByRole('button')
+      .first()
+      .click();
+    await expect(page.getByRole('heading', { name: 'Native box work', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '3D表示を開く', exact: true }).click();
+  } else {
+    expect(events.filter((event) => event.path === '/3d/' && event.persisted)).toEqual([
+      { path: '/3d/', type: 'pagehide', persisted: true },
+      { path: '/3d/', type: 'pageshow', persisted: true },
+    ]);
+  }
+  await expect(page.getByRole('heading', { name: 'Native box work', exact: true })).toBeVisible();
+  await expect(page.getByText('3D表示中', { exact: true })).toBeVisible();
+  await expect(page.locator('.native-viewport-host canvas')).toHaveCount(1);
+  const restored = await snapshot(page);
+  expect(restored.project).toEqual(saved.project);
+  expect(await png(page)).toEqual(beforePng);
+});
+
 test('3D viewer and active-object selector expose text alternatives for canvas information', async ({
   page,
 }) => {

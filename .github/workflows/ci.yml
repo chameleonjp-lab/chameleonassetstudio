@@ -118,7 +118,7 @@ jobs:
         env:
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-native-recovery
       - name: Check native GLB product flow in both browsers
-        run: npx playwright test e2e/native-asset-io-product.spec.ts --project=chromium --project=webkit-critical --output=test-results-native-asset-io
+        run: npx playwright test e2e/native-asset-io-product.spec.ts --project=chromium --project=webkit-critical --workers=1 --output=test-results-native-asset-io
         env:
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-native-asset-io
       - name: Check quality and independent consumer in both browsers
