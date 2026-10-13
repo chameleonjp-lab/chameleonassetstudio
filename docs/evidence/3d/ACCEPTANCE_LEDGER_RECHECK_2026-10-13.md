@@ -60,3 +60,11 @@ Tested source commit: `0d4d6787d11dd34d1bfcc4d387ab386d959991a2` (child of Draft
 Local results: targeted regression **1/1**; full unit suite **187 files / 3,554 tests**; lint **0 errors / one pre-existing warning**; format check, app/H3 build, consumer build and CI-scope **8/8** passed. The two builds retain their existing large-chunk advisory. Remote CI was not queried or monitored.
 
 This follow-up addresses one concrete shared-product logging sink; it does not complete the 3D product/browser acceptance boundary. `SEC-07` remains `implemented-candidate / partial`. The specific browser failure path, clipboard, assistive technology, physical devices, and deployed runtime were not exercised. See [SEC07_RUNTIME_LOG_PRIVACY_2026-10-13.md](SEC07_RUNTIME_LOG_PRIVACY_2026-10-13.md) for evidence details.
+
+## SEC-06 VRM rights review follow-up — 2026-10-13 JST
+
+Tested source commit: `50f3a28518cfa0b2b7b80f8aedceda0c66dbdf64` (child of Draft PR #412 head `a97e71e314a26e382e93fa7e26aba17210a5b9d0`). The local production-preview Chromium case `SEC-06: embedded VRM restrictions stay separate from declarations through inspection and package provenance` passed **1/1**. A synthetic source with a permissive user declaration and explicit VRM `commercialUsage: personalNonProfit` / `allowRedistribution: false` showed the generic source-terms warning and retained declaration, stored embedded note, and parsed VRM terms separately. Backup source bytes remained identical; exported `game.json` retained the unverified provenance record and source rights fields. The package does not contain the original GLB bytes.
+
+The same tree passed **187 files / 3,554 unit tests**, lint (0 errors, one pre-existing warning), format check, app/H3 and consumer builds, CI-scope **8/8**, and `git diff --check`. Existing large-chunk advisories remain. Remote CI was not queried or monitored.
+
+`SEC-06` remains `implemented-candidate / partial`: the generic warning is not a semantic/legal conflict classifier, and this does not cover WebKit, real third-party assets, deployed delivery, external engines, assistive technology, or physical devices. See [SEC06_VRM_RIGHTS_REVIEW_2026-10-13.md](SEC06_VRM_RIGHTS_REVIEW_2026-10-13.md) for the exact test boundary.
