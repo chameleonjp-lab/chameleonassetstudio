@@ -42,6 +42,73 @@ test('inspects a fixed revision, distinguishes unknown values and invalidates st
     contentType: 'image/png',
   });
 });
+test('QA-01 product statistics distinguish shared geometry, instances and unknown measurements', async ({
+  page,
+}) => {
+  const project = assetIoFixture();
+  project.name = 'QA-01 statistics fixture';
+  const sourceNode = project.nodes[0];
+  sourceNode.transform = { ...sourceNode.transform, translation: [0, 0, 0] };
+  project.nodes.push({
+    ...sourceNode,
+    id: 'box-instance',
+    name: 'Second box instance',
+    transform: { ...sourceNode.transform, translation: [2, 0, 0] },
+  });
+  const pixels = await assetIoPng(),
+    textureId = await sha256(pixels);
+  project.blobIds = [textureId];
+  project.materials[0].textureBlobId = textureId;
+  const archive = await exportBackup(project, new Map([[textureId, pixels]]));
+
+  await page.goto('/3d/');
+  await page.getByLabel('.cas3dproj を選んでコピー復元', { exact: true }).setInputFiles({
+    name: 'qa01-statistics.cas3dproj',
+    mimeType: 'application/zip',
+    buffer: Buffer.from(archive),
+  });
+  await expect(page.getByRole('heading', { name: project.name, exact: true })).toBeVisible();
+  const restored = await backupCurrent(page);
+  const meshId = restored.project.meshes[0]?.id;
+  expect(restored.project.meshes).toHaveLength(1);
+  expect(restored.project.meshes[0].vertices).toHaveLength(8);
+  expect(restored.project.meshes[0].faces).toHaveLength(12);
+  expect(restored.project.nodes.filter((node) => node.meshId === meshId)).toHaveLength(2);
+  expect(restored.blobs.get(textureId)).toEqual(pixels);
+
+  await page.getByText('作品の品質検査を開く', { exact: true }).click();
+  const panel = page.getByRole('region', { name: '作品の品質検査', exact: true });
+  await panel.getByRole('button', { name: '現在の版を検査', exact: true }).click();
+  await expect(panel.getByText('検査結果を取得しました。', { exact: true })).toBeVisible();
+  const valueOf = (name: string) =>
+    panel.getByText(name, { exact: true }).locator('xpath=following-sibling::dd[1]');
+
+  await expect(valueOf('vertices')).toHaveText('8');
+  await expect(valueOf('triangleFaces')).toHaveText('12');
+  await expect(valueOf('materialGroups')).toHaveText('1');
+  await expect(valueOf('meshInstances')).toHaveText('2');
+  await expect(valueOf('instanceTriangleFaces')).toHaveText('24');
+  await expect(valueOf('materials')).toHaveText('1');
+  await expect(valueOf('textures')).toHaveText('1');
+  await expect(valueOf('joints')).toHaveText('2');
+  await expect(valueOf('clips')).toHaveText('2');
+  await expect(valueOf('nonemptyClips')).toHaveText('1');
+  await expect(valueOf('decodedPixels')).toHaveText('4');
+  await expect(valueOf('retainedBlobBytes')).toHaveText(String(pixels.byteLength));
+  await expect(valueOf('projectJsonBytes')).toHaveText(
+    String(new TextEncoder().encode(JSON.stringify(restored.project)).byteLength),
+  );
+  await expect(valueOf('exportedGlbBytes')).toHaveText(
+    '未確認: No measured GLB output for this snapshot',
+  );
+  await expect(valueOf('gpuMemoryBytes')).toHaveText('未確認: GPU memory has not been measured');
+  await expect(
+    panel.getByText(/画素数は画像ヘッダー由来で、デコード成功を保証しません。/),
+  ).toBeVisible();
+  await expect(valueOf('bounds')).toHaveText(
+    '{"min":[-0.5,-0.5,-0.5],"max":[2.5,0.5,0.5],"size":[3,1,1]}',
+  );
+});
 test('closing inspection terminates the held worker and rejects late results', async ({ page }) => {
   const panel = await setup(page);
   let release!: () => void, started!: () => void;
