@@ -418,3 +418,8 @@
 ## 後続候補への差分索引（2026-10-10 08時台）
 
 この台帳の既存行・等級・件数・検査履歴は上記基点の記録として保持しています。[後続ローカル候補の実装・証拠差分](LOCAL_CANDIDATE_DELTA_2026-10-10.md)は、その後の製品候補と限定検査・未検証条件への入口です。この追補リンクによって過去の評価を最新の未着手状態へ戻したり、受入成功・公開済みへ昇格したりしません。
+
+
+## 2026-10-13 current-head follow-up
+
+`SEC-07` received a focused shared-product runtime logging mitigation and sentinel regression test at source commit `0d4d6787d11dd34d1bfcc4d387ab386d959991a2`. The recovery-point save warning no longer passes the raw storage exception to the console. This narrows one known privacy risk only; **SEC-07 remains `implemented-candidate / partial`**, with product-browser, clipboard, assistive-technology, physical-device and deployed-runtime boundaries unverified. Details: [SEC-07 runtime log privacy evidence](SEC07_RUNTIME_LOG_PRIVACY_2026-10-13.md) and [current-head ledger recheck](ACCEPTANCE_LEDGER_RECHECK_2026-10-13.md).
