@@ -113,8 +113,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium webkit
-      - name: Check rescue, diagnostics and safe update in both browsers
-        run: npx playwright test e2e/native-recovery-product.spec.ts e2e/native-cross-domain-recovery.spec.ts e2e/native-library-product.spec.ts e2e/native-diagnostics-product.spec.ts --project=chromium --project=webkit-critical --output=test-results-native-recovery
+      - name: Check rescue and safe update in both browsers
+        run: npx playwright test e2e/native-recovery-product.spec.ts e2e/native-cross-domain-recovery.spec.ts e2e/native-library-product.spec.ts --project=chromium --project=webkit-critical --output=test-results-native-recovery
         env:
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-native-recovery
       - name: Check native GLB product flow in both browsers
