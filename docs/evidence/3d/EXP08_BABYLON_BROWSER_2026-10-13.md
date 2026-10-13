@@ -1,23 +1,21 @@
 # EXP-08 独立Babylon browser証拠 — 2026-10-13 JST
 
-検査対象repository snapshotは `01c52da`（PR #394 head）。この追補では製品コードを変更せず、既存の製品handoffと独立consumer browser testを実行して受入証拠を追加した。
+この追補はEXP-04 product round-tripとのcross-check結果を反映する。基本handoff試験の対象snapshotは `01c52da`（PR #394 head）、後続texture付きproduct round-trip試験は `075459a`（PR #395 head）。どちらも同じ製品コードを検査し、この追補でも製品コード変更はない。
 
 ## 固定runtime
 
-Root `package.json` は `@babylonjs/core` と `@babylonjs/loaders` をともに `9.28.0` に固定し、`package-lock.json` も同版を解決する。test専用consumer (`tools/3d-consumer/main.ts`) はBabylon `Engine` と `ImportMeshAsync` を使用し、editorのThree.js rendererやNullEngineとは別の実browser runtimeである。Production Playwright configはアプリpreviewとconsumerを別々にbuild/serveする。
+Root `package.json` は `@babylonjs/core` と `@babylonjs/loaders` をともに `9.28.0` に固定し、`package-lock.json` も同版を解決する。test専用consumer (`tools/3d-consumer/main.ts`) はBabylon `Engine` と `ImportMeshAsync` を使い、editorのThree.js rendererやNullEngineとは別の実browser runtimeである。Production Playwright configはアプリpreviewとconsumerを別々にbuild/serveする。
 
 ## 実行結果
 
-| 対象 | 実行設定 | 結果 | 保証したこと |
-| --- | --- | --- | --- |
-| `a project authored and exported in the product opens in a separate consumer context` (`e2e/native-consumer.spec.ts`) | production preview、Chromium + WebKit、各1回 | 2/2 pass | 製品UIでprojectを作成しGLB・`game.json`を出力。別browser contextのBabylon 9.28.0 consumerでloadし、position oracle・mesh存在・GLB hashを照合 |
-| `F04 actual PNG upload preserves corner colors and alpha in independent rendering` (`e2e/native-consumer.spec.ts`) | production preview、Chromium + WebKit、各3回 | 6/6 pass | 2×2 textureの寸法、GLTF `BLEND` alpha mode、double-sided materialを確認。実canvas pixel readbackで赤/緑/青patchのchannel優位と透過patchのneutral/darker表示を検査 |
+| 対象 | 実行設定 / 結果 | 確認内容 |
+| --- | --- | --- |
+| `a project authored and exported in the product opens in a separate consumer context` (`e2e/native-consumer.spec.ts`) | snapshot `01c52da`、production preview、Chromium + WebKit各1回、2/2 pass | 製品UIで作成した基本boxのGLB・`game.json`を別browser contextのBabylon consumerでloadし、position oracle、mesh、GLB hashを照合。 |
+| `edited textured mixed skin and two clips survive backup, re-edit and actual independent delivery with verified sidecar metadata` (`e2e/native-consumer.spec.ts`) | snapshot `075459a`、production preview、Chromium + WebKit各1回、2/2 pass | 製品UIでPNGをuploadし、skin/two clipsを編集。backup copy restore後に再編集・再exportし、Khronos validator errors 0、sidecar model hash、Babylon consumerのGLB hash、vertex、skeleton、二つのanimation、texture loaded/sizeを照合。testはtextureのexact pixel oracleまでは持たない。詳細は[EXP-04証拠](EXP04_FULL_DELIVERY_2026-10-13.md)。 |
+| `F04 actual PNG upload preserves corner colors and alpha in independent rendering` (`e2e/native-consumer.spec.ts`) | snapshot `01c52da`、production preview、Chromium + WebKit各3回、6/6 pass | 固定2×2 PNG/GLB fixtureのdimensions、GLTF `BLEND` alpha mode、double-sided materialと実canvas pixel readbackを検査。赤/緑/青patchのchannel優位、透過patchのneutral/darker表示を確認。 |
 
-F04 testは `consumerFixture('F04')` と固定PNG fixtureからrunner内でGLBを生成して独立consumerへ渡す。したがってpixel testは実browser描画だが、製品UIによるPNG upload→texture割当→GLB exportのend-to-end検査ではない。F04各実行は視覚artifactをPlaywrightへ添付する。Buildは既存のlarge-chunk advisoryを表示したが、記載したbrowser runsはすべてpass。
+F04は `consumerFixture('F04')` と固定PNG fixtureからrunner内でGLBを生成するため、実browser pixel testだが製品UIで作ったtextureのexact pixelsを照合するものではない。F04各実行はvisual artifactをPlaywrightへ添付する。記載したbrowser runsはすべてpassで、buildには既存large-chunk advisoryが残る。
 
 ## 残る境界
 
-- 製品handoff testの代表作は基本boxであり、texture/alpha/UV付き製品制作物のround-tripではない。F04は別途作成した単一2×2 PNG fixture・一material構成で、全UV transform/orientation・複数material・色管理・JPEG/WebP変換・全alpha mode/GLTF機能を網羅しない。
-- Pixel assertionはchannel比のoracleで、全画素のexact color-management一致や任意画像に対する品質を保証しない。
-- Chromium/WebKit自動browser上の固定Babylon consumerであり、物理GPU/driver、mobile device、別Babylon版や他engineの受入ではない。
-- 従って固定runtimeで製品の基本GLB handoffと代表texture fixtureを実browser描画する証拠を得たが、EXP-08全体はpartialのまま。製品UIを通したtexture付き代表作のconsumer round-tripは別の未確認境界として残る。
+製品UIからtexture付き作品を作り、別contextで再編集・再exportし、独立Babylon consumerでtextureが読み込まれるround-tripはEXP-04 caseで確認済み。未確認なのは、そのproduct-authored imageに対するconsumer pixel/color oracle、全UV transform/orientation・複数material・color management・JPEG/WebP変換・全alpha mode/GLTF機能の網羅である。Chromium/WebKit自動browser上の固定Babylon consumerであり、物理GPU/driver、mobile device、別Babylon版や他engineの受入ではないため、EXP-08全体はpartialのまま。
