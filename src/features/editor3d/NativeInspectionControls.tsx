@@ -155,6 +155,7 @@ export function NativeInspectionControls({
       <p>
         制作・組立と同じ選択を使います。「選択対象に合わせる」でアクティブな部品へカメラを移します。
         カメラ・表示設定は作品やUndo履歴を変更しません。再読込では初期表示に戻ります。
+        6方向レビューシートはrest表示を一枚にまとめる一時PNGで、同じ表示設定の候補比較に使えます。作品や編集用バックアップには保存しません。
       </p>
       <fieldset disabled={disabled}>
         <legend>見る方向と対象</legend>
@@ -163,6 +164,8 @@ export function NativeInspectionControls({
             [
               ['front', '正面'],
               ['right', '右側面'],
+              ['back', '背面'],
+              ['left', '左側面'],
               ['top', '上面'],
             ] as const
           ).map(([preset, label]) => (

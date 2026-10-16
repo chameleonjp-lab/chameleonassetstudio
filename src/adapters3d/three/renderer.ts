@@ -1334,7 +1334,13 @@ export class NativeViewport {
 
   cameraPreset(preset: NativeCameraPreset): ProfileResult {
     if (!this.canRender()) return failure('Camera presets require an active native viewport.');
-    const directions = { front: [0, 0, 1], right: [1, 0, 0], top: [0, 1, 0] } as const;
+    const directions = {
+      front: [0, 0, 1],
+      right: [1, 0, 0],
+      back: [0, 0, -1],
+      left: [-1, 0, 0],
+      top: [0, 1, 0],
+    } as const;
     if (!Object.hasOwn(directions, preset)) return failure('Unknown native camera preset.');
     return this.fitBounds(
       this.modelBounds(),

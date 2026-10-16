@@ -24,6 +24,8 @@ import {
 
 import type {
   NativeViewportResult,
+  NativeCameraPreset,
+  NativeCameraState,
   NativeCameraAction,
   NativeViewportStatus,
   NativeViewportSuspensionContract,
@@ -83,6 +85,8 @@ type Instance = {
   documentHidden: boolean;
   frozen: boolean;
   pageHidden: boolean;
+  reviewCameraRestore: NativeCameraState | null;
+  reviewCaptureActive: boolean;
 };
 
 const statusText: Record<PanelStatus['state'], string> = {
@@ -130,6 +134,85 @@ const cameraActionGroups: {
     ],
   },
 ];
+
+const multiViewReviewShots: readonly {
+  label: string;
+  preset: NativeCameraPreset | null;
+}[] = [
+  { label: '現在の視点', preset: null },
+  { label: '正面', preset: 'front' },
+  { label: '右側面', preset: 'right' },
+  { label: '背面', preset: 'back' },
+  { label: '左側面', preset: 'left' },
+  { label: '上面', preset: 'top' },
+];
+
+async function createMultiViewReviewSheet(
+  document: Document,
+  capture: (preset: NativeCameraPreset | null) => Promise<Blob>,
+): Promise<Blob> {
+  const cellSize = 480;
+  const columns = 3;
+  const canvas = document.createElement('canvas');
+  canvas.width = cellSize * columns;
+  canvas.height = cellSize * 2;
+  const context = canvas.getContext('2d', { alpha: false });
+  if (!context) throw new Error('The native viewport could not render a PNG.');
+
+  try {
+    context.fillStyle = '#e9efeb';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.font = '600 18px system-ui, sans-serif';
+    context.textBaseline = 'top';
+
+    for (const [index, view] of multiViewReviewShots.entries()) {
+      const blob = await capture(view.preset);
+      const bitmap = await createImageBitmap(blob);
+      try {
+        const x = (index % columns) * cellSize;
+        const y = Math.floor(index / columns) * cellSize;
+        const imageX = x + 12;
+        const imageY = y + 48;
+        const imageWidth = cellSize - 24;
+        const imageHeight = cellSize - 60;
+        const scale = Math.min(imageWidth / bitmap.width, imageHeight / bitmap.height);
+        const width = bitmap.width * scale;
+        const height = bitmap.height * scale;
+
+        context.fillStyle = '#ffffff';
+        context.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
+        context.strokeStyle = '#9eada4';
+        context.lineWidth = 2;
+        context.strokeRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
+        context.fillStyle = '#20352a';
+        context.fillText(view.label, x + 14, y + 14);
+        context.drawImage(
+          bitmap,
+          imageX + (imageWidth - width) / 2,
+          imageY + (imageHeight - height) / 2,
+          width,
+          height,
+        );
+      } finally {
+        bitmap.close();
+      }
+    }
+
+    return await new Promise<Blob>((resolve, reject) => {
+      try {
+        canvas.toBlob(
+          (blob) => (blob ? resolve(blob) : reject(new Error('Canvas PNG encoding failed.'))),
+          'image/png',
+        );
+      } catch (cause) {
+        reject(cause);
+      }
+    });
+  } finally {
+    canvas.width = 0;
+    canvas.height = 0;
+  }
+}
 const viewerCameraKeys: Readonly<Record<string, NativeCameraAction>> = {
   ArrowLeft: 'orbit-left',
   ArrowRight: 'orbit-right',
@@ -189,6 +272,38 @@ function ViewportContent(props: NativeViewportPanelProps) {
   const [busy, setBusy] = useState(false);
   const [thumbnailBusy, setThumbnailBusy] = useState(false);
   const thumbnailAbort = useRef<AbortController | null>(null);
+  const isCurrent = useCallback((instance: Instance) => {
+    return !instance.cancelled && instanceRef.current === instance;
+  }, []);
+  const restoreReviewCamera = useCallback(
+    (instance: Instance): boolean => {
+      const camera = instance.reviewCameraRestore;
+      const port = instance.port;
+      if (!camera) return true;
+      if (
+        instance.reviewCaptureActive ||
+        instance.documentHidden ||
+        instance.frozen ||
+        instance.pageHidden ||
+        !port ||
+        port.status.state !== 'active'
+      )
+        return false;
+      const result = port.setCamera(camera);
+      if (!result.ok) {
+        if (isCurrent(instance))
+          setNotice({
+            error: true,
+            text: '3D表示を更新できませんでした。現在の内容はこのタブに保持しています。',
+            detail: errorText(new Error('Viewport restoration failed.')),
+          });
+        return false;
+      }
+      instance.reviewCameraRestore = null;
+      return true;
+    },
+    [isCurrent],
+  );
   useEffect(() => {
     const document = hostRef.current?.ownerDocument;
     const hidden = () => {
@@ -216,10 +331,6 @@ function ViewportContent(props: NativeViewportPanelProps) {
             },
       );
   });
-
-  const isCurrent = useCallback((instance: Instance) => {
-    return !instance.cancelled && instanceRef.current === instance;
-  }, []);
 
   const cancelPreparation = useCallback((instance: Instance, clearCache = false) => {
     instance.pending = null;
@@ -425,6 +536,8 @@ function ViewportContent(props: NativeViewportPanelProps) {
       documentHidden: host.ownerDocument.hidden,
       frozen: false,
       pageHidden: false,
+      reviewCameraRestore: null,
+      reviewCaptureActive: false,
     };
     instanceRef.current = instance;
     setStatus({ state: 'loading' });
@@ -440,9 +553,18 @@ function ViewportContent(props: NativeViewportPanelProps) {
     };
     const refresh = () => {
       try {
-        void updateProject(instance)?.catch(reportUpdate);
+        const pending = updateProject(instance);
+        if (pending)
+          void pending
+            .then(() => restoreReviewCamera(instance))
+            .catch((cause: unknown) => {
+              reportUpdate(cause);
+              restoreReviewCamera(instance);
+            });
+        else restoreReviewCamera(instance);
       } catch (cause) {
         reportUpdate(cause);
+        restoreReviewCamera(instance);
       }
     };
     const boundary = () => {
@@ -555,6 +677,7 @@ function ViewportContent(props: NativeViewportPanelProps) {
     bindEditing,
     cancelPreparation,
     isCurrent,
+    restoreReviewCamera,
     headingId,
   ]);
 
@@ -811,6 +934,100 @@ function ViewportContent(props: NativeViewportPanelProps) {
   const canPause = ['active', 'hidden', 'frozen', 'context-lost'].includes(status.state);
   const failed = isFailure(status);
 
+  async function downloadMultiViewReviewSheet(instance: Instance, port: NativeViewportPort) {
+    const document = hostRef.current?.ownerDocument;
+    if (!document) throw new Error('Canvas PNG encoding failed.');
+    latest.current.animation?.cancel('レビュー画像はrestを取得します。');
+    latest.current.rigPose?.cancel('レビュー画像はrestを取得します。');
+    const editing = latest.current.editing;
+    if (editing?.state.active)
+      throw new Error('変形プレビューを確定するか取り消してからPNGを作成してください。');
+    await updateProject(instance);
+    if (
+      !isCurrent(instance) ||
+      instance.port !== port ||
+      port.status.state !== 'active' ||
+      instance.documentHidden ||
+      instance.frozen ||
+      instance.pageHidden ||
+      !displayedCurrent(instance)
+    )
+      throw new Error('最新の内容を表示できていません。表示の更新後にPNGを作成してください。');
+
+    const snapshot = editing?.getProject() ?? latest.current.project;
+    const projectId = snapshot.id;
+    const revision = snapshot.revision;
+    const pose = latest.current.rigPose;
+    const animation = latest.current.animation;
+    const originalCamera = port.getCamera();
+    if (instance.reviewCameraRestore) throw new Error('Viewport restoration failed.');
+    instance.reviewCameraRestore = originalCamera;
+    instance.reviewCaptureActive = true;
+    const isReviewCurrent = () => {
+      try {
+        const current = latest.current.editing?.getProject() ?? latest.current.project;
+        return (
+          isCurrent(instance) &&
+          instance.port === port &&
+          port.status.state === 'active' &&
+          !instance.documentHidden &&
+          !instance.frozen &&
+          !instance.pageHidden &&
+          displayedCurrent(instance) &&
+          current.id === projectId &&
+          current.revision === revision &&
+          latest.current.editing === editing &&
+          latest.current.rigPose === pose &&
+          latest.current.animation === animation &&
+          !editing?.state.active
+        );
+      } catch {
+        return false;
+      }
+    };
+
+    let sheet: Blob;
+    try {
+      sheet = await createMultiViewReviewSheet(document, async (preset) => {
+        if (!isReviewCurrent()) throw new Error('PNG capture became stale during encoding.');
+        const result = preset ? port.cameraPreset(preset) : port.setCamera(originalCamera);
+        if (!result.ok) throw new Error(result.reason);
+        let captured: Blob | undefined;
+        await downloadPng(instance, port, (blob) => {
+          captured = blob;
+        });
+        if (!captured || !isReviewCurrent())
+          throw new Error('PNG capture became stale during encoding.');
+        return captured;
+      });
+    } finally {
+      instance.reviewCaptureActive = false;
+      restoreReviewCamera(instance);
+    }
+
+    if (instance.reviewCameraRestore || !isReviewCurrent())
+      throw new Error('PNG capture became stale during encoding.');
+    const url = URL.createObjectURL(sheet);
+    const anchor = document.createElement('a');
+    const filename = Array.from(snapshot.name, (character) =>
+      character.charCodeAt(0) < 32 ? '_' : character,
+    )
+      .join('')
+      .replace(/[\\/:*?"<>|]/g, '_');
+    anchor.href = url;
+    anchor.download = `${filename || '3d-view'}.review.png`;
+    document.body.appendChild(anchor);
+    try {
+      anchor.click();
+    } finally {
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    setNotice({
+      text: '6方向レビューシートのダウンロードを開始しました。作品データや編集用バックアップには含みません。',
+    });
+  }
+
   return (
     <section className="native-viewport-panel" aria-labelledby={headingId}>
       <div className="native-viewport-heading">
@@ -841,6 +1058,13 @@ function ViewportContent(props: NativeViewportPanelProps) {
         </button>
         <button type="button" disabled={busy || !active} onClick={() => void run(downloadPng)}>
           PNG画像を保存
+        </button>
+        <button
+          type="button"
+          disabled={busy || !active}
+          onClick={() => void run(downloadMultiViewReviewSheet)}
+        >
+          6方向レビューシートを保存
         </button>
         {props.onThumbnail && (
           <button type="button" disabled={busy || !active} onClick={() => void run(saveThumbnail)}>
@@ -889,15 +1113,15 @@ function ViewportContent(props: NativeViewportPanelProps) {
         Tabキーで操作ボタンと3D表示領域へ移動できます。表示領域の外枠にフォーカスして矢印キーでカメラを回転、+/-キーで拡大縮小、Rキーで選択対象に合わせ、Fキーで全体表示できます。
         Enter・スペースキーでも回転・平行移動・拡大縮小できます。
         GPUの休止・再開には、現在の内容の保存が必要です。
-        PNGは背景付きの表示画像です。変形ハンドル・選択の強調表示・操作パネル・3Dの編集データは含みません。
+        PNGは背景付きの表示画像です。6方向レビューシートは現在視点・正面・右側面・背面・左側面・上面を一枚にまとめ、撮影後は元のカメラへ戻ります。レビュー画像はローカルで作成し、変形ハンドル・選択の強調表示・操作パネル・3Dの編集データは含みません。
       </p>
       <div
         ref={hostRef}
-        className="native-viewport-host"
+        className={busy ? 'native-viewport-host is-busy' : 'native-viewport-host'}
         role="group"
         aria-label={`${project.name}の3D表示`}
         aria-describedby={guidanceId}
-        aria-busy={status.state === 'loading'}
+        aria-busy={busy || status.state === 'loading'}
         tabIndex={active ? 0 : -1}
         onKeyDownCapture={(event) => {
           if (
