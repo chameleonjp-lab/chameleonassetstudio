@@ -15,7 +15,7 @@ export interface NativeCameraState {
   fov: number;
   span: number;
 }
-export type NativeCameraPreset = 'front' | 'right' | 'top';
+export type NativeCameraPreset = 'front' | 'right' | 'back' | 'left' | 'top';
 export interface NativeViewOptions {
   shading: 'material' | 'solid' | 'wireframe';
   background: 'dark' | 'light';

@@ -1174,7 +1174,7 @@ describe('native screen orientation with real OrbitControls (no browser or GPU)'
           );
         expect(viewport.getCamera().up).toEqual([0, 0, -1]);
       }
-      for (const preset of ['front', 'right'] as const) {
+      for (const preset of ['front', 'right', 'back', 'left'] as const) {
         viewport.cameraPreset('top');
         expect(viewport.cameraPreset(preset)).toEqual({ ok: true });
         expect(viewport.getCamera().up).toEqual([0, 1, 0]);
@@ -1182,6 +1182,26 @@ describe('native screen orientation with real OrbitControls (no browser or GPU)'
       viewport.cameraPreset('top');
       viewport.resetCamera();
       expect(viewport.getCamera().up).toEqual([0, 1, 0]);
+      viewport.dispose();
+    },
+  );
+
+  it.each([
+    { preset: 'front', direction: [0, 0, 1] },
+    { preset: 'right', direction: [1, 0, 0] },
+    { preset: 'back', direction: [0, 0, -1] },
+    { preset: 'left', direction: [-1, 0, 0] },
+    { preset: 'top', direction: [0, 1, 0] },
+  ] as const)(
+    'frames the $preset review view from its standard direction',
+    ({ preset, direction }) => {
+      const { viewport } = realControlsHarness();
+      viewport.setProject(nativeBox());
+      expect(viewport.cameraPreset(preset)).toEqual({ ok: true });
+      const camera = viewport.getCamera();
+      const offset = new Vector3(...camera.position).sub(new Vector3(...camera.target));
+      expect(offset.normalize().dot(new Vector3(...direction))).toBeCloseTo(1, 12);
+      expect(camera.up).toEqual(preset === 'top' ? [0, 0, -1] : [0, 1, 0]);
       viewport.dispose();
     },
   );

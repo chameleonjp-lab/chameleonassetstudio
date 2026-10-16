@@ -755,11 +755,50 @@ test('inspection camera and helpers preserve canonical revision and survive GPU 
   await expect(revision).toContainText('revision 1');
   const original = await png(page);
   await page.getByText('カメラ・表示の詳細設定', { exact: true }).click();
+  const cameraLabels = [
+    'カメラ位置 X',
+    'カメラ位置 Y',
+    'カメラ位置 Z',
+    '注視点 X',
+    '注視点 Y',
+    '注視点 Z',
+  ];
+  const readCamera = async () => {
+    await page.getByRole('button', { name: '現在のカメラを読み取る', exact: true }).click();
+    return Promise.all(
+      cameraLabels.map((label) => page.getByLabel(label, { exact: true }).inputValue()),
+    );
+  };
+  const cameraBeforeReview = await readCamera();
+  const reviewDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: '6方向レビューシートを保存', exact: true }).click();
+  const reviewFile = await reviewDownload;
+  expect(reviewFile.suggestedFilename()).toBe('Native box work.review.png');
+  const reviewBytes = await readFile((await reviewFile.path())!);
+  expect(reviewBytes.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  expect(reviewBytes.readUInt32BE(16)).toBe(1440);
+  expect(reviewBytes.readUInt32BE(20)).toBe(960);
+  expect(reviewBytes.byteLength).toBeGreaterThan(10_000);
+  await test.info().attach('six-view-review-sheet.png', {
+    body: reviewBytes,
+    contentType: 'image/png',
+  });
+  expect(await readCamera()).toEqual(cameraBeforeReview);
+  expect((await png(page)).equals(original)).toBe(true);
+  await expect(revision).toContainText('revision 1');
   await page.getByRole('button', { name: '正面から見る', exact: true }).click();
   const front = await png(page);
   expect(front.equals(original)).toBe(false);
+  await page.getByRole('button', { name: '背面から見る', exact: true }).click();
+  const back = await png(page);
+  expect(back.equals(front)).toBe(false);
   await page.getByRole('button', { name: '上面から見る', exact: true }).click();
-  expect((await png(page)).equals(front)).toBe(false);
+  const top = await png(page);
+  expect(top.equals(front)).toBe(false);
+  const backCamera = await readCamera();
+  await page.getByRole('button', { name: '左側面から見る', exact: true }).click();
+  await png(page);
+  expect(await readCamera()).not.toEqual(backCamera);
   const objects = page.getByRole('combobox', { name: '注目するオブジェクト', exact: true });
   const id = await objects.locator('option').nth(1).getAttribute('value');
   await objects.selectOption(id!);
@@ -1478,6 +1517,7 @@ test('keyboard Tab order traverses viewport actions and shows visible focus', as
     page.getByRole('button', { name: '全体を表示', exact: true }),
     page.getByRole('button', { name: '保存してGPU表示を休止', exact: true }),
     page.getByRole('button', { name: 'PNG画像を保存', exact: true }),
+    page.getByRole('button', { name: '6方向レビューシートを保存', exact: true }),
     page.getByRole('button', { name: '保存してサムネイルを作成', exact: true }),
     page.getByRole('button', { name: 'カメラを左へ回転', exact: true }),
     page.getByRole('button', { name: 'カメラを右へ回転', exact: true }),

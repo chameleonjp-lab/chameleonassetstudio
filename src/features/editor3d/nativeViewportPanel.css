@@ -85,6 +85,10 @@
   outline-offset: 3px;
 }
 
+.native-viewport-host.is-busy .native-viewport-runtime {
+  pointer-events: none;
+}
+
 .native-viewport-runtime {
   position: absolute;
   inset: 0;
