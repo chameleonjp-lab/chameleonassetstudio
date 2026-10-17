@@ -124,6 +124,113 @@ test('a real editor render failure retains resident image/GLB bytes for rescue a
     contentType: 'image/png',
   });
 });
+test('SAVE-03: source-backed backup restores and remains editable with HTTP blocked in an empty browser context', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(90_000);
+  const fixture = await original();
+  await restore(page, fixture.bytes);
+  const sourceDownloadEvent = page.waitForEvent('download');
+  await page.getByRole('button', { name: '現在の内容をバックアップ', exact: true }).click();
+  const sourceDownload = await sourceDownloadEvent;
+  await expect(page.locator('.editor3d-notice')).toContainText(
+    'バックアップのダウンロードを開始しました。',
+  );
+  await expect(page.locator('.editor3d-notice')).toContainText(
+    '端末でファイルを確認してください。',
+  );
+  await expect(page.locator('.editor3d-notice')).toContainText(
+    'ブラウザー内の保存状態は変わりません。',
+  );
+  expect(sourceDownload.suggestedFilename()).toBe('Binary rescue.cas3dproj');
+  const downloaded = new Uint8Array(await readFile((await sourceDownload.path())!));
+  const source = await assertBytes(downloaded, fixture.blobs);
+  expect(source.project.skins[0].weights[0].values).toEqual([0.75, 0.25]);
+  expect(source.project.clips[0].tracks[0].keys[1]).toEqual({
+    time: 1,
+    value: [0, 2, 0],
+  });
+  const fresh = await browser.newContext();
+  try {
+    const offline = await fresh.newPage();
+    await offline.goto(
+      new URL('/3d/', String(test.info().project.use.baseURL ?? 'http://localhost:5173')).href,
+    );
+    const restoreInput = offline.getByLabel('.cas3dproj を選んでコピー復元', { exact: true });
+    await expect(restoreInput).toBeEnabled();
+    const blockedRequests: string[] = [];
+    await offline.route('**/*', (route) => {
+      const url = route.request().url();
+      if (/^https?:/i.test(url)) {
+        blockedRequests.push(url);
+        return route.abort('internetdisconnected');
+      }
+      return route.continue();
+    });
+    await restoreInput.setInputFiles({
+      name: 'offline-rescue.cas3dproj',
+      mimeType: 'application/zip',
+      buffer: Buffer.from(downloaded),
+    });
+    await expect(
+      offline.getByRole('heading', { name: 'Binary rescue', exact: true }),
+    ).toBeVisible();
+    const restored = await assertBytes(
+      await download(offline, '現在の内容をバックアップ'),
+      fixture.blobs,
+    );
+    expect(restored.project.id).not.toBe(source.project.id);
+
+    const meshNodeId = restored.project.nodes.find((node) => node.meshId)?.id;
+    const firstVertexId = restored.project.meshes[0].vertices[0]?.id;
+    expect(meshNodeId).toBeTruthy();
+    expect(firstVertexId).toBeTruthy();
+    await offline.getByText('骨と重みの編集を開く', { exact: true }).click();
+    const rig = offline.getByRole('region', { name: '3D骨と重み', exact: true });
+    await rig
+      .getByRole('combobox', { name: '重み対象の部品', exact: true })
+      .selectOption(meshNodeId!);
+    await rig
+      .getByRole('combobox', { name: '編集する頂点', exact: true })
+      .selectOption(firstVertexId!);
+    await rig.getByRole('button', { name: '頂点の現在weightを読む', exact: true }).click();
+    await rig.getByLabel('影響 1 の重み', { exact: true }).fill('0.5');
+    await rig.getByLabel('影響 2 の重み', { exact: true }).fill('0.5');
+    await rig.getByRole('button', { name: '選択頂点のweightを適用', exact: true }).click();
+
+    const clip = restored.project.clips.find((item) => item.id === 'move')!;
+    const track = clip.tracks.find((item) => item.nodeId === 'tip')!;
+    await offline.getByText('アニメーション編集を開く', { exact: true }).click();
+    const animation = offline.getByRole('region', { name: '3Dアニメーション', exact: true });
+    await animation
+      .getByRole('combobox', { name: 'clipを選択', exact: true })
+      .selectOption(clip.id);
+    await animation
+      .getByRole('combobox', { name: 'キー対象', exact: true })
+      .selectOption(track.nodeId);
+    await animation.getByRole('button', { name: 'キー 1秒: 0, 2, 0', exact: true }).click();
+    await animation.getByLabel('キー値 Y', { exact: true }).fill('3');
+    await animation.getByRole('button', { name: '選択キーの時刻と値を適用', exact: true }).click();
+
+    await offline.getByLabel('プロジェクト名', { exact: true }).fill('Offline restored edit');
+    await offline.getByRole('button', { name: '今すぐ保存', exact: true }).click();
+    await expect(offline.locator('.editor3d-save-status')).toContainText('保存済み');
+    const edited = await assertBytes(
+      await download(offline, '現在の内容をバックアップ'),
+      fixture.blobs,
+    );
+    expect(edited.project.id).toBe(restored.project.id);
+    expect(edited.project.name).toBe('Offline restored edit');
+    expect(edited.project.skins[0].weights[0].values).toEqual([0.5, 0.5]);
+    expect(
+      edited.project.clips.find((item) => item.id === clip.id)!.tracks[0].keys[1].value,
+    ).toEqual([0, 3, 0]);
+    expect(blockedRequests).toEqual([]);
+  } finally {
+    await fresh.close();
+  }
+});
 test('LIFE-10: unavailable WebGL keeps the top, project list and binary rescue usable without reload', async ({
   page,
 }) => {
