@@ -192,7 +192,18 @@ test('SEC-01: product asset workflows stay on a same-origin read-only network al
   expect(requests.length).toBeGreaterThan(0);
   expect(origins).toEqual([allowedOrigin]);
   expect(rejectedRequests).toEqual([]);
-  expect(websocketURLs).toEqual([]);
+  const unexpectedWebSockets = websocketURLs.filter((socketURL) => {
+    const socket = new URL(socketURL);
+    // Vite's randomized-token HMR channel is test-server infrastructure, not product traffic.
+    return !(
+      socket.protocol === 'ws:' &&
+      socket.origin === 'ws://localhost:5173' &&
+      socket.pathname === '/' &&
+      [...socket.searchParams.keys()].join(',') === 'token' &&
+      /^[A-Za-z0-9_-]{12}$/.test(socket.searchParams.get('token') ?? '')
+    );
+  });
+  expect(unexpectedWebSockets).toEqual([]);
   expect(requests.every(({ method }) => ['GET', 'HEAD'].includes(method))).toBe(true);
   expect(requests.every(({ body }) => body === null || body.length === 0)).toBe(true);
   const archiveBytes = Buffer.from(archive),
